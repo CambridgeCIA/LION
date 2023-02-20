@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import tomosipo as ts
+import matplotlib.pyplot as plt
 from CTtools.ct_utils import *
 #%% Demo on how to create a sinogram from an image and simulate projections, for 2D, using tomosipo and AItomotools
 #===================================================================================================================
@@ -10,7 +11,7 @@ from CTtools.ct_utils import *
 #%% Create image, process
 # Create a phantom containing a small cube. In your code, this will be your data
 phantom = np.ones((512,512))*-1000  #lets assume its 512^2
-phantom[200:250, 200:250, 200:250] = 300
+phantom[ 200:250, 200:250] = 300
 
 # As we want a 2D image but tomosipo deals with 3D data, lets make it 3D with a singleton z dimension
 phantom = np.expand_dims(phantom, 0)
@@ -66,5 +67,17 @@ sino=A(phantom)
 # with some gaussian noise to account for the detector electronic noise and detector crosstalk.
 # A typical CT scan in a hospital will have I0=10000 photon counts in air. I0=1000 will produce an severely noisy image.
 # You should be cool with not touching the rest of the parameters.
-sino_noisy=sinogram_add_noise(proj, I0=10000, sigma=5,crosstalk=0.05,flat_field=A(np.ones(sino.shape)),dark_field=None)
+sino_noisy=sinogram_add_noise(sino, I0=10000, sigma=5,crosstalk=0.05,flat_field=None,dark_field=None)
 
+#%% Plot sinograms
+sino=sino.detach().cpu().numpy()
+sino_noisy=sino_noisy.detach().cpu().numpy()
+
+plt.figure()
+plt.subplot(121)
+plt.imshow(sino[0])
+plt.colorbar()
+plt.subplot(122)
+plt.imshow(sino_noisy[0])
+plt.colorbar()
+plt.savefig("Sino.png")

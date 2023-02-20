@@ -1,5 +1,6 @@
 # math/science imports
 import numpy as np
+import torch
 
 
 def from_HU_to_normal(img):
@@ -26,31 +27,47 @@ def sinogram_add_noise(proj, I0=1000, sigma=5,crosstalk=0.05,flat_field=None,dar
     - Detector crosstalk in % of the signal of adjacent pixels.
     - Add a flat_field to add even more realistic noise (computed at non-corrected flat fields)
     """
+    if torch.is_tensor(proj):
+        istorch=True
+        proj=proj.cpu().detach().numpy()
+    elif isinstance(proj, np.ndarray()):
+        #all good
+        istorch=False
+    else:
+        raise ValueError("numpy or torch tensor expected")
+
     if dark_field is None:
         dark_field=np.zeros(proj.shape)
     if flat_field is None:
-        flat_field=np.ones(proj.shape)*np.amax(proj)
+        flat_field=np.ones(proj.shape)
 
-    max_val=np.amax(flat_field) # alternatively the highest power of 2 close to this value, but lets leave it as is. 
+    max_val=np.amax(proj) # alternatively the highest power of 2 close to this value, but lets leave it as is. 
     
     Im=I0*np.exp(-proj/max_val)
-    flat_field=I0*np.exp(-flat_field/max_val)
-    dark_field=I0*np.exp(-dark_field/max_val)
+  
     # Uncorrect the flat fields
     Im=Im*(flat_field-dark_field)+dark_field
 
-    # Add noise
-    Im= np.random.poisson(Im)  + sigma * np.random.standard_normal(size=Im.shape)
+    # Add Poisson noise
+    Im= np.random.poisson(Im) 
    
     # Detector cross talk
-    cross=[crosstalk,1,crosstalk]
+    cross=np.array([crosstalk,1,crosstalk])/(1+2*crosstalk)
     for ax in range(1,len(proj.shape)):
-        Im=np.apply_along_axis(lambda m: np.convolve(m, cross, mode='full'), axis=ax, arr=Im)
+        Im=np.apply_along_axis(lambda m: np.convolve(m, cross, mode='same'), axis=ax, arr=Im)
+    
+    # Electronic noise:
+    Im= Im + sigma * np.random.standard_normal(size=Im.shape)
 
     Im[Im<=0]=1e-6
     # Correct flat fields
     Im=(Im-dark_field)/(flat_field-dark_field)
-    return -np.log(Im/I0)*max_val
+    proj=-np.log(Im/I0)*max_val
+    proj[proj<0]=0
+    if istorch:
+        return torch.from_numpy(proj).float().cuda()
+    else:
+        return proj 
 
 
 def from_HU_to_material_id(img):
@@ -82,11 +99,13 @@ def forward_projection_fan(image,size,sino_shape,sino_size,DSD,DSO,backend="tomo
     # You can add other backends here
     import tomosipo as ts
 
+    if isinstance(image,np.ndarray):
+        image=torch.from_numpy(image).float().cuda()
     if len(image.shape)==3:
         if image.shape[0]>1: # there is no reason to have this constraint
             raise ValueError("Image must be 2D")
     elif len(image.shape)==2:
-        image=np.expand_dims(image,axis=0)
+        image=torch.unsqueeze(image,axis=0)
     else:
         raise ValueError("Image must be 2D")
 
@@ -100,7 +119,8 @@ def forward_projection_fan(image,size,sino_shape,sino_size,DSD,DSO,backend="tomo
     vg = ts.volume(shape=image.shape, size=size)
     pg = ts.cone(angles=angles, shape=sino_shape, size=sino_size, src_orig_dist=DSO, src_det_dist=DSD)
     A = ts.operator(vg, pg)
-    return A(np.expand_dims(image,axis=0))[0]
+    sino=A(image)[0]
+    return sino.cpu().detach().numpy()
 
 
 
