@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+setup.py
+AItomotools.egg-info/PKG-INFO
+AItomotools.egg-info/SOURCES.txt
+AItomotools.egg-info/dependency_links.txt
+AItomotools.egg-info/top_level.txt

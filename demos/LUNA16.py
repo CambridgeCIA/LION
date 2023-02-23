@@ -106,3 +106,5 @@ for image in luna_dataset.images[10:]:
 
         break # lets just do one
     
+
+# TODO show how to input this into ct_simulation.py

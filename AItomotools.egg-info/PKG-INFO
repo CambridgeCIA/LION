@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: AItomotools
+Version: 0.1
+Summary: Tomographic tools for AI-driven reconstruction
+Home-page: -
+Author: Ander Biguri
+Author-email: ander.biguri@gmail.com
+License: BSD
+Keywords: CT,AI
+
+# AI tools for learned tomographyic recon
+
+University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction. 
+
+Building in progress. 
+
+Install:
+
+conda install pytorch torchvision torchaudio pytorch-cuda=11.6 -c pytorch -c nvidia
+conda install cudatoolkit=11.6 tomosipo tqdm pytorch matplotlib -c pytorch -c astra-toolbox -c aahendriksen -c defaults -c conda-forge
+pip install git+https://github.com/ahendriksen/ts_algorithms.git
+conda install scikit-image
