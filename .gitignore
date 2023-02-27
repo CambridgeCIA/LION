@@ -3,3 +3,5 @@
 *.egg
 
 nohup.out
+**/__pycache__
+*~
