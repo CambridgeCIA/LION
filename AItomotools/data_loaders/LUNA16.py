@@ -63,7 +63,10 @@ class LunaImage(CTimage):
         if self.unit=="mu":
             self.data=ct.from_HU_to_mu(self.data)
 
-
+    def unload_data(self):
+        self.nodule_mask=None
+        super().unload_data()
+        
     def set_nodule_data(self,nodule_list):
         """
         Sets data about Nodules present in this image
@@ -140,9 +143,9 @@ class LunaImage(CTimage):
         for nodule in nodule_list:
             nodule_center=np.round(self.coords2index(nodule.loc)).astype(int)
             nodule_radious=np.ceil(nodule.diameter/self.spacing/2).astype(int)+1
-            self.data[nodule_center[0]-nodule_radious[0]:nodule_center[0]+nodule_radious[0],\
-                          nodule_center[1]-nodule_radious[1]:nodule_center[1]+nodule_radious[1],\
-                          nodule_center[2]-nodule_radious[2]:nodule_center[2]+nodule_radious[2]]=label
+            self.nodule_mask[nodule_center[0]-nodule_radious[0]:nodule_center[0]+nodule_radious[0],\
+                             nodule_center[1]-nodule_radious[1]:nodule_center[1]+nodule_radious[1],\
+                             nodule_center[2]-nodule_radious[2]:nodule_center[2]+nodule_radious[2]]=label
             label=label+1
             
     def make_binary_mask_nodule(self,indices):
