@@ -67,7 +67,7 @@ sino=A(phantom)
 # with some gaussian noise to account for the detector electronic noise and detector crosstalk.
 # A typical CT scan in a hospital will have I0=10000 photon counts in air. I0=1000 will produce an severely noisy image.
 # You should be cool with not touching the rest of the parameters.
-sino_noisy=sinogram_add_noise(sino, I0=10000, sigma=5,crosstalk=0.05,flat_field=None,dark_field=None)
+sino_noisy=ct.sinogram_add_noise(sino, I0=10000, sigma=5,crosstalk=0.05,flat_field=None,dark_field=None)
 
 #%% Plot sinograms
 sino=sino.detach().cpu().numpy()

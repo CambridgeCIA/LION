@@ -30,7 +30,7 @@ def sinogram_add_noise(proj, I0=1000, sigma=5,crosstalk=0.05,flat_field=None,dar
     if torch.is_tensor(proj):
         istorch=True
         proj=proj.cpu().detach().numpy()
-    elif isinstance(proj, np.ndarray()):
+    elif isinstance(proj, np.ndarray):
         #all good
         istorch=False
     else:

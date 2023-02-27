@@ -107,7 +107,6 @@ class LunaImage(CTimage):
             nodule_center=np.round(self.coords2index(nodule.loc)).astype(int)
             nodule_radious=np.ceil(nodule.diameter/self.spacing/2).astype(int)+1
             cropped.append(self.data[nodule_center[0]-nodule_radious[0]:nodule_center[0]+nodule_radious[0]])
-            print(nodule_center[0]-nodule_radious[0])
             if self.nodule_mask is not None:
                 mask.append(self.nodule_mask[nodule_center[0]-nodule_radious[0]:nodule_center[0]+nodule_radious[0]])
         return cropped, mask
@@ -122,11 +121,9 @@ class LunaImage(CTimage):
                           nodule_center[1]-nodule_radious[1]:nodule_center[1]+nodule_radious[1],\
                           nodule_center[2]-nodule_radious[2]:nodule_center[2]+nodule_radious[2]]
     
-    def make_binary_mask_nodule(self,indices):
+    def make_nodule_only_mask(self,indices):
         """
-        Given a Nodule indices, segment the nodule, make a binary mask. 
-        This uses Otsu and morphological operations, and its quite flimsy at doing its job. 
-        Needs work .
+        Makes a mask where all the image, except the area where the tumour is, is zeroed. 
         """
         if not isinstance(indices,list):
             if indices=="all":
@@ -141,6 +138,33 @@ class LunaImage(CTimage):
             self.nodule_mask=np.zeros_like(self.data)
         label=max(np.unique(self.nodule_mask))+1
         for nodule in nodule_list:
+            nodule_center=np.round(self.coords2index(nodule.loc)).astype(int)
+            nodule_radious=np.ceil(nodule.diameter/self.spacing/2).astype(int)+1
+            self.data[nodule_center[0]-nodule_radious[0]:nodule_center[0]+nodule_radious[0],\
+                          nodule_center[1]-nodule_radious[1]:nodule_center[1]+nodule_radious[1],\
+                          nodule_center[2]-nodule_radious[2]:nodule_center[2]+nodule_radious[2]]=label
+            label=label+1
+            
+    def make_binary_mask_nodule(self,indices):
+        """
+        # DO NOT USE, NOT RELIABLE, OTSU MAY FAIL
+        Given a Nodule indices, segment the nodule, make a binary mask. 
+        This uses Otsu and morphological operations, and its quite flimsy at doing its job. 
+        Needs work .
+        """
+        if not isinstance(indices,list):
+            if indices=="all":
+                nodule_list=self.nodules
+            elif int(indices) == indices:
+                indices=[indices]
+                nodule_list=self.nodules[indices]
+            else:
+                raise ValueError("Input indices need to be an index (or list of indices) of the Nodules")
+
+        if self.nodule_mask is None:
+            self.nodule_mask=np.zeros_like(self.data)*np.nan
+        label=max(np.unique(self.nodule_mask))+1
+        for nodule in nodule_list:
             nodule_data=self.get_nodule(nodule)
             val=filters.threshold_otsu(nodule_data)
             mask=nodule_data>val
@@ -151,7 +175,8 @@ class LunaImage(CTimage):
             # There will be more blobs than the real stuff in mask, so filter them out. 
             blobs_labels = measure.label(mask.astype(float), background=0)
             our_blob=blobs_labels[blobs_labels.shape[0]//2,blobs_labels.shape[1]//2,blobs_labels.shape[2]//2]
-            mask=blobs_labels==our_blob
+            mask=blobs_labels==our_blob7
+
             # now we can put it in the global mask
             self.nodule_mask[nodule_center[0]-nodule_radious[0]:nodule_center[0]+nodule_radious[0],\
                              nodule_center[1]-nodule_radious[1]:nodule_center[1]+nodule_radious[1],\
@@ -188,8 +213,9 @@ class LUNA16(CT_data_loader):
             raise AttributeError("Subfolders already loaded, updating not implemented")
         # This code allows to load partial subfolders, but for now its overriden and loads all.
         subfolder="all"
-        self.folder = os.path.join(folder, "LUNA16")
+        self.folder = folder
         if subfolder == "all":
+            print(self.folder)
             subfolder = next(os.walk(self.folder))[1]
             self.subfolder = [s for s in subfolder if s.startswith("subset")]
         elif '*' in subfolder:
