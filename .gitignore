@@ -1,2 +1,5 @@
 *.png
 *.pyc
+*.egg
+
+nohup.out
