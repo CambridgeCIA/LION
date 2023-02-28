@@ -22,7 +22,7 @@ storage_path = WALNUT_DATASET_PATH
 file_ids = {
     2686726 : [i for i in range(1,9)],
     2686971 : [i for i in range(9,17)],
-    2687387 : [i for i in range(22,25)],
+    2687387 : [i for i in range(17,25)],
     2687635 : [i for i in range(25,33)],
     2687897 : [i for i in range(33,38)],
     2688112 : [i for i in range(38,43)]

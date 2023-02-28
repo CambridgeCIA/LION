@@ -8,11 +8,11 @@ import matplotlib.pyplot as plt
 # by: Ander Biguri
 
 #%% Data paths
-# To avoid unnecesary repetition of data, we have much of the data already stored and processed in shared folders. 
-from AItomotools.utils.paths import path_luna
+# To avoid unnecesary repetition of data, we have much of the data already stored and processed in shared folders.
+from AItomotools.utils.paths import LUNA_DATASET_PATH
 
-# Lets assume here that you need a new instance of this dataset, or to process it for the first time. 
-# However, assume that what you need is likely already been processed, and you should use that dataset. 
+# Lets assume here that you need a new instance of this dataset, or to process it for the first time.
+# However, assume that what you need is likely already been processed, and you should use that dataset.
 
 #%% Lets see how to use the LUNA16 data loader.
 from AItomotools.data_loaders.LUNA16 import LUNA16
@@ -20,7 +20,7 @@ from AItomotools.data_loaders.LUNA16 import LUNA16
 # The data loader will do all the job for you, but its expecting a certain format. Simply:
 # .
 # └── LUNA16
-#     annotations.csv 
+#     annotations.csv
 #     ├── seg-lungs-LUNA16
 #     ├── subset0
 #     ├── subset1
@@ -36,8 +36,8 @@ from AItomotools.data_loaders.LUNA16 import LUNA16
 # To dowload them, just go to zenodo and then extract each subset with 7z (unzip doesn't work with LUNA16)
 
 # Create the data Loader, this is empty.
-luna_dataset=LUNA16(path_luna,load_metadata=False,verbose=True)
-# You can do this with the constructor, but I set it to false. 
+luna_dataset=LUNA16(LUNA_DATASET_PATH,load_metadata=False,verbose=True)
+# You can do this with the constructor, but I set it to false.
 # This will load the metadata (image names, nodules etc), but will not load actual data (for memory reasons)
 luna_dataset.load_metadata()
 # If you want to load the actual data, you need to actually load it manually. This will load metadata for every image
@@ -50,7 +50,7 @@ luna_dataset.load_data(list(range(11, 17)))
 # For your own safety, this does not have a "load all" utility, albeit you can check len(luna_dataset.images)
 # to know the number of images available. But this is likely more memory than the RAM you have available
 
-# You can also unload the data from memory. 
+# You can also unload the data from memory.
 luna_dataset.unload_data(image_to_load)
 luna_dataset.unload_data(list(range(11,17)))
 luna_dataset.unload_data() # just unload all
@@ -59,13 +59,13 @@ luna_dataset.unload_data() # just unload all
 luna_dataset.from_HU_to_mu()
 # luna_dataset.from_HU_to_normal()
 
-#%% Manipulating the data inside. 
+#%% Manipulating the data inside.
 
-# The LUNA dataset is 3D CT images, and its likely that you (yes you!) are doing 2D recon. Therefore you may want to load 
-# or use just some of the slices. In fact if you were to use all of the slices it will likely be too much data. 
+# The LUNA dataset is 3D CT images, and its likely that you (yes you!) are doing 2D recon. Therefore you may want to load
+# or use just some of the slices. In fact if you were to use all of the slices it will likely be too much data.
 luna_dataset.load_data(0)
 data=luna_dataset.images[0] # this is a 3D np.array
-# It is however likely that you want an images of the same size, such are CT scanners. 
+# It is however likely that you want an images of the same size, such are CT scanners.
 # Given a desired resulution, you can resample the image as
 original_size=luna_dataset.images[0].shape
 luna_dataset.images[0].resample([original_size[0],256,256])
@@ -77,8 +77,8 @@ print("Resampled size: "+ str(luna_dataset.images[0].shape))
 # You can also crop the 3D image in a set of desired slices. This also modifies the relevant metadata.
 luna_dataset.images[0].crop_z(50)
 
-# The LUNA datasets comes with annotations.csv, that gives locations and radious of lung nodules in the images. 
-# You may want to keep only the slices with a lung nodule, and ignore the rest. 
+# The LUNA datasets comes with annotations.csv, that gives locations and radious of lung nodules in the images.
+# You may want to keep only the slices with a lung nodule, and ignore the rest.
 # TODO whats wrong with the first one?
 for image in luna_dataset.images[10:]:
     if image.nodules:
@@ -105,6 +105,6 @@ for image in luna_dataset.images[10:]:
         plt.savefig("nodule.png")
 
         break # lets just do one
-    
+
 
 # TODO show how to input this into ct_simulation.py

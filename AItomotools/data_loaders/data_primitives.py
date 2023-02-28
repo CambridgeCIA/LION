@@ -2,6 +2,7 @@
 # OS/path imports
 import os
 from genericpath import exists
+import pathlib
 
 # utils
 from tqdm import tqdm
@@ -37,12 +38,12 @@ class CTimage():
     folder : str
         folder where the data is located
 
-    filename : str
-        filename of this image
+    file_name : str
+        file_name of this image
 
     image : np.array
         pixel image information
-    
+
     offset: np.array (3,1)
         offset of image center
 
@@ -50,7 +51,7 @@ class CTimage():
         size of each voxel in mm
 
     dimsize : np.array(3,1)
-        same as image.shape, but of the original data. 
+        same as image.shape, but of the original data.
 
     shape: tuple
         same as dimsize but in np.shape compatible format
@@ -59,15 +60,15 @@ class CTimage():
     -------
 
     """
-    def __init__(self,folder,file,load_data=False) -> None:
+    def __init__(self,folder:pathlib.Path, file_path:pathlib.Path,load_data=False) -> None:
         """
-        Initializes an image, given a folder and a filename. 
+        Initializes an image, given a folder and a file_path.
         Optionally loads the data from disk too, if `load_data` is set to True
         """
-        if not file.endswith('.mhd') and not file.endswith(".dcm"):
+        if not file_path.suffix == '.mhd' and not file_path.suffix == '.dcm':
             raise ValueError("File should be .mhd")
         self.folder=folder
-        self.filename=file
+        self.file_path=file_path
         self.data = None
         self.unit = None
         self.shape =None
@@ -81,42 +82,42 @@ class CTimage():
         """
         Loads the image information from disk
         """
-        if self.filename.lower().strip().endswith('.mhd'):
-            self.data=skio.imread(os.path.join(self.folder,self.filename), plugin="simpleitk")
-        elif self.filename.lower().endswith('.dcm'):
-            #get filename
-            fname=os.path.splitext(self.filename)[0]
+        if self.file_path.suffix == '.mhd':
+            self.data=skio.imread(self.folder.joinpath(self.file_path), plugin="simpleitk")
+        elif self.file_path.suffix == '.dcm':
+            #get file_name
+            fname= self.file_path.stem
             if fname=="*":
                 # find all dcm
-                filenames=[]
+                file_names=[]
                 for file in os.listdir(self.folder):
                     if file.endswith(".dcm"):
-                        filenames.append(file)
-                filenames=natsorted(filenames, key=lambda y: y.lower())
-                
+                        file_names.append(file)
+                file_names=natsorted(file_names, key=lambda y: y.lower())
+
                 #read first for allocation purposes
-                first=dicom.dcmread(os.path.join(self.folder,filenames[0]))
-                self.data=np.zeros((len(filenames),*first.pixel_array.shape))
+                first=dicom.dcmread(self.folder.joinpath(file_names[0]))
+                self.data=np.zeros((len(file_names),*first.pixel_array.shape))
                 self.data[0]=first.pixel_array
-                for i in range(1,len(filenames)):
-                    dcm=dicom.dcmread(os.path.join(self.folder,filenames[i]))
+                for i in range(1,len(file_names)):
+                    dcm=dicom.dcmread(self.folder.joinpath(file_names[i]))
                     self.data[i]=dcm.pixel_array
-                self.shape=(len(filenames),*first.pixel_array.shape)
+                self.shape=(len(file_names),*first.pixel_array.shape)
         else:
-            raise ValueError("Filename extension not supported: " + self.filename)
-            
+            raise ValueError(f"file_path extension not supported: {self.file_path.stem}")
+
     def unload_data(self):
         """
         Deletes image information (but not metadata)
         """
         self.data=None
-        
+
     def load_metadata(self):
         """
-        Loads metadata of the image. 
+        Loads metadata of the image.
         """
-        if self.filename.endswith(".mhd"):
-            for line in open(os.path.join(self.folder,self.filename)):
+        if self.file_path.suffix == ".mhd":
+            for line in open(self.folder.joinpath(self.file_name)):
                 if line.startswith("Offset = "):
                     self.offset=np.array([float(i) for i in  line.rsplit(sep=" = ")[1].rsplit()])[::-1]
                 if line.startswith("ElementSpacing = "):
@@ -124,7 +125,7 @@ class CTimage():
                 if line.startswith("DimSize = "):
                     self.dimsize=np.array([float(i) for i in line.rsplit(sep=" = ")[1].rsplit()])[::-1]
                     self.shape=tuple(self.dimsize.astype(int))
-        
+
     def coords2index(self,coords):
         """
         gives indices of real world coordinates for image
