@@ -117,7 +117,7 @@ class CTimage():
         Loads metadata of the image.
         """
         if self.file_path.suffix == ".mhd":
-            for line in open(self.folder.joinpath(self.file_name)):
+            for line in open(self.folder.joinpath(self.file_path)):
                 if line.startswith("Offset = "):
                     self.offset=np.array([float(i) for i in  line.rsplit(sep=" = ")[1].rsplit()])[::-1]
                 if line.startswith("ElementSpacing = "):

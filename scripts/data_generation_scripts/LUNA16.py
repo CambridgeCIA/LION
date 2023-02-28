@@ -8,23 +8,23 @@ import skimage
 import AItomotools.CTtools.ct_utils as ct
 
 ## This scripts generates the data available at:
-from AItomotools.utils.paths import path_projections_luna_2d, path_luna
-path_projections_luna=path_projections_luna_2d
-print(path_projections_luna)
+from AItomotools.utils.paths import LUNA_PROCESSED_DATASET_PATH, LUNA_DATASET_PATH
+
+print(LUNA_PROCESSED_DATASET_PATH)
 
 #%% This scripts loands data from LUNA16, randomly slices the images, and stores the result.
 # Then it simulates forward projections of a particular geometry and adds realistic noise of different levels to it.
 # For the testing set, the slices that contain nodules are used. 
 
 # make dir.
-Path(path_projections_luna).mkdir(parents=True, exist_ok=True)
-Path(path_projections_luna+"training").mkdir(parents=True, exist_ok=True) #Training data
-Path(path_projections_luna+"validation").mkdir(parents=True, exist_ok=True) # Validation data
-Path(path_projections_luna+"testing").mkdir(parents=True, exist_ok=True) # Testing data
-Path(path_projections_luna+"testing_nodule").mkdir(parents=True, exist_ok=True) # Testing data containing nodule slices
+Path(LUNA_PROCESSED_DATASET_PATH).mkdir(parents=True, exist_ok=True)
+Path(LUNA_PROCESSED_DATASET_PATH.joinpath("training")).mkdir(parents=True, exist_ok=True) #Training data
+Path(LUNA_PROCESSED_DATASET_PATH.joinpath("validation")).mkdir(parents=True, exist_ok=True) # Validation data
+Path(LUNA_PROCESSED_DATASET_PATH.joinpath("testing")).mkdir(parents=True, exist_ok=True) # Testing data
+Path(LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule")).mkdir(parents=True, exist_ok=True) # Testing data containing nodule slices
 
 from AItomotools.data_loaders.LUNA16 import LUNA16
-luna_dataset=LUNA16(path_luna,load_metadata=True)
+luna_dataset=LUNA16(LUNA_DATASET_PATH,load_metadata=True)
 luna_dataset.unit="normal" 
 # lets set a seed for reproducibility:
 np.random.seed(42)
@@ -34,20 +34,6 @@ np.random.seed(42)
 vg = ts.volume(shape=(1,512,512), size=(5, 300, 300))
 pg = ts.cone(angles=360, shape=(1, 900), size=(1, 900), src_orig_dist=575, src_det_dist=1050)
 A = ts.operator(vg, pg)
-
-# We want to simulate different levels of noise. Noise in CT is best defined by the number of counts in the detector in air, so lower==more noise. 
-# I0=10000 ~ medical scanner
-noise_level=[10000,5000,3500,2000,1000]
-for noise in noise_level:
-    Path(path_projections_luna+"training/"+str(noise)).mkdir(parents=True, exist_ok=True) #Training data
-    Path(path_projections_luna+"validation/"+str(noise)).mkdir(parents=True, exist_ok=True) # Validation data
-    Path(path_projections_luna+"testing/"+str(noise)).mkdir(parents=True, exist_ok=True) # Testing data
-    Path(path_projections_luna+"testing_nodule/"+str(noise)).mkdir(parents=True, exist_ok=True) # Testing data containing nodule slices
-
-Path(path_projections_luna+"training/"+"clean").mkdir(parents=True, exist_ok=True) #Training data
-Path(path_projections_luna+"validation/"+"clean").mkdir(parents=True, exist_ok=True) #Training data
-Path(path_projections_luna+"testing/"+"clean").mkdir(parents=True, exist_ok=True) #Training data
-Path(path_projections_luna+"testing_nodule/"+"clean").mkdir(parents=True, exist_ok=True) #Training data
 
 # We are going to simulate 2D slices, so using the entire luna will likely bee too much. Lets generate 6 slices for each LUNA dataset
 # and 4 will go ot training, 1 to validation, 1 to testing
@@ -70,22 +56,17 @@ for i in tqdm(range(len(luna_dataset.images))):
         sino=A(image) # forward operator
 
         # Save clean image and sinogram for supervised training.
-        np.save(path_projections_luna+subfolder+"/clean/image_"+f'{data_index:06}'+".npy",image)
-        np.save(path_projections_luna+subfolder+"/clean/sino_"+f'{data_index:06}'+".npy",sino)
-
-        # Simulate all noise levels, and save. 
-        for noise in noise_level:
-            sino_noisy=ct.sinogram_add_noise(sino, I0=noise)
-            np.save(path_projections_luna+subfolder+"/"+str(noise)+"/sino_"+f'{data_index:06}'+".npy",sino_noisy)
-        data_index+=1
+        torch.save(torch.from_numpy(image) ,LUNA_PROCESSED_DATASET_PATH.joinpath(subfolder+"/image_"+f'{data_index:06}'+".pt"))
+        torch.save(torch.from_numpy(sino),LUNA_PROCESSED_DATASET_PATH.joinpath(subfolder+"/sino_"+f'{data_index:06}'+".pt"))
+        
     luna_dataset.unload_data(i) #free memory
 
 
 #%%  Nodules
 # Now, albeit we have build a good typical train/validate/test set, the LUNA dataset has something extra interesting: Lung nodules. 
 # These are 3D, i.e. they have few slices thickness. So lets extract these slices and put them together
-
-Path(path_projections_luna+"testing_nodule/"+"metadata").mkdir(parents=True, exist_ok=True) 
+Path(LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule")).mkdir(parents=True, exist_ok=True) 
+Path(LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule/metadata")).mkdir(parents=True, exist_ok=True) 
 
 nodule_index=0
 for i in tqdm(range(len(luna_dataset.images))):
@@ -111,7 +92,7 @@ for i in tqdm(range(len(luna_dataset.images))):
     # for each nodule
     for nodule_slice, mask_slice in zip(nodule_slices, mask_slices):
         # save spacing of this nodule
-        np.save(path_projections_luna+'/testing_nodule/metadata/nodule_spacing_'+str(nodule_index)+".npy",resampled_spacing)
+        torch.save(torch.from_numpy(resampled_spacing),LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule/metadata/nodule_spacing_"+str(nodule_index)+".pt"))
 
         # for every slice in each nodule
         for slice_index, (ns, ms) in enumerate(zip(nodule_slice,mask_slice)):
@@ -122,14 +103,10 @@ for i in tqdm(range(len(luna_dataset.images))):
             sino = A(ns)
 
              # Save clean image and sinogram for supervised training.
-            np.save(path_projections_luna+"/testing_nodule/clean/image_"+f'{nodule_index:06}'+"_slice_"+f'{slice_index:03}'+".npy",ns)
-            np.save(path_projections_luna+"/testing_nodule/clean/mask_"+f'{nodule_index:06}'+"_slice_"+f'{slice_index:03}'+".npy",ms)
+            torch.save(torch.from_numpy(ns),LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule/image_"+f'{nodule_index:06}'+"_slice_"+f'{slice_index:03}'+".pt"))
+            torch.save(torch.from_numpy(ms),LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule/mask_"+f'{nodule_index:06}'+"_slice_"+f'{slice_index:03}'+".pt"))
 
-            np.save(path_projections_luna+"/testing_nodule/clean/sino_"+f'{nodule_index:06}'+"_slice_"+f'{slice_index:03}'+".npy",sino)
+            torch.save(torch.from_numpy(sino),LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule/sino_"+f'{nodule_index:06}'+"_slice_"+f'{slice_index:03}'+".pt"))
 
-            # Simulate all noise levels, and save. 
-            for noise in noise_level:
-                sino_noisy=ct.sinogram_add_noise(sino, I0=noise)
-                np.save(path_projections_luna+"/testing_nodule/"+str(noise)+"/sino_"+f'{nodule_index:06}'+"_slice_"+f'{slice_index:03}'+".npy",sino_noisy)
         nodule_index+=1
     luna_dataset.unload_data(i)

@@ -220,10 +220,10 @@ class LUNA16(CT_data_loader):
         self.folder = folder
         if subfolder == "all":
             print(self.folder)
-            subfolder = next(self.folder.glob('*'))[1]
+            subfolder = [f.name for f in self.folder.iterdir() if f.is_dir()]
             self.subfolders = [s for s in subfolder if s.startswith("subset")]
         elif '*' in subfolder:
-            subfolder_list = next(self.folder.glob('*'))[1]
+            subfolder_list = [f for f in self.folder.iterdir() if f.is_dir()]
             # Not sure what that does
             self.subfolders = (fnmatch.filter(subfolder_list, subfolder))
         else:
@@ -236,7 +236,7 @@ class LUNA16(CT_data_loader):
         """
         Loads metadata (but not image data) of LUNA16
         """
-        if self.subfolder is None:
+        if self.subfolders is None:
             self.find_subfolders(self.folder)
             if self.verbose:
                 print("-" * 65)
@@ -248,8 +248,8 @@ class LUNA16(CT_data_loader):
                 print("-" * 65)
         for sub_folder_name in self.subfolders:
             curr_folder = self.folder.joinpath(sub_folder_name)
-            files = next(curr_folder.glob('*'))[2]
-            files = [f for f in files if f.endswith(".mhd")]
+            files = [x for x in curr_folder.iterdir() if x.is_file()]
+            files = [f for f in files if f.name.endswith(".mhd")]
             self.images.extend([LunaImage(curr_folder,f) for f in files]) # if os.path.splitext(f)[0] in nodulefiles # This lets only load images with nodules
         for i in self.images:
             i.unit="HU"   # I just know LUNA is in HUs
@@ -280,6 +280,6 @@ class LUNA16(CT_data_loader):
         # Now we need to assign the nodules to the images
         for n in nodules:
             for image in self.images:
-                if n.filename == image.filename[0:-4]:
+                if n.filename == image.file_path.stem:
                     image.set_nodule_data(n)
                     break # if we found the image, break the loop, go to next nodule

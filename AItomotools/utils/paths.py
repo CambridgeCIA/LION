@@ -8,7 +8,7 @@ WALNUT_DATASET_PATH = TOMOTOOLS_DATASET_PATH.joinpath("raw/walnuts")
 
 LIDC_IDRI_PATH  = pathlib.Path("/local/scratch/public/ab2860/data/LIDC-IDRI")
 
-## Do we keep this one?
+## DAta ready for training use
 LUNA_PROCESSED_DATASET_PATH   = TOMOTOOLS_DATASET_PATH.joinpath("processed/LUNA16")
 
 
