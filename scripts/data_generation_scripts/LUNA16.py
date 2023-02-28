@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from tqdm import tqdm
 import skimage
-import AItomotools.CTtools.ct_utils as ct
+import AItomotools.CTtools.ct_geometry as ct
 
 ## This scripts generates the data available at:
 from AItomotools.utils.paths import LUNA_PROCESSED_DATASET_PATH, LUNA_DATASET_PATH
@@ -13,7 +13,7 @@ from AItomotools.utils.paths import LUNA_PROCESSED_DATASET_PATH, LUNA_DATASET_PA
 print(LUNA_PROCESSED_DATASET_PATH)
 
 #%% This scripts loands data from LUNA16, randomly slices the images, and stores the result.
-# Then it simulates forward projections of a particular geometry and adds realistic noise of different levels to it.
+# Then it simulates forward project_utilsions of a particular geometry and adds realistic noise of different levels to it.
 # For the testing set, the slices that contain nodules are used. 
 
 # make dir.
@@ -29,10 +29,13 @@ luna_dataset.unit="normal"
 # lets set a seed for reproducibility:
 np.random.seed(42)
 
+geo=ct.Geometry()
+geo.default_geo()
+geo.save(LUNA_PROCESSED_DATASET_PATH.joinpath("geometry.json"))
 # Define operator (fan beam)
 # TODO save metadata for this.
-vg = ts.volume(shape=(1,512,512), size=(5, 300, 300))
-pg = ts.cone(angles=360, shape=(1, 900), size=(1, 900), src_orig_dist=575, src_det_dist=1050)
+vg = ts.volume(shape=geo.image.shape, size=geo.image_size)
+pg = ts.cone(angles=360, shape=geo.detector_shape, size=geo.detector_size, src_orig_dist=geo.dso, src_det_dist=geo.dsd)
 A = ts.operator(vg, pg)
 
 # We are going to simulate 2D slices, so using the entire luna will likely bee too much. Lets generate 6 slices for each LUNA dataset
@@ -64,7 +67,7 @@ for i in tqdm(range(len(luna_dataset.images))):
 
 #%%  Nodules
 # Now, albeit we have build a good typical train/validate/test set, the LUNA dataset has something extra interesting: Lung nodules. 
-# These are 3D, i.e. they have few slices thickness. So lets extract these slices and put them together
+# These are 3D, i.e. they have few slices thickness. So lets extract_utils these slices and put them together
 Path(LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule")).mkdir(parents=True, exist_ok=True) 
 Path(LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule/metadata")).mkdir(parents=True, exist_ok=True) 
 

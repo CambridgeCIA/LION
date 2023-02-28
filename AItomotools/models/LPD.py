@@ -1,4 +1,4 @@
-from python_utils.math import power_method
+from AItomotools.utils.math import power_method
 import numpy as np
 
 import tomosipo as ts
