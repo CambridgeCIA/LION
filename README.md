@@ -16,3 +16,17 @@ conda install pip
 conda install natsort h5py
 conda install -c simpleitk simpleitk
 ```
+
+## Repo structure
+
+CTtools: tools related to computed tomography, e.g. operators, noise simulators, ...
+
+data_loaders: tools to load and process data
+
+metrics: tools to evaluate performance of networks
+
+utils: other type of utilities
+
+demos: tutorial-like scripts that use and showcase the code
+
+scripts: full fledged scripts that are reproducible, for e.g. data generation, or papers. 
