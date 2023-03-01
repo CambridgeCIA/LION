@@ -3,6 +3,7 @@ import torch
 import tomosipo as ts
 import matplotlib.pyplot as plt
 import CTtools.ct_utils as ct
+import pathlib
 #%% Demo on how to create a sinogram from an image and simulate projections, for 2D, using tomosipo and AItomotools
 #===================================================================================================================
 # by: Ander Biguri
@@ -38,6 +39,19 @@ vg = ts.volume(shape=(1,*phantom.shape[1:]), size=(5, 300, 300))
 pg = ts.cone(angles=360, shape=(1, 900), size=(1, 900), src_orig_dist=575, src_det_dist=1050)
 # A is now an operator. 
 A = ts.operator(vg, pg)
+
+#%% Using Geometry class. 
+# The above example shows how to use tomosipo operators, but for AItomotools, you should be using the Parameter class, in particular the CT Geometry class. 
+import AItomotools.CTtools.ct_geometry as ctgeo 
+# Create empty Geometry
+geo=ctgeo.Geometry()
+# Fill it with default values
+geo.default_geo()
+# Print the geo (these are the values you can ser)
+print(geo)
+# Dave the geo in JSON
+geo.save(pathlib.Path("geo.json"))
+geo.load(pathlib.Path("geo.json"))
 
 #%% CPU or GPU? 
 
