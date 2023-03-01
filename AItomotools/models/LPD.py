@@ -135,18 +135,18 @@ class LPD(nn.Module):
         LPD_params.step_size=None
         LPD_params.step_positive=True
         return LPD_params
-        
+
     @staticmethod
     def __make_operators(geo, angles, mode='ct'):
         if mode.lower() != "ct":
             raise NotImplementedError("Only CT operators supported")
-        vg = ts.volume(shape=geo.nVoxel, size=geo.sVoxel)
+        vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
         pg = ts.cone(
             angles=angles,
             shape=geo.detector_shape,
             size=geo.detector_size,
-            src_orig_dist=geo.DSO,
-            src_det_dist=geo.DSD,
+            src_orig_dist=geo.dso,
+            src_det_dist=geo.dsd,
         )
         A = ts.operator(vg, pg)
         return A
@@ -175,12 +175,12 @@ class LPD(nn.Module):
             raise NotImplementedError("Only 2D CT images supported")
 
         # TODO: have a default geo?
-        if len(self.geo.angles) != W or self.geo.nDetector[1] != H:
+        if len(self.geo.angles) != W or self.geo.detector_shape[1] != H:
             raise ValueError("geo description and sinogram size do not match")
 
         # initialize parameters
         h = g.new_zeros(B, 5, W, H)
-        f_primal = g.new_zeros(B, 5, *self.geo.nVoxel[1:])
+        f_primal = g.new_zeros(B, 5, *self.geo.image_shape[1:])
         for i in range(B):
             aux=fdk(self.op, g[i,0])
             for channel in range(5):
