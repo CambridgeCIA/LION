@@ -1,4 +1,7 @@
 from AItomotools.utils.math import power_method
+from AItomotools.utils.parameter import Parameter
+import AItomotools.CTtools.ct_geometry as ct
+
 import numpy as np
 
 import tomosipo as ts
@@ -68,6 +71,7 @@ class LPD(nn.Module):
         self,
         n_iters,
         geo,
+        angles,
         mode="ct",
         data_channels=[7, 32, 32, 5],
         reg_channels=[6, 32, 32, 5],
@@ -90,7 +94,7 @@ class LPD(nn.Module):
         self.params = nn.ParameterList(
             [nn.Parameter(torch.randn(10, 10)) for i in range(10)]
         )
-        op = self.__make_operators(geo, mode)
+        op = self.__make_operators(geo,angles, mode)
         self.op=op
         self.A = to_autograd(op)
         self.AT = to_autograd(op.T)
@@ -120,16 +124,27 @@ class LPD(nn.Module):
             self.lambda_primal = torch.ones(n_iters) * self.step_size
 
 
-
     @staticmethod
-    def __make_operators(geo, mode='ct'):
+    def default_parameters(mode='ct'):
+        LPD_params=Parameter()
+        LPD_params.n_iters=10
+        LPD_params.mode=mode
+        LPD_params.data_channels=[7, 32, 32, 5]
+        LPD_params.reg_channels=[6, 32, 32, 5]
+        LPD_params.learned_step=True
+        LPD_params.step_size=None
+        LPD_params.step_positive=True
+        return LPD_params
+        
+    @staticmethod
+    def __make_operators(geo, angles, mode='ct'):
         if mode.lower() != "ct":
             raise NotImplementedError("Only CT operators supported")
         vg = ts.volume(shape=geo.nVoxel, size=geo.sVoxel)
         pg = ts.cone(
-            angles=geo.angles,
-            shape=geo.nDetector,
-            size=geo.sDetector,
+            angles=angles,
+            shape=geo.detector_shape,
+            size=geo.detector_size,
             src_orig_dist=geo.DSO,
             src_det_dist=geo.DSD,
         )

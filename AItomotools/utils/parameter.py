@@ -25,7 +25,8 @@ class Parameter():
 
     def __str__(self):
         d=vars(self)
+        string=[]
         for x in d:
-            print (x)
-            for y in d[x]:
-                print (y,':',d[x][y])
+            string.append(str(x)+' : '+str(d[x]))
+        return "\n".join(string)
+
