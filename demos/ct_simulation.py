@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import tomosipo as ts
 import matplotlib.pyplot as plt
-import CTtools.ct_utils as ct
+import AItomotools.CTtools.ct_utils as ct
 import pathlib
 #%% Demo on how to create a sinogram from an image and simulate projections, for 2D, using tomosipo and AItomotools
 #===================================================================================================================
@@ -18,7 +18,7 @@ phantom[ 200:250, 200:250] = 300
 phantom = np.expand_dims(phantom, 0)
 
 # CT images can be in different units. The phantom avobe has been defined in Hounsfield Units (HUs)
-# CTtools.ct_utils has a series of functions to transfrom from 3 units: Hounsfield Units (HUs), linear attenuation coefficien (mus) or normalized images 
+# CTtools.ct_utils has a series of functions to transfrom from 3 units: Hounsfield Units (HUs), linear attenuation coefficien (mus) or normalized images
 
 phantom_mu=ct.from_HU_to_mu(phantom)
 phantom_normal=ct.from_HU_to_normal(phantom)
@@ -30,19 +30,19 @@ phantom_tissues=ct.from_HU_to_material_id(phantom)
 
 phantom=phantom_mu
 
-#%% Create operator 
+#%% Create operator
 
 # Define volume geometry. Shape is the shape in elements, and size is in real life units (e.g. mm)
 # Note: we make Z "thick" just because we are going to simulate 2D. for 3D be more careful with this value.
 vg = ts.volume(shape=(1,*phantom.shape[1:]), size=(5, 300, 300))
 # Define acquisition geometry. We want fan beam, so lets make a "cone" beam and make it 2D. We also need sod and sdd, so we set them up to something medically reasonable.
 pg = ts.cone(angles=360, shape=(1, 900), size=(1, 900), src_orig_dist=575, src_det_dist=1050)
-# A is now an operator. 
+# A is now an operator.
 A = ts.operator(vg, pg)
 
-#%% Using Geometry class. 
-# The above example shows how to use tomosipo operators, but for AItomotools, you should be using the Parameter class, in particular the CT Geometry class. 
-import AItomotools.CTtools.ct_geometry as ctgeo 
+#%% Using Geometry class.
+# The above example shows how to use tomosipo operators, but for AItomotools, you should be using the Parameter class, in particular the CT Geometry class.
+import AItomotools.CTtools.ct_geometry as ctgeo
 # Create empty Geometry
 geo=ctgeo.Geometry()
 # Fill it with default values
@@ -53,16 +53,16 @@ print(geo)
 geo.save(pathlib.Path("geo.json"))
 geo.load(pathlib.Path("geo.json"))
 
-#%% CPU or GPU? 
+#%% CPU or GPU?
 
 # The only thing needed to make the tomosipo operator work in GPU instead of GPU is just make it a torch tensor.
 dev = torch.device("cuda")
 phantom = torch.from_numpy(phantom).to(dev)
 
 
-#%% Create sinograms, simulate noise. 
+#%% Create sinograms, simulate noise.
 
-# ct_utils.py contain functions to fo realistic CT simulations. 
+# ct_utils.py contain functions to fo realistic CT simulations.
 
 # in its most simple form, a fan-beam CT acquisition is defined by:
 # image size in mm
