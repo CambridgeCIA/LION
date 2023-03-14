@@ -7,14 +7,23 @@ from pathlib import Path
 class Parameter():
 
     def __init__(self,**kwargs):
+        """
+        Initialize parameter from dictionary
+        """
         for item in kwargs:
             setattr(self, item, kwargs[item])
 
     def is_filled(self):
+        """
+        Check if the values are not None
+        """
         if all(vars(self).values()):
             raise ValueError("Not all parameters set")
 
     def save(self,fname):
+        """
+        Save parameter into a JSON file
+        """
         if isinstance(fname, str):
             fname=Path(fname)
         if fname.suffix != ".json" :
@@ -24,6 +33,9 @@ class Parameter():
     
 
     def load(self,fname):
+        """
+        Load parameter from JSON file, and initialize instance
+        """
         if isinstance(fname, str):
             fname=Path(fname)
         with open(fname, 'r', encoding='utf-8') as f:
@@ -31,6 +43,9 @@ class Parameter():
         self.__init__(**d)
 
     def __str__(self):
+        """
+        OVearload the str for printing. 
+        """
         d=vars(self)
         string=[]
         for x in d:
