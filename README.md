@@ -1,8 +1,9 @@
-# AI tools for learned tomographyic recon
+# AI tools for learned tomographic reconstruction
 
 University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction. 
 
-Building in progress. 
+
+**WARNING** Building in progress. 
 
 Install: (this is a temporary list, we will clean it up)
 
@@ -17,16 +18,6 @@ conda install natsort h5py
 conda install -c simpleitk simpleitk
 ```
 
-## Repo structure
 
-CTtools: tools related to computed tomography, e.g. operators, noise simulators, ...
-
-data_loaders: tools to load and process data
-
-metrics: tools to evaluate performance of networks
-
-utils: other type of utilities
-
-demos: tutorial-like scripts that use and showcase the code
-
-scripts: full fledged scripts that are reproducible, for e.g. data generation, or papers. 
+# Developers:
+Read `developers.md`
