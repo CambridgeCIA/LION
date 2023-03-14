@@ -4,7 +4,7 @@ WIP
 
 ## Familiarize yourself with the structure of the tool 
 
-
+<pre>
 ./AItomotools     : The toolbox\
 ├── CTtools                 -> Tools for Computed Tomography specifically\
 ├── data_loaders            -> Tools for 1) preprocessing data 2) loading data for training\
@@ -17,5 +17,5 @@ WIP
 ./scripts         : Scripts that fully reproduce papers/data\
 ├── data_generation_scripts -> Scripts that produce the datasets.\
 ├── paper_scripts           -> Code that reproduces published papers\
-
+</pre>
 
