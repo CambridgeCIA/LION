@@ -44,7 +44,7 @@ class Parameter():
 
     def __str__(self):
         """
-        OVearload the str for printing. 
+        Overload the str for printing. 
         """
         d=vars(self)
         string=[]
