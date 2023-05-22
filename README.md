@@ -2,12 +2,8 @@
 
 University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction.
 
-<<<<<<< HEAD
-Building in progress.
-=======
 
 **WARNING** Building in progress. 
->>>>>>> 297b3d7d8821f31fbe0f025dc956fe45d8702aec
 
 Install: (this is a temporary list, we will clean it up)
 
@@ -23,9 +19,5 @@ conda install -c simpleitk simpleitk
 ```
 
 
-<<<<<<< HEAD
-scripts: full fledged scripts that are reproducible, for e.g. data generation, or papers.
-=======
 # Developers:
 Read `developers.md`
->>>>>>> 297b3d7d8821f31fbe0f025dc956fe45d8702aec

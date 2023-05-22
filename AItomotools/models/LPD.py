@@ -237,12 +237,9 @@ class LPD(nn.Module):
         if C != 1:
             raise NotImplementedError("Only 2D CT images supported")
 
-<<<<<<< HEAD
-=======
         if len(self.geo.angles) != W or self.geo.detector_shape[1] != H:
             raise ValueError("geo description and sinogram size do not match")
 
->>>>>>> 297b3d7d8821f31fbe0f025dc956fe45d8702aec
         # initialize parameters
         h = g.new_zeros(B, 5, W, H)
         f_primal = g.new_zeros(B, 5, *self.geo.image_shape[1:])
