@@ -179,7 +179,7 @@ class LunaImage(CTimage):
             # There will be more blobs than the real stuff in mask, so filter them out.
             blobs_labels = measure.label(mask.astype(float), background=0)
             our_blob=blobs_labels[blobs_labels.shape[0]//2,blobs_labels.shape[1]//2,blobs_labels.shape[2]//2]
-            mask=blobs_labels==our_blob7
+            mask=blobs_labels==our_blob
 
             # now we can put it in the global mask
             self.nodule_mask[nodule_center[0]-nodule_radious[0]:nodule_center[0]+nodule_radious[0],\

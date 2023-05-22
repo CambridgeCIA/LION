@@ -77,7 +77,7 @@ class LPD(nn.Module):
         reg_channels=[6, 32, 32, 5],
         learned_step=True,
         step_size=None,
-        step_positive=True   # I found it hard to achieve good performance with this set to false. 
+        step_positive=True   # I found it hard to achieve good performance with this set to false.
     ):
         super().__init__()
 
@@ -96,8 +96,8 @@ class LPD(nn.Module):
         )
         op = self.__make_operators(geo,angles, mode)
         self.op=op
-        self.A = to_autograd(op)
-        self.AT = to_autograd(op.T)
+        self.A = to_autograd(op, num_extra_dims=1)
+        self.AT = to_autograd(op.T, num_extra_dims=1)
 
         if step_size is None:
             # compute step size
@@ -174,10 +174,6 @@ class LPD(nn.Module):
         if C != 1:
             raise NotImplementedError("Only 2D CT images supported")
 
-        # TODO: have a default geo?
-        if len(self.geo.angles) != W or self.geo.detector_shape[1] != H:
-            raise ValueError("geo description and sinogram size do not match")
-
         # initialize parameters
         h = g.new_zeros(B, 5, W, H)
         f_primal = g.new_zeros(B, 5, *self.geo.image_shape[1:])
@@ -185,7 +181,7 @@ class LPD(nn.Module):
             aux=fdk(self.op, g[i,0])
             for channel in range(5):
                 f_primal[i,channel]=aux
-        
+
         for i in range(self.n_iters):
             primal_module = getattr(self, f"{i}_primal")
             dual_module = getattr(self, f"{i}_dual")
