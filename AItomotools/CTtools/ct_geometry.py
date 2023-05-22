@@ -24,6 +24,7 @@ class Geometry(Parameter):
 
         self.dso=np.array(kwargs.get('dso',None))
         self.dsd=np.array(kwargs.get('dsd',None))
+<<<<<<< HEAD
 
 
     def default_geo(self):
@@ -35,6 +36,21 @@ class Geometry(Parameter):
             dso=575,
             dsd=1050,
             mode="fan")
+=======
+        
+        self.angles=np.array(kwargs.get('angles',None))
+
+    @staticmethod
+    def default_geo():
+        return Geometry(image_shape=[1,512,512],
+                        image_size=[5,300,300],
+                        detector_shape=[1,900],
+                        detector_size=[1,900],
+                        dso=575,
+                        dsd=1050,
+                        mode="fan",
+                        angles=np.linspace(0,2*np.pi,360,endpoint=False))
+>>>>>>> 297b3d7d8821f31fbe0f025dc956fe45d8702aec
 
     def load_from_json(self, json_file_path:pathlib.Path):
         geometry_dict = json.load(open(json_file_path, 'r'))

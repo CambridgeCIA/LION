@@ -7,9 +7,23 @@ from AItomotools.data_loaders.luna16_dataset import Luna16Dataset
 from AItomotools.CTtools import ct_transforms
 from AItomotools.models.LPD import LPD
 
+#%% Demo to show how to load, define, train, a model.
+# Use this as a template to train your networks and design new ones
+
+# Lets set the GPU. 
 device = torch.device('cuda:0')
 
+#%% Creating our LPD model
+
+
+
+
+
+
 mode = 'training'
+
+
+
 
 n_angles = 360
 

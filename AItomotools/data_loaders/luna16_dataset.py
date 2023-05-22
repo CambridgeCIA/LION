@@ -25,12 +25,10 @@ class Luna16Dataset(Dataset):
         self.images_list    = list(self.samples_path.glob('image_*'))
         assert len(self.sinograms_list) == len(self.images_list), f'Wrong number of files: Sinograms {len(self.sinograms_list)} != Images {len(self.images_list)}'
 
-        # TODO: Modif json file
         self.geometry_file_path = LUNA_PROCESSED_DATASET_PATH.joinpath('geometry.json')
         if self.geometry_file_path.is_file():
             self.geometry = Geometry()
-            self.geometry.default_geo()
-            #self.geometry.load_from_json(self.geometry_file_path)
+            self.geometry.load(self.geometry_file_path)
         else:
             raise FileNotFoundError(f'The geometry file geometry.json not found at {self.geometry_file_path}')
 
