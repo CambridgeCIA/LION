@@ -80,7 +80,7 @@ class LPD(nn.Module):
         reg_channels=[6, 32, 32, 5],
         learned_step=True,
         step_size=None,
-        step_positive=True   # I found it hard to achieve good performance with this set to false. 
+        step_positive=True   # I found it hard to achieve good performance with this set to false.
     ):
         super().__init__()
         # Pass all relevant parameters to internal storage. 
@@ -104,8 +104,8 @@ class LPD(nn.Module):
         # Create pytorch compatible operators and send them to aiutograd
         op = self.__make_operators(geo, mode)
         self.op=op
-        self.A = to_autograd(op)
-        self.AT = to_autograd(op.T)
+        self.A = to_autograd(op, num_extra_dims=1)
+        self.AT = to_autograd(op.T, num_extra_dims=1)
 
         # Define step size
         if step_size is None:
@@ -247,7 +247,7 @@ class LPD(nn.Module):
             aux=fdk(self.op, g[i,0])
             for channel in range(5):
                 f_primal[i,channel]=aux
-        
+
         for i in range(self.n_iters):
             primal_module = getattr(self, f"{i}_primal")
             dual_module = getattr(self, f"{i}_dual")

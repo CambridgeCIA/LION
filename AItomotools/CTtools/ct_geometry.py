@@ -1,6 +1,8 @@
+import pathlib
+
 import numpy as np
-import torch
-from pathlib import Path
+import json
+
 from AItomotools.utils.parameter import Parameter
 
 class Geometry(Parameter):
@@ -35,4 +37,14 @@ class Geometry(Parameter):
                         dsd=1050,
                         mode="fan",
                         angles=np.linspace(0,2*np.pi,360,endpoint=False))
+
+    def load_from_json(self, json_file_path:pathlib.Path):
+        geometry_dict = json.load(open(json_file_path, 'r'))
+        self.image_shape = geometry_dict['image_shape']
+        self.image_size = geometry_dict['image_size']
+        self.detector_shape = geometry_dict['detector_shape']
+        self.detector_size = geometry_dict['detector_size']
+        self.dso = geometry_dict['dso']
+        self.dsd = geometry_dict['dsd']
+        self.mode = geometry_dict['mode']
 
