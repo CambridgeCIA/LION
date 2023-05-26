@@ -42,14 +42,16 @@ os.remove("fruit.json")
 from AItomotools.CTtools.ct_geometry import Geometry
 
 # it also has a default
-geo=Geometry.default_geo()
+geo=Geometry.default_parameters()
 print("Geometry:")
 print(geo)
 print("")
 
 # You can save it and load is as before:
 geo.save("geo.json")
-geo.load("geo.json")
+
+geo2=Geometry()
+geo2.load("geo.json")
 
 # lets clean up:
 os.remove("geo.json")
@@ -69,12 +71,11 @@ print("")
 
 # You can also initialize all ML-models from parameter files. 
 # As this is a tomography ML tool, you need to also give it geometry parameters.
-model=LPD.init_from_parameters(geo, LPD_params)
+model=LPD(geo, LPD_params)
 # tada!
 
 # You can now get such parameters:
-LPD_param_2 = model.get_parameters()
-LPD_geo=model.geo
+LPD_param_2, LPD_geo = model.get_parameters()
 
 # Notice that LPD computes the right step_size if given "none"
 print("Computed LPD parameters")

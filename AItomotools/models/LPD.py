@@ -73,85 +73,56 @@ class LPD(nn.Module):
     """
     def __init__(
         self,
-        n_iters,
-        geo,
-        mode="ct",
-        data_channels=[7, 32, 32, 5],
-        reg_channels=[6, 32, 32, 5],
-        learned_step=True,
-        step_size=None,
-        step_positive=True   # I found it hard to achieve good performance with this set to false.
+        geometry_parameters:ct.Geometry,
+        model_parameters:Parameter
     ):
         super().__init__()
         # Pass all relevant parameters to internal storage. 
-        self.geo=geo
-        self.n_iters = n_iters
-        self.data_channels=data_channels
-        self.reg_channels=reg_channels
-        self.learned_step=learned_step
-        self.step_size=step_size
-        self.step_positive=step_positive
-        self.mode=mode
+        self.geo=geometry_parameters
+        self.model_parameters = model_parameters
+
         # Create layers per iteration
-        for i in range(n_iters):
+        for i in range(self.model_parameters.n_iters):
             self.add_module(
-                f"{i}_primal", RegProximal(layers=len(reg_channels)-1, channels=reg_channels)
+                f"{i}_primal", RegProximal(layers=len(self.model_parameters.reg_channels)-1, channels=self.model_parameters.reg_channels)
             )
             self.add_module(
-                f"{i}_dual", dataProximal(layers=len(self.data_channels)-1, channels=self.data_channels)
+                f"{i}_dual", dataProximal(layers=len(self.model_parameters.data_channels)-1, channels=self.model_parameters.data_channels)
             )
   
         # Create pytorch compatible operators and send them to aiutograd
-        op = self.__make_operators(geo, mode)
+        op = self.__make_operators(self.geo, self.model_parameters.mode)
         self.op=op
         self.A = to_autograd(op, num_extra_dims=1)
         self.AT = to_autograd(op.T, num_extra_dims=1)
 
         # Define step size
-        if step_size is None:
+        if self.model_parameters.step_size is None:
             # compute step size
-            self.step_size = 1 / power_method(op)
-        else:
-            self.step_size=step_size
+            self.model_parameters.step_size = 1 / power_method(op)
+
         
         # Are we learning the step? (with the above initialization)
-        if learned_step:
+        if self.model_parameters.learned_step:
             # Enforce positivity by making it 10^step
-            if step_positive:
+            if self.model_parameters.step_positive:
                 self.lambda_dual = nn.ParameterList(
-                    [nn.Parameter(torch.ones(1)* 10 ** np.log10(self.step_size)) for i in range(n_iters)]
+                    [nn.Parameter(torch.ones(1)* 10 ** np.log10(self.model_parameters.step_size)) for i in range(self.model_parameters.n_iters)]
                 )
                 self.lambda_primal = nn.ParameterList(
-                    [nn.Parameter(torch.ones(1)* 10 ** np.log10(self.step_size)) for i in range(n_iters)]
+                    [nn.Parameter(torch.ones(1)* 10 ** np.log10(self.model_parameters.step_size)) for i in range(self.model_parameters.n_iters)]
                 )
             # Negatives OK
             else:
                 self.lambda_dual = nn.ParameterList(
-                    [nn.Parameter(torch.ones(1) * self.step_size) for i in range(n_iters)]
+                    [nn.Parameter(torch.ones(1) * self.model_parameters.step_size) for i in range(n_iters)]
                 )
                 self.lambda_primal = nn.ParameterList(
-                    [nn.Parameter(torch.ones(1) * self.step_size) for i in range(n_iters)]
+                    [nn.Parameter(torch.ones(1) * self.model_parameters.step_size) for i in range(n_iters)]
                 )
         else:
-            self.lambda_dual = torch.ones(n_iters) * self.step_size
-            self.lambda_primal = torch.ones(n_iters) * self.step_size
-
-
-
-    @classmethod
-    def init_from_parameters(cls,geometry_parameters:ct.Geometry,model_parameters:Parameter):
-        """
-        Initialize LPD from parameters instead.
-        """
-        return LPD(n_iters=model_parameters.n_iters,
-                            geo=geometry_parameters,
-                            mode=model_parameters.mode,
-                            data_channels=model_parameters.data_channels,
-                            reg_channels=model_parameters.reg_channels,
-                            learned_step=model_parameters.learned_step,
-                            step_size=model_parameters.step_size,
-                            step_positive=model_parameters.step_positive)
-
+            self.lambda_dual = torch.ones(n_iters) * self.model_parameters.step_size
+            self.lambda_primal = torch.ones(n_iters) * self.model_parameters.step_size
 
     @staticmethod
     def default_parameters(mode='ct'):
@@ -166,15 +137,7 @@ class LPD(nn.Module):
         return LPD_params
 
     def get_parameters(self):
-        LPD_params=Parameter()
-        LPD_params.n_iters=self.n_iters
-        LPD_params.mode=self.mode
-        LPD_params.data_channels=self.data_channels
-        LPD_params.reg_channels=self.reg_channels
-        LPD_params.learned_step=self.learned_step
-        LPD_params.step_size=self.step_size
-        LPD_params.step_positive=self.step_positive
-        return LPD_params
+        return self.model_parameters, self.geo
 
     @staticmethod
     def __make_operators(geo, mode='ct'):
@@ -248,7 +211,7 @@ class LPD(nn.Module):
             for channel in range(5):
                 f_primal[i,channel]=aux
 
-        for i in range(self.n_iters):
+        for i in range(self.model_parameters.n_iters):
             primal_module = getattr(self, f"{i}_primal")
             dual_module = getattr(self, f"{i}_dual")
             f_dual = self.A(f_primal[:, :1]).cuda()
