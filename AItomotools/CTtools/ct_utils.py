@@ -2,6 +2,9 @@
 import numpy as np
 import torch
 
+# AItomotools imports
+from AItomotools.CTtools.ct_geometry import Geometry
+
 
 def from_HU_to_normal(img):
     """
@@ -87,7 +90,7 @@ def from_HU_to_material_id(img):
     return materials
 
 
-def forward_projection_fan(image,size,sino_shape,sino_size,DSD,DSO,backend="tomosipo",angles=360):
+def forward_projection_fan(image,geo,backend="tomosipo"):
     """
     Produces a noise free forward projection, given np.array image, a size (in real world units), a sinogram shape and size,
     distances from source to detector DSD and distance from source to object DSO. 
@@ -109,15 +112,8 @@ def forward_projection_fan(image,size,sino_shape,sino_size,DSD,DSO,backend="tomo
     else:
         raise ValueError("Image must be 2D")
 
-    if isinstance(size,list) or isinstance(size,np.ndarray):
-        size=tuple(size)
-    if isinstance(sino_shape,list) or isinstance(sino_shape,np.ndarray):
-        size=tuple(sino_shape)
-    if isinstance(sino_size,list) or isinstance(sino_size,np.ndarray):
-        size=tuple(sino_size)
-
-    vg = ts.volume(shape=image.shape, size=size)
-    pg = ts.cone(angles=angles, shape=sino_shape, size=sino_size, src_orig_dist=DSO, src_det_dist=DSD)
+    vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
+    pg = ts.cone(angles=geo.angles, shape=geo.detector_shape, size=geo.detector_size, src_orig_dist=geo.dso, src_det_dist=geo.dsd)
     A = ts.operator(vg, pg)
     sino=A(image)[0]
     return sino.cpu().detach().numpy()

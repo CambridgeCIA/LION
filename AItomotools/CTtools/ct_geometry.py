@@ -28,8 +28,18 @@ class Geometry(Parameter):
         self.angles=np.array(kwargs.get('angles',None))
 
     @staticmethod
-    def default_geo():
-        return Geometry(image_shape=[1,512,512],
+    def default_parameters():
+        return Parameter(image_shape=[1,512,512],
+                        image_size=[5,300,300],
+                        detector_shape=[1,900],
+                        detector_size=[1,900],
+                        dso=575,
+                        dsd=1050,
+                        mode="fan",
+                        angles=np.linspace(0,2*np.pi,360,endpoint=False))
+
+    def default_geo(self):
+        self.__init__(image_shape=[1,512,512],
                         image_size=[5,300,300],
                         detector_shape=[1,900],
                         detector_size=[1,900],
