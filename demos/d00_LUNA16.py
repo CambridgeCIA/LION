@@ -7,6 +7,19 @@ import matplotlib.pyplot as plt
 #===================================================================================================================
 # by: Ander Biguri
 
+# AItomotools comes with data loaders for common datasets, e.g. LUNA16. 
+# If you only want to use the datasets, this demo is not useful to you. If you are at CIA group at unviersity of Camrbidge, the data 
+# should have been processed for you adn available in the relevant folders (LUNA_DATASET_PATH). Otherwise, you should go to 
+# AItomotools/scripts/data_generation_scripts/LUNA16.py, which will generate an instance of the dataset in pytorch tensors that are easy to load, and reproducible. 
+
+# However, you may have a unique model, a case where a particular instance of the dataset is required, that the "standard preprocessing" that 
+# AItomotools does not cover. In that case, you may want to learn about how to use the methods in the LUNA class to process the data, which is
+# the purpose of this demo. 
+
+# TL;DR: This demo is only useful if you want to generate your own isntance of LUNA that is not the standard. 
+
+#===================================================================================================================
+
 #%% Data paths
 # To avoid unnecesary repetition of data, we have much of the data already stored and processed in shared folders.
 from AItomotools.utils.paths import LUNA_DATASET_PATH
@@ -33,7 +46,8 @@ from AItomotools.data_loaders.LUNA16 import LUNA16
 #     ├── subset8
 #     └── subset9
 #
-# To dowload them, just go to zenodo and then extract each subset with 7z (unzip doesn't work with LUNA16)
+
+# To dowload them, run ./AItomotools/data_loaders/LUNA16/download_luna16.py
 
 # Create the data Loader, this is empty.
 luna_dataset=LUNA16(LUNA_DATASET_PATH,load_metadata=False,verbose=True)

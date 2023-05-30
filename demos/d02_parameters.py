@@ -71,7 +71,7 @@ print("")
 
 # You can also initialize all ML-models from parameter files. 
 # As this is a tomography ML tool, you need to also give it geometry parameters.
-model=LPD(geo, LPD_params)
+model=LPD(LPD_params, geo)
 # tada!
 
 # You can now get such parameters:

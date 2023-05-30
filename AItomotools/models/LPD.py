@@ -73,8 +73,8 @@ class LPD(nn.Module):
     """
     def __init__(
         self,
-        geometry_parameters:ct.Geometry,
-        model_parameters:Parameter
+        model_parameters:Parameter,
+        geometry_parameters:ct.Geometry
     ):
         super().__init__()
         # Pass all relevant parameters to internal storage. 
