@@ -7,6 +7,7 @@ import torch
 import numpy as np
 import json
 from torch.utils.data import Dataset
+import matplotlib.pyplot as plt
 
 from backends.odl import ODLBackend
 
@@ -32,7 +33,7 @@ class LIDC_IDRI(Dataset):
 
         self.path_to_processed_dataset = pathlib.Path('/local/scratch/public/AItomotools/processed/LIDC-IDRI')
         self.patients_masks_dictionary = load_json(self.path_to_processed_dataset.joinpath('patients_masks.json'))
-        self.patients_diagnosis_dictionary = load_json(self.path_to_processed_dataset.joinpath('patients_id_to_diagnosis.json'))
+        self.patients_diagnosis_dictionary = load_json(self.path_to_processed_dataset.joinpath('patient_id_to_diagnosis.json'))
         self.total_patients = 1012
 
         self.pipeline = pipeline
@@ -98,8 +99,9 @@ class LIDC_IDRI(Dataset):
     def get_mask_tensor(self, patient_id:str, slice_index:int) -> torch.Tensor:
         ## First, assess if the slice has a nodule
         try:
-            mask = torch.zeros((512,512))
-            for nodule_index, nodule_annotations_list in enumerate(self.patients_masks_dictionary[patient_id][slice_index]):
+            mask = torch.zeros((512,512), dtype=torch.bool)
+            all_nodules_dict:Dict = self.patients_masks_dictionary[patient_id][f'{slice_index}']
+            for nodule_index, nodule_annotations_list in all_nodules_dict.items():
                 ## If a nodule was not segmented by all the clinicians, the other annotations should not always be seen
                 while len(nodule_annotations_list) < 4:
                     nodule_annotations_list.append('')
@@ -107,21 +109,27 @@ class LIDC_IDRI(Dataset):
                 annotation = random.choice(nodule_annotations_list)
                 if annotation == '':
                     # Hopefully, that exists the try to return an empty mask
-                    nodule_mask = torch.zeros((512,512))
+                    nodule_mask = torch.zeros((512,512), dtype=torch.bool)
                 else:
-                    path_to_mask = self.path_to_processed_dataset.joinpath(f'mask_{slice_index}_nodule_{nodule_index}_annotation_{annotation}.npy')
+                    path_to_mask = self.path_to_processed_dataset.joinpath(f'{patient_id}/mask_{slice_index}_nodule_{nodule_index}_annotation_{annotation}.npy')
+                    print(path_to_mask)
                     nodule_mask = torch.from_numpy(np.load(path_to_mask))
 
-                mask.bitwise_and(nodule_mask)
+                mask = mask.bitwise_or(nodule_mask)
 
         except KeyError:
-            mask = torch.zeros((512,512))
+            mask = torch.zeros((512,512), dtype=torch.bool)
         # byte inversion
         background = ~mask
         return torch.stack((background, mask))
 
     def __len__(self):
         return len(self.slice_index_to_patient_id_list)
+
+    def get_specific_slice(self, patient_index, slice_index):
+        ## Assumes slice and mask exist
+        file_path = self.path_to_processed_dataset.joinpath(f'{patient_index}/slice_{slice_index}.npy')
+        return self.get_reconstruction_tensor(file_path), self.get_mask_tensor(patient_index, slice_index)
 
     def __getitem__(self, index):
         patient_id = self.slice_index_to_patient_id_list[index]
