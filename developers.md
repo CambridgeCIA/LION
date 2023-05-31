@@ -2,7 +2,7 @@
 
 WIP
 
-## Familiarize yourself with the structure of the tool 
+## Familiarize yourself with the structure of the tool
 
 <pre>
 ./AItomotools     : The toolbox
@@ -18,4 +18,3 @@ WIP
 ├── data_generation_scripts -> Scripts that produce the datasets.
 ├── paper_scripts           -> Code that reproduces published papers
 </pre>
-

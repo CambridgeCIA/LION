@@ -1,7 +1,6 @@
-
 # OS/path imports
 import os
-from multiprocessing.sharedctypes import Value # what the heck is this
+from multiprocessing.sharedctypes import Value  # what the heck is this
 import fnmatch
 
 
@@ -24,82 +23,86 @@ from AItomotools.data_loaders.data_primitives import CTimage
 import AItomotools.CTtools.ct_utils as ct
 
 
-class CT_data_loader():
+class CT_data_loader:
     def __init__(self) -> None:
         pass
 
-    def load_data(self,indices):
+    def load_data(self, indices):
         """
         Loads the actual data from disk
         """
         if not self.images:
             self.load_metadata()
-        if not isinstance(indices,list):
+        if not isinstance(indices, list):
             if int(indices) == indices:
-                indices=[indices]
+                indices = [indices]
             else:
-                raise ValueError("Input indices need to be an index (or list of indices) of the images to load")
-        if any(i >len(self.images) for i in indices):
+                raise ValueError(
+                    "Input indices need to be an index (or list of indices) of the images to load"
+                )
+        if any(i > len(self.images) for i in indices):
             raise ValueError("Index exceeds Image range")
         # load data
         for i in indices:
             self.images[i].load_data()
             # conver to the right unit. They are in HUs in memory
-            if self.unit=="normal":
+            if self.unit == "normal":
                 self.images[i].unit = "normal"
-                self.images[i].data=ct.from_HU_to_normal(self.images[i].data)
-            if self.unit=="mu":
+                self.images[i].data = ct.from_HU_to_normal(self.images[i].data)
+            if self.unit == "mu":
                 self.images[i].unit = "mu"
-                self.images[i].data=ct.from_HU_to_mu(self.images[i].data)
+                self.images[i].data = ct.from_HU_to_mu(self.images[i].data)
 
-    def unload_data(self,indices=None):
+    def unload_data(self, indices=None):
         """
         Unloads data from disk. By default, all data, otherwise, give the indices desired to unload
         """
         if indices is None:
-            indices=list(range(len(self.images)))
-        if not isinstance(indices,list):
+            indices = list(range(len(self.images)))
+        if not isinstance(indices, list):
             if int(indices) == indices:
-                indices=[indices]
+                indices = [indices]
             else:
-                raise ValueError("Input indices need to be an index (or list of indices) of the images to load")
+                raise ValueError(
+                    "Input indices need to be an index (or list of indices) of the images to load"
+                )
         for i in indices:
             self.images[i].unload_data()
 
     def from_HU_to_normal(self):
-        """ 
+        """
         Converts any loaded values that are in HUs to [0-1] range
         """
-        if self.unit=="HU": # No need to check individual images, they are loaded in the units of the loader.
-            self.unit="normal"
+        if (
+            self.unit == "HU"
+        ):  # No need to check individual images, they are loaded in the units of the loader.
+            self.unit = "normal"
             for i in self.images:
-                i.unit="normal"
+                i.unit = "normal"
                 if i.data is not None:
-                    i.data=ct.from_HU_to_normal(i.data)
-        else: 
+                    i.data = ct.from_HU_to_normal(i.data)
+        else:
             raise AssertionError("Data must be in HUs for HU to normal conversion")
 
     def from_HU_to_mu(self):
-        """ 
+        """
         Converts any loaded values that are in HUs to mu (linear attenuation coefficient)
         """
-        if self.unit=="HU": # No need to check individual images, they are loaded in the units of the loader.
-            self.unit="mu"
+        if (
+            self.unit == "HU"
+        ):  # No need to check individual images, they are loaded in the units of the loader.
+            self.unit = "mu"
             for i in self.images:
-                i.unit="mu"
+                i.unit = "mu"
                 if i.data is not None:
-                    i.data=ct.from_HU_to_mu(i.data)
-        else: 
+                    i.data = ct.from_HU_to_mu(i.data)
+        else:
             raise AssertionError("Data must be in HUs for HU to mu conversion")
-
-
-
-
 
 
 # class LIDC_IDRI(CT_data_loader):
 #     """
-#     Class that loads LIDC_IDRI dataset and metadata. 
+#     Class that loads LIDC_IDRI dataset and metadata.
 #     """
 #     def __init__(self,folder, verbose=True,load_data=False) -> None:
 #         self.images=[]
@@ -120,7 +123,7 @@ class CT_data_loader():
 
 #         if folder is None:
 #             folder=self.folder
-        
+
 #         # Find nodule metadata
 #         meta_file=os.path.join(folder,'metadata.csv')
 #         with open(meta_file, newline='') as csvfile:
