@@ -19,6 +19,14 @@ conda install natsort h5py
 conda install -c simpleitk simpleitk
 ```
 
+Then, install pre commits for auto-formating your commits.
+
+```
+conda activate aitomotools
+pip install pre-commit
+pre-commit install
+```
+
 
 # Developers:
 Read `developers.md`
