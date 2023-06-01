@@ -12,8 +12,12 @@
 # You will want to import Parameter, as all models must save and use Parameters.
 from AItomotools.utils.parameter import Parameter
 
+# We will need utilities
+import AItomotools.utils.utils as ai_utils
+
 # (optional) Given this is a tomography library, it is likely that you will want to load geometries of the tomogprahic problem you are solving, e.g. a ct_geometry
 import AItomotools.CTtools.ct_geometry as ct
+import AItomotools.CTtools.ct_utils as ct_utils
 
 # (optinal) If your model uses the operator (e.g. the CT operator), you may want to load it here. E.g. for tomosipo:
 import tomosipo as ts
@@ -24,6 +28,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import warnings
+from pathlib import Path
 
 # Lets define the class. This demo just shows a very simple model that uses both the opeartor of CT and a CNN layer, for demostrational purposes.
 # The model makes no sense, it only sits here for coding demostration purposes.
@@ -48,7 +54,15 @@ class myModel(nn.Module):
         self.geo = geometry_parameters
         self.model_parameters = model_parameters
 
-        # (example) make some NN layers, maybe defined by the Parameter file
+        # (optional) if your model is for CT reconstruction, you may need the CT operator defined with e.g. tomosipo. This is how its done.
+        # model_parameters.mode contains the tomographic mode, e.g. 'ct'
+        op = self.__make_operator(self.geo, self.model_parameters.mode)
+        self.op = op
+        self.A = to_autograd(op, num_extra_dims=1)
+        self.AT = to_autograd(op.T, num_extra_dims=1)
+
+        ##### EXAMPLE #####
+        # make some NN layers, maybe defined by the Parameter file
         #
         # in this case, model_parameters has .bias (True/False) and .channels (list with number of channels in each layer).
         # for example, model_parameters.channels=[7 10 5 1], and model_parameters.bias=False
@@ -70,20 +84,13 @@ class myModel(nn.Module):
                 layer_list.append(torch.nn.PReLU())
         self.block = nn.Sequential(*layer_list)
 
-        # (optional) if your model is for CT reconstruction, you may need the CT operator defined with e.g. tomosipo. This is how its done.
-        # model_parameters.mode contains the tomographic mode, e.g. 'ct'
-        op = self.__make_operators(self.geo, self.model_parameters.mode)
-        self.op = op
-        self.A = to_autograd(op, num_extra_dims=1)
-        self.AT = to_autograd(op.T, num_extra_dims=1)
-
     # All classes in AItomotools must have a static method called default_parameters().
     # This should return the parameters from the paper the model is from
     @staticmethod
     def default_parameters(mode="ct") -> Parameter:
         # create empty object
         model_params = Parameter()
-        # fill
+        ##### EXAMPLE #####
         model_params.mode = mode
         model_params.channels = [7, 10, 5, 1]
         model_params.bias = False
@@ -121,20 +128,112 @@ class myModel(nn.Module):
                 'cite_format not understood, only "MLA" and "bib" supported'
             )
 
+        # All classes should have this method.
+
+    # This shouls save all relevant information to complete reproduce models
+    def save(self, fname, **kwargs):
+        """
+        Saves model given a filename.
+        While its not enforced, the following Parameters are expected from kwargs:
+        - 'dataset' : Parameter describing the dataset creation and handling.
+        - 'training': Parameter describing the training algorithm and procedures
+        - 'geometry': If the model itself has no scan geometry parameter, but the dataset was created with some geometry
+
+        If you want to save the model for training later (i.e. checkpoiting), use save_checkpoint()
+        """
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+        # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
+        # we need to at least know exactly when the model was saved, to at least be able to reproduce.
+        commit_hash = ai_utils.get_git_revision_hash()
+        # Parse kwargs
+        dataset_params = []
+        if "dataset" in kwargs:
+            dataset_params = kwargs.pop("dataset")
+        else:
+            warnings.warn(
+                "Expected 'dataset' parameter! Only ignore if you really don't have it."
+            )
+        training = []
+        if "training" in kwargs:
+            training = kwargs.pop("training")
+        else:
+            warnings.warn(
+                "Expected 'training' parameter! Only ignore if ythere has been no training."
+            )
+
+        loss = []
+        if "loss" in kwargs:
+            loss = kwargs.pop("loss")
+        epoch = []
+        if "epoch" in kwargs:
+            epoch = kwargs.pop("epoch")
+        optimizer = []
+        if "optimizer" in kwargs:
+            optimizer = kwargs.pop("optimizer")
+
+        # (optional)
+        geo = []
+        if "geometry" in kwargs:
+            geo = kwargs.pop("geometry")
+        elif hasattr(self, "geo") and self.geo:
+            geo = self.geo
+        else:
+            warnings.warn(
+                "Expected 'geometry' parameter! Only ignore if tomographic reconstruction was not part of the model."
+            )
+
+        if kwargs:  # if not empty yet
+            raise ValueError(
+                "The following parameters are not understood: " + str(list(kwargs.keys))
+            )
+
+        ## Make a super Parameter()
+        options = Parameter()
+
+        options.model_parameters = self.model_parameters
+        if geo:
+            options.geometry = geo
+        if dataset_params:
+            options.dataset_params = dataset_params
+        if training:
+            options.training = training
+
+        ## Make a dictionary of relevant values
+        dic = {"model_state_dict": self.state_dict()}
+        if loss:
+            dic["loss"] = loss
+        if epoch:
+            dic["epoch"] = epoch
+        if optimizer:
+            dic["optimizer_state_dict"] = optimizer.state_dict()
+
+        # Do the save:
+        options.save(fname)
+        torch.save(dic, fname.with_suffix(".pt"))
+
+    # Mandatory function, saves model for training
+    def save_checkpoint(self, fname, epoch, loss, optimizer, **kwargs):
+        """
+        This is like save, but saves a checkpoint of the model.
+        Its essentailly a wrapper of save() with mandatory values
+        """
+
+        if "training" not in kwargs:
+            raise ValueError("The mandatory Parameter 'training' not inputed.")
+        assert isinstance(optimizer, torch.optim.Optimizer)
+        self.save(
+            filename, "epoch", epoch, "loss", loss, "optimizer", optimizer, **kwargs
+        )
+
     # (optional) if your model uses a CT operator, this will create it, for tomosipo backend.
     @staticmethod
-    def __make_operators(geo, mode="ct"):
-        if mode.lower() != "ct":
+    def __make_operator(geo, mode="ct"):
+        if mode.lower() == "ct":
+            A = ct_utils.make_operator(geo)
+        else:
             raise NotImplementedError("Only CT operators supported")
-        vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
-        pg = ts.cone(
-            angles=geo.angles,
-            shape=geo.detector_shape,
-            size=geo.detector_size,
-            src_orig_dist=geo.dso,
-            src_det_dist=geo.dsd,
-        )
-        A = ts.operator(vg, pg)
         return A
 
     # Mandatory for all models, the forwar pass.
@@ -142,25 +241,16 @@ class myModel(nn.Module):
         """
         g: sinogram input
         """
-
         B, C, W, H = g.shape
-
         # Have some input parsing
-        if C != 1:
-            raise NotImplementedError("Only 2D CT images supported")
         if len(self.geo.angles) != W or self.geo.detector_shape[1] != H:
             raise ValueError("geo description and sinogram size do not match")
 
-        # As an example our network backprojects and then uses conv layers.
-        # This is bogus code, don't follow.
+        # (optional) if your code is only 2D
+        if C != 1:
+            raise NotImplementedError("Only 2D CT images supported")
 
-        # Make some image-shaped channels
-        f_network = g.new_zeros(B, model_params.channels[0], *self.geo.image_shape[1:])
-        # Backproject.
-        for i in range(B):
-            aux = self.AT(g[i, 0])
-            for channel in range(model_params.channels[0]):
-                f_network[i, channel] = aux
-        # use channels
-        f_out = self.block(f_network)
+        # Your code.
+        f_out
+
         return f_out

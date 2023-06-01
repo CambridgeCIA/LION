@@ -13,14 +13,9 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-def get_git_commit():
-    return (
-        subprocess.check_output(
-            ["git", "describe", "--always"], cwd=Path(__file__).resolve().parent
-        )
-        .strip()
-        .decode()
-    )
+def get_git_revision_hash() -> str:
+    "Gets git commit hash"
+    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
 
 
 def check_integer(variable_name: str, variable_value):

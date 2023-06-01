@@ -1,8 +1,12 @@
 from AItomotools.utils.math import power_method
 from AItomotools.utils.parameter import Parameter
 import AItomotools.CTtools.ct_geometry as ct
+import AItomotools.CTtools.ct_utils as ct_utils
+import AItomotools.utils.utils as ai_utils
 
 import numpy as np
+from pathlib import Path
+import warnings
 
 import tomosipo as ts
 from tomosipo.torch_support import to_autograd
@@ -98,7 +102,7 @@ class LPD(nn.Module):
             )
 
         # Create pytorch compatible operators and send them to aiutograd
-        op = self.__make_operators(self.geo, self.model_parameters.mode)
+        op = self.__make_operator(self.geo, self.model_parameters.mode)
         self.op = op
         self.A = to_autograd(op, num_extra_dims=1)
         self.AT = to_autograd(op.T, num_extra_dims=1)
@@ -164,18 +168,11 @@ class LPD(nn.Module):
         return self.model_parameters, self.geo
 
     @staticmethod
-    def __make_operators(geo, mode="ct"):
-        if mode.lower() != "ct":
+    def __make_operator(geo, mode="ct"):
+        if mode.lower() == "ct":
+            A = ct_utils.make_operator(geo)
+        else:
             raise NotImplementedError("Only CT operators supported")
-        vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
-        pg = ts.cone(
-            angles=geo.angles,
-            shape=geo.detector_shape,
-            size=geo.detector_size,
-            src_orig_dist=geo.dso,
-            src_det_dist=geo.dsd,
-        )
-        A = ts.operator(vg, pg)
         return A
 
     @staticmethod
@@ -214,6 +211,91 @@ class LPD(nn.Module):
             raise AttributeError(
                 'cite_format not understood, only "MLA" and "bib" supported'
             )
+
+        # All classes should have this method.
+
+    # This shouls save all relevant information to complete reproduce models
+    def save(self, fname, **kwargs):
+        """
+        Saves model given a filename.
+        While its not enforced, the following Parameters are expected from kwargs:
+        - 'dataset' : Parameter describing the dataset creation and handling.
+        - 'training': Parameter describing the training algorithm and procedures
+        - 'geometry': If the model itself has no scan geometry parameter, but the dataset was created with some geometry
+
+        If you want to save the model for training later (i.e. checkpoiting), use save_checkpoint()
+        """
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+        # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
+        # we need to at least know exactly when the model was saved, to at least be able to reproduce.
+        commit_hash = ai_utils.get_git_revision_hash()
+        # Parse kwargs
+        dataset_params = []
+        if "dataset" in kwargs:
+            dataset_params = kwargs.pop("dataset")
+        else:
+            warnings.warn(
+                "Expected 'dataset' parameter! Only ignore if you really don't have it."
+            )
+        training = []
+        if "training" in kwargs:
+            training = kwargs.pop("training")
+        else:
+            warnings.warn(
+                "Expected 'training' parameter! Only ignore if ythere has been no training."
+            )
+
+        loss = []
+        if "loss" in kwargs:
+            loss = kwargs.pop("loss")
+        epoch = []
+        if "epoch" in kwargs:
+            epoch = kwargs.pop("epoch")
+        optimizer = []
+        if "optimizer" in kwargs:
+            optimizer = kwargs.pop("optimizer")
+
+        # (optional)
+        geo = []
+        if "geometry" in kwargs:
+            geo = kwargs.pop("geometry")
+        elif hasattr(self, "geo") and self.geo:
+            geo = self.geo
+        else:
+            warnings.warn(
+                "Expected 'geometry' parameter! Only ignore if tomographic reconstruction was not part of the model."
+            )
+
+        if kwargs:  # if not empty yet
+            raise ValueError(
+                "The following parameters are not understood: " + str(list(kwargs.keys))
+            )
+
+        ## Make a super Parameter()
+        options = Parameter()
+
+        options.model_parameters = self.model_parameters
+        if geo:
+            options.geometry = geo
+        if dataset_params:
+            options.dataset_params = dataset_params
+        if training:
+            options.training = training
+
+        ## Make a dictionary of relevant values
+        dic = {"model_state_dict": self.state_dict()}
+        if loss:
+            dic["loss"] = loss
+        if epoch:
+            dic["epoch"] = epoch
+        if optimizer:
+            dic["optimizer_state_dict"] = optimizer.state_dict()
+
+        # Do the save:
+        options.save(fname)
+        torch.save(dic, fname.with_suffix(".pt"))
 
     def forward(self, g):
         """

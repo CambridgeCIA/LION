@@ -18,3 +18,7 @@ WIP
 ├── data_generation_scripts -> Scripts that produce the datasets.
 ├── paper_scripts           -> Code that reproduces published papers
 </pre>
+
+## Template of a model
+
+Go to `./AItomotools/models/template.py` to see the template you should use for a model. 

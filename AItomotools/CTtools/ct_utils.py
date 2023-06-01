@@ -1,6 +1,7 @@
 # math/science imports
 import numpy as np
 import torch
+import tomosipo as ts
 
 # AItomotools imports
 from AItomotools.CTtools.ct_geometry import Geometry
@@ -95,6 +96,19 @@ def from_HU_to_material_id(img):
     materials[img > 300] = 6  # bone
     materials = materials.astype(np.uint8)
     return materials
+
+
+def make_operator(geo):
+    vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
+    pg = ts.cone(
+        angles=geo.angles,
+        shape=geo.detector_shape,
+        size=geo.detector_size,
+        src_orig_dist=geo.dso,
+        src_det_dist=geo.dsd,
+    )
+    A = ts.operator(vg, pg)
+    return A
 
 
 def forward_projection_fan(image, geo, backend="tomosipo"):

@@ -35,7 +35,7 @@ luna16_training.set_sinogram_transform(sinogram_transform)
 
 luna16_dataloader = DataLoader(luna16_training, batch_size, shuffle=True)
 
-model = LPD(n_iters=n_iters_LPD, geo=geom, angles=n_angles).to(device)
+model = LPD(LPD.default_parameters(), geom).to(device)
 
 loss_fcn = torch.nn.MSELoss()
 
