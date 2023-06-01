@@ -1,6 +1,7 @@
 ## This file contains a general class to store parameter files.
 ## You should inherit from this class for any parameter setting.
 import json
+
 from AItomotools.utils.utils import NumpyEncoder
 from pathlib import Path
 
@@ -20,6 +21,18 @@ class Parameter:
         if all(vars(self).values()):
             raise ValueError("Not all parameters set")
 
+    def serialize(self):
+        """
+        This only exists to allow Parameter() inside Parameter()
+        otherwise, its equivalent to vars(self)
+        """
+        d = vars(self)
+        for k, v in d.copy().items():
+            if isinstance(v, Parameter):
+                d.pop(k)
+                d[k] = v.serialize()  # love some recursivity
+        return d
+
     def save(self, fname):
         """
         Save parameter into a JSON file
@@ -29,7 +42,9 @@ class Parameter:
         if fname.suffix != ".json":
             fname.joinpath(".json")
         with open(fname, "w", encoding="utf-8") as f:
-            json.dump(vars(self), f, ensure_ascii=False, indent=4, cls=NumpyEncoder)
+            json.dump(
+                self.serialize(), f, ensure_ascii=False, indent=4, cls=NumpyEncoder
+            )
 
     def load(self, fname):
         """
