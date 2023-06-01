@@ -12,7 +12,10 @@ class Parameter:
         Initialize parameter from dictionary
         """
         for item in kwargs:
-            setattr(self, item, kwargs[item])
+            if isinstance(kwargs[item], dict):
+                setattr(self, item, Parameter(**(kwargs[item])))
+            else:
+                setattr(self, item, kwargs[item])
 
     def is_filled(self):
         """
