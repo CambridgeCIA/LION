@@ -10,19 +10,13 @@ from AItomotools.models.LPD import LPD
 #%% Demo to show how to load, define, train, a model.
 # Use this as a template to train your networks and design new ones
 
-# Lets set the GPU. 
-device = torch.device('cuda:0')
+# Lets set the GPU.
+device = torch.device("cuda:0")
 
 #%% Creating our LPD model
 
 
-
-
-
-
-mode = 'training'
-
-
+mode = "training"
 
 
 n_angles = 360
@@ -34,12 +28,14 @@ learning_rate = 1e-4
 
 luna16_training = Luna16Dataset(device, mode)
 geom = luna16_training.geometry
-sinogram_transform = ct_transforms.CompleteSinogramTransform(1000, torch.Size((1, n_angles, geom.detector_shape[1])), 5, 0.05, None, None)
+sinogram_transform = ct_transforms.CompleteSinogramTransform(
+    1000, torch.Size((1, n_angles, geom.detector_shape[1])), 5, 0.05, None, None
+)
 luna16_training.set_sinogram_transform(sinogram_transform)
 
 luna16_dataloader = DataLoader(luna16_training, batch_size, shuffle=True)
 
-model = LPD(n_iters=n_iters_LPD, geo = geom, angles = n_angles).to(device)
+model = LPD(n_iters=n_iters_LPD, geo=geom, angles=n_angles).to(device)
 
 loss_fcn = torch.nn.MSELoss()
 
@@ -56,10 +52,8 @@ for epoch in range(epochs):
         optimiser.step()
 
         if index % 100 == 0:
-            plt.matshow(reconstruction[0,0].detach().cpu())
-            plt.savefig('current_reconstruction.jpg')
+            plt.matshow(reconstruction[0, 0].detach().cpu())
+            plt.savefig("current_reconstruction.jpg")
             plt.clf()
 
-    torch.save(model.state_dict(), 'lpd.pt')
-
-
+    torch.save(model.state_dict(), "lpd.pt")

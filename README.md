@@ -3,7 +3,7 @@
 University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction.
 
 
-**WARNING** Building in progress. 
+**WARNING** Building in progress.
 
 Install: (this is a temporary list, we will clean it up)
 

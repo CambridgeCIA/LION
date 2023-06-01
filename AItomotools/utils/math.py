@@ -3,8 +3,8 @@ import numpy as np
 ##TODO : Type hinting, what does this function returns? def func(args) -> Type:
 def power_method(op, maxiter=100, tol=1e-6):
     arr_old = np.random.rand(*op.domain_shape).astype(np.float32)
-    error=tol+1
-    i=0
+    error = tol + 1
+    i = 0
     while error >= tol:
 
         # very verbose and inefficient for now
