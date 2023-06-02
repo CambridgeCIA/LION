@@ -1,16 +1,6 @@
 import subprocess
 from AItomotools.utils.paths import LUNA_DATASET_PATH
-
-# Run cmd line
-def run_cmd(cmd, verbose=True, *args, **kwargs):
-    print(cmd)
-    process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True
-    )
-    std_out, std_err = process.communicate()
-    if verbose:
-        print(std_out.strip(), std_err)
-    pass
+from AItomotools.utils.utils import run_cmd
 
 
 storage_path = LUNA_DATASET_PATH

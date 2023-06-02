@@ -18,6 +18,26 @@ def get_git_revision_hash() -> str:
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
 
 
+def check_if_file_changed_git(fname, hash1, hash2) -> bool:
+    pass
+
+
+# Run cmd line
+def run_cmd(cmd, verbose=True, *args, **kwargs):
+    if verbose:
+        print(cmd)
+    process = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True
+    )
+    std_out, std_err = process.communicate()
+    if std_err:
+        raise RuntimeError(std_err.strip())
+    if verbose:
+        print(std_out.strip(), std_err)
+    pass
+
+
+## Emiliens stuff, stil unused
 def check_integer(variable_name: str, variable_value):
     assert type(variable_value) == int, f"{variable_name} must be an integer"
 

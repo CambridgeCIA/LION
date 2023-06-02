@@ -1,18 +1,8 @@
 import subprocess
 from utils.paths import WALNUT_DATASET_PATH
+from AItomotools.utils.utils import run_cmd
 
 # Downloads the Walnut Dataset (https://www.nature.com/articles/s41597-019-0235-y) on a LINUX machine
-
-
-def run_cmd(cmd, verbose=True, *args, **kwargs):
-    print(cmd)
-    process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True
-    )
-    std_out, std_err = process.communicate()
-    if verbose:
-        print(std_out.strip(), std_err)
-    pass
 
 
 storage_path = WALNUT_DATASET_PATH
