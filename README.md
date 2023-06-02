@@ -19,6 +19,7 @@ conda install natsort h5py
 conda install -c simpleitk simpleitk
 ```
 
+Optional, if you want pre-commits. 
 Then, install pre commits for auto-formating your commits.
 
 ```
