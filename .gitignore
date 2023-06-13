@@ -8,3 +8,5 @@ nohup.out
 *~
 build/*
 .vscode
+
+./AItomotools.egg-info/*
