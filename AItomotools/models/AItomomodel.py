@@ -1,11 +1,8 @@
-#%% This is a template of a model for AItomotools.
+#%% This is a base class for AItomotools.
 #
-# It gives an easy start on how to build a model that fits well with the library.
-# This file has text and examples explaining what you need.
-# Use ut as a template to build your models on.
+# All classes must derive from this one.
+# It definest a bunch of auxiliary functions
 #
-# The reason to not have all models inherint from this is future-proofing. There is too much complexity in AI to start making
-# strict limits on what the models can have.
 
 #%% Imports
 
@@ -23,21 +20,24 @@ import AItomotools.CTtools.ct_utils as ct_utils
 import tomosipo as ts
 from tomosipo.torch_support import to_autograd
 
-# some standard imports, e.g.
+# some numerical standard imports, e.g.
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+# imports related to class
+from abc import ABC, abstractmethod, ABCMeta
+
+# Some other imports
 import warnings
 from pathlib import Path
-
-# Lets define the class. This demo just shows a very simple model that uses both the opeartor of CT and a CNN layer, for demostrational purposes.
-# The model makes no sense, it only sits here for coding demostration purposes.
+import subprocess
 
 
-class myModel(nn.Module):
-    """My model netweork (title)
-    Some more info about it.
+class AItomotoModel(nn.Module, ABC):
+    """
+    Base class for all models in the toolbox,
     """
 
     # Initialization of the models should have only "Parameter()" classes. These should be "topic-wise", with at minimum 1 parameter object being passed.
@@ -46,91 +46,69 @@ class myModel(nn.Module):
     def __init__(
         self,
         model_parameters: Parameter,  # model parameters
-        geometry_parameters: ct.Geometry,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
+        geometry_parameters: ct.Geometry = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
     ):
         super().__init__()  # Initialize parent classes.
+        __metaclass__ = ABCMeta  # make class abstract.
 
         # Pass all relevant parameters to internal storage.
         self.geo = geometry_parameters
         self.model_parameters = model_parameters
 
-        # (optional) if your model is for CT reconstruction, you may need the CT operator defined with e.g. tomosipo. This is how its done.
-        # model_parameters.mode contains the tomographic mode, e.g. 'ct'
-        op = self.__make_operator(self.geo, self.model_parameters.mode)
-        self.op = op
-        self.A = to_autograd(op, num_extra_dims=1)
-        self.AT = to_autograd(op.T, num_extra_dims=1)
-
-        ##### EXAMPLE #####
-        # make some NN layers, maybe defined by the Parameter file
-        #
-        # in this case, model_parameters has .bias (True/False) and .channels (list with number of channels in each layer).
-        # for example, model_parameters.channels=[7 10 5 1], and model_parameters.bias=False
-        #
-        # Albeit this is here for demosntrational purposes, do not clog the __init__ function, add classes that contain subblocks (check LPD.py)
-        layer_list = []
-        for ii in range(len(self.model_parameters.channels - 1)):
-            layer_list.append(
-                nn.Conv2d(
-                    self.model_parameters.channels[ii],
-                    self.model_parameters.channels[ii + 1],
-                    3,
-                    padding=s1,
-                    bias=self.model_parameters.bias,
-                )
-            )
-            # Have PReLUs all the way except the last
-            if ii < layers - 1:
-                layer_list.append(torch.nn.PReLU())
-        self.block = nn.Sequential(*layer_list)
-
-    # All classes in AItomotools must have a static method called default_parameters().
     # This should return the parameters from the paper the model is from
     @staticmethod
+    @abstractmethod  # crash if not defined in derived class
     def default_parameters(mode="ct") -> Parameter:
-        # create empty object
-        model_params = Parameter()
-        ##### EXAMPLE #####
-        model_params.mode = mode
-        model_params.channels = [7, 10, 5, 1]
-        model_params.bias = False
+        pass
 
-        return model_params
+    # makes operator and make it pytorch compatible.
+    def make_operator(self):
+        if self.model_parameters.mode.lower() != "ct":
+            raise NotImplementedError("Only CT operators supported")
+        if self.geo is not None:
+            self.op = ct_utils.make_operator(self.geo)
+            self.A = to_autograd(self.op, num_extra_dims=1)
+            self.AT = to_autograd(self.op.T, num_extra_dims=1)
+        else:
+            raise AttributeError("Can't make operator without geo parameters.")
 
     # All classes should have this method, just change the amount of Parameters it returns of you have more/less
     def get_parameters(self):
-        return self.model_parameters, self.geo
+        if self.geo is not None:
+            return self.model_parameters, self.geo
+        else:
+            return self.model_parameters
 
-    # All classes shoudl have this method. Yhis is the example for Learned Primal Dual.
+    # All classes should have this method. This is the example for Learned Primal Dual.
     # You can obtain this exact text from Google Scholar's page of the paper.
     @staticmethod
     def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print("Adler, Jonas, and Ozan Öktem.")
-            print('"Learned primal-dual reconstruction."')
-            print("\x1B[3mIEEE transactions on medical imaging \x1B[0m")
-            print("37.6 (2018): 1322-1332.")
-        elif cite_format == "bib":
-            string = """
-            @article{adler2018learned,
-            title={Learned primal-dual reconstruction},
-            author={Adler, Jonas and {\"O}ktem, Ozan},
-            journal={IEEE transactions on medical imaging},
-            volume={37},
-            number={6},
-            pages={1322--1332},
-            year={2018},
-            publisher={IEEE}
-            }"""
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+        pass
 
-        # All classes should have this method.
+    #     if cite_format == "MLA":
+    #         print("Adler, Jonas, and Ozan Öktem.")
+    #         print('"Learned primal-dual reconstruction."')
+    #         print("\x1B[3mIEEE transactions on medical imaging \x1B[0m")
+    #         print("37.6 (2018): 1322-1332.")
+    #     elif cite_format == "bib":
+    #         string = """
+    #         @article{adler2018learned,
+    #         title={Learned primal-dual reconstruction},
+    #         author={Adler, Jonas and {\"O}ktem, Ozan},
+    #         journal={IEEE transactions on medical imaging},
+    #         volume={37},
+    #         number={6},
+    #         pages={1322--1332},
+    #         year={2018},
+    #         publisher={IEEE}
+    #         }"""
+    #         print(string)
+    #     else:
+    #         raise AttributeError(
+    #             'cite_format not understood, only "MLA" and "bib" supported'
+    #         )
 
-    # This shouls save all relevant information to complete reproduce models
+    # This shoudl save all relevant information to completely reproduce models
     def save(self, fname, **kwargs):
         """
         Saves model given a filename.
@@ -144,9 +122,7 @@ class myModel(nn.Module):
         # Make it a Path if needed
         if isinstance(fname, str):
             fname = Path(fname)
-        # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
-        # we need to at least know exactly when the model was saved, to at least be able to reproduce.
-        commit_hash = ai_utils.get_git_revision_hash()
+
         # Parse kwargs
         dataset_params = []
         if "dataset" in kwargs:
@@ -160,7 +136,7 @@ class myModel(nn.Module):
             training = kwargs.pop("training")
         else:
             warnings.warn(
-                "Expected 'training' parameter! Only ignore if ythere has been no training."
+                "Expected 'training' parameter! Only ignore if there has been no training."
             )
 
         loss = []
@@ -191,10 +167,12 @@ class myModel(nn.Module):
 
         ## Make a super Parameter()
         options = Parameter()
-
+        # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
+        # we need to at least know exactly when the model was saved, to at least be able to reproduce.
+        options.commit_hash = ai_utils.get_git_revision_hash()
         options.model_parameters = self.model_parameters
         if geo:
-            options.geometry = geo
+            options.geometry_parameters = geo
         if dataset_params:
             options.dataset_params = dataset_params
         if training:
@@ -210,7 +188,7 @@ class myModel(nn.Module):
             dic["optimizer_state_dict"] = optimizer.state_dict()
 
         # Do the save:
-        options.save(fname)
+        options.save(fname.with_suffix(".json"))
         torch.save(dic, fname.with_suffix(".pt"))
 
     # Mandatory function, saves model for training
@@ -227,30 +205,69 @@ class myModel(nn.Module):
             filename, "epoch", epoch, "loss", loss, "optimizer", optimizer, **kwargs
         )
 
-    # (optional) if your model uses a CT operator, this will create it, for tomosipo backend.
-    @staticmethod
-    def __make_operator(geo, mode="ct"):
-        if mode.lower() == "ct":
-            A = ct_utils.make_operator(geo)
+    # Loads model.
+    @classmethod
+    def load(cls, fname, supress_warnings=False):
+        """
+        Function that loads a model from memory.
+        """
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+
+        # Load the actual parameters
+        options = Parameter()
+        options.load(fname.with_suffix(".json"))
+
+        # Check if model has been changed since save.
+        if not hasattr(options, "commit_hash") and not supress_warnings:
+            warnings.warn(
+                "No commit hash found. This model was not saved with the standard AItomotools function and it will likely fail to load."
+            )
         else:
-            raise NotImplementedError("Only CT operators supported")
-        return A
+            curr_commit_hash = ai_utils.get_git_revision_hash()
+            curr_path = cls.current_file()
+            bash_command = f"git diff --name-only {options.commit_hash} {curr_commit_hash} {curr_path}"
+            out = ai_utils.run_cmd(bash_command, verbose=False)
+            if (
+                out and not supress_warnings
+            ):  # if there is an output, then the file has indeed changed
+                warnings.warn(
+                    f"The code for the model has changed since it was saved, loading it may fail. This model was saved in {options.commit_hash}"
+                )
 
-    # Mandatory for all models, the forwar pass.
-    def forward(self, g):
-        """
-        g: sinogram input
-        """
-        B, C, W, H = g.shape
-        # Have some input parsing
-        if len(self.geo.angles) != W or self.geo.detector_shape[1] != H:
-            raise ValueError("geo description and sinogram size do not match")
+        data = torch.load(fname.with_suffix(".pt"))
+        if len(data) > 1 and not supress_warnings:
+            warnings.warn(
+                "Saved file contains more than 1 object, but only model_state_dict is being loaded.\n Call load_checkpint() to load checkpointed model."
+            )
 
-        # (optional) if your code is only 2D
-        if C != 1:
-            raise NotImplementedError("Only 2D CT images supported")
+        if hasattr(options, "geometry_parameters"):
+            model = cls(options.model_parameters, options.geometry_parameters)
+        else:
+            model = cls(options.model_parameters)
 
-        # Your code.
-        f_out
+        data = torch.load(fname.with_suffix(".pt"))
+        for key in data:
+            if not (key == "model_state_dict") and not supress_warnings:
+                warnings.warn(f"Saved parameter '{key}' ignored at loading model")
+        model.load_state_dict(data["model_state_dict"])
+        return model
 
-        return f_out
+    @staticmethod
+    def load_checkpoint(self, fname):
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+        self.load()
+        return 1, 2
+
+    @classmethod
+    def current_file(cls):
+        import sys
+
+        module = sys.modules[cls.__module__]
+        fname = Path(module.__file__)
+        # This will be in the install path, so lets get a relative path. Assuming user here will be working on AItomotools folder, which they may not be.
+        parts = fname.resolve().parts[fname.resolve().parts.index("models") - 1 :]
+        return Path(*parts)

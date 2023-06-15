@@ -34,7 +34,7 @@ def run_cmd(cmd, verbose=True, *args, **kwargs):
         raise RuntimeError(std_err.strip())
     if verbose:
         print(std_out.strip(), std_err)
-    pass
+    return std_out.strip()
 
 
 ## Emiliens stuff, stil unused

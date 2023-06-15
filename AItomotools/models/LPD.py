@@ -1,3 +1,5 @@
+from AItomotools.models import AItomomodel
+
 from AItomotools.utils.math import power_method
 from AItomotools.utils.parameter import Parameter
 import AItomotools.CTtools.ct_geometry as ct
@@ -75,14 +77,15 @@ class RegProximal(nn.Module):
         return self.block(x)
 
 
-class LPD(nn.Module):
+class LPD(AItomomodel.AItomotoModel):
     """Learn Primal Dual network"""
 
     def __init__(self, model_parameters: Parameter, geometry_parameters: ct.Geometry):
-        super().__init__()
+        super().__init__(model_parameters, geometry_parameters)
         # Pass all relevant parameters to internal storage.
-        self.geo = geometry_parameters
-        self.model_parameters = model_parameters
+        # AItomotmodel does this:
+        # self.geo = geometry_parameters
+        # self.model_parameters = model_parameters
 
         # Create layers per iteration
         for i in range(self.model_parameters.n_iters):
@@ -102,15 +105,12 @@ class LPD(nn.Module):
             )
 
         # Create pytorch compatible operators and send them to aiutograd
-        op = self.__make_operator(self.geo, self.model_parameters.mode)
-        self.op = op
-        self.A = to_autograd(op, num_extra_dims=1)
-        self.AT = to_autograd(op.T, num_extra_dims=1)
+        self.make_operator()
 
         # Define step size
         if self.model_parameters.step_size is None:
             # compute step size
-            self.model_parameters.step_size = 1 / power_method(op)
+            self.model_parameters.step_size = 1 / power_method(self.op)
 
         # Are we learning the step? (with the above initialization)
         if self.model_parameters.learned_step:
@@ -164,17 +164,6 @@ class LPD(nn.Module):
         LPD_params.step_positive = True
         return LPD_params
 
-    def get_parameters(self):
-        return self.model_parameters, self.geo
-
-    @staticmethod
-    def __make_operator(geo, mode="ct"):
-        if mode.lower() == "ct":
-            A = ct_utils.make_operator(geo)
-        else:
-            raise NotImplementedError("Only CT operators supported")
-        return A
-
     @staticmethod
     def __dual_step(g, h, f, module):
         x = torch.cat((h, f, g), dim=1)
@@ -211,91 +200,6 @@ class LPD(nn.Module):
             raise AttributeError(
                 'cite_format not understood, only "MLA" and "bib" supported'
             )
-
-        # All classes should have this method.
-
-    # This shouls save all relevant information to complete reproduce models
-    def save(self, fname, **kwargs):
-        """
-        Saves model given a filename.
-        While its not enforced, the following Parameters are expected from kwargs:
-        - 'dataset' : Parameter describing the dataset creation and handling.
-        - 'training': Parameter describing the training algorithm and procedures
-        - 'geometry': If the model itself has no scan geometry parameter, but the dataset was created with some geometry
-
-        If you want to save the model for training later (i.e. checkpoiting), use save_checkpoint()
-        """
-        # Make it a Path if needed
-        if isinstance(fname, str):
-            fname = Path(fname)
-        # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
-        # we need to at least know exactly when the model was saved, to at least be able to reproduce.
-        commit_hash = ai_utils.get_git_revision_hash()
-        # Parse kwargs
-        dataset_params = []
-        if "dataset" in kwargs:
-            dataset_params = kwargs.pop("dataset")
-        else:
-            warnings.warn(
-                "Expected 'dataset' parameter! Only ignore if you really don't have it."
-            )
-        training = []
-        if "training" in kwargs:
-            training = kwargs.pop("training")
-        else:
-            warnings.warn(
-                "Expected 'training' parameter! Only ignore if ythere has been no training."
-            )
-
-        loss = []
-        if "loss" in kwargs:
-            loss = kwargs.pop("loss")
-        epoch = []
-        if "epoch" in kwargs:
-            epoch = kwargs.pop("epoch")
-        optimizer = []
-        if "optimizer" in kwargs:
-            optimizer = kwargs.pop("optimizer")
-
-        # (optional)
-        geo = []
-        if "geometry" in kwargs:
-            geo = kwargs.pop("geometry")
-        elif hasattr(self, "geo") and self.geo:
-            geo = self.geo
-        else:
-            warnings.warn(
-                "Expected 'geometry' parameter! Only ignore if tomographic reconstruction was not part of the model."
-            )
-
-        if kwargs:  # if not empty yet
-            raise ValueError(
-                "The following parameters are not understood: " + str(list(kwargs.keys))
-            )
-
-        ## Make a super Parameter()
-        options = Parameter()
-
-        options.model_parameters = self.model_parameters
-        if geo:
-            options.geometry = geo
-        if dataset_params:
-            options.dataset_params = dataset_params
-        if training:
-            options.training = training
-
-        ## Make a dictionary of relevant values
-        dic = {"model_state_dict": self.state_dict()}
-        if loss:
-            dic["loss"] = loss
-        if epoch:
-            dic["epoch"] = epoch
-        if optimizer:
-            dic["optimizer_state_dict"] = optimizer.state_dict()
-
-        # Do the save:
-        options.save(fname)
-        torch.save(dic, fname.with_suffix(".pt"))
 
     def forward(self, g):
         """
