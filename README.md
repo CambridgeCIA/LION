@@ -5,27 +5,20 @@ University of Cambridge Computational Image Analysis (CIA) groups AI tools for t
 
 **WARNING** Building in progress.
 
-Install: (this is a temporary list, we will clean it up)
+Install: 
 
 ```
-conda create --name aitomotools python=3.10.9
-conda install pytorch torchvision torchaudio pytorch-cuda=11.6 -c pytorch -c nvidia
-conda install cudatoolkit=11.6 tomosipo tqdm pytorch matplotlib -c pytorch -c astra-toolbox -c aahendriksen -c defaults -c conda-forge
-pip install git+https://github.com/ahendriksen/ts_algorithms.git
-conda install scikit-image
-conda install pip
-/local/scratch/public/<your_username>/anaconda3/envs/<your_env_name>/bin/pip3 install pydicom
-conda install natsort h5py
-conda install -c simpleitk simpleitk
+conda env create --name aitomotools --file=env.yml
 ```
 
 Optional, if you want pre-commits. 
-Then, install pre commits for auto-formating your commits.
+Install pre commits for auto-formating your commits.
+Highly suggested if you want reproducibility, this will auto-save changes in your conda enviroments and will update your conda enviroment when pulling
 
 ```
 conda activate aitomotools
 pip install pre-commit
-pre-commit install
+pre-commit install --hook-type pre-commit --hook-type post-merge
 ```
 
 

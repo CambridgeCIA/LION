@@ -6,6 +6,16 @@ repos:
 -   repo: local
     hooks:
     -   id: conda-enviroment
-        name: custom-conda-enviroment-checker
-        entry: bash ./conda_saver.sh
+        name: conda-enviroment-saver
+        entry: bash ./utils/conda_saver.sh
         language: system
+        verbose: False
+        stages: [pre-commit]
+-   repo: local
+    hooks:
+    -   id: update-conda-env
+        name: conda-enviroment=updater
+        entry: bash ./utils/conda_updater.sh
+        language: system
+        verbose: False
+        stages: [post-merge]
