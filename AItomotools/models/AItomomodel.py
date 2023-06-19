@@ -227,11 +227,12 @@ class AItomotoModel(nn.Module, ABC):
         else:
             curr_commit_hash = ai_utils.get_git_revision_hash()
             curr_path = cls.current_file()
-            bash_command = f"git diff --name-only {options.commit_hash} {curr_commit_hash} {curr_path}"
-            out = ai_utils.run_cmd(bash_command, verbose=False)
             if (
-                out and not supress_warnings
-            ):  # if there is an output, then the file has indeed changed
+                ai_utils.check_if_file_changed_git(
+                    curr_path, options.commit_hash, curr_commit_hash
+                )
+                and not supress_warnings
+            ):
                 warnings.warn(
                     f"The code for the model has changed since it was saved, loading it may fail. This model was saved in {options.commit_hash}"
                 )

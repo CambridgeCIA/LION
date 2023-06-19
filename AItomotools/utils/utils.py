@@ -18,10 +18,6 @@ def get_git_revision_hash() -> str:
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
 
 
-def check_if_file_changed_git(fname, hash1, hash2) -> bool:
-    pass
-
-
 # Run cmd line
 def run_cmd(cmd, verbose=True, *args, **kwargs):
     if verbose:
@@ -35,6 +31,12 @@ def run_cmd(cmd, verbose=True, *args, **kwargs):
     if verbose:
         print(std_out.strip(), std_err)
     return std_out.strip()
+
+
+def check_if_file_changed_git(fname, hash1, hash2) -> bool:
+    bash_command = f"git diff --name-only {hash1} {hash2} {fname}"
+    out = run_cmd(bash_command, verbose=False)
+    return bool(out)
 
 
 ## Emiliens stuff, stil unused
