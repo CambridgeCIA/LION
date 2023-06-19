@@ -3,3 +3,9 @@ repos:
     rev: 22.10.0
     hooks:
     -   id: black
+-   repo: local
+    hooks:
+    -   id: conda-enviroment
+        name: custom-conda-enviroment-checker
+        entry: bash ./conda_saver.sh
+        language: system
