@@ -124,19 +124,20 @@ class AItomotoModel(nn.Module, ABC):
             fname = Path(fname)
 
         # Parse kwargs
+        ################
         dataset_params = []
         if "dataset" in kwargs:
             dataset_params = kwargs.pop("dataset")
         else:
             warnings.warn(
-                "Expected 'dataset' parameter! Only ignore if you really don't have it."
+                "\nExpected 'dataset' parameter! Only ignore if you really don't have it.\n"
             )
         training = []
         if "training" in kwargs:
             training = kwargs.pop("training")
         else:
             warnings.warn(
-                "Expected 'training' parameter! Only ignore if there has been no training."
+                "\nExpected 'training' parameter! Only ignore if there has been no training.\n"
             )
 
         loss = []
@@ -164,12 +165,14 @@ class AItomotoModel(nn.Module, ABC):
             raise ValueError(
                 "The following parameters are not understood: " + str(list(kwargs.keys))
             )
-
-        ## Make a super Parameter()
+        # Prepare parameters to be saved
+        ##########################
+        # Make a super Parameter()
         options = Parameter()
         # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
         # we need to at least know exactly when the model was saved, to at least be able to reproduce.
         options.commit_hash = ai_utils.get_git_revision_hash()
+        options.model_name = self.__class__.__name__
         options.model_parameters = self.model_parameters
         if geo:
             options.geometry_parameters = geo
@@ -178,7 +181,9 @@ class AItomotoModel(nn.Module, ABC):
         if training:
             options.training = training
 
-        ## Make a dictionary of relevant values
+        # Prepare data to be saved
+        #########################
+        # Make a dictionary of relevant values
         dic = {"model_state_dict": self.state_dict()}
         if loss:
             dic["loss"] = loss
@@ -216,44 +221,55 @@ class AItomotoModel(nn.Module, ABC):
             fname = Path(fname)
 
         # Load the actual parameters
+        ##############################
         options = Parameter()
         options.load(fname.with_suffix(".json"))
-
+        # Error check
+        ################################
         # Check if model has been changed since save.
         if not hasattr(options, "commit_hash") and not supress_warnings:
             warnings.warn(
-                "No commit hash found. This model was not saved with the standard AItomotools function and it will likely fail to load."
+                "\nNo commit hash found. This model was not saved with the standard AItomotools function and it will likely fail to load.\n"
             )
         else:
             curr_commit_hash = ai_utils.get_git_revision_hash()
-            curr_path = cls.current_file()
+            curr_class_path = cls.current_file()
+            curr_aitomomodel_path = pathlib.Path(__file__)
             if (
                 ai_utils.check_if_file_changed_git(
                     curr_path, options.commit_hash, curr_commit_hash
                 )
+                or ai_utils.check_if_file_changed_git(
+                    curr_aitomomodel_path, options.commit_hash, curr_commit_hash
+                )
                 and not supress_warnings
             ):
                 warnings.warn(
-                    f"The code for the model has changed since it was saved, loading it may fail. This model was saved in {options.commit_hash}"
+                    f"\nThe code for the model has changed since it was saved, loading it may fail. This model was saved in {options.commit_hash}\n"
                 )
-
+        # Check if model name matches the one that is loading it
+        if options.model_name != cls.__name__:
+            warnings.wanr(
+                f"\nSaved model is from a class with a different name than current, likely load will fail. \nCurrent class name: {cls.__name__}, Saved model class name: {options.model_name}\n"
+            )
+        # Load the actual pythorch saved data
         data = torch.load(fname.with_suffix(".pt"))
         if len(data) > 1 and not supress_warnings:
+            # this should be only 1 thing, but you may be loading a checkpoint or may have saved more data.  Its OK, but we warn.
             warnings.warn(
-                "Saved file contains more than 1 object, but only model_state_dict is being loaded.\n Call load_checkpint() to load checkpointed model."
+                "\nSaved file contains more than 1 object, but only model_state_dict is being loaded.\n Call load_checkpint() to load checkpointed model.\n"
             )
-
+        # Some models need geometry, some others not.
+        # This initializes the model itself (cls)
         if hasattr(options, "geometry_parameters"):
             model = cls(options.model_parameters, options.geometry_parameters)
         else:
             model = cls(options.model_parameters)
 
-        data = torch.load(fname.with_suffix(".pt"))
-        for key in data:
-            if not (key == "model_state_dict") and not supress_warnings:
-                warnings.warn(f"Saved parameter '{key}' ignored at loading model")
-        model.load_state_dict(data["model_state_dict"])
-        return model
+        # Load the data into the model we created.
+        model.load_state_dict(data.pop("model_state_dict"))
+
+        return model, options, data
 
     @staticmethod
     def load_checkpoint(self, fname):
