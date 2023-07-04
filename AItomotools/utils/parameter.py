@@ -36,6 +36,12 @@ class Parameter:
                 d[k] = v.serialize()  # love some recursivity
         return d
 
+    def deserialize(self):
+        """
+        Produces a dict of Parameter()
+        """
+        pass
+
     def save(self, fname):
         """
         Save parameter into a JSON file
@@ -68,3 +74,17 @@ class Parameter:
         for x in d:
             string.append(str(x) + " : " + str(d[x]))
         return "\n".join(string)
+
+    def unpack(self):
+        """
+        If the Parameter is made of other Parameters, unpack those.
+        """
+        # Get all attributes
+        attributes = vars(self).copy()
+        # pop all attributes that are NOT a Parameter()
+        for key in list(attributes.keys()):
+            if not isinstance(attributes[key], Parameter):
+                del attributes[key]
+            else:
+                delattr(self, key)
+        return attributes
