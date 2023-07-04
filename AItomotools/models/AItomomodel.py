@@ -210,16 +210,19 @@ class AItomotoModel(nn.Module, ABC):
             filename, "epoch", epoch, "loss", loss, "optimizer", optimizer, **kwargs
         )
 
-    # Loads model.
-    @classmethod
-    def load(cls, fname, supress_warnings=False):
-        """
-        Function that loads a model from memory.
-        """
-        # Make it a Path if needed
-        if isinstance(fname, str):
-            fname = Path(fname)
+    @staticmethod
+    def load_data(fname, supress_warnings=False):
+        # Load the actual pythorch saved data
+        data = torch.load(fname.with_suffix(".pt"))
+        if len(data) > 1 and not supress_warnings:
+            # this should be only 1 thing, but you may be loading a checkpoint or may have saved more data.  Its OK, but we warn.
+            warnings.warn(
+                "\nSaved file contains more than 1 object, but only model_state_dict is being loaded.\n Call load_checkpint() to load checkpointed model.\n"
+            )
+        return data
 
+    @staticmethod
+    def load_parameter_file(fname, supress_warnings=False):
         # Load the actual parameters
         ##############################
         options = Parameter()
@@ -234,10 +237,10 @@ class AItomotoModel(nn.Module, ABC):
         else:
             curr_commit_hash = ai_utils.get_git_revision_hash()
             curr_class_path = cls.current_file()
-            curr_aitomomodel_path = pathlib.Path(__file__)
+            curr_aitomomodel_path = Path(__file__)
             if (
                 ai_utils.check_if_file_changed_git(
-                    curr_path, options.commit_hash, curr_commit_hash
+                    curr_class_path, options.commit_hash, curr_commit_hash
                 )
                 or ai_utils.check_if_file_changed_git(
                     curr_aitomomodel_path, options.commit_hash, curr_commit_hash
@@ -247,18 +250,26 @@ class AItomotoModel(nn.Module, ABC):
                 warnings.warn(
                     f"\nThe code for the model has changed since it was saved, loading it may fail. This model was saved in {options.commit_hash}\n"
                 )
+        return options
+
+    @classmethod
+    def load(cls, fname, supress_warnings=False):
+        """
+        Function that loads a model from memory.
+        """
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+
+        options = AItomotoModel.load_parameter_file(fname)
         # Check if model name matches the one that is loading it
         if options.model_name != cls.__name__:
-            warnings.wanr(
+            warnings.warn(
                 f"\nSaved model is from a class with a different name than current, likely load will fail. \nCurrent class name: {cls.__name__}, Saved model class name: {options.model_name}\n"
             )
-        # Load the actual pythorch saved data
-        data = torch.load(fname.with_suffix(".pt"))
-        if len(data) > 1 and not supress_warnings:
-            # this should be only 1 thing, but you may be loading a checkpoint or may have saved more data.  Its OK, but we warn.
-            warnings.warn(
-                "\nSaved file contains more than 1 object, but only model_state_dict is being loaded.\n Call load_checkpint() to load checkpointed model.\n"
-            )
+
+        # load data
+        data = AItomotoModel.load_data(fname)
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
         if hasattr(options, "geometry_parameters"):
@@ -271,13 +282,30 @@ class AItomotoModel(nn.Module, ABC):
 
         return model, options, data
 
-    @staticmethod
+    @classmethod
     def load_checkpoint(self, fname):
         # Make it a Path if needed
         if isinstance(fname, str):
             fname = Path(fname)
-        self.load()
-        return 1, 2
+
+        options = AItomotoModel.load_parameter_file(fname)
+        # Check if model name matches the one that is loading it
+        if options.model_name != cls.__name__:
+            warnings.warn(
+                f"\nSaved model is from a class with a different name than current, likely load will fail. \nCurrent class name: {cls.__name__}, Saved model class name: {options.model_name}\n"
+            )
+        # load data
+        data = AItomotoModel.load_data(fname, supress_warnings=True)
+        # Some models need geometry, some others not.
+        # This initializes the model itself (cls)
+        if hasattr(options, "geometry_parameters"):
+            model = cls(options.model_parameters, options.geometry_parameters)
+        else:
+            model = cls(options.model_parameters)
+        # Load the data into the model we created.
+        model.load_state_dict(data.pop("model_state_dict"))
+
+        return model, options, data
 
     @classmethod
     def current_file(cls):

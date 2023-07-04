@@ -80,7 +80,14 @@ class RegProximal(nn.Module):
 class LPD(AItomomodel.AItomotoModel):
     """Learn Primal Dual network"""
 
-    def __init__(self, model_parameters: Parameter, geometry_parameters: ct.Geometry):
+    def __init__(
+        self, geometry_parameters: ct.Geometry, model_parameters: Parameter = None
+    ):
+
+        if geometry_parameters is None:
+            raise ValueError("Geometry parameters required. ")
+        if model_parameters is None:
+            model_parameters = LPD.default_parameters()
         super().__init__(model_parameters, geometry_parameters)
         # Pass all relevant parameters to internal storage.
         # AItomotmodel does this:

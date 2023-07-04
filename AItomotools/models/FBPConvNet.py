@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from AItomotools.models import AItomomodel
+from AItomotools.utils.parameter import Parameter
 
 # Implementation of:
 
@@ -10,18 +12,13 @@ import torch.nn as nn
 
 
 class ConvBlock(nn.Module):
-    def __init__(
-        self, layers, channels, relu_type="ReLU", relu_last=True, kernel_size=3
-    ):
+    def __init__(self, channels, relu_type="ReLU", relu_last=True, kernel_size=3):
         super().__init__()
         # input parsing:
-        if len(channels) != layers + 1:
-            raise ValueError(
-                "Second input (channels) should have as many elements as layers your network has"
-            )
+
+        layers = len(channels) - 1
         if layers < 1:
             raise ValueError("At least one layer required")
-
         # convolutional layers
         kernel_size = 3
         layer_list = []
@@ -75,7 +72,7 @@ class Up(nn.Module):
             )
         )
         layer_list.append(nn.BatchNorm2d(channels[1]))
-        if relu_type == "ReLu":
+        if relu_type == "ReLU":
             layer_list.append(nn.ReLU())
         elif relu_type == "LeakyReLU":
             layer_list.append(nn.LeakyReLU())
@@ -85,36 +82,123 @@ class Up(nn.Module):
         return self.block(x)
 
 
-class FBPConvNet(nn.Module):
-    def __init__(self):
-        super().__init__()
+class FBPConvNet(AItomomodel.AItomotoModel):
+    def __init__(self, model_parameters: Parameter = None):
+        if model_parameters is None:
+            model_parameters = FBPConvNet.default_parameters()
+        super().__init__(model_parameters)
 
         # standard FBPConvNet (As per paper):
 
         # Down blocks
-        self.block_1_down = ConvBlock(3, [1, 64, 64, 64])
+        self.block_1_down = ConvBlock(
+            model_parameters.down_1_channels, relu_type=model_parameters.activation
+        )
         self.down_1 = Down()
-        self.block_2_down = ConvBlock(2, [64, 128, 128])
+        self.block_2_down = ConvBlock(
+            model_parameters.down_2_channels, relu_type=model_parameters.activation
+        )
         self.down_2 = Down()
-        self.block_3_down = ConvBlock(2, [128, 256, 256])
+        self.block_3_down = ConvBlock(
+            model_parameters.down_3_channels, relu_type=model_parameters.activation
+        )
         self.down_3 = Down()
-        self.block_4_down = ConvBlock(2, [256, 512, 512])
+        self.block_4_down = ConvBlock(
+            model_parameters.down_4_channels, relu_type=model_parameters.activation
+        )
         self.down_4 = Down()
 
         # "latent space"
-        self.block_bottom = ConvBlock(2, [512, 1024, 1024])
+        self.block_bottom = ConvBlock(
+            model_parameters.latent_channels, relu_type=model_parameters.activation
+        )
 
         # Up blocks
-        self.up_1 = Up([1024, 512])
-        self.block_1_up = ConvBlock(2, [1024, 512, 512])
-        self.up_2 = Up([512, 256])
-        self.block_2_up = ConvBlock(2, [512, 256, 256])
-        self.up_3 = Up([256, 128])
-        self.block_3_up = ConvBlock(2, [256, 128, 128])
-        self.up_4 = Up([128, 64])
-        self.block_4_up = ConvBlock(2, [128, 64, 64])
+        self.up_1 = Up(
+            [model_parameters.latent_channels[-1], model_parameters.up_1_channels[0]],
+            relu_type=model_parameters.activation,
+        )
+        self.block_1_up = ConvBlock(
+            model_parameters.up_1_channels, relu_type=model_parameters.activation
+        )
+        self.up_2 = Up(
+            [model_parameters.up_1_channels[-1], model_parameters.up_2_channels[0]],
+            relu_type=model_parameters.activation,
+        )
+        self.block_2_up = ConvBlock(
+            model_parameters.up_2_channels, relu_type=model_parameters.activation
+        )
+        self.up_3 = Up(
+            [model_parameters.up_2_channels[-1], model_parameters.up_3_channels[0]],
+            relu_type=model_parameters.activation,
+        )
+        self.block_3_up = ConvBlock(
+            model_parameters.up_3_channels, relu_type=model_parameters.activation
+        )
+        self.up_4 = Up(
+            [model_parameters.up_3_channels[-1], model_parameters.up_4_channels[0]],
+            relu_type=model_parameters.activation,
+        )
+        self.block_4_up = ConvBlock(
+            model_parameters.up_4_channels, relu_type=model_parameters.activation
+        )
 
-        self.block_last = nn.Sequential(nn.Conv2d(64, 1, 1, padding=0))
+        self.block_last = nn.Sequential(
+            nn.Conv2d(
+                model_parameters.last_block[0],
+                model_parameters.last_block[1],
+                model_parameters.last_block[2],
+                padding=0,
+            )
+        )
+
+    @staticmethod
+    def default_parameters():
+        FBPConvNet_params = Parameter()
+        FBPConvNet_params.down_1_channels = [1, 64, 64, 64]
+        FBPConvNet_params.down_2_channels = [64, 128, 128]
+        FBPConvNet_params.down_3_channels = [128, 256, 256]
+        FBPConvNet_params.down_4_channels = [256, 512, 512]
+
+        FBPConvNet_params.latent_channels = [512, 1024, 1024]
+
+        FBPConvNet_params.up_1_channels = [1024, 512, 512]
+        FBPConvNet_params.up_2_channels = [512, 256, 256]
+        FBPConvNet_params.up_3_channels = [256, 128, 128]
+        FBPConvNet_params.up_4_channels = [128, 64, 64]
+
+        FBPConvNet_params.last_block = [64, 1, 1]
+
+        FBPConvNet_params.activation = "ReLU"
+
+        return FBPConvNet_params
+
+    @staticmethod
+    def cite(cite_format="MLA"):
+        if cite_format == "MLA":
+            print(" Jin, Kyong Hwan, et al.")
+            print(
+                '"Deep convolutional neural network for inverse problems in imaging."'
+            )
+            print("\x1B[3mIEEE Transactions on Image Processing \x1B[0m")
+            print(" 26.9 (2017): 4509-4522.")
+        elif cite_format == "bib":
+            string = """
+            @article{jin2017deep,
+            title={Deep convolutional neural network for inverse problems in imaging},
+            author={Jin, Kyong Hwan and McCann, Michael T and Froustey, Emmanuel and Unser, Michael},
+            journal={IEEE transactions on image processing},
+            volume={26},
+            number={9},
+            pages={4509--4522},
+            year={2017},
+            publisher={IEEE}
+            }"""
+            print(string)
+        else:
+            raise AttributeError(
+                'cite_format not understood, only "MLA" and "bib" supported'
+            )
 
     def forward(self, x):
 
