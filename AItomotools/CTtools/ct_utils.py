@@ -1,6 +1,7 @@
 # math/science imports
 import numpy as np
 import torch
+import torch.nn.functional as F
 import tomosipo as ts
 
 # AItomotools imports
@@ -25,7 +26,7 @@ def from_HU_to_mu(img):
 
 
 def sinogram_add_noise(
-    proj, I0=1000, sigma=5, crosstalk=0.05, flat_field=None, dark_field=None
+    proj, I0=1000, sigma=5, cross_talk=0.05, flat_field=None, dark_field=None
 ):
     """
     Adds realistic noise to sinograms.
@@ -34,51 +35,55 @@ def sinogram_add_noise(
     - Detector crosstalk in % of the signal of adjacent pixels.
     - Add a flat_field to add even more realistic noise (computed at non-corrected flat fields)
     """
+    dev = torch.cuda.current_device()
     if torch.is_tensor(proj):
         istorch = True
-        proj = proj.cpu().detach().numpy()
     elif isinstance(proj, np.ndarray):
         # all good
         istorch = False
+        proj = torch.from_numpy(proj).cuda(dev)
     else:
         raise ValueError("numpy or torch tensor expected")
 
-    if dark_field is None:
-        dark_field = np.zeros(proj.shape)
-    if flat_field is None:
-        flat_field = np.ones(proj.shape)
+        if dark_field is None:
+            dark_field = torch.zeros(proj.shape).cuda(dev)
+        if flat_field is None:
+            flat_field = torch.ones(proj.shape).cuda(dev)
 
-    max_val = np.amax(
-        proj
-    )  # alternatively the highest power of 2 close to this value, but lets leave it as is.
+        max_val = torch.amax(
+            proj
+        )  # alternatively the highest power of 2 close to this value, but lets leave it as is.
 
-    Im = I0 * np.exp(-proj / max_val)
+        Im = I0 * torch.exp(-proj / max_val)
 
-    # Uncorrect the flat fields
-    Im = Im * (flat_field - dark_field) + dark_field
+        # Uncorrect the flat fields
+        Im = Im * (flat_field - dark_field) + dark_field
 
-    # Add Poisson noise
-    Im = np.random.poisson(Im)
+        # Add Poisson noise
+        Im = torch.poisson(Im)
 
-    # Detector cross talk
-    cross = np.array([crosstalk, 1, crosstalk]) / (1 + 2 * crosstalk)
-    for ax in range(1, len(proj.shape)):
-        Im = np.apply_along_axis(
-            lambda m: np.convolve(m, cross, mode="same"), axis=ax, arr=Im
-        )
+        # Detector cross talk
 
-    # Electronic noise:
-    Im = Im + sigma * np.random.standard_normal(size=Im.shape)
+        kernel = torch.tensor(
+            [[0.0, 0.0, 0.0], [cross_talk, 1, cross_talk], [0.0, 0.0, 0.0]]
+        ).view(1, 1, 3, 3).repeat(1, 1, 1, 1) / (1 + 2 * cross_talk)
 
-    Im[Im <= 0] = 1e-6
-    # Correct flat fields
-    Im = (Im - dark_field) / (flat_field - dark_field)
-    proj = -np.log(Im / I0) * max_val
-    proj[proj < 0] = 0
+        se.conv = torch.nn.Conv2d(1, 1, 3, bias=False, padding="same")
+        with torch.no_grad():
+            conv.weight = torch.nn.Parameter(kernel)
+        Im = conv(Im.unsqueeze(0))[0]
+        # Electronic noise:
+        Im = Im + sigma * torch.randn(Im.shape)
+
+        Im[Im <= 0] = 1e-6
+        # Correct flat fields
+        Im = (Im - dark_field) / (flat_field - dark_field)
+        proj = -torch.log(Im / I0) * max_val
+        proj[proj < 0] = 0
     if istorch:
-        return torch.from_numpy(proj).float().cuda()
-    else:
         return proj
+    else:
+        return proj.cpu().detach().numpy()
 
 
 def from_HU_to_material_id(img):
