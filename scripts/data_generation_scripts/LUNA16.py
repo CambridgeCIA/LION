@@ -31,27 +31,13 @@ Path(LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule")).mkdir(
     parents=True, exist_ok=True
 )  # Testing data containing nodule slices
 
-from AItomotools.data_loaders.LUNA16 import LUNA16
+from AItomotools.data_loaders.LUNA16.pre_processing import LUNA16
 
 luna_dataset = LUNA16(LUNA_DATASET_PATH, load_metadata=True)
 luna_dataset.unit = "normal"
 # lets set a seed for reproducibility:
 np.random.seed(42)
 
-geo = ct.Geometry()
-geo.default_geo()
-geo.save(LUNA_PROCESSED_DATASET_PATH.joinpath("geometry.json"))
-# Define operator (fan beam)
-# TODO save metadata for this.
-vg = ts.volume(shape=geo.image.shape, size=geo.image_size)
-pg = ts.cone(
-    angles=360,
-    shape=geo.detector_shape,
-    size=geo.detector_size,
-    src_orig_dist=geo.dso,
-    src_det_dist=geo.dsd,
-)
-A = ts.operator(vg, pg)
 
 # We are going to simulate 2D slices, so using the entire luna will likely bee too much. Lets generate 6 slices for each LUNA dataset
 # and 4 will go ot training, 1 to validation, 1 to testing
@@ -71,19 +57,12 @@ for i in tqdm(range(len(luna_dataset.images))):
         image = luna_dataset.images[i].data[slice]
         image = np.expand_dims(image, 0)
         image = skimage.transform.resize(image, (1, 512, 512))
-        sino = A(image)  # forward operator
 
         # Save clean image and sinogram for supervised training.
         torch.save(
             torch.from_numpy(image),
             LUNA_PROCESSED_DATASET_PATH.joinpath(
                 subfolder + "/image_" + f"{data_index:06}" + ".pt"
-            ),
-        )
-        torch.save(
-            torch.from_numpy(sino),
-            LUNA_PROCESSED_DATASET_PATH.joinpath(
-                subfolder + "/sino_" + f"{data_index:06}" + ".pt"
             ),
         )
 
@@ -139,7 +118,6 @@ for i in tqdm(range(len(luna_dataset.images))):
             ns = skimage.transform.resize(ns, (1, 512, 512))
             ms = np.expand_dims(ms, axis=0)
             ms = skimage.transform.resize(ms, (1, 512, 512)) > 0
-            sino = A(ns)
 
             # Save clean image and sinogram for supervised training.
             torch.save(
@@ -156,17 +134,6 @@ for i in tqdm(range(len(luna_dataset.images))):
                 torch.from_numpy(ms),
                 LUNA_PROCESSED_DATASET_PATH.joinpath(
                     "testing_nodule/mask_"
-                    + f"{nodule_index:06}"
-                    + "_slice_"
-                    + f"{slice_index:03}"
-                    + ".pt"
-                ),
-            )
-
-            torch.save(
-                torch.from_numpy(sino),
-                LUNA_PROCESSED_DATASET_PATH.joinpath(
-                    "testing_nodule/sino_"
                     + f"{nodule_index:06}"
                     + "_slice_"
                     + f"{slice_index:03}"
