@@ -11,6 +11,7 @@ from torch.utils.data import Dataset
 import pydicom as dicom
 
 from backends.odl import ODLBackend
+from pylidc.utils import consensus
 
 
 def format_index(index: int) -> str:
@@ -43,6 +44,19 @@ def choose_random_annotation(
     list_of_nodule_annotations: List[pl.Annotation],
 ) -> pl.Annotation:
     return random.choice(list_of_nodule_annotations)
+
+
+def choose_first_annotation(
+    list_of_nodule_annotations: List[pl.Annotation],
+) -> pl.Annotation:
+    return list_of_nodule_annotations[0]
+
+# Perform a consensus consolidation and 50% agreement level
+def choose_consensus_annotation(
+    list_of_nodule_annotations: List[pl.Annotation],
+): # add return type -> Tuple[ndarray, tuple[, list]]:
+    return consensus(list_of_nodule_annotations, clevel=0.5)
+     
 
 
 def is_nodule_on_slice(
