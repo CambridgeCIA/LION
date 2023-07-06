@@ -21,37 +21,26 @@ class Luna16Dataset(Dataset):
         sinogram_transform=None,
         image_transform=None,
     ) -> None:
+        # Input parsing
         assert mode in [
             "testing",
             "training",
             "validation",
         ], f'Mode argument {mode} not in ["testing", "training", "validation"]'
+
         self.device = device
         self.mode = mode
         self.sinogram_transform = sinogram_transform
         self.image_transform = image_transform
 
         self.samples_path = LUNA_PROCESSED_DATASET_PATH.joinpath(mode)
-        self.sinograms_list = list(self.samples_path.glob("sino_*"))
         self.images_list = list(self.samples_path.glob("image_*"))
-        assert len(self.sinograms_list) == len(
-            self.images_list
-        ), f"Wrong number of files: Sinograms {len(self.sinograms_list)} != Images {len(self.images_list)}"
-
-        self.geometry_file_path = LUNA_PROCESSED_DATASET_PATH.joinpath("geometry.json")
-        if self.geometry_file_path.is_file():
-            self.geometry = Geometry()
-            self.geometry.load(self.geometry_file_path)
-        else:
-            raise FileNotFoundError(
-                f"The geometry file geometry.json not found at {self.geometry_file_path}"
-            )
 
     def __len__(self):
         return len(self.sinograms_list)
 
     def __getitem__(self, index):
-        sinogram: torch.Tensor = torch.load(self.sinograms_list[index])
+
         image: torch.Tensor = torch.load(self.images_list[index])
         assert image.size() == torch.Size(
             self.geometry.image_shape

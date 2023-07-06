@@ -22,7 +22,9 @@ def from_HU_to_mu(img):
     bone->1.52 g/cm^3). Approximate.
     Comercial scanners use a piecewise linear function. Check STIR for real values. (https://raw.githubusercontent.com/UCL/STIR/85cc1940c297b1749cf44a9fba937d7cefdccd47/src/utilities/share/ct_slopes.json)
     """
-    return ((1.52 - 0.0012) / (500 + 1000)) * (img.astype(np.float32) + 1000) + 0.0012
+    return np.maximum(
+        ((1.52 - 0.0012) / (500 + 1000)) * (img.astype(np.float32) + 1000) + 0.0012, 0
+    )
 
 
 def sinogram_add_noise(
