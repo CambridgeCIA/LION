@@ -10,7 +10,7 @@ import json
 from torch.utils.data import Dataset
 import pydicom as dicom
 
-from backends.odl import ODLBackend
+from AItomotools.backends.odl import ODLBackend
 from pylidc.utils import consensus
 
 
@@ -90,13 +90,24 @@ def rescaled_z_index(z, z_min, z_max) -> int:
 
 
 def get_slice_mask(
-    list_of_annotated_nodules: List[pl.Annotation], slice_index: int
+    list_of_annotated_nodules: List[pl.Annotation], slice_index: int, choose_annotation: str
 ) -> np.ndarray:
     background_array = np.ones((512, 512), dtype=np.int16)
     nodule_array = np.zeros((512, 512), dtype=np.int16)
     for annotated_nodule in list_of_annotated_nodules:
 
-        annotation = choose_random_annotation(annotated_nodule)
+        if choose_annotation == "random":
+        
+            annotation = choose_random_annotation(annotated_nodule)
+
+        elif choose_annotation == "consensus":
+            annotation = choose_random_annotation(annotated_nodule)
+
+        else:
+            raise NotImplementedError(
+                f"annotation {choose_annotation} not implemented, try random or consensus"
+            )
+        
         tumor_on_slice, zmin = is_nodule_on_slice(annotation, slice_index)
 
         if tumor_on_slice:
@@ -139,14 +150,16 @@ class LIDC_IDRI(Dataset):
         pipeline: str,
         training_proportion: float,
         mode: str,
+        annotation: str,
     ):
 
         self.path_to_processed_dataset = pathlib.Path(
             "/local/scratch/public/AItomotools/processed/LIDC-IDRI"
         )
-        self.total_patients = 1012
+        self.total_patients = len(list(self.path_to_processed_dataset.glob('LIDC-IDRI-*')))
 
         self.pipeline = pipeline
+        self.annotation = annotation
         self.patient_index_to_n_slices_dict: Dict = {
             f"LIDC-IDRI-{format_index(index)}": len(
                 list(
@@ -233,9 +246,9 @@ class LIDC_IDRI(Dataset):
         #### EXPENSIVE ####
         return backend.get_sinogram(self.get_reconstruction_tensor(file_path))
 
-    def get_mask_tensor(self, scan: pl.Scan, slice_index: int) -> torch.Tensor:
+    def get_mask_tensor(self, scan: pl.Scan, slice_index: int, choose_annotation: str) -> torch.Tensor:
         return torch.from_numpy(
-            get_slice_mask(scan.cluster_annotations(), slice_index)
+            get_slice_mask(scan.cluster_annotations(), slice_index, choose_annotation)
         )  # type:ignore
 
     def __len__(self):
@@ -260,7 +273,7 @@ class LIDC_IDRI(Dataset):
                 pl.query(pl.Scan).filter(pl.Scan.patient_id == patient_id).first()
             )  # type:ignore
             reconstruction_tensor = self.get_reconstruction_tensor(file_path)
-            mask_tensor = self.get_mask_tensor(scan, slice_index)
+            mask_tensor = self.get_mask_tensor(scan, slice_index, self.annotation)
             return reconstruction_tensor, mask_tensor
 
         elif self.pipeline == "reconstruction":
