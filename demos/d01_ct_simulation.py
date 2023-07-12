@@ -60,8 +60,8 @@ geo.default_geo()
 # Print the geo (these are the values you can ser)
 print(geo)
 # Dave the geo in JSON
-geo.save(pathlib.Path("geo.json"))
-geo.load(pathlib.Path("geo.json"))
+geo.save("geo.json")
+geo.load("geo.json")
 
 #%% CPU or GPU?
 
@@ -84,7 +84,7 @@ sino = A(phantom)
 # A typical CT scan in a hospital will have I0=10000 photon counts in air. I0=1000 will produce an severely noisy image.
 # You should be cool with not touching the rest of the parameters.
 sino_noisy = ct.sinogram_add_noise(
-    sino, I0=10000, sigma=5, crosstalk=0.05, flat_field=None, dark_field=None
+    sino, I0=10000, sigma=5, cross_talk=0.05, flat_field=None, dark_field=None
 )
 
 #%% Plot sinograms

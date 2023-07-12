@@ -45,7 +45,7 @@ class Geometry(Parameter):
     def default_geo(self):
         self.__init__(
             image_shape=[1, 512, 512],
-            image_size=[512 / 300, 300, 300],
+            image_size=[300 / 512, 300, 300],
             detector_shape=[1, 900],
             detector_size=[1, 900],
             dso=575,

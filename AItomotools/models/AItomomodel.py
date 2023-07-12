@@ -167,6 +167,7 @@ class AItomotoModel(nn.Module, ABC):
             )
         # Prepare parameters to be saved
         ##########################
+        # These are for human readability, but we redundantly save it in the data too
         # Make a super Parameter()
         options = Parameter()
         # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
@@ -191,23 +192,32 @@ class AItomotoModel(nn.Module, ABC):
             dic["epoch"] = epoch
         if optimizer:
             dic["optimizer_state_dict"] = optimizer.state_dict()
+        if geo:
+            dic["geo"] = geo
+        if dataset_params:
+            dic["dataset_params"] = dataset_params
+        if training:
+            dic["training_params"] = training
 
         # Do the save:
         options.save(fname.with_suffix(".json"))
         torch.save(dic, fname.with_suffix(".pt"))
 
     # Mandatory function, saves model for training
-    def save_checkpoint(self, fname, epoch, loss, optimizer, **kwargs):
+    def save_checkpoint(self, fname, epoch, loss, optimizer, training_param, **kwargs):
         """
         This is like save, but saves a checkpoint of the model.
         Its essentailly a wrapper of save() with mandatory values
         """
 
-        if "training" not in kwargs:
-            raise ValueError("The mandatory Parameter 'training' not inputed.")
         assert isinstance(optimizer, torch.optim.Optimizer)
         self.save(
-            filename, "epoch", epoch, "loss", loss, "optimizer", optimizer, **kwargs
+            fname,
+            epoch=epoch,
+            loss=loss,
+            optimizer=optimizer,
+            training=training_param,
+            **kwargs,
         )
 
     @staticmethod

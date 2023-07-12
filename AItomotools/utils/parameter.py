@@ -34,6 +34,8 @@ class Parameter:
             if isinstance(v, Parameter):
                 d.pop(k)
                 d[k] = v.serialize()  # love some recursivity
+            if isinstance(v, Path):
+                d[k] = str(v)
         return d
 
     def deserialize(self):

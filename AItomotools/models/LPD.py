@@ -146,18 +146,24 @@ class LPD(AItomomodel.AItomotoModel):
                 self.lambda_dual = nn.ParameterList(
                     [
                         nn.Parameter(torch.ones(1) * self.model_parameters.step_size)
-                        for i in range(n_iters)
+                        for i in range(self.model_parameters.n_iters)
                     ]
                 )
                 self.lambda_primal = nn.ParameterList(
                     [
                         nn.Parameter(torch.ones(1) * self.model_parameters.step_size)
-                        for i in range(n_iters)
+                        for i in range(self.model_parameters.n_iters)
                     ]
                 )
         else:
-            self.lambda_dual = torch.ones(n_iters) * self.model_parameters.step_size
-            self.lambda_primal = torch.ones(n_iters) * self.model_parameters.step_size
+            self.lambda_dual = (
+                torch.ones(self.model_parameters.n_iters)
+                * self.model_parameters.step_size
+            )
+            self.lambda_primal = (
+                torch.ones(self.model_parameters.n_iters)
+                * self.model_parameters.step_size
+            )
 
     @staticmethod
     def default_parameters(mode="ct"):
@@ -166,9 +172,9 @@ class LPD(AItomomodel.AItomotoModel):
         LPD_params.mode = mode
         LPD_params.data_channels = [7, 32, 32, 5]
         LPD_params.reg_channels = [6, 32, 32, 5]
-        LPD_params.learned_step = True
-        LPD_params.step_size = None
-        LPD_params.step_positive = True
+        LPD_params.learned_step = False
+        LPD_params.step_size = 1
+        LPD_params.step_positive = False
         return LPD_params
 
     @staticmethod
@@ -232,10 +238,10 @@ class LPD(AItomomodel.AItomotoModel):
         for i in range(self.model_parameters.n_iters):
             primal_module = getattr(self, f"{i}_primal")
             dual_module = getattr(self, f"{i}_dual")
-            f_dual = self.A(f_primal[:, :1]).cuda()
+            f_dual = self.A(f_primal[:, :1])
             h = self.__dual_step(g, h, f_dual, dual_module)
 
-            update = self.lambda_dual[i] * self.AT(h[:, :1]).cuda()
+            update = self.lambda_dual[i] * self.AT(h[:, :1])
             f_primal = self.__primal_step(f_primal, update, primal_module)
 
         return f_primal[:, 0:1]

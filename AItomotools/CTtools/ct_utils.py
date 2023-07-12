@@ -40,6 +40,7 @@ def sinogram_add_noise(
     dev = torch.cuda.current_device()
     if torch.is_tensor(proj):
         istorch = True
+        dev = proj.get_device()
     elif isinstance(proj, np.ndarray):
         # all good
         istorch = False
@@ -47,41 +48,43 @@ def sinogram_add_noise(
     else:
         raise ValueError("numpy or torch tensor expected")
 
-        if dark_field is None:
-            dark_field = torch.zeros(proj.shape).cuda(dev)
-        if flat_field is None:
-            flat_field = torch.ones(proj.shape).cuda(dev)
+    if dark_field is None:
+        dark_field = torch.zeros(proj.shape).cuda(dev)
+    if flat_field is None:
+        flat_field = torch.ones(proj.shape).cuda(dev)
 
-        max_val = torch.amax(
-            proj
-        )  # alternatively the highest power of 2 close to this value, but lets leave it as is.
+    max_val = torch.amax(
+        proj
+    )  # alternatively the highest power of 2 close to this value, but lets leave it as is.
 
-        Im = I0 * torch.exp(-proj / max_val)
+    Im = I0 * torch.exp(-proj / max_val)
 
-        # Uncorrect the flat fields
-        Im = Im * (flat_field - dark_field) + dark_field
+    # Uncorrect the flat fields
+    Im = Im * (flat_field - dark_field) + dark_field
 
-        # Add Poisson noise
-        Im = torch.poisson(Im)
+    # Add Poisson noise
+    Im = torch.poisson(Im)
 
-        # Detector cross talk
+    # Detector cross talk
 
-        kernel = torch.tensor(
-            [[0.0, 0.0, 0.0], [cross_talk, 1, cross_talk], [0.0, 0.0, 0.0]]
-        ).view(1, 1, 3, 3).repeat(1, 1, 1, 1) / (1 + 2 * cross_talk)
+    kernel = torch.tensor(
+        [[0.0, 0.0, 0.0], [cross_talk, 1, cross_talk], [0.0, 0.0, 0.0]]
+    ).view(1, 1, 3, 3).repeat(1, 1, 1, 1) / (1 + 2 * cross_talk)
 
-        se.conv = torch.nn.Conv2d(1, 1, 3, bias=False, padding="same")
-        with torch.no_grad():
-            conv.weight = torch.nn.Parameter(kernel)
-        Im = conv(Im.unsqueeze(0))[0]
-        # Electronic noise:
-        Im = Im + sigma * torch.randn(Im.shape)
+    conv = torch.nn.Conv2d(1, 1, 3, bias=False, padding="same")
+    with torch.no_grad():
+        conv.weight = torch.nn.Parameter(kernel)
+    conv = conv.to(dev)
 
-        Im[Im <= 0] = 1e-6
-        # Correct flat fields
-        Im = (Im - dark_field) / (flat_field - dark_field)
-        proj = -torch.log(Im / I0) * max_val
-        proj[proj < 0] = 0
+    Im = conv(Im.unsqueeze(0))[0]
+    # Electronic noise:
+    Im = Im + sigma * torch.randn(Im.shape).to(dev)
+
+    Im[Im <= 0] = 1e-6
+    # Correct flat fields
+    Im = (Im - dark_field) / (flat_field - dark_field)
+    proj = -torch.log(Im / I0) * max_val
+    proj[proj < 0] = 0
     if istorch:
         return proj
     else:
