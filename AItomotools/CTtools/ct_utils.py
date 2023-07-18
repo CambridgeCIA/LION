@@ -49,10 +49,9 @@ def sinogram_add_noise(
         raise ValueError("numpy or torch tensor expected")
 
     if dark_field is None:
-        dark_field = torch.zeros(proj.shape).cuda(dev)
+        dark_field = torch.zeros(proj.shape, device=dev)
     if flat_field is None:
-        flat_field = torch.ones(proj.shape).cuda(dev)
-
+        flat_field = torch.ones(proj.shape, device=dev)
     max_val = torch.amax(
         proj
     )  # alternatively the highest power of 2 close to this value, but lets leave it as is.
@@ -78,7 +77,7 @@ def sinogram_add_noise(
 
     Im = conv(Im.unsqueeze(0))[0]
     # Electronic noise:
-    Im = Im + sigma * torch.randn(Im.shape).to(dev)
+    Im = Im + sigma * torch.randn(Im.shape, device=dev)
 
     Im[Im <= 0] = 1e-6
     # Correct flat fields

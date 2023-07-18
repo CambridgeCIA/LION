@@ -24,7 +24,6 @@ print(LUNA_PROCESSED_DATASET_PATH)
 luna_parameter = Parameter()
 luna_parameter.raw_data_location = LUNA_DATASET_PATH
 luna_parameter.data_location = LUNA_PROCESSED_DATASET_PATH
-
 #%% This scripts loands data from LUNA16, randomly slices the images, and stores the result.
 # Then it simulates forward project_utilsions of a particular geometry and adds realistic noise of different levels to it.
 # For the testing set, the slices that contain nodules are used.
@@ -117,8 +116,8 @@ Path(LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule/metadata")).mkdir(
     parents=True, exist_ok=True
 )
 
-luna_parameter.save(LUNA_PROCESSED_DATASET_PATH.joinpath("parameter.js"))
-exit()
+luna_parameter.save(LUNA_PROCESSED_DATASET_PATH.joinpath("parameter.json"))
+
 nodule_index = 0
 for i in tqdm(range(len(luna_dataset.images))):
     if not luna_dataset.images[i].nodules:  # if it has no nodules, skip
