@@ -2,7 +2,7 @@
 echo "\n==================== pre-push hook ===================="
 
 # Export conda environment to yaml file
-conda env export -n aitools > env.yml
+conda env export -n aitools > env.yml || mamba env export -n aitools > env.yml
 
 # Check if new environment file is different from original 
 git diff --exit-code --quiet env.yml 
