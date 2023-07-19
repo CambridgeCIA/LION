@@ -1,0 +1,3 @@
+[submodule "AItomotools/models/MS-D"]
+	path = AItomotools/models/MS-D
+	url = https://github.com/ahendriksen/msd_pytorch.git
