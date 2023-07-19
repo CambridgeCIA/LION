@@ -9,6 +9,8 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
+packages = setuptools.find_packages()
+
 setuptools.setup(
     name="AItomotools",
     version="0.1",
@@ -18,6 +20,8 @@ setuptools.setup(
     license="BSD",
     keywords="CT, AI",
     url="-",
-    packages=setuptools.find_packages(),
+    packages=packages,
     long_description=read("README.md"),
 )
+
+os.system("pip install ./AItomotools/models/MS-D/")
