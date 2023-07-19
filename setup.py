@@ -25,3 +25,8 @@ setuptools.setup(
 )
 
 os.system("pip install ./AItomotools/models/MS-D/")
+
+wd = os.getcwd()
+os.chdir("./AItomotools/metrics/radiomics/")
+os.system("python setup.py install")
+os.chdir(wd)
