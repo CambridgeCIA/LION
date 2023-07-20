@@ -31,7 +31,7 @@ class Geometry(Parameter):
 
     @staticmethod
     def default_parameters():
-        return Parameter(
+        return Geometry(
             image_shape=[1, 512, 512],
             image_size=[5, 300, 300],
             detector_shape=[1, 900],
@@ -40,6 +40,32 @@ class Geometry(Parameter):
             dsd=1050,
             mode="fan",
             angles=np.linspace(0, 2 * np.pi, 360, endpoint=False),
+        )
+
+    @staticmethod
+    def sparse_view_parameters():
+        return Geometry(
+            image_shape=[1, 512, 512],
+            image_size=[300 / 512, 300, 300],
+            detector_shape=[1, 900],
+            detector_size=[1, 900],
+            dso=575,
+            dsd=1050,
+            mode="fan",
+            angles=np.linspace(0, 2 * np.pi, 50, endpoint=False),
+        )
+
+    @staticmethod
+    def sparse_angle_parameters():
+        return Geometry(
+            image_shape=[1, 512, 512],
+            image_size=[300 / 512, 300, 300],
+            detector_shape=[1, 900],
+            detector_size=[1, 900],
+            dso=575,
+            dsd=1050,
+            mode="fan",
+            angles=np.linspace(0, 2 * np.pi / 6, 60, endpoint=False),
         )
 
     def default_geo(self):

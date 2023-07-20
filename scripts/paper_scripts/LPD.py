@@ -61,13 +61,13 @@ geom.angles = np.linspace(0, 2 * np.pi, 1000, endpoint=False)
 
 luna16_training = Luna16Dataset(device, mode="training", geo=geom)
 # They use I0=1000, sigma=5, cross_talk=0
-# sino_fun= lambda sino: ct.sinogram_add_noise(sino, I0=1000,sigma=5,cross_talk=0)
-# luna16_training.set_sinogram_transform(sino_fun)
+sino_fun = lambda sino: ct.sinogram_add_noise(sino, I0=1000, sigma=5, cross_talk=0)
+luna16_training.set_sinogram_transform(sino_fun)
 # Use the same amount of training
 luna16_subset = torch.utils.data.Subset(luna16_training, range(2168))
 
 batch_size = 1
-luna16_dataloader = DataLoader(luna16_subset, batch_size, shuffle=False)
+luna16_dataloader = DataLoader(luna16_subset, batch_size, shuffle=True)
 
 
 #%% Model
