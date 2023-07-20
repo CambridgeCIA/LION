@@ -30,6 +30,16 @@
         "ideas",
         "data"
       ]
+    },
+    {
+      "login": "fsherry",
+      "name": "Ferdia",
+      "avatar_url": "https://avatars.githubusercontent.com/u/12610714?v=4",
+      "profile": "https://ferdiasherry.com",
+      "contributions": [
+        "design",
+        "tool"
+      ]
     }
   ],
   "contributorsPerLine": 7,
