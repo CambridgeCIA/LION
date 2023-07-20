@@ -40,6 +40,16 @@
         "design",
         "tool"
       ]
+    },
+    {
+      "login": "michi217",
+      "name": "michi217",
+      "avatar_url": "https://avatars.githubusercontent.com/u/62284237?v=4",
+      "profile": "https://github.com/michi217",
+      "contributions": [
+        "code",
+        "data"
+      ]
     }
   ],
   "contributorsPerLine": 7,
