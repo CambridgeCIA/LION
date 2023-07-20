@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict
+from typing import List, Dict
 import pathlib
 import random
 import math
@@ -7,8 +7,7 @@ import torch
 import numpy as np
 import json
 from torch.utils.data import Dataset
-import matplotlib.pyplot as plt
-import pickle
+
 
 from AItomotools.backends.odl import ODLBackend
 
@@ -48,8 +47,24 @@ class LIDC_IDRI(Dataset):
             training_proportion:float,
             mode:str,
             annotation: str,
+            max_num_slices_per_patient=-1,
+            pcg_slices_nodule=0.5,
             clevel=0.5,
             ):
+        
+        '''
+        Initializes LIDC-IDRI dataset.
+
+        Parameters:
+            - pipeline (str): Defines pipeline on how to use data. Distinguish between "joint", "end_to_end", "segmentation", "reconstruction" and "diagnostic".
+            - training_proportion (float): Defines train-test split.
+            - mode (str): Defines "training" or "testing" mode.
+            - annotation (str): Defines what annotation mode to use. Distinguish between "random" and "consensus".
+            - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. Default is -1, which takes all slices we have of each patient and pcg_slices_nodule gets ignored.
+            - pcg_slices_nodule (float): Defines percentage of slices with nodule in dataset. 0 meaning "no nodules at all" and 1 meaning "just take slices that contain annotated nodules". Only used if max_num_slices_per_patient != -1. Default is 0.5.
+            - clevel (float): Defines consensus level if annotation=consensus. Value between 0-1. Default is 0.5.
+  
+        '''
 
         self.path_to_processed_dataset = pathlib.Path('/local/scratch/public/AItomotools/processed/LIDC-IDRI')
         self.patients_masks_dictionary = load_json(self.path_to_processed_dataset.joinpath('patients_masks.json'))
@@ -59,54 +74,54 @@ class LIDC_IDRI(Dataset):
         self.patients_masks_dictionary['LIDC-IDRI-0585'] = {}
 
         self.patients_diagnosis_dictionary = load_json(self.path_to_processed_dataset.joinpath('patient_id_to_diagnosis.json'))
-        self.total_patients = len(list(self.path_to_processed_dataset.glob('LIDC-IDRI-*')))
-        self.num_slice_per_patient = 40
-        self.pcg_slices_nodule = 0.5
+        self.total_patients = len(list(self.path_to_processed_dataset.glob('LIDC-IDRI-*')))+1
+        self.num_slices_per_patient = max_num_slices_per_patient
+        self.pcg_slices_nodule = pcg_slices_nodule 
         self.pipeline = pipeline
         self.annotation = annotation
         self.clevel = clevel # consensus level, only used if annotation == consensus
         self.patient_index_to_n_slices_dict :Dict = {
-            f'LIDC-IDRI-{format_index(index)}' : len(list(self.path_to_processed_dataset.joinpath(f'LIDC-IDRI-{format_index(index)}').glob('slice_*.npy'))) for index in range(1,self.total_patients+1)
+            f'LIDC-IDRI-{format_index(index)}' : len(list(self.path_to_processed_dataset.joinpath(f'LIDC-IDRI-{format_index(index)}').glob('slice_*.npy'))) for index in range(1,self.total_patients)
         }
 
         # Dict with all slices of each patient
         self.patient_index_to_slices_index_dict :Dict = {
-            f'LIDC-IDRI-{format_index(index)}' : list(np.arange(0, self.patient_index_to_n_slices_dict[f'LIDC-IDRI-{format_index(index)}'], 1)) for index in range(1,self.total_patients+1)
+            f'LIDC-IDRI-{format_index(index)}' : list(np.arange(0, self.patient_index_to_n_slices_dict[f'LIDC-IDRI-{format_index(index)}'], 1)) for index in range(1,self.total_patients)
         }
 
         # Dict with all nodule slices of each patient
         # Converts the keys from self.patients_masks_dictionary to integer
         self.patient_index_to_nodule_slices_index_dict :Dict = {
-            f'LIDC-IDRI-{format_index(index)}' : [int(item) for item in list(self.patients_masks_dictionary[f'LIDC-IDRI-{format_index(index)}'].keys())] for index in range(1,self.total_patients+1)  
+            f'LIDC-IDRI-{format_index(index)}' : [int(item) for item in list(self.patients_masks_dictionary[f'LIDC-IDRI-{format_index(index)}'].keys())] for index in range(1,self.total_patients)  
         } 
 
         # Dict with all non-nodule slices of each patient
         # Computes as difference of all slices dict and dict with nodules
         self.patient_index_to_non_nodule_slices_index_dict :Dict = {
-            f'LIDC-IDRI-{format_index(index)}' : list(set(self.patient_index_to_slices_index_dict[f'LIDC-IDRI-{format_index(index)}']) - set(self.patient_index_to_nodule_slices_index_dict[f'LIDC-IDRI-{format_index(index)}'])) for index in range(1,self.total_patients+1)
+            f'LIDC-IDRI-{format_index(index)}' : list(set(self.patient_index_to_slices_index_dict[f'LIDC-IDRI-{format_index(index)}']) - set(self.patient_index_to_nodule_slices_index_dict[f'LIDC-IDRI-{format_index(index)}'])) for index in range(1,self.total_patients)
         }
         
         # Corrupted data handling
         # Delete all slices that contain a nodule that has more than 4 annotations
-        self.slices_to_remove :Dict = {}
+        self.removed_slices :Dict = {}
         for patient_id, nodule_slices_list in self.patient_index_to_nodule_slices_index_dict.items():
-            self.slices_to_remove[patient_id] = []
+            self.removed_slices[patient_id] = []
             for slice_index in nodule_slices_list:
                 all_nodules_dict:Dict = self.patients_masks_dictionary[patient_id][f'{slice_index}']
                 for _, nodule_annotations_list in all_nodules_dict.items():
                     if len(nodule_annotations_list) > 4:
-                        self.slices_to_remove[patient_id].append(slice_index)
+                        self.removed_slices[patient_id].append(slice_index)
                         break
         
         self.patient_index_to_nodule_slices_index_dict :Dict = {
-            f'LIDC-IDRI-{format_index(index)}' : list(set(self.patient_index_to_nodule_slices_index_dict[f'LIDC-IDRI-{format_index(index)}']) - set(self.slices_to_remove[f'LIDC-IDRI-{format_index(index)}'])) for index in range(1,self.total_patients+1)
+            f'LIDC-IDRI-{format_index(index)}' : list(set(self.patient_index_to_nodule_slices_index_dict[f'LIDC-IDRI-{format_index(index)}']) - set(self.removed_slices[f'LIDC-IDRI-{format_index(index)}'])) for index in range(1,self.total_patients)
         }
 
         self.training_proportion = training_proportion
         self.mode = mode
 
-        self.n_patients_training = math.floor(self.training_proportion*self.total_patients)
-        self.n_patients_testing  = math.ceil((1-self.training_proportion)*self.total_patients)
+        self.n_patients_training = math.floor(self.training_proportion*(self.total_patients))
+        self.n_patients_testing  = math.ceil((1-self.training_proportion)*(self.total_patients))
         assert self.total_patients == (self.n_patients_training + self.n_patients_testing), print(
             f'Total patients: {self.total_patients}, \n training patients {self.n_patients_training}, \n testing patients {self.n_patients_testing}'
             )
@@ -120,15 +135,15 @@ class LIDC_IDRI(Dataset):
 
         print('Preparing patient list, this may take time....')
         if self.mode == 'training':
-            self.slices_to_load = self.get_slices_to_load_new(self.training_patients_list, self.patient_index_to_non_nodule_slices_index_dict, self.patient_index_to_nodule_slices_index_dict, self.num_slice_per_patient, self.pcg_slices_nodule)
-            self.slice_index_to_patient_id_list = self.get_slice_index_to_patient_id_list_new(self.slices_to_load)
-            self.patient_id_to_first_index_dict = self.get_patient_id_to_first_index_dict_new(self.slices_to_load)
+            self.slices_to_load = self.get_slices_to_load(self.training_patients_list, self.patient_index_to_non_nodule_slices_index_dict, self.patient_index_to_nodule_slices_index_dict, self.num_slices_per_patient, self.pcg_slices_nodule)
+            self.slice_index_to_patient_id_list = self.get_slice_index_to_patient_id_list(self.slices_to_load)
+            self.patient_id_to_first_index_dict = self.get_patient_id_to_first_index_dict(self.slices_to_load)
 
 
         elif self.mode == 'testing':
-            self.slices_to_load = self.get_slices_to_load_new(self.testing_patients_list, self.patient_index_to_non_nodule_slices_index_dict, self.patient_index_to_nodule_slices_index_dict, self.num_slice_per_patient, self.pcg_slices_nodule)
-            self.slice_index_to_patient_id_list = self.get_slice_index_to_patient_id_list_new(self.slices_to_load)
-            self.patient_id_to_first_index_dict = self.get_patient_id_to_first_index_dict_new(self.slices_to_load)
+            self.slices_to_load = self.get_slices_to_load(self.testing_patients_list, self.patient_index_to_non_nodule_slices_index_dict, self.patient_index_to_nodule_slices_index_dict, self.num_slices_per_patient, self.pcg_slices_nodule)
+            self.slice_index_to_patient_id_list = self.get_slice_index_to_patient_id_list(self.slices_to_load)
+            self.patient_id_to_first_index_dict = self.get_patient_id_to_first_index_dict(self.slices_to_load)
 
         else:
             raise NotImplementedError(f'mode {self.mode} not implemented, try training or testing')
@@ -136,51 +151,53 @@ class LIDC_IDRI(Dataset):
         
         print(f'Patient lists ready for {self.mode} dataset')
 
-    def get_slices_to_load(self, patient_list:List, patient_index_to_slices_index_dict:Dict, num_slice_per_patient:int):
+    def get_slices_to_load(self, patient_list:List, non_nodule_slices_dict:Dict, nodule_slices_dict:Dict, num_slices_per_patient:int, pcg_slices_nodule:float):
+        '''
+        Returns a dictionary that contains patient_id's as keys and list of slices to load as values for each patient.
+        
+        Parameters:
+            - patient_list (List): List that contains patient_id of all patients.
+            - non_nodule_slices_dict (Dict): Dict that contains all slices without nodule of each patient_id.
+            - nodule_slices_dict (Dict): Dict that contains all slices with nodule of each patient_id.
+            - num_slices_per_patient (int): Defines maximum number of slices we want per patient. If num_slices_per_patient=-1 take all slices we have of each patient.
+            - pcg_slices_nodule (float): Defines amount of slices that should contain a nodule. Value between 0-1. Only used if num_slices_per_patient != -1.
+        Returns:
+            - patient_id_to_slices_to_load_dict which contains patient_id as key and list of slices to load as values
+        '''
+         
         patient_id_to_slices_to_load_dict = {} # Empty dict which should contain patient id as key and slice ids as array of values
-        for patient_id in patient_list: # Loop over every patient
-            number_of_slices = len(patient_index_to_slices_index_dict[patient_id]) # Gives the total number of slices of this patient
-            if number_of_slices < num_slice_per_patient: # If the total number of slices of this patient is smaller than the desired size then just use all slices this patient has
-                patient_id_to_slices_to_load_dict[patient_id] = patient_index_to_slices_index_dict[patient_id]
-            else: patient_id_to_slices_to_load_dict[patient_id] = np.linspace(0, number_of_slices, num_slice_per_patient, dtype=int, endpoint=False).tolist() # Take a linspace from the given slices and exclude the last because this slice does not exist
-        return patient_id_to_slices_to_load_dict
-    
 
-    def get_slices_to_load_new(self, patient_list:List, non_nodule_slices_dict:Dict, nodule_slices_dict:Dict, num_slice_per_patient:int, pcg_slices_nodule:float):
-        patient_id_to_slices_to_load_dict = {} # Empty dict which should contain patient id as key and slice ids as array of values
-        for patient_id in patient_list: # Loop over every patient
-            number_of_slices = min(num_slice_per_patient, min(len(non_nodule_slices_dict[patient_id]), len(nodule_slices_dict[patient_id])))
+        if num_slices_per_patient == -1: # Default: Take all slices we have of each patient
+            for patient_id in patient_list: # Loop over every patient
 
-            # Get amount of slices we want with nodule
-            number_of_slices_with_nodule = int(number_of_slices * pcg_slices_nodule)
-            # Get amount of slices we want without nodule
-            number_of_slices_without_nodule = int(number_of_slices * (1 - pcg_slices_nodule))
+                # Get non-nodule slices and nodule slices of each patient and afterwards sort the list in increasing order
+                patient_id_to_slices_to_load_dict[patient_id] = non_nodule_slices_dict[patient_id] + nodule_slices_dict[patient_id] 
+                patient_id_to_slices_to_load_dict[patient_id].sort()
+        
+        else: # Take maximum of n slices per patient with p% containing a nodule
+            for patient_id in patient_list: # Loop over every patient
+                number_of_slices = min(num_slices_per_patient, min(len(non_nodule_slices_dict[patient_id]), len(nodule_slices_dict[patient_id])))
 
-            patient_id_to_slices_to_load_dict[patient_id] = list(np.array(non_nodule_slices_dict[patient_id])[np.linspace(0, len(non_nodule_slices_dict[patient_id]), number_of_slices_without_nodule, dtype=int, endpoint=False)]) + list(np.array(nodule_slices_dict[patient_id])[np.linspace(0, len(nodule_slices_dict[patient_id]), number_of_slices_with_nodule, dtype=int, endpoint=False)])
-            patient_id_to_slices_to_load_dict[patient_id].sort()
+                # Get amount of slices we want with nodule
+                number_of_slices_with_nodule = int(number_of_slices * pcg_slices_nodule)
+                # Get amount of slices we want without nodule
+                number_of_slices_without_nodule = int(number_of_slices * (1 - pcg_slices_nodule))
+
+                # Get linspace of non-nodule and nodule slices of each patient and afterwards sort the list in increasing order
+                patient_id_to_slices_to_load_dict[patient_id] = list(np.array(non_nodule_slices_dict[patient_id])[np.linspace(0, len(non_nodule_slices_dict[patient_id]), number_of_slices_without_nodule, dtype=int, endpoint=False)]) + list(np.array(nodule_slices_dict[patient_id])[np.linspace(0, len(nodule_slices_dict[patient_id]), number_of_slices_with_nodule, dtype=int, endpoint=False)]) 
+                patient_id_to_slices_to_load_dict[patient_id].sort()
         
         return patient_id_to_slices_to_load_dict
-
-
-    def get_patient_id_to_first_index_dict(self, patient_list:List):
-        patient_id_to_first_index_dict = {}
-        global_index = 0
-        for patient_id in patient_list:
-            path_to_folder = self.path_to_processed_dataset.joinpath(patient_id)
-            patient_id_to_first_index_dict[patient_id] = global_index
-            global_index += len(list(path_to_folder.glob('slice_*.npy')))
-        return patient_id_to_first_index_dict
-
-    def get_slice_index_to_patient_id_list(self, patient_list:List):
-        slice_index_to_patient_id_list = []
-        for patient_id in patient_list:
-            path_to_folder = self.path_to_processed_dataset.joinpath(patient_id)
-            n_slices = len(list(path_to_folder.glob('slice_*.npy')))
-            for slice_index in range(n_slices):
-                slice_index_to_patient_id_list.append(patient_id)
-        return slice_index_to_patient_id_list
     
-    def get_patient_id_to_first_index_dict_new(self, patient_with_slices_to_load:Dict):
+    def get_patient_id_to_first_index_dict(self, patient_with_slices_to_load:Dict):
+        '''
+        Returns a dictionary that contains patient_id's as keys and start index of each patient in self.slice_index_to_patient_id_list as value.
+        
+        Parameters:
+            - patient_with_slices_to_load (Dict): Dict that defines which slices to load per patient.
+        Returns:
+            - patient_id_to_first_index_dict (Dict): Defines start index of each patient in self.slice_index_to_patient_id_list. Needed for mapping of global index to slice index.
+        '''
         patient_id_to_first_index_dict = {}
         global_index = 0
         for patient_id in patient_with_slices_to_load:
@@ -192,7 +209,15 @@ class LIDC_IDRI(Dataset):
             else: global_index += len(list(path_to_folder.glob('slice_*.npy')))
         return patient_id_to_first_index_dict
     
-    def get_slice_index_to_patient_id_list_new(self, patient_with_slices_to_load:Dict):
+    def get_slice_index_to_patient_id_list(self, patient_with_slices_to_load:Dict):
+        '''
+        Returns a list that contains "number of slices" times each patient id.
+        
+        Parameters:
+            - patient_with_slices_to_load (Dict): Dict that defines which slices to load per patient.
+        Returns:
+            - slice_index_to_patient_id_list (List): Contains number of slices times each patient id. Needed for mapping of global index to slice index.
+        '''
         slice_index_to_patient_id_list = []
         for patient_id in patient_with_slices_to_load:
             path_to_folder = self.path_to_processed_dataset.joinpath(patient_id)
@@ -220,10 +245,6 @@ class LIDC_IDRI(Dataset):
             all_nodules_dict:Dict = self.patients_masks_dictionary[patient_id][f'{slice_index}']
             for nodule_index, nodule_annotations_list in all_nodules_dict.items():
 
-                # if len(nodule_annotations_list) > 4:
-                #     # If there are more than 4 annotations for a nodule consider this slice as corrupted and skip
-                #     return None
-
                 if self.annotation == 'random':
                     ## If a nodule was not segmented by all the clinicians, the other annotations should not always be seen
                     while len(nodule_annotations_list) < 4:
@@ -235,7 +256,7 @@ class LIDC_IDRI(Dataset):
                         nodule_mask = torch.zeros((512,512), dtype=torch.bool)
                     else:
                         path_to_mask = self.path_to_processed_dataset.joinpath(f'{patient_id}/mask_{slice_index}_nodule_{nodule_index}_annotation_{annotation}.npy')
-                        print(path_to_mask)
+                        #print(path_to_mask)
                         nodule_mask = torch.from_numpy(np.load(path_to_mask))
                 
                 elif self.annotation == 'consensus':
@@ -266,11 +287,10 @@ class LIDC_IDRI(Dataset):
 
     def __getitem__(self, index):
         patient_id = self.slice_index_to_patient_id_list[index]
-        print(patient_id)
         first_slice_index = self.patient_id_to_first_index_dict[patient_id]
         dict_slice_index = index - first_slice_index
         slice_index_to_load = self.slices_to_load[patient_id][dict_slice_index]
-        #print(f'Index, {index}, Patient Id : {patient_id}, first_slice_index : {first_slice_index}, slice_index : {slice_index} ')
+        #print(f'Index, {index}, Patient Id : {patient_id}, first_slice_index : {first_slice_index}, slice_index : {dict_slice_index} ', slice_to_load : {slice_index_to_load})
         file_path = self.path_to_processed_dataset.joinpath(f'{patient_id}/slice_{slice_index_to_load}.npy')
 
         ### WE NEVER RETURN THE SINOGRAM TO AVOID COMPUTING IT PER SAMPLE ###
