@@ -1,0 +1,21 @@
+repos:
+-   repo: https://github.com/psf/black
+    rev: 22.10.0
+    hooks:
+    -   id: black
+-   repo: local
+    hooks:
+    -   id: conda-enviroment
+        name: conda-enviroment-saver
+        entry: bash ./utils/conda_saver.sh
+        language: system
+        verbose: False
+        stages: [pre-commit]
+-   repo: local
+    hooks:
+    -   id: update-conda-env
+        name: conda-enviroment=updater
+        entry: bash ./utils/conda_updater.sh
+        language: system
+        verbose: False
+        stages: [post-merge]

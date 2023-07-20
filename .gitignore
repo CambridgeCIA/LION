@@ -7,3 +7,7 @@ nohup.out
 **/__pycache__
 *~
 build/*
+.vscode
+
+AItomotools.egg-info
+dist
