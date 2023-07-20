@@ -1,3 +1,12 @@
+# =============================================================================
+# This file is part of AItomotools library
+# License : BSD-3
+#
+# Author  : Emilien Valat
+# Modifications: Michelle Limbach, Ander Biguri
+# =============================================================================
+
+
 from typing import List, Dict
 import pathlib
 import random
