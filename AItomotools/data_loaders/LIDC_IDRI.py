@@ -57,8 +57,9 @@ class LIDC_IDRI(Dataset):
         self,
         device: torch.device,
         task: str,
-        training_proportion: float,
         mode: str,
+        training_proportion: float = 0.8,
+        validation_proportion: float = 0.1,
         annotation: str = "consensus",
         max_num_slices_per_patient=-1,
         pcg_slices_nodule=0.5,
@@ -225,65 +226,73 @@ class LIDC_IDRI(Dataset):
             for index in range(1, self.total_patients)
         }
 
+        ##% Divide dataset in training/validation/testing
         self.training_proportion = training_proportion
+        self.validation_proportion = validation_proportion
         self.mode = mode
 
+        # Commpute number if images for each
         self.n_patients_training = math.floor(
             self.training_proportion * (self.total_patients)
         )
-        self.n_patients_testing = math.ceil(
-            (1 - self.training_proportion) * (self.total_patients)
+        self.n_patients_validation = math.floor(
+            self.validation_proportion * (self.total_patients)
         )
-        assert self.total_patients == (
-            self.n_patients_training + self.n_patients_testing
-        ), print(
-            f"Total patients: {self.total_patients}, \n training patients {self.n_patients_training}, \n testing patients {self.n_patients_testing}"
+        self.n_patients_testing = (
+            self.total_patients - self.n_patients_training - self.n_patients_validation
         )
 
+        assert self.total_patients == (
+            self.n_patients_training
+            + self.n_patients_testing
+            + self.n_patients_validation
+        ), print(
+            f"Total patients: {self.total_patients}, \n training patients {self.n_patients_training}, \n validation patients {self.n_patients_validation}, \n testing patients {self.n_patients_testing}"
+        )
+
+        # Get patient IDs for each
         self.patient_ids = list(self.patient_index_to_n_slices_dict.keys())
         self.training_patients_list = self.patient_ids[: self.n_patients_training]
-        self.testing_patients_list = self.patient_ids[self.n_patients_training :]
+        self.validation_patients_list = self.patient_ids[
+            self.n_patients_training : self.n_patients_training
+            + self.n_patients_validation
+            - 1
+        ]
+        self.testing_patients_list = self.patient_ids[
+            self.n_patients_training + self.n_patients_validation - 1 :
+        ]
+
         assert len(self.patient_ids) == len(self.training_patients_list) + len(
             self.testing_patients_list
-        ), print(
-            f"Len patients ids: {len(self.patient_ids)}, \n len training patients {len(self.training_patients_list)}, \n len testing patients {len(self.testing_patients_list)}"
+        ) + len(self.validation_patients_list), print(
+            f"Len patients ids: {len(self.patient_ids)}, \n len training patients {len(self.training_patients_list)},\n len validation patients {len(self.validation_patients_list)}, \n len testing patients {len(self.testing_patients_list)}"
         )
 
         print("Preparing patient list, this may take time....")
         if self.mode == "training":
-            self.slices_to_load = self.get_slices_to_load(
-                self.training_patients_list,
-                self.patient_index_to_non_nodule_slices_index_dict,
-                self.patient_index_to_nodule_slices_index_dict,
-                self.num_slices_per_patient,
-                self.pcg_slices_nodule,
-            )
-            self.slice_index_to_patient_id_list = (
-                self.get_slice_index_to_patient_id_list(self.slices_to_load)
-            )
-            self.patient_id_to_first_index_dict = (
-                self.get_patient_id_to_first_index_dict(self.slices_to_load)
-            )
-
+            patient_list_to_load = self.training_patients_list
+        elif self.mode == "validation":
+            patient_list_to_load = self.validation_patients_list
         elif self.mode == "testing":
-            self.slices_to_load = self.get_slices_to_load(
-                self.testing_patients_list,
-                self.patient_index_to_non_nodule_slices_index_dict,
-                self.patient_index_to_nodule_slices_index_dict,
-                self.num_slices_per_patient,
-                self.pcg_slices_nodule,
-            )
-            self.slice_index_to_patient_id_list = (
-                self.get_slice_index_to_patient_id_list(self.slices_to_load)
-            )
-            self.patient_id_to_first_index_dict = (
-                self.get_patient_id_to_first_index_dict(self.slices_to_load)
-            )
-
+            patient_list_to_load = self.testing_patients_list
         else:
             raise NotImplementedError(
-                f"mode {self.mode} not implemented, try training or testing"
+                f"mode {self.mode} not implemented, try training, validation or testing"
             )
+
+        self.slices_to_load = self.get_slices_to_load(
+            patient_list_to_load,
+            self.patient_index_to_non_nodule_slices_index_dict,
+            self.patient_index_to_nodule_slices_index_dict,
+            self.num_slices_per_patient,
+            self.pcg_slices_nodule,
+        )
+        self.slice_index_to_patient_id_list = self.get_slice_index_to_patient_id_list(
+            self.slices_to_load
+        )
+        self.patient_id_to_first_index_dict = self.get_patient_id_to_first_index_dict(
+            self.slices_to_load
+        )
 
         print(f"Patient lists ready for {self.mode} dataset")
 
@@ -419,6 +428,9 @@ class LIDC_IDRI(Dataset):
 
     def set_sinogram_transform(self, sinogram_transform):
         self.sinogram_transform = sinogram_transform
+
+    def set_image_transform(self, image_transform):
+        self.image_transform = image_transform
 
     def compute_clean_sinogram(self, image=None) -> torch.Tensor:
 

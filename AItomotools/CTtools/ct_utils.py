@@ -13,7 +13,13 @@ def from_HU_to_normal(img):
     Converts image in Hounsfield Units (air-> -1000, bone->500) into a [0-1] image.
     Comercial scanners use a piecewise linear function. Check STIR for real values. (https://raw.githubusercontent.com/UCL/STIR/85cc1940c297b1749cf44a9fba937d7cefdccd47/src/utilities/share/ct_slopes.json)
     """
-    return np.maximum((img + 1000) / 3000, 0)
+
+    if isinstance(img, np.ndarray):
+        return np.maximum((img + 1000) / 3000, 0)
+    elif isinstance(img, torch.Tensor):
+        return torch.clip((img + 1000) / 3000, min=0)
+    else:
+        raise NotImplementedError
 
 
 def from_HU_to_mu(img):
