@@ -3,6 +3,8 @@ from torch.utils.data import Dataset
 
 from AItomotools.utils.paths import LUNA_PROCESSED_DATASET_PATH
 from AItomotools.CTtools.ct_geometry import Geometry
+from AItomotools.utils.parameter import Parameter
+import AItomotools.CTtools.ct_utils as ct
 
 
 def parse_index(index: int) -> str:
@@ -18,41 +20,38 @@ class Luna16Dataset(Dataset):
         self,
         device: torch.device,
         mode: str,
+        geo: Geometry() = None,
         sinogram_transform=None,
         image_transform=None,
     ) -> None:
+        # Input parsing
         assert mode in [
             "testing",
             "training",
             "validation",
         ], f'Mode argument {mode} not in ["testing", "training", "validation"]'
+
         self.device = device
         self.mode = mode
+        if geo is not None:
+            self.operator = ct.make_operator(geo)
+        self.geometry = geo
         self.sinogram_transform = sinogram_transform
         self.image_transform = image_transform
 
         self.samples_path = LUNA_PROCESSED_DATASET_PATH.joinpath(mode)
-        self.sinograms_list = list(self.samples_path.glob("sino_*"))
         self.images_list = list(self.samples_path.glob("image_*"))
-        assert len(self.sinograms_list) == len(
-            self.images_list
-        ), f"Wrong number of files: Sinograms {len(self.sinograms_list)} != Images {len(self.images_list)}"
-
-        self.geometry_file_path = LUNA_PROCESSED_DATASET_PATH.joinpath("geometry.json")
-        if self.geometry_file_path.is_file():
-            self.geometry = Geometry()
-            self.geometry.load(self.geometry_file_path)
-        else:
-            raise FileNotFoundError(
-                f"The geometry file geometry.json not found at {self.geometry_file_path}"
-            )
+        self.pre_processing_params = Parameter().load(
+            LUNA_PROCESSED_DATASET_PATH.joinpath("parameter.json")
+        )
 
     def __len__(self):
-        return len(self.sinograms_list)
+        return len(self.images_list)
 
     def __getitem__(self, index):
-        sinogram: torch.Tensor = torch.load(self.sinograms_list[index])
-        image: torch.Tensor = torch.load(self.images_list[index])
+
+        image: torch.Tensor = torch.load(self.images_list[index]).to(self.device)
+        sinogram = self.get_clean_sinogram(index, image.float())
         assert image.size() == torch.Size(
             self.geometry.image_shape
         ), f"Queried image size {image.size()} != expected size from geometry {self.geometry.image_shape}"
@@ -63,9 +62,14 @@ class Luna16Dataset(Dataset):
 
         return sinogram.float().to(self.device), image.float().to(self.device)
 
-    def get_clean_sinogram(self, index):
-        sinogram: torch.Tensor = torch.load(self.sinograms_list[index]).unsqueeze(0)
-        return sinogram.to(self.device)
+    def get_clean_sinogram(self, index, image=None):
+
+        if self.operator is None:
+            raise AttributeError("CT oeprator not know. Have you give a ct geometry?")
+        if image is None:
+            image: torch.Tensor = torch.load(self.images_list[index]).to(self.device)
+        sinogram = self.operator(image)
+        return sinogram
 
     def set_sinogram_transform(self, sinogram_transform):
         self.sinogram_transform = sinogram_transform

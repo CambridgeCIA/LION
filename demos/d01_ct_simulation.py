@@ -15,7 +15,6 @@ import pathlib
 # It also shows how to simulate realistic CT noise.
 # AItomotools has various backends, but we are using tomosipo in this case.
 
-
 #%% Create image, process
 # Create a phantom containing a small cube. In your code, this will be your data
 phantom = np.ones((512, 512)) * -1000  # lets assume its 512^2
@@ -61,14 +60,14 @@ geo.default_geo()
 # Print the geo (these are the values you can ser)
 print(geo)
 # Dave the geo in JSON
-geo.save(pathlib.Path("geo.json"))
-geo.load(pathlib.Path("geo.json"))
+geo.save("geo.json")
+geo.load("geo.json")
 
 #%% CPU or GPU?
 
 # The only thing needed to make the tomosipo operator work in GPU instead of GPU is just make it a torch tensor.
-dev = torch.device("cuda")
-phantom = torch.from_numpy(phantom).to(dev)
+# dev = torch.device("cuda")
+# phantom = torch.from_numpy(phantom).to(dev)
 
 
 #%% Create sinograms, simulate noise.
@@ -80,18 +79,17 @@ phantom = torch.from_numpy(phantom).to(dev)
 sino = ct.forward_projection_fan(phantom, geo, backend="tomosipo")
 # But given we already defined an operator, we can just do (its the same):
 sino = A(phantom)
-
 # For noise simulation, a good approximation of CT noise is to add Poisson noise to the non-log transformed sinograms,
 # with some gaussian noise to account for the detector electronic noise and detector crosstalk.
 # A typical CT scan in a hospital will have I0=10000 photon counts in air. I0=1000 will produce an severely noisy image.
 # You should be cool with not touching the rest of the parameters.
 sino_noisy = ct.sinogram_add_noise(
-    sino, I0=10000, sigma=5, crosstalk=0.05, flat_field=None, dark_field=None
+    sino, I0=10000, sigma=5, cross_talk=0.05, flat_field=None, dark_field=None
 )
 
 #%% Plot sinograms
-sino = sino.detach().cpu().numpy()
-sino_noisy = sino_noisy.detach().cpu().numpy()
+# sino = sino.detach().cpu().numpy()
+# sino_noisy = sino_noisy.detach().cpu().numpy()
 
 plt.figure()
 plt.subplot(121)

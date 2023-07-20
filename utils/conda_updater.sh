@@ -7,4 +7,5 @@ check_run() {
 }
 
 echo "Have to update the conda environment"
-check_run env.yml "conda env update --file env.yml"
+check_run env.yml "echo 'conda enviroment changed'"
+check_run env.yml "exit 1"

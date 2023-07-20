@@ -13,6 +13,8 @@ class TransfromTemplate(object):
         return sample
 """
 
+# NOTE: This is not being used because likely more complex transforms are needed to simulate CT noise accurately.
+
 
 class FieldsCorrect(object):
     def __init__(

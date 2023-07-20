@@ -1,0 +1,6 @@
+[submodule "AItomotools/models/MS-D"]
+	path = AItomotools/models/MS-D
+	url = https://github.com/ahendriksen/msd_pytorch.git
+[submodule "AItomotools/metrics/radiomics"]
+	path = AItomotools/metrics/radiomics
+	url = https://github.com/AIM-Harvard/pyradiomics.git

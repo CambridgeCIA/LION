@@ -4,7 +4,6 @@ from AItomotools.utils.utils import run_cmd
 
 
 storage_path = LUNA_DATASET_PATH
-storage_path = storage_path.joinpath("test")
 file_ids = {3723295: [i for i in range(0, 7)], 4121926: [i for i in range(7, 10)]}
 
 for series_name, series_ids in file_ids.items():
@@ -21,5 +20,4 @@ for series_name, series_ids in file_ids.items():
         subfolder = torage_path.joinpath(zip_file_name)
         bash_command = f"7z e {zip_file_name} -o{storage_path}"
         run_cmd(bash_command)
-        # zip_file_name.unlink()
-        exit()
+        zip_file_name.unlink()

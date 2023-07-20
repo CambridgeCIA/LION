@@ -31,7 +31,7 @@ class Geometry(Parameter):
 
     @staticmethod
     def default_parameters():
-        return Parameter(
+        return Geometry(
             image_shape=[1, 512, 512],
             image_size=[5, 300, 300],
             detector_shape=[1, 900],
@@ -40,12 +40,38 @@ class Geometry(Parameter):
             dsd=1050,
             mode="fan",
             angles=np.linspace(0, 2 * np.pi, 360, endpoint=False),
+        )
+
+    @staticmethod
+    def sparse_view_parameters():
+        return Geometry(
+            image_shape=[1, 512, 512],
+            image_size=[300 / 512, 300, 300],
+            detector_shape=[1, 900],
+            detector_size=[1, 900],
+            dso=575,
+            dsd=1050,
+            mode="fan",
+            angles=np.linspace(0, 2 * np.pi, 50, endpoint=False),
+        )
+
+    @staticmethod
+    def sparse_angle_parameters():
+        return Geometry(
+            image_shape=[1, 512, 512],
+            image_size=[300 / 512, 300, 300],
+            detector_shape=[1, 900],
+            detector_size=[1, 900],
+            dso=575,
+            dsd=1050,
+            mode="fan",
+            angles=np.linspace(0, 2 * np.pi / 6, 60, endpoint=False),
         )
 
     def default_geo(self):
         self.__init__(
             image_shape=[1, 512, 512],
-            image_size=[5, 300, 300],
+            image_size=[300 / 512, 300, 300],
             detector_shape=[1, 900],
             detector_size=[1, 900],
             dso=575,
@@ -53,13 +79,3 @@ class Geometry(Parameter):
             mode="fan",
             angles=np.linspace(0, 2 * np.pi, 360, endpoint=False),
         )
-
-    def load_from_json(self, json_file_path: pathlib.Path):
-        geometry_dict = json.load(open(json_file_path, "r"))
-        self.image_shape = geometry_dict["image_shape"]
-        self.image_size = geometry_dict["image_size"]
-        self.detector_shape = geometry_dict["detector_shape"]
-        self.detector_size = geometry_dict["detector_size"]
-        self.dso = geometry_dict["dso"]
-        self.dsd = geometry_dict["dsd"]
-        self.mode = geometry_dict["mode"]
