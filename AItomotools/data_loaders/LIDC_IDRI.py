@@ -97,7 +97,8 @@ class LIDC_IDRI(Dataset):
         ], f'Mode argument {mode} not in ["testing", "training", "validation"]'
         assert task in [
             "joint",
-            "end_to_end" "segmentation",
+            "end_to_end",
+            "segmentation",
             "reconstruction",
             "diagnostic",
         ], f'task argument {task} not in ["joint", "end_to_end", "segmentation", "reconstruction", "diagnostic"]'
