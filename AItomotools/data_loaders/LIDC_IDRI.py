@@ -16,6 +16,7 @@ import torch
 import numpy as np
 import json
 from torch.utils.data import Dataset
+import matplotlib.pyplot as plt
 
 
 from AItomotools.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
@@ -28,7 +29,6 @@ def format_index(index: int) -> str:
         str_index = "0" + str_index
     assert len(str_index) == 4
     return str_index
-
 
 def load_json(file_path: pathlib.Path):
     if not file_path.is_file():
@@ -134,6 +134,7 @@ class LIDC_IDRI(Dataset):
         self.patients_masks_dictionary = load_json(
             self.path_to_processed_dataset.joinpath("patients_masks.json")
         )
+
 
         # Add patients without masks, for now hardcoded, find a solution in preprocessing
         self.patients_masks_dictionary["LIDC-IDRI-0238"] = {}
@@ -259,6 +260,7 @@ class LIDC_IDRI(Dataset):
         ), print(
             f"Total patients: {self.total_patients}, \n training patients {self.n_patients_training}, \n validation patients {self.n_patients_validation}, \n testing patients {self.n_patients_testing}"
         )
+
 
         # Get patient IDs for each
         self.patient_ids = list(self.patient_index_to_n_slices_dict.keys())
@@ -492,6 +494,7 @@ class LIDC_IDRI(Dataset):
                         f"annotation {self.annotation} not implemented, try random or consensus"
                     )
 
+
                 mask = mask.bitwise_or(nodule_mask)
 
         except KeyError:
@@ -499,6 +502,7 @@ class LIDC_IDRI(Dataset):
         # byte inversion
         background = ~mask
         return torch.stack((background, mask))
+
 
     def __len__(self):
         return len(self.slice_index_to_patient_id_list)
@@ -511,6 +515,7 @@ class LIDC_IDRI(Dataset):
         return self.get_reconstruction_tensor(file_path), self.get_mask_tensor(
             patient_index, slice_index
         )
+
 
     def __getitem__(self, index):
         patient_id = self.slice_index_to_patient_id_list[index]
@@ -529,6 +534,7 @@ class LIDC_IDRI(Dataset):
 
         if self.task in ["joint", "end_to_end", "segmentation"]:
             mask_tensor = self.get_mask_tensor(patient_id, slice_index_to_load)
+
             return reconstruction_tensor, mask_tensor
 
         elif self.task == "reconstruction":
@@ -538,6 +544,9 @@ class LIDC_IDRI(Dataset):
             return sinogram, reconstruction_tensor
 
         elif self.task == "diagnostic":
+            return self.patients_diagnosis_dictionary[patient_id]
+
+        elif self.pipeline == "diagnostic":
             return self.patients_diagnosis_dictionary[patient_id]
 
         else:
