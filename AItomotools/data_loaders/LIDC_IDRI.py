@@ -43,13 +43,15 @@ def choose_random_annotation(
 
 
 def create_consensus_annotation(
-    path_to_patient_folder: str,
-    slice_index: str,
+    path_to_patient_folder: pathlib.Path,
+    slice_index: int,
     nodule_index: str,
     nodule_annotations_list: List,
     clevel: float,
 ) -> torch.int16:
     masks = []
+    if isinstance(path_to_patient_folder, str):
+        path_to_patient_folder = pathlib.Path(path_to_patient_folder)
     for annotation in nodule_annotations_list:
         path_to_mask = path_to_patient_folder.joinpath(
             f"mask_{slice_index}_nodule_{nodule_index}_annotation_{annotation}.npy"
@@ -534,10 +536,11 @@ class LIDC_IDRI(Dataset):
 
         if self.task in ["joint", "end_to_end", "segmentation"]:
             mask_tensor = self.get_mask_tensor(patient_id, slice_index_to_load)
-
+            reconstruction_tensor = self.get_reconstruction_tensor(file_path)
             return reconstruction_tensor, mask_tensor
 
         elif self.task == "reconstruction":
+            reconstruction_tensor = self.get_reconstruction_tensor(file_path)
             sinogram = self.compute_clean_sinogram(reconstruction_tensor.float())
             if self.sinogram_transform is not None:
                 sinogram = self.sinogram_transform(sinogram)
@@ -546,7 +549,7 @@ class LIDC_IDRI(Dataset):
         elif self.task == "diagnostic":
             return self.patients_diagnosis_dictionary[patient_id]
 
-        elif self.pipeline == "diagnostic":
+        elif self.task == "diagnostic":
             return self.patients_diagnosis_dictionary[patient_id]
 
         else:
