@@ -51,7 +51,7 @@ class Luna16Dataset(Dataset):
     def __getitem__(self, index):
 
         image: torch.Tensor = torch.load(self.images_list[index]).to(self.device)
-        sinogram = self.get_clean_sinogram(index, image.float())
+        sinogram = self.compute_clean_sinogram(index, image.float())
         assert image.size() == torch.Size(
             self.geometry.image_shape
         ), f"Queried image size {image.size()} != expected size from geometry {self.geometry.image_shape}"
@@ -62,7 +62,7 @@ class Luna16Dataset(Dataset):
 
         return sinogram.float().to(self.device), image.float().to(self.device)
 
-    def get_clean_sinogram(self, index, image=None):
+    def compute_clean_sinogram(self, index, image=None):
 
         if self.operator is None:
             raise AttributeError("CT oeprator not know. Have you give a ct geometry?")
