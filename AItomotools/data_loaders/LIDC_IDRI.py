@@ -77,6 +77,7 @@ class LIDC_IDRI(Dataset):
         pcg_slices_nodule=0.5,
         clevel=0.5,
         geo=None,
+        folder=LIDC_IDRI_PROCESSED_DATASET_PATH,
     ):
 
         """
@@ -355,11 +356,13 @@ class LIDC_IDRI(Dataset):
                     ),
                 )
 
-                # Get amount of slices we want with nodule
-                number_of_slices_with_nodule = int(number_of_slices * pcg_slices_nodule)
                 # Get amount of slices we want without nodule
                 number_of_slices_without_nodule = int(
-                    number_of_slices * (1 - pcg_slices_nodule)
+                    np.ceil(number_of_slices * (1 - pcg_slices_nodule))
+                )
+                # Get amount of slices we want with nodule
+                number_of_slices_with_nodule = (
+                    number_of_slices - number_of_slices_without_nodule
                 )
 
                 # Get linspace of non-nodule and nodule slices of each patient and afterwards sort the list in increasing order
@@ -436,7 +439,7 @@ class LIDC_IDRI(Dataset):
         return slice_index_to_patient_id_list
 
     def get_reconstruction_tensor(self, file_path: pathlib.Path) -> torch.Tensor:
-        tensor = torch.from_numpy(np.load(file_path)).unsqueeze(0)
+        tensor = torch.from_numpy(np.load(file_path)).unsqueeze(0).to(self.device)
         return tensor
 
     def set_sinogram_transform(self, sinogram_transform):
@@ -536,6 +539,7 @@ class LIDC_IDRI(Dataset):
 
         elif self.task == "reconstruction":
             sinogram = self.compute_clean_sinogram(reconstruction_tensor.float())
+
             if self.sinogram_transform is not None:
                 sinogram = self.sinogram_transform(sinogram)
             return sinogram, reconstruction_tensor

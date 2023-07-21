@@ -65,13 +65,14 @@ def sinogram_add_noise(
     if torch.is_tensor(proj):
         istorch = True
         dev = proj.get_device()
+        if dev == -1:
+            dev = torch.device("cpu")
     elif isinstance(proj, np.ndarray):
         # all good
         istorch = False
         proj = torch.from_numpy(proj).cuda(dev)
     else:
         raise ValueError("numpy or torch tensor expected")
-
     if dark_field is None:
         dark_field = torch.zeros(proj.shape, device=dev)
     if flat_field is None:
