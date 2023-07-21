@@ -56,19 +56,27 @@ def process_volume(scan:pl.Scan, path_to_processed_volume_folder:pathlib.Path):
         assert np.shape(volume[:,:,slice_index]) == (512,512), print(np.shape(volume[:,:,slice_index]))
         np.save(path_to_slice,volume[:,:,slice_index])
 
-def process_patient_statistics(scan:pl.Scan):
-    list_of_annotated_nodules = scan.cluster_annotations()
-    n_slices_patient = 0
-    for annotated_nodule in list_of_annotated_nodules:
-        for annotation in annotated_nodule:
-            n_slices_patient += annotation.bbox()[-1].stop -annotation.bbox()[-1].start  #type:ignore
-    return len(list_of_annotated_nodules), int(n_slices_patient)
+def compute_slice_thickness(path_to_processed_dataset:pathlib.Path):
+    file_name = 'patient_id_to_slice_thickness.json'
+    patient_dict_to_slice_thickness = {}
+
+    for patient_index in range(1,1012):
+        formatted_index = format_index(patient_index)
+        formatted_index = f'LIDC-IDRI-{formatted_index}'
+        scan:pl.Scan = pl.query(pl.Scan).filter(pl.Scan.patient_id == formatted_index).first() #type:ignore
+        if type(scan) == type(None):
+            print(f'Current patient {formatted_index} has no scan')
+        else:
+            patient_dict_to_slice_thickness[patient_index] = scan.slice_thickness
+
+    with open(path_to_processed_dataset.joinpath(file_name),'w') as out_file:
+        print(f'Writing {file_name}...')
+        json.dump(patient_dict_to_slice_thickness, out_file)
+
 
 def pre_process_dataset(path_to_processed_dataset:pathlib.Path):
     path_to_processed_dataset.mkdir(exist_ok=True, parents=True)
 
-    patient_id_to_n_segmented_slices = {}
-    patient_id_to_n_nodules = {}
     patients_masks = {}
 
     for patient_index in range(1,1012):
@@ -85,23 +93,17 @@ def pre_process_dataset(path_to_processed_dataset:pathlib.Path):
 
                 ### Pre-process the volume
                 process_volume(scan, path_to_processed_volume_folder)
-                ### Compute volume statistics
-                n_annotated_nodules, n_segmented_slices = process_patient_statistics(scan)
-
-                patient_id_to_n_nodules[formatted_index] = n_annotated_nodules
-                patient_id_to_n_segmented_slices[formatted_index] = n_segmented_slices
-
                 ### Pre-process the masks
                 patients_masks[formatted_index] = process_patient_mask(scan, path_to_processed_volume_folder)
 
             else:
                 print(f'\t Patient already sampled, passing...')
 
-        with open(path_to_processed_dataset.joinpath('patient_id_to_n_segmented_slices.json'), 'w') as out_f:
-            json.dump(patient_id_to_n_segmented_slices, out_f)
-        with open(path_to_processed_dataset.joinpath('patient_id_to_n_nodules.json'), 'w') as out_f:
-            json.dump(patient_id_to_n_nodules, out_f)
-        with open(path_to_processed_dataset.joinpath('patients_masks.json'), 'w') as out_f:
+    path_to_patients_masks_dict = path_to_processed_dataset.joinpath('patients_masks.json')
+    if path_to_patients_masks_dict.is_file():
+        print(f'Patients masks file already written, passing...')
+    else:
+        with open(path_to_patients_masks_dict, 'w') as out_f:
             json.dump(patients_masks, out_f, indent=4)
 
 def compute_diagnosis_file(diagnosis_file_path:pathlib.Path, diagnosis_dict_save_path:pathlib.Path):
@@ -109,27 +111,60 @@ def compute_diagnosis_file(diagnosis_file_path:pathlib.Path, diagnosis_dict_save
         raise FileNotFoundError(f'No file found at {diagnosis_file_path}')
 
     if diagnosis_dict_save_path.is_file():
-        raise FileExistsError(f'There is already a file at {diagnosis_dict_save_path}, passing')
-    diagnosis_df = pd.read_excel(diagnosis_file_path)
+        print(f'There is already a file at {diagnosis_dict_save_path}, passing')
+    else:
+        diagnosis_df = pd.read_excel(diagnosis_file_path)
 
-    diagnosis_dict = {}
+        diagnosis_dict = {}
 
-    patients_column_name  = diagnosis_df.columns[0]
-    diagnosis_column_name = diagnosis_df.columns[1]
+        patients_column_name  = diagnosis_df.columns[0]
+        diagnosis_column_name = diagnosis_df.columns[1]
 
-    for patient_index in range(1,1012):
-        formatted_index = format_index(patient_index)
-        formatted_index = f'LIDC-IDRI-{formatted_index}'
-        is_index_in_df = (diagnosis_df[patients_column_name] == formatted_index).any()
-        if is_index_in_df:
-            diagnosis = diagnosis_df.loc[diagnosis_df[patients_column_name] == formatted_index, diagnosis_column_name].iloc[0]
-        else:
-            diagnosis = 0
+        for patient_index in range(1,1012):
+            formatted_index = format_index(patient_index)
+            formatted_index = f'LIDC-IDRI-{formatted_index}'
+            is_index_in_df = (diagnosis_df[patients_column_name] == formatted_index).any()
+            if is_index_in_df:
+                diagnosis = diagnosis_df.loc[diagnosis_df[patients_column_name] == formatted_index, diagnosis_column_name].iloc[0]
+            else:
+                diagnosis = 0
 
-        diagnosis_dict[formatted_index] = int(diagnosis)
+            diagnosis_dict[formatted_index] = int(diagnosis)
 
-    with open(diagnosis_dict_save_path, 'w') as out_file:
-        json.dump(diagnosis_dict, out_file)
+        with open(diagnosis_dict_save_path, 'w') as out_file:
+            json.dump(diagnosis_dict, out_file)
+
+def compute_patient_with_nodule_subtetly(
+        path_to_processed_dataset: pathlib.Path,
+        nodule_subtelty:int,
+        operator:str
+        ) -> None:
+    accepter_operator_argument = ['inferior', 'superior', 'inferior_or_equal', 'superior_or_equal']
+    assert nodule_subtelty in [1,2,3,4,5], print(f'Wrong nodule_subtelty argument, cf https://pylidc.github.io/annotation.html')
+    assert operator in accepter_operator_argument, print(f'Wrong operator_argument, must be in {accepter_operator_argument}')
+
+    file_name = f'patients_with_nodule_subtlety_{operator}_to_{nodule_subtelty}.json'
+
+    if operator == 'superior':
+        annotations:List[pl.Annotation] = pl.query(pl.Annotation).filter(nodule_subtelty < pl.Annotation.subtlety).all()
+    elif operator == 'superior_or_equal':
+        annotations:List[pl.Annotation] = pl.query(pl.Annotation).filter(nodule_subtelty <= pl.Annotation.subtlety).all()
+    elif operator == 'inferior':
+        annotations:List[pl.Annotation] = pl.query(pl.Annotation).filter(pl.Annotation.subtlety < nodule_subtelty).all()
+    elif operator == 'inferior_or_equal':
+        annotations:List[pl.Annotation] = pl.query(pl.Annotation).filter(pl.Annotation.subtlety <= nodule_subtelty).all()
+    else:
+        raise ValueError(f'Wrong operator_argument, must be in {accepter_operator_argument}')
+
+    patient_list = []
+
+    for annotation in annotations:
+        if annotation.scan.patient_id not in patient_list:
+            patient_list.append(annotation.scan.patient_id)
+
+    with open(path_to_processed_dataset.joinpath(file_name),'w') as out_file:
+        print(f'Writing {file_name}...')
+        json.dump(patient_list, out_file)
 
 if __name__ == '__main__':
     path_to_raw_dataset = pathlib.Path('/local/scratch/public/AItomotools/raw/LIDC-IDRI')
@@ -137,5 +172,6 @@ if __name__ == '__main__':
     path_to_processed_dataset = pathlib.Path('/local/scratch/public/AItomotools/processed/LIDC-IDRI')
     print('LIDC-IDRI dataset pre-processing functions')
     # pre_process_dataset(path_to_processed_dataset)
-    compute_diagnosis_file(path_to_diagnosis_file, path_to_processed_dataset.joinpath('patient_id_to_diagnosis.json'))
-
+    # compute_diagnosis_file(path_to_diagnosis_file, path_to_processed_dataset.joinpath('patient_id_to_diagnosis.json'))
+    # compute_patient_with_nodule_subtetly(path_to_processed_dataset, nodule_subtelty=4, operator='superior')
+    # compute_slice_thickness(path_to_processed_dataset)
