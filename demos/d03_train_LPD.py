@@ -1,3 +1,12 @@
+# =============================================================================
+# This file is part of AItomotools library
+# License : BSD-3
+#
+# Author  : Ander Biguri
+# Modifications: -
+# =============================================================================
+
+
 import torch
 import numpy as np
 from torch.utils.data import DataLoader

@@ -1,3 +1,11 @@
+# This file is part of AItomotools library
+# License : BSD-3
+#
+# Author  : Ander Biguri
+# Modifications: -
+# =============================================================================
+
+
 from AItomotools.models import AItomomodel
 
 from AItomotools.utils.math import power_method

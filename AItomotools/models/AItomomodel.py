@@ -1,3 +1,11 @@
+# This file is part of AItomotools library
+# License : BSD-3
+#
+# Author  : Ander Biguri
+# Modifications: -
+# =============================================================================
+
+
 #%% This is a base class for AItomotools.
 #
 # All classes must derive from this one.

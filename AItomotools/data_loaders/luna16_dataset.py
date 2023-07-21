@@ -1,3 +1,11 @@
+# This file is part of AItomotools library
+# License : BSD-3
+#
+# Author  : Ander Biguri
+# Modifications: Emilien Valat
+# =============================================================================
+
+
 import torch
 from torch.utils.data import Dataset
 

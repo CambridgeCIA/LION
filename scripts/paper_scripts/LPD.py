@@ -1,3 +1,12 @@
+# =============================================================================
+# This file is part of AItomotools library
+# License : BSD-3
+#
+# Author  : Ander Biguri
+# Modifications: -
+# =============================================================================
+
+
 #%% Learned Primal Dual
 #
 # This script attempts to replicate the experiments descrived in
