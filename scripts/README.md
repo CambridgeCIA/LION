@@ -1,3 +1,10 @@
+# Whats in this folder?
+
+Script contains full scripts that reproduce code that can be useful for others. In particular
+- data_generation_scripts: Contains the code used to pre-process datasets in AItomotools format, such that the DataLoaders can load them proper. 
+- paper_scripts: Contains scripts that reproduce papers, in AItomotools format. 
+
+
 # How to write a good script
 
 WIP. Make template?

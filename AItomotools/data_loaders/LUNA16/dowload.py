@@ -1,3 +1,11 @@
+# This file is part of AItomotools library
+# License : BSD-3
+#
+# Author  : Emilien Valat
+# Modifications: Ander Biguri
+# =============================================================================
+
+
 import subprocess
 from AItomotools.utils.paths import LUNA_DATASET_PATH
 from AItomotools.utils.utils import run_cmd
