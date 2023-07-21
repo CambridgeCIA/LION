@@ -11,7 +11,12 @@ University of Cambridge Computational Image Analysis (CIA) groups AI tools for t
 Install: 
 
 ```
-conda env create --name aitomotools --file=env.yml
+git clone https://github.com/CambridgeCIA/AItomotools.git
+cd AItomotools
+conda env create --file=env.yml
+git submodule update --init --recursive
+conda activate aitools
+python setup.py install
 ```
 
 Optional, if you want pre-commits. 
