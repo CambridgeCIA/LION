@@ -131,39 +131,48 @@ class AItomotoModel(nn.Module, ABC):
         if isinstance(fname, str):
             fname = Path(fname)
 
+        # Create dict of saved data:
+        ##########################
+        dic = {"model_state_dict": self.state_dict()}
+
         # Parse kwargs
         ################
-        dataset_params = []
+        dataset_params = np.empty(0)
         if "dataset" in kwargs:
             dataset_params = kwargs.pop("dataset")
+            dic["dataset_params"] = dataset_params
+
         else:
             warnings.warn(
                 "\nExpected 'dataset' parameter! Only ignore if you really don't have it.\n"
             )
-        training = []
+        training = np.empty(0)
         if "training" in kwargs:
             training = kwargs.pop("training")
+            dic["training_params"] = training
+
         else:
             warnings.warn(
                 "\nExpected 'training' parameter! Only ignore if there has been no training.\n"
             )
 
-        loss = []
         if "loss" in kwargs:
-            loss = kwargs.pop("loss")
-        epoch = []
+            dic["loss"] = kwargs.pop("loss")
+        epoch = np.empty(0)
         if "epoch" in kwargs:
-            epoch = kwargs.pop("epoch")
-        optimizer = []
+            dic["epoch"] = kwargs.pop("epoch")
+        optimizer = np.empty(0)
         if "optimizer" in kwargs:
-            optimizer = kwargs.pop("optimizer")
+            dic["optimizer_state_dict"] = kwargs.pop("optimizer")
 
         # (optional)
         geo = []
         if "geometry" in kwargs:
             geo = kwargs.pop("geometry")
+            dic["geo"] = geo
         elif hasattr(self, "geo") and self.geo:
             geo = self.geo
+            dic["geo"] = geo
         else:
             warnings.warn(
                 "Expected 'geometry' parameter! Only ignore if tomographic reconstruction was not part of the model."
@@ -190,23 +199,6 @@ class AItomotoModel(nn.Module, ABC):
             options.dataset_params = dataset_params
         if training:
             options.training = training
-
-        # Prepare data to be saved
-        #########################
-        # Make a dictionary of relevant values
-        dic = {"model_state_dict": self.state_dict()}
-        if loss:
-            dic["loss"] = loss
-        if epoch:
-            dic["epoch"] = epoch
-        if optimizer:
-            dic["optimizer_state_dict"] = optimizer.state_dict()
-        if geo:
-            dic["geo"] = geo
-        if dataset_params:
-            dic["dataset_params"] = dataset_params
-        if training:
-            dic["training_params"] = training
 
         # Do the save:
 
