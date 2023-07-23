@@ -134,7 +134,7 @@ class LIDC_IDRI(Dataset):
             self.operator = ct.make_operator(geo)
 
         # Start of Patient pre-processing
-        self.path_to_processed_dataset = pathlib.Path(LIDC_IDRI_PROCESSED_DATASET_PATH)
+        self.path_to_processed_dataset = pathlib.Path(folder)
         self.patients_masks_dictionary = load_json(
             self.path_to_processed_dataset.joinpath("patients_masks.json")
         )
