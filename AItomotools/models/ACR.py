@@ -55,6 +55,70 @@ class ICNN_layer(nn.Module):
         return res
 
 
+###An L2 tern with learnable weight
+# define a network for training the l2 term
+class L2net(nn.Module):
+    def __init__(self):
+        super(L2net, self).__init__()
+
+        self.l2_penalty = nn.Parameter((-9.0) * torch.ones(1))
+
+    def forward(self, x):
+        l2_term = torch.sum(x.view(x.size(0), -1) ** 2, dim=1)
+        out = ((torch.nn.functional.softplus(self.l2_penalty)) * l2_term).view(
+            x.size(0), -1
+        )
+        return out
+
+
+# sparsifying filter-bank (SFB) module
+class SFB(AItomomodel.AItomotoModel):
+    def __init__(self, model_parameters):
+        if model_parameters is None:
+            model_parameters = ACR.default_parameters()
+        super().__init__(model_parameters)
+        # FoE kernels
+        self.penalty = nn.Parameter((-12.0) * torch.ones(1))
+        self.n_kernels = model_parameters.n_kernels
+        self.conv = nn.ModuleList(
+            [
+                nn.Conv2d(
+                    1,
+                    model_parameters.n_filters,
+                    kernel_size=7,
+                    stride=1,
+                    padding=3,
+                    bias=False,
+                )
+                for i in range(self.n_kernels)
+            ]
+        )
+        if model_parameters.L2net:
+            self.L2net = L2net()
+
+    @staticmethod
+    def default_parameters():
+        param = Parameter()
+        param.n_kernels = 10
+        param.n_filters = 32
+        paran.L2net = True
+        return param
+
+    def forward(self, x):
+        # compute the output of the FoE part
+        total_out = 0.0
+        for kernel_idx in range(self.n_kernels):
+            x_out = torch.abs(self.conv[kernel_idx](x))
+            x_out_flat = x_out.view(x.size(0), -1)
+            total_out += torch.sum(x_out_flat, dim=1)
+
+        total_out = total_out.view(x.size(0), -1)
+        out = (torch.nn.functional.softplus(self.penalty)) * total_out
+        if self.model_parameters.L2net:
+            out = out + self.L2net(x)
+        return out
+
+
 class ACR(AItomomodel.AItomotoModel):
     def __init__(self, model_parameters: Parameter = None):
         if model_parameters is None:
