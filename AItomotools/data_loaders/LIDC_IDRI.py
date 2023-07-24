@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 
 from AItomotools.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
 import AItomotools.CTtools.ct_utils as ct
+from AItomotools.utils.parameter import Parameter
 
 
 def format_index(index: int) -> str:
@@ -67,19 +68,10 @@ def create_consensus_annotation(
 class LIDC_IDRI(Dataset):
     def __init__(
         self,
-        device: torch.device,
-        task: str,
-        mode: str,
-        training_proportion: float = 0.8,
-        validation_proportion: float = 0.1,
-        annotation: str = "consensus",
-        max_num_slices_per_patient=-1,
-        pcg_slices_nodule=0.5,
-        clevel=0.5,
-        geo=None,
-        folder=LIDC_IDRI_PROCESSED_DATASET_PATH,
+        mode,
+        geometry_parameters: ct.Geometry = None,
+        parameters: Parameter = None,
     ):
-
         """
         Initializes LIDC-IDRI dataset.
 
@@ -102,12 +94,19 @@ class LIDC_IDRI(Dataset):
             - geo: Geometry() type, if sinograms are requied (e.g. fo "reconstruction")
 
         """
+
         # Input parsing
         assert mode in [
             "testing",
             "training",
             "validation",
         ], f'Mode argument {mode} not in ["testing", "training", "validation"]'
+
+        if parameters is None:
+            parameters = LIDC_IDRI.default_parameters(mode=mode)
+        self.params = parameters
+
+        task = self.params.task
         assert task in [
             "joint",
             "end_to_end",
@@ -119,22 +118,28 @@ class LIDC_IDRI(Dataset):
         if task not in ["segmentation", "reconstruction"]:
             raise NotImplementedError(f"task {task} not implemented yet")
 
-        if task in ["reconstruction"] and geo is None:
+        if (
+            task in ["reconstruction"]
+            and geometry_parameters is None
+            and self.params.geo is None
+        ):
             raise ValueError("geo input required for recosntruction modes")
 
         # Aux variable setting
         self.sinogram_transform = None
         self.image_transform = None
-        self.device = device
+        self.device = self.params.device
 
         if task in ["reconstruction"]:
             self.image_transform = ct.from_HU_to_mu
 
-        if geo is not None:
-            self.operator = ct.make_operator(geo)
-
+        if geometry_parameters is not None:
+            self.params.geo = geometry_parameters
+            self.operator = ct.make_operator(geometry_parameters)
+        elif self.params.geo is not None:
+            self.operator = ct.make_operator(self.params.geo)
         # Start of Patient pre-processing
-        self.path_to_processed_dataset = pathlib.Path(LIDC_IDRI_PROCESSED_DATASET_PATH)
+        self.path_to_processed_dataset = pathlib.Path(self.params.folder)
         self.patients_masks_dictionary = load_json(
             self.path_to_processed_dataset.joinpath("patients_masks.json")
         )
@@ -149,11 +154,12 @@ class LIDC_IDRI(Dataset):
         self.total_patients = (
             len(list(self.path_to_processed_dataset.glob("LIDC-IDRI-*"))) + 1
         )
-        self.num_slices_per_patient = max_num_slices_per_patient
-        self.pcg_slices_nodule = pcg_slices_nodule
-        self.task = task
-        self.annotation = annotation
-        self.clevel = clevel  # consensus level, only used if annotation == consensus
+        self.num_slices_per_patient = self.params.max_num_slices_per_patient
+        self.pcg_slices_nodule = self.params.pcg_slices_nodule
+        self.annotation = self.params.annotation
+        self.clevel = (
+            self.params.clevel
+        )  # consensus level, only used if annotation == consensus
         self.patient_index_to_n_slices_dict: Dict = {
             f"LIDC-IDRI-{format_index(index)}": len(
                 list(
@@ -241,10 +247,9 @@ class LIDC_IDRI(Dataset):
         }
 
         ##% Divide dataset in training/validation/testing
-        self.training_proportion = training_proportion
-        self.validation_proportion = validation_proportion
-        self.mode = mode
-
+        self.training_proportion = self.params.training_proportion
+        self.validation_proportion = self.params.validation_proportion
+        self.params.mode = mode
         # Commpute number if images for each
         self.n_patients_training = math.floor(
             self.training_proportion * (self.total_patients)
@@ -283,15 +288,15 @@ class LIDC_IDRI(Dataset):
         )
 
         print("Preparing patient list, this may take time....")
-        if self.mode == "training":
+        if self.params.mode == "training":
             patient_list_to_load = self.training_patients_list
-        elif self.mode == "validation":
+        elif self.params.mode == "validation":
             patient_list_to_load = self.validation_patients_list
-        elif self.mode == "testing":
+        elif self.params.mode == "testing":
             patient_list_to_load = self.testing_patients_list
         else:
             raise NotImplementedError(
-                f"mode {self.mode} not implemented, try training, validation or testing"
+                f"mode {self.params.mode} not implemented, try training, validation or testing"
             )
 
         self.slices_to_load = self.get_slices_to_load(
@@ -308,7 +313,32 @@ class LIDC_IDRI(Dataset):
             self.slices_to_load
         )
 
-        print(f"Patient lists ready for {self.mode} dataset")
+        print(f"Patient lists ready for {self.params.mode} dataset")
+
+    @staticmethod
+    def default_parameters(mode="training", geo=None, task="reconstruction"):
+        param = Parameter()
+        param.training_proportion = 0.8
+        param.validation_proportion = 0.1
+        param.testing_proportion = (
+            1 - param.training_proportion - param.validation_proportion
+        )  # not used, but for metadata
+        param.max_num_slices_per_patient = -1  # i.e. all
+        param.pcg_slices_nodule = 0.5
+        param.task = task
+        param.folder = LIDC_IDRI_PROCESSED_DATASET_PATH
+        if task == "reconstruction" and geo is None:
+            raise ValueError(
+                "For reconstruction task geometry needs to be input to default_parameters(geo=geometry_param)"
+            )
+
+        # segmentation specific
+        param.clevel = 0.5
+        param.annotation = "consensus"
+        param.mode = mode
+        param.device = torch.cuda.current_device()
+        param.geo = geo
+        return param
 
     def get_slices_to_load(
         self,
@@ -528,23 +558,28 @@ class LIDC_IDRI(Dataset):
             f"{patient_id}/slice_{slice_index_to_load}.npy"
         )
 
-        if self.task in ["joint", "end_to_end", "segmentation", "reconstruction"]:
+        if self.params.task in [
+            "joint",
+            "end_to_end",
+            "segmentation",
+            "reconstruction",
+        ]:
             reconstruction_tensor = self.get_reconstruction_tensor(file_path)
             if self.image_transform is not None:
                 reconstruction_tensor = self.image_transform(reconstruction_tensor)
 
-        if self.task in ["joint", "end_to_end", "segmentation"]:
+        if self.params.task in ["joint", "end_to_end", "segmentation"]:
             mask_tensor = self.get_mask_tensor(patient_id, slice_index_to_load)
             return reconstruction_tensor, mask_tensor
 
-        elif self.task == "reconstruction":
+        elif self.params.task == "reconstruction":
             sinogram = self.compute_clean_sinogram(reconstruction_tensor.float())
 
             if self.sinogram_transform is not None:
                 sinogram = self.sinogram_transform(sinogram)
             return sinogram, reconstruction_tensor
 
-        elif self.task == "diagnostic":
+        elif self.params.task == "diagnostic":
             return self.patients_diagnosis_dictionary[patient_id]
         else:
             raise NotImplementedError
