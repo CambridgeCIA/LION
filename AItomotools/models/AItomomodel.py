@@ -217,7 +217,7 @@ class AItomotoModel(nn.Module, ABC):
             fname,
             epoch=epoch,
             loss=loss,
-            optimizer=optimizer,
+            optimizer=optimizer.state_dict(),
             training=training_param,
             **kwargs,
         )
