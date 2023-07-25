@@ -103,7 +103,7 @@ class LIDC_IDRI(Dataset):
         ], f'Mode argument {mode} not in ["testing", "training", "validation"]'
 
         if parameters is None:
-            parameters = LIDC_IDRI.default_parameters(mode=mode)
+            parameters = LIDC_IDRI.default_parameters()
         self.params = parameters
 
         task = self.params.task
@@ -139,6 +139,7 @@ class LIDC_IDRI(Dataset):
         elif self.params.geo is not None:
             self.operator = ct.make_operator(self.params.geo)
         # Start of Patient pre-processing
+
         self.path_to_processed_dataset = pathlib.Path(self.params.folder)
         self.patients_masks_dictionary = load_json(
             self.path_to_processed_dataset.joinpath("patients_masks.json")
@@ -316,8 +317,9 @@ class LIDC_IDRI(Dataset):
         print(f"Patient lists ready for {self.params.mode} dataset")
 
     @staticmethod
-    def default_parameters(mode="training", geo=None, task="reconstruction"):
+    def default_parameters(geo=None, task="reconstruction"):
         param = Parameter()
+        param.name = "LIDC-IDRI Data Loader"
         param.training_proportion = 0.8
         param.validation_proportion = 0.1
         param.testing_proportion = (
@@ -335,7 +337,6 @@ class LIDC_IDRI(Dataset):
         # segmentation specific
         param.clevel = 0.5
         param.annotation = "consensus"
-        param.mode = mode
         param.device = torch.cuda.current_device()
         param.geo = geo
         return param
