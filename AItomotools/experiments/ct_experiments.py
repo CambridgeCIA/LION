@@ -18,7 +18,7 @@ from AItomotools.data_loaders.LIDC_IDRI import LIDC_IDRI
 
 
 class LowDoseCTRecon:
-    def __init__(experiment_params=None):
+    def __init__(self, experiment_params=None):
         if experiment_params is None:
             experiment_params = LowDoseCTRecon.default_parameters()
 
@@ -48,20 +48,25 @@ class LowDoseCTRecon:
         param.data_loader_params = LIDC_IDRI.default_parameters(
             geo=param.geo, task="reconstruction"
         )
-        param.data_loader_params.max_num_slices_per_patient = num_slices
+        param.data_loader_params.max_num_slices_per_patient = 5
+        return param
 
     def get_training_dataset(self):
-        dataloader = LIDC_IDRI(mode="training", parameters=self.data_loader_params)
+        dataloader = LIDC_IDRI(
+            mode="training", parameters=self.param.data_loader_params
+        )
         dataloader.set_sinogram_transform(self.sino_fun)
         return dataloader
 
     def get_validation_dataset(self):
-        dataloader = LIDC_IDRI(mode="validation", parameters=self.data_loader_params)
+        dataloader = LIDC_IDRI(
+            mode="validation", parameters=self.param.data_loader_params
+        )
         dataloader.set_sinogram_transform(self.sino_fun)
         return dataloader
 
     def get_testing_dataset(self):
-        dataloader = LIDC_IDRI(mode="testing", parameters=self.data_loader_params)
+        dataloader = LIDC_IDRI(mode="testing", parameters=self.param.data_loader_params)
         dataloader.set_sinogram_transform(self.sino_fun)
         return dataloader
 
@@ -96,19 +101,24 @@ class LimitedAngleCTRecon:
         param.data_loader_params = LIDC_IDRI.default_parameters(
             geo=param.geo, task="reconstruction"
         )
-        param.data_loader_params.max_num_slices_per_patient = num_slices
+        param.data_loader_params.max_num_slices_per_patient = 5
+        return param
 
     def get_training_dataset(self):
-        dataloader = LIDC_IDRI(mode="training", parameters=self.data_loader_params)
+        dataloader = LIDC_IDRI(
+            mode="training", parameters=self.param.data_loader_params
+        )
         dataloader.set_sinogram_transform(self.sino_fun)
         return dataloader
 
     def get_validation_dataset(self):
-        dataloader = LIDC_IDRI(mode="validation", parameters=self.data_loader_params)
+        dataloader = LIDC_IDRI(
+            mode="validation", parameters=self.param.data_loader_params
+        )
         dataloader.set_sinogram_transform(self.sino_fun)
         return dataloader
 
     def get_testing_dataset(self):
-        dataloader = LIDC_IDRI(mode="testing", parameters=self.data_loader_params)
+        dataloader = LIDC_IDRI(mode="testing", parameters=self.param.data_loader_params)
         dataloader.set_sinogram_transform(self.sino_fun)
         return dataloader
