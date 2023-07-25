@@ -15,40 +15,25 @@ from AItomotools.models.FBPConvNet import FBPConvNet
 from AItomotools.utils.parameter import Parameter
 from ts_algorithms import fdk
 
+
+import AItomotools.experiments.ct_experiments as ct_experiments
+
+
 #%% Chose device:
 device = torch.device("cuda:0")
 savefolder = pathlib.Path("/home/ab2860/rds/hpc-work/models/low_dose_full_angle")
 datafolder = pathlib.Path("/home/ab2860/rds/hpc-work/AItomotools/processed/LIDC-IDRI/")
 # savefolder = pathlib.Path('./')
 ##################################################
-#%% Create CT geometry
-geom = ctgeo.Geometry.default_parameters()
-
+#%% Define experiment
+experiment = ct_experiments.LowDoseCTRecon()
+experiment.param.data_loader_params.folder = datafolder
 
 #%% Dataset
-num_slices = 5
-lidc_dataset = LIDC_IDRI(
-    device=device,
-    task="reconstruction",
-    mode="training",
-    max_num_slices_per_patient=num_slices,
-    geo=geom,
-    folder=datafolder,
-)
-lidc_dataset_val = LIDC_IDRI(
-    device=device,
-    task="reconstruction",
-    mode="validation",
-    max_num_slices_per_patient=num_slices,
-    geo=geom,
-    folder=datafolder,
-)
+lidc_dataset = experiment.get_training_dataset()
+lidc_dataset_val = experiment.get_validation_dataset()
 
-# Low dose I0=1000, sigma=5, cross_talk=0
-sino_fun = lambda sino: ct.sinogram_add_noise(sino, I0=1000, sigma=5, cross_talk=0)
-lidc_dataset.set_sinogram_transform(sino_fun)
-lidc_dataset_val.set_sinogram_transform(sino_fun)
-
+#%% Define DataLoader
 # Use the same amount of training
 batch_size = 8
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
@@ -120,7 +105,6 @@ for epoch in range(start_epoch, train_param.epochs):
         loss = loss_fcn(reconstruction, target_reconstruction)
 
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
 
         train_loss += loss.item()
 
@@ -154,6 +138,7 @@ for epoch in range(start_epoch, train_param.epochs):
             epoch=epoch + 1,
             training=train_param,
             loss=min_valid_loss,
+            dataset=experiment.param,
         )
 
     # Checkpoint every 10 iters anyway
@@ -164,6 +149,7 @@ for epoch in range(start_epoch, train_param.epochs):
             total_loss,
             optimiser,
             train_param,
+            dataset=experiment.param,
         )
 
 
@@ -171,4 +157,5 @@ model.save(
     savefolder.joinpath("FBPConvNet_final_iter.pt"),
     epoch=train_param.epochs,
     training=train_param,
+    dataset=experiment.param,
 )

@@ -13,6 +13,7 @@ import AItomotools.CTtools.ct_utils as ct
 from AItomotools.data_loaders.LIDC_IDRI import LIDC_IDRI
 from AItomotools.models.LPD import LPD
 from AItomotools.utils.parameter import Parameter
+import AItomotools.experiments.ct_experiments as ct_experiments
 
 
 #%% Chose device:
@@ -21,33 +22,13 @@ savefolder = pathlib.Path("/home/ab2860/rds/hpc-work/models/low_dose_full_angle"
 datafolder = pathlib.Path("/home/ab2860/rds/hpc-work/AItomotools/processed/LIDC-IDRI/")
 
 ##################################################
-#%% Create CT geometry
-geom = ctgeo.Geometry.default_parameters()
-
+#%% Define experiment
+experiment = ct_experiments.LowDoseCTRecon()
+experiment.param.data_loader_params.folder = datafolder
 
 #%% Dataset
-num_slices = 5
-lidc_dataset = LIDC_IDRI(
-    device=device,
-    task="reconstruction",
-    mode="training",
-    max_num_slices_per_patient=num_slices,
-    geo=geom,
-    folder=datafolder,
-)
-lidc_dataset_val = LIDC_IDRI(
-    device=device,
-    task="reconstruction",
-    mode="validation",
-    max_num_slices_per_patient=num_slices,
-    geo=geom,
-    folder=datafolder,
-)
-
-# Low dose I0=1000, sigma=5, cross_talk=0
-sino_fun = lambda sino: ct.sinogram_add_noise(sino, I0=1000, sigma=5, cross_talk=0)
-lidc_dataset.set_sinogram_transform(sino_fun)
-lidc_dataset_val.set_sinogram_transform(sino_fun)
+lidc_dataset = experiment.get_training_dataset()
+lidc_dataset_val = experiment.get_validation_dataset()
 
 # Use the same amount of training
 batch_size = 8

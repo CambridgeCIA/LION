@@ -19,6 +19,7 @@ from AItomotools.data_loaders.LIDC_IDRI import LIDC_IDRI
 
 class LowDoseCTRecon:
     def __init__(self, experiment_params=None):
+
         if experiment_params is None:
             experiment_params = LowDoseCTRecon.default_parameters()
 
@@ -72,7 +73,7 @@ class LowDoseCTRecon:
 
 
 class LimitedAngleCTRecon:
-    def __init__(experiment_params=None):
+    def __init__(self, experiment_params=None):
         if experiment_params is None:
             experiment_params = LowDoseCTRecon.default_parameters()
 
@@ -102,6 +103,7 @@ class LimitedAngleCTRecon:
             geo=param.geo, task="reconstruction"
         )
         param.data_loader_params.max_num_slices_per_patient = 5
+
         return param
 
     def get_training_dataset(self):
