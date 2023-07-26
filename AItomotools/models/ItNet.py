@@ -1,3 +1,11 @@
+# This file is part of AItomotools library
+# License : BSD-3
+#
+# Author  : Oliver Coughlan
+# Modifications: Ander Biguri
+# =============================================================================
+
+
 import numpy as np
 import torch
 import torch.nn as nn
