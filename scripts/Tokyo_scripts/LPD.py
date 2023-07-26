@@ -18,9 +18,12 @@ import AItomotools.experiments.ct_experiments as ct_experiments
 
 #%% Chose device:
 device = torch.device("cuda:0")
+torch.cuda.set_device(device)
 savefolder = pathlib.Path("/home/ab2860/rds/hpc-work/models/low_dose_full_angle")
 datafolder = pathlib.Path("/home/ab2860/rds/hpc-work/AItomotools/processed/LIDC-IDRI/")
 
+# savefolder = pathlib.Path('./')
+# datafolder = pathlib.Path("/local/scratch/public/AItomotools/processed/LIDC-IDRI/")
 ##################################################
 #%% Define experiment
 experiment = ct_experiments.LowDoseCTRecon()
@@ -43,7 +46,7 @@ default_parameters = LPD.default_parameters()
 default_parameters.step_size = None
 default_parameters.learned_step = True
 default_parameters.step_positive = True
-model = LPD(geom, default_parameters).to(device)
+model = LPD(experiment.geo, default_parameters).to(device)
 
 
 #%% Optimizer
