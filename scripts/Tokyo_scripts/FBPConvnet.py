@@ -89,6 +89,7 @@ if checkpoints:
     model, options, data = FBPConvNet.load_checkpoint(
         savefolder.joinpath(checkpoints[-1])
     )
+    model.to(device)
     optimiser.load_state_dict(data["optimizer_state_dict"])
     start_epoch = data["epoch"]
     total_loss = data["loss"]

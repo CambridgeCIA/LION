@@ -76,6 +76,7 @@ if not my_file.is_file():
         model, options, data = UNet.load_checkpoint(
             savefolder.joinpath(checkpoints[-1])
         )
+        model.to(device)
         optimiser.load_state_dict(data["optimizer_state_dict"])
         start_epoch = data["epoch"]
         total_loss = data["loss"]
@@ -193,6 +194,7 @@ if my_file.is_file():
 checkpoints = sorted(list(savefolder.glob("ItNet_check_*.pt")))
 if checkpoints:
     model, options, data = ItNet.load_checkpoint(savefolder.joinpath(checkpoints[-1]))
+    model.to(device)
     optimiser.load_state_dict(data["optimizer_state_dict"])
     start_epoch = data["epoch"]
     total_loss = data["loss"]

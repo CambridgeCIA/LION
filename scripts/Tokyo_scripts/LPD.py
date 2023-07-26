@@ -86,6 +86,7 @@ if my_file.is_file():
 checkpoints = sorted(list(savefolder.glob("LPD_check_*.pt")))
 if checkpoints:
     model, options, data = LPD.load_checkpoint(savefolder.joinpath(checkpoints[-1]))
+    model.to(device)
     optimiser.load_state_dict(data["optimizer_state_dict"])
     start_epoch = data["epoch"]
     total_loss = data["loss"]
