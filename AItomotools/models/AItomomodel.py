@@ -43,7 +43,7 @@ from pathlib import Path
 import subprocess
 
 
-class AItomotoModel(nn.Module, ABC):
+class AItomoModel(nn.Module, ABC):
     """
     Base class for all models in the toolbox,
     """

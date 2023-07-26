@@ -90,7 +90,7 @@ class Up(nn.Module):
         return self.block(x)
 
 
-class FBPConvNet(AItomomodel.AItomotoModel):
+class FBPConvNet(AItomomodel.AItomoModel):
     def __init__(self, model_parameters: Parameter = None):
         if model_parameters is None:
             model_parameters = FBPConvNet.default_parameters()
