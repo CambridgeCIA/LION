@@ -26,11 +26,8 @@ class LowDoseCTRecon:
         self.param = experiment_params
         self.geo = experiment_params.geo
 
-        self.sino_fun = lambda sino: ct.sinogram_add_noise(
-            sino,
-            I0=self.param.noise_params.I0,
-            sigma=self.param.noise_params.sigma,
-            cross_talk=self.param.noise_params.cross_talk,
+        self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, cross_talk=self.param.noise_params.cross_talk: ct.sinogram_add_noise(
+            sino, I0=I0, sigma=sigma, cross_talk=cross_talk
         )
 
     @staticmethod
@@ -79,11 +76,8 @@ class LimitedAngleCTRecon:
 
         self.param = experiment_params
         self.geo = experiment_params.geo
-        self.sino_fun = lambda sino: ct.sinogram_add_noise(
-            sino,
-            I0=self.param.noise_params.I0,
-            sigma=self.param.noise_params.sigma,
-            cross_talk=self.param.noise_params.cross_talk,
+        self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, cross_talk=self.param.noise_params.cross_talk: ct.sinogram_add_noise(
+            sino, I0=I0, sigma=sigma, cross_talk=cross_talk
         )
 
     @staticmethod
