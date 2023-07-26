@@ -13,7 +13,7 @@ from AItomotools.utils.parameter import Parameter
 import msd_pytorch as msd
 
 
-class MS_D(AItomomodel.AItomotoModel):
+class MS_D(AItomomodel.AItomoModel):
     def __init__(self, model_parameters=None):
         if model_parameters is None:
             model_parameters = MS_D.default_parameters()

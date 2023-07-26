@@ -85,7 +85,7 @@ class RegProximal(nn.Module):
         return self.block(x)
 
 
-class LPD(AItomomodel.AItomotoModel):
+class LPD(AItomomodel.AItomoModel):
     """Learn Primal Dual network"""
 
     def __init__(
@@ -174,15 +174,16 @@ class LPD(AItomomodel.AItomotoModel):
             )
 
     @staticmethod
-    def default_parameters(mode="ct"):
+    def default_parameters():
         LPD_params = Parameter()
         LPD_params.n_iters = 10
-        LPD_params.mode = mode
         LPD_params.data_channels = [7, 32, 32, 5]
         LPD_params.reg_channels = [6, 32, 32, 5]
         LPD_params.learned_step = False
         LPD_params.step_size = 1
         LPD_params.step_positive = False
+        LPD_params.mode = "ct"
+
         return LPD_params
 
     @staticmethod

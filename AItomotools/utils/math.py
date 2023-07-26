@@ -25,7 +25,7 @@ def power_method(op, maxiter=100, tol=1e-6):
     return sigma
 
 
-def test_convexity(net, x, device=device):
+def test_convexity(net, x, device):
     # check convexity of the net numerically
     print("running a numerical convexity test...")
     n_trials = 100
