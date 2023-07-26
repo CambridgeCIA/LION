@@ -299,7 +299,7 @@ class ItNet(AItomomodel.AItomoModel):
             img = unet(img)
 
             for j in range(img.shape[0]):
-                update[j] = fdk(self.op, self.op(img[j]) - sino[j])
-            img = img - self.step_size[i] * update
+                update[j] = self.step_size[i] * fdk(self.op, self.op(img[j]) - sino[j])
+            img = img - update
 
         return img
