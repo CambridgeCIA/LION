@@ -206,20 +206,16 @@ class ItNet(AItomomodel.AItomoModel):
         # Define step size
         if self.model_parameters.step_size is None:
             # compute step size
-            self.model_parameters.step_size = torch.from_numpy(
-                np.array([1] * self.model_parameters.n_iters)
+            self.model_parameters.step_size = np.array(
+                [1] * self.model_parameters.n_iters
             )
 
         elif not hasattr(self.model_parameters.step_size, "__len__"):
-            self.model_parameters.step_size = torch.from_numpy(
-                np.array(
-                    self.model_parameters.step_size * self.model_parameters.n_iters
-                )
+            self.model_parameters.step_size = np.array(
+                self.model_parameters.step_size * self.model_parameters.n_iters
             )
         elif len(self.model_parameters.step_size) == self.model_parameters.n_iters:
-            self.model_parameters.step_size = torch.tensor(
-                self.model_parameters.step_size
-            )
+            self.model_parameters.step_size = np.array(self.model_parameters.step_size)
         else:
             raise ValueError("Step size not understood")
 
