@@ -123,28 +123,40 @@ class FBPConvNet(AItomomodel.AItomoModel):
 
         # Up blocks
         self.up_1 = Up(
-            [model_parameters.latent_channels[-1], model_parameters.up_1_channels[0]],
+            [
+                model_parameters.latent_channels[-1],
+                model_parameters.up_1_channels[0] // 2,
+            ],
             relu_type=model_parameters.activation,
         )
         self.block_1_up = ConvBlock(
             model_parameters.up_1_channels, relu_type=model_parameters.activation
         )
         self.up_2 = Up(
-            [model_parameters.up_1_channels[-1], model_parameters.up_2_channels[0]],
+            [
+                model_parameters.up_1_channels[-1],
+                model_parameters.up_2_channels[0] // 2,
+            ],
             relu_type=model_parameters.activation,
         )
         self.block_2_up = ConvBlock(
             model_parameters.up_2_channels, relu_type=model_parameters.activation
         )
         self.up_3 = Up(
-            [model_parameters.up_2_channels[-1], model_parameters.up_3_channels[0]],
+            [
+                model_parameters.up_2_channels[-1],
+                model_parameters.up_3_channels[0] // 2,
+            ],
             relu_type=model_parameters.activation,
         )
         self.block_3_up = ConvBlock(
             model_parameters.up_3_channels, relu_type=model_parameters.activation
         )
         self.up_4 = Up(
-            [model_parameters.up_3_channels[-1], model_parameters.up_4_channels[0]],
+            [
+                model_parameters.up_3_channels[-1],
+                model_parameters.up_4_channels[0] // 2,
+            ],
             relu_type=model_parameters.activation,
         )
         self.block_4_up = ConvBlock(

@@ -217,7 +217,7 @@ class AItomoModel(nn.Module, ABC):
             fname,
             epoch=epoch,
             loss=loss,
-            optimizer=optimizer,
+            optimizer=optimizer.state_dict(),
             training=training_param,
             **kwargs,
         )
@@ -273,7 +273,7 @@ class AItomoModel(nn.Module, ABC):
         if isinstance(fname, str):
             fname = Path(fname)
 
-        options = AItomotoModel.load_parameter_file(fname)
+        options = AItomoModel.load_parameter_file(fname)
         # Check if model name matches the one that is loading it
         if options.model_name != cls.__name__:
             warnings.warn(
@@ -281,7 +281,7 @@ class AItomoModel(nn.Module, ABC):
             )
 
         # load data
-        data = AItomotoModel.load_data(fname)
+        data = AItomoModel.load_data(fname)
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
         if hasattr(options, "geometry_parameters"):
@@ -307,7 +307,7 @@ class AItomoModel(nn.Module, ABC):
                 f"\nSaved model is from a class with a different name than current, likely load will fail. \nCurrent class name: {cls.__name__}, Saved model class name: {options.model_name}\n"
             )
         # load data
-        data = AItomotoModel.load_data(fname, supress_warnings=True)
+        data = AItomoModel.load_data(fname, supress_warnings=True)
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
         if hasattr(options, "geometry_parameters"):
