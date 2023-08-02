@@ -141,7 +141,7 @@ class LimitedAngleCTRecon:
         # Parameters for the noise in the sinogram.
         # Default, 50% of clinical dose.
         param.noise_params = Parameter()
-        param.noise_params.I0 = 5000
+        param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
         # Parameters for the LIDC-IDRI dataset
