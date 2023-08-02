@@ -225,7 +225,10 @@ class AItomoModel(nn.Module, ABC):
     @staticmethod
     def load_data(fname, supress_warnings=False):
         # Load the actual pythorch saved data
-        data = torch.load(fname.with_suffix(".pt"))
+        data = torch.load(
+            fname.with_suffix(".pt"),
+            map_location=torch.device(torch.cuda.current_device()),
+        )
         if len(data) > 1 and not supress_warnings:
             # this should be only 1 thing, but you may be loading a checkpoint or may have saved more data.  Its OK, but we warn.
             warnings.warn(
@@ -290,6 +293,7 @@ class AItomoModel(nn.Module, ABC):
             model = cls(options.model_parameters)
 
         # Load the data into the model we created.
+        model.to(torch.cuda.current_device())
         model.load_state_dict(data.pop("model_state_dict"))
 
         return model, options, data
@@ -318,6 +322,7 @@ class AItomoModel(nn.Module, ABC):
         else:
             model = cls(model_parameters=options.model_parameters)
         # Load the data into the model we created.
+        model.to(torch.cuda.current_device())
         model.load_state_dict(data.pop("model_state_dict"))
 
         return model, options.unpack(), data
