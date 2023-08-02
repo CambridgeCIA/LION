@@ -22,7 +22,7 @@ device = torch.device("cuda:2")
 torch.cuda.set_device(device)
 savefolder = pathlib.Path("/home/ab2860/rds/hpc-work/models/low_dose_full_angle")
 datafolder = pathlib.Path("/home/ab2860/rds/hpc-work/AItomotools/processed/LIDC-IDRI/")
-savefolder = pathlib.Path("/store/DAMTP/ab2860/wip_models/")
+savefolder = pathlib.Path("/store/DAMTP/ab2860/low_dose/")
 datafolder = pathlib.Path("/local/scratch/public/AItomotools/processed/LIDC-IDRI/")
 # ##################################################
 #%% Define experiment
