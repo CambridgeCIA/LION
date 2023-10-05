@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from tqdm import tqdm
 import skimage
-import AItomotools.CTtools.ct_geometry as ct
+import LION.CTtools.ct_geometry as ct
 
 ## This scripts generates the data available at:
-from AItomotools.utils.paths import LUNA_PROCESSED_DATASET_PATH, LUNA_DATASET_PATH
+from LION.utils.paths import LUNA_PROCESSED_DATASET_PATH, LUNA_DATASET_PATH
 
 print(LUNA_PROCESSED_DATASET_PATH)
 
@@ -31,7 +31,7 @@ Path(LUNA_PROCESSED_DATASET_PATH.joinpath("testing_nodule")).mkdir(
     parents=True, exist_ok=True
 )  # Testing data containing nodule slices
 
-from AItomotools.data_loaders.LUNA16 import LUNA16
+from LION.data_loaders.LUNA16 import LUNA16
 
 luna_dataset = LUNA16(LUNA_DATASET_PATH, load_metadata=True)
 luna_dataset.unit = "normal"

@@ -28,8 +28,8 @@ import numpy as np
 import scipy.io
 
 # my imports
-from AItomotools.data_loaders.data_primitives import CTimage
-import AItomotools.CTtools.ct_utils as ct
+from LION.data_loaders.data_primitives import CTimage
+import LION.CTtools.ct_utils as ct
 
 
 class CT_data_loader:

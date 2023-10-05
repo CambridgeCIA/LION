@@ -12,7 +12,7 @@ import pathlib
 import numpy as np
 import json
 
-from AItomotools.utils.parameter import Parameter
+from LION.utils.parameter import Parameter
 
 
 class Geometry(Parameter):

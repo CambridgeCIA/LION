@@ -14,7 +14,7 @@ import torch.nn.functional as F
 import tomosipo as ts
 
 # AItomotools imports
-from AItomotools.CTtools.ct_geometry import Geometry
+from LION.CTtools.ct_geometry import Geometry
 
 
 def from_HU_to_normal(img):

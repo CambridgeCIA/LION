@@ -13,11 +13,11 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-from AItomotools.utils.parameter import Parameter
-from AItomotools.data_loaders.luna16_dataset import Luna16Dataset
-from AItomotools.models.LPD import LPD
-import AItomotools.CTtools.ct_geometry as ctgeo
-import AItomotools.CTtools.ct_utils as ct
+from LION.utils.parameter import Parameter
+from LION.data_loaders.luna16_dataset import Luna16Dataset
+from LION.models.LPD import LPD
+import LION.CTtools.ct_geometry as ctgeo
+import LION.CTtools.ct_utils as ct
 
 #%% Demo to show how to load, define, train, a model.
 # Use this as a template to train your networks and design new ones

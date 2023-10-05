@@ -7,8 +7,8 @@
 
 
 import subprocess
-from AItomotools.utils.paths import LUNA_DATASET_PATH
-from AItomotools.utils.utils import run_cmd
+from LION.utils.paths import LUNA_DATASET_PATH
+from LION.utils.utils import run_cmd
 
 
 storage_path = LUNA_DATASET_PATH

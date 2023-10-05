@@ -8,8 +8,8 @@
 
 import torch
 import torch.nn as nn
-from AItomotools.models import AItomomodel
-from AItomotools.utils.parameter import Parameter
+from LION.models import AItomomodel
+from LION.utils.parameter import Parameter
 import msd_pytorch as msd
 
 

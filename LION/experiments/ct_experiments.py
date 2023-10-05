@@ -11,10 +11,10 @@ import torch
 import pathlib
 import warnings
 
-from AItomotools.utils.parameter import Parameter
-import AItomotools.CTtools.ct_geometry as ctgeo
-import AItomotools.CTtools.ct_utils as ct
-from AItomotools.data_loaders.LIDC_IDRI import LIDC_IDRI
+from LION.utils.parameter import Parameter
+import LION.CTtools.ct_geometry as ctgeo
+import LION.CTtools.ct_utils as ct
+from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 
 
 class ExtremeLowDoseCTRecon:

@@ -6,13 +6,13 @@
 # =============================================================================
 
 
-from AItomotools.models import AItomomodel
+from LION.models import AItomomodel
 
-from AItomotools.utils.math import power_method
-from AItomotools.utils.parameter import Parameter
-import AItomotools.CTtools.ct_geometry as ct
-import AItomotools.CTtools.ct_utils as ct_utils
-import AItomotools.utils.utils as ai_utils
+from LION.utils.math import power_method
+from LION.utils.parameter import Parameter
+import LION.CTtools.ct_geometry as ct
+import LION.CTtools.ct_utils as ct_utils
+import LION.utils.utils as ai_utils
 
 import numpy as np
 from pathlib import Path

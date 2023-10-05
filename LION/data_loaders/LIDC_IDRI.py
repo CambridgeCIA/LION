@@ -19,9 +19,9 @@ from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 
 
-from AItomotools.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
-import AItomotools.CTtools.ct_utils as ct
-from AItomotools.utils.parameter import Parameter
+from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
+import LION.CTtools.ct_utils as ct
+from LION.utils.parameter import Parameter
 
 
 def format_index(index: int) -> str:

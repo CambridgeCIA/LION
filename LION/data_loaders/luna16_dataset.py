@@ -9,10 +9,10 @@
 import torch
 from torch.utils.data import Dataset
 
-from AItomotools.utils.paths import LUNA_PROCESSED_DATASET_PATH
-from AItomotools.CTtools.ct_geometry import Geometry
-from AItomotools.utils.parameter import Parameter
-import AItomotools.CTtools.ct_utils as ct
+from LION.utils.paths import LUNA_PROCESSED_DATASET_PATH
+from LION.CTtools.ct_geometry import Geometry
+from LION.utils.parameter import Parameter
+import LION.CTtools.ct_utils as ct
 
 
 def parse_index(index: int) -> str:

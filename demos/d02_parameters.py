@@ -15,7 +15,7 @@ import os
 # While as a user, you may not need to know most of this, it is convenient you learn about it. Your models and results should use these parameters
 # so you can reproduce your experiments.
 #%% 1-Parameters
-from AItomotools.utils.parameter import Parameter
+from LION.utils.parameter import Parameter
 
 # You can make a parameter of whatever you want.
 my_params = Parameter()
@@ -49,7 +49,7 @@ os.remove("fruit.json")
 # The tool provides (and you can make) special Parameters sets (that inherit from Parameter class).
 # In particular, for CT, we have the Geometry() class, describing a CT geometry.
 # You can load it as:
-from AItomotools.CTtools.ct_geometry import Geometry
+from LION.CTtools.ct_geometry import Geometry
 
 # it also has a default
 geo = Geometry.default_parameters()
@@ -70,7 +70,7 @@ os.remove("geo.json")
 #%% 3-Parameters inside ML-models.
 # As the main goal of these is ensure reproducibility, all ML methods inside the toolbox have default_parameters and ways to create them from parameters.
 # Lets use LPD as an example.
-from AItomotools.models.LPD import LPD
+from LION.models.LPD import LPD
 
 # All ML-models will have this:
 LPD_params = LPD.default_parameters()

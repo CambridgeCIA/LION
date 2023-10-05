@@ -2,7 +2,7 @@
 ## You should inherit from this class for any parameter setting.
 import json
 
-from AItomotools.utils.utils import NumpyEncoder
+from LION.utils.utils import NumpyEncoder
 from pathlib import Path
 
 

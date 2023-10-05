@@ -14,10 +14,10 @@ from ts_algorithms import fdk
 from collections import OrderedDict
 
 
-import AItomotools.CTtools.ct_geometry as ct
+import LION.CTtools.ct_geometry as ct
 
-from AItomotools.utils.parameter import Parameter
-from AItomotools.models import AItomomodel
+from LION.utils.parameter import Parameter
+from LION.models import AItomomodel
 
 ##Code for UNet
 class UNet(AItomomodel.AItomoModel):
