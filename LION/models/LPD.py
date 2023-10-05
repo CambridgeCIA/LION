@@ -6,7 +6,7 @@
 # =============================================================================
 
 
-from LION.models import AItomomodel
+from LION.models import LIONmodel
 
 from LION.utils.math import power_method
 from LION.utils.parameter import Parameter
@@ -85,7 +85,7 @@ class RegProximal(nn.Module):
         return self.block(x)
 
 
-class LPD(AItomomodel.AItomoModel):
+class LPD(LIONmodel.AItomoModel):
     """Learn Primal Dual network"""
 
     def __init__(

@@ -8,7 +8,7 @@
 
 import torch
 import torch.nn as nn
-from LION.models import AItomomodel
+from LION.models import LIONmodel
 from LION.utils.parameter import Parameter
 
 # Implementation of:
@@ -90,7 +90,7 @@ class Up(nn.Module):
         return self.block(x)
 
 
-class FBPConvNet(AItomomodel.AItomoModel):
+class FBPConvNet(LIONmodel.AItomoModel):
     def __init__(self, model_parameters: Parameter = None):
         if model_parameters is None:
             model_parameters = FBPConvNet.default_parameters()

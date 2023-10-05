@@ -1,5 +1,5 @@
 # =============================================================================
-# This file is part of AItomotools library
+# This file is part of LION library
 # License : BSD-3
 #
 # Author  : Ander Biguri
@@ -71,6 +71,13 @@ print(geo)
 # Dave the geo in JSON
 geo.save("geo.json")
 geo.load("geo.json")
+
+#%% Geometries in LION
+# There are few geometries you can load.
+geo = ctgeo.Geometry.default_parameters()  # standard CT
+geo = ctgeo.Geometry.sparse_view_parameters()  # few angle CT
+geo = ctgeo.Geometry.sparse_angle_parameters()  # limited angle CT
+# Unless otherwise stated, any method that provides you a geometry uses default_parameters()
 
 #%% CPU or GPU?
 

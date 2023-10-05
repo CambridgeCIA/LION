@@ -17,10 +17,10 @@ from collections import OrderedDict
 import LION.CTtools.ct_geometry as ct
 
 from LION.utils.parameter import Parameter
-from LION.models import AItomomodel
+from LION.models import LIONmodel
 
 ##Code for UNet
-class UNet(AItomomodel.AItomoModel):
+class UNet(LIONmodel.AItomoModel):
     def __init__(self, model_parameters=None):
         # set properties of UNet
         if model_parameters is None:
@@ -186,7 +186,7 @@ class UNet(AItomomodel.AItomoModel):
         return param
 
 
-class ItNet(AItomomodel.AItomoModel):
+class ItNet(LIONmodel.AItomoModel):
     def __init__(
         self, geometry_parameters: ct.Geometry, model_parameters: Parameter = None
     ):
