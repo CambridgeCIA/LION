@@ -20,7 +20,7 @@ from LION.utils.parameter import Parameter
 from LION.models import LIONmodel
 
 ##Code for UNet
-class UNet(LIONmodel.AItomoModel):
+class UNet(LIONmodel.LIONmodel):
     def __init__(self, model_parameters=None):
         # set properties of UNet
         if model_parameters is None:
@@ -186,7 +186,7 @@ class UNet(LIONmodel.AItomoModel):
         return param
 
 
-class ItNet(LIONmodel.AItomoModel):
+class ItNet(LIONmodel.LIONmodel):
     def __init__(
         self, geometry_parameters: ct.Geometry, model_parameters: Parameter = None
     ):

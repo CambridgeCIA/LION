@@ -72,7 +72,7 @@ class L2net(nn.Module):
 
 
 # sparsifying filter-bank (SFB) module
-class SFB(LIONmodel.AItomoModel):
+class SFB(LIONmodel.LIONmodel):
     def __init__(self, model_parameters):
         if model_parameters is None:
             model_parameters = ACR.default_parameters()
@@ -119,7 +119,7 @@ class SFB(LIONmodel.AItomoModel):
         return out
 
 
-class ACR(LIONmodel.AItomoModel):
+class ACR(LIONmodel.LIONmodel):
     def __init__(self, model_parameters: Parameter = None):
         if model_parameters is None:
             model_parameters = ACR.default_parameters()

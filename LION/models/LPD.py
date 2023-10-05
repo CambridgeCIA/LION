@@ -85,7 +85,7 @@ class RegProximal(nn.Module):
         return self.block(x)
 
 
-class LPD(LIONmodel.AItomoModel):
+class LPD(LIONmodel.LIONmodel):
     """Learn Primal Dual network"""
 
     def __init__(
