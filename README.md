@@ -1,9 +1,9 @@
-# AI tools for learned tomographic reconstruction
+# LION: AI tools for learned tomographic reconstruction
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
-University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction.
+University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction, LION (Learned Iterative Optimization Networks)
 
 
 **WARNING** Building in progress.
@@ -11,12 +11,12 @@ University of Cambridge Computational Image Analysis (CIA) groups AI tools for t
 Install: 
 
 ```
-git clone https://github.com/CambridgeCIA/AItomotools.git
-cd AItomotools
+git clone https://github.com/CambridgeCIA/LION.git
+cd LION
 conda env create --file=env.yml
 git submodule update --init --recursive
-conda activate aitools
-python setup.py install
+conda activate LION
+pip install .
 ```
 
 Optional, if you want pre-commits. 
@@ -24,7 +24,7 @@ Install pre commits for auto-formating your commits.
 Highly suggested if you want reproducibility, this will auto-save changes in your conda enviroments and will update your conda enviroment when pulling
 
 ```
-conda activate aitomotools
+conda activate LION
 pip install pre-commit
 pre-commit install --hook-type pre-commit --hook-type post-merge
 ```
