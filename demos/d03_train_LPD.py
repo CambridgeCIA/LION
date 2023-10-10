@@ -35,7 +35,7 @@ geom.default_geo()
 default_params = LPD.default_parameters()
 print(default_params)
 
-# You can initialize with default parameters eithre by giving them as an input or leaving the parameter input empty.
+# You can initialize with default parameters either by giving them as an input or leaving the parameter input empty.
 # The following 3 lines are equivalent
 
 model = LPD(geometry_parameters=geom, model_parameters=default_params)

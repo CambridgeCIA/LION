@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import pathlib
 import warnings
+from abc import ABC, abstractmethod, ABCMeta
 
 from LION.utils.parameter import Parameter
 import LION.CTtools.ct_geometry as ctgeo
@@ -17,21 +18,63 @@ import LION.CTtools.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 
 
-class ExtremeLowDoseCTRecon:
-    def __init__(self, experiment_params=None):
+class Experiment(ABC):
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI"):
+
+        super().__init__()  # Initialize parent classes.
+        __metaclass__ = ABCMeta  # make class abstract.
 
         if experiment_params is None:
-            experiment_params = ExtremeLowDoseCTRecon.default_parameters()
-
-        self.param = experiment_params
-        self.geo = experiment_params.geo
-
+            self.experiment_params = self.default_parameters(dataset=dataset)
+        self.param = self.experiment_params
+        self.geo = self.experiment_params.geo
+        self.dataset = dataset
         self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, cross_talk=self.param.noise_params.cross_talk: ct.sinogram_add_noise(
             sino, I0=I0, sigma=sigma, cross_talk=cross_talk
         )
 
     @staticmethod
+    @abstractmethod  # crash if not defined in derived class
     def default_parameters():
+        pass
+
+    def get_training_dataset(self):
+        if self.dataset == "LIDC-IDRI":
+            dataloader = LIDC_IDRI(
+                mode="training", parameters=self.param.data_loader_params
+            )
+        else:
+            raise NotImplementedError(f"Dataset {self.dataset} not implemented")
+        dataloader.set_sinogram_transform(self.sino_fun)
+        return dataloader
+
+    def get_validation_dataset(self):
+        if self.dataset == "LIDC-IDRI":
+            dataloader = LIDC_IDRI(
+                mode="validation", parameters=self.param.data_loader_params
+            )
+        else:
+            raise NotImplementedError(f"Dataset {self.dataset} not implemented")
+        dataloader.set_sinogram_transform(self.sino_fun)
+        return dataloader
+
+    def get_testing_dataset(self):
+        if self.dataset == "LIDC-IDRI":
+            dataloader = LIDC_IDRI(
+                mode="testing", parameters=self.param.data_loader_params
+            )
+        else:
+            raise NotImplementedError(f"Dataset {self.dataset} not implemented")
+        dataloader.set_sinogram_transform(self.sino_fun)
+        return dataloader
+
+
+class ExtremeLowDoseCTRecon(Experiment):
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI"):
+        super().__init__(experiment_params, dataset)
+
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
         param = Parameter()
         param.name = "Low dose full angular sampling experiment"
         # Parameters for the geometry
@@ -42,48 +85,24 @@ class ExtremeLowDoseCTRecon:
         param.noise_params.I0 = 1000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
-        # Parameters for the LIDC-IDRI dataset
-        param.data_loader_params = LIDC_IDRI.default_parameters(
-            geo=param.geo, task="reconstruction"
-        )
-        param.data_loader_params.max_num_slices_per_patient = 5
+        if dataset == "LIDC-IDRI":
+            # Parameters for the LIDC-IDRI dataset
+            param.data_loader_params = LIDC_IDRI.default_parameters(
+                geo=param.geo, task="reconstruction"
+            )
+            param.data_loader_params.max_num_slices_per_patient = 5
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
         return param
 
-    def get_training_dataset(self):
-        dataloader = LIDC_IDRI(
-            mode="training", parameters=self.param.data_loader_params
-        )
-        dataloader.set_sinogram_transform(self.sino_fun)
-        return dataloader
 
-    def get_validation_dataset(self):
-        dataloader = LIDC_IDRI(
-            mode="validation", parameters=self.param.data_loader_params
-        )
-        dataloader.set_sinogram_transform(self.sino_fun)
-        return dataloader
+class LowDoseCTRecon(Experiment):
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI"):
 
-    def get_testing_dataset(self):
-        dataloader = LIDC_IDRI(mode="testing", parameters=self.param.data_loader_params)
-        dataloader.set_sinogram_transform(self.sino_fun)
-        return dataloader
-
-
-class LowDoseCTRecon:
-    def __init__(self, experiment_params=None):
-
-        if experiment_params is None:
-            experiment_params = LowDoseCTRecon.default_parameters()
-
-        self.param = experiment_params
-        self.geo = experiment_params.geo
-
-        self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, cross_talk=self.param.noise_params.cross_talk: ct.sinogram_add_noise(
-            sino, I0=I0, sigma=sigma, cross_talk=cross_talk
-        )
+        super().__init__(experiment_params, dataset)
 
     @staticmethod
-    def default_parameters():
+    def default_parameters(dataset="LIDC-IDRI"):
         param = Parameter()
         param.name = "Low dose full angular sampling experiment"
         # Parameters for the geometry
@@ -94,46 +113,23 @@ class LowDoseCTRecon:
         param.noise_params.I0 = 3500
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
-        # Parameters for the LIDC-IDRI dataset
-        param.data_loader_params = LIDC_IDRI.default_parameters(
-            geo=param.geo, task="reconstruction"
-        )
-        param.data_loader_params.max_num_slices_per_patient = 5
+        if dataset == "LIDC-IDRI":
+            # Parameters for the LIDC-IDRI dataset
+            param.data_loader_params = LIDC_IDRI.default_parameters(
+                geo=param.geo, task="reconstruction"
+            )
+            param.data_loader_params.max_num_slices_per_patient = 5
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
         return param
 
-    def get_training_dataset(self):
-        dataloader = LIDC_IDRI(
-            mode="training", parameters=self.param.data_loader_params
-        )
-        dataloader.set_sinogram_transform(self.sino_fun)
-        return dataloader
 
-    def get_validation_dataset(self):
-        dataloader = LIDC_IDRI(
-            mode="validation", parameters=self.param.data_loader_params
-        )
-        dataloader.set_sinogram_transform(self.sino_fun)
-        return dataloader
-
-    def get_testing_dataset(self):
-        dataloader = LIDC_IDRI(mode="testing", parameters=self.param.data_loader_params)
-        dataloader.set_sinogram_transform(self.sino_fun)
-        return dataloader
-
-
-class LimitedAngleCTRecon:
-    def __init__(self, experiment_params=None):
-        if experiment_params is None:
-            experiment_params = ExtremeLowDoseCTRecon.default_parameters()
-
-        self.param = experiment_params
-        self.geo = experiment_params.geo
-        self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, cross_talk=self.param.noise_params.cross_talk: ct.sinogram_add_noise(
-            sino, I0=I0, sigma=sigma, cross_talk=cross_talk
-        )
+class LimitedAngleCTRecon(Experiment):
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI"):
+        super().__init__(experiment_params, dataset)
 
     @staticmethod
-    def default_parameters():
+    def default_parameters(dataset="LIDC-IDRI"):
         param = Parameter()
         param.name = "Mid dose sparse angular sampling experiment"
         # Parameters for the geometry
@@ -144,29 +140,13 @@ class LimitedAngleCTRecon:
         param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
-        # Parameters for the LIDC-IDRI dataset
-        param.data_loader_params = LIDC_IDRI.default_parameters(
-            geo=param.geo, task="reconstruction"
-        )
-        param.data_loader_params.max_num_slices_per_patient = 5
 
+        if dataset == "LIDC-IDRI":
+            # Parameters for the LIDC-IDRI dataset
+            param.data_loader_params = LIDC_IDRI.default_parameters(
+                geo=param.geo, task="reconstruction"
+            )
+            param.data_loader_params.max_num_slices_per_patient = 5
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
         return param
-
-    def get_training_dataset(self):
-        dataloader = LIDC_IDRI(
-            mode="training", parameters=self.param.data_loader_params
-        )
-        dataloader.set_sinogram_transform(self.sino_fun)
-        return dataloader
-
-    def get_validation_dataset(self):
-        dataloader = LIDC_IDRI(
-            mode="validation", parameters=self.param.data_loader_params
-        )
-        dataloader.set_sinogram_transform(self.sino_fun)
-        return dataloader
-
-    def get_testing_dataset(self):
-        dataloader = LIDC_IDRI(mode="testing", parameters=self.param.data_loader_params)
-        dataloader.set_sinogram_transform(self.sino_fun)
-        return dataloader
