@@ -88,3 +88,21 @@ class Geometry(Parameter):
             mode="fan",
             angles=np.linspace(0, 2 * np.pi, 360, endpoint=False),
         )
+
+    def __str__(self):
+        string = []
+        string.append("CT Geometry")
+        string.append("CT type/mode = "+ self.mode)
+        string.append("-----")
+        string.append("Distance from source to detector (DSD) = " + str(self.dsd) + " mm")
+        string.append("Distance from source to origin (DSO)= " + str(self.dso) + " mm")
+        string.append("-----")
+        string.append("Detector")
+        string.append("Detector shape = " + str(self.detector_shape))
+        string.append("Detector size = " + str(self.detector_size) + " mm")
+        string.append("-----")
+        string.append("Image")
+        string.append("Image shape = " + str(self.image_shape))
+        string.append("Image size = " + str(self.image_size) + " mm")
+        string.append("Number of angles = "+ str(self.angles.shape))
+        return "/n".join(string)
