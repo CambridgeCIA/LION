@@ -19,7 +19,7 @@ from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 
 
 class Experiment(ABC):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI"):
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
 
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
@@ -27,6 +27,8 @@ class Experiment(ABC):
         if experiment_params is None:
             self.experiment_params = self.default_parameters(dataset=dataset)
         self.param = self.experiment_params
+        if datafolder is not None:
+            self.param.data_loader_params.folder = datafolder
         self.geo = self.experiment_params.geo
         self.dataset = dataset
         self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, cross_talk=self.param.noise_params.cross_talk: ct.sinogram_add_noise(
@@ -67,13 +69,14 @@ class Experiment(ABC):
             raise NotImplementedError(f"Dataset {self.dataset} not implemented")
         dataloader.set_sinogram_transform(self.sino_fun)
         return dataloader
-    
+
     def __str__(self):
         return f"Experiment parameters: \n {self.param} \n Dataset: \n {self.dataset} \n Geometry parameters: \n {self.geo}"
 
+
 class ExtremeLowDoseCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI"):
-        super().__init__(experiment_params, dataset)
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
@@ -99,9 +102,9 @@ class ExtremeLowDoseCTRecon(Experiment):
 
 
 class LowDoseCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI"):
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
 
-        super().__init__(experiment_params, dataset)
+        super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
@@ -127,8 +130,8 @@ class LowDoseCTRecon(Experiment):
 
 
 class LimitedAngleCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI"):
-        super().__init__(experiment_params, dataset)
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
@@ -153,9 +156,10 @@ class LimitedAngleCTRecon(Experiment):
             raise NotImplementedError(f"Dataset {dataset} not implemented")
         return param
 
+
 class SparseAngleCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI"):
-        super().__init__(experiment_params, dataset)
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
@@ -180,9 +184,10 @@ class SparseAngleCTRecon(Experiment):
             raise NotImplementedError(f"Dataset {dataset} not implemented")
         return param
 
+
 class clinicalCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI"):
-        super().__init__(experiment_params, dataset)
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):

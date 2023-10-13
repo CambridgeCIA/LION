@@ -336,3 +336,32 @@ class LIONmodel(nn.Module, ABC):
         # This will be in the install path, so lets get a relative path. Assuming user here will be working on AItomotools folder, which they may not be.
         parts = fname.resolve().parts[fname.resolve().parts.index("models") - 1 :]
         return Path(*parts)
+
+    @staticmethod
+    def final_file_exists(fname, stop_code=False):
+        if isinstance(fname, str):
+            fname = Path(fname)
+        exists = fname.is_file()
+        if stop_code and exists:
+            print("Final version found, no need to loop further, exiting")
+            exit()
+        return exists
+
+    @classmethod
+    def load_checkpoint_if_exists(
+        cls, fname, model, optimiser, total_loss, verbose=True
+    ):
+        if isinstance(fname, str):
+            fname = Path(fname)
+        checkpoints = sorted(list(fname.parent.glob(fname.name)))
+        if checkpoints:
+            model, options, data = cls.load_checkpoint(
+                fname.parent.joinpath(checkpoints[-1])
+            )
+            optimiser.load_state_dict(data["optimizer_state_dict"])
+            start_epoch = data["epoch"]
+            total_loss = data["loss"]
+            model.train()
+        else:
+            return model, optimiser, 0, total_loss, None
+        return model, optimiser, start_epoch, total_loss, data
