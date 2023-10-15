@@ -133,14 +133,26 @@ def from_HU_to_material_id(img):
 
 
 def make_operator(geo):
-    vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
-    pg = ts.cone(
-        angles=geo.angles,
-        shape=geo.detector_shape,
-        size=geo.detector_size,
-        src_orig_dist=geo.dso,
-        src_det_dist=geo.dsd,
-    )
+    if not isinstance(geo, Geometry):
+        raise ValueError("Input geo is not of class LION.CTtools.ct_geometry.Geometry")
+    if geo.mode == "fan":
+        vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
+        pg = ts.cone(
+            angles=geo.angles,
+            shape=geo.detector_shape,
+            size=geo.detector_size,
+            src_orig_dist=geo.dso,
+            src_det_dist=geo.dsd,
+        )
+    elif geo.mode == "parallel":
+        vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
+        pg = ts.parallel(
+            angles=geo.angles,
+            shape=geo.detector_shape,
+            size=geo.detector_size,
+        )
+    else:
+        raise ValueError("Geometry mode not understood, has to be 'fan' or 'parallel'")
     A = ts.operator(vg, pg)
     return A
 

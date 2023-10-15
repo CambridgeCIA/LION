@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import LION.CTtools.ct_utils as ct
 import pathlib
 
-#%% Demo on how to create a sinogram from an image and simulate projections, for 2D, using tomosipo and AItomotools
+#%% Demo on how to create a sinogram from an image and simulate projections, for 2D, using tomosipo and LION
 # ===================================================================================================================
 # by: Ander Biguri
 
@@ -22,9 +22,28 @@ import pathlib
 # Therefore, to start with, we need to learn how to do tomography.
 # This demo teaches how to define a tomographic geometry, an image, and produce sinograms (CT measurements) from it.
 # It also shows how to simulate realistic CT noise.
-# AItomotools has various backends, but we are using tomosipo in this case.
+# LION uses tomosipo.
 
-#%% Create image, process
+#%% 0: The short version because you don't have time to read all this
+import LION.CTtools.ct_geometry as ctgeo
+
+# 0.0: have an image:
+phantom = np.zeros((512, 512))
+phantom[200:250, 200:250] = 1
+phantom = np.expand_dims(phantom, 0)  # has to be 3D, even for 2D images
+
+# 0.1: Make geometry:
+geo = ctgeo.Geometry.parallel_default_parameters(
+    image_shape=phantom.shape
+)  # parallel beam standard CT
+# 0.2: create operator:
+op = ct.make_operator(geo)
+# 0.3: forward project:
+sino = op(torch.from_numpy(phantom))
+
+# Read more about image types, different geometries, etc next.
+
+#%% 1: Create image, process
 # Create a phantom containing a small cube. In your code, this will be your data
 phantom = np.ones((512, 512)) * -1000  # lets assume its 512^2
 phantom[200:250, 200:250] = 300
@@ -44,7 +63,7 @@ phantom_tissues = ct.from_HU_to_material_id(phantom)
 # Lets use the mu, as this is the real measurement (mu is what would measure, as HUs are a post-processing change of units that doctors like)
 phantom = phantom_mu
 
-#%% Create operator
+#%% 2: Create operator
 
 # We need to define a "virtual CT machine" that simualtes the data. This is, in mathematical terms, an "operator".
 
@@ -58,42 +77,68 @@ pg = ts.cone(
 # A is now an operator.
 A = ts.operator(vg, pg)
 
-#%% Using Geometry class.
-# The above example shows how to define tomosipo operators, but for AItomotools, you should be using the Parameter class, in particular the CT Geometry class.
+# However, LION hides this for you. This is purely a tomosipo operator. LION helps you do this easier with 2 things:
+# - the Geometry class, that provides geometries already defined
+# - ct utils, providing operators from geometries.
+# Lets first learn how the geometries are defined
+#%% 3: Using Geometry class.
+# The above example shows how to define tomosipo operators, but for LION, you should be using the Parameter class (see demo 2 for more info),
+# in particular the CT Geometry class. This provides easy to use pre-defined geometries
 import LION.CTtools.ct_geometry as ctgeo
 
 # Create empty Geometry
 geo = ctgeo.Geometry()
 # Fill it with default values
 geo.default_geo()
-# Print the geo (these are the values you can ser)
+# Print the geo (these are the values you can set)
 print(geo)
-# Dave the geo in JSON
+# Save the geo in JSON
 geo.save("geo.json")
 geo.load("geo.json")
 
-#%% Geometries in LION
+# The full posible values you can use 9 (using the same values as in step 2)
+geo = ctgeo.Geometry(
+    mode="fan",
+    image_size=(5, 300, 300),
+    image_shape=(1, *phantom.shape[1:]),
+    detector_size=(1, 900),
+    detector_shape=(1, 900),
+    dso=575,
+    dsd=1050,
+    angles=np.linspace(0, 2 * np.pi, 360, endpoint=False),
+)
+#%% 4- Geometries in LION
 # There are few geometries you can load.
-geo = ctgeo.Geometry.default_parameters()  # standard CT
-geo = ctgeo.Geometry.sparse_view_parameters()  # few angle CT
-geo = ctgeo.Geometry.sparse_angle_parameters()  # limited angle CT
-# Unless otherwise stated, any method that provides you a geometry uses default_parameters()
+geo = ctgeo.Geometry.default_parameters()  # fan beam standard
+geo = ctgeo.Geometry.sparse_view_parameters()  # fan beam few angle
+geo = ctgeo.Geometry.sparse_angle_parameters()  # fan beam limited angle
+geo = ctgeo.Geometry.parallel_default_parameters()  # parallel beam standard
+geo = ctgeo.Geometry.parallel_sparse_view_parameters()  # parallel beam few angle
+geo = ctgeo.Geometry.parallel_sparse_angle_parameters()  # parallel beam limited angle
 
-#%% CPU or GPU?
+# If you already know the size of the image you want to simulate for parallel beam, you can get geometries for that specific size too:
+geo = ctgeo.Geometry.parallel_default_parameters(image_shape=phantom.shape)
+# of your Geometry is more nuanced, then please make a new one as in section 3, and/or add it to ct_geometry.py if you want.
+
+# you can define your operator with a geo instead, as:
+A = ct.make_operator(geo)
+
+# Unless otherwise stated, any method that provides you a geometry uses default_parameters()
+#%% 5- CPU or GPU?
 
 # The only thing needed to make the tomosipo operator work in GPU instead of GPU is just make it a torch tensor.
-# dev = torch.device("cuda")
-# phantom = torch.from_numpy(phantom).to(dev)
+dev = torch.device("cuda")
+phantom = torch.from_numpy(phantom).to(dev)
 
 
-#%% Create sinograms, simulate noise.
+#%% 6- Create sinograms, simulate noise.
 
 # ct_utils.py contain functions to for realistic CT simulations.
 # In essence, this is the same as using the operator we defined above.
 
 # We can use the following function
-sino = ct.forward_projection_fan(phantom, geo, backend="tomosipo")
-# But given we already defined an operator, we can just do (its the same):
+sino = ct.forward_projection_fan(phantom, geo)
+# If you defined the operator as in step 3 or 4, you can also do (its the same):
 sino = A(phantom)
 # For noise simulation, a good approximation of CT noise is to add Poisson noise to the non-log transformed sinograms,
 # with some gaussian noise to account for the detector electronic noise and detector crosstalk.
@@ -104,8 +149,8 @@ sino_noisy = ct.sinogram_add_noise(
 )
 
 #%% Plot sinograms
-# sino = sino.detach().cpu().numpy()
-# sino_noisy = sino_noisy.detach().cpu().numpy()
+sino = sino.detach().cpu().numpy()
+sino_noisy = sino_noisy.detach().cpu().numpy()
 
 plt.figure()
 plt.subplot(121)
