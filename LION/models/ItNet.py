@@ -192,8 +192,7 @@ class ItNet(LIONmodel.LIONmodel):
     ):
         if geometry_parameters is None:
             raise ValueError("Geometry parameters required. ")
-        if model_parameters is None:
-            model_parameters = ItNet.default_parameters()
+
         super().__init__(model_parameters, geometry_parameters)
 
         # Create layers per iteration
@@ -201,7 +200,7 @@ class ItNet(LIONmodel.LIONmodel):
             self.add_module(f"Unet_{i}", UNet(model_parameters.Unet_params))
 
         # Create pytorch compatible operators and send them to autograd
-        self.make_operator()
+        self._make_operator()
 
         # Define step size
         if self.model_parameters.step_size is None:

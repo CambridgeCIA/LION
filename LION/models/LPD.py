@@ -94,8 +94,7 @@ class LPD(LIONmodel.LIONmodel):
 
         if geometry_parameters is None:
             raise ValueError("Geometry parameters required. ")
-        if model_parameters is None:
-            model_parameters = LPD.default_parameters()
+
         super().__init__(model_parameters, geometry_parameters)
         # Pass all relevant parameters to internal storage.
         # AItomotmodel does this:
@@ -120,7 +119,7 @@ class LPD(LIONmodel.LIONmodel):
             )
 
         # Create pytorch compatible operators and send them to aiutograd
-        self.make_operator()
+        self._make_operator()
 
         # Define step size
         if self.model_parameters.step_size is None:

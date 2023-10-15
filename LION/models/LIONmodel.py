@@ -59,6 +59,8 @@ class LIONmodel(nn.Module, ABC):
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
 
+        if model_parameters is None:
+            model_parameters = self.default_parameters()
         # Pass all relevant parameters to internal storage.
         self.geo = geometry_parameters
         self.model_parameters = model_parameters
@@ -70,7 +72,7 @@ class LIONmodel(nn.Module, ABC):
         pass
 
     # makes operator and make it pytorch compatible.
-    def make_operator(self):
+    def _make_operator(self):
         if self.model_parameters.mode.lower() != "ct":
             raise NotImplementedError("Only CT operators supported")
         if self.geo is not None:
@@ -91,6 +93,7 @@ class LIONmodel(nn.Module, ABC):
     # You can obtain this exact text from Google Scholar's page of the paper.
     @staticmethod
     def cite(cite_format="MLA"):
+        print("cite not implemented for selected method")
         pass
 
     #     if cite_format == "MLA":
@@ -223,7 +226,7 @@ class LIONmodel(nn.Module, ABC):
         )
 
     @staticmethod
-    def load_data(fname, supress_warnings=False):
+    def _load_data(fname, supress_warnings=False):
         # Load the actual pythorch saved data
         data = torch.load(
             fname.with_suffix(".pt"),
@@ -237,7 +240,7 @@ class LIONmodel(nn.Module, ABC):
         return data
 
     @classmethod
-    def load_parameter_file(cls, fname, supress_warnings=False):
+    def _load_parameter_file(cls, fname, supress_warnings=False):
         # Load the actual parameters
         ##############################
         options = Parameter()
@@ -276,7 +279,7 @@ class LIONmodel(nn.Module, ABC):
         if isinstance(fname, str):
             fname = Path(fname)
 
-        options = LIONmodel.load_parameter_file(fname)
+        options = LIONmodel._load_parameter_file(fname)
         # Check if model name matches the one that is loading it
         if options.model_name != cls.__name__:
             warnings.warn(
@@ -284,7 +287,7 @@ class LIONmodel(nn.Module, ABC):
             )
 
         # load data
-        data = LIONmodel.load_data(fname)
+        data = LIONmodel._load_data(fname)
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
         if hasattr(options, "geometry_parameters"):
@@ -304,14 +307,14 @@ class LIONmodel(nn.Module, ABC):
         if isinstance(fname, str):
             fname = Path(fname)
 
-        options = cls.load_parameter_file(fname)
+        options = cls._load_parameter_file(fname)
         # Check if model name matches the one that is loading it
         if options.model_name != cls.__name__:
             warnings.warn(
                 f"\nSaved model is from a class with a different name than current, likely load will fail. \nCurrent class name: {cls.__name__}, Saved model class name: {options.model_name}\n"
             )
         # load data
-        data = LIONmodel.load_data(fname, supress_warnings=True)
+        data = LIONmodel._load_data(fname, supress_warnings=True)
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
         if hasattr(options, "geometry_parameters"):
@@ -328,7 +331,7 @@ class LIONmodel(nn.Module, ABC):
         return model, options.unpack(), data
 
     @classmethod
-    def current_file(cls):
+    def _current_file(cls):
         import sys
 
         module = sys.modules[cls.__module__]

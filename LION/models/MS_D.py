@@ -15,8 +15,7 @@ import msd_pytorch as msd
 
 class MS_D(LIONmodel.LIONmodel):
     def __init__(self, model_parameters=None):
-        if model_parameters is None:
-            model_parameters = MS_D.default_parameters()
+
         super().__init__(model_parameters)
 
         if model_parameters.type == "regression":

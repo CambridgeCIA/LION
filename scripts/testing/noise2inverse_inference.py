@@ -42,6 +42,7 @@ dataloader = DataLoader(dataset, batch_size, shuffle=True)
 #%% Load model
 n2i, n2i_param, n2i_data = MS_D.load(final_result_fname)
 n2i.eval()
+
 # number of data splits
 k = 4
 op = []

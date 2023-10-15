@@ -92,8 +92,7 @@ class Up(nn.Module):
 
 class FBPConvNet(LIONmodel.LIONmodel):
     def __init__(self, model_parameters: Parameter = None):
-        if model_parameters is None:
-            model_parameters = FBPConvNet.default_parameters()
+
         super().__init__(model_parameters)
 
         # standard FBPConvNet (As per paper):

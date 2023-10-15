@@ -74,8 +74,7 @@ class L2net(nn.Module):
 # sparsifying filter-bank (SFB) module
 class SFB(LIONmodel.LIONmodel):
     def __init__(self, model_parameters):
-        if model_parameters is None:
-            model_parameters = ACR.default_parameters()
+
         super().__init__(model_parameters)
         # FoE kernels
         self.penalty = nn.Parameter((-12.0) * torch.ones(1))
