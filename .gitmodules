@@ -1,6 +1,6 @@
 [submodule "LION/models/MS-D"]
-	path = LION.models/MS-D
+	path = LION/models/MS-D
 	url = https://github.com/ahendriksen/msd_pytorch.git
 [submodule "LION/metrics/radiomics"]
-	path = LION.metrics/radiomics
+	path = LION/metrics/radiomics
 	url = https://github.com/AIM-Harvard/pyradiomics.git
