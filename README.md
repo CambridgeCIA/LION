@@ -16,6 +16,7 @@ cd LION
 conda env create --file=env.yml
 git submodule update --init --recursive
 conda activate LION
+pip install LION/models/MS-D/
 pip install .
 ```
 

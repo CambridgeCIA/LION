@@ -26,7 +26,9 @@ device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/ab2860/low_dose/")
-datafolder = pathlib.Path("/local/scratch/public/AItomotools/processed/LIDC-IDRI/")
+datafolder = pathlib.Path(
+    "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
+)
 final_result_fname = savefolder.joinpath("Noise2Inverse_final_iter.pt")
 checkpoint_fname = savefolder.joinpath("Noise2Inverse_check_*.pt")
 #

@@ -9,7 +9,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
-packages = setuptools.find_packages()
+packages = setuptools.find_namespace_packages()
 
 setuptools.setup(
     name="LION",
