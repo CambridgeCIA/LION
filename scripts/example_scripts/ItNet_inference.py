@@ -15,7 +15,7 @@ import copy
 
 # LION imports
 import LION.CTtools.ct_utils as ct
-from LION.models.FBPConvNet import FBPConvNet
+from LION.models.ItNet import ItNet
 from LION.utils.parameter import Parameter
 import LION.experiments.ct_experiments as ct_experiments
 from ts_algorithms import fdk
@@ -30,8 +30,8 @@ savefolder = pathlib.Path("/store/DAMTP/ab2860/low_dose/")
 datafolder = pathlib.Path(
     "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
 )
-final_result_fname = savefolder.joinpath("FBConvNet_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("FBConvNet_check_*.pt")
+final_result_fname = savefolder.joinpath("LPD_final_iter.pt")
+checkpoint_fname = savefolder.joinpath("LPD_check_*.pt")
 #
 #%% Define experiment
 experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
@@ -42,16 +42,12 @@ batch_size = 1
 dataloader = DataLoader(dataset, batch_size, shuffle=True)
 
 #%% Load model
-fbpconv_model, fbpconv_param, fbpconv_data = FBPConvNet.load(final_result_fname)
-fbpconv_model.eval()
+itnet_model, itnet_param, itnet_data = ItNet.load(final_result_fname)
+itnet_model.eval()
 
 # loop trhough testing data
 for index, (sinogram, target_reconstruction) in tqdm(enumerate(dataloader)):
 
-    # This is FDK for comparison
-    bad_recon = torch.zeros(target_reconstruction.shape, device=device)
-    for sino in range(sinogram.shape[0]):
-        bad_recon[sino] = fdk(dataset.operator, sinogram[sino])
-    fbpconvnet_out = fbpconv_model(bad_recon)
+    lpd_out = itnet_model(sinogram)
 
     # do whatever you want with this.

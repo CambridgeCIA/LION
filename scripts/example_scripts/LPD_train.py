@@ -11,7 +11,7 @@ import pathlib
 import AItomotools.CTtools.ct_geometry as ctgeo
 import AItomotools.CTtools.ct_utils as ct
 from AItomotools.data_loaders.LIDC_IDRI import LIDC_IDRI
-from AItomotools.models.FBPConvNet import FBPConvNet
+from AItomotools.models.LPD import LPD
 from AItomotools.utils.parameter import Parameter
 from ts_algorithms import fdk
 
@@ -28,9 +28,9 @@ savefolder = pathlib.Path("/store/DAMTP/ab2860/low_dose/")
 datafolder = pathlib.Path(
     "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
 )
-final_result_fname = savefolder.joinpath("FBPConvNet_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("FBPConvNet_check_*.pt")
-validation_fname = savefolder.joinpath("FBPConvNet_min_val.pt")
+final_result_fname = savefolder.joinpath("LPD_final_iter.pt")
+checkpoint_fname = savefolder.joinpath("LPD_check_*.pt")
+validation_fname = savefolder.joinpath("LPD_min_val.pt")
 #
 #%% Define experiment
 experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
@@ -47,7 +47,13 @@ lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
 #%% Model
 # Default model is already from the paper.
-model = FBPConvNet().to(device)
+default_parameters = LPD.default_parameters()
+# This makes the LPD calculate the step size for the backprojection, which in my experience results in much much better pefromace
+# as its all in the correct scale.
+default_parameters.step_size = None
+default_parameters.learned_step = True
+default_parameters.step_positive = True
+model = LPD(experiment.geo, default_parameters).to(device)
 
 
 #%% Optimizer
@@ -80,7 +86,7 @@ if model.final_file_exists(savefolder.joinpath(final_result_fname)):
     print("final model exists! You already reahced final iter")
     exit()
 
-model, optimiser, start_epoch, total_loss, _ = FBPConvNet.load_checkpoint_if_exists(
+model, optimiser, start_epoch, total_loss, _ = LPD.load_checkpoint_if_exists(
     checkpoint_fname, model, optimiser, total_loss
 )
 print(f"Starting iteration at epoch {start_epoch}")
@@ -110,10 +116,7 @@ for epoch in range(start_epoch, train_param.epochs):
     model.eval()
     for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_validation)):
 
-        bad_recon = torch.zeros(target_reconstruction.shape, device=device)
-        for sino in range(sinogram.shape[0]):
-            bad_recon[sino] = fdk(lidc_dataset.operator, sinogram[sino])
-        reconstruction = model(bad_recon)
+        reconstruction = model(sinogram)
         loss = loss_fcn(target_reconstruction, reconstruction)
         valid_loss += loss.item()
 
