@@ -9,5 +9,5 @@ nohup.out
 build/*
 .vscode
 
-AItomotools.egg-info
+LION.egg-info
 dist
