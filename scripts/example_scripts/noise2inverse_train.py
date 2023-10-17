@@ -78,9 +78,9 @@ start_epoch = 0
 # %% Check if there is a checkpoint saved, and if so, start from there.
 
 # If there is a file with the final results, don't run again
-# if model.final_file_exists(savefolder.joinpath(final_result_fname)):
-#     print("final model exists! You already reahced final iter")
-#     exit()
+if model.final_file_exists(savefolder.joinpath(final_result_fname)):
+    print("final model exists! You already reahced final iter")
+    exit()
 
 model, optimiser, start_epoch, total_loss, _ = MS_D.load_checkpoint_if_exists(
     checkpoint_fname, model, optimiser, total_loss

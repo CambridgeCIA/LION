@@ -44,7 +44,7 @@ model_msd = MS_D()
 # that will help you write and use these models in a more reliable way. So, think of them as a torch.nn.Module, but easier to use!
 
 #%% 3-Methods of a LIONmodel
-# Lets showcase what a class that derives from aL LIONmodel will always have (and of course, you can add more things to the model)
+# Lets showcase what methods a class that derives from a LIONmodel will always have (and of course, you can add more things to the model)
 # For that, lets use LPD that we defined above, to showcase.
 
 # Static methods:
