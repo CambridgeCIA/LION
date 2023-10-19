@@ -227,9 +227,17 @@ class LIONmodel(nn.Module, ABC):
 
     @staticmethod
     def _load_data(fname, supress_warnings=False):
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+        # Check compatible suffixes:
+        if fname.with_suffix(".pt").is_file():
+            fname = fname.with_suffix(".pt")
+        elif fname.with_suffix(".pth").is_file():
+            fname = fname.with_suffix(".pth")
         # Load the actual pythorch saved data
         data = torch.load(
-            fname.with_suffix(".pt"),
+            fname,
             map_location=torch.device(torch.cuda.current_device()),
         )
         if len(data) > 1 and not supress_warnings:
