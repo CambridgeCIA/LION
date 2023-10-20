@@ -25,7 +25,7 @@ from ts_algorithms import fdk
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/low_dose/")
+savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/")
 datafolder = pathlib.Path(
     "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
 )

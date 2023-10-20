@@ -11,3 +11,5 @@ build/*
 
 LION.egg-info
 dist
+
+example.py
