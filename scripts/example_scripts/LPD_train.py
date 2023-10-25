@@ -24,7 +24,7 @@ import LION.experiments.ct_experiments as ct_experiments
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/")
+savefolder = pathlib.Path("/store/DAMTP/cr661/LION/trained_models/low_dose/")
 datafolder = pathlib.Path(
     "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
 )
@@ -41,7 +41,7 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 8
+batch_size = 2
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
@@ -98,10 +98,7 @@ for epoch in range(start_epoch, train_param.epochs):
     for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_dataloader)):
 
         optimiser.zero_grad()
-        bad_recon = torch.zeros(target_reconstruction.shape, device=device)
-        for sino in range(sinogram.shape[0]):
-            bad_recon[sino] = fdk(lidc_dataset.operator, sinogram[sino])
-        reconstruction = model(bad_recon)
+        reconstruction = model(sinogram)
         loss = loss_fcn(reconstruction, target_reconstruction)
 
         loss.backward()
