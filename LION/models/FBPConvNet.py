@@ -28,7 +28,6 @@ class ConvBlock(nn.Module):
         if layers < 1:
             raise ValueError("At least one layer required")
         # convolutional layers
-        kernel_size = 3
         layer_list = []
         for ii in range(layers):
             layer_list.append(

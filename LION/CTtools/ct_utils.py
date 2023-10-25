@@ -24,9 +24,9 @@ def from_HU_to_normal(img):
     """
 
     if isinstance(img, np.ndarray):
-        return np.maximum((img + 1000) / 3000, 0)
+        return np.minimum(np.maximum((img.astype(np.float32) + 1000) / 3000, 0), 1)
     elif isinstance(img, torch.Tensor):
-        return torch.clip((img + 1000) / 3000, min=0)
+        return torch.clip((img.float() + 1000) / 3000, min=0, max=1)
     else:
         raise NotImplementedError
 
@@ -189,4 +189,4 @@ def forward_projection_fan(image, geo, backend="tomosipo"):
     )
     A = ts.operator(vg, pg)
     sino = A(image)[0]
-    return sino.cpu().detach().numpy()
+    return sino

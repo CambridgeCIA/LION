@@ -1,6 +1,5 @@
 #%% This example shows how to train FBPConvNet for full angle, noisy measurements.
 
-
 #%% Imports
 import matplotlib.pyplot as plt
 import numpy as np
@@ -98,10 +97,7 @@ for epoch in range(start_epoch, train_param.epochs):
     for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_dataloader)):
 
         optimiser.zero_grad()
-        bad_recon = torch.zeros(target_reconstruction.shape, device=device)
-        for sino in range(sinogram.shape[0]):
-            bad_recon[sino] = fdk(lidc_dataset.operator, sinogram[sino])
-        reconstruction = model(bad_recon)
+        reconstruction = model(sinogram)
         loss = loss_fcn(reconstruction, target_reconstruction)
 
         loss.backward()
@@ -110,6 +106,7 @@ for epoch in range(start_epoch, train_param.epochs):
 
         optimiser.step()
         scheduler.step()
+        exit()
     total_loss[epoch] = train_loss
     # Validation
     valid_loss = 0.0

@@ -132,6 +132,8 @@ class LIDC_IDRI(Dataset):
 
         if task in ["reconstruction"]:
             self.image_transform = ct.from_HU_to_mu
+        if task in ["segmentation"]:
+            self.image_transform = ct.from_HU_to_normal
 
         if geometry_parameters is not None:
             self.params.geo = geometry_parameters
@@ -276,12 +278,10 @@ class LIDC_IDRI(Dataset):
         self.validation_patients_list = self.patient_ids[
             self.n_patients_training : self.n_patients_training
             + self.n_patients_validation
-            - 1
         ]
         self.testing_patients_list = self.patient_ids[
-            self.n_patients_training + self.n_patients_validation - 1 :
+            self.n_patients_training + self.n_patients_validation :
         ]
-
         assert len(self.patient_ids) == len(self.training_patients_list) + len(
             self.testing_patients_list
         ) + len(self.validation_patients_list), print(
@@ -357,7 +357,7 @@ class LIDC_IDRI(Dataset):
             - non_nodule_slices_dict (Dict): Dict that contains all slices without nodule of each patient_id.
             - nodule_slices_dict (Dict): Dict that contains all slices with nodule of each patient_id.
             - num_slices_per_patient (int): Defines maximum number of slices we want per patient. If num_slices_per_patient=-1 take all slices we have of each patient.
-            - pcg_slices_nodule (float): Defines amount of slices that should contain a nodule. Value between 0-1. Only used if num_slices_per_patient != -1.
+            - pcg_slices_nodule (float): Defines amount of slices that should contain a nodule. Value between 0-1.
         Returns:
             - patient_id_to_slices_to_load_dict which contains patient_id as key and list of slices to load as values
         """
@@ -366,59 +366,50 @@ class LIDC_IDRI(Dataset):
             {}
         )  # Empty dict which should contain patient id as key and slice ids as array of values
 
-        if (
-            num_slices_per_patient == -1
-        ):  # Default: Take all slices we have of each patient
-            for patient_id in patient_list:  # Loop over every patient
+        if num_slices_per_patient == -1:
+            num_slices_per_patient = 1000
 
-                # Get non-nodule slices and nodule slices of each patient and afterwards sort the list in increasing order
-                patient_id_to_slices_to_load_dict[patient_id] = (
-                    non_nodule_slices_dict[patient_id] + nodule_slices_dict[patient_id]
-                )
-                patient_id_to_slices_to_load_dict[patient_id].sort()
+        for patient_id in patient_list:  # Loop over every patient
+            number_of_slices = min(
+                num_slices_per_patient,
+                min(
+                    len(non_nodule_slices_dict[patient_id]),
+                    len(nodule_slices_dict[patient_id]),
+                ),
+            )
 
-        else:  # Take maximum of n slices per patient with p% containing a nodule
-            for patient_id in patient_list:  # Loop over every patient
-                number_of_slices = min(
-                    num_slices_per_patient,
-                    min(
+            # Get amount of slices we want without nodule
+            number_of_slices_without_nodule = int(
+                np.ceil(number_of_slices * (1 - pcg_slices_nodule))
+            )
+            # Get amount of slices we want with nodule
+            number_of_slices_with_nodule = (
+                number_of_slices - number_of_slices_without_nodule
+            )
+
+            # Get linspace of non-nodule and nodule slices of each patient and afterwards sort the list in increasing order
+            patient_id_to_slices_to_load_dict[patient_id] = list(
+                np.array(non_nodule_slices_dict[patient_id])[
+                    np.linspace(
+                        0,
                         len(non_nodule_slices_dict[patient_id]),
+                        number_of_slices_without_nodule,
+                        dtype=int,
+                        endpoint=False,
+                    )
+                ]
+            ) + list(
+                np.array(nodule_slices_dict[patient_id])[
+                    np.linspace(
+                        0,
                         len(nodule_slices_dict[patient_id]),
-                    ),
-                )
-
-                # Get amount of slices we want without nodule
-                number_of_slices_without_nodule = int(
-                    np.ceil(number_of_slices * (1 - pcg_slices_nodule))
-                )
-                # Get amount of slices we want with nodule
-                number_of_slices_with_nodule = (
-                    number_of_slices - number_of_slices_without_nodule
-                )
-
-                # Get linspace of non-nodule and nodule slices of each patient and afterwards sort the list in increasing order
-                patient_id_to_slices_to_load_dict[patient_id] = list(
-                    np.array(non_nodule_slices_dict[patient_id])[
-                        np.linspace(
-                            0,
-                            len(non_nodule_slices_dict[patient_id]),
-                            number_of_slices_without_nodule,
-                            dtype=int,
-                            endpoint=False,
-                        )
-                    ]
-                ) + list(
-                    np.array(nodule_slices_dict[patient_id])[
-                        np.linspace(
-                            0,
-                            len(nodule_slices_dict[patient_id]),
-                            number_of_slices_with_nodule,
-                            dtype=int,
-                            endpoint=False,
-                        )
-                    ]
-                )
-                patient_id_to_slices_to_load_dict[patient_id].sort()
+                        number_of_slices_with_nodule,
+                        dtype=int,
+                        endpoint=False,
+                    )
+                ]
+            )
+            patient_id_to_slices_to_load_dict[patient_id].sort()
 
         return patient_id_to_slices_to_load_dict
 
