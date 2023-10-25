@@ -57,7 +57,7 @@ class ConvODEFunc(nn.Module):
                 )
         self.block = nn.Sequential(*layer_list)
 
-    def forward(self, x):
+    def forward(self, t, x):
         self.nfe += 1
         return self.block(x)
 
@@ -113,7 +113,7 @@ class ConvSODEFunc(nn.Module):
                 )
         self.block = nn.Sequential(*layer_list)
 
-    def forward(self, x):
+    def forward(self, t, x):
         cutoff = int(x.shape[1] / 2)
         z = x[:, :cutoff]
         v = x[:, cutoff:]
@@ -126,7 +126,6 @@ class ODEBlock(nn.Module):
     def __init__(
         self,
         odefunc: nn.Module,
-        max_num_steps: int,
         tol: float = 1e-3,
         adjoint: bool = False,
     ):
@@ -141,7 +140,6 @@ class ODEBlock(nn.Module):
         self.adjoint = adjoint
         self.odefunc = odefunc
         self.tol = tol
-        self.max_num_steps = max_num_steps
 
     def forward(self, x, eval_times=None, solver="rk4"):
         # Forward pass corresponds to solving ODE, so reset number of function
@@ -161,7 +159,6 @@ class ODEBlock(nn.Module):
                 rtol=self.tol,
                 atol=self.tol,
                 method=solver,
-                options={"max_num_steps": self.max_num_steps},
             )
         else:
             out = odeint(
@@ -171,7 +168,6 @@ class ODEBlock(nn.Module):
                 rtol=self.tol,
                 atol=self.tol,
                 method=solver,
-                options={"max_num_steps": self.max_num_steps},
             )
 
         if eval_times is None:
@@ -191,10 +187,9 @@ class ContinuousDataProximal(nn.Module):
         solver: str = "rk4",
     ):
         """
-        ConvSODEUNet (Second order ODE UNet)
         Args:
-            num_filters (int): number of filters for first conv layer
-            output_dim (int): how many feature maps the network outputs
+            layers(int): number of layers
+            channels (list): list of number of channels per layer
             tol (float): tolerance to be used for ODE solver
             adjoint (bool): whether to use the adjoint method to calculate the gradients
             second_order (bool): use second order ODE instead of first order if 'True'
@@ -203,19 +198,26 @@ class ContinuousDataProximal(nn.Module):
         super(ContinuousDataProximal, self).__init__()
         self.second_order = second_order
         self.solver = solver
-        print(f"Solver: {solver}")
 
         if second_order:
             self.initial_velocity = InitialVelocity(channels[0])
-            ode = ConvSODEFunc(layers=layers, channels=channels)
+            ode = ConvSODEFunc(layers=layers - 2, channels=channels[1:-1])
         else:
-            ode = ConvODEFunc(layers=layers, channels=channels)
+            ode = ConvODEFunc(layers=layers - 2, channels=channels[1:-1])
         self.odeblock = ODEBlock(ode, tol=tol, adjoint=adjoint)
+        self.first_layer = nn.Conv2d(
+            in_channels=channels[0], out_channels=channels[1], kernel_size=1
+        )
+        self.last_layer = nn.Conv2d(
+            in_channels=channels[-2], out_channels=channels[-1], kernel_size=1
+        )
 
     def forward(self, x):
         if self.second_order:
             x = self.initial_velocity(x)
-        return self.odeblock(x, solver=self.solver)
+        x = self.first_layer(x)
+        x = self.odeblock(x, solver=self.solver)
+        return self.last_layer(x)
 
 
 class ContinuousRegProximal(nn.Module):
@@ -229,10 +231,8 @@ class ContinuousRegProximal(nn.Module):
         solver: str = "rk4",
     ):
         """
-        ConvSODEUNet (Second order ODE UNet)
-        Args:
-            num_filters (int): number of filters for first conv layer
-            output_dim (int): how many feature maps the network outputs
+        layers(int): number of layers
+            channels (list): list of number of channels per layer
             tol (float): tolerance to be used for ODE solver
             adjoint (bool): whether to use the adjoint method to calculate the gradients
             second_order (bool): use second order ODE instead of first order if 'True'
@@ -241,23 +241,30 @@ class ContinuousRegProximal(nn.Module):
         super(ContinuousRegProximal, self).__init__()
         self.second_order = second_order
         self.solver = solver
-        print(f"Solver: {solver}")
 
         if second_order:
             self.initial_velocity = InitialVelocity(channels[0])
-            ode = ConvSODEFunc(layers=layers, channels=channels)
+            ode = ConvSODEFunc(layers=layers - 2, channels=channels[1:-1])
         else:
-            ode = ConvODEFunc(layers=layers, channels=channels)
+            ode = ConvODEFunc(layers=layers - 2, channels=channels[1:-1])
         self.odeblock = ODEBlock(ode, tol=tol, adjoint=adjoint)
+        self.first_layer = nn.Conv2d(
+            in_channels=channels[0], out_channels=channels[1], kernel_size=1
+        )
+        self.last_layer = nn.Conv2d(
+            in_channels=channels[-2], out_channels=channels[-1], kernel_size=1
+        )
 
     def forward(self, x):
         if self.second_order:
             x = self.initial_velocity(x)
-        return self.odeblock(x, solver=self.solver)
+        x = self.first_layer(x)
+        x = self.odeblock(x, solver=self.solver)
+        return self.last_layer(x)
 
 
-class LPD(LIONmodel.LIONmodel):
-    """Learn Primal Dual network"""
+class ContinuousLPD(LIONmodel.LIONmodel):
+    """Learn Primal Dual network with continuous blocks"""
 
     def __init__(
         self, geometry_parameters: ct.Geometry, model_parameters: Parameter = None
@@ -346,8 +353,8 @@ class LPD(LIONmodel.LIONmodel):
     def default_parameters():
         LPD_params = Parameter()
         LPD_params.n_iters = 10
-        LPD_params.data_channels = [7, 32, 32, 5]
-        LPD_params.reg_channels = [6, 32, 32, 5]
+        LPD_params.data_channels = [7, 32, 32, 32, 5]
+        LPD_params.reg_channels = [6, 32, 32, 32, 5]
         LPD_params.learned_step = False
         LPD_params.step_size = 1
         LPD_params.step_positive = False
