@@ -23,7 +23,7 @@ class Experiment(ABC):
 
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
-
+        self.experiment_params = experiment_params
         if experiment_params is None:
             self.experiment_params = self.default_parameters(dataset=dataset)
         self.param = self.experiment_params
