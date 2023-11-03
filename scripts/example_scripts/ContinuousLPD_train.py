@@ -34,7 +34,10 @@ checkpoint_fname = savefolder.joinpath("ContinuousLPD_check_*.pt")
 validation_fname = savefolder.joinpath("ContinuousLPD_min_val.pt")
 #
 # %% Define experiment
-experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+#experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+experiment_params=ct_experiments.LowDoseCTRecon.default_parameters()
+experiment_params.data_loader_params.max_num_slices_per_patient = 1 # default is 5
+experiment = ct_experiments.LowDoseCTRecon(experiment_params=experiment_params, datafolder=datafolder)
 
 # %% Dataset
 lidc_dataset = experiment.get_training_dataset()
