@@ -32,7 +32,6 @@ checkpoint_fname = savefolder.joinpath("LPD_check_*.pt")
 validation_fname = savefolder.joinpath("LPD_min_val.pt")
 #
 #%% Define experiment
-
 experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
 
 #%% Dataset
@@ -41,7 +40,7 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 2
+batch_size = 1
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
