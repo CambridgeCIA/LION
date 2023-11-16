@@ -23,9 +23,9 @@ import LION.experiments.ct_experiments as ct_experiments
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/cr661/LION/trained_models/low_dose/")
+savefolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/")
 datafolder = pathlib.Path(
-    "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
+    "/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/"
 )
 final_result_fname = savefolder.joinpath("LPD_final_iter.pt")
 checkpoint_fname = savefolder.joinpath("LPD_check_*.pt")
@@ -40,7 +40,7 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 1
+batch_size = 16
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
