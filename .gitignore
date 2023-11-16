@@ -13,3 +13,4 @@ LION.egg-info
 dist
 
 example.py
+/slurm
