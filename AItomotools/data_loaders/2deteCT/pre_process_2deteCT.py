@@ -78,7 +78,6 @@ def pre_process_slice(settings:Dict, slice_index:int, mode_index:int, raw_folder
         print(f'{folder_savepath} already exists, passing...')
         return
 
-
     path_to_mode = raw_folder_path.joinpath(f'{formatted_slice_index}/{formatted_mode}')
 
     ### Loading the sinogram from the paths
