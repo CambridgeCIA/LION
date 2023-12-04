@@ -18,27 +18,27 @@ class MS_D(LIONmodel.LIONmodel):
 
         super().__init__(model_parameters)
 
-        if model_parameters.type == "regression":
+        if self.model_parameters.type == "regression":
             model = msd.MSDRegressionModel(
-                model_parameters.c_in,
-                model_parameters.c_out,
-                model_parameters.depth,
-                model_parameters.width,
-                dilations=model_parameters.dilations,
+                self.model_parameters.c_in,
+                self.model_parameters.c_out,
+                self.model_parameters.depth,
+                self.model_parameters.width,
+                dilations=self.model_parameters.dilations,
                 loss="L2",
             )
 
-        elif model_parameters.type == "segmentation":
-            if model_parameters.num_labels is None:
+        elif self.model_parameters.type == "segmentation":
+            if self.model_parameters.num_labels is None:
                 raise ValueError(
                     "For a segmentation network, please set the model_parameters.num_labels vairable to the number of labels in the training set"
                 )
             model = msd.MSDSegmentationModel(
-                model_parameters.c_in,
-                model_parameters.num_labels,
-                model_parameters.depth,
-                model_parameters.width,
-                dilations=model_parameters.dilations,
+                self.model_parameters.c_in,
+                self.model_parameters.num_labels,
+                self.model_parameters.depth,
+                self.model_parameters.width,
+                dilations=self.model_parameters.dilations,
             )
         # We don't want MS-D to define our optimizer.
         model.optimizer = None

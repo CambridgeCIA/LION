@@ -7,15 +7,15 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pathlib
-import AItomotools.CTtools.ct_geometry as ctgeo
-import AItomotools.CTtools.ct_utils as ct
-from AItomotools.data_loaders.LIDC_IDRI import LIDC_IDRI
-from AItomotools.models.LPD import LPD
-from AItomotools.utils.parameter import Parameter
+import LION.CTtools.ct_geometry as ctgeo
+import LION.CTtools.ct_utils as ct
+from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
+from LION.models.LPD import LPD
+from LION.utils.parameter import Parameter
 from ts_algorithms import fdk
 
 
-import AItomotools.experiments.ct_experiments as ct_experiments
+import LION.experiments.ct_experiments as ct_experiments
 
 
 #%%
@@ -106,7 +106,6 @@ for epoch in range(start_epoch, train_param.epochs):
 
         optimiser.step()
         scheduler.step()
-        exit()
     total_loss[epoch] = train_loss
     # Validation
     valid_loss = 0.0

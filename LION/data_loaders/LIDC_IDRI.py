@@ -115,7 +115,7 @@ class LIDC_IDRI(Dataset):
             "diagnostic",
         ], f'task argument {task} not in ["joint", "end_to_end", "segmentation", "reconstruction", "diagnostic"]'
 
-        if task not in ["segmentation", "reconstruction"]:
+        if task not in ["segmentation", "reconstruction", "end_to_end"]:
             raise NotImplementedError(f"task {task} not implemented yet")
 
         if (

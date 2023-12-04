@@ -8,23 +8,23 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pathlib
-import AItomotools.CTtools.ct_geometry as ctgeo
-import AItomotools.CTtools.ct_utils as ct
-from AItomotools.data_loaders.LIDC_IDRI import LIDC_IDRI
-from AItomotools.models.FBPConvNet import FBPConvNet
-from AItomotools.utils.parameter import Parameter
+import LION.CTtools.ct_geometry as ctgeo
+import LION.CTtools.ct_utils as ct
+from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
+from LION.models.FBPConvNet import FBPConvNet
+from LION.utils.parameter import Parameter
 from ts_algorithms import fdk
 
 
-import AItomotools.experiments.ct_experiments as ct_experiments
+import LION.experiments.ct_experiments as ct_experiments
 
 
 #%%
 # % Chose device:
-device = torch.device("cuda:0")
+device = torch.device("cuda:1")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/")
+savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/clinical_dose/")
 datafolder = pathlib.Path(
     "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
 )
@@ -33,15 +33,15 @@ checkpoint_fname = savefolder.joinpath("FBPConvNet_check_*.pt")
 validation_fname = savefolder.joinpath("FBPConvNet_min_val.pt")
 #
 #%% Define experiment
-experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
-
+# experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+experiment = ct_experiments.clinicalCTRecon(datafolder=datafolder)
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 8
+batch_size = 4
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 

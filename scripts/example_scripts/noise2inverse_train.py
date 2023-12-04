@@ -22,10 +22,10 @@ from ts_algorithms import fdk
 
 #%%
 # % Chose device:
-device = torch.device("cuda:0")
+device = torch.device("cuda:3")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/")
+savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/clinical_dose/")
 datafolder = pathlib.Path(
     "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
 )
@@ -33,7 +33,7 @@ final_result_fname = savefolder.joinpath("Noise2Inverse_final_iter.pt")
 checkpoint_fname = savefolder.joinpath("Noise2Inverse_check_*.pt")
 #
 #%% Define experiment
-experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+experiment = ct_experiments.clinicalCTRecon(datafolder=datafolder)
 
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
