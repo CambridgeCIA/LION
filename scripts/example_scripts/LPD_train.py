@@ -23,7 +23,7 @@ import LION.experiments.ct_experiments as ct_experiments
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/")
+savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
 datafolder = pathlib.Path(
     "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
 )
@@ -32,6 +32,7 @@ checkpoint_fname = savefolder.joinpath("LPD_check_*.pt")
 validation_fname = savefolder.joinpath("LPD_min_val.pt")
 #
 #%% Define experiment
+
 experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
 
 #%% Dataset
@@ -40,7 +41,7 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 8
+batch_size = 1
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
@@ -49,9 +50,9 @@ lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 default_parameters = LPD.default_parameters()
 # This makes the LPD calculate the step size for the backprojection, which in my experience results in much much better pefromace
 # as its all in the correct scale.
-default_parameters.step_size = None
 default_parameters.learned_step = True
 default_parameters.step_positive = True
+default_parameters.n_iters = 5
 model = LPD(experiment.geo, default_parameters).to(device)
 
 
@@ -63,7 +64,7 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 500
+train_param.epochs = 100
 train_param.learning_rate = 1e-3
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
@@ -73,6 +74,7 @@ optimiser = torch.optim.Adam(
 
 # learning parameter update
 steps = len(lidc_dataloader)
+
 model.train()
 min_valid_loss = np.inf
 total_loss = np.zeros(train_param.epochs)
@@ -93,7 +95,6 @@ print(f"Starting iteration at epoch {start_epoch}")
 #%% train
 for epoch in range(start_epoch, train_param.epochs):
     train_loss = 0.0
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
     for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_dataloader)):
 
         optimiser.zero_grad()
@@ -105,7 +106,21 @@ for epoch in range(start_epoch, train_param.epochs):
         train_loss += loss.item()
 
         optimiser.step()
-        scheduler.step()
+
+        bad_recon = fdk(model.op, sinogram[0])
+        if index == 0:
+            plt.figure()
+            plt.subplot(1, 3, 1)
+            plt.imshow(reconstruction[0, 0, :, :].cpu().detach().numpy())
+            plt.clim(0, 3)
+            plt.subplot(1, 3, 2)
+            plt.imshow(target_reconstruction[0, 0, :, :].cpu().detach().numpy())
+            plt.clim(0, 3)
+            plt.subplot(1, 3, 3)
+            plt.imshow(bad_recon[0, :, :].cpu().detach().numpy())
+            plt.clim(0, 3)
+            plt.savefig("recon.png")
+            plt.close()
     total_loss[epoch] = train_loss
     # Validation
     valid_loss = 0.0
@@ -145,6 +160,10 @@ for epoch in range(start_epoch, train_param.epochs):
             dataset=experiment.param,
         )
 
+
+plt.figure()
+plt.plot(total_loss[1:])
+plt.savefig("loss.png")
 
 model.save(
     final_result_fname,

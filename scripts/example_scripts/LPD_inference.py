@@ -26,7 +26,7 @@ from ts_algorithms import fdk
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/low_dose/")
+savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
 datafolder = pathlib.Path(
     "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
 )
@@ -34,10 +34,16 @@ final_result_fname = savefolder.joinpath("LPD_final_iter.pt")
 checkpoint_fname = savefolder.joinpath("LPD_check_*.pt")
 #
 #%% Define experiment
-experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+params = ct_experiments.LowDoseCTRecon.default_parameters()
+params.data_loader_params.max_num_slices_per_patient = 1
+params.data_loader_params.training_proportion = 0.02
+params.data_loader_params.validation_proportion = 0.02
+experiment = ct_experiments.LowDoseCTRecon(
+    experiment_params=params, datafolder=datafolder
+)
 
 #%% Dataset
-dataset = experiment.get_testing_dataset()
+dataset = experiment.get_training_dataset()
 batch_size = 1
 dataloader = DataLoader(dataset, batch_size, shuffle=True)
 
@@ -49,5 +55,8 @@ lpd_model.eval()
 for index, (sinogram, target_reconstruction) in tqdm(enumerate(dataloader)):
 
     lpd_out = lpd_model(sinogram)
-
+    plt.figure()
+    plt.imshow(lpd_out[0, 0, :, :].cpu().detach().numpy())
+    plt.clim(0, 3)
+    plt.savefig("lpd_out.png")
     # do whatever you want with this.

@@ -118,14 +118,14 @@ class LPD(LIONmodel.LIONmodel):
                 ),
             )
 
-        # Create pytorch compatible operators and send them to aiutograd
+        # Create pytorch compatible operators and send them to autograd
         self._make_operator()
 
         # Define step size
         if self.model_parameters.step_size is None:
             # compute step size
             self.model_parameters.step_size = 1 / power_method(self.op)
-
+        print(self.model_parameters.step_size)
         # Are we learning the step? (with the above initialization)
         if self.model_parameters.learned_step:
             # Enforce positivity by making it 10^step
@@ -226,7 +226,6 @@ class LPD(LIONmodel.LIONmodel):
         """
         g: sinogram input
         """
-
         B, C, W, H = g.shape
 
         if C != 1:

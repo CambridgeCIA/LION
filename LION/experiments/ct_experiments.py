@@ -26,6 +26,8 @@ class Experiment(ABC):
 
         if experiment_params is None:
             self.experiment_params = self.default_parameters(dataset=dataset)
+        else:
+            self.experiment_params = experiment_params
         self.param = self.experiment_params
         if datafolder is not None:
             self.param.data_loader_params.folder = datafolder
