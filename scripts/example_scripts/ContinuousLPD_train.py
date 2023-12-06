@@ -29,9 +29,9 @@ savefolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/lo
 datafolder = pathlib.Path(
     "/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/"
 )
-final_result_fname = savefolder.joinpath("ContinuousLPD_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("ContinuousLPD_check_*.pt")
-validation_fname = savefolder.joinpath("ContinuousLPD_min_val.pt")
+final_result_fname = savefolder.joinpath("ContinuousLPD_final_iterBS2.pt")
+checkpoint_fname = savefolder.joinpath("ContinuousLPD_checkBS2_*.pt")
+validation_fname = savefolder.joinpath("ContinuousLPD_min_valBS2.pt")
 #
 # %% Define experiment
 experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
@@ -45,7 +45,7 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 # %% Define DataLoader
 # Use the same amount of training
-batch_size = 16
+batch_size = 2
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
@@ -98,7 +98,7 @@ print(f"Starting iteration at epoch {start_epoch}")
 # %% train
 for epoch in range(start_epoch, train_param.epochs):
     train_loss = 0.0
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
+    #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
     for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_dataloader)):
         optimiser.zero_grad()
         reconstruction = model(sinogram)
@@ -109,7 +109,7 @@ for epoch in range(start_epoch, train_param.epochs):
         train_loss += loss.item()
 
         optimiser.step()
-        scheduler.step()
+        #scheduler.step()
     total_loss[epoch] = train_loss
     # Validation
     valid_loss = 0.0
