@@ -123,6 +123,7 @@ class LPD(LIONmodel.LIONmodel):
 
         # Define step size
         if self.model_parameters.step_size is None:
+            print("Step size is None, computing it with power method")
             # compute step size
             self.model_parameters.step_size = 1 / power_method(self.op)
         print(self.model_parameters.step_size)
