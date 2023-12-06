@@ -1,12 +1,6 @@
 # =============================================================================
-# This file is part of AItomotools library
-# License : BSD-3
-#
-# Author  : Emilien Valat
-# =============================================================================
-# =============================================================================
-# This file is part of AItomotools library
-# License : BSD-3
+# This file is part of LION library
+# License : GPL-3
 #
 # Author  : Emilien Valat
 # =============================================================================
@@ -19,32 +13,16 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 
-
-def format_slice_index(index: int) -> str:
-    str_index = str(index)
-    while len(str_index) < 5:
-        str_index = "0" + str_index
-    return f"slice{str_index}"
+from LION.utils.parameter import Parameter
 
 
-def format_mode_index(index: int) -> str:
-    return f"mode{index}"
+class deteCT(Dataset):
+    def __init__(self, mode: str, params: Parameter = None):
+        if params is None:
+            params = self.default_parameters()
 
-
-class ScanDataset(Dataset):
-    def __init__(
-        self,
-        query: str,
-        path_to_dataset: Path,
-        mode: str,
-        pipeline: str,
-        train: bool,
-        training_proportion: float,
-        transforms=None,
-        default=True,
-    ):
         ### Defining the path to data
-        self.path_to_dataset = path_to_dataset
+        self.path_to_dataset = params.path_to_dataset
         """
         The path_to_dataset attribute (pathlib.Path) points towards the folder
         where the data is stored
@@ -52,6 +30,7 @@ class ScanDataset(Dataset):
         ### Defining the path to scan data
         self.path_to_scan_data = self.path_to_dataset.joinpath("scan_settings.json")
         ### Defining the path to the data record
+        default = True
         if default:
             self.path_to_data_record = self.path_to_dataset.joinpath(
                 f"default_data_records.csv"
@@ -73,42 +52,46 @@ class ScanDataset(Dataset):
             - the detector it was sampled with
         """
         # Defining the mode
-        self.mode = mode
+        self.acquisition_mode = params.acquisition_mode
         """
-        The mode (str) argument is a keyword defining what mode of the dataset to use:
+        The acquisition_mode (str) argument is a keyword defining what mode of the dataset to use:
                          |  mode1   |   mode2  |  mode3
             Tube Voltage |   90kV   |   90kV   |  60kV
             Tube power   |    3W    |    90W   |  60W
             Filter       | Thoraeus | Thoraeus | No Filter
         """
-        # Defining the pipeline
-        assert pipeline in [
+        # Defining the task
+        self.task = params.task
+        """
+        The task (str) argument is a keyword defining what is the dataset used for:
+            - task == 'reconstruction' -> the dataset returns the sinogram and the reconstruction
+            - task == 'segmentation' -> the dataset returns the reconstruction and the segmentation
+            - task == 'joint' -> the dataset returns the sinogram, the reconstruction and the segmentation
+        """
+
+        assert self.task in [
             "reconstruction",
             "segmentation",
             "joint",
-        ], f'Wrong pipeline argument, must be in ["reconstruction", "segmentation", "joint"]'
-        if pipeline in ["segmentation", "joint"]:
+        ], f'Wrong task argument, must be in ["reconstruction", "segmentation", "joint"]'
+        if self.task in ["segmentation", "joint"]:
             assert (
-                self.mode == "mode2"
-            ), f"Inconsistent arguments. The mode is set on {self.mode} which does not contain the segmentation that {pipeline} pipeline requires"
-        self.pipeline = pipeline
-        """
-        The pipeline (str) argument is a keyword defining what is the dataset used for:
-            - pipeline == 'reconstruction' -> the dataset returns the sinogram and the reconstruction
-            - pipeline == 'segmentation' -> the dataset returns the reconstruction and the segmentation
-            - pipeline == 'joint' -> the dataset returns the sinogram, the reconstruction and the segmentation
-        """
+                self.acquisition_mode == "mode2"
+            ), f"Inconsistent arguments. The acquisition_mode is set on {self.acquisition_mode} which does not contain the segmentation that {task} task requires"
+
         # Defining the training mode
-        self.train = train
+        self.mode = mode
         """
         The train (bool) argument defines if the dataset is used for training or testing
         """
-        self.training_proportion = training_proportion
+        self.training_proportion = params.training_proportion
+        self.validation_proportion = params.validation_proportion
+
         # Defining the train proportion
         """
         The training_proportion (float) argument defines the proportion of the training dataset used for training
         """
-        self.transforms = transforms
+        self.transforms = None  # params.transforms
 
         ### We query the dataset subset
         self.slice_dataframe: pd.DataFrame
@@ -118,8 +101,8 @@ class ScanDataset(Dataset):
         Example of query: 'detector==1'
         If the no query argument is passed, data_record_subset == data_record
         """
-        if query:
-            self.slice_dataframe = self.data_record.query(query)
+        if params.query:
+            self.slice_dataframe = self.data_record.query(params.query)
         else:
             self.slice_dataframe = self.data_record
 
@@ -129,15 +112,25 @@ class ScanDataset(Dataset):
         """
         The sample_dataframe (pd.Dataframe) is a dataframe linking sample index to slices.
         It is used to partition the dataset on a sample basis, rather than on a slice basis,
-        avoiding 'data leakage' between training and testing
+        avoiding 'data leakage' between training, validation and testing
         """
-        if self.train:
+        if self.mode == "train":
             self.sample_dataframe = self.sample_dataframe.head(
                 int(len(self.sample_dataframe) * self.training_proportion)
             )
+        elif self.mode == "validation":
+            self.sample_dataframe = self.sample_dataframe.iloc[
+                int(len(self.sample_dataframe) * self.training_proportion) : int(
+                    len(self.sample_dataframe)
+                    * (self.training_proportion + self.validation_proportion)
+                )
+            ]
         else:
             self.sample_dataframe = self.sample_dataframe.tail(
-                int(len(self.sample_dataframe) * (1 - self.training_proportion))
+                int(
+                    len(self.sample_dataframe)
+                    * (1 - self.training_proportion - self.validation_proportion)
+                )
             )
 
         self.slice_dataframe = self.slice_dataframe[
@@ -145,6 +138,20 @@ class ScanDataset(Dataset):
                 self.sample_dataframe["sample_index"].unique()
             )
         ]
+
+    @staticmethod
+    def default_parameters():
+        param = Parameter()
+        param.path_to_dataset = Path(
+            "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/2DeteCT/"
+        )
+        param.acquisition_mode = "mode1"
+        param.task = "reconstruction"
+        param.training_proportion = 0.8
+        param.validation_proportion = 0.1
+        param.test_proportion = 0.1
+        param.query = None
+        return param
 
     def compute_sample_dataframe(self):
         unique_identifiers = self.slice_dataframe["sample_index"].unique()
@@ -173,7 +180,7 @@ class ScanDataset(Dataset):
         reconstruction = torch.from_numpy(
             np.load(path_to_slice.joinpath("reconstruction.npy"))
         ).unsqueeze(0)
-        if self.pipeline == "segmentation":
+        if self.task == "segmentation":
             segmentation = torch.from_numpy(
                 np.load(path_to_slice.joinpath("reconstruction.npy"))
             ).unsqueeze(0)
@@ -181,12 +188,12 @@ class ScanDataset(Dataset):
                 "reconstruction": reconstruction,
                 "segmentation": segmentation,
             }
-        if self.pipeline in "reconstruction":
+        if self.task in "reconstruction":
             sinogram = torch.from_numpy(
                 np.load(path_to_slice.joinpath("sinogram.npy"))
             ).unsqueeze(0)
             tensor_dict = {"reconstruction": reconstruction, "sinogram": sinogram}
-        elif self.pipeline == "joint":
+        elif self.task == "joint":
             segmentation = torch.from_numpy(
                 np.load(path_to_slice.joinpath("reconstruction.npy"))
             ).unsqueeze(0)
@@ -199,7 +206,7 @@ class ScanDataset(Dataset):
                 "sinogram": sinogram,
             }
         else:
-            raise ValueError("Wrong pipeline argument")
+            raise ValueError("Wrong task argument")
 
         if self.transforms:
             tensor_dict = self.transforms(tensor_dict)
