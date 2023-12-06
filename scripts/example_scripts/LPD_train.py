@@ -27,9 +27,9 @@ savefolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/lo
 datafolder = pathlib.Path(
     "/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/"
 )
-final_result_fname = savefolder.joinpath("LPD_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("LPD_check_*.pt")
-validation_fname = savefolder.joinpath("LPD_min_val.pt")
+final_result_fname = savefolder.joinpath("LPD_final_iterBS2fixed.pt")
+checkpoint_fname = savefolder.joinpath("LPD_checkBS2fixed_*.pt")
+validation_fname = savefolder.joinpath("LPD_min_valBS2fixed.pt")
 #
 #%% Define experiment
 experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
@@ -40,7 +40,7 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 16
+batch_size = 2
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
@@ -105,21 +105,7 @@ for epoch in range(start_epoch, train_param.epochs):
         train_loss += loss.item()
 
         optimiser.step()
-
-        bad_recon = fdk(model.op, sinogram[0])
-        if index == 0:
-            plt.figure()
-            plt.subplot(1, 3, 1)
-            plt.imshow(reconstruction[0, 0, :, :].cpu().detach().numpy())
-            plt.clim(0, 3)
-            plt.subplot(1, 3, 2)
-            plt.imshow(target_reconstruction[0, 0, :, :].cpu().detach().numpy())
-            plt.clim(0, 3)
-            plt.subplot(1, 3, 3)
-            plt.imshow(bad_recon[0, :, :].cpu().detach().numpy())
-            plt.clim(0, 3)
-            plt.savefig("recon.png")
-            plt.close()
+        #scheduler.step()
     total_loss[epoch] = train_loss
     # Validation
     valid_loss = 0.0
@@ -170,3 +156,5 @@ model.save(
     training=train_param,
     dataset=experiment.param,
 )
+
+# %%
