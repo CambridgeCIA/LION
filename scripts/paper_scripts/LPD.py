@@ -1,3 +1,12 @@
+# =============================================================================
+# This file is part of AItomotools library
+# License : BSD-3
+#
+# Author  : Ander Biguri
+# Modifications: -
+# =============================================================================
+
+
 #%% Learned Primal Dual
 #
 # This script attempts to replicate the experiments descrived in
@@ -18,11 +27,11 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pathlib
-import AItomotools.CTtools.ct_geometry as ctgeo
-import AItomotools.CTtools.ct_utils as ct
-from AItomotools.data_loaders.luna16_dataset import Luna16Dataset
-from AItomotools.models.LPD import LPD
-from AItomotools.utils.parameter import Parameter
+import LION.CTtools.ct_geometry as ctgeo
+import LION.CTtools.ct_utils as ct
+from LION.data_loaders.luna16_dataset import Luna16Dataset
+from LION.models.LPD import LPD
+from LION.utils.parameter import Parameter
 
 
 #%% Chose device:

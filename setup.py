@@ -9,10 +9,10 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
-packages = setuptools.find_packages()
+packages = setuptools.find_namespace_packages()
 
 setuptools.setup(
-    name="AItomotools",
+    name="LION",
     version="0.1",
     author="Ander Biguri",
     author_email="ander.biguri@gmail.com",
@@ -24,9 +24,9 @@ setuptools.setup(
     long_description=read("README.md"),
 )
 
-os.system("pip install ./AItomotools/models/MS-D/")
+os.system("pip install ./LION/models/MS-D/")
 
 wd = os.getcwd()
-os.chdir("./AItomotools/metrics/radiomics/")
-os.system("python setup.py install")
+os.chdir("./LION/metrics/radiomics/")
+os.system("pip install .")
 os.chdir(wd)

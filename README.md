@@ -1,17 +1,24 @@
-# AI tools for learned tomographic reconstruction
+# LION: AI tools for learned tomographic reconstruction
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
-University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction.
+University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction, LION (Learned Iterative Optimization Networks)
 
 
-**WARNING** Building in progress.
+**WARNING** Building in progress. This is a tool in development in very early stages. 
+Many things are bound to fail and many more are bound to change. If you want to help with development, send an email to Ander Biguri and/or open and issue or a discussion. 
 
 Install: 
 
 ```
-conda env create --name aitomotools --file=env.yml
+git clone https://github.com/CambridgeCIA/LION.git
+cd LION
+conda env create --file=env.yml
+git submodule update --init --recursive
+conda activate LION
+pip install LION/models/MS-D/
+pip install .
 ```
 
 Optional, if you want pre-commits. 
@@ -19,7 +26,7 @@ Install pre commits for auto-formating your commits.
 Highly suggested if you want reproducibility, this will auto-save changes in your conda enviroments and will update your conda enviroment when pulling
 
 ```
-conda activate aitomotools
+conda activate LION
 pip install pre-commit
 pre-commit install --hook-type pre-commit --hook-type post-merge
 ```
@@ -41,6 +48,7 @@ Read `developers.md`
       <td align="center" valign="top" width="14.28%"><a href="https://emilienvalat.net/"><img src="https://avatars.githubusercontent.com/u/46785587?v=4?s=100" width="100px;" alt="Emilien Valat"/><br /><sub><b>Emilien Valat</b></sub></a><br /><a href="https://github.com/CambridgeCIA/AItomotools/commits?author=Emvlt" title="Code">💻</a> <a href="#design-Emvlt" title="Design">🎨</a> <a href="#ideas-Emvlt" title="Ideas, Planning, & Feedback">🤔</a> <a href="#data-Emvlt" title="Data">🔣</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://ferdiasherry.com"><img src="https://avatars.githubusercontent.com/u/12610714?v=4?s=100" width="100px;" alt="Ferdia"/><br /><sub><b>Ferdia</b></sub></a><br /><a href="#design-fsherry" title="Design">🎨</a> <a href="#tool-fsherry" title="Tools">🔧</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/michi217"><img src="https://avatars.githubusercontent.com/u/62284237?v=4?s=100" width="100px;" alt="michi217"/><br /><sub><b>michi217</b></sub></a><br /><a href="https://github.com/CambridgeCIA/AItomotools/commits?author=michi217" title="Code">💻</a> <a href="#data-michi217" title="Data">🔣</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/OliverCoughlan"><img src="https://avatars.githubusercontent.com/u/39098447?v=4?s=100" width="100px;" alt="Oliver Coughlan"/><br /><sub><b>Oliver Coughlan</b></sub></a><br /><a href="https://github.com/CambridgeCIA/AItomotools/commits?author=OliverCoughlan" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>

@@ -22,13 +22,13 @@ import matplotlib.pyplot as plt
 
 #%% Data paths
 # To avoid unnecesary repetition of data, we have much of the data already stored and processed in shared folders.
-from AItomotools.utils.paths import LUNA_DATASET_PATH
+from LION.utils.paths import LUNA_DATASET_PATH
 
 # Lets assume here that you need a new instance of this dataset, or to process it for the first time.
 # However, assume that what you need is likely already been processed, and you should use that dataset.
 
 #%% Lets see how to use the LUNA16 data loader.
-from AItomotools.data_loaders.LUNA16 import LUNA16
+from LION.data_loaders.LUNA16 import LUNA16
 
 # The data loader will do all the job for you, but its expecting a certain format. Simply:
 # .
