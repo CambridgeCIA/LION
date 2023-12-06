@@ -28,11 +28,11 @@ from ts_algorithms import fdk
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/")
+savefolder = pathlib.Path("/store/DAMTP/cr661/LION/trained_models/low_dose/")
 datafolder = pathlib.Path(
-    "/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/"
+    "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
 )
-final_result_fname = savefolder.joinpath("ContinuousLPD_final_iterBS2.pt")
+final_result_fname = savefolder.joinpath("ContinuousLPD_checkBS2_0081.pt")
 checkpoint_fname = savefolder.joinpath("ContinuousLPD_checkBS2_*.pt")
 #
 #%% Define experiment
