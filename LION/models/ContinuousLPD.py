@@ -300,6 +300,7 @@ class ContinuousLPD(LIONmodel.LIONmodel):
 
         # Define step size
         if self.model_parameters.step_size is None:
+            print("Step size is None, computing it with power method")
             # compute step size
             self.model_parameters.step_size = 1 / power_method(self.op)
 
@@ -356,7 +357,7 @@ class ContinuousLPD(LIONmodel.LIONmodel):
         LPD_params.data_channels = [7, 32, 32, 32, 5]
         LPD_params.reg_channels = [6, 32, 32, 32, 5]
         LPD_params.learned_step = False
-        LPD_params.step_size = 1
+        LPD_params.step_size = None
         LPD_params.step_positive = False
         LPD_params.mode = "ct"
 
