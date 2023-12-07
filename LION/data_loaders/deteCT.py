@@ -51,10 +51,19 @@ class deteCT(Dataset):
             - the mix (if indicated)
             - the detector it was sampled with
         """
-        # Defining the mode
-        self.acquisition_mode = params.acquisition_mode
+        # Defining the sinogram mode
+        self.sinogram_mode = params.sinogram_mode
         """
-        The acquisition_mode (str) argument is a keyword defining what mode of the dataset to use:
+        The sinogram_mode (str) argument is a keyword defining what sinogram mode of the dataset to use:
+                         |  mode1   |   mode2  |  mode3
+            Tube Voltage |   90kV   |   90kV   |  60kV
+            Tube power   |    3W    |    90W   |  60W
+            Filter       | Thoraeus | Thoraeus | No Filter
+        """
+        # Defining the sinogram mode
+        self.reconstruction_mode = params.reconstruction_mode
+        """
+        The reconstruction_mode (str) argument is a keyword defining what image mode of the dataset to use:
                          |  mode1   |   mode2  |  mode3
             Tube Voltage |   90kV   |   90kV   |  60kV
             Tube power   |    3W    |    90W   |  60W
@@ -74,11 +83,6 @@ class deteCT(Dataset):
             "segmentation",
             "joint",
         ], f'Wrong task argument, must be in ["reconstruction", "segmentation", "joint"]'
-        if self.task in ["segmentation", "joint"]:
-            assert (
-                self.acquisition_mode == "mode2"
-            ), f"Inconsistent arguments. The acquisition_mode is set on {self.acquisition_mode} which does not contain the segmentation that {task} task requires"
-
         # Defining the training mode
         self.mode = mode
         """
@@ -145,12 +149,13 @@ class deteCT(Dataset):
         param.path_to_dataset = Path(
             "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/2DeteCT/"
         )
-        param.acquisition_mode = "mode1"
+        param.sinogram_mode = "mode2"
+        param.reconstruction_mode = "mode2"
         param.task = "reconstruction"
         param.training_proportion = 0.8
         param.validation_proportion = 0.1
         param.test_proportion = 0.1
-        param.query = None
+        param.query = 'detector == 1'
         return param
 
     def compute_sample_dataframe(self):
@@ -174,15 +179,21 @@ class deteCT(Dataset):
 
     def __getitem__(self, index):
         slice_row = self.slice_dataframe.iloc[index]
-        path_to_slice = self.path_to_dataset.joinpath(
-            f"{slice_row['slice_identifier']}/{self.mode}"
+        path_to_sinogram = self.path_to_dataset.joinpath(
+            f"{slice_row['slice_identifier']}/{self.sinogram_mode}"
+        )
+        path_to_recontruction = self.path_to_dataset.joinpath(
+            f"{slice_row['slice_identifier']}/{self.reconstruction_mode}"
+        )
+        path_to_segmentation = self.path_to_dataset.joinpath(
+            f"{slice_row['slice_identifier']}/mode2"
         )
         reconstruction = torch.from_numpy(
-            np.load(path_to_slice.joinpath("reconstruction.npy"))
+            np.load(path_to_recontruction.joinpath("reconstruction.npy"))
         ).unsqueeze(0)
         if self.task == "segmentation":
             segmentation = torch.from_numpy(
-                np.load(path_to_slice.joinpath("reconstruction.npy"))
+                np.load(path_to_segmentation.joinpath("segmentation.npy"))
             ).unsqueeze(0)
             tensor_dict = {
                 "reconstruction": reconstruction,
@@ -190,15 +201,15 @@ class deteCT(Dataset):
             }
         if self.task in "reconstruction":
             sinogram = torch.from_numpy(
-                np.load(path_to_slice.joinpath("sinogram.npy"))
+                np.load(path_to_sinogram.joinpath("sinogram.npy"))
             ).unsqueeze(0)
             tensor_dict = {"reconstruction": reconstruction, "sinogram": sinogram}
         elif self.task == "joint":
             segmentation = torch.from_numpy(
-                np.load(path_to_slice.joinpath("reconstruction.npy"))
+                np.load(path_to_segmentation.joinpath("segmentation.npy"))
             ).unsqueeze(0)
             sinogram = torch.from_numpy(
-                np.load(path_to_slice.joinpath("sinogram.npy"))
+                np.load(path_to_sinogram.joinpath("sinogram.npy"))
             ).unsqueeze(0)
             tensor_dict = {
                 "reconstruction": reconstruction,
