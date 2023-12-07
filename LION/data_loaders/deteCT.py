@@ -203,7 +203,10 @@ class deteCT(Dataset):
             sinogram = torch.from_numpy(
                 np.load(path_to_sinogram.joinpath("sinogram.npy"))
             ).unsqueeze(0)
-            tensor_dict = {"reconstruction": reconstruction, "sinogram": sinogram}
+            tensor_dict = {
+                "reconstruction": reconstruction,
+                "sinogram": sinogram
+                }
         elif self.task == "joint":
             segmentation = torch.from_numpy(
                 np.load(path_to_segmentation.joinpath("segmentation.npy"))
