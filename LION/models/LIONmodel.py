@@ -254,7 +254,7 @@ class LIONmodel(nn.Module, ABC):
         options = Parameter()
         options.load(fname.with_suffix(".json"))
         if hasattr(options, "geometry_parameters"):
-            options.geometry_parameters = ct.Geometry.__init_from_parameter(
+            options.geometry_parameters = ct.Geometry._init_from_parameter(
                 options.geometry_parameters
             )
         # Error check

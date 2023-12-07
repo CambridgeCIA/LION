@@ -40,7 +40,7 @@ class Geometry(Parameter):
 
     # PLEASE SOMEONE FIND A SMARTER WAY TO DO THIS
     @classmethod
-    def __init__from_parameter(cls, parameter: Parameter):
+    def _init_from_parameter(cls, parameter: Parameter):
         return cls(
             image_shape=parameter.image_shape,
             image_size=parameter.image_size,
