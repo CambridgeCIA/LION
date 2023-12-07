@@ -21,7 +21,7 @@ import LION.experiments.ct_experiments as ct_experiments
 
 #%%
 # % Chose device:
-device = torch.device("cuda:0")
+device = torch.device("cuda:1")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/")
@@ -31,9 +31,9 @@ datafolder = pathlib.Path(
 final_result_fname = savefolder.joinpath("ItNet_final_iter.pt")
 checkpoint_fname = savefolder.joinpath("ItNet_check_*.pt")
 validation_fname = savefolder.joinpath("ItNet_min_val.pt")
-unet_final_result_fname = savefolder.joinpath("ItNet_final_iter.pt")
-unet_checkpoint_fname = savefolder.joinpath("ItNet_check_*.pt")
-unet_validation_fname = savefolder.joinpath("ItNet_min_val.pt")
+unet_final_result_fname = savefolder.joinpath("ItNet_Unet_final_iter.pt")
+unet_checkpoint_fname = savefolder.joinpath("ItNet_Unet_check_*.pt")
+unet_validation_fname = savefolder.joinpath("ItNet_Unet_min_val.pt")
 #
 #%% Define experiment
 experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
@@ -42,8 +42,8 @@ experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
 
-#%% Define DataLoader
-# Use the same amount of training
+#%% Define DataLoader``
+# Use the same amount of training``
 batch_size = 8
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
@@ -169,6 +169,9 @@ steps = len(lidc_dataloader)
 min_valid_loss = np.inf
 total_loss = np.zeros(train_param.epochs)
 start_epoch = 0
+loss_fcn = torch.nn.MSELoss()
+train_param.optimiser = "adam"
+optimiser = torch.optim.Adam(model.parameters(), lr=train_param.learning_rate)
 
 # %% Check if there is a checkpoint saved, and if so, start from there.
 if model.final_file_exists(savefolder.joinpath(final_result_fname)):
@@ -181,12 +184,9 @@ model, optimiser, start_epoch, total_loss, _ = ItNet.load_checkpoint_if_exists(
 print(f"Starting iteration at epoch {start_epoch}")
 
 # loss fn
-loss_fcn = torch.nn.MSELoss()
-train_param.optimiser = "adam"
 
 # optimizer
 
-optimiser = torch.optim.Adam(model.parameters(), lr=train_param.learning_rate)
 
 model.train()
 

@@ -28,7 +28,6 @@ class ConvBlock(nn.Module):
         if layers < 1:
             raise ValueError("At least one layer required")
         # convolutional layers
-        kernel_size = 3
         layer_list = []
         for ii in range(layers):
             layer_list.append(
@@ -99,74 +98,83 @@ class FBPConvNet(LIONmodel.LIONmodel):
 
         # Down blocks
         self.block_1_down = ConvBlock(
-            model_parameters.down_1_channels, relu_type=model_parameters.activation
+            self.model_parameters.down_1_channels,
+            relu_type=self.model_parameters.activation,
         )
         self.down_1 = Down()
         self.block_2_down = ConvBlock(
-            model_parameters.down_2_channels, relu_type=model_parameters.activation
+            self.model_parameters.down_2_channels,
+            relu_type=self.model_parameters.activation,
         )
         self.down_2 = Down()
         self.block_3_down = ConvBlock(
-            model_parameters.down_3_channels, relu_type=model_parameters.activation
+            self.model_parameters.down_3_channels,
+            relu_type=self.model_parameters.activation,
         )
         self.down_3 = Down()
         self.block_4_down = ConvBlock(
-            model_parameters.down_4_channels, relu_type=model_parameters.activation
+            self.model_parameters.down_4_channels,
+            relu_type=self.model_parameters.activation,
         )
         self.down_4 = Down()
 
         # "latent space"
         self.block_bottom = ConvBlock(
-            model_parameters.latent_channels, relu_type=model_parameters.activation
+            self.model_parameters.latent_channels,
+            relu_type=self.model_parameters.activation,
         )
 
         # Up blocks
         self.up_1 = Up(
             [
-                model_parameters.latent_channels[-1],
-                model_parameters.up_1_channels[0] // 2,
+                self.model_parameters.latent_channels[-1],
+                self.model_parameters.up_1_channels[0] // 2,
             ],
-            relu_type=model_parameters.activation,
+            relu_type=self.model_parameters.activation,
         )
         self.block_1_up = ConvBlock(
-            model_parameters.up_1_channels, relu_type=model_parameters.activation
+            self.model_parameters.up_1_channels,
+            relu_type=self.model_parameters.activation,
         )
         self.up_2 = Up(
             [
-                model_parameters.up_1_channels[-1],
-                model_parameters.up_2_channels[0] // 2,
+                self.model_parameters.up_1_channels[-1],
+                self.model_parameters.up_2_channels[0] // 2,
             ],
-            relu_type=model_parameters.activation,
+            relu_type=self.model_parameters.activation,
         )
         self.block_2_up = ConvBlock(
-            model_parameters.up_2_channels, relu_type=model_parameters.activation
+            self.model_parameters.up_2_channels,
+            relu_type=self.model_parameters.activation,
         )
         self.up_3 = Up(
             [
-                model_parameters.up_2_channels[-1],
-                model_parameters.up_3_channels[0] // 2,
+                self.model_parameters.up_2_channels[-1],
+                self.model_parameters.up_3_channels[0] // 2,
             ],
-            relu_type=model_parameters.activation,
+            relu_type=self.model_parameters.activation,
         )
         self.block_3_up = ConvBlock(
-            model_parameters.up_3_channels, relu_type=model_parameters.activation
+            self.model_parameters.up_3_channels,
+            relu_type=self.model_parameters.activation,
         )
         self.up_4 = Up(
             [
-                model_parameters.up_3_channels[-1],
-                model_parameters.up_4_channels[0] // 2,
+                self.model_parameters.up_3_channels[-1],
+                self.model_parameters.up_4_channels[0] // 2,
             ],
-            relu_type=model_parameters.activation,
+            relu_type=self.model_parameters.activation,
         )
         self.block_4_up = ConvBlock(
-            model_parameters.up_4_channels, relu_type=model_parameters.activation
+            self.model_parameters.up_4_channels,
+            relu_type=self.model_parameters.activation,
         )
 
         self.block_last = nn.Sequential(
             nn.Conv2d(
-                model_parameters.last_block[0],
-                model_parameters.last_block[1],
-                model_parameters.last_block[2],
+                self.model_parameters.last_block[0],
+                self.model_parameters.last_block[1],
+                self.model_parameters.last_block[2],
                 padding=0,
             )
         )

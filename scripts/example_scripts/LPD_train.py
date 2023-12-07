@@ -1,6 +1,5 @@
 #%% This example shows how to train FBPConvNet for full angle, noisy measurements.
 
-
 #%% Imports
 import matplotlib.pyplot as plt
 import numpy as np
@@ -53,9 +52,9 @@ lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 default_parameters = LPD.default_parameters()
 # This makes the LPD calculate the step size for the backprojection, which in my experience results in much much better pefromace
 # as its all in the correct scale.
-default_parameters.step_size = None
 default_parameters.learned_step = True
 default_parameters.step_positive = True
+default_parameters.n_iters = 5
 model = LPD(experiment.geo, default_parameters).to(device)
 
 
@@ -67,7 +66,7 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 500
+train_param.epochs = 100
 train_param.learning_rate = 1e-3
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
@@ -77,6 +76,7 @@ optimiser = torch.optim.Adam(
 
 # learning parameter update
 steps = len(lidc_dataloader)
+
 model.train()
 min_valid_loss = np.inf
 total_loss = np.zeros(train_param.epochs)
@@ -97,7 +97,6 @@ print(f"Starting iteration at epoch {start_epoch}")
 #%% train
 for epoch in range(start_epoch, train_param.epochs):
     train_loss = 0.0
-    #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
     for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_dataloader)):
 
         optimiser.zero_grad()
@@ -149,6 +148,10 @@ for epoch in range(start_epoch, train_param.epochs):
             dataset=experiment.param,
         )
 
+
+plt.figure()
+plt.plot(total_loss[1:])
+plt.savefig("loss.png")
 
 model.save(
     final_result_fname,

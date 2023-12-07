@@ -196,8 +196,8 @@ class ItNet(LIONmodel.LIONmodel):
         super().__init__(model_parameters, geometry_parameters)
 
         # Create layers per iteration
-        for i in range(model_parameters.n_iters):
-            self.add_module(f"Unet_{i}", UNet(model_parameters.Unet_params))
+        for i in range(self.model_parameters.n_iters):
+            self.add_module(f"Unet_{i}", UNet(self.model_parameters.Unet_params))
 
         # Create pytorch compatible operators and send them to autograd
         self._make_operator()

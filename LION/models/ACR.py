@@ -120,8 +120,7 @@ class SFB(LIONmodel.LIONmodel):
 
 class ACR(LIONmodel.LIONmodel):
     def __init__(self, model_parameters: Parameter = None):
-        if model_parameters is None:
-            model_parameters = ACR.default_parameters()
+
         super().__init__(model_parameters)
 
         # First Conv

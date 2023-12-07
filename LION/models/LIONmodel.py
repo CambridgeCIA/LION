@@ -75,7 +75,7 @@ class LIONmodel(nn.Module, ABC):
     def _make_operator(self):
         if self.model_parameters.mode.lower() != "ct":
             raise NotImplementedError("Only CT operators supported")
-        if self.geo is not None:
+        if hasattr(self, "geo") and self.geo is not None:
             self.op = ct_utils.make_operator(self.geo)
             self.A = to_autograd(self.op, num_extra_dims=1)
             self.AT = to_autograd(self.op.T, num_extra_dims=1)
@@ -253,6 +253,10 @@ class LIONmodel(nn.Module, ABC):
         ##############################
         options = Parameter()
         options.load(fname.with_suffix(".json"))
+        if hasattr(options, "geometry_parameters"):
+            options.geometry_parameters = ct.Geometry.init_from_parameter(
+                options.geometry_parameters
+            )
         # Error check
         ################################
         # Check if model has been changed since save.
@@ -299,9 +303,12 @@ class LIONmodel(nn.Module, ABC):
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
         if hasattr(options, "geometry_parameters"):
-            model = cls(options.model_parameters, options.geometry_parameters)
+            model = cls(
+                model_parameters=options.model_parameters,
+                geometry_parameters=options.geometry_parameters,
+            )
         else:
-            model = cls(options.model_parameters)
+            model = cls(model_parameters=options.model_parameters)
 
         # Load the data into the model we created.
         model.to(torch.cuda.current_device())

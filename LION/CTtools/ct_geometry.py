@@ -38,6 +38,20 @@ class Geometry(Parameter):
 
         self.angles = np.array(kwargs.get("angles", None))
 
+    # PLEASE SOMEONE FIND A SMARTER WAY TO DO THIS
+    @classmethod
+    def __init__from_parameter(cls, parameter: Parameter):
+        return cls(
+            image_shape=parameter.image_shape,
+            image_size=parameter.image_size,
+            detector_shape=parameter.detector_shape,
+            detector_size=parameter.detector_size,
+            dso=parameter.dso,
+            dsd=parameter.dsd,
+            mode=parameter.mode,
+            angles=parameter.angles,
+        )
+
     @staticmethod
     def default_parameters():
         return Geometry(

@@ -6,7 +6,8 @@
 University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction, LION (Learned Iterative Optimization Networks)
 
 
-**WARNING** Building in progress.
+**WARNING** Building in progress. This is a tool in development in very early stages. 
+Many things are bound to fail and many more are bound to change. If you want to help with development, send an email to Ander Biguri and/or open and issue or a discussion. 
 
 Install: 
 
