@@ -11,17 +11,13 @@ from torch.utils.data import DataLoader
 # basic python imports
 from tqdm import tqdm
 import pathlib
-import copy
 
 from skimage.metrics import structural_similarity as ssim
 
 # LION imports
-import LION.CTtools.ct_utils as ct
 from LION.models.ContinuousLPD import ContinuousLPD
 from LION.models.LPD import LPD
 from LION.models.FBPConvNet import FBPConvNet
-from LION.models.ItNet import ItNet
-from LION.utils.parameter import Parameter
 import LION.experiments.ct_experiments as ct_experiments
 from ts_algorithms import fdk
 
@@ -36,6 +32,7 @@ def plot_outputs(clpd_out, fbp_out, bad_recon, target_reconstruction):
     im0 = axs[0].imshow(clpd_out[0,0,:,:].detach().cpu().numpy(), cmap='gray')
     axs[0].set_title('CLPD Output')
     im0.set_clim(0,3)
+    axs[0].axis('off')
     ## Plot lpd_out
     #im1 = axs[1].imshow(lpd_out[0,0,:,:].detach().cpu().numpy(), cmap='gray')
     #axs[1].set_title('LPD Output')
@@ -44,14 +41,17 @@ def plot_outputs(clpd_out, fbp_out, bad_recon, target_reconstruction):
     im1 = axs[1].imshow(fbp_out[0,0,:,:].detach().cpu().numpy(), cmap='gray')
     axs[1].set_title('FBP Output')
     im1.set_clim(0,3)
+    axs[1].axis('off')
     # Plot bad_recon
     im2 = axs[2].imshow(bad_recon[0,0,:,:].detach().cpu().numpy(), cmap='gray')
     axs[2].set_title('FDK')
     im2.set_clim(0,3)
+    axs[2].axis('off')
     # Plot target_reconstruction
     im3 = axs[3].imshow(target_reconstruction[0,0,:,:].detach().cpu().numpy(), cmap='gray')
     axs[3].set_title('Target Reconstruction')
     im3.set_clim(0,3)
+    axs[3].axis('off')
     plt.show()   
 
 #%%
@@ -65,38 +65,43 @@ def compute_ssim(out, target_reconstruction):
         ssim_scores.append(ssim_score)
 
     return np.mean(ssim_scores)
+
+def compute_psnr(img1, img2):
+    mse = torch.mean((img1 - img2) ** 2)
+    return 20 * torch.log10(255.0 / torch.sqrt(mse))
         
 #%%
-def save_ssim_values(clpd_ssim, lpd_ssim, fbp_ssim, fdk_ssim, filename):
+def save_ssim_psnr_values(clpd_ssim, lpd_ssim, fbp_ssim, fdk_ssim, clpd_psnr, lpd_psnr, fbp_psnr, fdk_psnr, filename):
     with open(filename, 'w') as f:
-        f.write(f"{clpd_ssim}\n")
-        f.write(f"{lpd_ssim}\n")
-        f.write(f"{fbp_ssim}\n")
-        f.write(f"{fdk_ssim}\n")
+        f.write(f"CLPD SSIM: {clpd_ssim}, PSNR: {clpd_psnr}\n")
+        f.write(f"LPD SSIM: {lpd_ssim}, PSNR: {lpd_psnr}\n")
+        f.write(f"FBP SSIM: {fbp_ssim}, PSNR: {fbp_psnr}\n")
+        f.write(f"FDK SSIM: {fdk_ssim}, PSNR: {fdk_psnr}\n")
 
-def read_ssim_values(filename):
+def read_ssim_psnr_values(filename):
     with open(filename, 'r') as f:
         lines = f.readlines()
-        clpd_ssim = float(lines[0].strip())
-        lpd_ssim = float(lines[1].strip())
-        fbp_ssim = float(lines[2].strip())
-        fdk_ssim = float(lines[3].strip())
-    return clpd_ssim, lpd_ssim, fbp_ssim, fdk_ssim
+        clpd_ssim, clpd_psnr = map(float, lines[0].split(":")[1].split(","))
+        lpd_ssim, lpd_psnr = map(float, lines[1].split(":")[1].split(","))
+        fbp_ssim, fbp_psnr = map(float, lines[2].split(":")[1].split(","))
+        fdk_ssim, fdk_psnr = map(float, lines[3].split(":")[1].split(","))
+    return clpd_ssim, lpd_ssim, fbp_ssim, fdk_ssim, clpd_psnr, lpd_psnr, fbp_psnr, fdk_psnr
 #%%
-if "__name__" == "__main__":
+if __name__ == "__main__":
+    print("Starting evaluation.")
     # % Chose device:
     device = torch.device("cuda:0")
     torch.cuda.set_device(device)
     # Define your data paths
-    savefolder = pathlib.Path("/store/DAMTP/cr661/LION/trained_models/low_dose/")
+    savefolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose")
     datafolder = pathlib.Path(
-        "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
+        "/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/"
     )
     final_result_fname = savefolder.joinpath("ContinuousLPD_checkBS2_0081.pt")
     checkpoint_fname = savefolder.joinpath("ContinuousLPD_checkBS2_*.pt")
 
-    final_result_fname_fbp = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/FBPConvNet_final_iter.pt")
-    final_result_fname_itnet = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/ItNet_Unet_final_iter.pt")
+    final_result_fname_fbp = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/FBPConvNet_final_iter.pt")
+    final_result_fname_itnet = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/ItNet_Unet_final_iter.pt")
 
     final_result_fname_lpd = savefolder.joinpath("LPD_checkBS2fixed_0171.pt")
     checkpoint_fname_lpd = savefolder.joinpath("LPD_checkBS2fixed_*.pt")
@@ -121,6 +126,11 @@ if "__name__" == "__main__":
     fbp_ssim = 0.
     lpd_ssim = 0.
     fdk_ssim = 0.
+    
+    clpd_psnr = 0.
+    fbp_psnr = 0.
+    lpd_psnr = 0.
+    fdk_psnr = 0.
 
     # loop through testing data
     for index, (sinogram, target_reconstruction) in tqdm(enumerate(dataloader)):
@@ -130,21 +140,38 @@ if "__name__" == "__main__":
         clpd_out = clpd_model(sinogram)
         lpd_out = lpd_model(sinogram)
         fbp_out = fbp_model(bad_recon)
-        clpd = compute_ssim(clpd_out, target_reconstruction)
-        fbp = compute_ssim(fbp_out, target_reconstruction)
-        lpd = compute_ssim(lpd_out, target_reconstruction)
-        fdk = compute_ssim(bad_recon, target_reconstruction)
-        clpd_ssim += clpd
-        fbp_ssim += fbp
-        lpd_ssim += lpd
-        fdk_ssim += fdk
-        print(f"CLPD SSIM: {clpd_ssim} - LPD SSIM: {lpd_ssim} - FBP SSIM: {fbp_ssim} - FDK SSIM: {fdk_ssim}")
+        ssim_clpd = compute_ssim(clpd_out.detach().clone(), target_reconstruction)
+        ssim_fbp = compute_ssim(fbp_out.detach().clone(), target_reconstruction)
+        ssim_lpd = compute_ssim(lpd_out.detach().clone(), target_reconstruction)
+        ssim_fdk = compute_ssim(bad_recon.detach().clone(), target_reconstruction)
+        clpd_ssim += ssim_clpd
+        fbp_ssim += ssim_fbp
+        lpd_ssim += ssim_lpd
+        fdk_ssim += ssim_fdk
+        # Compute PSNR
+        psnr_clpd = compute_psnr(clpd_out.detach().clone(), target_reconstruction)
+        psnr_fbp = compute_psnr(fbp_out.detach().clone(), target_reconstruction)
+        psnr_lpd = compute_psnr(lpd_out.detach().clone(), target_reconstruction)
+        psnr_fdk = compute_psnr(bad_recon.detach().clone(), target_reconstruction)
+
+        # Update PSNR sums
+        clpd_psnr += psnr_clpd
+        fbp_psnr += psnr_fbp
+        lpd_psnr += psnr_lpd
+        fdk_psnr += psnr_fdk
+        print(f"CLPD SSIM: {ssim_clpd} - LPD SSIM: {ssim_lpd} - FBP SSIM: {ssim_fbp} - FDK SSIM: {ssim_fdk}")
         #plot_outputs(clpd_out, clpd_out, bad_recon, target_reconstruction)
         torch.cuda.empty_cache()
+
     clpd_ssim /= (index+1)
     fbp_ssim /= (index+1)
     lpd_ssim /= (index+1)
     fdk_ssim /= (index+1)
-    save_ssim_values(clpd_ssim, lpd_ssim, fbp_ssim, fdk_ssim, savefolder.joinpath("ssim_values.txt"))
+
+    clpd_psnr /= (index+1)
+    fbp_psnr /= (index+1)
+    lpd_psnr /= (index+1)
+    fdk_psnr /= (index+1)
+    save_ssim_psnr_values(clpd_ssim, lpd_ssim, fbp_ssim, fdk_ssim, clpd_psnr, lpd_psnr, fbp_psnr, fdk_psnr, savefolder.joinpath("ssim_psnr_values.txt"))
 
 
