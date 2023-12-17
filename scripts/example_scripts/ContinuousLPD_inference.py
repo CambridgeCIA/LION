@@ -26,7 +26,7 @@ import LION.experiments.ct_experiments as ct_experiments
 from ts_algorithms import fdk
 
 #%%
-%matplotlib inline
+#%matplotlib inline
 
 #%%
 def plot_outputs(clpd_out, fbp_out, bad_recon, target_reconstruction):
@@ -67,52 +67,84 @@ def compute_ssim(out, target_reconstruction):
     return np.mean(ssim_scores)
         
 #%%
-# % Chose device:
-device = torch.device("cuda:0")
-torch.cuda.set_device(device)
-# Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/cr661/LION/trained_models/low_dose/")
-datafolder = pathlib.Path(
-    "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
-)
-final_result_fname = savefolder.joinpath("ContinuousLPD_checkBS2_0081.pt")
-checkpoint_fname = savefolder.joinpath("ContinuousLPD_checkBS2_*.pt")
+def save_ssim_values(clpd_ssim, lpd_ssim, fbp_ssim, fdk_ssim, filename):
+    with open(filename, 'w') as f:
+        f.write(f"{clpd_ssim}\n")
+        f.write(f"{lpd_ssim}\n")
+        f.write(f"{fbp_ssim}\n")
+        f.write(f"{fdk_ssim}\n")
 
-final_result_fname_fbp = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/FBPConvNet_final_iter.pt")
-final_result_fname_itnet = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/ItNet_Unet_final_iter.pt")
+def read_ssim_values(filename):
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+        clpd_ssim = float(lines[0].strip())
+        lpd_ssim = float(lines[1].strip())
+        fbp_ssim = float(lines[2].strip())
+        fdk_ssim = float(lines[3].strip())
+    return clpd_ssim, lpd_ssim, fbp_ssim, fdk_ssim
+#%%
+if "__name__" == "__main__":
+    # % Chose device:
+    device = torch.device("cuda:0")
+    torch.cuda.set_device(device)
+    # Define your data paths
+    savefolder = pathlib.Path("/store/DAMTP/cr661/LION/trained_models/low_dose/")
+    datafolder = pathlib.Path(
+        "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
+    )
+    final_result_fname = savefolder.joinpath("ContinuousLPD_checkBS2_0081.pt")
+    checkpoint_fname = savefolder.joinpath("ContinuousLPD_checkBS2_*.pt")
 
-final_result_fname_lpd = savefolder.joinpath("LPD_checkBS2fixed_0171.pt")
-checkpoint_fname_lpd = savefolder.joinpath("LPD_checkBS2fixed_*.pt")
-#%% Define experiment
-experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+    final_result_fname_fbp = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/FBPConvNet_final_iter.pt")
+    final_result_fname_itnet = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/ItNet_Unet_final_iter.pt")
 
-#%% Dataset
-dataset = experiment.get_testing_dataset()
-batch_size = 1
-dataloader = DataLoader(dataset, batch_size, shuffle=False)
+    final_result_fname_lpd = savefolder.joinpath("LPD_checkBS2fixed_0171.pt")
+    checkpoint_fname_lpd = savefolder.joinpath("LPD_checkBS2fixed_*.pt")
+    #%% Define experiment
+    experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
 
-
-#%% Load model
-clpd_model, clpd_param, clpd_data = ContinuousLPD.load(final_result_fname)
-lpd_model, lpd_param, lpd_data = LPD.load(final_result_fname_lpd)
-fbp_model, fbp_param, fbp_data = FBPConvNet.load(final_result_fname_fbp)
-clpd_model.eval()
-lpd_model.eval()
-fbp_model.eval()
+    #%% Dataset
+    dataset = experiment.get_testing_dataset()
+    batch_size = 1
+    dataloader = DataLoader(dataset, batch_size, shuffle=False)
 
 
-# loop through testing data
-for index, (sinogram, target_reconstruction) in tqdm(enumerate(dataloader)):
-    bad_recon = torch.zeros(target_reconstruction.shape, device=device)
-    for sino in range(sinogram.shape[0]):
-        bad_recon[sino] = fdk(dataset.operator, sinogram[sino])
-    clpd_out = clpd_model(sinogram)
-    lpd_out = lpd_model(sinogram)
-    fbp_out = fbp_model(bad_recon)
-    clpd_ssim = compute_ssim(clpd_out, target_reconstruction)
-    fbp_ssim = compute_ssim(fbp_out, target_reconstruction)
-    print("CLPD SSIM: ", clpd_ssim)
-    print("FBP SSIM: ", fbp_ssim)
-    plot_outputs(clpd_out, clpd_out, bad_recon, target_reconstruction)
-    torch.cuda.empty_cache()
-# %%
+    #%% Load model
+    clpd_model, clpd_param, clpd_data = ContinuousLPD.load(final_result_fname)
+    lpd_model, lpd_param, lpd_data = LPD.load(final_result_fname_lpd)
+    fbp_model, fbp_param, fbp_data = FBPConvNet.load(final_result_fname_fbp)
+    clpd_model.eval()
+    lpd_model.eval()
+    fbp_model.eval()
+
+    clpd_ssim = 0.
+    fbp_ssim = 0.
+    lpd_ssim = 0.
+    fdk_ssim = 0.
+
+    # loop through testing data
+    for index, (sinogram, target_reconstruction) in tqdm(enumerate(dataloader)):
+        bad_recon = torch.zeros(target_reconstruction.shape, device=device)
+        for sino in range(sinogram.shape[0]):
+            bad_recon[sino] = fdk(dataset.operator, sinogram[sino])
+        clpd_out = clpd_model(sinogram)
+        lpd_out = lpd_model(sinogram)
+        fbp_out = fbp_model(bad_recon)
+        clpd = compute_ssim(clpd_out, target_reconstruction)
+        fbp = compute_ssim(fbp_out, target_reconstruction)
+        lpd = compute_ssim(lpd_out, target_reconstruction)
+        fdk = compute_ssim(bad_recon, target_reconstruction)
+        clpd_ssim += clpd
+        fbp_ssim += fbp
+        lpd_ssim += lpd
+        fdk_ssim += fdk
+        print(f"CLPD SSIM: {clpd_ssim} - LPD SSIM: {lpd_ssim} - FBP SSIM: {fbp_ssim} - FDK SSIM: {fdk_ssim}")
+        #plot_outputs(clpd_out, clpd_out, bad_recon, target_reconstruction)
+        torch.cuda.empty_cache()
+    clpd_ssim /= (index+1)
+    fbp_ssim /= (index+1)
+    lpd_ssim /= (index+1)
+    fdk_ssim /= (index+1)
+    save_ssim_values(clpd_ssim, lpd_ssim, fbp_ssim, fdk_ssim, savefolder.joinpath("ssim_values.txt"))
+
+
