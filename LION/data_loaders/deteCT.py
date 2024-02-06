@@ -30,15 +30,10 @@ class deteCT(Dataset):
         ### Defining the path to scan data
         self.path_to_scan_data = self.path_to_dataset.joinpath("scan_settings.json")
         ### Defining the path to the data record
-        default = True
-        if default:
-            self.path_to_data_record = self.path_to_dataset.joinpath(
-                f"default_data_records.csv"
-            )
-        else:
-            self.path_to_data_record = self.path_to_dataset.joinpath(
-                f"complete_data_records.csv"
-            )
+        self.path_to_data_record = self.path_to_dataset.joinpath(
+            f"default_data_records.csv"
+        )
+
         ### Defining the data record
         self.data_record = pd.read_csv(self.path_to_data_record)
         """
@@ -155,7 +150,7 @@ class deteCT(Dataset):
         param.training_proportion = 0.8
         param.validation_proportion = 0.1
         param.test_proportion = 0.1
-        param.query = 'detector == 1'
+        param.query = ""
         return param
 
     def compute_sample_dataframe(self):
@@ -203,10 +198,7 @@ class deteCT(Dataset):
             sinogram = torch.from_numpy(
                 np.load(path_to_sinogram.joinpath("sinogram.npy"))
             ).unsqueeze(0)
-            tensor_dict = {
-                "reconstruction": reconstruction,
-                "sinogram": sinogram
-                }
+            tensor_dict = {"reconstruction": reconstruction, "sinogram": sinogram}
         elif self.task == "joint":
             segmentation = torch.from_numpy(
                 np.load(path_to_segmentation.joinpath("segmentation.npy"))
