@@ -14,10 +14,9 @@ Install:
 ```
 git clone https://github.com/CambridgeCIA/LION.git
 cd LION
-conda env create --file=env.yml
 git submodule update --init --recursive
+conda env create --file=env.yml
 conda activate LION
-pip install LION/models/MS-D/
 pip install .
 ```
 
