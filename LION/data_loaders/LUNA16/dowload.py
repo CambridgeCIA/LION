@@ -25,7 +25,7 @@ for series_name, series_ids in file_ids.items():
         zip_file_name = storage_path.joinpath(f"subset{serie_id}.zip")
         bash_command = f"wget {placeholder_url} -P {storage_path}"
         run_cmd(bash_command)
-        subfolder = torage_path.joinpath(zip_file_name)
-        bash_command = f"7z e {zip_file_name} -o{storage_path}"
+        subfolder = storage_path.joinpath(zip_file_name)
+        bash_command = f"7z e {zip_file_name} -o{storage_path} -y"
         run_cmd(bash_command)
         zip_file_name.unlink()

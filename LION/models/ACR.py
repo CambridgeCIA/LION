@@ -100,7 +100,7 @@ class SFB(LIONmodel.LIONmodel):
         param = Parameter()
         param.n_kernels = 10
         param.n_filters = 32
-        paran.L2net = True
+        param.L2net = True
         return param
 
     def forward(self, x):
