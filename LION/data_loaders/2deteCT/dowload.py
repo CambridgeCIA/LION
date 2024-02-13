@@ -39,15 +39,14 @@ for series_name, zenodo_id in sinograms_ids.items():
     zip_file_name = storage_path.joinpath(f"{series_name}.zip")
     print("Dowloading zip file....")
     bash_command = f"wget {placeholder_url} -P {storage_path}"
-    run_cmd(bash_command, verbose=False)
+    run_cmd(bash_command)
     print("Dowload DONE!")
     print("Extracting files....")
-    bash_command = f"7z e {zip_file_name} -o{storage_path} -y"
-    run_cmd(bash_command, verbose=False)
+    bash_command = f"7z x {zip_file_name} -o{storage_path} -y"
+    run_cmd(bash_command)
     print("Extraction done!")
     zip_file_name.unlink()
     print("Zip file deleted.")
-
 
 for series_name, zenodo_id in recon_ids.items():
 
@@ -57,11 +56,11 @@ for series_name, zenodo_id in recon_ids.items():
     zip_file_name = storage_path.joinpath(f"{series_name}.zip")
     print("Dowloading zip file....")
     bash_command = f"wget {placeholder_url} -P {storage_path}"
-    run_cmd(bash_command, verbose=False)
+    run_cmd(bash_command)
     print("Dowload DONE!")
     print("Extracting files....")
-    bash_command = f"7z e {zip_file_name} -o{storage_path} -y"
-    run_cmd(bash_command, verbose=False)
+    bash_command = f"7z x {zip_file_name} -o{storage_path} -y"
+    run_cmd(bash_command)
     print("Extraction done!")
     zip_file_name.unlink()
     print("Zip file deleted.")
