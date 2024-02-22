@@ -186,6 +186,7 @@ class deteCT(Dataset):
         reconstruction = torch.from_numpy(
             np.load(path_to_recontruction.joinpath("reconstruction.npy"))
         ).unsqueeze(0)
+
         if self.task == "segmentation":
             segmentation = torch.from_numpy(
                 np.load(path_to_segmentation.joinpath("segmentation.npy"))
@@ -194,6 +195,7 @@ class deteCT(Dataset):
                 "reconstruction": reconstruction,
                 "segmentation": segmentation,
             }
+
         if self.task in "reconstruction":
             sinogram = torch.from_numpy(
                 np.load(path_to_sinogram.joinpath("sinogram.npy"))

@@ -9,6 +9,8 @@ import numpy as np
 import json
 from tqdm import tqdm
 
+from LION.utils.paths import DETECT_PATH, DETECT_PROCESSED_DATASET_PATH
+
 
 def format_slice_index(index: int) -> str:
     str_index = str(index)
@@ -87,6 +89,35 @@ def write_settings(settings_out_file_path: Path):
         json.dump(settings, out_f, indent=4)
 
 
+def correct_detector_shift(sinogram, slice_index, settings: Dict):
+    detector_correction = settings["detector"]["correction"]
+    detector_pixel_physical_size = settings["detector"]["pixel_physical_size_reference"]
+
+    if slice_index < 2830 or 5520 < slice_index < 5871:
+        detector_shift = detector_correction[0] * detector_pixel_physical_size
+    else:
+        detector_shift = detector_correction[1] * detector_pixel_physical_size
+    ## Apply detector shift
+    detector_grid = (
+        np.arange(
+            0, settings["detector"]["n_pixels"] // settings["detector"]["subsampling"]
+        )
+        * detector_pixel_physical_size
+    )
+    # for the sinogram
+    detector_grid_shifted = detector_grid + detector_shift
+    detector_grid_shift_corrected = interp1d(
+        detector_grid,
+        sinogram,
+        kind="linear",
+        bounds_error=False,
+        fill_value="extrapolate",
+    )  # type:ignore
+    sinogram: np.ndarray = detector_grid_shift_corrected(detector_grid_shifted)
+    sinogram = np.ascontiguousarray(sinogram)
+    return sinogram
+
+
 def pre_process_slice(
     settings: Dict,
     slice_index: int,
@@ -121,41 +152,17 @@ def pre_process_slice(
     ### Applying the detector subsampling correction and remove the last projection (which is equal to the first)
     detector_subsampling = settings["detector"]["subsampling"]
     sinogram = (
-        sinogram[:, 0::detector_subsampling] + sinogram[:, 1::detector_subsampling]
+        (sinogram[:, 0::detector_subsampling] + sinogram[:, 1::detector_subsampling])
     )[:-1, :]
     dark = dark[0, 0::detector_subsampling] + dark[0, 1::detector_subsampling]
     flat = flat[0, 0::detector_subsampling] + flat[0, 1::detector_subsampling]
-    # Subtract the dark field, devide by the flat field,
-    # and take the negative log to linearize the sinogram according to the Beer-Lambert law.
-    sinogram = sinogram - dark
-    sinogram = sinogram / (flat - dark)
 
     ### Apply detector shift correction
-    detector_correction = settings["detector"]["correction"]
-    detector_pixel_physical_size = settings["detector"]["pixel_physical_size_reference"]
+    sinogram = correct_detector_shift(sinogram, slice_index, settings)
 
-    if slice_index < 2830 or 5520 < slice_index < 5871:
-        detector_shift = detector_correction[0] * detector_pixel_physical_size
-    else:
-        detector_shift = detector_correction[1] * detector_pixel_physical_size
-    ## Apply detector shift
-    detector_grid = (
-        np.arange(
-            0, settings["detector"]["n_pixels"] // settings["detector"]["subsampling"]
-        )
-        * detector_pixel_physical_size
-    )
-    detector_grid_shifted = detector_grid + detector_shift
-    detector_grid_shift_corrected = interp1d(
-        detector_grid,
-        sinogram,
-        kind="linear",
-        bounds_error=False,
-        fill_value="extrapolate",
-    )  # type:ignore
-    sinogram: np.ndarray = detector_grid_shift_corrected(detector_grid_shifted)
-
-    sinogram = np.ascontiguousarray(sinogram)
+    # flat fields
+    flat = correct_detector_shift(flat, slice_index, settings)
+    dark = correct_detector_shift(dark, slice_index, settings)
 
     ### The sinogram, reconstruction and segmentation (if mode_index == 2) are ready to be saved
 
@@ -163,6 +170,8 @@ def pre_process_slice(
 
     assert np.shape(sinogram) == (3600, 956)
     np.save(folder_savepath.joinpath("sinogram.npy"), sinogram)
+    np.save(folder_savepath.joinpath("dark.npy"), dark)
+    np.save(folder_savepath.joinpath("flat.npy"), flat)
     np.save(folder_savepath.joinpath("reconstruction.npy"), reconstruction)
     if mode_index == 2:
         segmentation = np.array(
@@ -172,21 +181,12 @@ def pre_process_slice(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--raw_folder_path",
-        required=True,
-        help="The path to the folder where the processed data will be saved",
-    )
-    parser.add_argument(
-        "--processed_folder_path",
-        required=True,
-        help="The path to the folder where the processed data will be saved",
-    )
-    args = parser.parse_args()
+
     ### Unpack arguments
-    raw_folder_path = Path(args.raw_folder_path)
-    processed_folder_path = Path(args.processed_folder_path)
+    raw_folder_path = DETECT_PATH
+    processed_folder_path = DETECT_PROCESSED_DATASET_PATH
+    ### Make folder if it does not exist
+    processed_folder_path.mkdir(exist_ok=True, parents=True)
     ### Write scan settings file
     write_settings(processed_folder_path.joinpath("scan_settings.json"))
     ### Load the settings file
@@ -209,3 +209,7 @@ if __name__ == "__main__":
         current_folder_path.joinpath("default_data_records.csv"),
         processed_folder_path.joinpath("default_data_records.csv"),
     )
+
+    print(20 * "_")
+    print("Done! LION will now use the pre-processed data in: ", processed_folder_path)
+    print("You can now delete the raw data if you want to save space.")
