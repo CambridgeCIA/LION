@@ -29,7 +29,12 @@ class deteCT(Dataset):
             warnings.warn(
                 "Sinogram mode and reconstruction mode don't match, so reconstruction is not from the sinogram you are getting... \n This should be an error, but I trust that you won what you are doing"
             )
-
+        if params.query == "" and (
+            not params.flat_field_correction or not params.dark_field_correction
+        ):
+            warnings.warn(
+                "You are not using any detector query, but you are not using flat field or dark field correction. This is not recommended, as different detectors perform differently"
+            )
         ### Defining the path to data
         self.path_to_dataset = params.path_to_dataset
         """
