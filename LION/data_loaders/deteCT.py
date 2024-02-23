@@ -12,14 +12,23 @@ import pandas as pd
 import torch
 import numpy as np
 from torch.utils.data import Dataset
-
+import warnings
+from LION.utils.paths import DETECT_PROCESSED_DATASET_PATH
 from LION.utils.parameter import Parameter
+import LION.CTtools.ct_geometry as ctgeo
+from LION.CTtools.ct_utils import make_operator
+from ts_algorithms import fdk, nag_ls
 
 
 class deteCT(Dataset):
-    def __init__(self, mode: str, params: Parameter = None):
+    def __init__(self, mode, params: Parameter = None):
         if params is None:
             params = self.default_parameters()
+
+        if params.sinogram_mode != params.reconstruction_mode:
+            warnings.warn(
+                "Sinogram mode and reconstruction mode don't match, so reconstruction is not from the sinogram you are getting... \n This should be an error, but I trust that you won what you are doing"
+            )
 
         ### Defining the path to data
         self.path_to_dataset = params.path_to_dataset
@@ -78,6 +87,11 @@ class deteCT(Dataset):
             "segmentation",
             "joint",
         ], f'Wrong task argument, must be in ["reconstruction", "segmentation", "joint"]'
+        assert mode in [
+            "train",
+            "validation",
+            "test",
+        ], f'Wrong mode argument, must be in ["train", "validation", "test"]'
         # Defining the training mode
         self.mode = mode
         """
@@ -138,20 +152,63 @@ class deteCT(Dataset):
             )
         ]
 
+        self.flat_field_correction = params.flat_field_correction
+        self.dark_field_correction = params.dark_field_correction
+        self.log_transform = params.log_transform
+        self.do_recon = params.do_recon
+        self.recon_algo = params.recon_algo
+
     @staticmethod
     def default_parameters():
         param = Parameter()
-        param.path_to_dataset = Path(
-            "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/2DeteCT/"
-        )
+        param.path_to_dataset = DETECT_PROCESSED_DATASET_PATH
         param.sinogram_mode = "mode2"
         param.reconstruction_mode = "mode2"
         param.task = "reconstruction"
         param.training_proportion = 0.8
         param.validation_proportion = 0.1
         param.test_proportion = 0.1
+
+        param.do_recon = False
+        param.recon_algo = "nag_ls"
+        param.flat_field_correction = True
+        param.dark_field_correction = True
+        param.log_transform = True
         param.query = ""
         return param
+
+    @staticmethod
+    def get_geometry():
+        geo = ctgeo.Geometry.default_parameters()
+        # From Max Kiss code
+        SOD = 431.019989
+        SDD = 529.000488
+        detPix = 0.0748
+        detSubSamp = 2
+        detPixSz = detSubSamp * detPix
+        nPix = 956
+        det_width = detPixSz * nPix
+        FOV_width = det_width * SOD / SDD
+        nVox = 1024
+        voxSz = FOV_width / nVox
+        scaleFactor = 1.0 / voxSz
+        SDD = SDD * scaleFactor
+        SOD = SOD * scaleFactor
+        detPixSz = detPixSz * scaleFactor
+
+        geo.dsd = SDD
+        geo.dso = SOD
+        geo.detector_shape = [1, 956]
+        geo.detector_size = [detPixSz, detPixSz * 956]
+        geo.image_shape = [1, 1024 * 2, 1024 * 2]
+        geo.image_size = [1, 1024 * 2, 1024 * 2]
+        geo.angles = -np.linspace(0, 2 * np.pi, 3600, endpoint=False) + np.pi
+        return geo
+
+    @staticmethod
+    def get_operator():
+        geo = deteCT.get_geometry()
+        return make_operator(geo)
 
     def compute_sample_dataframe(self):
         unique_identifiers = self.slice_dataframe["sample_index"].unique()
@@ -183,39 +240,46 @@ class deteCT(Dataset):
         path_to_segmentation = self.path_to_dataset.joinpath(
             f"{slice_row['slice_identifier']}/mode2"
         )
-        reconstruction = torch.from_numpy(
-            np.load(path_to_recontruction.joinpath("reconstruction.npy"))
-        ).unsqueeze(0)
 
-        if self.task == "segmentation":
+        if self.task == ["segmentation", "joint"]:
             segmentation = torch.from_numpy(
                 np.load(path_to_segmentation.joinpath("segmentation.npy"))
             ).unsqueeze(0)
-            tensor_dict = {
-                "reconstruction": reconstruction,
-                "segmentation": segmentation,
-            }
 
-        if self.task in "reconstruction":
+        if self.task in ["reconstruction", "joint"]:
             sinogram = torch.from_numpy(
                 np.load(path_to_sinogram.joinpath("sinogram.npy"))
             ).unsqueeze(0)
-            tensor_dict = {"reconstruction": reconstruction, "sinogram": sinogram}
-        elif self.task == "joint":
-            segmentation = torch.from_numpy(
-                np.load(path_to_segmentation.joinpath("segmentation.npy"))
-            ).unsqueeze(0)
-            sinogram = torch.from_numpy(
-                np.load(path_to_sinogram.joinpath("sinogram.npy"))
-            ).unsqueeze(0)
-            tensor_dict = {
-                "reconstruction": reconstruction,
-                "segmentation": segmentation,
-                "sinogram": sinogram,
-            }
+            if self.flat_field_correction:
+                flat = torch.from_numpy(
+                    np.load(path_to_sinogram.joinpath("flat.npy"))
+                ).unsqueeze(0)
+            else:
+                flat = 1
+            if self.dark_field_correction:
+                dark = torch.from_numpy(
+                    np.load(path_to_sinogram.joinpath("dark.npy"))
+                ).unsqueeze(0)
+            else:
+                dark = 0
+            sinogram = (sinogram - dark) / (flat - dark)
+            if self.log_transform:
+                sinogram = -torch.log(sinogram)
+
+        if self.do_recon:
+            op = deteCT.get_operator()
+            if self.recon_algo == "nag_ls":
+                reconstruction = nag_ls(op, sinogram, 100, min_constraint=0)
+            elif self.recon_algo == "fdk":
+                reconstruction = fdk(op, sinogram)
         else:
-            raise ValueError("Wrong task argument")
+            reconstruction = torch.from_numpy(
+                np.load(path_to_recontruction.joinpath("reconstruction.npy"))
+            ).unsqueeze(0)
 
-        if self.transforms:
-            tensor_dict = self.transforms(tensor_dict)
-        return tensor_dict
+        if self.task == "reconstruction":
+            return sinogram, reconstruction
+        if self.task == "segmentation":
+            return reconstruction, segmentation
+        if self.task == "joint":
+            return sinogram, reconstruction, segmentation

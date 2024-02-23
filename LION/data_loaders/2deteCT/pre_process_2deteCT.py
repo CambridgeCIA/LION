@@ -93,17 +93,12 @@ def correct_detector_shift(sinogram, slice_index, settings: Dict):
     detector_correction = settings["detector"]["correction"]
     detector_pixel_physical_size = settings["detector"]["pixel_physical_size_reference"]
 
-    if slice_index < 2830 or 5520 < slice_index < 5871:
-        detector_shift = detector_correction[0] * detector_pixel_physical_size
+    if (slice_index < 2830) or (5520 < slice_index < 5871):
+        detector_shift = detector_correction[0]
     else:
-        detector_shift = detector_correction[1] * detector_pixel_physical_size
+        detector_shift = detector_correction[1]
     ## Apply detector shift
-    detector_grid = (
-        np.arange(
-            0, settings["detector"]["n_pixels"] // settings["detector"]["subsampling"]
-        )
-        * detector_pixel_physical_size
-    )
+    detector_grid = np.arange(0, settings["detector"]["n_pixels"])
     # for the sinogram
     detector_grid_shifted = detector_grid + detector_shift
     detector_grid_shift_corrected = interp1d(
@@ -149,6 +144,13 @@ def pre_process_slice(
     dark = imageio.imread(path_to_mode.joinpath("dark.tif")).astype("float32")
     flat: np.ndarray = np.mean(np.array([flat1, flat2]), axis=0)
 
+    ### Apply detector shift correction
+    sinogram = correct_detector_shift(sinogram, slice_index, settings)
+
+    # flat fields
+    flat = correct_detector_shift(flat, slice_index, settings)
+    dark = correct_detector_shift(dark, slice_index, settings)
+
     ### Applying the detector subsampling correction and remove the last projection (which is equal to the first)
     detector_subsampling = settings["detector"]["subsampling"]
     sinogram = (
@@ -156,13 +158,6 @@ def pre_process_slice(
     )[:-1, :]
     dark = dark[0, 0::detector_subsampling] + dark[0, 1::detector_subsampling]
     flat = flat[0, 0::detector_subsampling] + flat[0, 1::detector_subsampling]
-
-    ### Apply detector shift correction
-    sinogram = correct_detector_shift(sinogram, slice_index, settings)
-
-    # flat fields
-    flat = correct_detector_shift(flat, slice_index, settings)
-    dark = correct_detector_shift(dark, slice_index, settings)
 
     ### The sinogram, reconstruction and segmentation (if mode_index == 2) are ready to be saved
 
