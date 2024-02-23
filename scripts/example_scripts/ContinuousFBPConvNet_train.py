@@ -1,7 +1,7 @@
-#%% This example shows how to train FBPConvNet for full angle, noisy measurements.
+# %% This example shows how to train ContinuousFBPConvNet for full angle, noisy measurements.
 
 
-#%% Imports
+# %% Imports
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -11,46 +11,46 @@ import pathlib
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
-from LION.models.FBPConvNet import FBPConvNet
+from LION.models.ContinuousFBPConvNet import ContinuousFBPConvNet
+
 from LION.utils.parameter import Parameter
 from ts_algorithms import fdk
-
 
 import LION.experiments.ct_experiments as ct_experiments
 
 
-#%%
+# %%
 # % Chose device:
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/clinical_dose/")
+savefolder = pathlib.Path("/store/DAMTP/cr661/LION/trained_models/low_dose")
 datafolder = pathlib.Path(
     "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
 )
-final_result_fname = savefolder.joinpath("FBPConvNet_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("FBPConvNet_check_*.pt")
-validation_fname = savefolder.joinpath("FBPConvNet_min_val.pt")
+final_result_fname = savefolder.joinpath("CFBPConvNet_final_iter.pt")
+checkpoint_fname = savefolder.joinpath("CFBPConvNet_check_*.pt")
+validation_fname = savefolder.joinpath("CFBPConvNet_min_val.pt")
 #
-#%% Define experiment
-# experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
-experiment = ct_experiments.clinicalCTRecon(datafolder=datafolder)
-#%% Dataset
+# %% Define experiment
+experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+# experiment = ct_experiments.clinicalCTRecon(datafolder=datafolder)
+# %% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
 
-#%% Define DataLoader
+# %% Define DataLoader
 # Use the same amount of training
-batch_size = 4
+batch_size = 2
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
-#%% Model
+# %% Model
 # Default model is already from the paper.
-model = FBPConvNet().to(device)
+model = ContinuousFBPConvNet(adjoint=True, tol=1e-5).to(device)
 
 
-#%% Optimizer
+# %% Optimizer
 train_param = Parameter()
 
 # loss fn
@@ -80,12 +80,14 @@ if model.final_file_exists(savefolder.joinpath(final_result_fname)):
     print("final model exists! You already reahced final iter")
     exit()
 
-model, optimiser, start_epoch, total_loss, _ = FBPConvNet.load_checkpoint_if_exists(
-    checkpoint_fname, model, optimiser, total_loss
+model, optimiser, start_epoch, total_loss, _ = (
+    ContinuousFBPConvNet.load_checkpoint_if_exists(
+        checkpoint_fname, model, optimiser, total_loss
+    )
 )
 print(f"Starting iteration at epoch {start_epoch}")
 
-#%% train
+# %% train
 for epoch in range(start_epoch, train_param.epochs):
     train_loss = 0.0
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
