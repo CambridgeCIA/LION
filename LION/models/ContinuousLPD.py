@@ -182,7 +182,7 @@ class ContinuousDataProximal(nn.Module):
         layers: int,
         channels: list,
         tol: float = 1e-3,
-        adjoint: bool = False,
+        adjoint: bool = True,
         second_order: bool = False,
         solver: str = "rk4",
     ):
@@ -226,7 +226,7 @@ class ContinuousRegProximal(nn.Module):
         layers: int,
         channels: list,
         tol: float = 1e-3,
-        adjoint: bool = False,
+        adjoint: bool = True,
         second_order: bool = False,
         solver: str = "rk4",
     ):
