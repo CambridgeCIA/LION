@@ -11,14 +11,14 @@ from LION.models import LIONmodel
 from LION.utils.math import power_method
 from LION.utils.parameter import Parameter
 import LION.CTtools.ct_geometry as ct
-import LION.CTtools.ct_utils as ct_utils
-import LION.utils.utils as ai_utils
+#import LION.CTtools.ct_utils as ct_utils
+#import LION.utils.utils as ai_utils
 
 import numpy as np
-from pathlib import Path
-import warnings
+#from pathlib import Path
+#import warnings
 
-import tomosipo as ts
+#import tomosipo as ts
 from tomosipo.torch_support import to_autograd
 from ts_algorithms import fdk
 

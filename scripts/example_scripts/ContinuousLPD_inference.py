@@ -23,7 +23,7 @@ import LION.experiments.ct_experiments as ct_experiments
 from ts_algorithms import fdk
 
 #%%
-%matplotlib inline
+#%matplotlib inline
 
 #%%
 def plot_outputs(clpd_out, fbp_out, bad_recon, target_reconstruction, save_path):
@@ -116,15 +116,15 @@ if __name__ == "__main__":
     device = torch.device("cuda:0")
     torch.cuda.set_device(device)
     # Define your data paths
-    savefolder = pathlib.Path("/store/DAMTP/cr661/LION/trained_models/low_dose")
+    savefolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose")
     datafolder = pathlib.Path(
-        "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
+        "/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/"
     )
     final_result_fname = savefolder.joinpath("ContinuousLPD_checkBS2_0081.pt")
     checkpoint_fname = savefolder.joinpath("ContinuousLPD_checkBS2_*.pt")
 
-    final_result_fname_fbp = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/FBPConvNet_final_iter.pt")
-    final_result_fname_itnet = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/ItNet_Unet_final_iter.pt")
+    final_result_fname_fbp = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/FBPConvNet_final_iter.pt")
+    final_result_fname_itnet = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/ItNet_Unet_final_iter.pt")
 
     final_result_fname_lpd = savefolder.joinpath("LPD_checkBS2fixed_0171.pt")
     checkpoint_fname_lpd = savefolder.joinpath("LPD_checkBS2fixed_*.pt")
