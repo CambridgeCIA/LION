@@ -25,19 +25,19 @@ import LION.experiments.ct_experiments as ct_experiments
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/")
-datafolder = pathlib.Path(
-    "/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/"
+savefolder = pathlib.Path(
+    "/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/"
 )
+datafolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/")
 final_result_fname = savefolder.joinpath("ContinuousLPD_final_iterBS2.pt")
 checkpoint_fname = savefolder.joinpath("ContinuousLPD_checkBS2_*.pt")
 validation_fname = savefolder.joinpath("ContinuousLPD_min_valBS2.pt")
 #
 # %% Define experiment
 experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
-#experiment_params=ct_experiments.LowDoseCTRecon.default_parameters()
-#experiment_params.data_loader_params.max_num_slices_per_patient = 1 # default is 5
-#experiment = ct_experiments.LowDoseCTRecon(experiment_params=experiment_params, datafolder=datafolder)
+# experiment_params=ct_experiments.LowDoseCTRecon.default_parameters()
+# experiment_params.data_loader_params.max_num_slices_per_patient = 1 # default is 5
+# experiment = ct_experiments.LowDoseCTRecon(experiment_params=experiment_params, datafolder=datafolder)
 
 # %% Dataset
 lidc_dataset = experiment.get_training_dataset()
@@ -98,7 +98,7 @@ print(f"Starting iteration at epoch {start_epoch}")
 # %% train
 for epoch in range(start_epoch, train_param.epochs):
     train_loss = 0.0
-    #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
     for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_dataloader)):
         optimiser.zero_grad()
         reconstruction = model(sinogram)
@@ -109,7 +109,7 @@ for epoch in range(start_epoch, train_param.epochs):
         train_loss += loss.item()
 
         optimiser.step()
-        #scheduler.step()
+        # scheduler.step()
     total_loss[epoch] = train_loss
     # Validation
     valid_loss = 0.0
