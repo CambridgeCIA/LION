@@ -57,7 +57,7 @@ class deteCT(Dataset):
             - the number of slices actually sampled
             - the first slice of the sample to which a given slice belongs
             - the last slice of the sample to which a given slice belongs
-            - the mix (if indicated)
+            - the mix 
             - the detector it was sampled with
         """
         # Defining the sinogram mode
@@ -271,6 +271,8 @@ class deteCT(Dataset):
             sinogram = (sinogram - dark) / (flat - dark)
             if self.log_transform:
                 sinogram = -torch.log(sinogram)
+
+            sinogram = torch.flip(sinogram, [2])
 
         if self.do_recon:
             op = deteCT.get_operator()
