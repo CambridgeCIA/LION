@@ -136,7 +136,7 @@ def make_operator(geo):
     if not isinstance(geo, Geometry):
         raise ValueError("Input geo is not of class LION.CTtools.ct_geometry.Geometry")
     if geo.mode == "fan":
-        vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
+        vg = ts.volume(shape=geo.image_shape, size=geo.image_size, pos=geo.image_pos)
         pg = ts.cone(
             angles=geo.angles,
             shape=geo.detector_shape,
@@ -145,7 +145,7 @@ def make_operator(geo):
             src_det_dist=geo.dsd,
         )
     elif geo.mode == "parallel":
-        vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
+        vg = ts.volume(shape=geo.image_shape, size=geo.image_size, pos=geo.image_pos)
         pg = ts.parallel(
             angles=geo.angles,
             shape=geo.detector_shape,

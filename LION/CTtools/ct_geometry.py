@@ -27,6 +27,10 @@ class Geometry(Parameter):
         self.image_shape = np.array(kwargs.get("image_shape", None))
         if self.image_shape.all() and self.image_size.all():
             self.voxel_size = self.image_size / self.image_shape
+        if "image_pos" in kwargs:
+            self.image_pos = np.array(kwargs.get("image_pos", None))
+        else:
+            self.image_pos = np.array([0, 0, 0])
 
         self.detector_shape = np.array(kwargs.get("detector_shape", None))
         self.detector_size = np.array(kwargs.get("detector_size", None))

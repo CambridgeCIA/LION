@@ -26,7 +26,9 @@ def run_cmd(cmd, verbose=True, *args, **kwargs):
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True
     )
     std_out, std_err = process.communicate()
-    if std_err:
+
+    if process.returncode:
+        print("Error encountered in commad line call:")
         raise RuntimeError(std_err.strip())
     if verbose:
         print(std_out.strip(), std_err)
