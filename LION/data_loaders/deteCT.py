@@ -205,8 +205,9 @@ class deteCT(Dataset):
         geo.dso = SOD
         geo.detector_shape = [1, 956]
         geo.detector_size = [detPixSz, detPixSz * 956]
-        geo.image_shape = [1, 1024 * 2, 1024 * 2]
-        geo.image_size = [1, 1024 * 2, 1024 * 2]
+        geo.image_shape = [1, 1024, 1024]
+        geo.image_size = [1, 1024, 1024]
+        geo.image_pos = [0, -1, -1]
         geo.angles = -np.linspace(0, 2 * np.pi, 3600, endpoint=False) + np.pi
         return geo
 
