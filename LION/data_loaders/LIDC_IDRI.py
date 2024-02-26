@@ -1,5 +1,5 @@
 # =============================================================================
-# This file is part of AItomotools library
+# This file is part of LION library
 # License : BSD-3
 #
 # Author  : Emilien Valat
