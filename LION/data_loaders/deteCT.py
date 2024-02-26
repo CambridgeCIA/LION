@@ -14,14 +14,14 @@ import numpy as np
 from torch.utils.data import Dataset
 import warnings
 from LION.utils.paths import DETECT_PROCESSED_DATASET_PATH
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ctgeo
 from LION.CTtools.ct_utils import make_operator
 from ts_algorithms import fdk, nag_ls
 
 
 class deteCT(Dataset):
-    def __init__(self, mode, params: Parameter = None):
+    def __init__(self, mode, params: LIONParameter = None):
         if params is None:
             params = self.default_parameters()
 
@@ -165,7 +165,7 @@ class deteCT(Dataset):
 
     @staticmethod
     def default_parameters():
-        param = Parameter()
+        param = LIONParameter()
         param.path_to_dataset = DETECT_PROCESSED_DATASET_PATH
         param.sinogram_mode = "mode2"
         param.reconstruction_mode = "mode2"

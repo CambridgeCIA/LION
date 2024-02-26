@@ -4,15 +4,17 @@
 #%% Imports
 import matplotlib.pyplot as plt
 import numpy as np
+
 import torch
 from torch.utils.data import DataLoader
+
 from tqdm import tqdm
 import pathlib
-import LION.CTtools.ct_geometry as ctgeo
-import LION.CTtools.ct_utils as ct
-from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
+
+
 from LION.models.FBPConvNet import FBPConvNet
-from LION.utils.parameter import Parameter
+
+from LION.utils.parameter import LIONParameter
 from ts_algorithms import fdk
 
 
@@ -51,7 +53,7 @@ model = FBPConvNet().to(device)
 
 
 #%% Optimizer
-train_param = Parameter()
+train_param = LIONParameter()
 
 # loss fn
 loss_fcn = torch.nn.MSELoss()

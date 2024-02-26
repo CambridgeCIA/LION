@@ -16,7 +16,7 @@ from collections import OrderedDict
 
 import LION.CTtools.ct_geometry as ct
 
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 from LION.models import LIONmodel
 
 ##Code for UNet
@@ -176,7 +176,7 @@ class UNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        param = Parameter()
+        param = LIONParameter()
         param.inChan = 1
         param.outChan = 1
         param.baseDim = 32
@@ -188,7 +188,7 @@ class UNet(LIONmodel.LIONmodel):
 
 class ItNet(LIONmodel.LIONmodel):
     def __init__(
-        self, geometry_parameters: ct.Geometry, model_parameters: Parameter = None
+        self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
     ):
         if geometry_parameters is None:
             raise ValueError("Geometry parameters required. ")
@@ -224,7 +224,7 @@ class ItNet(LIONmodel.LIONmodel):
             if self.model_parameters.step_positive:
                 self.step_size = nn.ParameterList(
                     [
-                        nn.Parameter(
+                        nn.LIONParameter(
                             torch.ones(1)
                             * 10 ** np.log10(self.model_parameters.step_size[i])
                         )
@@ -235,7 +235,9 @@ class ItNet(LIONmodel.LIONmodel):
             else:
                 self.step_size = nn.ParameterList(
                     [
-                        nn.Parameter(torch.ones(1) * self.model_parameters.step_size[i])
+                        nn.LIONParameter(
+                            torch.ones(1) * self.model_parameters.step_size[i]
+                        )
                         for i in range(self.model_parameters.n_iters)
                     ]
                 )
@@ -247,7 +249,7 @@ class ItNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        param = Parameter()
+        param = LIONParameter()
         param.learned_step = True
         param.step_positive = False
         param.step_size = [1.1183, 1.3568, 1.4271, 0.0808]

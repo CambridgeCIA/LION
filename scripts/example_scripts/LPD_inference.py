@@ -15,8 +15,8 @@ import copy
 
 # LION imports
 import LION.CTtools.ct_utils as ct
-from LION.models.LPD import LPD
-from LION.utils.parameter import Parameter
+from LION.models.iterative_unrolled.LPD import LPD
+from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 from ts_algorithms import fdk
 

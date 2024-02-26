@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 
 from LION.utils.paths import LUNA_PROCESSED_DATASET_PATH
 from LION.CTtools.ct_geometry import Geometry
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_utils as ct
 
 
@@ -49,7 +49,7 @@ class Luna16Dataset(Dataset):
 
         self.samples_path = LUNA_PROCESSED_DATASET_PATH.joinpath(mode)
         self.images_list = list(self.samples_path.glob("image_*"))
-        self.pre_processing_params = Parameter().load(
+        self.pre_processing_params = LIONParameter().load(
             LUNA_PROCESSED_DATASET_PATH.joinpath("parameter.json")
         )
 

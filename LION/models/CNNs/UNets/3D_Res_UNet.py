@@ -9,7 +9,7 @@
 import torch
 import torch.nn as nn
 from LION.models import LIONmodel
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 
 # Implementation of:
 
@@ -93,7 +93,7 @@ class Up(nn.Module):
 
 
 class ResUNet3D(LIONmodel.LIONmodel):
-    def __init__(self, model_parameters: Parameter = None):
+    def __init__(self, model_parameters: LIONParameter = None):
         super().__init__(model_parameters)
 
         self.block_down_1 = ResidualUnit(model_parameters.down_1_channels)
@@ -137,7 +137,7 @@ class ResUNet3D(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        ResUNet3D = Parameter()
+        ResUNet3D = LIONParameter()
         ResUNet3D.down_1_channels = [1, 8, 8]
         ResUNet3D.down_2_channels = [8, 16, 16]
         ResUNet3D.down_3_channels = [16, 32, 32]

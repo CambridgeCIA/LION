@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 
 from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
 import LION.CTtools.ct_utils as ct
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 
 
 def format_index(index: int) -> str:
@@ -70,7 +70,7 @@ class LIDC_IDRI(Dataset):
         self,
         mode,
         geometry_parameters: ct.Geometry = None,
-        parameters: Parameter = None,
+        parameters: LIONParameter = None,
     ):
         """
         Initializes LIDC-IDRI dataset.
@@ -318,7 +318,7 @@ class LIDC_IDRI(Dataset):
 
     @staticmethod
     def default_parameters(geo=None, task="reconstruction"):
-        param = Parameter()
+        param = LIONParameter()
         param.name = "LIDC-IDRI Data Loader"
         param.training_proportion = 0.8
         param.validation_proportion = 0.1

@@ -30,7 +30,7 @@ import pathlib
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.data_loaders.luna16_dataset import Luna16Dataset
-from LION.models.LPD import LPD
+from LION.models.iterative_unrolled.LPD import LPD
 from LION.utils.parameter import Parameter
 
 

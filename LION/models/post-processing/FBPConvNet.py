@@ -9,7 +9,7 @@
 import torch
 import torch.nn as nn
 from LION.models import LIONmodel
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 
 # Implementation of:
 
@@ -90,7 +90,7 @@ class Up(nn.Module):
 
 
 class FBPConvNet(LIONmodel.LIONmodel):
-    def __init__(self, model_parameters: Parameter = None):
+    def __init__(self, model_parameters: LIONParameter = None):
 
         super().__init__(model_parameters)
 
@@ -181,7 +181,7 @@ class FBPConvNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        FBPConvNet_params = Parameter()
+        FBPConvNet_params = LIONParameter()
         FBPConvNet_params.down_1_channels = [1, 64, 64, 64]
         FBPConvNet_params.down_2_channels = [64, 128, 128]
         FBPConvNet_params.down_3_channels = [128, 256, 256]

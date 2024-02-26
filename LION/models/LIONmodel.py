@@ -14,8 +14,8 @@
 
 #%% Imports
 
-# You will want to import Parameter, as all models must save and use Parameters.
-from LION.utils.parameter import Parameter
+# You will want to import LIONParameter, as all models must save and use Parameters.
+from LION.utils.parameter import LIONParameter
 
 # We will need utilities
 import LION.utils.utils as ai_utils
@@ -48,12 +48,12 @@ class LIONmodel(nn.Module, ABC):
     Base class for all models in the toolbox,
     """
 
-    # Initialization of the models should have only "Parameter()" classes. These should be "topic-wise", with at minimum 1 parameter object being passed.
+    # Initialization of the models should have only "LIONParameter()" classes. These should be "topic-wise", with at minimum 1 parameter object being passed.
     # e.g. a Unet will have only 1 parameter (model_parameters), but the Learned Primal Dual will have 2, one for the model parameters and another one
     # for the geometry parameters of the inverse problem.
     def __init__(
         self,
-        model_parameters: Parameter,  # model parameters
+        model_parameters: LIONParameter,  # model parameters
         geometry_parameters: ct.Geometry = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
     ):
         super().__init__()  # Initialize parent classes.
@@ -68,7 +68,7 @@ class LIONmodel(nn.Module, ABC):
     # This should return the parameters from the paper the model is from
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
-    def default_parameters(mode="ct") -> Parameter:
+    def default_parameters(mode="ct") -> LIONParameter:
         pass
 
     # makes operator and make it pytorch compatible.
@@ -124,8 +124,8 @@ class LIONmodel(nn.Module, ABC):
         """
         Saves model given a filename.
         While its not enforced, the following Parameters are expected from kwargs:
-        - 'dataset' : Parameter describing the dataset creation and handling.
-        - 'training': Parameter describing the training algorithm and procedures
+        - 'dataset' : LIONParameter describing the dataset creation and handling.
+        - 'training': LIONParameter describing the training algorithm and procedures
         - 'geometry': If the model itself has no scan geometry parameter, but the dataset was created with some geometry
 
         If you want to save the model for training later (i.e. checkpoiting), use save_checkpoint()
@@ -189,8 +189,8 @@ class LIONmodel(nn.Module, ABC):
         # Prepare parameters to be saved
         ##########################
         # These are for human readability, but we redundantly save it in the data too
-        # Make a super Parameter()
-        options = Parameter()
+        # Make a super LIONParameter()
+        options = LIONParameter()
         # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
         # we need to at least know exactly when the model was saved, to at least be able to reproduce.
         options.commit_hash = ai_utils.get_git_revision_hash()
@@ -251,7 +251,7 @@ class LIONmodel(nn.Module, ABC):
     def _load_parameter_file(cls, fname, supress_warnings=False):
         # Load the actual parameters
         ##############################
-        options = Parameter()
+        options = LIONParameter()
         options.load(fname.with_suffix(".json"))
         if hasattr(options, "geometry_parameters"):
             options.geometry_parameters = ct.Geometry.__init_from_parameter(

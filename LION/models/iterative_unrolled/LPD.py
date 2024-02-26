@@ -9,7 +9,7 @@
 from LION.models import LIONmodel
 
 from LION.utils.math import power_method
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ct
 import LION.CTtools.ct_utils as ct_utils
 import LION.utils.utils as ai_utils
@@ -89,7 +89,7 @@ class LPD(LIONmodel.LIONmodel):
     """Learn Primal Dual network"""
 
     def __init__(
-        self, geometry_parameters: ct.Geometry, model_parameters: Parameter = None
+        self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
     ):
 
         if geometry_parameters is None:
@@ -132,7 +132,7 @@ class LPD(LIONmodel.LIONmodel):
             if self.model_parameters.step_positive:
                 self.lambda_dual = nn.ParameterList(
                     [
-                        nn.Parameter(
+                        nn.LIONParameter(
                             torch.ones(1)
                             * 10 ** np.log10(self.model_parameters.step_size)
                         )
@@ -141,7 +141,7 @@ class LPD(LIONmodel.LIONmodel):
                 )
                 self.lambda_primal = nn.ParameterList(
                     [
-                        nn.Parameter(
+                        nn.LIONParameter(
                             torch.ones(1)
                             * 10 ** np.log10(self.model_parameters.step_size)
                         )
@@ -152,13 +152,17 @@ class LPD(LIONmodel.LIONmodel):
             else:
                 self.lambda_dual = nn.ParameterList(
                     [
-                        nn.Parameter(torch.ones(1) * self.model_parameters.step_size)
+                        nn.LIONParameter(
+                            torch.ones(1) * self.model_parameters.step_size
+                        )
                         for i in range(self.model_parameters.n_iters)
                     ]
                 )
                 self.lambda_primal = nn.ParameterList(
                     [
-                        nn.Parameter(torch.ones(1) * self.model_parameters.step_size)
+                        nn.LIONParameter(
+                            torch.ones(1) * self.model_parameters.step_size
+                        )
                         for i in range(self.model_parameters.n_iters)
                     ]
                 )
@@ -174,7 +178,7 @@ class LPD(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        LPD_params = Parameter()
+        LPD_params = LIONParameter()
         LPD_params.n_iters = 10
         LPD_params.data_channels = [7, 32, 32, 5]
         LPD_params.reg_channels = [6, 32, 32, 5]

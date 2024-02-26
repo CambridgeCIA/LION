@@ -12,7 +12,7 @@ import pathlib
 import warnings
 from abc import ABC, abstractmethod, ABCMeta
 
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
@@ -82,13 +82,13 @@ class ExtremeLowDoseCTRecon(Experiment):
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
-        param = Parameter()
+        param = LIONParameter()
         param.name = "Extremely low dose full angular sampling experiment"
         # Parameters for the geometry
         param.geo = ctgeo.Geometry.default_parameters()
         # Parameters for the noise in the sinogram.
         # Default, 10% of clinical dose.
-        param.noise_params = Parameter()
+        param.noise_params = LIONParameter()
         param.noise_params.I0 = 1000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
@@ -110,13 +110,13 @@ class LowDoseCTRecon(Experiment):
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
-        param = Parameter()
+        param = LIONParameter()
         param.name = "Low dose full angular sampling experiment"
         # Parameters for the geometry
         param.geo = ctgeo.Geometry.default_parameters()
         # Parameters for the noise in the sinogram.
         # Default, 10% of clinical dose.
-        param.noise_params = Parameter()
+        param.noise_params = LIONParameter()
         param.noise_params.I0 = 3500
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
@@ -137,13 +137,13 @@ class LimitedAngleCTRecon(Experiment):
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
-        param = Parameter()
+        param = LIONParameter()
         param.name = "Clinical dose limited angular sampling experiment"
         # Parameters for the geometry
         param.geo = ctgeo.Geometry.sparse_angle_parameters()
         # Parameters for the noise in the sinogram.
         # Default, 50% of clinical dose.
-        param.noise_params = Parameter()
+        param.noise_params = LIONParameter()
         param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
@@ -165,13 +165,13 @@ class SparseAngleCTRecon(Experiment):
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
-        param = Parameter()
+        param = LIONParameter()
         param.name = "Clinical dose sparse angular sampling experiment"
         # Parameters for the geometry
         param.geo = ctgeo.Geometry.sparse_view_parameters()
         # Parameters for the noise in the sinogram.
         # Default, 50% of clinical dose.
-        param.noise_params = Parameter()
+        param.noise_params = LIONParameter()
         param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
@@ -193,13 +193,13 @@ class clinicalCTRecon(Experiment):
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
-        param = Parameter()
+        param = LIONParameter()
         param.name = "Clinical dose full angular sampling experiment"
         # Parameters for the geometry
         param.geo = ctgeo.Geometry.default_parameters()
         # Parameters for the noise in the sinogram.
         # Default, 50% of clinical dose.
-        param.noise_params = Parameter()
+        param.noise_params = LIONParameter()
         param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05

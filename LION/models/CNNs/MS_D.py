@@ -9,7 +9,7 @@
 import torch
 import torch.nn as nn
 from LION.models import LIONmodel
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 import msd_pytorch as msd
 
 
@@ -46,7 +46,7 @@ class MS_D(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters(mode="regression"):
-        param = Parameter()
+        param = LIONParameter()
         if mode == "regression":
             param.type = "regression"
             param.c_in = 1

@@ -9,7 +9,7 @@
 import torch
 import torch.nn as nn
 from LION.models import LIONmodel
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 import torch.nn.utils.parametrize as P
 
 
@@ -61,7 +61,7 @@ class L2net(nn.Module):
     def __init__(self):
         super(L2net, self).__init__()
 
-        self.l2_penalty = nn.Parameter((-9.0) * torch.ones(1))
+        self.l2_penalty = nn.LIONParameter((-9.0) * torch.ones(1))
 
     def forward(self, x):
         l2_term = torch.sum(x.view(x.size(0), -1) ** 2, dim=1)
@@ -77,7 +77,7 @@ class SFB(LIONmodel.LIONmodel):
 
         super().__init__(model_parameters)
         # FoE kernels
-        self.penalty = nn.Parameter((-12.0) * torch.ones(1))
+        self.penalty = nn.LIONParameter((-12.0) * torch.ones(1))
         self.n_kernels = model_parameters.n_kernels
         self.conv = nn.ModuleList(
             [
@@ -97,7 +97,7 @@ class SFB(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        param = Parameter()
+        param = LIONParameter()
         param.n_kernels = 10
         param.n_filters = 32
         param.L2net = True
@@ -119,7 +119,7 @@ class SFB(LIONmodel.LIONmodel):
 
 
 class ACR(LIONmodel.LIONmodel):
-    def __init__(self, model_parameters: Parameter = None):
+    def __init__(self, model_parameters: LIONParameter = None):
 
         super().__init__(model_parameters)
 
@@ -190,7 +190,7 @@ class ACR(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        param = Parameter()
+        param = LIONParameter()
         param.channels = 48
         param.kernel_size = 5
         param.stride = 1

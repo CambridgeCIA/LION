@@ -10,10 +10,11 @@ import pathlib
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
-from LION.models.LPD import LPD
-from LION.utils.parameter import Parameter
+from LION.models.iterative_unrolled.LPD import LPD
+from LION.utils.parameter import LIONParameter
 from ts_algorithms import fdk
 
+from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
 
 import LION.experiments.ct_experiments as ct_experiments
 
@@ -24,16 +25,14 @@ device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
-datafolder = pathlib.Path(
-    "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
-)
+datafolder = LIDC_IDRI_PROCESSED_DATASET_PATH
 final_result_fname = savefolder.joinpath("LPD_final_iter.pt")
 checkpoint_fname = savefolder.joinpath("LPD_check_*.pt")
 validation_fname = savefolder.joinpath("LPD_min_val.pt")
 #
 #%% Define experiment
 
-experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+experiment = ct_experiments.SparseAngleCTRecon(datafolder=datafolder)
 
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
@@ -41,9 +40,15 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
+import torch.utils.data as data_utils
+
+indices = torch.arange(1)
+tr_10 = data_utils.Subset(lidc_dataset, indices)
+
+
 batch_size = 1
-lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
-lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
+lidc_dataloader = DataLoader(tr_10, batch_size, shuffle=False)
+lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=False)
 
 #%% Model
 # Default model is already from the paper.
@@ -57,15 +62,15 @@ model = LPD(experiment.geo, default_parameters).to(device)
 
 
 #%% Optimizer
-train_param = Parameter()
+train_param = LIONParameter()
 
 # loss fn
 loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 100
-train_param.learning_rate = 1e-3
+train_param.epochs = 500
+train_param.learning_rate = 1e-4
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
 optimiser = torch.optim.Adam(
@@ -100,14 +105,33 @@ for epoch in range(start_epoch, train_param.epochs):
         optimiser.zero_grad()
         reconstruction = model(sinogram)
         loss = loss_fcn(reconstruction, target_reconstruction)
-
         loss.backward()
-
         train_loss += loss.item()
-
         optimiser.step()
 
         bad_recon = fdk(model.op, sinogram[0])
+        bad_recon = torch.clip(bad_recon, min=0)
+        if train_loss > 50:
+            print("")
+            print("weird loss:", train_loss)
+            print(
+                "FDK range: max=",
+                torch.max(bad_recon).item(),
+                "min=",
+                torch.min(bad_recon).item(),
+            )
+            print(
+                "recon range: max=",
+                torch.max(reconstruction).item(),
+                "min=",
+                torch.min(reconstruction).item(),
+            )
+            print(
+                "target range: max=",
+                torch.max(target_reconstruction).item(),
+                "min=",
+                torch.min(target_reconstruction).item(),
+            )
         if index == 0:
             plt.figure()
             plt.subplot(1, 3, 1)
@@ -116,6 +140,10 @@ for epoch in range(start_epoch, train_param.epochs):
             plt.subplot(1, 3, 2)
             plt.imshow(target_reconstruction[0, 0, :, :].cpu().detach().numpy())
             plt.clim(0, 3)
+            plt.title(
+                f"Epoch {epoch+1}, Training Loss: {train_loss / len(lidc_dataloader)}"
+            )
+
             plt.subplot(1, 3, 3)
             plt.imshow(bad_recon[0, :, :].cpu().detach().numpy())
             plt.clim(0, 3)
@@ -124,30 +152,30 @@ for epoch in range(start_epoch, train_param.epochs):
     total_loss[epoch] = train_loss
     # Validation
     valid_loss = 0.0
-    model.eval()
-    for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_validation)):
+    # model.eval()
+    # for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_validation)):
 
-        reconstruction = model(sinogram)
-        loss = loss_fcn(target_reconstruction, reconstruction)
-        valid_loss += loss.item()
+    #     reconstruction = model(sinogram)
+    #     loss = loss_fcn(target_reconstruction, reconstruction)
+    #     valid_loss += loss.item()
 
-    print(
-        f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
-    )
+    # print(
+    #     f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
+    # )
 
-    if min_valid_loss > valid_loss:
-        print(
-            f"Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model"
-        )
-        min_valid_loss = valid_loss
-        # Saving State Dict
-        model.save(
-            validation_fname,
-            epoch=epoch + 1,
-            training=train_param,
-            loss=min_valid_loss,
-            dataset=experiment.param,
-        )
+    # if min_valid_loss > valid_loss:
+    #     print(
+    #         f"Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model"
+    #     )
+    #     min_valid_loss = valid_loss
+    #     # Saving State Dict
+    #     model.save(
+    #         validation_fname,
+    #         epoch=epoch + 1,
+    #         training=train_param,
+    #         loss=min_valid_loss,
+    #         dataset=experiment.param,
+    #     )
 
     # Checkpoint every 10 iters anyway
     if epoch % 10 == 0:
@@ -162,7 +190,7 @@ for epoch in range(start_epoch, train_param.epochs):
 
 
 plt.figure()
-plt.plot(total_loss[1:])
+plt.semilogy(total_loss[1:])
 plt.savefig("loss.png")
 
 model.save(

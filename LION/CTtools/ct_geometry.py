@@ -12,10 +12,10 @@ import pathlib
 import numpy as np
 import json
 
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 
 
-class Geometry(Parameter):
+class Geometry(LIONParameter):
     """
     Class holding a CT geometry
     """
@@ -44,7 +44,7 @@ class Geometry(Parameter):
 
     # PLEASE SOMEONE FIND A SMARTER WAY TO DO THIS
     @classmethod
-    def __init__from_parameter(cls, parameter: Parameter):
+    def __init__from_parameter(cls, parameter: LIONParameter):
         return cls(
             image_shape=parameter.image_shape,
             image_size=parameter.image_size,

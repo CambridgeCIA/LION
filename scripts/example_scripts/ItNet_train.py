@@ -11,8 +11,8 @@ import pathlib
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
-from LION.models.ItNet import ItNet, UNet
-from LION.utils.parameter import Parameter
+from LION.models.iterative_unrolled.ItNet import ItNet, UNet
+from LION.utils.parameter import LIONParameter
 from ts_algorithms import fdk
 
 
@@ -55,7 +55,7 @@ model = UNet()
 if not model.final_file_exists(savefolder.joinpath(unet_final_result_fname)):
 
     model.to(device)
-    train_param = Parameter()
+    train_param = LIONParameter()
     # loss fn
     loss_fcn = torch.nn.MSELoss()
     train_param.optimiser = "adam"
@@ -161,7 +161,7 @@ for i in range(model.model_parameters.n_iters):
     unet.train()
 
 
-train_param = Parameter()
+train_param = LIONParameter()
 train_param.epochs = 500
 train_param.learning_rate = 1e-3
 train_param.loss = "MSELoss"

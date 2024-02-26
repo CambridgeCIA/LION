@@ -14,8 +14,8 @@ import pathlib
 
 # LION imports
 import LION.CTtools.ct_utils as ct
-from LION.models.MS_D import MS_D
-from LION.utils.parameter import Parameter
+from LION.models.CNNs.MS_D import MS_D
+from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 from ts_algorithms import fdk
 
@@ -57,7 +57,7 @@ for i in range(k):
     geo.angles = angles[i:-1:k]
     op.append(ct.make_operator(geo))  # list of operators for each subsampling of angles
 #%% Optimizer
-train_param = Parameter()
+train_param = LIONParameter()
 
 # loss fn
 loss_fcn = torch.nn.MSELoss()
