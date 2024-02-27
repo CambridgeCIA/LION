@@ -22,12 +22,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
 # imports related to class organization
 from abc import ABC, abstractmethod, ABCMeta
 
 # general imports
 import warnings
+import pathlib
 
 
 class LIONsolver(ABC):
@@ -86,30 +88,85 @@ class LIONsolver(ABC):
             "loss_fn", type=nn.Module, error=error, autofill=False, verbose=verbose
         )
 
-        # Test 5: is the testing function set? if not, raise error or warn or autofill
+        # Test 5: is the testing loader set? if not, raise error or warn
         return_code = self.__check_attribute(
-            "testing_fn", type=callable, error=error, autofill=autofill, verbose=verbose
+            "test_loader", type=DataLoader, error=error, autofill=False, verbose=verbose
+        )
+        # Test 6: is the testing function set? if not, raise error or warn or autofill
+        return_code = self.__check_attribute(
+            "testing_fn", type=callable, error=error, autofill=False, verbose=verbose
         )
 
-        if autofill and (
-            not hasattr(self, "validation_loader") or self.validation_loader is None
-        ):
-            self.validation_loader = None
-            warnings.warn(
-                "Validation loader not set. It is recommended you use a validation set"
-            )
+        # Test 7: is the training loader set? if not, raise error or warn
+        return_code = self.__check_attribute(
+            "training_loader",
+            type=DataLoader,
+            error=error,
+            autofill=False,
+            verbose=verbose,
+        )
+        # Test 8: is the validation loader set? if not, raise error or warn
+        return_code = self.__check_attribute(
+            "validation_loader",
+            type=DataLoader,
+            error=False,
+            autofill=False,
+            verbose=True,
+        )
 
-        if not hasattr(self, "testing_fn") or self.testing_fn is None:
-            self.testing_fn = None
-            warnings.warn("Testing function not set. The testing script may fail")
-
-        self.validation_fn = optimizer_params.validation_fn
-        self.validation_freq = optimizer_params.validation_freq
-        self.save_folder = optimizer_params.save_folder
-        self.checkpoint_freq = optimizer_params.checkpoint_freq
-        self.final_result_fname = optimizer_params.final_result_fname
-        self.checkpoint_fname = optimizer_params.checkpoint_fname
-        self.validation_fname = optimizer_params.validation_fname
+        # Test 9: is the validation function set? if not, raise error or warn or autofill
+        return_code = self.__check_attribute(
+            "validation_fn",
+            type=callable,
+            error=False,
+            autofill=autofill,
+            verbose=verbose,
+            default=self.loss_fn,
+        )
+        # Test 10: is the validation frequency set? if not, raise error or warn or autofill
+        return_code = self.__check_attribute(
+            "validation_freq",
+            type=int,
+            error=False,
+            autofill=autofill,
+            verbose=verbose,
+            default=10,
+        )
+        # Test 11: is the save folder set? if not, raise error or warn or autofill
+        return_code = self.__check_attribute(
+            "save_folder",
+            type=pathlib.Path,
+            error=error,
+            autofill=False,
+            verbose=verbose,
+        )
+        # Test 12: is the final result filename set? if not, raise error or warn or autofill
+        return_code = self.__check_attribute(
+            "final_result_fname",
+            type=pathlib.Path,
+            error=error,
+            autofill=True,
+            verbose=verbose,
+            default=self.save_folder.joinpath("final_result.pt"),
+        )
+        # Test 13: is the checkpoint frequency filename set? if not, raise error or warn or autofill
+        return_code = self.__check_attribute(
+            "checkpoint_fname",
+            type=pathlib.Path,
+            error=False,
+            autofill=True,
+            verbose=False,
+            default=self.final_result_fname.joinpath("_checkpoint_*.pt"),
+        )
+        # Test 14: is the checkpoint frequency set? if not, raise error or warn or autofill
+        return_code = self.__check_attribute(
+            "checkpoint_freq",
+            type=int,
+            error=False,
+            autofill=autofill,
+            verbose=verbose,
+            default=10,
+        )
         self.verbose = verbose
 
         return return_code
@@ -129,7 +186,16 @@ class LIONsolver(ABC):
             elif verbose:
                 warnings.warn(f"Attribute {attr} not set")
                 return 1
-        if type(getattr(self, attr)) is not type:
+        # if the type we want to check against is a function, we need to treat it differently
+        if type is callable:
+            if not callable(getattr(self, attr)):
+                if error:
+                    raise ValueError(f"Attribute {attr} is not callable")
+                elif verbose:
+                    warnings.warn(f"Attribute {attr} is not callable")
+                    return 2
+        # just standrad type chekcking, error or warn, depends of settings
+        elif type(getattr(self, attr)) is not type:
             if error:
                 raise ValueError(f"Attribute {attr} is not of type {type}")
             elif verbose:

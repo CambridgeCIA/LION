@@ -7,9 +7,6 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pathlib
-import LION.CTtools.ct_geometry as ctgeo
-import LION.CTtools.ct_utils as ct
-from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 from LION.models.iterative_unrolled.LPD import LPD
 from LION.utils.parameter import LIONParameter
 from ts_algorithms import fdk

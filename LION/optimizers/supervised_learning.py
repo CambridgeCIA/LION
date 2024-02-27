@@ -56,33 +56,14 @@ class supervisedSolver(LIONsolver):
     def mini_batch_step(self, data, target):
         # Set model to training mode
         self.model.train()
-        # Move data to device
-        data, target = data.to(self.device), target.to(self.device)
+        # Zero gradients
+        self.optimizer.zero_grad()
         # Forward pass
         output = self.model(data)
         # Compute loss
         loss = self.loss_fn(output, target)
-        # Zero gradients
-        self.optimizer.zero_grad()
         # Backward pass
         loss.backward()
         # Update weights
         self.optimizer.step()
         return loss.item()
-
-    def epoch_step(self, train_loader, epoch):
-        # Set model to training mode
-        self.model.train()
-        # Initialize loss
-        train_loss = 0
-        # Loop over all batches
-        for batch_idx, (data, target) in enumerate(train_loader):
-            # Move data to device
-            data, target = data.to(self.device), target.to(self.device)
-            # Forward pass
-            output = self.model(data)
-            # Compute loss
-            loss = self.loss_fn(output, target)
-            # Zero gradients
-            self.optimizer.zero_grad()
-            # Backward pass

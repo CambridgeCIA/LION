@@ -6,7 +6,7 @@
 # =============================================================================
 
 
-#%% This is a base class for AItomotools.
+#%% This is a base class for LION models.
 #
 # All classes must derive from this one.
 # It definest a bunch of auxiliary functions
