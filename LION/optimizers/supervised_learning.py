@@ -1,4 +1,4 @@
-# standard imports
+# numerical imports
 import torch
 
 # Import base class
@@ -6,6 +6,9 @@ from LION.optimizers.LIONsolver import LIONsolver
 
 # Parameter class
 from LION.utils.parameter import LIONParameter
+
+# standard imports
+from tqdm import tqdm
 
 
 class supervisedSolver(LIONsolver):
@@ -53,8 +56,12 @@ class supervisedSolver(LIONsolver):
         param.optimizer = torch.optim.Adam
         return param
 
+    def __step(self, data, target):
+
+        return loss.item()
+
     def mini_batch_step(self, data, target):
-        # Set model to training mode
+        # set model to train
         self.model.train()
         # Zero gradients
         self.optimizer.zero_grad()
@@ -62,8 +69,31 @@ class supervisedSolver(LIONsolver):
         output = self.model(data)
         # Compute loss
         loss = self.loss_fn(output, target)
-        # Backward pass
+        # Update optimizer and model
         loss.backward()
-        # Update weights
         self.optimizer.step()
         return loss.item()
+
+    def train_step(self):
+        self.model.train()
+        epoch_loss = 0.0
+        for index, (data, target) in tqdm(enumerate(self.train_loader)):
+            epoch_loss += self.mini_batch_step(data, target)
+        return epoch_loss / len(self.train_loader)
+
+    def validation_step(self, data, target):
+        status = self.model.training
+        self.model.eval()
+        validation_loss = 0.0
+        for index, (data, target) in tqdm(enumerate(self.validation_loader)):
+            with torch.no_grad():
+                output = self.model(data)
+                validation_loss = self.validation_fn(output, target)
+
+        # return to train if it was in train
+        if status:
+            self.model.train()
+        return validation_loss / len(self.validation_loader)
+
+    def epoch_step(self, epoch):
+        pass

@@ -149,31 +149,31 @@ for epoch in range(start_epoch, train_param.epochs):
     total_loss[epoch] = train_loss
     # Validation
     valid_loss = 0.0
-    # model.eval()
-    # for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_validation)):
+    model.eval()
+    for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_validation)):
 
-    #     reconstruction = model(sinogram)
-    #     loss = loss_fcn(target_reconstruction, reconstruction)
-    #     valid_loss += loss.item()
+        reconstruction = model(sinogram)
+        loss = loss_fcn(target_reconstruction, reconstruction)
+        valid_loss += loss.item()
 
-    # print(
-    #     f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
-    # )
+    print(
+        f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
+    )
 
-    # if min_valid_loss > valid_loss:
-    #     print(
-    #         f"Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model"
-    #     )
-    #     min_valid_loss = valid_loss
-    #     # Saving State Dict
-    #     model.save(
-    #         validation_fname,
-    #         epoch=epoch + 1,
-    #         training=train_param,
-    #         loss=min_valid_loss,
-    #         dataset=experiment.param,
-    #     )
-
+    if min_valid_loss > valid_loss:
+        print(
+            f"Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model"
+        )
+        min_valid_loss = valid_loss
+        # Saving State Dict
+        model.save(
+            validation_fname,
+            epoch=epoch + 1,
+            training=train_param,
+            loss=min_valid_loss,
+            dataset=experiment.param,
+        )
+    model.train()
     # Checkpoint every 10 iters anyway
     if epoch % 10 == 0:
         model.save_checkpoint(
