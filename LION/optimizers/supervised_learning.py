@@ -1,5 +1,6 @@
 # numerical imports
 import torch
+import numpy as np
 
 # Import base class
 from LION.optimizers.LIONsolver import LIONsolver
@@ -48,6 +49,7 @@ class supervisedSolver(LIONsolver):
         param.final_result_fname = None
         param.checkpoint_fname = None
         param.validation_fname = None
+        param.epoch = None
         return param
 
     @staticmethod
@@ -56,11 +58,11 @@ class supervisedSolver(LIONsolver):
         param.optimizer = torch.optim.Adam
         return param
 
-    def __step(self, data, target):
-
-        return loss.item()
-
     def mini_batch_step(self, data, target):
+        """
+        This function isresponsible for performing a single mini-batch step of the optimization.
+        returns the loss of the mini-batch
+        """
         # set model to train
         self.model.train()
         # Zero gradients
@@ -75,13 +77,21 @@ class supervisedSolver(LIONsolver):
         return loss.item()
 
     def train_step(self):
+        """
+        This function is responsible for performing a single tranining set epoch of the optimization.
+        returns the average loss of the epoch
+        """
         self.model.train()
         epoch_loss = 0.0
-        for index, (data, target) in tqdm(enumerate(self.train_loader)):
+        for index, (data, target) in enumerate(self.train_loader):
             epoch_loss += self.mini_batch_step(data, target)
         return epoch_loss / len(self.train_loader)
 
-    def validation_step(self, data, target):
+    def validate(self):
+        """
+        This function is responsible for performing a single validation set of the optimization.
+        returns the average loss of the validation set this epoch.
+        """
         status = self.model.training
         self.model.eval()
         validation_loss = 0.0
@@ -96,4 +106,39 @@ class supervisedSolver(LIONsolver):
         return validation_loss / len(self.validation_loader)
 
     def epoch_step(self, epoch):
+        """
+        This function is responsible for performing a single epoch of the optimization.
+        """
+        self.loss[epoch] = self.train_step()
+        if epoch % self.validation_freq == 0:
+            self.validation_loss[epoch] = self.validate()
+            if self.verbose:
+                print(
+                    f"Epoch {epoch} - Training loss: {self.loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
+                )
+        elif self.verbose:
+            print(f"Epoch {epoch} - Training loss: {self.loss[epoch]}")
+        elif self.validation_freq is not None:
+            self.validation_loss[epoch] = self.validate()
+
         pass
+
+    def train(self, n_epochs):
+        """
+        This function is responsible for performing the optimization.
+        """
+        assert n_epochs > 0, "Number of epochs must be a positive integer"
+        # Make sure all parameters are set
+        self.check_complete()
+
+        self.epochs = n_epochs
+        self.loss = np.zeros(self.epochs)
+        if self.validation_fn is not None:
+            self.validation_loss = np.zeros(self.epochs)
+
+        # train loop
+        for epoch in tqdm(range(self.epochs)):
+            self.epoch_step(epoch)
+            if epoch % self.checkpoint_freq == 0:
+                self.save_checkpoint(epoch)
+        self.save_final_results()

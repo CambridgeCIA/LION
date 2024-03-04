@@ -21,7 +21,6 @@ from LION.models.LIONmodel import LIONmodel
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 # imports related to class organization
@@ -46,7 +45,7 @@ class LIONsolver(ABC):
         self.optimizer = optimizer
         self.loss_fn = loss_fn
 
-    def __check_complete(self, error=True, autofill=True):
+    def check_complete(self, error=True, autofill=True):
         """
         This function checks if the solver is complete, i.e. if all the necessary parameters are set to start traning.
         """
@@ -62,22 +61,26 @@ class LIONsolver(ABC):
         # Test 1: is the device set? if not, set it if aitofill is True
         return_code = self.__check_attribute(
             "device",
-            type=torch.device,
-            error=error,
+            expected_type=torch.device,
+            error=False,
             autofill=autofill,
             verbose=verbose,
-            default=torch.cuda.current_device(),
+            default=torch.device(torch.cuda.current_device()),
         )
 
         # Test 2: is the model set? if not, raise error or warn
         return_code = self.__check_attribute(
-            "model", type=LIONmodel, error=error, autofill=False, verbose=verbose
+            "model",
+            expected_type=LIONmodel,
+            error=error,
+            autofill=False,
+            verbose=verbose,
         )
 
         # Test 3: is the optimizer set? if not, raise error or warn
         return_code = self.__check_attribute(
             "optimizer",
-            type=torch.optim.Optimizer,
+            expected_type=torch.optim.Optimizer,
             error=error,
             autofill=False,
             verbose=verbose,
@@ -85,22 +88,34 @@ class LIONsolver(ABC):
 
         # Test 4: is the loss_fn set? if not, raise error or warn
         return_code = self.__check_attribute(
-            "loss_fn", type=nn.Module, error=error, autofill=False, verbose=verbose
+            "loss_fn",
+            expected_type=nn.Module,
+            error=error,
+            autofill=False,
+            verbose=verbose,
         )
 
         # Test 5: is the testing loader set? if not, raise error or warn
         return_code = self.__check_attribute(
-            "test_loader", type=DataLoader, error=error, autofill=False, verbose=verbose
+            "test_loader",
+            expected_type=DataLoader,
+            error=error,
+            autofill=False,
+            verbose=verbose,
         )
         # Test 6: is the testing function set? if not, raise error or warn or autofill
         return_code = self.__check_attribute(
-            "testing_fn", type=callable, error=error, autofill=False, verbose=verbose
+            "testing_fn",
+            expected_type=callable,
+            error=error,
+            autofill=False,
+            verbose=verbose,
         )
 
         # Test 7: is the training loader set? if not, raise error or warn
         return_code = self.__check_attribute(
-            "training_loader",
-            type=DataLoader,
+            "train_loader",
+            expected_type=DataLoader,
             error=error,
             autofill=False,
             verbose=verbose,
@@ -108,7 +123,7 @@ class LIONsolver(ABC):
         # Test 8: is the validation loader set? if not, raise error or warn
         return_code = self.__check_attribute(
             "validation_loader",
-            type=DataLoader,
+            expected_type=DataLoader,
             error=False,
             autofill=False,
             verbose=True,
@@ -117,16 +132,16 @@ class LIONsolver(ABC):
         # Test 9: is the validation function set? if not, raise error or warn or autofill
         return_code = self.__check_attribute(
             "validation_fn",
-            type=callable,
+            expected_type=callable,
             error=False,
-            autofill=autofill,
+            autofill=True,
             verbose=verbose,
             default=self.loss_fn,
         )
         # Test 10: is the validation frequency set? if not, raise error or warn or autofill
         return_code = self.__check_attribute(
             "validation_freq",
-            type=int,
+            expected_type=int,
             error=False,
             autofill=autofill,
             verbose=verbose,
@@ -135,7 +150,7 @@ class LIONsolver(ABC):
         # Test 11: is the save folder set? if not, raise error or warn or autofill
         return_code = self.__check_attribute(
             "save_folder",
-            type=pathlib.Path,
+            expected_type=pathlib.Path,
             error=error,
             autofill=False,
             verbose=verbose,
@@ -143,7 +158,7 @@ class LIONsolver(ABC):
         # Test 12: is the final result filename set? if not, raise error or warn or autofill
         return_code = self.__check_attribute(
             "final_result_fname",
-            type=pathlib.Path,
+            expected_type=pathlib.Path,
             error=error,
             autofill=True,
             verbose=verbose,
@@ -152,7 +167,7 @@ class LIONsolver(ABC):
         # Test 13: is the checkpoint frequency filename set? if not, raise error or warn or autofill
         return_code = self.__check_attribute(
             "checkpoint_fname",
-            type=pathlib.Path,
+            expected_type=pathlib.Path,
             error=False,
             autofill=True,
             verbose=False,
@@ -161,7 +176,7 @@ class LIONsolver(ABC):
         # Test 14: is the checkpoint frequency set? if not, raise error or warn or autofill
         return_code = self.__check_attribute(
             "checkpoint_freq",
-            type=int,
+            expected_type=int,
             error=False,
             autofill=autofill,
             verbose=verbose,
@@ -172,22 +187,31 @@ class LIONsolver(ABC):
         return return_code
 
     def __check_attribute(
-        self, attr, type=None, error=True, autofill=True, verbose=True, default=None
+        self,
+        attr,
+        expected_type=None,
+        error=True,
+        autofill=True,
+        verbose=True,
+        default=None,
     ):
         """
         This function checks if an attribute exists, and sets it if needed
         """
         assert isinstance(attr, str), "attr must be a string"
-        if autofill and (not hasattr(self, attr) or getattr(self, attr) is None):
-            setattr(self, attr, default)
-        else:
-            if error:
-                raise ValueError(f"Attribute {attr} not set")
-            elif verbose:
-                warnings.warn(f"Attribute {attr} not set")
-                return 1
+
+        if not hasattr(self, attr) or getattr(self, attr) is None:
+            if autofill:
+                setattr(self, attr, default)
+            else:
+                if error:
+                    raise ValueError(f"Attribute {attr} not set")
+                elif verbose:
+                    warnings.warn(f"Attribute {attr} not set")
+                    return 1
+
         # if the type we want to check against is a function, we need to treat it differently
-        if type is callable:
+        if expected_type is callable:
             if not callable(getattr(self, attr)):
                 if error:
                     raise ValueError(f"Attribute {attr} is not callable")
@@ -195,11 +219,15 @@ class LIONsolver(ABC):
                     warnings.warn(f"Attribute {attr} is not callable")
                     return 2
         # just standrad type chekcking, error or warn, depends of settings
-        elif type(getattr(self, attr)) is not type:
+        elif isinstance(getattr(self, attr), type):
             if error:
-                raise ValueError(f"Attribute {attr} is not of type {type}")
+                raise ValueError(
+                    f"Attribute {attr} is not of type {expected_type}, its {type(getattr(self, attr))}"
+                )
             elif verbose:
-                warnings.warn(f"Attribute {attr} is not of type {type}")
+                warnings.warn(
+                    f"Attribute {attr} is not of type {expected_type}, its {type(getattr(self, attr))}"
+                )
                 return 2
         return 0
 
