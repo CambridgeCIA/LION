@@ -97,7 +97,7 @@ def sinogram_add_noise(
 
     conv = torch.nn.Conv2d(1, 1, 3, bias=False, padding="same")
     with torch.no_grad():
-        conv.weight = torch.nn.LIONParameter(kernel)
+        conv.weight = torch.nn.Parameter(kernel)
     conv = conv.to(dev)
 
     Im = conv(Im.unsqueeze(0))[0]

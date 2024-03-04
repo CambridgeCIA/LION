@@ -61,7 +61,7 @@ class L2net(nn.Module):
     def __init__(self):
         super(L2net, self).__init__()
 
-        self.l2_penalty = nn.LIONParameter((-9.0) * torch.ones(1))
+        self.l2_penalty = nn.Parameter((-9.0) * torch.ones(1))
 
     def forward(self, x):
         l2_term = torch.sum(x.view(x.size(0), -1) ** 2, dim=1)
@@ -77,7 +77,7 @@ class SFB(LIONmodel.LIONmodel):
 
         super().__init__(model_parameters)
         # FoE kernels
-        self.penalty = nn.LIONParameter((-12.0) * torch.ones(1))
+        self.penalty = nn.Parameter((-12.0) * torch.ones(1))
         self.n_kernels = model_parameters.n_kernels
         self.conv = nn.ModuleList(
             [
