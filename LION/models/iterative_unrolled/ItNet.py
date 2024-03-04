@@ -224,7 +224,7 @@ class ItNet(LIONmodel.LIONmodel):
             if self.model_parameters.step_positive:
                 self.step_size = nn.ParameterList(
                     [
-                        nn.LIONParameter(
+                        nn.Parameter(
                             torch.ones(1)
                             * 10 ** np.log10(self.model_parameters.step_size[i])
                         )
@@ -235,9 +235,7 @@ class ItNet(LIONmodel.LIONmodel):
             else:
                 self.step_size = nn.ParameterList(
                     [
-                        nn.LIONParameter(
-                            torch.ones(1) * self.model_parameters.step_size[i]
-                        )
+                        nn.Parameter(torch.ones(1) * self.model_parameters.step_size[i])
                         for i in range(self.model_parameters.n_iters)
                     ]
                 )

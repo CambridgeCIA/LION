@@ -132,7 +132,7 @@ class LPD(LIONmodel.LIONmodel):
             if self.model_parameters.step_positive:
                 self.lambda_dual = nn.ParameterList(
                     [
-                        nn.LIONParameter(
+                        nn.Parameter(
                             torch.ones(1)
                             * 10 ** np.log10(self.model_parameters.step_size)
                         )
@@ -141,7 +141,7 @@ class LPD(LIONmodel.LIONmodel):
                 )
                 self.lambda_primal = nn.ParameterList(
                     [
-                        nn.LIONParameter(
+                        nn.Parameter(
                             torch.ones(1)
                             * 10 ** np.log10(self.model_parameters.step_size)
                         )
@@ -152,17 +152,13 @@ class LPD(LIONmodel.LIONmodel):
             else:
                 self.lambda_dual = nn.ParameterList(
                     [
-                        nn.LIONParameter(
-                            torch.ones(1) * self.model_parameters.step_size
-                        )
+                        nn.Parameter(torch.ones(1) * self.model_parameters.step_size)
                         for i in range(self.model_parameters.n_iters)
                     ]
                 )
                 self.lambda_primal = nn.ParameterList(
                     [
-                        nn.LIONParameter(
-                            torch.ones(1) * self.model_parameters.step_size
-                        )
+                        nn.Parameter(torch.ones(1) * self.model_parameters.step_size)
                         for i in range(self.model_parameters.n_iters)
                     ]
                 )

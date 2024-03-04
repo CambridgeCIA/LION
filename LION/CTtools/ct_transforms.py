@@ -114,7 +114,7 @@ class DetectorCrossTalk(object):
 
         self.conv = nn.Conv2d(1, 1, 3, bias=False, padding="same")
         with torch.no_grad():
-            self.conv.weight = nn.LIONParameter(kernel)
+            self.conv.weight = nn.Parameter(kernel)
 
     def __call__(self, input_dict: Dict) -> Dict:
         input_dict.update({"sinogram": self.conv(input_dict["sinogram"])})
