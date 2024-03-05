@@ -70,11 +70,11 @@ class supervisedSolver(LIONsolver):
         # Forward pass
         output = self.model(data)
         # Compute loss
-        loss = self.loss_fn(output, target)
+        self.loss = self.loss_fn(output, target)
         # Update optimizer and model
-        loss.backward()
+        self.loss.backward()
         self.optimizer.step()
-        return loss.item()
+        return self.loss.item()
 
     def train_step(self):
         """
@@ -95,7 +95,11 @@ class supervisedSolver(LIONsolver):
         status = self.model.training
         self.model.eval()
         validation_loss = 0.0
-        for index, (data, target) in tqdm(enumerate(self.validation_loader)):
+        if self.verbose:
+            print("Validating...")
+        for index, (data, target) in tqdm(
+            enumerate(self.validation_loader), disable=not self.verbose
+        ):
             with torch.no_grad():
                 output = self.model(data)
                 validation_loss = self.validation_fn(output, target)
@@ -109,15 +113,15 @@ class supervisedSolver(LIONsolver):
         """
         This function is responsible for performing a single epoch of the optimization.
         """
-        self.loss[epoch] = self.train_step()
-        if epoch % self.validation_freq == 0:
+        self.train_loss[epoch] = self.train_step()
+        if (epoch + 1) % self.validation_freq == 0:
             self.validation_loss[epoch] = self.validate()
             if self.verbose:
                 print(
-                    f"Epoch {epoch} - Training loss: {self.loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
+                    f"Epoch {epoch} - Training loss: {self.train_loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
                 )
         elif self.verbose:
-            print(f"Epoch {epoch} - Training loss: {self.loss[epoch]}")
+            print(f"Epoch {epoch} - Training loss: {self.train_loss[epoch]}")
         elif self.validation_freq is not None:
             self.validation_loss[epoch] = self.validate()
 
@@ -132,13 +136,12 @@ class supervisedSolver(LIONsolver):
         self.check_complete()
 
         self.epochs = n_epochs
-        self.loss = np.zeros(self.epochs)
+        self.train_loss = np.zeros(self.epochs)
         if self.validation_fn is not None:
             self.validation_loss = np.zeros(self.epochs)
 
         # train loop
         for epoch in tqdm(range(self.epochs)):
             self.epoch_step(epoch)
-            if epoch % self.checkpoint_freq == 0:
+            if (epoch + 1) % self.checkpoint_freq == 0:
                 self.save_checkpoint(epoch)
-        self.save_final_results()

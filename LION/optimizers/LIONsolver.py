@@ -17,6 +17,9 @@ from LION.utils.parameter import LIONParameter
 # Lionmodels
 from LION.models.LIONmodel import LIONmodel
 
+# Some utils
+from LION.utils.utils import custom_format_warning
+
 # some numerical standard imports, e.g.
 import numpy as np
 import torch
@@ -45,6 +48,50 @@ class LIONsolver(ABC):
         self.optimizer = optimizer
         self.loss_fn = loss_fn
 
+        self.metadata = LIONParameter()
+        self.dataset_param = LIONParameter()
+
+    def set_training_data(self, train_loader: DataLoader):
+        """
+        This function sets the training data
+        """
+        self.train_loader = train_loader
+
+    def set_validation_data(
+        self,
+        validation_loader: DataLoader,
+        validation_freq: int,
+        validation_fn: callable = None,
+    ):
+        """
+        This function sets the validation data
+        """
+        self.validation_loader = validation_loader
+        self.validation_freq = validation_freq
+        self.validation_fn = validation_fn
+
+    def set_testing_data(self, test_loader: DataLoader, testing_fn: callable):
+        """
+        This function sets the testing data
+        """
+        self.test_loader = test_loader
+        self.testing_fn = testing_fn
+
+    def set_checkpointing(
+        self,
+        save_folder: pathlib.Path,
+        checkpoint_fname: pathlib.Path,
+        checkpoint_freq: int = 10,
+        load_checkpoint: bool = True,
+    ):
+        """
+        This function sets the checkpointing
+        """
+        self.checkpoint_freq = checkpoint_freq
+        self.save_folder = save_folder
+        self.checkpoint_fname = checkpoint_fname
+        self.load_checkpoint = load_checkpoint
+
     def check_complete(self, error=True, autofill=True):
         """
         This function checks if the solver is complete, i.e. if all the necessary parameters are set to start traning.
@@ -58,7 +105,7 @@ class LIONsolver(ABC):
         else:
             verbose = True
 
-        # Test 1: is the device set? if not, set it if aitofill is True
+        # Test 1: is the device set? if not, set it if autofill is True
         return_code = self.__check_attribute(
             "device",
             expected_type=torch.device,
@@ -151,27 +198,33 @@ class LIONsolver(ABC):
         return_code = self.__check_attribute(
             "save_folder",
             expected_type=pathlib.Path,
-            error=error,
+            error=False,
             autofill=False,
-            verbose=verbose,
+            verbose=True,
         )
         # Test 12: is the final result filename set? if not, raise error or warn or autofill
         return_code = self.__check_attribute(
             "final_result_fname",
             expected_type=pathlib.Path,
-            error=error,
-            autofill=True,
-            verbose=verbose,
-            default=self.save_folder.joinpath("final_result.pt"),
+            error=False,
+            autofill=False,
+            verbose=True,
         )
         # Test 13: is the checkpoint frequency filename set? if not, raise error or warn or autofill
+
+        if self.final_result_fname is not None:
+            default_checkpoint_fname = self.final_result_fname.parent / pathlib.Path(
+                str(self.final_result_fname.stem) + "_checkpoint_*.pt"
+            )
+        else:
+            default_checkpoint_fname = ""
         return_code = self.__check_attribute(
             "checkpoint_fname",
             expected_type=pathlib.Path,
             error=False,
             autofill=True,
             verbose=False,
-            default=self.final_result_fname.joinpath("_checkpoint_*.pt"),
+            default=default_checkpoint_fname,
         )
         # Test 14: is the checkpoint frequency set? if not, raise error or warn or autofill
         return_code = self.__check_attribute(
@@ -181,6 +234,16 @@ class LIONsolver(ABC):
             autofill=autofill,
             verbose=verbose,
             default=10,
+        )
+
+        # Test 15: is the load checkpoint set? if not, raise error or warn or autofill
+        return_code = self.__check_attribute(
+            "load_checkpoint",
+            expected_type=bool,
+            error=False,
+            autofill=True,
+            verbose=verbose,
+            default=True,
         )
         self.verbose = verbose
 
@@ -199,6 +262,7 @@ class LIONsolver(ABC):
         This function checks if an attribute exists, and sets it if needed
         """
         assert isinstance(attr, str), "attr must be a string"
+        warnings.formatwarning = custom_format_warning
 
         if not hasattr(self, attr) or getattr(self, attr) is None:
             if autofill:
@@ -230,6 +294,44 @@ class LIONsolver(ABC):
                 )
                 return 2
         return 0
+
+    def save_checkpoint(self, epoch):
+        """
+        This function saves a checkpoint of the model and the optimizer
+        """
+        self.model.save_checkpoint(
+            self.save_folder.joinpath(
+                pathlib.Path(str(self.checkpoint_fname).replace("*", f"{epoch+1:04d}"))
+            ),
+            epoch + 1,
+            self.loss,
+            self.optimizer,
+            self.metadata,
+            dataset=self.dataset_param,
+        )
+
+    def save_final_results(self, final_result_fname=None, epoch=None):
+        """
+        This function saves the final results of the optimization
+        """
+        if epoch is None:
+            epoch = self.epochs
+        if final_result_fname is not None:
+            self.final_result_fname = final_result_fname
+        self.model.save(
+            self.final_result_fname,
+            epoch=epoch,
+            training=self.metadata,
+            loss=self.train_loss,
+            dataset=self.dataset_param,
+        )
+
+    def clean_checkpoints(self):
+        """
+        This function cleans the checkpoints
+        """
+        for f in self.save_folder.glob(str(self.checkpoint_fname).replace("*", "*")):
+            f.unlink()
 
     @abstractmethod
     def mini_batch_step(self):

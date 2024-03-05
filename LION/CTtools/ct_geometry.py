@@ -44,7 +44,7 @@ class Geometry(LIONParameter):
 
     # PLEASE SOMEONE FIND A SMARTER WAY TO DO THIS
     @classmethod
-    def __init__from_parameter(cls, parameter: LIONParameter):
+    def init_from_parameter(cls, parameter: LIONParameter):
         return cls(
             image_shape=parameter.image_shape,
             image_size=parameter.image_size,
