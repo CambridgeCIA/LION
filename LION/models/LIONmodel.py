@@ -73,8 +73,8 @@ class LIONmodel(nn.Module, ABC):
 
     # makes operator and make it pytorch compatible.
     def _make_operator(self):
-        if self.model_parameters.mode.lower() != "ct":
-            raise NotImplementedError("Only CT operators supported")
+        # if self.model_parameters.mode.lower() != "ct":
+        #     raise NotImplementedError("Only CT operators supported")
         if hasattr(self, "geo") and self.geo is not None:
             self.op = ct_utils.make_operator(self.geo)
             self.A = to_autograd(self.op, num_extra_dims=1)
