@@ -98,7 +98,7 @@ class supervisedSolver(LIONsolver):
         if self.verbose:
             print("Validating...")
         for index, (data, target) in tqdm(
-            enumerate(self.validation_loader), disable=not self.verbose
+            enumerate(self.validation_loader), disable=True
         ):
             with torch.no_grad():
                 output = self.model(data)
@@ -120,11 +120,16 @@ class supervisedSolver(LIONsolver):
                 print(
                     f"Epoch {epoch} - Training loss: {self.train_loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
                 )
+            if (
+                self.validation_fname is not None
+                and self.validation_loss[epoch] < self.validation_loss.min()
+            ):
+                self.save_validation(self.validation_fname, epoch)
+
         elif self.verbose:
             print(f"Epoch {epoch} - Training loss: {self.train_loss[epoch]}")
         elif self.validation_freq is not None:
             self.validation_loss[epoch] = self.validate()
-
         pass
 
     def train(self, n_epochs):

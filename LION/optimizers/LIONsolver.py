@@ -51,17 +51,18 @@ class LIONsolver(ABC):
         self.metadata = LIONParameter()
         self.dataset_param = LIONParameter()
 
-    def set_training_data(self, train_loader: DataLoader):
+    def set_training(self, train_loader: DataLoader):
         """
         This function sets the training data
         """
         self.train_loader = train_loader
 
-    def set_validation_data(
+    def set_validation(
         self,
         validation_loader: DataLoader,
         validation_freq: int,
         validation_fn: callable = None,
+        validation_fname: pathlib.Path = None,
     ):
         """
         This function sets the validation data
@@ -69,8 +70,9 @@ class LIONsolver(ABC):
         self.validation_loader = validation_loader
         self.validation_freq = validation_freq
         self.validation_fn = validation_fn
+        self.validation_fname = validation_fname
 
-    def set_testing_data(self, test_loader: DataLoader, testing_fn: callable):
+    def set_testing(self, test_loader: DataLoader, testing_fn: callable):
         """
         This function sets the testing data
         """
@@ -310,6 +312,20 @@ class LIONsolver(ABC):
             dataset=self.dataset_param,
         )
 
+    def save_validation(self, epoch):
+        """
+        This function saves the validation results
+        """
+        self.model.save(
+            self.save_folder.joinpath(
+                pathlib.Path(str(self.validation_fname).replace("*", f"{epoch+1:04d}"))
+            ),
+            epoch=epoch,
+            training=self.metadata,
+            loss=self.validation_loss,
+            dataset=self.dataset_param,
+        )
+
     def save_final_results(self, final_result_fname=None, epoch=None):
         """
         This function saves the final results of the optimization
@@ -332,6 +348,23 @@ class LIONsolver(ABC):
         """
         for f in self.save_folder.glob(str(self.checkpoint_fname).replace("*", "*")):
             f.unlink()
+
+    def test(self):
+        """
+        This function performs a testing step
+        """
+        self.model.eval()
+        test_loss = np.zeros(len(self.test_loader))
+        with torch.no_grad():
+            for index, (data, target) in enumerate(self.test_loader):
+                output = self.model(data)
+                test_loss[index] = self.testing_fn(output, target)
+
+        if self.verbose:
+            print(
+                f"Testing loss: {test_loss.mean()} - Testing loss std: {test_loss.std()}"
+            )
+        return test_loss
 
     @abstractmethod
     def mini_batch_step(self):
