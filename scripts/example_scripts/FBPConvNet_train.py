@@ -12,13 +12,23 @@ from tqdm import tqdm
 import pathlib
 
 
-from LION.models.FBPConvNet import FBPConvNet
+from LION.models.post_processing.FBPConvNet import FBPConvNet
 
 from LION.utils.parameter import LIONParameter
+from LION.optimizers.supervised_learning import supervisedSolver
+
+
 from ts_algorithms import fdk
 
 
 import LION.experiments.ct_experiments as ct_experiments
+from skimage.metrics import structural_similarity as ssim
+
+
+def my_ssim(x, y):
+    x = x.cpu().numpy().squeeze()
+    y = y.cpu().numpy().squeeze()
+    return ssim(x, y, data_range=x.max() - x.min())
 
 
 #%%
@@ -45,11 +55,11 @@ lidc_dataset_val = experiment.get_validation_dataset()
 # Use the same amount of training
 batch_size = 4
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
-lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
-
+lidc_validation = DataLoader(lidc_dataset_val, 1, shuffle=False)
+lidc_testing = DataLoader(experiment.get_testing_dataset(), 1, shuffle=False)
 #%% Model
 # Default model is already from the paper.
-model = FBPConvNet().to(device)
+model = FBPConvNet(experiment.geo).to(device)
 
 
 #%% Optimizer
@@ -60,7 +70,7 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 500
+train_param.epochs = 10
 train_param.learning_rate = 1e-3
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
@@ -68,90 +78,32 @@ optimiser = torch.optim.Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
 
-# learning parameter update
-steps = len(lidc_dataloader)
-model.train()
-min_valid_loss = np.inf
-total_loss = np.zeros(train_param.epochs)
-start_epoch = 0
 
-# %% Check if there is a checkpoint saved, and if so, start from there.
+#%% Train
+# create solver
+solver = supervisedSolver(model, optimiser, loss_fcn, verbose=True)
 
-# If there is a file with the final results, don't run again
-if model.final_file_exists(savefolder.joinpath(final_result_fname)):
-    print("final model exists! You already reahced final iter")
-    exit()
+# YOU CAN IGNORE THIS. You can 100% just write your own pytorch training loop.
+# LIONSover is just a convinience class that does some stuff for you, no need to use it.
 
-model, optimiser, start_epoch, total_loss, _ = FBPConvNet.load_checkpoint_if_exists(
-    checkpoint_fname, model, optimiser, total_loss
-)
-print(f"Starting iteration at epoch {start_epoch}")
+# set data
+solver.set_training(lidc_dataloader)
+solver.set_validation(lidc_validation, 10, validation_fname=validation_fname)
+solver.set_testing(lidc_testing, my_ssim)
 
-#%% train
-for epoch in range(start_epoch, train_param.epochs):
-    train_loss = 0.0
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
-    for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_dataloader)):
+# set checkpointing procedure
+solver.set_checkpointing(savefolder, checkpoint_fname, 10, load_checkpoint=False)
+# train
+solver.train(train_param.epochs)
+# delete checkpoints if finished
+solver.clean_checkpoints()
+# save final result
+solver.save_final_results(final_result_fname)
 
-        optimiser.zero_grad()
-        bad_recon = torch.zeros(target_reconstruction.shape, device=device)
-        for sino in range(sinogram.shape[0]):
-            bad_recon[sino] = fdk(lidc_dataset.operator, sinogram[sino])
-        reconstruction = model(bad_recon)
-        loss = loss_fcn(reconstruction, target_reconstruction)
+# test
 
-        loss.backward()
+solver.test()
 
-        train_loss += loss.item()
-
-        optimiser.step()
-        scheduler.step()
-    total_loss[epoch] = train_loss
-    # Validation
-    valid_loss = 0.0
-    model.eval()
-    for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_validation)):
-
-        bad_recon = torch.zeros(target_reconstruction.shape, device=device)
-        for sino in range(sinogram.shape[0]):
-            bad_recon[sino] = fdk(lidc_dataset.operator, sinogram[sino])
-        reconstruction = model(bad_recon)
-        loss = loss_fcn(target_reconstruction, reconstruction)
-        valid_loss += loss.item()
-
-    print(
-        f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
-    )
-
-    if min_valid_loss > valid_loss:
-        print(
-            f"Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model"
-        )
-        min_valid_loss = valid_loss
-        # Saving State Dict
-        model.save(
-            validation_fname,
-            epoch=epoch + 1,
-            training=train_param,
-            loss=min_valid_loss,
-            dataset=experiment.param,
-        )
-
-    # Checkpoint every 10 iters anyway
-    if epoch % 10 == 0:
-        model.save_checkpoint(
-            pathlib.Path(str(checkpoint_fname).replace("*", f"{epoch+1:04d}")),
-            epoch + 1,
-            total_loss,
-            optimiser,
-            train_param,
-            dataset=experiment.param,
-        )
-
-
-model.save(
-    final_result_fname,
-    epoch=train_param.epochs,
-    training=train_param,
-    dataset=experiment.param,
-)
+plt.figure()
+plt.semilogy(solver.train_loss[1:])
+plt.savefig("loss.png")

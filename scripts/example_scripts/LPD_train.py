@@ -1,33 +1,41 @@
-#%% This example shows how to train FBPConvNet for full angle, noisy measurements.
+#%% This example shows how to train Learned Primal dual for full angle, noisy measurements.
 
 #%% Imports
+
+# Standard imports
 import matplotlib.pyplot as plt
 import numpy as np
+import pathlib
+from skimage.metrics import structural_similarity as ssim
+
+# Torch imports
 import torch
 from torch.utils.data import DataLoader
-from tqdm import tqdm
-import pathlib
-import LION.CTtools.ct_geometry as ctgeo
-import LION.CTtools.ct_utils as ct
-from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
+import torch.utils.data as data_utils
+
+# Lion imports
 from LION.models.iterative_unrolled.LPD import LPD
 from LION.utils.parameter import LIONParameter
-from ts_algorithms import fdk
-
 from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
-
 import LION.experiments.ct_experiments as ct_experiments
+from LION.optimizers.supervised_learning import supervisedSolver
+
+
+def my_ssim(x, y):
+    x = x.cpu().numpy().squeeze()
+    y = y.cpu().numpy().squeeze()
+    return ssim(x, y, data_range=x.max() - x.min())
 
 
 #%%
 # % Chose device:
-device = torch.device("cuda:0")
+device = torch.device("cuda:1")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
 datafolder = LIDC_IDRI_PROCESSED_DATASET_PATH
-final_result_fname = savefolder.joinpath("LPD_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("LPD_check_*.pt")
+final_result_fname = savefolder.joinpath("LPD.pt")
+checkpoint_fname = "LPD_check_*.pt"
 validation_fname = savefolder.joinpath("LPD_min_val.pt")
 #
 #%% Define experiment
@@ -40,15 +48,16 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-import torch.utils.data as data_utils
 
-indices = torch.arange(1)
+indices = torch.arange(100)
 tr_10 = data_utils.Subset(lidc_dataset, indices)
+tr_val = data_utils.Subset(lidc_dataset_val, indices)
 
 
-batch_size = 1
+batch_size = 10
 lidc_dataloader = DataLoader(tr_10, batch_size, shuffle=False)
-lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=False)
+lidc_validation = DataLoader(tr_val, batch_size, shuffle=False)
+lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
 
 #%% Model
 # Default model is already from the paper.
@@ -69,7 +78,7 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 500
+train_param.epochs = 100
 train_param.learning_rate = 1e-4
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
@@ -77,125 +86,31 @@ optimiser = torch.optim.Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
 
-# learning parameter update
-steps = len(lidc_dataloader)
+#%% Train
+# create solver
+solver = supervisedSolver(model, optimiser, loss_fcn, verbose=True)
 
-model.train()
-min_valid_loss = np.inf
-total_loss = np.zeros(train_param.epochs)
-start_epoch = 0
+# YOU CAN IGNORE THIS. You can 100% just write your own pytorch training loop.
+# LIONSover is just a convinience class that does some stuff for you, no need to use it.
 
-# %% Check if there is a checkpoint saved, and if so, start from there.
+# set data
+solver.set_training(lidc_dataloader)
+solver.set_validation(lidc_validation, 10, validation_fname=validation_fname)
+solver.set_testing(lidc_test, my_ssim)
 
-# If there is a file with the final results, don't run again
-if model.final_file_exists(savefolder.joinpath(final_result_fname)):
-    print("final model exists! You already reahced final iter")
-    exit()
+# set checkpointing procedure
+solver.set_checkpointing(savefolder, checkpoint_fname, 10, load_checkpoint=False)
+# train
+solver.train(train_param.epochs)
+# delete checkpoints if finished
+solver.clean_checkpoints()
+# save final result
+solver.save_final_results(final_result_fname)
 
-model, optimiser, start_epoch, total_loss, _ = LPD.load_checkpoint_if_exists(
-    checkpoint_fname, model, optimiser, total_loss
-)
-print(f"Starting iteration at epoch {start_epoch}")
+# test
 
-#%% train
-for epoch in range(start_epoch, train_param.epochs):
-    train_loss = 0.0
-    for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_dataloader)):
-
-        optimiser.zero_grad()
-        reconstruction = model(sinogram)
-        loss = loss_fcn(reconstruction, target_reconstruction)
-        loss.backward()
-        train_loss += loss.item()
-        optimiser.step()
-
-        bad_recon = fdk(model.op, sinogram[0])
-        bad_recon = torch.clip(bad_recon, min=0)
-        if train_loss > 50:
-            print("")
-            print("weird loss:", train_loss)
-            print(
-                "FDK range: max=",
-                torch.max(bad_recon).item(),
-                "min=",
-                torch.min(bad_recon).item(),
-            )
-            print(
-                "recon range: max=",
-                torch.max(reconstruction).item(),
-                "min=",
-                torch.min(reconstruction).item(),
-            )
-            print(
-                "target range: max=",
-                torch.max(target_reconstruction).item(),
-                "min=",
-                torch.min(target_reconstruction).item(),
-            )
-        if index == 0:
-            plt.figure()
-            plt.subplot(1, 3, 1)
-            plt.imshow(reconstruction[0, 0, :, :].cpu().detach().numpy())
-            plt.clim(0, 3)
-            plt.subplot(1, 3, 2)
-            plt.imshow(target_reconstruction[0, 0, :, :].cpu().detach().numpy())
-            plt.clim(0, 3)
-            plt.title(
-                f"Epoch {epoch+1}, Training Loss: {train_loss / len(lidc_dataloader)}"
-            )
-
-            plt.subplot(1, 3, 3)
-            plt.imshow(bad_recon[0, :, :].cpu().detach().numpy())
-            plt.clim(0, 3)
-            plt.savefig("recon.png")
-            plt.close()
-    total_loss[epoch] = train_loss
-    # Validation
-    valid_loss = 0.0
-    # model.eval()
-    # for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_validation)):
-
-    #     reconstruction = model(sinogram)
-    #     loss = loss_fcn(target_reconstruction, reconstruction)
-    #     valid_loss += loss.item()
-
-    # print(
-    #     f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
-    # )
-
-    # if min_valid_loss > valid_loss:
-    #     print(
-    #         f"Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model"
-    #     )
-    #     min_valid_loss = valid_loss
-    #     # Saving State Dict
-    #     model.save(
-    #         validation_fname,
-    #         epoch=epoch + 1,
-    #         training=train_param,
-    #         loss=min_valid_loss,
-    #         dataset=experiment.param,
-    #     )
-
-    # Checkpoint every 10 iters anyway
-    if epoch % 10 == 0:
-        model.save_checkpoint(
-            pathlib.Path(str(checkpoint_fname).replace("*", f"{epoch+1:04d}")),
-            epoch + 1,
-            total_loss,
-            optimiser,
-            train_param,
-            dataset=experiment.param,
-        )
-
+solver.test()
 
 plt.figure()
-plt.semilogy(total_loss[1:])
+plt.semilogy(solver.train_loss[1:])
 plt.savefig("loss.png")
-
-model.save(
-    final_result_fname,
-    epoch=train_param.epochs,
-    training=train_param,
-    dataset=experiment.param,
-)
