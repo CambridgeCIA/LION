@@ -85,7 +85,7 @@ class LIDC_IDRI(Dataset):
                           "joint"           -> ?????
                           "end_to_end"      -> ?????
             - training_proportion (float): Defines training % of total data.
-            - mode (str): Defines "training" or "testing" mode.
+            - mode (str): Defines "train", "validation" or "test" mode.
             - Task (str): Defines what task is the Dataset being used for. "segmentation" (default) returns (gt_image,segmentation) pairs while "reconstruction" returns (sinogram, gt_image) pairs
             - annotation (str): Defines what annotation mode to use. Distinguish between "random" and "consensus". Default "consensus"
             - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. Default is -1, which takes all slices we have of each patient and pcg_slices_nodule gets ignored.
@@ -97,10 +97,10 @@ class LIDC_IDRI(Dataset):
 
         # Input parsing
         assert mode in [
-            "testing",
-            "training",
+            "train",
             "validation",
-        ], f'Mode argument {mode} not in ["testing", "training", "validation"]'
+            "test",
+        ], f'Wrong mode argument, must be in ["train", "validation", "test"]'
 
         if parameters is None:
             parameters = LIDC_IDRI.default_parameters()
@@ -289,11 +289,11 @@ class LIDC_IDRI(Dataset):
         )
 
         print("Preparing patient list, this may take time....")
-        if self.params.mode == "training":
+        if self.params.mode == "train":
             patient_list_to_load = self.training_patients_list
         elif self.params.mode == "validation":
             patient_list_to_load = self.validation_patients_list
-        elif self.params.mode == "testing":
+        elif self.params.mode == "test":
             patient_list_to_load = self.testing_patients_list
         else:
             raise NotImplementedError(
@@ -325,7 +325,7 @@ class LIDC_IDRI(Dataset):
         param.testing_proportion = (
             1 - param.training_proportion - param.validation_proportion
         )  # not used, but for metadata
-        param.max_num_slices_per_patient = -1  # i.e. all
+        param.max_num_slices_per_patient = 5
         param.pcg_slices_nodule = 0.5
         param.task = task
         param.folder = LIDC_IDRI_PROCESSED_DATASET_PATH

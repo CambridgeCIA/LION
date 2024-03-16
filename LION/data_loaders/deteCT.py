@@ -23,10 +23,13 @@ from ts_algorithms import fdk, nag_ls
 
 class deteCT(Dataset):
     def __init__(
-        self, mode, geometry_params: ct.Geometry = None, params: LIONParameter = None
+        self,
+        mode,
+        geometry_params: ct.Geometry = None,
+        parameters: LIONParameter = None,
     ):
-        if params is None:
-            params = self.default_parameters()
+        if parameters is None:
+            parameters = self.default_parameters()
 
         # Get geometry default, or validate if given geometry is valid for 2DeteCT, as its raw sinogram data, we can't allow any geometry
         if geometry_params is None:
@@ -49,18 +52,18 @@ class deteCT(Dataset):
             else:
                 self.angle_index = list(range(len(self.geo.angles)))
 
-        if params.sinogram_mode != params.reconstruction_mode:
+        if parameters.sinogram_mode != parameters.reconstruction_mode:
             warnings.warn(
                 "Sinogram mode and reconstruction mode don't match, so reconstruction is not from the sinogram you are getting... \n This should be an error, but I trust that you won what you are doing"
             )
-        if params.query == "" and (
-            not params.flat_field_correction or not params.dark_field_correction
+        if parameters.query == "" and (
+            not parameters.flat_field_correction or not parameters.dark_field_correction
         ):
             warnings.warn(
                 "You are not using any detector query, but you are not using flat field or dark field correction. This is not recommended, as different detectors perform differently"
             )
         ### Defining the path to data
-        self.path_to_dataset = params.path_to_dataset
+        self.path_to_dataset = parameters.path_to_dataset
         """
         The path_to_dataset attribute (pathlib.Path) points towards the folder
         where the data is stored
@@ -85,7 +88,7 @@ class deteCT(Dataset):
             - the detector it was sampled with
         """
         # Defining the sinogram mode
-        self.sinogram_mode = params.sinogram_mode
+        self.sinogram_mode = parameters.sinogram_mode
         """
         The sinogram_mode (str) argument is a keyword defining what sinogram mode of the dataset to use:
                          |  mode1   |   mode2  |  mode3
@@ -94,7 +97,7 @@ class deteCT(Dataset):
             Filter       | Thoraeus | Thoraeus | No Filter
         """
         # Defining the sinogram mode
-        self.reconstruction_mode = params.reconstruction_mode
+        self.reconstruction_mode = parameters.reconstruction_mode
         """
         The reconstruction_mode (str) argument is a keyword defining what image mode of the dataset to use:
                          |  mode1   |   mode2  |  mode3
@@ -103,7 +106,7 @@ class deteCT(Dataset):
             Filter       | Thoraeus | Thoraeus | No Filter
         """
         # Defining the task
-        self.task = params.task
+        self.task = parameters.task
         """
         The task (str) argument is a keyword defining what is the dataset used for:
             - task == 'reconstruction' -> the dataset returns the sinogram and the reconstruction
@@ -126,14 +129,14 @@ class deteCT(Dataset):
         """
         The train (bool) argument defines if the dataset is used for training or testing
         """
-        self.training_proportion = params.training_proportion
-        self.validation_proportion = params.validation_proportion
+        self.training_proportion = parameters.training_proportion
+        self.validation_proportion = parameters.validation_proportion
 
         # Defining the train proportion
         """
         The training_proportion (float) argument defines the proportion of the training dataset used for training
         """
-        self.transforms = None  # params.transforms
+        self.transforms = None  # parameters.transforms
 
         ### We query the dataset subset
         self.slice_dataframe: pd.DataFrame
@@ -143,8 +146,8 @@ class deteCT(Dataset):
         Example of query: 'detector==1'
         If the no query argument is passed, data_record_subset == data_record
         """
-        if params.query:
-            self.slice_dataframe = self.data_record.query(params.query)
+        if parameters.query:
+            self.slice_dataframe = self.data_record.query(parameters.query)
         else:
             self.slice_dataframe = self.data_record
 
@@ -181,11 +184,11 @@ class deteCT(Dataset):
             )
         ]
 
-        self.flat_field_correction = params.flat_field_correction
-        self.dark_field_correction = params.dark_field_correction
-        self.log_transform = params.log_transform
-        self.do_recon = params.do_recon
-        self.recon_algo = params.recon_algo
+        self.flat_field_correction = parameters.flat_field_correction
+        self.dark_field_correction = parameters.dark_field_correction
+        self.log_transform = parameters.log_transform
+        self.do_recon = parameters.do_recon
+        self.recon_algo = parameters.recon_algo
 
     @staticmethod
     def default_parameters():

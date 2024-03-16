@@ -16,6 +16,7 @@ from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
+from LION.data_loaders.deteCT import deteCT
 
 
 class Experiment(ABC):
@@ -47,13 +48,24 @@ class Experiment(ABC):
 
         if self.dataset == "LIDC-IDRI":
             dataloader = LIDC_IDRI(
-                mode="training",
+                mode="train",
                 parameters=self.param.data_loader_params,
                 geometry_parameters=self.geo,
             )
+            dataloader.set_sinogram_transform(self.sino_fun)
+
+        if self.dataset == "2DeteCT":
+            dataloader = deteCT(
+                mode="train",
+                geometry_params=self.geo,
+                parameters=self.param.data_loader_params,
+            )
+            if hasattr(self.param, "noise_params"):
+                warnings.warn(
+                    "Noise simulating parameters are not used 2DeteCT dataset, as it comes with real measured data"
+                )
         else:
             raise NotImplementedError(f"Dataset {self.dataset} not implemented")
-        dataloader.set_sinogram_transform(self.sino_fun)
         return dataloader
 
     def get_validation_dataset(self):
@@ -63,25 +75,57 @@ class Experiment(ABC):
                 parameters=self.param.data_loader_params,
                 geometry_parameters=self.geo,
             )
+            dataloader.set_sinogram_transform(self.sino_fun)
+
+        if self.dataset == "2DeteCT":
+            dataloader = deteCT(
+                mode="validation",
+                geometry_params=self.geo,
+                parameters=self.param.data_loader_params,
+            )
+            if hasattr(self.param, "noise_params"):
+                warnings.warn(
+                    "Noise simulating parameters are not used 2DeteCT dataset, as it comes with real measured data"
+                )
         else:
             raise NotImplementedError(f"Dataset {self.dataset} not implemented")
-        dataloader.set_sinogram_transform(self.sino_fun)
+
         return dataloader
 
     def get_testing_dataset(self):
         if self.dataset == "LIDC-IDRI":
             dataloader = LIDC_IDRI(
-                mode="testing",
+                mode="test",
                 parameters=self.param.data_loader_params,
                 geometry_parameters=self.geo,
             )
+            dataloader.set_sinogram_transform(self.sino_fun)
+
+        if self.dataset == "2DeteCT":
+            dataloader = deteCT(
+                mode="test",
+                geometry_params=self.geo,
+                parameters=self.param.data_loader_params,
+            )
+            if hasattr(self.param, "noise_params"):
+                warnings.warn(
+                    "Noise simulating parameters are not used 2DeteCT dataset, as it comes with real measured data"
+                )
         else:
             raise NotImplementedError(f"Dataset {self.dataset} not implemented")
-        dataloader.set_sinogram_transform(self.sino_fun)
         return dataloader
 
     def __str__(self):
         return f"Experiment parameters: \n {self.param} \n Dataset: \n {self.dataset} \n Geometry parameters: \n {self.geo}"
+
+    @staticmethod
+    def get_dataset_parameters(dataset):
+        if dataset == "LIDC-IDRI":
+            return LIDC_IDRI.default_parameters()
+        if dataset == "2DeteCT":
+            return deteCT.default_parameters()
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
 
 
 class ExtremeLowDoseCTRecon(Experiment):
@@ -100,14 +144,7 @@ class ExtremeLowDoseCTRecon(Experiment):
         param.noise_params.I0 = 1000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
-        if dataset == "LIDC-IDRI":
-            # Parameters for the LIDC-IDRI dataset
-            param.data_loader_params = LIDC_IDRI.default_parameters(
-                geo=param.geo, task="reconstruction"
-            )
-            param.data_loader_params.max_num_slices_per_patient = 5
-        else:
-            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
         return param
 
 
@@ -128,14 +165,8 @@ class LowDoseCTRecon(Experiment):
         param.noise_params.I0 = 3500
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
-        if dataset == "LIDC-IDRI":
-            # Parameters for the LIDC-IDRI dataset
-            param.data_loader_params = LIDC_IDRI.default_parameters(
-                geo=param.geo, task="reconstruction"
-            )
-            param.data_loader_params.max_num_slices_per_patient = 5
-        else:
-            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
         return param
 
 
@@ -155,15 +186,8 @@ class LimitedAngleCTRecon(Experiment):
         param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
+        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
 
-        if dataset == "LIDC-IDRI":
-            # Parameters for the LIDC-IDRI dataset
-            param.data_loader_params = LIDC_IDRI.default_parameters(
-                geo=param.geo, task="reconstruction"
-            )
-            param.data_loader_params.max_num_slices_per_patient = 5
-        else:
-            raise NotImplementedError(f"Dataset {dataset} not implemented")
         return param
 
 
@@ -184,14 +208,8 @@ class SparseAngleCTRecon(Experiment):
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
 
-        if dataset == "LIDC-IDRI":
-            # Parameters for the LIDC-IDRI dataset
-            param.data_loader_params = LIDC_IDRI.default_parameters(
-                geo=param.geo, task="reconstruction"
-            )
-            param.data_loader_params.max_num_slices_per_patient = 5
-        else:
-            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
         return param
 
 
@@ -212,12 +230,6 @@ class clinicalCTRecon(Experiment):
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
 
-        if dataset == "LIDC-IDRI":
-            # Parameters for the LIDC-IDRI dataset
-            param.data_loader_params = LIDC_IDRI.default_parameters(
-                geo=param.geo, task="reconstruction"
-            )
-            param.data_loader_params.max_num_slices_per_patient = 5
-        else:
-            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
         return param
