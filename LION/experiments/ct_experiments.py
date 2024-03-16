@@ -33,9 +33,10 @@ class Experiment(ABC):
             self.param.data_loader_params.folder = datafolder
         self.geo = self.experiment_params.geo
         self.dataset = dataset
-        self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, cross_talk=self.param.noise_params.cross_talk: ct.sinogram_add_noise(
-            sino, I0=I0, sigma=sigma, cross_talk=cross_talk
-        )
+        if hasattr(self.param, "noise_params"):
+            self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, cross_talk=self.param.noise_params.cross_talk: ct.sinogram_add_noise(
+                sino, I0=I0, sigma=sigma, cross_talk=cross_talk
+            )
 
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
@@ -43,9 +44,12 @@ class Experiment(ABC):
         pass
 
     def get_training_dataset(self):
+
         if self.dataset == "LIDC-IDRI":
             dataloader = LIDC_IDRI(
-                mode="training", parameters=self.param.data_loader_params
+                mode="training",
+                parameters=self.param.data_loader_params,
+                geometry_parameters=self.geo,
             )
         else:
             raise NotImplementedError(f"Dataset {self.dataset} not implemented")
@@ -55,7 +59,9 @@ class Experiment(ABC):
     def get_validation_dataset(self):
         if self.dataset == "LIDC-IDRI":
             dataloader = LIDC_IDRI(
-                mode="validation", parameters=self.param.data_loader_params
+                mode="validation",
+                parameters=self.param.data_loader_params,
+                geometry_parameters=self.geo,
             )
         else:
             raise NotImplementedError(f"Dataset {self.dataset} not implemented")
@@ -65,7 +71,9 @@ class Experiment(ABC):
     def get_testing_dataset(self):
         if self.dataset == "LIDC-IDRI":
             dataloader = LIDC_IDRI(
-                mode="testing", parameters=self.param.data_loader_params
+                mode="testing",
+                parameters=self.param.data_loader_params,
+                geometry_parameters=self.geo,
             )
         else:
             raise NotImplementedError(f"Dataset {self.dataset} not implemented")
