@@ -16,14 +16,38 @@ import warnings
 from LION.utils.paths import DETECT_PROCESSED_DATASET_PATH
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ctgeo
+import LION.CTtools.ct_utils as ct
 from LION.CTtools.ct_utils import make_operator
 from ts_algorithms import fdk, nag_ls
 
 
 class deteCT(Dataset):
-    def __init__(self, mode, params: LIONParameter = None):
+    def __init__(
+        self, mode, geometry_params: ct.Geometry = None, params: LIONParameter = None
+    ):
         if params is None:
             params = self.default_parameters()
+
+        # Get geometry default, or validate if given geometry is valid for 2DeteCT, as its raw sinogram data, we can't allow any geometry
+        if geometry_params is None:
+            self.geo = self.get_default_geometry()
+            self.angle_index = list(range(len(self.geo.angles)))
+        else:
+            self.__is_valid_geo(geometry_params)
+            self.geo = geometry_params
+            if not np.array_equal(self.geo.angles, self.get_default_geometry().angles):
+                # if we are here we already know that the angles are at least valid.
+                self.angle_index = []
+                full_angles = self.get_default_geometry().angles
+                for angle in self.geo.angles:
+                    index = next(
+                        i
+                        for i, _ in enumerate(full_angles)
+                        if np.isclose(_, angle, 10e-4)
+                    )
+                    self.angle_index.append(index)
+            else:
+                self.angle_index = list(range(len(self.geo.angles)))
 
         if params.sinogram_mode != params.reconstruction_mode:
             warnings.warn(
@@ -180,10 +204,12 @@ class deteCT(Dataset):
         param.dark_field_correction = True
         param.log_transform = True
         param.query = ""
+
+        param.geo = deteCT.get_default_geometry()
         return param
 
     @staticmethod
-    def get_geometry():
+    def get_default_geometry():
         geo = ctgeo.Geometry.default_parameters()
         # From Max Kiss code
         SOD = 431.019989
@@ -211,10 +237,53 @@ class deteCT(Dataset):
         geo.angles = -np.linspace(0, 2 * np.pi, 3600, endpoint=False) + np.pi
         return geo
 
+    def __is_valid_geo(self, geo):
+        if not isinstance(geo, ctgeo.Geometry):
+            raise ValueError("geo must be a ctgeo.Geometry object")
+        default_geo = deteCT.get_default_geometry()
+
+        if geo.dsd != default_geo.dsd or geo.dso != default_geo.dso:
+            raise ValueError(
+                f"dsd and dso must be the same as the default geometry: DSO = {default_geo.dso}, DSD = {default_geo.dsd}"
+            )
+        if geo.detector_shape[0] != default_geo.detector_shape[0]:
+            raise ValueError(f"detector_shape[0] must be 1")
+        if geo.detector_shape[1] != default_geo.detector_shape[1]:
+            warnings.warn(
+                f"Raw data detector_shape[1] must be 956, it is {geo.detector_shape[1]}. Interpolation will be used, but note that you are not using exactly the raw data"
+            )
+        if geo.detector_size != default_geo.detector_size:
+            raise ValueError(f"detector_size must be {default_geo.detector_size}")
+        if geo.image_shape != default_geo.image_shape:
+            warnings.warn(
+                f"image_shape must be {default_geo.image_shape}, it is {geo.image_shape}. Interpolation will be used, but note that you are not using exactly the raw data"
+            )
+        if geo.image_size[1:] != default_geo.image_size[1:]:
+            raise ValueError(f"image_size must be {default_geo.image_size}")
+        if geo.image_pos != default_geo.image_pos:
+            raise ValueError(f"image_pos must be {default_geo.image_pos}")
+
+        full_angles = self.get_default_geometry().angles
+        if not np.array_equal(geo.angles, full_angles):
+            # I think this is slow, maybe there is abetter way
+
+            for angle in geo.angles:
+                index = next(
+                    i for i, _ in enumerate(full_angles) if np.isclose(_, angle, 10e-4)
+                )
+                if index is None:
+                    raise ValueError(
+                        f"Given angles must be part of existing ones. Check the array deteCT.get_default_geometry().angles for the existing angles. The given angle {angle} is not part of the existing angles."
+                    )
+            return True
+
     @staticmethod
-    def get_operator():
-        geo = deteCT.get_geometry()
+    def get_default_operator():
+        geo = deteCT.get_default_geometry()
         return make_operator(geo)
+
+    def get_operator(self):
+        return make_operator(self.geo)
 
     def compute_sample_dataframe(self):
         unique_identifiers = self.slice_dataframe["sample_index"].unique()
@@ -273,7 +342,16 @@ class deteCT(Dataset):
                 sinogram = -torch.log(sinogram)
 
             sinogram = torch.flip(sinogram, [2])
+            sinogram = sinogram[:, self.angle_index, :]
 
+            # Interpolate if geometry is not default
+            if self.geo.detector_shape != self.get_default_geometry().detector_shape:
+                sinogram = torch.nn.functional.interpolate(
+                    sinogram.unsqueeze(0),
+                    size=(sinogram.shape[1], self.geo.detector_shape[1]),
+                    mode="bilinear",
+                )
+                sinogram = torch.squeeze(sinogram, 0)
         if self.do_recon:
             op = deteCT.get_operator()
             if self.recon_algo == "nag_ls":
@@ -284,6 +362,14 @@ class deteCT(Dataset):
             reconstruction = torch.from_numpy(
                 np.load(path_to_recontruction.joinpath("reconstruction.npy"))
             ).unsqueeze(0)
+            # Interpolate if geometry is not default
+            if self.geo.image_shape != self.get_default_geometry().image_shape:
+                reconstruction = torch.nn.functional.interpolate(
+                    reconstruction.unsqueeze(0),
+                    size=(self.geo.image_shape[1], self.geo.image_shape[2]),
+                    mode="bilinear",
+                )
+                reconstruction = torch.squeeze(reconstruction, 0)
 
         if self.task == "reconstruction":
             return sinogram, reconstruction
