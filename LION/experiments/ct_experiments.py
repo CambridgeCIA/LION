@@ -54,7 +54,7 @@ class Experiment(ABC):
             )
             dataloader.set_sinogram_transform(self.sino_fun)
 
-        if self.dataset == "2DeteCT":
+        elif self.dataset == "2DeteCT":
             dataloader = deteCT(
                 mode="train",
                 geometry_params=self.geo,
@@ -77,7 +77,7 @@ class Experiment(ABC):
             )
             dataloader.set_sinogram_transform(self.sino_fun)
 
-        if self.dataset == "2DeteCT":
+        elif self.dataset == "2DeteCT":
             dataloader = deteCT(
                 mode="validation",
                 geometry_params=self.geo,
@@ -101,7 +101,7 @@ class Experiment(ABC):
             )
             dataloader.set_sinogram_transform(self.sino_fun)
 
-        if self.dataset == "2DeteCT":
+        elif self.dataset == "2DeteCT":
             dataloader = deteCT(
                 mode="test",
                 geometry_params=self.geo,
@@ -119,9 +119,9 @@ class Experiment(ABC):
         return f"Experiment parameters: \n {self.param} \n Dataset: \n {self.dataset} \n Geometry parameters: \n {self.geo}"
 
     @staticmethod
-    def get_dataset_parameters(dataset):
+    def get_dataset_parameters(dataset, geo=None):
         if dataset == "LIDC-IDRI":
-            return LIDC_IDRI.default_parameters()
+            return LIDC_IDRI.default_parameters(geo=geo)
         if dataset == "2DeteCT":
             return deteCT.default_parameters()
         else:
@@ -144,7 +144,9 @@ class ExtremeLowDoseCTRecon(Experiment):
         param.noise_params.I0 = 1000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters(
+            dataset, geo=param.geo
+        )
         return param
 
 
@@ -165,7 +167,9 @@ class LowDoseCTRecon(Experiment):
         param.noise_params.I0 = 3500
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters(
+            dataset, geo=param.geo
+        )
 
         return param
 
@@ -186,7 +190,9 @@ class LimitedAngleCTRecon(Experiment):
         param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters(
+            dataset, geo=param.geo
+        )
 
         return param
 
@@ -208,7 +214,9 @@ class SparseAngleCTRecon(Experiment):
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
 
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters(
+            dataset, geo=param.geo
+        )
 
         return param
 
@@ -230,6 +238,8 @@ class clinicalCTRecon(Experiment):
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
 
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters(
+            dataset, geo=param.geo
+        )
 
         return param
