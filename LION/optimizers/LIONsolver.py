@@ -35,7 +35,7 @@ import pathlib
 
 
 class LIONsolver(ABC):
-    def __init__(self, model, optimizer, loss_fn) -> None:
+    def __init__(self, model, optimizer, loss_fn, optimizer_params, verbose) -> None:
         super().__init__()
         __metaclass__ = ABCMeta  # make class abstract.
 
@@ -44,12 +44,32 @@ class LIONsolver(ABC):
             optimizer, torch.optim.Optimizer
         ), "optimizer must be a torch optimizer"
         assert isinstance(loss_fn, nn.Module), "loss_fn must be a torch loss function"
+
+        if optimizer_params is None:
+            optimizer_params = self.default_parameters()
+
         self.model = model
         self.optimizer = optimizer
         self.loss_fn = loss_fn
+        self.device = optimizer_params.device
+        self.validation_loader = optimizer_params.validation_loader
+        self.validation_fn = optimizer_params.validation_fn
+        self.validation_freq = optimizer_params.validation_freq
+        self.save_folder = optimizer_params.save_folder
+        self.checkpoint_freq = optimizer_params.checkpoint_freq
+        self.final_result_fname = optimizer_params.final_result_fname
+        self.checkpoint_fname = optimizer_params.checkpoint_fname
+        self.validation_fname = optimizer_params.validation_fname
+        self.verbose = verbose
 
         self.metadata = LIONParameter()
         self.dataset_param = LIONParameter()
+
+    # This should return the default parameters of the solver
+    @staticmethod
+    @abstractmethod  # crash if not defined in derived class
+    def default_parameters() -> LIONParameter:
+        pass
 
     def set_training(self, train_loader: DataLoader):
         """

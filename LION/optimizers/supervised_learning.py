@@ -14,25 +14,8 @@ from tqdm import tqdm
 
 class supervisedSolver(LIONsolver):
     def __init__(self, model, optimizer, loss_fn, optimizer_params=None, verbose=True):
-        # this does the necessary checks
-        super().__init__(model, optimizer, loss_fn)
-        # Initialize some parameters
 
-        if optimizer_params is None:
-            optimizer_params = supervisedSolver.default_parameters()
-        self.model = model
-        self.optimizer = optimizer
-        self.loss_fn = loss_fn
-        self.device = optimizer_params.device
-        self.validation_loader = optimizer_params.validation_loader
-        self.validation_fn = optimizer_params.validation_fn
-        self.validation_freq = optimizer_params.validation_freq
-        self.save_folder = optimizer_params.save_folder
-        self.checkpoint_freq = optimizer_params.checkpoint_freq
-        self.final_result_fname = optimizer_params.final_result_fname
-        self.checkpoint_fname = optimizer_params.checkpoint_fname
-        self.validation_fname = optimizer_params.validation_fname
-        self.verbose = verbose
+        super().__init__(model, optimizer, loss_fn, optimizer_params, verbose)
 
     @staticmethod
     def default_parameters():
@@ -50,12 +33,6 @@ class supervisedSolver(LIONsolver):
         param.checkpoint_fname = None
         param.validation_fname = None
         param.epoch = None
-        return param
-
-    @staticmethod
-    def adam_default_parameters():
-        param = supervisedSolver.default_parameters()
-        param.optimizer = torch.optim.Adam
         return param
 
     def mini_batch_step(self, data, target):
@@ -130,7 +107,6 @@ class supervisedSolver(LIONsolver):
             print(f"Epoch {epoch} - Training loss: {self.train_loss[epoch]}")
         elif self.validation_freq is not None:
             self.validation_loss[epoch] = self.validate()
-        pass
 
     def train(self, n_epochs):
         """
