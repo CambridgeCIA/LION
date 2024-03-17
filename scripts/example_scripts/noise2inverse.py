@@ -1,61 +1,65 @@
-#%% Noise2Inverse train
+#%% This example shows how to train Learned Primal dual for full angle, noisy measurements.
 
 #%% Imports
 
-# Basic science imports
+# Standard imports
 import matplotlib.pyplot as plt
-import numpy as np
+import pathlib
+from skimage.metrics import structural_similarity as ssim
+from ts_algorithms import fdk
+
+# Torch imports
 import torch
 from torch.utils.data import DataLoader
+import torch.utils.data as data_utils
 
-# basic python imports
-from tqdm import tqdm
-import pathlib
-
-# LION imports
-import LION.CTtools.ct_utils as ct
+# Lion imports
 from LION.models.CNNs.MS_D import MS_D
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
-from ts_algorithms import fdk
+from LION.optimizers.Noise2Inverse_solver import Noise2Inverse_solver
+
+
+def my_ssim(x, y):
+    x = x.cpu().numpy().squeeze()
+    y = y.cpu().numpy().squeeze()
+    return ssim(x, y, data_range=x.max() - x.min())
 
 
 #%%
 # % Chose device:
-device = torch.device("cuda:3")
+device = torch.device("cuda:1")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/clinical_dose/")
-datafolder = pathlib.Path(
-    "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
-)
-final_result_fname = savefolder.joinpath("Noise2Inverse_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("Noise2Inverse_check_*.pt")
+savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
+final_result_fname = savefolder.joinpath("Noise2Inverse_MSD.pt")
+checkpoint_fname = "Noise2Inverse_MSD_check_*.pt"
+validation_fname = savefolder.joinpath("Noise2Inverse_MSD_min_val.pt")
 #
 #%% Define experiment
-experiment = ct_experiments.clinicalCTRecon(datafolder=datafolder)
+
+experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
 
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 
+# smaller dataset for example. Remove this for full dataset
+indices = torch.arange(100)
+lidc_dataset = data_utils.Subset(lidc_dataset, indices)
+
+
+#%% Define DataLoader
 # Use the same amount of training
-batch_size = 16
-lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
+
+
+batch_size = 10
+lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
+lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
 
 #%% Model
 # Default model is already from the paper.
 model = MS_D().to(device)
 
-#%% Operators for self-supervised training
-
-# number of data splits
-k = 4
-op = []
-geo = experiment.geo
-angles = geo.angles.copy()
-for i in range(k):
-    geo.angles = angles[i:-1:k]
-    op.append(ct.make_operator(geo))  # list of operators for each subsampling of angles
 #%% Optimizer
 train_param = LIONParameter()
 
@@ -65,76 +69,51 @@ train_param.optimiser = "adam"
 
 # optimizer
 train_param.epochs = 100
-train_param.learning_rate = 1e-3
+train_param.learning_rate = 1e-4
+train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
-optimiser = torch.optim.Adam(model.parameters(), lr=train_param.learning_rate)
-
-# learning parameter update
-steps = len(lidc_dataloader)
-model.train()
-total_loss = np.zeros(train_param.epochs)
-start_epoch = 0
-
-# %% Check if there is a checkpoint saved, and if so, start from there.
-
-# If there is a file with the final results, don't run again
-if model.final_file_exists(savefolder.joinpath(final_result_fname)):
-    print("final model exists! You already reahced final iter")
-    exit()
-
-model, optimiser, start_epoch, total_loss, _ = MS_D.load_checkpoint_if_exists(
-    checkpoint_fname, model, optimiser, total_loss
+optimiser = torch.optim.Adam(
+    model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
-print(f"Starting iteration at epoch {start_epoch}")
 
-#%% train
-for epoch in range(start_epoch, train_param.epochs):
-    train_loss = 0.0
-    for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_dataloader)):
-        # 1: Reset the optimizer
-        optimiser.zero_grad()
-
-        # 2: Perform FDK reconstruction for each subset of the training data.
-        size_noise2inv = list(target_reconstruction.shape)
-        size_noise2inv.insert(0, k)
-        bad_recon = torch.zeros(size_noise2inv, device=device)
-        for sino in range(sinogram.shape[0]):
-            for split in range(k):
-                bad_recon[split, sino] = fdk(op[split], sinogram[sino, 0, split:-1:k])
-
-        # 3: we train K->1 so, pick one of these to be the target, at random.
-        label_array = torch.zeros(target_reconstruction.shape, device=device)
-        target = torch.zeros(target_reconstruction.shape, device=device)
-        for sino in range(sinogram.shape[0]):
-            indices = np.arange(k)
-            label = np.random.randint(k)
-            target[sino] = bad_recon[label, sino].detach().clone()
-            label_array[sino] = torch.mean(
-                bad_recon[np.delete(indices, label), sino].detach().clone(), axis=0
-            )
-
-        # 4: Do the optimizer step
-        reconstruction = model(label_array)
-        loss = loss_fcn(reconstruction, target)
-        loss.backward()
-        train_loss += loss.item()
-        optimiser.step()
-
-    # end bach loop
-    total_loss[epoch] = train_loss
-
-    # Checkpoint every 10 iters anyway
-    if epoch % 10 == 0:
-        model.save_checkpoint(
-            pathlib.Path(str(checkpoint_fname).replace("*", f"{epoch+1:04d}")),
-            epoch + 1,
-            total_loss,
-            optimiser,
-            train_param,
-        )
-
-model.save(
-    final_result_fname,
-    epoch=train_param.epochs,
-    training=train_param,
+#%% Train
+# create solver
+noise2inverse_parameters = Noise2Inverse_solver.default_parameters()
+noise2inverse_parameters.sino_splits = (
+    4  # its default anyway, but this is how you can modify it
 )
+noise2inverse_parameters.base_algo = (
+    fdk  # its default anyway, but this is how you can modify it
+)
+solver = Noise2Inverse_solver(
+    model,
+    optimiser,
+    loss_fcn,
+    verbose=True,
+    geo=experiment.geo,
+    optimizer_params=noise2inverse_parameters,
+)
+
+# YOU CAN IGNORE THIS. You can 100% just write your own pytorch training loop.
+# LIONSover is just a convinience class that does some stuff for you, no need to use it.
+
+# set data
+solver.set_training(lidc_dataloader)
+solver.set_testing(lidc_test, my_ssim)
+
+# set checkpointing procedure
+solver.set_checkpointing(savefolder, checkpoint_fname, 10, load_checkpoint=False)
+# train
+solver.train(train_param.epochs)
+# delete checkpoints if finished
+solver.clean_checkpoints()
+# save final result
+solver.save_final_results(final_result_fname)
+
+# test
+
+solver.test()
+
+plt.figure()
+plt.semilogy(solver.train_loss[1:])
+plt.savefig("loss.png")

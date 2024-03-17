@@ -4,7 +4,6 @@
 
 # Standard imports
 import matplotlib.pyplot as plt
-import numpy as np
 import pathlib
 from skimage.metrics import structural_similarity as ssim
 
@@ -16,7 +15,6 @@ import torch.utils.data as data_utils
 # Lion imports
 from LION.models.iterative_unrolled.LPD import LPD
 from LION.utils.parameter import LIONParameter
-from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
 import LION.experiments.ct_experiments as ct_experiments
 from LION.optimizers.supervised_learning import supervisedSolver
 
@@ -33,30 +31,31 @@ device = torch.device("cuda:1")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
-datafolder = LIDC_IDRI_PROCESSED_DATASET_PATH
 final_result_fname = savefolder.joinpath("LPD.pt")
 checkpoint_fname = "LPD_check_*.pt"
 validation_fname = savefolder.joinpath("LPD_min_val.pt")
 #
 #%% Define experiment
 
-experiment = ct_experiments.SparseAngleCTRecon(datafolder=datafolder)
+experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
 
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
 
+# smaller dataset for example. Remove this for full dataset
+indices = torch.arange(100)
+lidc_dataset = data_utils.Subset(lidc_dataset, indices)
+lidc_dataset_val = data_utils.Subset(lidc_dataset_val, indices)
+
+
 #%% Define DataLoader
 # Use the same amount of training
 
-indices = torch.arange(100)
-tr_10 = data_utils.Subset(lidc_dataset, indices)
-tr_val = data_utils.Subset(lidc_dataset_val, indices)
-
 
 batch_size = 10
-lidc_dataloader = DataLoader(tr_10, batch_size, shuffle=False)
-lidc_validation = DataLoader(tr_val, batch_size, shuffle=False)
+lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
+lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=False)
 lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
 
 #%% Model

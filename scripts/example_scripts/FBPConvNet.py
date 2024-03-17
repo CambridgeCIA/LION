@@ -3,24 +3,17 @@
 
 #%% Imports
 import matplotlib.pyplot as plt
-import numpy as np
 
 import torch
 from torch.utils.data import DataLoader
+import torch.utils.data as data_utils
 
-from tqdm import tqdm
+
 import pathlib
 
-
 from LION.models.post_processing.FBPConvNet import FBPConvNet
-
 from LION.utils.parameter import LIONParameter
 from LION.optimizers.supervised_learning import supervisedSolver
-
-
-from ts_algorithms import fdk
-
-
 import LION.experiments.ct_experiments as ct_experiments
 from skimage.metrics import structural_similarity as ssim
 
@@ -43,13 +36,20 @@ datafolder = pathlib.Path(
 final_result_fname = savefolder.joinpath("FBPConvNet_final_iter.pt")
 checkpoint_fname = savefolder.joinpath("FBPConvNet_check_*.pt")
 validation_fname = savefolder.joinpath("FBPConvNet_min_val.pt")
-#
-#%% Define experiment
-# experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
-experiment = ct_experiments.clinicalCTRecon(datafolder=datafolder)
+
+
+##%% Define experiment
+experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
+
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
+
+# smaller dataset for example. Remove this for full dataset
+indices = torch.arange(100)
+lidc_dataset = data_utils.Subset(lidc_dataset, indices)
+lidc_dataset_val = data_utils.Subset(lidc_dataset_val, indices)
+
 
 #%% Define DataLoader
 # Use the same amount of training
