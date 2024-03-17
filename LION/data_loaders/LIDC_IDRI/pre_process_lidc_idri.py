@@ -27,7 +27,7 @@ foo = importlib.util.module_from_spec(spec)
 sys.modules["aipaths"] = foo
 spec.loader.exec_module(foo)
 
-from aipaths import LIDC_IDRI_PROCESSED_DATASET_PATH, LIDC_IDRI_PATH
+from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH, LIDC_IDRI_PATH
 
 
 def format_index(index: int) -> str:
