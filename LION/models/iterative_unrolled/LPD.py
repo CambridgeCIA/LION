@@ -200,7 +200,7 @@ class LPD(LIONmodel.LIONmodel):
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
-            print("Adler, Jonas, and Ozan Öktem.")
+            print("Adler, Jonas, and Öktem, Ozan.")
             print('"Learned primal-dual reconstruction."')
             print("\x1B[3mIEEE transactions on medical imaging \x1B[0m")
             print("37.6 (2018): 1322-1332.")

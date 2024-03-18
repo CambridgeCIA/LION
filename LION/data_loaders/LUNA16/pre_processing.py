@@ -18,8 +18,8 @@ import skimage.io as skio
 from scipy import ndimage
 
 
-from LION.data_loaders.data_primitives.LUNA16 import CTimage
-from LION.data_loaders.data_loader.LUNA16 import CT_data_loader
+from LION.data_loaders.LUNA16.data_primitives import CTimage
+from LION.data_loaders.LUNA16.data_loader import CT_data_loader
 import LION.CTtools.ct_utils as ct
 
 ## Class that holds LUNA nodule information

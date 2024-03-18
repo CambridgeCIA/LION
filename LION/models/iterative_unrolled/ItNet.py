@@ -259,20 +259,22 @@ class ItNet(LIONmodel.LIONmodel):
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
-            print("Genzel, Martin, Jan Macdonald, and Maximilian März. ")
+            print("Martin Genzel, Ingo Guhring, Jan Macdonald, and Maximilian März. ")
             print(
-                '"AAPM DL-Sparse-View CT Challenge Submission Report: Designing an Iterative Network for Fanbeam-CT with Unknown Geometry." '
+                '""Near-exact recovery for tomographic inverse problems via deep learning." '
             )
-            print("\x1B[3marXiv preprint \x1B[0m")
-            print("arXiv:2106.00280 (2021).")
+            print("\x1B[3m ICML 2022 \x1B[0m")
+            print("(pp. 7368-7381). PMLR")
 
         elif cite_format == "bib":
             string = """
-            @article{genzel2021aapm,
-            title={AAPM DL-Sparse-View CT Challenge Submission Report: Designing an Iterative Network for Fanbeam-CT with Unknown Geometry},
-            author={Genzel, Martin and Macdonald, Jan and M{\"a}rz, Maximilian},
-            journal={arXiv preprint arXiv:2106.00280},
-            year={2021}
+            @inproceedings{genzel2022near,
+            title={Near-exact recovery for tomographic inverse problems via deep learning},
+            author={Genzel, Martin and G{\"u}hring, Ingo and Macdonald, Jan and M{\"a}rz, Maximilian},
+            booktitle={International Conference on Machine Learning},
+            pages={7368--7381},
+            year={2022},
+            organization={PMLR}
             }"""
             print(string)
         else:

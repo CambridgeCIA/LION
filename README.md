@@ -5,6 +5,8 @@
 
 University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction, LION (Learned Iterative Optimization Networks)
 
+The toolbox contains data dowloading and pre-processing, torch `DataSet` classes for the existing data, and `Experiments` class with implementation of default realistic experiments, several data-driven methods and models, and features to enhacne reproduciblity. 
+
 
 **WARNING** Building in progress. This is a tool in development in very early stages. 
 Many things are bound to fail and many more are bound to change. If you want to help with development, send an email to Ander Biguri and/or open and issue or a discussion. 
@@ -43,34 +45,22 @@ Currently there are several DataSets supported by LION. LION automatically knows
 
 NOTE: If you are part of CIA at DAMTP, you already have access to these datasets and you don't need to follow any instruction to dowload them.
 
-The supported Datasets are:
+The supported Datasets are `2DeteCT`, `LIDC-IDRI`, 
 
-## 2DeteCT
+[Read more about them here](LION/data_loaders/README.md)
 
-A dataset of uCT scans with different settings for sinograms. The data is made of composition of different materials. [Read more in the Nature paper](https://www.nature.com/articles/s41597-023-02484-6).
-To install 2DeteCT, run `python ./LION/data_loaders/2DeteCT/dowload.py` and once finished (probably a few hours later) run `python ./LION/data_loaders/2DeteCT/pre_processs_2deteCT.py`. Once finished, you should have `LION_DATA_PATH/processed/2detect` folder in your system. You can now delete `LION_DATA_PATH/raw/2detect` to save space if you want. 
+# Models/Methods
 
-## LIDC-IDRI
+LION supports all types of data-driven methods for CT reconstructions. They can, as a general taxonomy, be described as:
 
-A dataset of 1100 lung 3D CT scans with segmentations and diagnostics of lung nodules. To dowload the dataset, [follow the instructions in the dataset webpage](https://wiki.cancerimagingarchive.net/pages/viewpage.action?pageId=1966254) (requires a third party software). Put this dataset in `LION_DATA_PATH/raw/LIDC-IDRI` such that it contains a folder structure as:
+- Post-Processing methods: a "denoising" network. Takes a noisy recon and cleans it.
+- Iterative Unrolled methods: Uses the operator to imitate iterative recon algorithms, but has learned parts.
+- Learned regularizer: Explicitly learned regularization functions.
+- Plung and Play (PnP): Implicit learned regularization, a regularization optimization step is learned, rather than an explicit one. 
 
-```
-LION_DATA_PATH/raw/LIDC-IDRI/
-├── LIDC-IDRI
-├── LIDC-IDRI_MetaData.csv
-├── metadata.csv
-└── tcia-diagnosis-data-2012-04-20.xls
-```
+Folders for each of these exist in `LION/models`. An extra folder for standard `CNNs` is also available. 
 
-Then, create a new conda enviroment with `conda env create -f ./LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri_environment.yml`, activate it as `conda activate lidc_idri` and run the python file `python ./LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py`. 
-
-You can now delete `LION_DATA_PATH/raw/LIDC-IDRI` to save space if you want. 
-
-## Walnuts
-A dataset of uCT scans of walnuts. [Read more in the Nature paper](https://www.nature.com/articles/s41597-023-02484-6).
-You can dowload it using `python LION/data_loaders/walnuts/dowload_walnuts.py`
-pre-processing and Data Loading WIP
-
+[Read more about which models are available in each class here](LION/models/README.md)
 
 # Developers:
 Read `developers.md`
