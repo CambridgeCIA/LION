@@ -96,7 +96,7 @@ class deteCT(Dataset):
             Tube power   |    3W    |    90W   |  60W
             Filter       | Thoraeus | Thoraeus | No Filter
         """
-        # Defining the sinogram mode
+        # Defining the reconstruction mode
         self.reconstruction_mode = parameters.reconstruction_mode
         """
         The reconstruction_mode (str) argument is a keyword defining what image mode of the dataset to use:
@@ -312,7 +312,7 @@ class deteCT(Dataset):
         path_to_sinogram = self.path_to_dataset.joinpath(
             f"{slice_row['slice_identifier']}/{self.sinogram_mode}"
         )
-        path_to_recontruction = self.path_to_dataset.joinpath(
+        path_to_reconstruction = self.path_to_dataset.joinpath(
             f"{slice_row['slice_identifier']}/{self.reconstruction_mode}"
         )
         path_to_segmentation = self.path_to_dataset.joinpath(
@@ -363,7 +363,7 @@ class deteCT(Dataset):
                 reconstruction = fdk(op, sinogram)
         else:
             reconstruction = torch.from_numpy(
-                np.load(path_to_recontruction.joinpath("reconstruction.npy"))
+                np.load(path_to_reconstruction.joinpath("reconstruction.npy"))
             ).unsqueeze(0)
             # Interpolate if geometry is not default
             if self.geo.image_shape != self.get_default_geometry().image_shape:
