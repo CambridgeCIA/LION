@@ -47,4 +47,14 @@ class ExampleClassForMax(Experiment):
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be recon2recon
+        param.data_loader_params.task = "recon2recon"
+        param.data_loader_params.input_mode = "mode1"
+        param.data_loader_params.target_mode = "mode2"
+
+        # The above only sets the parameters for the data loader, but the data loader is not created yet.
+        # it is created on demand, when the users goes
+        # training_data = ExampleClassForMax.get_training_data()
+
         return param
