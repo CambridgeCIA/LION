@@ -80,6 +80,12 @@ class NormalCTRecon(Experiment):
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+
         return param
 
 class LimitedAngle150CTRecon(Experiment):
@@ -102,6 +108,12 @@ class LimitedAngle150CTRecon(Experiment):
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
 
 
@@ -125,6 +137,12 @@ class LimitedAngle120CTRecon(Experiment):
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
 
 
@@ -148,6 +166,12 @@ class LimitedAngle90CTRecon(Experiment):
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
 
 
@@ -171,6 +195,12 @@ class LimitedAngle60CTRecon(Experiment):
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
 
 
@@ -194,10 +224,16 @@ class SparseAngle720CTRecon(Experiment):
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
 
 
-class SparseAngle361CTRecon(Experiment):
+class SparseAngle360CTRecon(Experiment):
 
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
@@ -206,21 +242,27 @@ class SparseAngle361CTRecon(Experiment):
     def default_parameters(dataset="2DeteCT"):
         param = LIONParameter()
 
-        param.name = "361 angles Sparse Angle CT reconstruction experiment from mode 2"
+        param.name = "360 angles Sparse Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geo.angles = param.geo.angles[::10]  # to have every 10th projection (in total 361)
+        param.geo.angles = param.geo.angles[::10]  # to have every 10th projection (in total 360)
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
 
 
-class SparseAngle181CTRecon(Experiment):
+class SparseAngle180CTRecon(Experiment):
 
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
@@ -229,20 +271,26 @@ class SparseAngle181CTRecon(Experiment):
     def default_parameters(dataset="2DeteCT"):
         param = LIONParameter()
 
-        param.name = "181 angles Sparse Angle CT reconstruction experiment from mode 2"
+        param.name = "180 angles Sparse Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geo.angles = param.geo.angles[::20]  # to have every 20th projection (in total 181)
+        param.geo.angles = param.geo.angles[::20]  # to have every 20th projection (in total 180)
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
 
-class SparseAngle121CTRecon(Experiment):
+class SparseAngle120CTRecon(Experiment):
 
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
@@ -251,20 +299,26 @@ class SparseAngle121CTRecon(Experiment):
     def default_parameters(dataset="2DeteCT"):
         param = LIONParameter()
 
-        param.name = "121 angles Sparse Angle CT reconstruction experiment from mode 2"
+        param.name = "120 angles Sparse Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geo.angles = param.geo.angles[::30]  # to have every 30th projection (in total 121)
+        param.geo.angles = param.geo.angles[::30]  # to have every 30th projection (in total 120)
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
 
-class SparseAngle91CTRecon(Experiment):
+class SparseAngle90CTRecon(Experiment):
 
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
@@ -273,20 +327,26 @@ class SparseAngle91CTRecon(Experiment):
     def default_parameters(dataset="2DeteCT"):
         param = LIONParameter()
 
-        param.name = "91 angles Sparse Angle CT reconstruction experiment from mode 2"
+        param.name = "90 angles Sparse Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geo.angles = param.geo.angles[::40]  # to have every 40th projection (in total 91)
+        param.geo.angles = param.geo.angles[::40]  # to have every 40th projection (in total 90)
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
 
-class SparseAngle61CTRecon(Experiment):
+class SparseAngle60CTRecon(Experiment):
 
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
@@ -295,17 +355,23 @@ class SparseAngle61CTRecon(Experiment):
     def default_parameters(dataset="2DeteCT"):
         param = LIONParameter()
 
-        param.name = "61 angles Sparse Angle CT reconstruction experiment from mode2"
+        param.name = "60 angles Sparse Angle CT reconstruction experiment from mode2"
 
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geo.angles = param.geo.angles[::60]  # to have every 60th projection (in total 61)
+        param.geo.angles = param.geo.angles[::60]  # to have every 60th projection (in total 60)
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
 
 class Denoising(Experiment):
@@ -317,21 +383,21 @@ class Denoising(Experiment):
     def default_parameters(dataset="2DeteCT"):
         param = LIONParameter()
 
-        param.name = "Denoising CT reconstruction experiment with sinograms from mode1 and reconstructions from mode2"
+        param.name = "Denoising experiment with sinograms from mode1 and sinograms from mode2"
 
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
-
-        # Changing the modes of the sinogram and reconstruction in the 2DeteCT loading:
-        param.sinogram_mode = "mode1"
-        param.reconstruction_mode = "mode2"
-
-        # Potentially thes have to be changed still
-        # param.task = "reconstruction" # if we change the task definitions
+        
         # param.log_transform = True # if we do a sino2sino this should not be done
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2sino
+        param.data_loader_params.task = "sino2sino"
+        param.data_loader_params.input_mode = "mode1"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
 
 class BeamHardeningReduction(Experiment):
@@ -343,14 +409,10 @@ class BeamHardeningReduction(Experiment):
     def default_parameters(dataset="2DeteCT"):
         param = LIONParameter()
 
-        param.name = "Beam Hardening Reduction CT reconstruction experiment with sinograms from mode3 and reconstructions from mode2"
+        param.name = "Beam Hardening Reduction experiment with sinograms from mode3 and sinograms from mode2"
 
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
-
-        # Changing the modes of the sinogram and reconstruction in the 2DeteCT loading:
-        param.sinogram_mode = "mode3"
-        param.reconstruction_mode = "mode2"
 
         # Potentially this has to be changed still
         # param.task = "reconstruction" # if we change the task definitions
@@ -358,4 +420,10 @@ class BeamHardeningReduction(Experiment):
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = "mode3"
+        param.data_loader_params.target_mode = "mode2"
+        
         return param
