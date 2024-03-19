@@ -174,7 +174,7 @@ class LimitedAngle60CTRecon(Experiment):
         return param
 
 
-class SparseAngle721CTRecon(Experiment):
+class SparseAngle720CTRecon(Experiment):
 
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
@@ -183,13 +183,13 @@ class SparseAngle721CTRecon(Experiment):
     def default_parameters(dataset="2DeteCT"):
         param = LIONParameter()
 
-        param.name = "721 angles Sparse Angle CT reconstruction experiment from mode 2"
+        param.name = "720 angles Sparse Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geo.angles = param.geo.angles[::5]  # to have every 5th projection (in total 721)
+        param.geo.angles = param.geo.angles[::5]  # to have every 5th projection (in total 720)
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
