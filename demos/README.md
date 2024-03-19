@@ -1,5 +1,5 @@
 # Demos of LION
-WIP
+WIP, do not rely on thisfolder 
 
 ## The following demos are currently available:
 
