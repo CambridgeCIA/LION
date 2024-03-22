@@ -383,12 +383,10 @@ class Denoising(Experiment):
     def default_parameters(dataset="2DeteCT"):
         param = LIONParameter()
 
-        param.name = "Denoising experiment with sinograms from mode1 and sinograms from mode2"
+        param.name = "Denoising experiment with sinograms from mode1 and reconstructions from mode2"
 
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
-        
-        # param.log_transform = True # if we do a sino2sino this should not be done
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
@@ -409,14 +407,10 @@ class BeamHardeningReduction(Experiment):
     def default_parameters(dataset="2DeteCT"):
         param = LIONParameter()
 
-        param.name = "Beam Hardening Reduction experiment with sinograms from mode3 and sinograms from mode2"
+        param.name = "Beam Hardening Reduction experiment with sinograms from mode3 and reconstructions from mode2"
 
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
-
-        # Potentially this has to be changed still
-        # param.task = "reconstruction" # if we change the task definitions
-        # param.log_transform = True # if we do a sino2sino this should not be done
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
