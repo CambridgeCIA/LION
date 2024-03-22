@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  : Ander Biguri
+# Author  : Ander Biguri, Max Kiss
 # =============================================================================
 
 
@@ -59,7 +59,7 @@ class ExampleClassForMax(Experiment):
 
         return param
 
-class NormalCTRecon(Experiment):
+class FullDataCTRecon(Experiment):
 
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
@@ -68,7 +68,7 @@ class NormalCTRecon(Experiment):
     def default_parameters(dataset="2DeteCT"):
         param = LIONParameter()
 
-        param.name = "Normal CT reconstruction using the full angular sampling experiment from mode 2"
+        param.name = "Full Data CT reconstruction using the full angular sampling experiment from mode 2"
 
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
@@ -393,8 +393,8 @@ class Denoising(Experiment):
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters(dataset)
 
-        # Change the data loader to be sino2sino
-        param.data_loader_params.task = "sino2sino"
+        # Change the data loader to be sino2recon
+        param.data_loader_params.task = "sino2recon"
         param.data_loader_params.input_mode = "mode1"
         param.data_loader_params.target_mode = "mode2"
         
