@@ -61,7 +61,9 @@ class supervisedSolver(LIONsolver):
         self.model.train()
         epoch_loss = 0.0
         for index, (data, target) in enumerate(self.train_loader):
-            epoch_loss += self.mini_batch_step(data, target)
+            epoch_loss += self.mini_batch_step(
+                data.to(self.device), target.to(self.device)
+            )
         return epoch_loss / len(self.train_loader)
 
     def validate(self):
