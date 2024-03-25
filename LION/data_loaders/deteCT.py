@@ -311,17 +311,17 @@ class deteCT(Dataset):
             f"{slice_row['slice_identifier']}/{mode}"
         )
         sinogram = torch.from_numpy(
-            np.load(path_to_input.joinpath("sinogram.npy"))
+            np.load(path_to_input.joinpath("sinogram.npy")).astype(np.float32)
         ).unsqueeze(0)
         if self.flat_field_correction:
             flat = torch.from_numpy(
-                np.load(path_to_input.joinpath("flat.npy"))
+                np.load(path_to_input.joinpath("flat.npy")).astype(np.float32)
             ).unsqueeze(0)
         else:
             flat = 1
         if self.dark_field_correction:
             dark = torch.from_numpy(
-                np.load(path_to_input.joinpath("dark.npy"))
+                np.load(path_to_input.joinpath("dark.npy")).astype(np.float32)
             ).unsqueeze(0)
         else:
             dark = 0
@@ -349,7 +349,7 @@ class deteCT(Dataset):
             f"{slice_row['slice_identifier']}/{mode}"
         )
         reconstruction = torch.from_numpy(
-            np.load(path_to_input.joinpath("reconstruction.npy"))
+            np.load(path_to_input.joinpath("reconstruction.npy")).astype(np.float32)
         ).unsqueeze(0)
         # Interpolate if geometry is not default
         if self.geo.image_shape != self.get_default_geometry().image_shape:
@@ -380,6 +380,8 @@ class deteCT(Dataset):
         return segmentation
 
     def __getitem__(self, index):
+
+        index = int(index)  # cast to int
 
         # If input is sinogram, we need to load the sinogram
         if self.task in ["sino2sino", "sino2recon", "sino2seg", "joint"]:

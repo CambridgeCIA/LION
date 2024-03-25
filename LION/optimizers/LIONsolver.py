@@ -377,8 +377,8 @@ class LIONsolver(ABC):
         test_loss = np.zeros(len(self.test_loader))
         with torch.no_grad():
             for index, (data, target) in enumerate(self.test_loader):
-                output = self.model(data)
-                test_loss[index] = self.testing_fn(output, target)
+                output = self.model(data.to(self.device))
+                test_loss[index] = self.testing_fn(output, target.to(self.device))
 
         if self.verbose:
             print(
