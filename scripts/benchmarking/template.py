@@ -184,3 +184,25 @@ plt.savefig("loss.png")
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # if verbose it will print mean+std
 result_vals_nparray = solver.test()
+
+#%% 10 - Non-ML recon
+### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# these are pre-made for you
+from ts_algorithms import fdk, sirt, tv_min, nag_ls
+
+# use this function to make an operator.
+# If you want to do this inside the LIONmodel, please use its make_operator function, not this one, as this one does not make it autograd.
+from LION.CTtools.ct_utils import make_operator
+
+op = make_operator(experiment.geo)
+
+# just call with op.
+# See more in the ts_algorithms repository, this is not LION
+recon = fdk(op, testing_data[0])
+recon = sirt(
+    op, testing_data[0], 200
+)  # SIRT: almost Gradient descend, actually kazmarz method
+recon = tv_min(op, testing_data[0], 200, 0.1)  # Chambolle-Pock TV
+recon = nag_ls(
+    op, testing_data[0], 100
+)  # Nesterov Accelerated Gradient with Least Squares
