@@ -22,6 +22,7 @@ from LION.experiments.ct_experiments import Experiment
 
 class CTBenchmarkingExperiment(Experiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
+        dataset = "2DeteCT"
         if dataset != "2DeteCT":
             raise ValueError(
                 "Benchmarking experiments only supports 2DeteCT dataset, currently"
@@ -30,8 +31,8 @@ class CTBenchmarkingExperiment(Experiment):
 
 
 class FullDataCTRecon(CTBenchmarkingExperiment):
-    def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
-        super().__init__(experiment_params, dataset, datafolder)
+    def __init__(self, datafolder=None):
+        super().__init__(experiment_params=None, datafolder=datafolder)
 
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
@@ -42,7 +43,7 @@ class FullDataCTRecon(CTBenchmarkingExperiment):
         # Parameters for the geometry
         param.geo = deteCT.get_default_geometry()
 
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -52,7 +53,7 @@ class FullDataCTRecon(CTBenchmarkingExperiment):
         return param
 
 
-class LimitedAngle150CTRecon(Experiment):
+class LimitedAngle150CTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -72,7 +73,7 @@ class LimitedAngle150CTRecon(Experiment):
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -82,7 +83,7 @@ class LimitedAngle150CTRecon(Experiment):
         return param
 
 
-class LimitedAngle120CTRecon(Experiment):
+class LimitedAngle120CTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -102,7 +103,7 @@ class LimitedAngle120CTRecon(Experiment):
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -112,7 +113,7 @@ class LimitedAngle120CTRecon(Experiment):
         return param
 
 
-class LimitedAngle90CTRecon(Experiment):
+class LimitedAngle90CTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -130,7 +131,7 @@ class LimitedAngle90CTRecon(Experiment):
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -140,7 +141,7 @@ class LimitedAngle90CTRecon(Experiment):
         return param
 
 
-class LimitedAngle60CTRecon(Experiment):
+class LimitedAngle60CTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -158,7 +159,7 @@ class LimitedAngle60CTRecon(Experiment):
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -168,7 +169,7 @@ class LimitedAngle60CTRecon(Experiment):
         return param
 
 
-class SparseAngle720CTRecon(Experiment):
+class SparseAngle720CTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -188,7 +189,7 @@ class SparseAngle720CTRecon(Experiment):
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -198,7 +199,7 @@ class SparseAngle720CTRecon(Experiment):
         return param
 
 
-class SparseAngle360CTRecon(Experiment):
+class SparseAngle360CTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -218,7 +219,7 @@ class SparseAngle360CTRecon(Experiment):
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -228,7 +229,7 @@ class SparseAngle360CTRecon(Experiment):
         return param
 
 
-class SparseAngle180CTRecon(Experiment):
+class SparseAngle180CTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -248,7 +249,7 @@ class SparseAngle180CTRecon(Experiment):
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -258,7 +259,7 @@ class SparseAngle180CTRecon(Experiment):
         return param
 
 
-class SparseAngle120CTRecon(Experiment):
+class SparseAngle120CTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -278,7 +279,7 @@ class SparseAngle120CTRecon(Experiment):
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -288,7 +289,7 @@ class SparseAngle120CTRecon(Experiment):
         return param
 
 
-class SparseAngle90CTRecon(Experiment):
+class SparseAngle90CTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -308,7 +309,7 @@ class SparseAngle90CTRecon(Experiment):
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -318,7 +319,7 @@ class SparseAngle90CTRecon(Experiment):
         return param
 
 
-class SparseAngle60CTRecon(Experiment):
+class SparseAngle60CTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -338,7 +339,7 @@ class SparseAngle60CTRecon(Experiment):
         # The data loader will automatically subsample the sinogram for you.
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -348,7 +349,7 @@ class SparseAngle60CTRecon(Experiment):
         return param
 
 
-class Denoising(Experiment):
+class LowDoseCTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -362,7 +363,7 @@ class Denoising(Experiment):
         param.geo = deteCT.get_default_geometry()
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"
@@ -372,7 +373,7 @@ class Denoising(Experiment):
         return param
 
 
-class BeamHardeningReduction(Experiment):
+class BeamHardeningCTRecon(CTBenchmarkingExperiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
@@ -386,7 +387,7 @@ class BeamHardeningReduction(Experiment):
         param.geo = deteCT.get_default_geometry()
 
         # leave this untouched
-        param.data_loader_params = Experiment.get_dataset_parameters(dataset)
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
         # Change the data loader to be sino2recon
         param.data_loader_params.task = "sino2recon"

@@ -57,10 +57,10 @@ experiment = ct_benchmarking.SparseAngle180CTRecon()
 experiment = ct_benchmarking.SparseAngle120CTRecon()
 experiment = ct_benchmarking.SparseAngle90CTRecon()
 experiment = ct_benchmarking.SparseAngle60CTRecon()
-# Denoising (Note, this is still a reconstruction task, but the sinogram has much more noise)
-experiment = ct_benchmarking.Denoising()
-# Beam Hardening reduction (similarly, this is still a reconstruction task, but the sinogram has beam hardening artifacts)
-experiment = ct_benchmarking.BeamHardeningReduction()
+# Low dose
+experiment = ct_benchmarking.LowDoseCTRecon()
+# Beam Hardening
+experiment = ct_benchmarking.BeamHardeningCTRecon()
 
 #%% 3 - Obtaining Datasets from experiments
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
