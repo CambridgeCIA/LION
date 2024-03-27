@@ -21,6 +21,11 @@ conda env create --file=env.yml
 conda activate LION
 pip install .
 ```
+If you would like to contribute to the development of LION, you can replace the last line of the above set of commands by
+```
+pip install -e .
+```
+to make the installation editable (i.e. changes you make to the source will be visible when you restart the REPL or start a new Python process).
 
 Optional, if you want pre-commits. 
 Install pre commits for auto-formating your commits.
