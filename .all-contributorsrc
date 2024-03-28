@@ -59,6 +59,16 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "mbkiss",
+      "name": "mbkiss",
+      "avatar_url": "https://avatars.githubusercontent.com/u/78095730?v=4",
+      "profile": "https://github.com/mbkiss",
+      "contributions": [
+        "design",
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
