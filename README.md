@@ -61,7 +61,7 @@ LION supports all types of data-driven methods for CT reconstructions. They can,
 - Post-Processing methods: a "denoising" network. Takes a noisy recon and cleans it.
 - Iterative Unrolled methods: Uses the operator to imitate iterative recon algorithms, but has learned parts.
 - Learned regularizer: Explicitly learned regularization functions.
-- Plung and Play (PnP): Implicit learned regularization, a regularization optimization step is learned, rather than an explicit one. 
+- Plug-and-Play (PnP): Implicit learned regularization, a regularization optimization step is learned, rather than an explicit one. 
 
 Folders for each of these exist in `LION/models`. An extra folder for standard `CNNs` is also available. 
 
