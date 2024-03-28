@@ -21,6 +21,11 @@ conda env create --file=env.yml
 conda activate LION
 pip install .
 ```
+If you would like to contribute to the development of LION, you can replace the last line of the above set of commands by
+```
+pip install -e .
+```
+to make the installation editable (i.e. changes you make to the source will be visible when you restart the REPL or start a new Python process).
 
 Optional, if you want pre-commits. 
 Install pre commits for auto-formating your commits.
@@ -56,7 +61,7 @@ LION supports all types of data-driven methods for CT reconstructions. They can,
 - Post-Processing methods: a "denoising" network. Takes a noisy recon and cleans it.
 - Iterative Unrolled methods: Uses the operator to imitate iterative recon algorithms, but has learned parts.
 - Learned regularizer: Explicitly learned regularization functions.
-- Plung and Play (PnP): Implicit learned regularization, a regularization optimization step is learned, rather than an explicit one. 
+- Plug-and-Play (PnP): Implicit learned regularization, a regularization optimization step is learned, rather than an explicit one. 
 
 Folders for each of these exist in `LION/models`. An extra folder for standard `CNNs` is also available. 
 
