@@ -22,6 +22,6 @@ Then, create a new conda enviroment with `conda env create -f ./LION/data_loader
 You can now delete `LION_DATA_PATH/raw/LIDC-IDRI` to save space if you want. 
 
 ## Walnuts
-A dataset of uCT scans of walnuts. [Read more in the Nature paper](https://www.nature.com/articles/s41597-023-02484-6).
+A dataset of uCT scans of walnuts. [Read more in the Nature paper](https://www.nature.com/articles/s41597-019-0235-y).
 You can dowload it using `python LION/data_loaders/walnuts/dowload_walnuts.py`
 pre-processing and Data Loading WIP
