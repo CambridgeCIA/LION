@@ -327,6 +327,7 @@ class deteCT(Dataset):
             dark = 0
 
         sinogram = (sinogram - dark) / (flat - dark)
+        sinogram = torch.clip(sinogram, min=1e-6)
         if self.log_transform:
             sinogram = -torch.log(sinogram)
 
