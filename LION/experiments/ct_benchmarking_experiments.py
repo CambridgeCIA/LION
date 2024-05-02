@@ -30,6 +30,30 @@ class CTBenchmarkingExperiment(Experiment):
         super().__init__(experiment_params, dataset, datafolder)
 
 
+class GroundTruthCT(CTBenchmarkingExperiment):
+    def __init__(self, datafolder=None):
+        super().__init__(experiment_params=None, datafolder=datafolder)
+
+    @staticmethod
+    def default_parameters(dataset="2DeteCT"):
+        param = LIONParameter()
+
+        param.name = "Ground truths only, from Full Data CT reconstruction using the full angular sampling experiment from mode 2"
+
+        # Parameters for the geometry
+        param.geo = deteCT.get_default_geometry()
+
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
+
+        # Change the data loader to be groundtruth
+        param.data_loader_params.task = "groundtruth"
+        param.data_loader_params.input_mode = "mode2"
+        param.data_loader_params.target_mode = "mode2"
+        param.do_recon = False
+
+        return param
+
+
 class FullDataCTRecon(CTBenchmarkingExperiment):
     def __init__(self, datafolder=None):
         super().__init__(experiment_params=None, datafolder=datafolder)

@@ -105,6 +105,7 @@ class deteCT(Dataset):
             - task == 'recon2seg' -> input is a reconstruction and target is a segmentation
             - task == 'sino2seg' -> input is a sinogram and target is a segmentation
             - task == 'joint' -> input is a sinogram, target is a reconstruction and segmentation
+            - task == 'groundtruth' -> there is no input, target is a reconstruction
         """
 
         assert self.task in [
@@ -114,6 +115,7 @@ class deteCT(Dataset):
             "recon2seg",
             "sino2seg",
             "joint",
+            "groundtruth",
         ], f'Wrong task argument, must be in ["sino2sino", "sino2recon", "recon2recon", "recon2seg", "sino2seg", "joint"]'
 
         assert mode in [
@@ -305,7 +307,6 @@ class deteCT(Dataset):
         )
 
     def __load_and_preprocess_sinogram__(self, index, mode):
-
         slice_row = self.slice_dataframe.iloc[index]
         path_to_input = self.path_to_dataset.joinpath(
             f"{slice_row['slice_identifier']}/{mode}"
@@ -382,7 +383,6 @@ class deteCT(Dataset):
         return segmentation
 
     def __getitem__(self, index):
-
         index = int(index)  # cast to int
 
         # If input is sinogram, we need to load the sinogram
@@ -408,7 +408,7 @@ class deteCT(Dataset):
         if self.task in ["sino2sino", "recon2sino", "joint"]:
             target = self.__load_and_preprocess_sinogram__(index, self.target_mode)
         # if target is reconstruction, we need to load the reconstruction
-        elif self.task in ["recon2recon", "sino2recon"]:
+        elif self.task in ["recon2recon", "sino2recon", "groundtruth"]:
             if self.do_recon:
                 sinogram = self.__load_and_preprocess_sinogram__(
                     index, self.target_mode
@@ -418,12 +418,16 @@ class deteCT(Dataset):
                     target = nag_ls(op, sinogram, 100, min_constraint=0)
                 elif self.recon_algo == "fdk":
                     target = fdk(op, sinogram)
-            target = self.__load_and_preprocess_reconstruction__(
-                index, self.target_mode
-            )
+            else:
+                target = self.__load_and_preprocess_reconstruction__(
+                    index, self.target_mode
+                )
         elif self.task in ["recon2seg", "sino2seg"]:
             # Get paths to the dataset
             target = self.__load_and_preprocess_segmentation__(index)
+
+        if self.task == "groundtruth":
+            return target
 
         if self.task != "joint":
             return input, target
