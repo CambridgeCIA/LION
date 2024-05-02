@@ -387,7 +387,7 @@ class deteCT(Dataset):
         if self.task in ["sino2sino", "sino2recon", "sino2seg", "joint"]:
             input = self.__load_and_preprocess_sinogram__(index, self.input_mode)
         # if input is reconstruction, we need to load the reconstruction
-        elif self.task != "groundtruth":
+        else:
             # Even if input is recon, we may want to actually do it ourselves.
             if self.do_recon:
                 sinogram = self.__load_and_preprocess_sinogram__(index, self.input_mode)
