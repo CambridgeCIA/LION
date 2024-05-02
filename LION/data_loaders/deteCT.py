@@ -416,9 +416,10 @@ class deteCT(Dataset):
                     target = nag_ls(op, sinogram, 100, min_constraint=0)
                 elif self.recon_algo == "fdk":
                     target = fdk(op, sinogram)
-            target = self.__load_and_preprocess_reconstruction__(
-                index, self.target_mode
-            )
+            else:
+                target = self.__load_and_preprocess_reconstruction__(
+                    index, self.target_mode
+                )
         elif self.task in ["recon2seg", "sino2seg"]:
             # Get paths to the dataset
             target = self.__load_and_preprocess_segmentation__(index)
