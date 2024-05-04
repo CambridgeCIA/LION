@@ -81,7 +81,7 @@ class supervisedSolver(LIONsolver):
         ):
             with torch.no_grad():
                 output = self.model(data.to(self.device))
-                validation_loss = self.validation_fn(output, target.to(self.device))
+                validation_loss += self.validation_fn(output, target.to(self.device))
 
         # return to train if it was in train
         if status:
