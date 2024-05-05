@@ -24,7 +24,7 @@ setuptools.setup(
     long_description=read("README.md"),
 )
 
-os.system("pip install ./LION/models/MS-D/")
+# os.system("pip install ./LION/models/MS-D/")
 
 wd = os.getcwd()
 os.chdir("./LION/metrics/radiomics/")

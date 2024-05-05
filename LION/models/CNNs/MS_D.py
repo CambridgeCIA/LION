@@ -42,6 +42,7 @@ class MS_D(LIONmodel.LIONmodel):
             )
         # We don't want MS-D to define our optimizer.
         model.optimizer = None
+
         self.net = model.net
 
     @staticmethod

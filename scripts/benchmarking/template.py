@@ -27,7 +27,7 @@ def my_ssim(x: torch.tensor, y: torch.tensor):
 #%% 1 - Settingts
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Device
-device = torch.device("cuda:2")
+device = torch.device("cuda:3")
 torch.cuda.set_device(device)
 
 # Define your data paths
@@ -35,9 +35,10 @@ savefolder = pathlib.Path("/store/DAMTP/your_folder_for_results/")
 savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
 
 # Filenames and patters
-final_result_fname = savefolder.joinpath("LPD.pt")
-checkpoint_fname = "LPD_check_*.pt"  # if you use LION checkpoiting, remember to have wildcard (*) in the filename
-validation_fname = savefolder.joinpath("LPD_min_val.pt")
+fname = "LPD_experiment_name"
+final_result_fname = savefolder.joinpath(f"{fname}.pt")
+checkpoint_fname = f"{fname}_check_*.pt"  # if you use LION checkpoiting, remember to have wildcard (*) in the filename
+validation_fname = savefolder.joinpath(f"{fname}_min_val.pt")
 
 #%% 2 - Define experiment
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -46,27 +47,42 @@ validation_fname = savefolder.joinpath("LPD_min_val.pt")
 # Standard dataset
 experiment = ct_benchmarking.FullDataCTRecon()
 # Limited angle
-experiment = ct_benchmarking.LimitedAngle150CTRecon()
-experiment = ct_benchmarking.LimitedAngle120CTRecon()
-experiment = ct_benchmarking.LimitedAngle90CTRecon()
-experiment = ct_benchmarking.LimitedAngle60CTRecon()
-# Sparse angle
-experiment = ct_benchmarking.SparseAngle720CTRecon()
-experiment = ct_benchmarking.SparseAngle360CTRecon()
-experiment = ct_benchmarking.SparseAngle180CTRecon()
-experiment = ct_benchmarking.SparseAngle120CTRecon()
-experiment = ct_benchmarking.SparseAngle90CTRecon()
-experiment = ct_benchmarking.SparseAngle60CTRecon()
-# Low dose
-experiment = ct_benchmarking.LowDoseCTRecon()
-# Beam Hardening
-experiment = ct_benchmarking.BeamHardeningCTRecon()
+# experiment = ct_benchmarking.LimitedAngle150CTRecon()
+# experiment = ct_benchmarking.LimitedAngle120CTRecon()
+# experiment = ct_benchmarking.LimitedAngle90CTRecon()
+# experiment = ct_benchmarking.LimitedAngle60CTRecon()
+# # Sparse angle
+# experiment = ct_benchmarking.SparseAngle720CTRecon()
+# experiment = ct_benchmarking.SparseAngle360CTRecon()
+# experiment = ct_benchmarking.SparseAngle180CTRecon()
+# experiment = ct_benchmarking.SparseAngle120CTRecon()
+# experiment = ct_benchmarking.SparseAngle90CTRecon()
+# experiment = ct_benchmarking.SparseAngle60CTRecon()
+# # Low dose
+# experiment = ct_benchmarking.LowDoseCTRecon()
+# # Beam Hardening
+# experiment = ct_benchmarking.BeamHardeningCTRecon()
 
 #%% 3 - Obtaining Datasets from experiments
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 training_data = experiment.get_training_dataset()
 validation_data = experiment.get_validation_dataset()
 testing_data = experiment.get_testing_dataset()
+from ts_algorithms import fdk, sirt, tv_min, nag_ls
+
+# # use this function to make an operator.
+# # If you want to do this inside the LIONmodel, please use its make_operator function, not this one, as this one does not make it autograd.
+# from LION.CTtools.ct_utils import make_operator
+# sino, _ = training_data[0]
+# print(type(sino))
+# op = make_operator(experiment.geo)
+
+# # just call with op.
+# # See more in the ts_algorithms repository, this is not LION
+# recon = fdk(op, sino)
+# sino[sino<0]=0
+# recon2 = fdk(op, sino)
+
 
 # smaller dataset for testing if this template worksfor you.
 ##############################################################
@@ -76,6 +92,18 @@ training_data = data_utils.Subset(training_data, indices)
 validation_data = data_utils.Subset(validation_data, indices)
 testing_data = data_utils.Subset(testing_data, indices)
 
+# sino, label = training_data[2826]
+# print(torch.isnan(sino).sum())
+# print(torch.isnan(label).sum())
+# recon = fdk(op, sino)
+# print(torch.isnan(recon).sum())
+# plt.figure()
+# plt.subplot(121)
+# plt.imshow(sino.squeeze().cpu().numpy())
+# plt.subplot(122)
+# plt.imshow(torch.isnan(sino).squeeze().cpu().numpy())
+# plt.savefig("test.png")
+# exit()
 # REMOVE THIS CHUNK IN THE FINAL VERSION
 ##############################################################
 
@@ -92,9 +120,10 @@ testing_dataloader = DataLoader(testing_data, batch_size, shuffle=False)
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # We show here how to do it for LPD, but you can do it for any model in LION
 from LION.models.iterative_unrolled.LPD import LPD
+from LION.models.post_processing.FBPConvNet import FBPConvNet
 
 # If you are happy with the default parameters, you can just do
-model = LPD(experiment.geo).to(device)
+# model = FBPConvNet(experiment.geo).to(device)
 # Remember to use `experiment.geo` as an input, so the model knows the operator
 
 
@@ -119,7 +148,7 @@ loss_fcn = torch.nn.MSELoss()
 optimiser = "adam"
 
 # optimizer
-epochs = 1
+epochs = 10
 learning_rate = 1e-4
 betas = (0.9, 0.99)
 loss = "MSELoss"
@@ -153,7 +182,7 @@ solver.set_validation(
 )
 # Set testing. Second input has to be a function that accepts torch tensors and returns a scalar
 solver.set_testing(testing_dataloader, my_ssim)
-# set checkpointing procedure. It will automatically checkpoint your models.
+# set checkpointing procedure. It Falsewill automatically checkpoint your models.
 # If load_checkpoint=True, it will load the last checkpoint available in disk (useful for partial training loops in HPC)
 solver.set_checkpointing(
     savefolder,
@@ -168,7 +197,7 @@ solver.set_checkpointing(
 solver.train(epochs)
 
 # delete checkpoints if finished
-solver.clean_checkpoints()
+# solver.clean_checkpoints()
 
 # save final result
 solver.save_final_results(final_result_fname)
@@ -185,6 +214,11 @@ plt.savefig("loss.png")
 # if verbose it will print mean+std
 result_vals_nparray = solver.test()
 
+import numpy as np
+
+print(np.mean(result_vals_nparray))
+
+exit()
 #%% 10 - Non-ML recon
 ### ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # these are pre-made for you
