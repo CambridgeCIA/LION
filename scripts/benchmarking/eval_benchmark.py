@@ -14,6 +14,7 @@ import torch.utils.data as data_utils
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_benchmarking_experiments as ct_benchmarking
 
+
 # Just a temporary SSIM that takes troch tensors (will be added to LION at some point)
 def my_ssim(x: torch.tensor, y: torch.tensor, data_range=None):
     x = x.cpu().numpy().squeeze()
@@ -84,12 +85,12 @@ with torch.no_grad():
     for index, (data, target) in enumerate(testing_dataloader):
         # model
         output = model(data.to(device))
-        test_ssim[index] = my_ssim(output, target.to(device))
-        test_psnr[index] = my_psnr(output, target.to(device))
+        test_ssim[index] = my_ssim(target, output)
+        test_psnr[index] = my_psnr(target, output)
         # standard algo:
         recon = fdk(op, data[0].to(device))
-        fdk_ssim[index] = my_ssim(recon, target.to(device))
-        fdk_psnr[index] = my_psnr(recon, target.to(device))
+        fdk_ssim[index] = my_ssim(target, recon)
+        fdk_psnr[index] = my_psnr(target, recon)
 
 print(f"Testing SSIM: {test_ssim.mean()} +- {test_ssim.std()}")
 print(f"FDK SSIM: {fdk_ssim.mean()} +- {fdk_ssim.std()}")
