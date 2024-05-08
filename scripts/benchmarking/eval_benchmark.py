@@ -35,18 +35,18 @@ def my_psnr(x: torch.tensor, y: torch.tensor, data_range=None):
     return psnr(x, y, data_range=data_range)
 
 
-device = torch.device("cuda:3")
+device = torch.device("cuda:2")
 
 
 savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
 # use min validation, or final result, whicever you prefer
-model_name = "LPD_experiment_name.pth"
+model_name = "FBPMSDnet_FullDataCTRecon_check_0030.pt"
 
-from LION.models.iterative_unrolled.LPD import LPD
+from LION.models.post_processing.FBPMSDNet import FBPMS_D
 
-model, options, data = LPD.load(savefolder.joinpath(model_name))
+model, options, data = FBPMS_D.load(savefolder.joinpath(model_name))
 model.to(device)
-
+model.eval()
 experiment = ct_benchmarking.FullDataCTRecon()
 # Limited angle
 # experiment = ct_benchmarking.LimitedAngle150CTRecon()
@@ -119,7 +119,7 @@ import matplotlib.pyplot as plt
 # Display options
 # This is the scale of the error plot w.r.t. the image DISPLAY. Not data, DISPLAY!
 pctg_error = 0.05  # 5%
-
+max_val = 0.010
 ########################################################
 # Just plot code from now one
 ########################################################
@@ -135,17 +135,17 @@ plt.subplot(231)
 plt.imshow(target.detach().cpu().numpy().squeeze(), cmap="gray")
 plt.title("Ground truth")
 plt.axis("off")
-plt.clim(0, 0.015)
+plt.clim(0, max_val)
 plt.subplot(232)
 plt.imshow(recon.detach().cpu().numpy().squeeze(), cmap="gray")
 plt.title("FDK, PSNR: {:.2f}".format(fdk_psnr[max_idx]))
 plt.axis("off")
 
-plt.clim(0, 0.015)
+plt.clim(0, max_val)
 plt.subplot(233)
 plt.imshow(output.detach().cpu().numpy().squeeze(), cmap="gray")
 plt.title(f"{type(model).__name__}, PSNR: {test_psnr[max_idx]:.2f}")
-plt.clim(0, 0.015)
+plt.clim(0, max_val)
 plt.axis("off")
 
 plt.subplot(235)
@@ -156,9 +156,9 @@ plt.imshow(
 plt.title(f"FDK - GT")
 plt.axis("off")
 cbar = plt.colorbar(fraction=0.046, pad=0.04)
-plt.clim(-0.015 * pctg_error, 0.015 * pctg_error)
+plt.clim(-max_val * pctg_error, max_val * pctg_error)
 cbar.set_ticks(
-    [-0.015 * pctg_error, 0, 0.015 * pctg_error],
+    [-max_val * pctg_error, 0, max_val * pctg_error],
     labels=[f"-{pctg_error*100:.2f}%", "0", f"{pctg_error*100:.2f}%"],
 )
 cbar.ax.tick_params(labelsize=5)
@@ -171,9 +171,9 @@ plt.imshow(
 plt.title(f"{type(model).__name__} - GT")
 plt.axis("off")
 cbar = plt.colorbar(fraction=0.046, pad=0.04)
-plt.clim(-0.015 * pctg_error, 0.015 * pctg_error)
+plt.clim(-max_val * pctg_error, max_val * pctg_error)
 cbar.set_ticks(
-    [-0.015 * pctg_error, 0, 0.015 * pctg_error],
+    [-max_val * pctg_error, 0, max_val * pctg_error],
     labels=[f"-{pctg_error*100:.2f}%", "0", f"{pctg_error*100:.2f}%"],
 )
 cbar.ax.tick_params(labelsize=5)
@@ -195,17 +195,17 @@ plt.subplot(231)
 plt.imshow(target.detach().cpu().numpy().squeeze(), cmap="gray")
 plt.title("Ground truth")
 plt.axis("off")
-plt.clim(0, 0.015)
+plt.clim(0, max_val)
 plt.subplot(232)
 plt.imshow(recon.detach().cpu().numpy().squeeze(), cmap="gray")
 plt.title("FDK, PSNR: {:.2f}".format(fdk_psnr[min_idx]))
 plt.axis("off")
 
-plt.clim(0, 0.015)
+plt.clim(0, max_val)
 plt.subplot(233)
 plt.imshow(output.detach().cpu().numpy().squeeze(), cmap="gray")
 plt.title(f"{type(model).__name__}, PSNR: {test_psnr[min_idx]:.2f}")
-plt.clim(0, 0.015)
+plt.clim(0, max_val)
 plt.axis("off")
 
 plt.subplot(235)
@@ -216,9 +216,9 @@ plt.imshow(
 plt.title(f"FDK - GT")
 plt.axis("off")
 cbar = plt.colorbar(fraction=0.046, pad=0.04)
-plt.clim(-0.015 * pctg_error, 0.015 * pctg_error)
+plt.clim(-max_val * pctg_error, max_val * pctg_error)
 cbar.set_ticks(
-    [-0.015 * pctg_error, 0, 0.015 * pctg_error],
+    [-max_val * pctg_error, 0, max_val * pctg_error],
     labels=[f"-{pctg_error*100:.2f}%", "0", f"{pctg_error*100:.2f}%"],
 )
 cbar.ax.tick_params(labelsize=5)
@@ -231,9 +231,9 @@ plt.imshow(
 plt.title(f"{type(model).__name__} - GT")
 plt.axis("off")
 cbar = plt.colorbar(fraction=0.046, pad=0.04)
-plt.clim(-0.015 * pctg_error, 0.015 * pctg_error)
+plt.clim(-max_val * pctg_error, max_val * pctg_error)
 cbar.set_ticks(
-    [-0.015 * pctg_error, 0, 0.015 * pctg_error],
+    [-max_val * pctg_error, 0, max_val * pctg_error],
     labels=[f"-{pctg_error*100:.2f}%", "0", f"{pctg_error*100:.2f}%"],
 )
 cbar.ax.tick_params(labelsize=5)
@@ -253,17 +253,17 @@ plt.subplot(231)
 plt.imshow(target.detach().cpu().numpy().squeeze(), cmap="gray")
 plt.title("Ground truth")
 plt.axis("off")
-plt.clim(0, 0.015)
+plt.clim(0, max_val)
 plt.subplot(232)
 plt.imshow(recon.detach().cpu().numpy().squeeze(), cmap="gray")
 plt.title("FDK, PSNR: {:.2f}".format(fdk_psnr[mean_idx]))
 plt.axis("off")
 
-plt.clim(0, 0.015)
+plt.clim(0, max_val)
 plt.subplot(233)
 plt.imshow(output.detach().cpu().numpy().squeeze(), cmap="gray")
 plt.title(f"{type(model).__name__}, PSNR: {test_psnr[mean_idx]:.2f}")
-plt.clim(0, 0.015)
+plt.clim(0, max_val)
 plt.axis("off")
 
 plt.subplot(235)
@@ -274,9 +274,9 @@ plt.imshow(
 plt.title(f"FDK - GT")
 plt.axis("off")
 cbar = plt.colorbar(fraction=0.046, pad=0.04)
-plt.clim(-0.015 * pctg_error, 0.015 * pctg_error)
+plt.clim(-max_val * pctg_error, max_val * pctg_error)
 cbar.set_ticks(
-    [-0.015 * pctg_error, 0, 0.015 * pctg_error],
+    [-max_val * pctg_error, 0, max_val * pctg_error],
     labels=[f"-{pctg_error*100:.2f}%", "0", f"{pctg_error*100:.2f}%"],
 )
 cbar.ax.tick_params(labelsize=5)
@@ -289,9 +289,9 @@ plt.imshow(
 plt.title(f"{type(model).__name__} - GT")
 plt.axis("off")
 cbar = plt.colorbar(fraction=0.046, pad=0.04)
-plt.clim(-0.015 * pctg_error, 0.015 * pctg_error)
+plt.clim(-max_val * pctg_error, max_val * pctg_error)
 cbar.set_ticks(
-    [-0.015 * pctg_error, 0, 0.015 * pctg_error],
+    [-max_val * pctg_error, 0, max_val * pctg_error],
     labels=[f"-{pctg_error*100:.2f}%", "0", f"{pctg_error*100:.2f}%"],
 )
 cbar.ax.tick_params(labelsize=5)
