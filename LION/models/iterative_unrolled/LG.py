@@ -1,8 +1,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author: Max Kiss
-# Modifications: Ander Biguri
+# Authors: Zak Shumaylov, Max Kiss, Ander Biguri
 # Based on: https://arxiv.org/pdf/1704.04058.pdf
 # =============================================================================
 
@@ -77,6 +76,33 @@ class LG(LIONmodel.LIONmodel):
         LG_params.n_iters = 5
 
         return LG_params
+
+    @staticmethod
+    def cite(cite_format="MLA"):
+        if cite_format == "MLA":
+            print("Adler, Jonas, and Öktem, Ozan.")
+            print(
+                '"Solving ill-posed inverse problems using iterative deep neural networks."'
+            )
+            print("Inverse Problems")
+            print("33.12 (2017): 124007.")
+        elif cite_format == "bib":
+            string = """
+            @article{adler2018learned,
+            title={Learned primal-dual reconstruction},
+            author={Adler, Jonas and {\"O}ktem, Ozan},
+            journal={IEEE transactions on medical imaging},
+            volume={37},
+            number={6},
+            pages={1322--1332},
+            year={2018},
+            publisher={IEEE}
+            }"""
+            print(string)
+        else:
+            raise AttributeError(
+                'cite_format not understood, only "MLA" and "bib" supported'
+            )
 
     def gradientTVnorm2D(self, f):
         Gx = torch.diff(f, dim=2)
