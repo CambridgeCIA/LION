@@ -35,7 +35,15 @@ import pathlib
 
 
 class LIONsolver(ABC):
-    def __init__(self, model, optimizer, loss_fn, optimizer_params, verbose) -> None:
+    def __init__(
+        self,
+        model,
+        optimizer,
+        loss_fn,
+        optimizer_params,
+        verbose,
+        model_regularization=None,
+    ) -> None:
         super().__init__()
         __metaclass__ = ABCMeta  # make class abstract.
 
@@ -61,7 +69,7 @@ class LIONsolver(ABC):
         self.checkpoint_fname = optimizer_params.checkpoint_fname
         self.validation_fname = optimizer_params.validation_fname
         self.verbose = verbose
-
+        self.model_regularization = model_regularization
         self.metadata = LIONParameter()
         self.dataset_param = LIONParameter()
 
@@ -267,6 +275,15 @@ class LIONsolver(ABC):
             verbose=verbose,
             default=True,
         )
+        # Test 16: is teh model regularization set?
+        return_code = self.__check_attribute(
+            "model_regularization",
+            expected_type=nn.Module,
+            error=False,
+            autofill=False,
+            verbose=verbose,
+        )
+
         self.verbose = verbose
 
         return return_code

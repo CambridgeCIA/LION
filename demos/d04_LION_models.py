@@ -166,7 +166,7 @@ class DummyModel(LIONmodel):
 
     # You must define this method
     @staticmethod
-    def defeult_parameters():
+    def default_parameters():
         param = Parameter()
         param.channel_in = 1
         param.channel_out = 1

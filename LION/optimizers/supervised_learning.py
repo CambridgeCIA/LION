@@ -13,9 +13,19 @@ from tqdm import tqdm
 
 
 class supervisedSolver(LIONsolver):
-    def __init__(self, model, optimizer, loss_fn, optimizer_params=None, verbose=True):
+    def __init__(
+        self,
+        model,
+        optimizer,
+        loss_fn,
+        optimizer_params=None,
+        verbose=True,
+        model_regularization=None,
+    ):
 
-        super().__init__(model, optimizer, loss_fn, optimizer_params, verbose)
+        super().__init__(
+            model, optimizer, loss_fn, optimizer_params, verbose, model_regularization
+        )
 
     @staticmethod
     def default_parameters():
@@ -47,7 +57,12 @@ class supervisedSolver(LIONsolver):
         # Forward pass
         output = self.model(data)
         # Compute loss
-        self.loss = self.loss_fn(output, target)
+        if self.model_regularization is not None:
+            self.loss = self.loss_fn(output, target) + self.model_regularization(
+                self.model
+            )
+        else:
+            self.loss = self.loss_fn(output, target)
         # Update optimizer and model
         self.loss.backward()
         self.optimizer.step()
@@ -81,7 +96,7 @@ class supervisedSolver(LIONsolver):
         ):
             with torch.no_grad():
                 output = self.model(data.to(self.device))
-                validation_loss += self.validation_fn(output, target.to(self.device))
+                validation_loss = self.validation_fn(output, target.to(self.device))
 
         # return to train if it was in train
         if status:
@@ -97,7 +112,7 @@ class supervisedSolver(LIONsolver):
             self.validation_loss[epoch] = self.validate()
             if self.verbose:
                 print(
-                    f"Epoch {epoch} - Training loss: {self.train_loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
+                    f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
                 )
             if (
                 self.validation_fname is not None
@@ -106,7 +121,7 @@ class supervisedSolver(LIONsolver):
                 self.save_validation(self.validation_fname, epoch)
 
         elif self.verbose:
-            print(f"Epoch {epoch} - Training loss: {self.train_loss[epoch]}")
+            print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
         elif self.validation_freq is not None:
             self.validation_loss[epoch] = self.validate()
 

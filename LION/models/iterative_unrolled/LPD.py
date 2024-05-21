@@ -86,7 +86,7 @@ class RegProximal(nn.Module):
 
 
 class LPD(LIONmodel.LIONmodel):
-    """Learn Primal Dual network"""
+    """Learned Primal Dual network"""
 
     def __init__(
         self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
