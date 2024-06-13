@@ -13,3 +13,5 @@ LION.egg-info
 dist
 
 example.py
+
+wandb

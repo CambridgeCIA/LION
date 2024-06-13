@@ -18,7 +18,6 @@ import numpy as np
 import wandb
 from LION.utils.math import power_method
 
-
 from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
 # Just a temporary SSIM that takes troch tensors (will be added to LION at some point)
@@ -49,156 +48,57 @@ def my_psnr(x: torch.tensor, y: torch.tensor):
         return np.array(vals)
 
 
-class Positive(nn.Module):
-    def forward(self, X):
-        return torch.clip(X, min=0.0)
+class network(nn.Module):
+    def __init__(self,n_chan=1):
+        super(network, self).__init__()
 
-
-class ICNN_layer(nn.Module):
-    def __init__(self, channels, kernel_size=5, stride=1, relu_type="LeakyReLU"):
-        super().__init__()
-
-        # The paper diagram is in color, channels are described by "blue" and "orange"
-        self.blue = nn.Conv2d(
-            in_channels=channels,
-            out_channels=channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding="same",
-            bias=False,
+        self.leaky_relu = nn.LeakyReLU()
+        self.convnet = nn.Sequential(
+            nn.Conv2d(n_chan, 16, kernel_size=(5, 5),padding=2),
+            self.leaky_relu,
+            nn.Conv2d(16, 32, kernel_size=(5, 5),padding=2),
+            self.leaky_relu,
+            nn.Conv2d(32, 32, kernel_size=(5, 5),padding=2,stride=2),
+            self.leaky_relu,
+            nn.Conv2d(32, 64, kernel_size=(5, 5),padding=2,stride=2),
+            self.leaky_relu,
+            nn.Conv2d(64, 64, kernel_size=(5, 5),padding=2,stride=2),
+            self.leaky_relu,
+            nn.Conv2d(64, 128, kernel_size=(5, 5),padding=2,stride=2),
+            self.leaky_relu
         )
-        P.register_parametrization(self.blue, "weight", Positive())
-
-        self.orange = nn.Conv2d(
-            in_channels=1,
-            out_channels=channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding="same",
-            bias=True,
+        size=1024
+        self.fc = nn.Sequential(
+            nn.Linear(128*(size//2**4)**2, 256),
+            self.leaky_relu,
+            nn.Linear(256, 1)
         )
-        if relu_type == "LeakyReLU":
-            self.activation = nn.LeakyReLU(negative_slope=0.2)
-        else:
-            raise ValueError(
-                "Only Leaky ReLU supported (needs to be a convex and monotonically nondecreasin fun)"
-            )
 
-    def forward(self, z, x0):
+    def forward(self, image):
+        output = self.convnet(image)
+        output = output.view(image.size(0), -1)
+        output = self.fc(output)
+        return output
 
-        res = self.blue(z) + self.orange(x0)
-        res = self.activation(res)
-        return res
-
-
-###An L2 tern with learnable weight
-# define a network for training the l2 term
-class L2net(nn.Module):
-    def __init__(self):
-        super(L2net, self).__init__()
-
-        self.l2_penalty = nn.Parameter((-36.0) * torch.ones(1))
-
-    def forward(self, x):
-        l2_term = torch.sum(x.view(x.size(0), -1) ** 2, dim=1)
-        out = ((torch.nn.functional.softplus(self.l2_penalty)) * l2_term).view(
-            x.size(0), -1
-        )
-        return out
-
-
-class ACR(LIONmodel.LIONmodel):
+class AR(LIONmodel.LIONmodel):
     def __init__(self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None):
 
         super().__init__(model_parameters,geometry_parameters)
         self._make_operator()
+        
+        self.network = network()
         # First Conv
-        self.first_layer = nn.Conv2d(
-            in_channels=1,
-            out_channels=model_parameters.channels,
-            kernel_size=model_parameters.kernel_size,
-            stride=model_parameters.stride,
-            padding="same",
-            bias=True,
-        )
-
-        if model_parameters.relu_type == "LeakyReLU":
-            self.first_activation = nn.LeakyReLU(negative_slope=0.2)
-        else:
-            raise ValueError(
-                "Only Leaky ReLU supported (needs to be a convex and monotonically nondecreasin fun)"
-            )
-
-        for i in range(model_parameters.layers):
-            self.add_module(
-                f"ICNN_layer_{i}",
-                ICNN_layer(
-                    channels=model_parameters.channels,
-                    kernel_size=model_parameters.kernel_size,
-                    stride=model_parameters.stride,
-                    relu_type=model_parameters.relu_type,
-                ),
-            )
-
-        self.last_layer = nn.Conv2d(
-            in_channels=model_parameters.channels,
-            out_channels=1,
-            kernel_size=model_parameters.kernel_size,
-            stride=model_parameters.stride,
-            padding="same",
-            bias=False,
-        )
-        P.register_parametrization(self.last_layer, "weight", Positive())
-
-        self.pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.L2 = L2net()
-        self.initialize_weights()
         self.estimate_lambda()
+        self.step_amounts = torch.tensor([150.0])
         self.op_norm = power_method(self.op)
-        self.model_parameters.step_size = 1/(self.op_norm)**2
-
-    # a weight initialization routine for the ICNN
-    def initialize_weights(self, min_val=0.0, max_val=1e-3):
-        device = torch.cuda.current_device()
-        for i in range(self.model_parameters.layers):
-            block = getattr(self, f"ICNN_layer_{i}")
-            block.blue.weight.data = min_val + (max_val - min_val) * torch.rand_like(block.blue.weight.data)
-        self.last_layer.weight.data = min_val + (max_val - min_val) * torch.rand_like(self.last_layer.weight.data)
-        return self
-    
-    def improved_initialize_weights(self, min_val=0.0, max_val=0.001):
-        ###
-        ### This is based on a recent paper https://openreview.net/pdf?id=pWZ97hUQtQ
-        ###
-        # convex_init = ConvexInitialiser()
-        # w1, b1 = icnn[1].parameters()
-        # convex_init(w1, b1)
-        # assert torch.all(w1 >= 0) and b1.var() > 0
-        device = torch.cuda.current_device()
-        for i in range(self.model_parameters.layers):
-            block = getattr(self, f"ICNN_layer_{i}")
-            block.blue.weight.data = min_val + (max_val - min_val) * torch.rand(
-                self.model_parameters.channels,
-                self.model_parameters.channels,
-                self.model_parameters.kernel_size,
-                self.model_parameters.kernel_size,
-            ).to(device)
-        self.last_layer.weight.data = min_val + (max_val - min_val) * torch.rand_like(self.last_layer.weight.data)
-        return self
+        self.model_parameters.step_size = 0.2/(self.op_norm)**2
 
     def forward(self, x):
         # x = fdk(self.op, x)
         x = self.normalise(x)
-        z = self.first_layer(x)
-        z = self.first_activation(z)
-        for i in range(self.model_parameters.layers):
-            layer = primal_module = getattr(self, f"ICNN_layer_{i}")
-            z = layer(z, x)
-            
-        z = self.last_layer(z)
         # print(self.pool(z).mean(),self.L2(z).mean())
-        return self.pool(z).reshape(-1,1) + self.L2(z)
-    
+        return self.network(x).reshape(-1,1)# + self.L2(z)
+        
     def estimate_lambda(self,dataset=None):
         self.lamb=1.0
         if dataset is None: self.lamb=1.0
@@ -206,9 +106,11 @@ class ACR(LIONmodel.LIONmodel):
             residual = 0.0
             for index, (data, target) in enumerate(dataset):
                 residual += torch.norm(self.AT(self.A(target) - data),dim=(2,3)).mean()
+                # residual += torch.sqrt(((self.AT(self.A(target) - data))**2).sum())
             self.lamb = residual.mean()/len(dataset)
         print('Estimated lambda: ' + str(self.lamb))
     
+       
        
     
     # def output(self, x):
@@ -220,6 +122,7 @@ class ACR(LIONmodel.LIONmodel):
       ### What is the difference between .sum() and .mean()??? idfk but PSNR is lower when I do .sum
       
     def output(self,y,truth=None):
+        # wandb.log({'Eearly_stopping_steps': self.step_amounts.mean().item(), 'Eearly_stopping_steps_std': self.step_amounts.std().item()})
         x0=[]
         device = torch.cuda.current_device()
         for i in range(y.shape[0]):
@@ -230,7 +133,7 @@ class ACR(LIONmodel.LIONmodel):
         # print(my_psnr(truth.detach().to(device),x.detach()).mean(),my_ssim(truth.detach().to(device),x.detach()).mean())
         x=torch.nn.Parameter(x)#.requires_grad_(True)
 
-        optimizer = torch.optim.SGD([x], lr=self.model_parameters.step_size, momentum=self.model_parameters.momentum)
+        optimizer = torch.optim.SGD([x], lr=self.model_parameters.step_size, momentum=0.5)#self.model_parameters.momentum)
         lr = self.model_parameters.step_size
         prevpsn=0
         curpsn=0
@@ -247,6 +150,7 @@ class ACR(LIONmodel.LIONmodel):
             energy.backward()
             while(self.var_energy(x-x.grad*lr,y) > energy - 0.5*lr*(x.grad.norm(dim=(2,3))**2).mean()):
                 lr=self.model_parameters.beta_rate*lr
+                # print('decay')
             for g in optimizer.param_groups:
                 g['lr'] = lr
             # x.grad+=data_misfit_grad
@@ -260,11 +164,18 @@ class ACR(LIONmodel.LIONmodel):
         
             #     if(self.args.outp):
             #         print(j)
-            #     prevpsn=curpsn
-            #     curpsn=psnr
-            #     if(self.args.earlystop is True and curpsn<prevpsn):
-            #         writer.close()
-            #         return guess
+                prevpsn=curpsn
+                curpsn=psnr_val
+                # if(curpsn<prevpsn):
+                #     self.step_amounts = torch.cat((self.step_amounts,torch.tensor([j*1.0])))
+                #     return x.detach()
+            elif(j > self.step_amounts.mean().item()): 
+                # print('only for testing')
+                x.clamp(min=0.0)
+                return x.detach()
+            elif(lr * self.op_norm**2 < 1e-3):
+                x.clamp(min=0.0)
+                return x.detach()
             optimizer.step()
             x.clamp(min=0.0)
         return x.detach()
