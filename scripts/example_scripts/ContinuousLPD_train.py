@@ -2,6 +2,7 @@
 
 
 # %% Imports
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -21,23 +22,81 @@ import LION.experiments.ct_experiments as ct_experiments
 
 
 # %%
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Boolean value expected.")
+
+
+# %%
+# arguments for argparser
+parser = argparse.ArgumentParser()
+parser.add_argument("--geometry", type=str)
+parser.add_argument("--dose", type=str)
+parser.add_argument("--lr", type=float, default=1e-4)
+parser.add_argument("--second_order", type=str2bool)
+parser.add_argument("--instance_norm", type=str2bool)
+
+# %%
+args = parser.parse_args()
 # % Chose device:
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path(
-    "/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/"
-)
+if args.dose == "low":
+    savefolder = pathlib.Path(
+        "/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/"
+    )
+elif args.dose == "extreme_low":
+    savefolder = pathlib.Path(
+        "/home/cr661/rds/hpc-work/store/LION/trained_models/extreme_low_dose/"
+    )
+else:
+    raise ValueError("Dose not recognised")
 datafolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/")
-final_result_fname = savefolder.joinpath("ContinuousLPD_final_iterBS2smallLR_no_adjoint.pt")
-checkpoint_fname = savefolder.joinpath("ContinuousLPD_checkBS2smallLR_no_adjoint*.pt")
-validation_fname = savefolder.joinpath("ContinuousLPD_min_valBS2smallLR_no_adjoint.pt")
+final_result_fname = savefolder.joinpath(
+    f"ContinuousLPD_final_iterBS2smallerLR_no_adjoint_in{args.instance_norm}_{args.dose}_{args.geometry}.pt"
+)
+checkpoint_fname = savefolder.joinpath(
+    f"ContinuousLPD_checkBS2smallerLR_no_adjoint_in{args.instance_norm}_{args.dose}_{args.geometry}*.pt"
+)
+validation_fname = savefolder.joinpath(
+    f"ContinuousLPD_min_valBS2smallerLR_no_adjoint_in{args.instance_norm}_{args.dose}_{args.geometry}.pt"
+)
 #
 # %% Define experiment
-experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
-# experiment_params=ct_experiments.LowDoseCTRecon.default_parameters()
-# experiment_params.data_loader_params.max_num_slices_per_patient = 1 # default is 5
-# experiment = ct_experiments.LowDoseCTRecon(experiment_params=experiment_params, datafolder=datafolder)
+if args.geometry == "full":
+    if args.dose == "low":
+        experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+    elif args.dose == "extreme_low":
+        experiment = ct_experiments.ExtremeLowDoseCTRecon(datafolder=datafolder)
+    else:
+        raise ValueError("Dose not recognised")
+elif args.geometry == "limited_angle":
+    if args.dose == "low":
+        experiment = ct_experiments.LimitedAngleLowDoseCTRecon(datafolder=datafolder)
+    elif args.dose == "extreme_low":
+        experiment = ct_experiments.LimitedAngleExtremeLowDoseCTRecon(
+            datafolder=datafolder
+        )
+    else:
+        raise ValueError("Dose not recognised")
+elif args.geometry == "sparse_angle":
+    if args.dose == "low":
+        experiment = ct_experiments.SparseAngleLowDoseCTRecon(datafolder=datafolder)
+    elif args.dose == "extreme_low":
+        experiment = ct_experiments.SparseAngleExtremeLowDoseCTRecon(
+            datafolder=datafolder
+        )
+    else:
+        raise ValueError("Dose not recognised")
+else:
+    raise ValueError("Geometry not recognised")
 
 # %% Dataset
 lidc_dataset = experiment.get_training_dataset()
@@ -57,7 +116,13 @@ default_parameters = ContinuousLPD.default_parameters()
 default_parameters.step_size = None
 default_parameters.learned_step = True
 default_parameters.step_positive = True
-model = ContinuousLPD(experiment.geo, default_parameters).to(device)
+print(f"Training ContinuousLPD with second order: {args.second_order}")
+model = ContinuousLPD(
+    geometry_parameters=experiment.geo,
+    model_parameters=default_parameters,
+    second_order=args.second_order,
+    instance_norm=args.instance_norm,
+).to(device)
 
 
 # %% Optimizer
@@ -69,7 +134,7 @@ train_param.optimiser = "adam"
 
 # optimizer
 train_param.epochs = 100
-train_param.learning_rate = 1e-4
+train_param.learning_rate = args.lr
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
 optimiser = torch.optim.Adam(
@@ -139,15 +204,15 @@ for epoch in range(start_epoch, train_param.epochs):
         )
 
     # Checkpoint every 10 iters anyway
-    if epoch % 10 == 0:
-        model.save_checkpoint(
-            pathlib.Path(str(checkpoint_fname).replace("*", f"{epoch+1:04d}")),
-            epoch + 1,
-            total_loss,
-            optimiser,
-            train_param,
-            dataset=experiment.param,
-        )
+    # if epoch % 10 == 0:
+    model.save_checkpoint(
+        pathlib.Path(str(checkpoint_fname).replace("*", f"{epoch+1:04d}")),
+        epoch + 1,
+        total_loss,
+        optimiser,
+        train_param,
+        dataset=experiment.param,
+    )
 
 
 model.save(
