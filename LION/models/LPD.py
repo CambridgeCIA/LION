@@ -32,7 +32,7 @@ class dataProximal(nn.Module):
     CNN block of the dual variable
     """
 
-    def __init__(self, layers, channels):
+    def __init__(self, layers, channels, instance_norm=False):
 
         super().__init__()
         # imput parsing
@@ -45,12 +45,18 @@ class dataProximal(nn.Module):
         # convolutional layers
         layer_list = []
         for ii in range(layers):
-            layer_list.append(
-                nn.Conv2d(channels[ii], channels[ii + 1], 3, padding=1, bias=False)
-            )
-            # Have PReLUs all the way except the last
+            if instance_norm:
+                layer_list.append(nn.InstanceNorm2d(channels[ii]))
+            # PReLUs and 3x3 kernels all the way except the last
             if ii < layers - 1:
-                layer_list.append(torch.nn.PReLU())
+                layer_list.append(
+                    nn.Conv2d(channels[ii], channels[ii + 1], 3, padding=1, bias=False)
+                )
+                layer_list.append(nn.PReLU())
+            else:
+                layer_list.append(
+                    nn.Conv2d(channels[ii], channels[ii + 1], 1, padding=0, bias=False)
+                )
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, x):
@@ -62,7 +68,7 @@ class RegProximal(nn.Module):
     CNN block of the primal variable
     """
 
-    def __init__(self, layers, channels):
+    def __init__(self, layers, channels, instance_norm=False):
         super().__init__()
         if len(channels) != layers + 1:
             raise ValueError(
@@ -73,12 +79,18 @@ class RegProximal(nn.Module):
 
         layer_list = []
         for ii in range(layers):
-            layer_list.append(
-                nn.Conv2d(channels[ii], channels[ii + 1], 3, padding=1, bias=False)
-            )
-            # Have PReLUs all the way except the last
+            if instance_norm:
+                layer_list.append(nn.InstanceNorm2d(channels[ii]))
+            # PReLUs and 3x3 kernels all the way except the last
             if ii < layers - 1:
-                layer_list.append(torch.nn.PReLU())
+                layer_list.append(
+                    nn.Conv2d(channels[ii], channels[ii + 1], 3, padding=1, bias=False)
+                )
+                layer_list.append(nn.PReLU())
+            else:
+                layer_list.append(
+                    nn.Conv2d(channels[ii], channels[ii + 1], 1, padding=0, bias=False)
+                )
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, x):
@@ -89,7 +101,10 @@ class LPD(LIONmodel.LIONmodel):
     """Learn Primal Dual network"""
 
     def __init__(
-        self, geometry_parameters: ct.Geometry, model_parameters: Parameter = None
+        self,
+        geometry_parameters: ct.Geometry,
+        model_parameters: Parameter = None,
+        instance_norm: bool = False,
     ):
 
         if geometry_parameters is None:
@@ -108,6 +123,7 @@ class LPD(LIONmodel.LIONmodel):
                 RegProximal(
                     layers=len(self.model_parameters.reg_channels) - 1,
                     channels=self.model_parameters.reg_channels,
+                    instance_norm=instance_norm,
                 ),
             )
             self.add_module(
@@ -115,6 +131,7 @@ class LPD(LIONmodel.LIONmodel):
                 dataProximal(
                     layers=len(self.model_parameters.data_channels) - 1,
                     channels=self.model_parameters.data_channels,
+                    instance_norm=instance_norm,
                 ),
             )
 
@@ -177,8 +194,8 @@ class LPD(LIONmodel.LIONmodel):
     def default_parameters():
         LPD_params = Parameter()
         LPD_params.n_iters = 10
-        LPD_params.data_channels = [7, 32, 32, 5]
-        LPD_params.reg_channels = [6, 32, 32, 5]
+        LPD_params.data_channels = [7, 32, 32, 32, 5]
+        LPD_params.reg_channels = [6, 32, 32, 32, 5]
         LPD_params.learned_step = False
         LPD_params.step_size = None
         LPD_params.step_positive = False
@@ -240,6 +257,7 @@ class LPD(LIONmodel.LIONmodel):
         f_primal = g.new_zeros(B, 5, *self.geo.image_shape[1:])
         for i in range(B):
             aux = fdk(self.op, g[i, 0])
+            aux = torch.clip(aux, min=0)
             for channel in range(5):
                 f_primal[i, channel] = aux
 
@@ -253,3 +271,92 @@ class LPD(LIONmodel.LIONmodel):
             f_primal = self.__primal_step(f_primal, update, primal_module)
 
         return f_primal[:, 0:1]
+    
+    @staticmethod
+    def _load_parameter_file(fname, supress_warnings=False):
+        # Load the actual parameters
+        ##############################
+        options = Parameter()
+        options.load(fname.with_suffix(".json"))
+        if hasattr(options, "geometry_parameters"):
+            options.geometry_parameters = ct.Geometry._init_from_parameter(
+                options.geometry_parameters
+            )
+        # Error check
+        ################################
+        # Check if model has been changed since save.
+        # if not hasattr(options, "commit_hash") and not supress_warnings:
+        #     warnings.warn(
+        #         "\nNo commit hash found. This model was not saved with the standard AItomotools function and it will likely fail to load.\n"
+        #     )
+        # else:
+        #     curr_commit_hash = ai_utils.get_git_revision_hash()
+        #     curr_class_path = cls.current_file()
+        #     curr_aitomomodel_path = Path(__file__)
+        #     if (
+        #         ai_utils.check_if_file_changed_git(
+        #             curr_class_path, options.commit_hash, curr_commit_hash
+        #         )
+        #         or ai_utils.check_if_file_changed_git(
+        #             curr_aitomomodel_path, options.commit_hash, curr_commit_hash
+        #         )
+        #         and not supress_warnings
+        #     ):
+        #         warnings.warn(
+        #             f"\nThe code for the model has changed since it was saved, loading it may fail. This model was saved in {options.commit_hash}\n"
+        #         )
+        return options
+    
+    @staticmethod
+    def _load_data(fname, supress_warnings=False):
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+        # Check compatible suffixes:
+        if fname.with_suffix(".pt").is_file():
+            fname = fname.with_suffix(".pt")
+        elif fname.with_suffix(".pth").is_file():
+            fname = fname.with_suffix(".pth")
+        # Load the actual pythorch saved data
+        data = torch.load(
+            fname,
+            map_location=torch.device(torch.cuda.current_device()),
+        )
+        if len(data) > 1 and not supress_warnings:
+            # this should be only 1 thing, but you may be loading a checkpoint or may have saved more data.  Its OK, but we warn.
+            warnings.warn(
+                "\nSaved file contains more than 1 object, but only model_state_dict is being loaded.\n Call load_checkpoint() to load checkpointed model.\n"
+            )
+        return data
+
+    @staticmethod
+    def load(fname, instance_norm=False, supress_warnings=False):
+        """
+        Function that loads a model from memory.
+        """
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+
+        options = LPD._load_parameter_file(fname)
+        # Check if model name matches the one that is loading it
+        # load data
+        data = LPD._load_data(fname)
+        # Some models need geometry, some others not.
+        # This initializes the model itself (cls)
+        if hasattr(options, "geometry_parameters"):
+            model = LPD(
+                model_parameters=options.model_parameters,
+                geometry_parameters=options.geometry_parameters,
+                instance_norm=instance_norm,
+            )
+        else:
+            model = LPD(
+                model_parameters=options.model_parameters, instance_norm=instance_norm
+            )
+
+        # Load the data into the model we created.
+        model.to(torch.cuda.current_device())
+        model.load_state_dict(data.pop("model_state_dict"))
+
+        return model, options, data
