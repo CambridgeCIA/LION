@@ -11,14 +11,16 @@ from LION.models import LIONmodel
 from LION.utils.math import power_method
 from LION.utils.parameter import Parameter
 import LION.CTtools.ct_geometry as ct
-#import LION.CTtools.ct_utils as ct_utils
-#import LION.utils.utils as ai_utils
+
+# import LION.CTtools.ct_utils as ct_utils
+# import LION.utils.utils as ai_utils
 
 import numpy as np
-#from pathlib import Path
-#import warnings
 
-#import tomosipo as ts
+from pathlib import Path
+import warnings
+
+# import tomosipo as ts
 from tomosipo.torch_support import to_autograd
 from ts_algorithms import fdk
 
@@ -33,7 +35,7 @@ class ConvODEFunc(nn.Module):
     First order ODE block
     """
 
-    def __init__(self, layers: int, channels: list):
+    def __init__(self, layers: int, channels: list, instance_norm: bool = False):
         super(ConvODEFunc, self).__init__()
         self.nfe = 0  # Number of function evaluations
         if len(channels) != layers + 1:
@@ -44,7 +46,8 @@ class ConvODEFunc(nn.Module):
             raise ValueError("At least one layer required")
         layer_list = []
         for ii in range(layers):
-            layer_list.append(nn.InstanceNorm2d(channels[ii]))
+            if instance_norm:
+                layer_list.append(nn.InstanceNorm2d(channels[ii]))
             # PReLUs and 3x3 kernels all the way except the last
             if ii < layers - 1:
                 layer_list.append(
@@ -67,17 +70,24 @@ class InitialVelocity(nn.Module):
     Initial velocity for second order ODE
     """
 
-    def __init__(self, channels: int):
+    def __init__(self, channels: int, instance_norm: bool = False):
         super(InitialVelocity, self).__init__()
-
-        self.initial_velocity = nn.Sequential(
-            nn.InstanceNorm2d(channels),
-            nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1),
-            nn.PReLU(),
-            nn.InstanceNorm2d(channels),
-            nn.Conv2d(channels, channels, kernel_size=1, stride=1, padding=0),
-            nn.PReLU(),
-        )
+        if instance_norm:
+            self.initial_velocity = nn.Sequential(
+                nn.InstanceNorm2d(channels),
+                nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1),
+                nn.PReLU(),
+                nn.InstanceNorm2d(channels),
+                nn.Conv2d(channels, channels, kernel_size=1, stride=1, padding=0),
+                nn.PReLU(),
+            )
+        else:
+            self.initial_velocity = nn.Sequential(
+                nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1),
+                nn.PReLU(),
+                nn.Conv2d(channels, channels, kernel_size=1, stride=1, padding=0),
+                nn.PReLU(),
+            )
 
     def forward(self, x0):
         out = self.initial_velocity(x0)
@@ -89,7 +99,7 @@ class ConvSODEFunc(nn.Module):
     Second order ODE block
     """
 
-    def __init__(self, layers: int, channels: list):
+    def __init__(self, layers: int, channels: list, instance_norm: bool = False):
         super(ConvSODEFunc, self).__init__()
         self.nfe = 0  # Number of function evaluations
         if len(channels) != layers + 1:
@@ -100,16 +110,21 @@ class ConvSODEFunc(nn.Module):
             raise ValueError("At least one layer required")
         layer_list = []
         for ii in range(layers):
-            layer_list.append(nn.InstanceNorm2d(channels[ii]))
+            if instance_norm:
+                layer_list.append(nn.InstanceNorm2d(channels[ii]))
             # PReLUs and 3x3 kernels all the way except the last
             if ii < layers - 1:
                 layer_list.append(
-                    nn.Conv2d(channels[ii], channels[ii + 1], 3, padding=1, bias=False)
+                    nn.Conv2d(
+                        channels[ii] * 2, channels[ii + 1] * 2, 3, padding=1, bias=False
+                    )
                 )
                 layer_list.append(nn.PReLU())
             else:
                 layer_list.append(
-                    nn.Conv2d(channels[ii], channels[ii + 1], 1, padding=0, bias=False)
+                    nn.Conv2d(
+                        channels[ii] * 2, channels[ii + 1] * 2, 1, padding=0, bias=False
+                    )
                 )
         self.block = nn.Sequential(*layer_list)
 
@@ -185,6 +200,7 @@ class ContinuousDataProximal(nn.Module):
         adjoint: bool = True,
         second_order: bool = False,
         solver: str = "rk4",
+        instance_norm: bool = False,
     ):
         """
         Args:
@@ -200,22 +216,32 @@ class ContinuousDataProximal(nn.Module):
         self.solver = solver
 
         if second_order:
-            self.initial_velocity = InitialVelocity(channels[0])
-            ode = ConvSODEFunc(layers=layers - 2, channels=channels[1:-1])
+            self.initial_velocity = InitialVelocity(
+                channels=channels[1], instance_norm=instance_norm
+            )
+            ode = ConvSODEFunc(
+                layers=layers - 2, channels=channels[1:-1], instance_norm=instance_norm
+            )
+            self.last_layer = nn.Conv2d(
+                in_channels=channels[-2] * 2, out_channels=channels[-1], kernel_size=1
+            )
         else:
-            ode = ConvODEFunc(layers=layers - 2, channels=channels[1:-1])
+            ode = ConvODEFunc(
+                layers=layers - 2, channels=channels[1:-1], instance_norm=instance_norm
+            )
+            self.last_layer = nn.Conv2d(
+                in_channels=channels[-2], out_channels=channels[-1], kernel_size=1
+            )
         self.odeblock = ODEBlock(ode, tol=tol, adjoint=adjoint)
         self.first_layer = nn.Conv2d(
             in_channels=channels[0], out_channels=channels[1], kernel_size=1
         )
-        self.last_layer = nn.Conv2d(
-            in_channels=channels[-2], out_channels=channels[-1], kernel_size=1
-        )
 
     def forward(self, x):
+        x = self.first_layer(x)
         if self.second_order:
             x = self.initial_velocity(x)
-        x = self.first_layer(x)
+        print(x.shape)
         x = self.odeblock(x, solver=self.solver)
         return self.last_layer(x)
 
@@ -226,9 +252,10 @@ class ContinuousRegProximal(nn.Module):
         layers: int,
         channels: list,
         tol: float = 1e-3,
-        adjoint: bool = True,
+        adjoint: bool = False,
         second_order: bool = False,
         solver: str = "rk4",
+        instance_norm: bool = False,
     ):
         """
         layers(int): number of layers
@@ -243,22 +270,31 @@ class ContinuousRegProximal(nn.Module):
         self.solver = solver
 
         if second_order:
-            self.initial_velocity = InitialVelocity(channels[0])
-            ode = ConvSODEFunc(layers=layers - 2, channels=channels[1:-1])
+            self.initial_velocity = InitialVelocity(
+                channels=channels[1], instance_norm=instance_norm
+            )
+            ode = ConvSODEFunc(
+                layers=layers - 2, channels=channels[1:-1], instance_norm=instance_norm
+            )
+            self.last_layer = nn.Conv2d(
+                in_channels=channels[-2] * 2, out_channels=channels[-1], kernel_size=1
+            )
         else:
-            ode = ConvODEFunc(layers=layers - 2, channels=channels[1:-1])
+            ode = ConvODEFunc(
+                layers=layers - 2, channels=channels[1:-1], instance_norm=instance_norm
+            )
+            self.last_layer = nn.Conv2d(
+                in_channels=channels[-2], out_channels=channels[-1], kernel_size=1
+            )
         self.odeblock = ODEBlock(ode, tol=tol, adjoint=adjoint)
         self.first_layer = nn.Conv2d(
             in_channels=channels[0], out_channels=channels[1], kernel_size=1
         )
-        self.last_layer = nn.Conv2d(
-            in_channels=channels[-2], out_channels=channels[-1], kernel_size=1
-        )
 
     def forward(self, x):
+        x = self.first_layer(x)
         if self.second_order:
             x = self.initial_velocity(x)
-        x = self.first_layer(x)
         x = self.odeblock(x, solver=self.solver)
         return self.last_layer(x)
 
@@ -267,7 +303,11 @@ class ContinuousLPD(LIONmodel.LIONmodel):
     """Learn Primal Dual network with continuous blocks"""
 
     def __init__(
-        self, geometry_parameters: ct.Geometry, model_parameters: Parameter = None
+        self,
+        geometry_parameters: ct.Geometry,
+        model_parameters: Parameter = None,
+        second_order: bool = False,
+        instance_norm: bool = False,
     ):
         if geometry_parameters is None:
             raise ValueError("Geometry parameters required. ")
@@ -285,6 +325,8 @@ class ContinuousLPD(LIONmodel.LIONmodel):
                 ContinuousRegProximal(
                     layers=len(self.model_parameters.reg_channels) - 1,
                     channels=self.model_parameters.reg_channels,
+                    second_order=second_order,
+                    instance_norm=instance_norm,
                 ),
             )
             self.add_module(
@@ -292,6 +334,8 @@ class ContinuousLPD(LIONmodel.LIONmodel):
                 ContinuousDataProximal(
                     layers=len(self.model_parameters.data_channels) - 1,
                     channels=self.model_parameters.data_channels,
+                    second_order=second_order,
+                    instance_norm=instance_norm,
                 ),
             )
 
@@ -418,6 +462,7 @@ class ContinuousLPD(LIONmodel.LIONmodel):
         f_primal = g.new_zeros(B, 5, *self.geo.image_shape[1:])
         for i in range(B):
             aux = fdk(self.op, g[i, 0])
+            aux = torch.clip(aux, min=0)
             for channel in range(5):
                 f_primal[i, channel] = aux
 
@@ -431,3 +476,92 @@ class ContinuousLPD(LIONmodel.LIONmodel):
             f_primal = self.__primal_step(f_primal, update, primal_module)
 
         return f_primal[:, 0:1]
+    
+    @staticmethod
+    def _load_parameter_file(fname, supress_warnings=False):
+        # Load the actual parameters
+        ##############################
+        options = Parameter()
+        options.load(fname.with_suffix(".json"))
+        if hasattr(options, "geometry_parameters"):
+            options.geometry_parameters = ct.Geometry._init_from_parameter(
+                options.geometry_parameters
+            )
+        # Error check
+        ################################
+        # Check if model has been changed since save.
+        # if not hasattr(options, "commit_hash") and not supress_warnings:
+        #     warnings.warn(
+        #         "\nNo commit hash found. This model was not saved with the standard AItomotools function and it will likely fail to load.\n"
+        #     )
+        # else:
+        #     curr_commit_hash = ai_utils.get_git_revision_hash()
+        #     curr_class_path = cls.current_file()
+        #     curr_aitomomodel_path = Path(__file__)
+        #     if (
+        #         ai_utils.check_if_file_changed_git(
+        #             curr_class_path, options.commit_hash, curr_commit_hash
+        #         )
+        #         or ai_utils.check_if_file_changed_git(
+        #             curr_aitomomodel_path, options.commit_hash, curr_commit_hash
+        #         )
+        #         and not supress_warnings
+        #     ):
+        #         warnings.warn(
+        #             f"\nThe code for the model has changed since it was saved, loading it may fail. This model was saved in {options.commit_hash}\n"
+        #         )
+        return options
+    
+    @staticmethod
+    def _load_data(fname, supress_warnings=False):
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+        # Check compatible suffixes:
+        if fname.with_suffix(".pt").is_file():
+            fname = fname.with_suffix(".pt")
+        elif fname.with_suffix(".pth").is_file():
+            fname = fname.with_suffix(".pth")
+        # Load the actual pythorch saved data
+        data = torch.load(
+            fname,
+            map_location=torch.device(torch.cuda.current_device()),
+        )
+        if len(data) > 1 and not supress_warnings:
+            # this should be only 1 thing, but you may be loading a checkpoint or may have saved more data.  Its OK, but we warn.
+            warnings.warn(
+                "\nSaved file contains more than 1 object, but only model_state_dict is being loaded.\n Call load_checkpoint() to load checkpointed model.\n"
+            )
+        return data
+
+    @staticmethod
+    def load(fname, instance_norm=False, supress_warnings=False):
+        """
+        Function that loads a model from memory.
+        """
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+
+        options = ContinuousLPD._load_parameter_file(fname)
+        # Check if model name matches the one that is loading it
+        # load data
+        data = ContinuousLPD._load_data(fname)
+        # Some models need geometry, some others not.
+        # This initializes the model itself (cls)
+        if hasattr(options, "geometry_parameters"):
+            model = ContinuousLPD(
+                model_parameters=options.model_parameters,
+                geometry_parameters=options.geometry_parameters,
+                instance_norm=instance_norm,
+            )
+        else:
+            model = ContinuousLPD(
+                model_parameters=options.model_parameters, instance_norm=instance_norm
+            )
+
+        # Load the data into the model we created.
+        model.to(torch.cuda.current_device())
+        model.load_state_dict(data.pop("model_state_dict"))
+
+        return model, options, data
