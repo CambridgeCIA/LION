@@ -1,6 +1,7 @@
-#%% This example shows how to train FBPConvNet for full angle, noisy measurements.
+# %% This example shows how to train FBPConvNet for full angle, noisy measurements.
 
-#%% Imports
+# %% Imports
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -18,36 +19,92 @@ from ts_algorithms import fdk
 import LION.experiments.ct_experiments as ct_experiments
 
 
-#%%
+# %%
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Boolean value expected.")
+
+
+# %%
+# arguments for argparser
+parser = argparse.ArgumentParser()
+parser.add_argument("--geometry", type=str)
+parser.add_argument("--dose", type=str)
+parser.add_argument("--instance_norm", type=str2bool)
+
+# %%
+args = parser.parse_args()
 # % Chose device:
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/")
-datafolder = pathlib.Path(
-    "/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/"
+if args.dose == "low":
+    savefolder = pathlib.Path(
+        "/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/"
+    )
+elif args.dose == "extreme_low":
+    savefolder = pathlib.Path(
+        "/home/cr661/rds/hpc-work/store/LION/trained_models/extreme_low_dose/"
+    )
+else:
+    raise ValueError("Dose not recognised")
+datafolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/")
+final_result_fname = savefolder.joinpath(
+    f"LPD_final_iterBS2fixedsmallLR_in{args.instance_norm}_{args.dose}_{args.geometry}.pt"
 )
-final_result_fname = savefolder.joinpath("LPD_final_iterBS2fixed.pt")
-checkpoint_fname = savefolder.joinpath("LPD_checkBS2fixed_*.pt")
-validation_fname = savefolder.joinpath("LPD_min_valBS2fixed.pt")
+checkpoint_fname = savefolder.joinpath(
+    f"LPD_checkBS2fixedsmallLR_in{args.instance_norm}_{args.dose}_{args.geometry}*.pt"
+)
+validation_fname = savefolder.joinpath(
+    f"LPD_min_valBS2fixedsmallLR_in{args.instance_norm}_{args.dose}_{args.geometry}.pt"
+)
 #
-#%% Define experiment
-experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
-#experiment_params=ct_experiments.LowDoseCTRecon.default_parameters()
-#experiment_params.data_loader_params.max_num_slices_per_patient = 1 # default is 5
-#experiment = ct_experiments.LowDoseCTRecon(experiment_params=experiment_params, datafolder=datafolder)
+# %% Define experiment
+if args.geometry == "full":
+    if args.dose == "low":
+        experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+    elif args.dose == "extreme_low":
+        experiment = ct_experiments.ExtremeLowDoseCTRecon(datafolder=datafolder)
+    else:
+        raise ValueError("Dose not recognised")
+elif args.geometry == "limited_angle":
+    if args.dose == "low":
+        experiment = ct_experiments.LimitedAngleLowDoseCTRecon(datafolder=datafolder)
+    elif args.dose == "extreme_low":
+        experiment = ct_experiments.LimitedAngleExtremeLowDoseCTRecon(
+            datafolder=datafolder
+        )
+    else:
+        raise ValueError("Dose not recognised")
+elif args.geometry == "sparse_angle":
+    if args.dose == "low":
+        experiment = ct_experiments.SparseAngleLowDoseCTRecon(datafolder=datafolder)
+    elif args.dose == "extreme_low":
+        experiment = ct_experiments.SparseAngleExtremeLowDoseCTRecon(
+            datafolder=datafolder
+        )
+    else:
+        raise ValueError("Dose not recognised")
+else:
+    raise ValueError("Geometry not recognised")
 
-#%% Dataset
+# %% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
 
-#%% Define DataLoader
+# %% Define DataLoader
 # Use the same amount of training
 batch_size = 2
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
-#%% Model
+# %% Model
 # Default model is already from the paper.
 default_parameters = LPD.default_parameters()
 # This makes the LPD calculate the step size for the backprojection, which in my experience results in much much better pefromace
@@ -55,10 +112,14 @@ default_parameters = LPD.default_parameters()
 default_parameters.learned_step = True
 default_parameters.step_positive = True
 default_parameters.n_iters = 5
-model = LPD(experiment.geo, default_parameters).to(device)
+model = LPD(
+    geometry_parameters=experiment.geo,
+    model_parameters=default_parameters,
+    instance_norm=args.instance_norm,
+).to(device)
 
 
-#%% Optimizer
+# %% Optimizer
 train_param = Parameter()
 
 # loss fn
@@ -67,7 +128,7 @@ train_param.optimiser = "adam"
 
 # optimizer
 train_param.epochs = 100
-train_param.learning_rate = 1e-3
+train_param.learning_rate = 1e-4
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
 optimiser = torch.optim.Adam(
@@ -94,9 +155,10 @@ model, optimiser, start_epoch, total_loss, _ = LPD.load_checkpoint_if_exists(
 )
 print(f"Starting iteration at epoch {start_epoch}")
 
-#%% train
+# %% train
 for epoch in range(start_epoch, train_param.epochs):
     train_loss = 0.0
+    model.train()
     for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_dataloader)):
 
         optimiser.zero_grad()
@@ -108,7 +170,7 @@ for epoch in range(start_epoch, train_param.epochs):
         train_loss += loss.item()
 
         optimiser.step()
-        #scheduler.step()
+        # scheduler.step()
     total_loss[epoch] = train_loss
     # Validation
     valid_loss = 0.0
