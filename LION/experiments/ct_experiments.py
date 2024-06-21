@@ -24,7 +24,7 @@ class Experiment(ABC):
 
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
-
+        self.experiment_params = experiment_params
         if experiment_params is None:
             self.experiment_params = self.default_parameters(dataset=dataset)
         else:
@@ -197,6 +197,60 @@ class LimitedAngleCTRecon(Experiment):
         return param
 
 
+class LimitedAngleLowDoseCTRecon(Experiment):
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        param = Parameter()
+        param.name = "Clinical dose limited angular sampling experiment"
+        # Parameters for the geometry
+        param.geo = ctgeo.Geometry.sparse_angle_parameters()
+        # Parameters for the noise in the sinogram.
+        param.noise_params = Parameter()
+        param.noise_params.I0 = 3500
+        param.noise_params.sigma = 5
+        param.noise_params.cross_talk = 0.05
+
+        if dataset == "LIDC-IDRI":
+            # Parameters for the LIDC-IDRI dataset
+            param.data_loader_params = LIDC_IDRI.default_parameters(
+                geo=param.geo, task="reconstruction"
+            )
+            param.data_loader_params.max_num_slices_per_patient = 5
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        return param
+
+
+class LimitedAngleExtremeLowDoseCTRecon(Experiment):
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        param = Parameter()
+        param.name = "Clinical dose limited angular sampling experiment"
+        # Parameters for the geometry
+        param.geo = ctgeo.Geometry.sparse_angle_parameters()
+        # Parameters for the noise in the sinogram.
+        param.noise_params = Parameter()
+        param.noise_params.I0 = 1000
+        param.noise_params.sigma = 5
+        param.noise_params.cross_talk = 0.05
+
+        if dataset == "LIDC-IDRI":
+            # Parameters for the LIDC-IDRI dataset
+            param.data_loader_params = LIDC_IDRI.default_parameters(
+                geo=param.geo, task="reconstruction"
+            )
+            param.data_loader_params.max_num_slices_per_patient = 5
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        return param
+
+
 class SparseAngleCTRecon(Experiment):
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
@@ -218,6 +272,60 @@ class SparseAngleCTRecon(Experiment):
             dataset, geo=param.geo
         )
 
+        return param
+
+
+class SparseAngleLowDoseCTRecon(Experiment):
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        param = Parameter()
+        param.name = "Clinical dose sparse angular sampling experiment"
+        # Parameters for the geometry
+        param.geo = ctgeo.Geometry.sparse_view_parameters()
+        # Parameters for the noise in the sinogram.
+        param.noise_params = Parameter()
+        param.noise_params.I0 = 3500
+        param.noise_params.sigma = 5
+        param.noise_params.cross_talk = 0.05
+
+        if dataset == "LIDC-IDRI":
+            # Parameters for the LIDC-IDRI dataset
+            param.data_loader_params = LIDC_IDRI.default_parameters(
+                geo=param.geo, task="reconstruction"
+            )
+            param.data_loader_params.max_num_slices_per_patient = 5
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        return param
+
+
+class SparseAngleExtremeLowDoseCTRecon(Experiment):
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        param = Parameter()
+        param.name = "Clinical dose sparse angular sampling experiment"
+        # Parameters for the geometry
+        param.geo = ctgeo.Geometry.sparse_view_parameters()
+        # Parameters for the noise in the sinogram.
+        param.noise_params = Parameter()
+        param.noise_params.I0 = 1000
+        param.noise_params.sigma = 5
+        param.noise_params.cross_talk = 0.05
+
+        if dataset == "LIDC-IDRI":
+            # Parameters for the LIDC-IDRI dataset
+            param.data_loader_params = LIDC_IDRI.default_parameters(
+                geo=param.geo, task="reconstruction"
+            )
+            param.data_loader_params.max_num_slices_per_patient = 5
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
         return param
 
 

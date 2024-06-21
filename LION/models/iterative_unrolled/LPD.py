@@ -32,7 +32,7 @@ class dataProximal(nn.Module):
     CNN block of the dual variable
     """
 
-    def __init__(self, layers, channels):
+    def __init__(self, layers, channels, instance_norm=False):
 
         super().__init__()
         # imput parsing
@@ -45,12 +45,18 @@ class dataProximal(nn.Module):
         # convolutional layers
         layer_list = []
         for ii in range(layers):
-            layer_list.append(
-                nn.Conv2d(channels[ii], channels[ii + 1], 3, padding=1, bias=False)
-            )
-            # Have PReLUs all the way except the last
+            if instance_norm:
+                layer_list.append(nn.InstanceNorm2d(channels[ii]))
+            # PReLUs and 3x3 kernels all the way except the last
             if ii < layers - 1:
-                layer_list.append(torch.nn.PReLU())
+                layer_list.append(
+                    nn.Conv2d(channels[ii], channels[ii + 1], 3, padding=1, bias=False)
+                )
+                layer_list.append(nn.PReLU())
+            else:
+                layer_list.append(
+                    nn.Conv2d(channels[ii], channels[ii + 1], 1, padding=0, bias=False)
+                )
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, x):
@@ -62,7 +68,7 @@ class RegProximal(nn.Module):
     CNN block of the primal variable
     """
 
-    def __init__(self, layers, channels):
+    def __init__(self, layers, channels, instance_norm=False):
         super().__init__()
         if len(channels) != layers + 1:
             raise ValueError(
@@ -73,12 +79,18 @@ class RegProximal(nn.Module):
 
         layer_list = []
         for ii in range(layers):
-            layer_list.append(
-                nn.Conv2d(channels[ii], channels[ii + 1], 3, padding=1, bias=False)
-            )
-            # Have PReLUs all the way except the last
+            if instance_norm:
+                layer_list.append(nn.InstanceNorm2d(channels[ii]))
+            # PReLUs and 3x3 kernels all the way except the last
             if ii < layers - 1:
-                layer_list.append(torch.nn.PReLU())
+                layer_list.append(
+                    nn.Conv2d(channels[ii], channels[ii + 1], 3, padding=1, bias=False)
+                )
+                layer_list.append(nn.PReLU())
+            else:
+                layer_list.append(
+                    nn.Conv2d(channels[ii], channels[ii + 1], 1, padding=0, bias=False)
+                )
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, x):
@@ -89,7 +101,9 @@ class LPD(LIONmodel.LIONmodel):
     """Learned Primal Dual network"""
 
     def __init__(
-        self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
+        self,
+        geometry_parameters: ct.Geometry,
+        model_parameters: LIONParameter = None,
     ):
 
         if geometry_parameters is None:
@@ -108,6 +122,7 @@ class LPD(LIONmodel.LIONmodel):
                 RegProximal(
                     layers=len(self.model_parameters.reg_channels) - 1,
                     channels=self.model_parameters.reg_channels,
+                    instance_norm=self.model_parameters.instance_norm,
                 ),
             )
             self.add_module(
@@ -115,6 +130,7 @@ class LPD(LIONmodel.LIONmodel):
                 dataProximal(
                     layers=len(self.model_parameters.data_channels) - 1,
                     channels=self.model_parameters.data_channels,
+                    instance_norm=self.model_parameters.instance_norm,
                 ),
             )
 
@@ -123,6 +139,7 @@ class LPD(LIONmodel.LIONmodel):
 
         # Define step size
         if self.model_parameters.step_size is None:
+            print("Step size is None, computing it with power method")
             # compute step size
             self.model_parameters.step_size = 1 / power_method(self.op)
         # Are we learning the step? (with the above initialization)
@@ -181,7 +198,20 @@ class LPD(LIONmodel.LIONmodel):
         LPD_params.step_size = None
         LPD_params.step_positive = False
         LPD_params.mode = "ct"
+        LPD_params.instance_norm = False
+        return LPD_params
 
+    @staticmethod
+    def continous_LPD_paper():
+        LPD_params = LIONParameter()
+        LPD_params.n_iters = 5
+        LPD_params.data_channels = [7, 32, 32, 32, 5]
+        LPD_params.reg_channels = [6, 32, 32, 32, 5]
+        LPD_params.learned_step = True
+        LPD_params.step_size = None
+        LPD_params.step_positive = True
+        LPD_params.mode = "ct"
+        LPD_params.instance_norm = True
         return LPD_params
 
     @staticmethod

@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import Dict
 import pathlib
+import argparse
 
 ## JSON numpy encoder
 class NumpyEncoder(json.JSONEncoder):
@@ -45,3 +46,14 @@ def check_if_file_changed_git(fname, hash1, hash2) -> bool:
 def custom_format_warning(msg, *args, **kwargs):
     # ignore everything except the message
     return str(msg) + "\n"
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Boolean value expected.")
