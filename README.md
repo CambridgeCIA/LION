@@ -1,6 +1,6 @@
 # LION: AI tools for learned tomographic reconstruction
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-6-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-7-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction, LION (Learned Iterative Optimization Networks)
@@ -85,6 +85,7 @@ Read `developers.md`
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/michi217"><img src="https://avatars.githubusercontent.com/u/62284237?v=4?s=100" width="100px;" alt="michi217"/><br /><sub><b>michi217</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=michi217" title="Code">💻</a> <a href="#data-michi217" title="Data">🔣</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/OliverCoughlan"><img src="https://avatars.githubusercontent.com/u/39098447?v=4?s=100" width="100px;" alt="Oliver Coughlan"/><br /><sub><b>Oliver Coughlan</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=OliverCoughlan" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/mbkiss"><img src="https://avatars.githubusercontent.com/u/78095730?v=4?s=100" width="100px;" alt="mbkiss"/><br /><sub><b>mbkiss</b></sub></a><br /><a href="#design-mbkiss" title="Design">🎨</a> <a href="https://github.com/CambridgeCIA/LION/commits?author=mbkiss" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ChristinaRunkel"><img src="https://avatars.githubusercontent.com/u/20678760?v=4?s=100" width="100px;" alt="ChristinaRunkel"/><br /><sub><b>ChristinaRunkel</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=ChristinaRunkel" title="Code">💻</a> <a href="https://github.com/CambridgeCIA/LION/issues?q=author%3AChristinaRunkel" title="Bug reports">🐛</a> <a href="#design-ChristinaRunkel" title="Design">🎨</a> <a href="#example-ChristinaRunkel" title="Examples">💡</a> <a href="#ideas-ChristinaRunkel" title="Ideas, Planning, & Feedback">🤔</a> <a href="#research-ChristinaRunkel" title="Research">🔬</a> <a href="#userTesting-ChristinaRunkel" title="User Testing">📓</a></td>
     </tr>
   </tbody>
 </table>
