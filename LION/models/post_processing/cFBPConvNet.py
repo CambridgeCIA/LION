@@ -10,9 +10,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchdiffeq import odeint, odeint_adjoint
+from ts_algorithms import fdk
+import LION.CTtools.ct_geometry as ct
 
 from LION.models import LIONmodel
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 
 # Implementation of: continuous version of FBPConvNet
 
@@ -207,16 +209,15 @@ class Up(nn.Module):
 class ContinuousFBPConvNet(LIONmodel.LIONmodel):
     def __init__(
         self,
-        tol: float = 1e-3,
-        adjoint: bool = False,
-        second_order: bool = False,
-        solver: str = "rk4",
-        model_parameters: Parameter = None,
+        geometry_parameters: ct.Geometry,
+        model_parameters: LIONParameter = None,
     ):
 
-        super().__init__(model_parameters)
-        self.second_order = second_order
-        self.solver = solver
+        super().__init__(model_parameters, geometry_parameters)
+        self._make_operator()
+
+        self.second_order = self.model_parameters.do_second_order
+        self.solver = self.model_parameters.solver
 
         # continuous version of FBPConvNet:
         if self.second_order:
@@ -308,35 +309,55 @@ class ContinuousFBPConvNet(LIONmodel.LIONmodel):
             out_channels=self.model_parameters.down_1_channels[0],
             kernel_size=1,
         )
-        self.block_1_down = ODEBlock(ode_d1, tol=tol, adjoint=adjoint)
+        self.block_1_down = ODEBlock(
+            ode_d1,
+            tol=self.model_parameters.tol,
+            adjoint=self.model_parameters.ode_adjoint,
+        )
         self.conv_down1_2 = nn.Conv2d(
             in_channels=self.model_parameters.down_1_channels[-1],
             out_channels=self.model_parameters.down_2_channels[0],
             kernel_size=1,
         )
         self.down_1 = Down()
-        self.block_2_down = ODEBlock(ode_d2, tol=tol, adjoint=adjoint)
+        self.block_2_down = ODEBlock(
+            ode_d2,
+            tol=self.model_parameters.tol,
+            adjoint=self.model_parameters.ode_adjoint,
+        )
         self.conv_down2_3 = nn.Conv2d(
             in_channels=self.model_parameters.down_2_channels[-1],
             out_channels=self.model_parameters.down_3_channels[0],
             kernel_size=1,
         )
         self.down_2 = Down()
-        self.block_3_down = ODEBlock(ode_d3, tol=tol, adjoint=adjoint)
+        self.block_3_down = ODEBlock(
+            ode_d3,
+            tol=self.model_parameters.tol,
+            adjoint=self.model_parameters.ode_adjoint,
+        )
         self.conv_down3_4 = nn.Conv2d(
             in_channels=self.model_parameters.down_3_channels[-1],
             out_channels=self.model_parameters.down_4_channels[0],
             kernel_size=1,
         )
         self.down_3 = Down()
-        self.block_4_down = ODEBlock(ode_d4, tol=tol, adjoint=adjoint)
+        self.block_4_down = ODEBlock(
+            ode_d4,
+            tol=self.model_parameters.tol,
+            adjoint=self.model_parameters.ode_adjoint,
+        )
         self.conv_down4_bottom = nn.Conv2d(
             in_channels=self.model_parameters.down_4_channels[-1],
             out_channels=self.model_parameters.latent_channels[0],
             kernel_size=1,
         )
         self.down_4 = Down()
-        self.block_bottom = ODEBlock(ode_bottom, tol=tol, adjoint=adjoint)
+        self.block_bottom = ODEBlock(
+            ode_bottom,
+            tol=self.model_parameters.tol,
+            adjoint=self.model_parameters.ode_adjoint,
+        )
         self.up_1 = Up(
             [
                 self.model_parameters.latent_channels[-1],
@@ -349,7 +370,11 @@ class ContinuousFBPConvNet(LIONmodel.LIONmodel):
             out_channels=self.model_parameters.up_1_channels[0],
             kernel_size=1,
         )
-        self.block_1_up = ODEBlock(ode_u1, tol=tol, adjoint=adjoint)
+        self.block_1_up = ODEBlock(
+            ode_u1,
+            tol=self.model_parameters.tol,
+            adjoint=self.model_parameters.ode_adjoint,
+        )
         self.up_2 = Up(
             [
                 self.model_parameters.up_1_channels[-1],
@@ -362,7 +387,11 @@ class ContinuousFBPConvNet(LIONmodel.LIONmodel):
             out_channels=self.model_parameters.up_2_channels[0],
             kernel_size=1,
         )
-        self.block_2_up = ODEBlock(ode_u2, tol=tol, adjoint=adjoint)
+        self.block_2_up = ODEBlock(
+            ode_u2,
+            tol=self.model_parameters.tol,
+            adjoint=self.model_parameters.ode_adjoint,
+        )
         self.up_3 = Up(
             [
                 self.model_parameters.up_2_channels[-1],
@@ -375,7 +404,11 @@ class ContinuousFBPConvNet(LIONmodel.LIONmodel):
             out_channels=self.model_parameters.up_3_channels[0],
             kernel_size=1,
         )
-        self.block_3_up = ODEBlock(ode_u3, tol=tol, adjoint=adjoint)
+        self.block_3_up = ODEBlock(
+            ode_u3,
+            tol=self.model_parameters.tol,
+            adjoint=self.model_parameters.ode_adjoint,
+        )
         self.up_4 = Up(
             [
                 self.model_parameters.up_3_channels[-1],
@@ -384,7 +417,11 @@ class ContinuousFBPConvNet(LIONmodel.LIONmodel):
             relu_type=self.model_parameters.activation,
         )
 
-        self.block_4_up = ODEBlock(ode_u4, tol=tol, adjoint=adjoint)
+        self.block_4_up = ODEBlock(
+            ode_u4,
+            tol=self.model_parameters.tol,
+            adjoint=self.model_parameters.ode_adjoint,
+        )
         self.conv_up4_last = nn.Conv2d(
             in_channels=self.model_parameters.up_4_channels[-1] * 2,
             out_channels=self.model_parameters.last_block[0],
@@ -401,45 +438,43 @@ class ContinuousFBPConvNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        ContinuousFBPConvNet_params = Parameter()
-        ContinuousFBPConvNet_params.down_1_channels = [64, 64, 64, 64]
-        ContinuousFBPConvNet_params.down_2_channels = [128, 128, 128]
-        ContinuousFBPConvNet_params.down_3_channels = [256, 256, 256]
-        ContinuousFBPConvNet_params.down_4_channels = [512, 512, 512]
+        params = LIONParameter()
+        params.down_1_channels = [64, 64, 64, 64]
+        params.down_2_channels = [128, 128, 128]
+        params.down_3_channels = [256, 256, 256]
+        params.down_4_channels = [512, 512, 512]
 
-        ContinuousFBPConvNet_params.latent_channels = [1024, 1024, 1024]
+        params.latent_channels = [1024, 1024, 1024]
 
-        ContinuousFBPConvNet_params.up_1_channels = [512, 512, 512]
-        ContinuousFBPConvNet_params.up_2_channels = [256, 256, 256]
-        ContinuousFBPConvNet_params.up_3_channels = [128, 128, 128]
-        ContinuousFBPConvNet_params.up_4_channels = [64, 64, 64]
+        params.up_1_channels = [512, 512, 512]
+        params.up_2_channels = [256, 256, 256]
+        params.up_3_channels = [128, 128, 128]
+        params.up_4_channels = [64, 64, 64]
 
-        ContinuousFBPConvNet_params.last_block = [64, 1, 1]
+        params.last_block = [64, 1, 1]
 
-        ContinuousFBPConvNet_params.activation = "ReLU"
+        params.activation = "ReLU"
 
-        return ContinuousFBPConvNet_params
+        params.tol = (1e-3,)
+        params.ode_adjoint = (False,)
+        params.do_second_order = (False,)
+        params.solver = ("rk4",)
+        return params
 
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
             print(" Jin, Kyong Hwan, et al.")
-            print(
-                '"Deep convolutional neural network for inverse problems in imaging."'
-            )
-            print("\x1B[3mIEEE Transactions on Image Processing \x1B[0m")
-            print(" 26.9 (2017): 4509-4522.")
+            print('"Continuous Learned Primal Dual"')
+            print("\x1B[3m ArXiv \x1B[0m")
+            print("(2024): 2405.02478.")
         elif cite_format == "bib":
             string = """
-            @article{jin2017deep,
-            title={Deep convolutional neural network for inverse problems in imaging},
-            author={Jin, Kyong Hwan and McCann, Michael T and Froustey, Emmanuel and Unser, Michael},
-            journal={IEEE transactions on image processing},
-            volume={26},
-            number={9},
-            pages={4509--4522},
-            year={2017},
-            publisher={IEEE}
+            @article{runkel2024continuous,
+            title={Continuous Learned Primal Dual},
+            author={Runkel, Christina and Biguri, Ander and Sch{\"o}nlieb, Carola-Bibiane},
+            journal={arXiv preprint arXiv:2405.02478},
+            year={2024}
             }"""
             print(string)
         else:
@@ -448,6 +483,14 @@ class ContinuousFBPConvNet(LIONmodel.LIONmodel):
             )
 
     def forward(self, x):
+        B, C, W, H = x.shape
+
+        image = x.new_zeros(B, 1, *self.geo.image_shape[1:])
+        for i in range(B):
+            aux = fdk(self.op, x[i, 0])
+            aux = torch.clip(aux, min=0)
+            image[i] = aux
+
         if self.second_order:
             x = self.initial_velocity(x)
         inp = self.input_1x1_conv(x)
