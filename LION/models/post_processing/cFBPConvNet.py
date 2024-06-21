@@ -206,7 +206,7 @@ class Up(nn.Module):
         return self.block(x)
 
 
-class ContinuousFBPConvNet(LIONmodel.LIONmodel):
+class cFBPConvNet(LIONmodel.LIONmodel):
     def __init__(
         self,
         geometry_parameters: ct.Geometry,

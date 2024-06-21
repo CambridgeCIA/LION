@@ -299,7 +299,7 @@ class ContinuousRegProximal(nn.Module):
         return self.last_layer(x)
 
 
-class ContinuousLPD(LIONmodel.LIONmodel):
+class cLPD(LIONmodel.LIONmodel):
     """Learn Primal Dual network with continuous blocks"""
 
     def __init__(
@@ -400,6 +400,20 @@ class ContinuousLPD(LIONmodel.LIONmodel):
         params.reg_channels = [6, 32, 32, 32, 5]
         params.learned_step = False
         params.step_size = None
+        params.step_positive = False
+        params.mode = "ct"
+        params.do_secon_order = False
+        params.instance_norm = False
+        return params
+
+    @staticmethod
+    def continous_LPD_paper():
+        params = LIONParameter()
+        params.n_iters = 10
+        params.data_channels = [7, 32, 32, 32, 5]
+        params.reg_channels = [6, 32, 32, 32, 5]
+        params.learned_step = True
+        params.step_size = True
         params.step_positive = False
         params.mode = "ct"
         params.do_secon_order = False
