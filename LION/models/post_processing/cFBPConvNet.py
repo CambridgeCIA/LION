@@ -386,7 +386,7 @@ class ContinuousFBPConvNet(LIONmodel.LIONmodel):
 
         self.block_4_up = ODEBlock(ode_u4, tol=tol, adjoint=adjoint)
         self.conv_up4_last = nn.Conv2d(
-            in_channels=self.model_parameters.up_4_channels[-1]*2,
+            in_channels=self.model_parameters.up_4_channels[-1] * 2,
             out_channels=self.model_parameters.last_block[0],
             kernel_size=1,
         )
@@ -456,9 +456,17 @@ class ContinuousFBPConvNet(LIONmodel.LIONmodel):
         block_3_res = self.block_3_down(self.down_2(self.conv_down2_3(block_2_res)))
         block_4_res = self.block_4_down(self.down_3(self.conv_down3_4(block_3_res)))
         res = self.block_bottom(self.down_4(self.conv_down4_bottom(block_4_res)))
-        res = self.block_1_up(self.conv_up1_2(torch.cat((block_4_res, self.up_1(res)), dim=1)))
-        res = self.block_2_up(self.conv_up2_3(torch.cat((block_3_res, self.up_2(res)), dim=1)))
-        res = self.block_3_up(self.conv_up3_4(torch.cat((block_2_res, self.up_3(res)), dim=1)))
-        res = self.block_4_up(self.conv_up4_last(torch.cat((block_1_res, self.up_4(res)), dim=1)))
+        res = self.block_1_up(
+            self.conv_up1_2(torch.cat((block_4_res, self.up_1(res)), dim=1))
+        )
+        res = self.block_2_up(
+            self.conv_up2_3(torch.cat((block_3_res, self.up_2(res)), dim=1))
+        )
+        res = self.block_3_up(
+            self.conv_up3_4(torch.cat((block_2_res, self.up_3(res)), dim=1))
+        )
+        res = self.block_4_up(
+            self.conv_up4_last(torch.cat((block_1_res, self.up_4(res)), dim=1))
+        )
         res = self.block_last(res)
         return x + res

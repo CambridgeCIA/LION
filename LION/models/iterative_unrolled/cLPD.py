@@ -476,7 +476,7 @@ class ContinuousLPD(LIONmodel.LIONmodel):
             f_primal = self.__primal_step(f_primal, update, primal_module)
 
         return f_primal[:, 0:1]
-    
+
     @staticmethod
     def _load_parameter_file(fname, supress_warnings=False):
         # Load the actual parameters
@@ -511,7 +511,7 @@ class ContinuousLPD(LIONmodel.LIONmodel):
         #             f"\nThe code for the model has changed since it was saved, loading it may fail. This model was saved in {options.commit_hash}\n"
         #         )
         return options
-    
+
     @staticmethod
     def _load_data(fname, supress_warnings=False):
         # Make it a Path if needed
