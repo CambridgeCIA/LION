@@ -1,19 +1,19 @@
-## This file contains a general class to store parameter files.
-## You should inherit from this class for any parameter setting.
+## This file contains a general class to store LIONParameter files.
+## You should inherit from this class for any LIONParameter setting.
 import json
 
 from LION.utils.utils import NumpyEncoder
 from pathlib import Path
 
 
-class Parameter:
+class LIONParameter:
     def __init__(self, **kwargs):
         """
-        Initialize parameter from dictionary
+        Initialize LIONParameter from dictionary
         """
         for item in kwargs:
             if isinstance(kwargs[item], dict):
-                setattr(self, item, Parameter(**(kwargs[item])))
+                setattr(self, item, LIONParameter(**(kwargs[item])))
             else:
                 setattr(self, item, kwargs[item])
 
@@ -26,12 +26,12 @@ class Parameter:
 
     def serialize(self):
         """
-        This only exists to allow Parameter() inside Parameter()
+        This only exists to allow LIONParameter() inside LIONParameter()
         otherwise, its equivalent to vars(self)
         """
         d = vars(self)
         for k, v in d.copy().items():
-            if isinstance(v, Parameter):
+            if isinstance(v, LIONParameter):
                 d.pop(k)
                 d[k] = v.serialize()  # love some recursivity
             if isinstance(v, Path):
@@ -40,13 +40,13 @@ class Parameter:
 
     def deserialize(self):
         """
-        Produces a dict of Parameter()
+        Produces a dict of LIONParameter()
         """
         pass
 
     def save(self, fname):
         """
-        Save parameter into a JSON file
+        Save LIONParameter into a JSON file
         """
         if isinstance(fname, str):
             fname = Path(fname)
@@ -59,7 +59,7 @@ class Parameter:
 
     def load(self, fname):
         """
-        Load parameter from JSON file, and initialize instance
+        Load LIONParameter from JSON file, and initialize instance
         """
         if isinstance(fname, str):
             fname = Path(fname)
@@ -79,13 +79,13 @@ class Parameter:
 
     def unpack(self):
         """
-        If the Parameter is made of other Parameters, unpack those.
+        If the LIONParameter is made of other Parameters, unpack those.
         """
         # Get all attributes
         attributes = vars(self).copy()
-        # pop all attributes that are NOT a Parameter()
+        # pop all attributes that are NOT a LIONParameter()
         for key in list(attributes.keys()):
-            if not isinstance(attributes[key], Parameter):
+            if not isinstance(attributes[key], LIONParameter):
                 del attributes[key]
             else:
                 delattr(self, key)

@@ -1,5 +1,5 @@
 # =============================================================================
-# This file is part of AItomotools library
+# This file is part of LION library
 # License : BSD-3
 #
 # Author  : Ander Biguri
@@ -12,10 +12,10 @@ import pathlib
 import numpy as np
 import json
 
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 
 
-class Geometry(Parameter):
+class Geometry(LIONParameter):
     """
     Class holding a CT geometry
     """
@@ -27,6 +27,10 @@ class Geometry(Parameter):
         self.image_shape = np.array(kwargs.get("image_shape", None))
         if self.image_shape.all() and self.image_size.all():
             self.voxel_size = self.image_size / self.image_shape
+        if "image_pos" in kwargs:
+            self.image_pos = np.array(kwargs.get("image_pos", None))
+        else:
+            self.image_pos = np.array([0, 0, 0])
 
         self.detector_shape = np.array(kwargs.get("detector_shape", None))
         self.detector_size = np.array(kwargs.get("detector_size", None))
@@ -40,7 +44,7 @@ class Geometry(Parameter):
 
     # PLEASE SOMEONE FIND A SMARTER WAY TO DO THIS
     @classmethod
-    def _init_from_parameter(cls, parameter: Parameter):
+    def init_from_parameter(cls, parameter: LIONParameter):
         return cls(
             image_shape=parameter.image_shape,
             image_size=parameter.image_size,

@@ -1,4 +1,4 @@
-# This file is part of AItomotools library
+# This file is part of LION library
 # License : BSD-3
 #
 # Author  : Ander Biguri
@@ -9,7 +9,9 @@
 import torch
 import torch.nn as nn
 from LION.models import LIONmodel
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
+import LION.CTtools.ct_geometry as ct
+from ts_algorithms import fdk
 
 # Implementation of:
 
@@ -90,10 +92,16 @@ class Up(nn.Module):
 
 
 class FBPConvNet(LIONmodel.LIONmodel):
-    def __init__(self, model_parameters: Parameter = None):
+    def __init__(
+        self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
+    ):
 
-        super().__init__(model_parameters)
+        if geometry_parameters is None:
+            raise ValueError("Geometry parameters required. ")
 
+        super().__init__(model_parameters, geometry_parameters)
+
+        self._make_operator()
         # standard FBPConvNet (As per paper):
 
         # Down blocks
@@ -181,7 +189,7 @@ class FBPConvNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        FBPConvNet_params = Parameter()
+        FBPConvNet_params = LIONParameter()
         FBPConvNet_params.down_1_channels = [1, 64, 64, 64]
         FBPConvNet_params.down_2_channels = [64, 128, 128]
         FBPConvNet_params.down_3_channels = [128, 256, 256]
@@ -228,17 +236,22 @@ class FBPConvNet(LIONmodel.LIONmodel):
             )
 
     def forward(self, x):
+        B, C, W, H = x.shape
 
-        block_1_res = self.block_1_down(x)
+        image = x.new_zeros(B, 1, *self.geo.image_shape[1:])
+        for i in range(B):
+            aux = fdk(self.op, x[i, 0])
+            aux = torch.clip(aux, min=0)
+            image[i] = aux
+        block_1_res = self.block_1_down(image)
         block_2_res = self.block_2_down(self.down_1(block_1_res))
         block_3_res = self.block_3_down(self.down_2(block_2_res))
         block_4_res = self.block_4_down(self.down_3(block_3_res))
 
         res = self.block_bottom(self.down_4(block_4_res))
-
         res = self.block_1_up(torch.cat((block_4_res, self.up_1(res)), dim=1))
         res = self.block_2_up(torch.cat((block_3_res, self.up_2(res)), dim=1))
         res = self.block_3_up(torch.cat((block_2_res, self.up_3(res)), dim=1))
         res = self.block_4_up(torch.cat((block_1_res, self.up_4(res)), dim=1))
         res = self.block_last(res)
-        return x + res
+        return image + res

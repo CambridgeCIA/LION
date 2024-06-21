@@ -70,7 +70,7 @@ os.remove("geo.json")
 #%% 3-Parameters inside ML-models.
 # As the main goal of these is ensure reproducibility, all ML methods inside the toolbox have default_parameters and ways to create them from parameters.
 # Lets use LPD as an example.
-from LION.models.LPD import LPD
+from LION.models.iterative_unrolled.LPD import LPD
 
 # All ML-models will have this:
 LPD_params = LPD.default_parameters()

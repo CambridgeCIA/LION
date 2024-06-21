@@ -1,4 +1,4 @@
-# This file is part of AItomotools library
+# This file is part of LION library
 # License : BSD-3
 #
 # Author  : Subhadip Mukherjee
@@ -9,7 +9,7 @@
 import torch
 import torch.nn as nn
 from LION.models import LIONmodel
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 import torch.nn.utils.parametrize as P
 
 
@@ -97,10 +97,10 @@ class SFB(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        param = Parameter()
+        param = LIONParameter()
         param.n_kernels = 10
         param.n_filters = 32
-        paran.L2net = True
+        param.L2net = True
         return param
 
     def forward(self, x):
@@ -119,7 +119,7 @@ class SFB(LIONmodel.LIONmodel):
 
 
 class ACR(LIONmodel.LIONmodel):
-    def __init__(self, model_parameters: Parameter = None):
+    def __init__(self, model_parameters: LIONParameter = None):
 
         super().__init__(model_parameters)
 
@@ -190,7 +190,7 @@ class ACR(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        param = Parameter()
+        param = LIONParameter()
         param.channels = 48
         param.kernel_size = 5
         param.stride = 1

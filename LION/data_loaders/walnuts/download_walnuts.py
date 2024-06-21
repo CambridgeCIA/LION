@@ -1,5 +1,5 @@
 import subprocess
-from utils.paths import WALNUT_DATASET_PATH
+from LION.utils.paths import WALNUT_DATASET_PATH
 from LION.utils.utils import run_cmd
 
 # Downloads the Walnut Dataset (https://www.nature.com/articles/s41597-019-0235-y) on a LINUX machine

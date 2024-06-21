@@ -1,5 +1,5 @@
-# This file is part of AItomotools library
-# License : BSD-3
+# This file is part of LION library
+# License : GPL-3
 #
 # Author  : Ander Biguri
 # Modifications: -
@@ -9,7 +9,7 @@
 from LION.models import LIONmodel
 
 from LION.utils.math import power_method
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ct
 import LION.CTtools.ct_utils as ct_utils
 import LION.utils.utils as ai_utils
@@ -98,12 +98,12 @@ class RegProximal(nn.Module):
 
 
 class LPD(LIONmodel.LIONmodel):
-    """Learn Primal Dual network"""
+    """Learned Primal Dual network"""
 
     def __init__(
         self,
         geometry_parameters: ct.Geometry,
-        model_parameters: Parameter = None,
+        model_parameters: LIONParameter = None,
         instance_norm: bool = False,
     ):
 
@@ -143,7 +143,6 @@ class LPD(LIONmodel.LIONmodel):
             print("Step size is None, computing it with power method")
             # compute step size
             self.model_parameters.step_size = 1 / power_method(self.op)
-        print(self.model_parameters.step_size)
         # Are we learning the step? (with the above initialization)
         if self.model_parameters.learned_step:
             # Enforce positivity by making it 10^step
@@ -192,7 +191,7 @@ class LPD(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        LPD_params = Parameter()
+        LPD_params = LIONParameter()
         LPD_params.n_iters = 10
         LPD_params.data_channels = [7, 32, 32, 32, 5]
         LPD_params.reg_channels = [6, 32, 32, 32, 5]
@@ -218,7 +217,7 @@ class LPD(LIONmodel.LIONmodel):
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
-            print("Adler, Jonas, and Ozan Öktem.")
+            print("Adler, Jonas, and Öktem, Ozan.")
             print('"Learned primal-dual reconstruction."')
             print("\x1B[3mIEEE transactions on medical imaging \x1B[0m")
             print("37.6 (2018): 1322-1332.")
@@ -271,12 +270,12 @@ class LPD(LIONmodel.LIONmodel):
             f_primal = self.__primal_step(f_primal, update, primal_module)
 
         return f_primal[:, 0:1]
-    
+
     @staticmethod
     def _load_parameter_file(fname, supress_warnings=False):
         # Load the actual parameters
         ##############################
-        options = Parameter()
+        options = LIONParameter()
         options.load(fname.with_suffix(".json"))
         if hasattr(options, "geometry_parameters"):
             options.geometry_parameters = ct.Geometry._init_from_parameter(
@@ -306,7 +305,7 @@ class LPD(LIONmodel.LIONmodel):
         #             f"\nThe code for the model has changed since it was saved, loading it may fail. This model was saved in {options.commit_hash}\n"
         #         )
         return options
-    
+
     @staticmethod
     def _load_data(fname, supress_warnings=False):
         # Make it a Path if needed

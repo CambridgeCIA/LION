@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from utils.paths import WALNUT_DATASET_PATH
+from LION.utils.paths import WALNUT_DATASET_PATH
 
 
 def parse_index(index: int) -> str:

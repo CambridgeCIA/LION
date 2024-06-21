@@ -1,4 +1,4 @@
-# This file is part of AItomotools library
+# This file is part of LION library
 # License : BSD-3
 #
 # Author  : See ./MS-D. Daniel Pelt et al
@@ -9,7 +9,7 @@
 import torch
 import torch.nn as nn
 from LION.models import LIONmodel
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 import msd_pytorch as msd
 
 
@@ -42,11 +42,12 @@ class MS_D(LIONmodel.LIONmodel):
             )
         # We don't want MS-D to define our optimizer.
         model.optimizer = None
+
         self.net = model.net
 
     @staticmethod
     def default_parameters(mode="regression"):
-        param = Parameter()
+        param = LIONParameter()
         if mode == "regression":
             param.type = "regression"
             param.c_in = 1

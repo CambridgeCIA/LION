@@ -1,4 +1,4 @@
-# This file is part of AItomotools library
+# This file is part of LION library
 # License : BSD-3
 #
 # Author  : Oliver Coughlan
@@ -16,7 +16,7 @@ from collections import OrderedDict
 
 import LION.CTtools.ct_geometry as ct
 
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 from LION.models import LIONmodel
 
 ##Code for UNet
@@ -176,7 +176,7 @@ class UNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        param = Parameter()
+        param = LIONParameter()
         param.inChan = 1
         param.outChan = 1
         param.baseDim = 32
@@ -188,7 +188,7 @@ class UNet(LIONmodel.LIONmodel):
 
 class ItNet(LIONmodel.LIONmodel):
     def __init__(
-        self, geometry_parameters: ct.Geometry, model_parameters: Parameter = None
+        self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
     ):
         if geometry_parameters is None:
             raise ValueError("Geometry parameters required. ")
@@ -247,7 +247,7 @@ class ItNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        param = Parameter()
+        param = LIONParameter()
         param.learned_step = True
         param.step_positive = False
         param.step_size = [1.1183, 1.3568, 1.4271, 0.0808]
@@ -259,20 +259,22 @@ class ItNet(LIONmodel.LIONmodel):
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
-            print("Genzel, Martin, Jan Macdonald, and Maximilian März. ")
+            print("Martin Genzel, Ingo Guhring, Jan Macdonald, and Maximilian März. ")
             print(
-                '"AAPM DL-Sparse-View CT Challenge Submission Report: Designing an Iterative Network for Fanbeam-CT with Unknown Geometry." '
+                '""Near-exact recovery for tomographic inverse problems via deep learning." '
             )
-            print("\x1B[3marXiv preprint \x1B[0m")
-            print("arXiv:2106.00280 (2021).")
+            print("\x1B[3m ICML 2022 \x1B[0m")
+            print("(pp. 7368-7381). PMLR")
 
         elif cite_format == "bib":
             string = """
-            @article{genzel2021aapm,
-            title={AAPM DL-Sparse-View CT Challenge Submission Report: Designing an Iterative Network for Fanbeam-CT with Unknown Geometry},
-            author={Genzel, Martin and Macdonald, Jan and M{\"a}rz, Maximilian},
-            journal={arXiv preprint arXiv:2106.00280},
-            year={2021}
+            @inproceedings{genzel2022near,
+            title={Near-exact recovery for tomographic inverse problems via deep learning},
+            author={Genzel, Martin and G{\"u}hring, Ingo and Macdonald, Jan and M{\"a}rz, Maximilian},
+            booktitle={International Conference on Machine Learning},
+            pages={7368--7381},
+            year={2022},
+            organization={PMLR}
             }"""
             print(string)
         else:

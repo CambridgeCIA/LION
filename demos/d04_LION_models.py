@@ -22,7 +22,7 @@ import LION.CTtools.ct_geometry as ct
 # NOTE: This demo does not fully execute.
 # %% 1- Example of LION models implemented in LION
 # e.g. the Learned Primal Dual model
-from LION.models.LPD import LPD
+from LION.models.iterative_unrolled.LPD import LPD
 from LION.utils.parameter import Parameter
 
 # Get a geometry
@@ -34,7 +34,7 @@ model_lpd = LPD(geometry_parameters=geo, model_parameters=None)
 
 # There are several models curently in LION, but lets not exhaustively showcase them here.
 # This is another example of a model, one that does not need geometry as input:
-from LION.models.MS_D import MS_D
+from LION.models.CNNs.MS_D import MS_D
 
 model_msd = MS_D()
 
@@ -166,7 +166,7 @@ class DummyModel(LIONmodel):
 
     # You must define this method
     @staticmethod
-    def defeult_parameters():
+    def default_parameters():
         param = Parameter()
         param.channel_in = 1
         param.channel_out = 1
