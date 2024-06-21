@@ -53,14 +53,16 @@ lidc_dataset_val = data_utils.Subset(lidc_dataset_val, indices)
 # Use the same amount of training
 
 
-batch_size = 10
+batch_size = 1
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=False)
 lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
 
 #%% Model
 # Default model is already from the paper.
-default_parameters = LPD.default_parameters()
+from LION.models.iterative_unrolled.cLPD import cLPD
+
+default_parameters = cLPD.default_parameters()
 # This makes the LPD calculate the step size for the backprojection, which in my experience results in much much better pefromace
 # as its all in the correct scale.
 default_parameters.learned_step = True
@@ -77,7 +79,7 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 100
+train_param.epochs = 1
 train_param.learning_rate = 1e-4
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
