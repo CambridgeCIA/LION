@@ -383,3 +383,25 @@ class LIONmodel(nn.Module, ABC):
         else:
             return model, optimiser, 0, total_loss, None
         return model, optimiser, start_epoch, total_loss, data
+
+    @staticmethod
+    def _read_min_validation(filename):
+        """
+        Given a filename for saved models, reads the validaton loss and returns it.
+        This is useful when both checkpointing and validation are done in the same training, and the training partially stops.
+        One can load the checkpoint, but the minimum validation loss is not saved in the checkpoint, so this function reads it from the filename,
+        which should be the minimum validation model.
+        """
+        if isinstance(filename, str):
+            filename = Path(filename)
+        data = LIONmodel._load_data(filename, supress_warnings=True)
+        loss = data["loss"]
+        if type(loss) is np.ndarray:
+            if len(loss) > 1:
+                warnings.warn(
+                    "More than one loss found in file, which suggests that it was not a minimum validation file. Returning last loss."
+                )
+                loss = loss[-1]
+            else:
+                loss = loss[0]
+        return loss

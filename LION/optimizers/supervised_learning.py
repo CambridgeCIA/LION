@@ -114,11 +114,11 @@ class supervisedSolver(LIONsolver):
                 print(
                     f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
                 )
-            if (
-                self.validation_fname is not None
-                and self.validation_loss[epoch] < self.validation_loss.min()
-            ):
-                self.save_validation(self.validation_fname, epoch)
+
+            if self.validation_fname is not None and self.validation_loss[
+                epoch
+            ] <= np.min(self.validation_loss[np.nonzero(self.validation_loss)]):
+                self.save_validation(epoch)
 
         elif self.verbose:
             print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
@@ -134,12 +134,17 @@ class supervisedSolver(LIONsolver):
         self.check_complete()
 
         self.epochs = n_epochs
+
         self.train_loss = np.zeros(self.epochs)
         if self.validation_fn is not None:
             self.validation_loss = np.zeros(self.epochs)
 
+        init_epoch = 0
+        if self.do_load_checkpoint:
+            init_epoch = self.load_checkpoint()
+
         # train loop
-        for epoch in tqdm(range(self.epochs)):
+        for epoch in tqdm(range(init_epoch, self.epochs)):
             self.epoch_step(epoch)
             if (epoch + 1) % self.checkpoint_freq == 0:
                 self.save_checkpoint(epoch)
