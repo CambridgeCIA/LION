@@ -5,7 +5,7 @@
 # Modifications: -
 # =============================================================================
 
-
+from warnings import warn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -213,6 +213,9 @@ class cFBPConvNet(LIONmodel.LIONmodel):
         model_parameters: LIONParameter = None,
     ):
 
+        warn(
+            "cFBPConvNet has not been succesfully tested yet, use with caution. \n If you manage to get it working, contact the authors."
+        )
         super().__init__(model_parameters, geometry_parameters)
         self._make_operator()
 

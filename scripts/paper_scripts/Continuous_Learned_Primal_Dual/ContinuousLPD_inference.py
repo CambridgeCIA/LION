@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+from LION.utils.utils import str2bool
 
 # basic python imports
 from tqdm import tqdm
@@ -17,26 +18,11 @@ from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
 
 # LION imports
-from LION.models.ContinuousLPD import ContinuousLPD
-from LION.models.LPD import LPD
-from LION.models.FBPConvNet import FBPConvNet
+from LION.models.iterative_unrolled.cLPD import cLPD
+from LION.models.iterative_unrolled.LPD import LPD
+from LION.models.post_processing.FBPConvNet import FBPConvNet
 import LION.experiments.ct_experiments as ct_experiments
 from ts_algorithms import fdk
-
-# %%
-# %matplotlib inline
-
-
-# %%
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ("yes", "true", "t", "y", "1"):
-        return True
-    elif v.lower() in ("no", "false", "f", "n", "0"):
-        return False
-    else:
-        raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
 # %%
@@ -265,12 +251,8 @@ if __name__ == "__main__":
     # %% Load model
     if args.compute_psnr_ssim:
         with torch.no_grad():
-            clpd_model, clpd_param, clpd_data = ContinuousLPD.load(
-                fname=final_result_fname, instance_norm=args.instance_norm_clpd
-            )
-            lpd_model, lpd_param, lpd_data = LPD.load(
-                fname=final_result_fname_lpd, instance_norm=args.instance_norm_lpd
-            )
+            clpd_model, clpd_param, clpd_data = cLPD.load(final_result_fname)
+            lpd_model, lpd_param, lpd_data = LPD.load(final_result_fname_lpd)
             fbp_model, fbp_param, fbp_data = FBPConvNet.load(final_result_fname_fbp)
             clpd_model.eval()
             lpd_model.eval()
