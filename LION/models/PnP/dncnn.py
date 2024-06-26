@@ -15,9 +15,6 @@ class DnCNN(LIONmodel):
         if model_parameters is None:
             model_parameters = DnCNN.default_parameters()
         super().__init__(model_parameters)
-        self._bias_free = model_parameters.bias_free
-        self._residual = model_parameters.residual
-        self._batch_normalisation = model_parameters.batch_normalisation
         if model_parameters.act.lower() in dict(
             getmembers(torch.nn.functional, isfunction)
         ):
@@ -26,7 +23,6 @@ class DnCNN(LIONmodel):
             raise ValueError(
                 f"`torch.nn.functional` does not export a function '{model_parameters.act}'."
             )
-        self._enforce_positivity = self.model_parameters.enforce_positivity
         self.lift = torch.nn.Conv2d(
             model_parameters.in_channels,
             model_parameters.int_channels,
@@ -72,9 +68,9 @@ class DnCNN(LIONmodel):
             kernel_size=(3, 3),
             blocks=20,
             residual=True,
-            bias_free=True,
+            bias_free=False,
             act="leaky_relu",
-            enforce_positivity=True,
+            enforce_positivity=False,
             batch_normalisation=True,
         )
 
@@ -85,10 +81,10 @@ class DnCNN(LIONmodel):
             print(
                 '"Beyond a Gaussian Denoiser: Residual Learning of Deep CNN for Image Denoising".'
             )
-            print("IEEE Transactions on Image Processing")
+            print("\x1b[3mIEEE Transactions on Image Processing\x1b[0m")
             print("26. 7(2017): 3142–3155.")
         elif cite_format == "bib":
-            print("@article{Zhang2017,")
+            print("@article{zhang2017beyond,")
             print(
                 "title = {Beyond a {{Gaussian Denoiser}}: {{Residual Learning}} of {{Deep CNN}} for {{Image Denoising}}},"
             )
@@ -110,18 +106,18 @@ class DnCNN(LIONmodel):
 
     def forward(self, x):
         z = self._act(self.lift(x))
-        if self._batch_normalisation:
+        if self.model_parameters.batch_normalisation:
             for conv, bn in zip(self.convs, self.bns):
                 z = self._act(bn(conv(z)))
         else:
             for conv in self.convs:
                 z = self._act(conv(z))
 
-        if self._residual:
+        if self.model_parameters.residual:
             z = x - self.project(z)
         else:
             z = self.project(z)
-        if self._enforce_positivity:
+        if self.model_parameters.enforce_positivity:
             return torch.nn.functional.relu(z)
         else:
             return z

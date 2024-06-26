@@ -6,7 +6,11 @@
 # =============================================================================
 
 
+from inspect import getmembers, isfunction
+from typing import Optional
+
 import torch
+from LION.models.LIONmodel import LIONmodel, LIONParameter
 
 
 class ResBlock(torch.nn.Module):
@@ -15,32 +19,28 @@ class ResBlock(torch.nn.Module):
         n_channels=64,
         kernel_size=(3, 3),
         bias_free=True,
-        act=torch.nn.LeakyReLU(),
-        device=None,
+        act=torch.nn.functional.leaky_relu,
     ):
         super().__init__()
-        self.res = torch.nn.Sequential(
-            torch.nn.Conv2d(
-                n_channels,
-                n_channels,
-                kernel_size,
-                padding=tuple(k // 2 for k in kernel_size),
-                device=device,
-                bias=not bias_free,
-            ),
-            act,
-            torch.nn.Conv2d(
-                n_channels,
-                n_channels,
-                kernel_size,
-                padding=tuple(k // 2 for k in kernel_size),
-                device=device,
-                bias=not bias_free,
-            ),
+        self.act = act
+        self.conv1 = torch.nn.Conv2d(
+            n_channels,
+            n_channels,
+            kernel_size,
+            padding=tuple(k // 2 for k in kernel_size),
+            bias=not bias_free,
+        )
+
+        self.conv2 = torch.nn.Conv2d(
+            n_channels,
+            n_channels,
+            kernel_size,
+            padding=tuple(k // 2 for k in kernel_size),
+            bias=not bias_free,
         )
 
     def forward(self, x):
-        res = self.res(x)
+        res = self.conv2(self.act(self.conv1(x)))
         return x + res
 
 
@@ -50,14 +50,12 @@ def downsample_strideconv(
     kernel_size=2,
     stride=2,
     bias_free=True,
-    device=None,
 ):
     return torch.nn.Conv2d(
         in_channels,
         out_channels,
         kernel_size,
         stride,
-        device=device,
         bias=not bias_free,
     )
 
@@ -68,160 +66,208 @@ def upsample_convtranspose(
     kernel_size=2,
     stride=2,
     bias_free=True,
-    device=None,
 ):
     return torch.nn.ConvTranspose2d(
         in_channels,
         out_channels,
         kernel_size,
         stride,
-        device=device,
         bias=not bias_free,
     )
 
 
-class DRUNet(torch.nn.Module):
-    def __init__(
-        self,
-        in_channels=1,
-        out_channels=1,
-        int_channels=64,
-        kernel_size=(3, 3),
-        n_blocks=4,
-        noise_level=0.05,
-        bias_free=True,
-        act=torch.nn.LeakyReLU(),
-        enforce_positivity=True,
-        device=None,
-    ):
-        super().__init__()
-        self._enforce_positivity = enforce_positivity
-        self.noise_level = noise_level
+class DRUNet(LIONmodel):
+    def __init__(self, model_parameters: LIONParameter = None):
+        if model_parameters is None:
+            model_parameters = DRUNet.default_parameters()
+        super().__init__(model_parameters)
+        if model_parameters.act.lower() in dict(
+            getmembers(torch.nn.functional, isfunction)
+        ):
+            self._act = torch.nn.functional.__dict__[model_parameters.act]
+        else:
+            raise ValueError(
+                f"`torch.nn.functional` does not export a function '{model_parameters.act}'."
+            )
         self.lift = torch.nn.Conv2d(
-            in_channels,
-            int_channels,
+            2 * model_parameters.in_channels
+            if model_parameters.use_noise_level
+            else model_parameters.in_channels,
+            model_parameters.int_channels,
             kernel_size=(3, 3),
             padding=(1, 1),
-            bias=not bias_free,
-            device=device,
+            bias=not model_parameters.bias_free,
         )
 
         self.down1 = torch.nn.Sequential(
             *[
                 ResBlock(
-                    int_channels,
-                    kernel_size=kernel_size,
-                    bias_free=bias_free,
-                    act=act,
-                    device=device,
+                    model_parameters.int_channels,
+                    kernel_size=model_parameters.kernel_size,
+                    bias_free=model_parameters.bias_free,
+                    act=self._act,
                 )
-                for _ in range(n_blocks)
+                for _ in range(model_parameters.n_blocks)
             ],
             downsample_strideconv(
-                int_channels, int_channels * 2, bias_free=bias_free, device=device
+                model_parameters.int_channels,
+                model_parameters.int_channels * 2,
+                bias_free=model_parameters.bias_free,
             ),
         )
         self.down2 = torch.nn.Sequential(
             *[
                 ResBlock(
-                    int_channels * 2,
-                    kernel_size=kernel_size,
-                    bias_free=bias_free,
-                    act=act,
-                    device=device,
+                    model_parameters.int_channels * 2,
+                    kernel_size=model_parameters.kernel_size,
+                    bias_free=model_parameters.bias_free,
+                    act=self._act,
                 )
-                for _ in range(n_blocks)
+                for _ in range(model_parameters.n_blocks)
             ],
             downsample_strideconv(
-                int_channels * 2, int_channels * 4, bias_free=bias_free, device=device
+                model_parameters.int_channels * 2,
+                model_parameters.int_channels * 4,
+                bias_free=model_parameters.bias_free,
             ),
         )
         self.down3 = torch.nn.Sequential(
             *[
                 ResBlock(
-                    int_channels * 4,
-                    kernel_size=kernel_size,
-                    bias_free=bias_free,
-                    act=act,
-                    device=device,
+                    model_parameters.int_channels * 4,
+                    kernel_size=model_parameters.kernel_size,
+                    bias_free=model_parameters.bias_free,
+                    act=self._act,
                 )
-                for _ in range(n_blocks)
+                for _ in range(model_parameters.n_blocks)
             ],
             downsample_strideconv(
-                int_channels * 4, int_channels * 8, bias_free=bias_free, device=device
+                model_parameters.int_channels * 4,
+                model_parameters.int_channels * 8,
+                bias_free=model_parameters.bias_free,
             ),
         )
 
         self.bottleneck = torch.nn.Sequential(
             *[
                 ResBlock(
-                    int_channels * 8,
-                    kernel_size=kernel_size,
-                    bias_free=bias_free,
-                    act=act,
-                    device=device,
+                    model_parameters.int_channels * 8,
+                    kernel_size=model_parameters.kernel_size,
+                    bias_free=model_parameters.bias_free,
+                    act=self._act,
                 )
-                for _ in range(n_blocks)
+                for _ in range(model_parameters.n_blocks)
             ]
         )
 
         self.up3 = torch.nn.Sequential(
             upsample_convtranspose(
-                int_channels * 8, int_channels * 4, bias_free=bias_free, device=device
+                model_parameters.int_channels * 8,
+                model_parameters.int_channels * 4,
+                bias_free=model_parameters.bias_free,
             ),
             *[
                 ResBlock(
-                    int_channels * 4,
-                    kernel_size=kernel_size,
-                    bias_free=bias_free,
-                    act=act,
-                    device=device,
+                    model_parameters.int_channels * 4,
+                    kernel_size=model_parameters.kernel_size,
+                    bias_free=model_parameters.bias_free,
+                    act=self._act,
                 )
-                for _ in range(n_blocks)
+                for _ in range(model_parameters.n_blocks)
             ],
         )
         self.up2 = torch.nn.Sequential(
             upsample_convtranspose(
-                int_channels * 4, int_channels * 2, bias_free=bias_free, device=device
+                model_parameters.int_channels * 4,
+                model_parameters.int_channels * 2,
+                bias_free=model_parameters.bias_free,
             ),
             *[
                 ResBlock(
-                    int_channels * 2,
-                    kernel_size=kernel_size,
-                    bias_free=bias_free,
-                    act=act,
-                    device=device,
+                    model_parameters.int_channels * 2,
+                    kernel_size=model_parameters.kernel_size,
+                    bias_free=model_parameters.bias_free,
+                    act=self._act,
                 )
-                for _ in range(n_blocks)
+                for _ in range(model_parameters.n_blocks)
             ],
         )
         self.up1 = torch.nn.Sequential(
             upsample_convtranspose(
-                int_channels * 2, int_channels, bias_free=bias_free, device=device
+                model_parameters.int_channels * 2,
+                model_parameters.int_channels,
+                bias_free=model_parameters.bias_free,
             ),
             *[
                 ResBlock(
-                    int_channels,
-                    kernel_size=kernel_size,
-                    bias_free=bias_free,
-                    act=act,
-                    device=device,
+                    model_parameters.int_channels,
+                    kernel_size=model_parameters.kernel_size,
+                    bias_free=model_parameters.bias_free,
+                    act=self._act,
                 )
-                for _ in range(n_blocks)
+                for _ in range(model_parameters.n_blocks)
             ],
         )
 
         self.project = torch.nn.Conv2d(
-            int_channels,
-            out_channels,
+            model_parameters.int_channels,
+            model_parameters.out_channels,
             kernel_size=(3, 3),
             padding=(1, 1),
-            bias=not bias_free,
-            device=device,
+            bias=not model_parameters.bias_free,
         )
 
-    def forward(self, x0):
-        x0 = x0
+    @staticmethod
+    def default_parameters():
+        return LIONParameter(
+            in_channels=1,
+            out_channels=1,
+            int_channels=64,
+            kernel_size=(3, 3),
+            n_blocks=4,
+            use_noise_level=False,
+            bias_free=True,
+            act="leaky_relu",
+            enforce_positivity=False,
+        )
+
+    @staticmethod
+    def cite(cite_format="MLA"):
+        if cite_format == "MLA":
+            print(
+                "Zhang, Kai, Yawei, Li, Wangmeng, Zuo, Lei, Zhang, Luc, Van Gool, Radu, Timofte."
+            )
+            print('"Plug-and-Play Image Restoration With Deep Denoiser Prior".')
+            print(
+                "\x1b[3mIEEE Transactions on Pattern Analysis and Machine Intelligence\x1b[0m"
+            )
+            print("44. 10(2022): 6360-6376.")
+        elif cite_format == "bib":
+            print("@article{zhang2022plug,")
+            print(
+                "author={Zhang, Kai and Li, Yawei and Zuo, Wangmeng and Zhang, Lei and Van Gool, Luc and Timofte, Radu},"
+            )
+            print(
+                "journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},"
+            )
+            print("title={Plug-and-Play Image Restoration With Deep Denoiser Prior},")
+            print("year={2022},")
+            print("volume={44},")
+            print("number={10},")
+            print("pages={6360-6376},")
+            print("doi={10.1109/TPAMI.2021.3088914}")
+            print("}")
+        else:
+            raise ValueError(
+                f'`cite_format` "{cite_format}" is not understood, only "MLA" and "bib" are supported'
+            )
+
+    def forward(self, x0, noise_level: Optional[float] = None):
+        if self.model_parameters.use_noise_level:
+            assert (
+                isinstance(noise_level, float) and noise_level > 0
+            ), "`noise_level` must be a float"
+            x0 = torch.cat((x0, noise_level * torch.ones_like(x0)), dim=1)
         x1 = self.lift(x0)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
@@ -232,7 +278,7 @@ class DRUNet(torch.nn.Module):
         x = self.up1(x + x2)
         x = self.project(x + x1)
 
-        if self._enforce_positivity:
+        if self.model_parameters.enforce_positivity:
             return torch.nn.functional.relu(x)
         else:
             return x
