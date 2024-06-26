@@ -5,9 +5,10 @@
 # Modifications: -
 # =============================================================================
 
+from LION.models.LIONmodel import LIONmodel, LIONParameter
+
 from inspect import getmembers, isfunction
 import torch
-from LION.models.LIONmodel import LIONmodel, LIONParameter
 
 
 class DnCNN(LIONmodel):

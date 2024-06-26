@@ -5,12 +5,12 @@
 # Modifications: -
 # =============================================================================
 
+from LION.models.LIONmodel import LIONmodel, LIONParameter
 
 from inspect import getmembers, isfunction
 from typing import Optional
 
 import torch
-from LION.models.LIONmodel import LIONmodel, LIONParameter
 
 
 class ResBlock(torch.nn.Module):
@@ -90,9 +90,11 @@ class DRUNet(LIONmodel):
                 f"`torch.nn.functional` does not export a function '{model_parameters.act}'."
             )
         self.lift = torch.nn.Conv2d(
-            2 * model_parameters.in_channels
-            if model_parameters.use_noise_level
-            else model_parameters.in_channels,
+            (
+                2 * model_parameters.in_channels
+                if model_parameters.use_noise_level
+                else model_parameters.in_channels
+            ),
             model_parameters.int_channels,
             kernel_size=(3, 3),
             padding=(1, 1),
@@ -265,8 +267,8 @@ class DRUNet(LIONmodel):
     def forward(self, x0, noise_level: Optional[float] = None):
         if self.model_parameters.use_noise_level:
             assert (
-                isinstance(noise_level, float) and noise_level > 0
-            ), "`noise_level` must be a float"
+                isinstance(noise_level, float) and noise_level >= 0.0
+            ), "`noise_level` must be a non-negative float"
             x0 = torch.cat((x0, noise_level * torch.ones_like(x0)), dim=1)
         x1 = self.lift(x0)
         x2 = self.down1(x1)
