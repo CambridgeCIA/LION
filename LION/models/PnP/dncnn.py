@@ -11,26 +11,16 @@ from LION.models.LIONmodel import LIONmodel, LIONParameter
 
 
 class DnCNN(LIONmodel):
-    @staticmethod
-    def default_parameters():
-        return LIONParameter(
-            in_channels=1,
-            int_channels=64,
-            kernel_size=(3, 3),
-            blocks=20,
-            residual=True,
-            bias_free=True,
-            act="leaky_relu",
-            enforce_positivity=True,
-            batch_normalisation=True,
-        )
-
-    def __init__(self, model_parameters: LIONParameter):
+    def __init__(self, model_parameters: LIONParameter = None):
+        if model_parameters is None:
+            model_parameters = DnCNN.default_parameters()
         super().__init__(model_parameters)
         self._bias_free = model_parameters.bias_free
         self._residual = model_parameters.residual
         self._batch_normalisation = model_parameters.batch_normalisation
-        if model_parameters.act.lower() in getmembers(torch.nn.functional, isfunction):
+        if model_parameters.act.lower() in dict(
+            getmembers(torch.nn.functional, isfunction)
+        ):
             self._act = torch.nn.functional.__dict__[model_parameters.act]
         else:
             raise ValueError(
@@ -74,11 +64,49 @@ class DnCNN(LIONmodel):
             bias=not model_parameters.bias_free,
         )
 
-    def _set_weights_zero(self):
-        for conv in self.convs:
-            conv.weight.data.zero_()
-            if not self._bias_free:
-                conv.bias.data.zero_()
+    @staticmethod
+    def default_parameters():
+        return LIONParameter(
+            in_channels=1,
+            int_channels=64,
+            kernel_size=(3, 3),
+            blocks=20,
+            residual=True,
+            bias_free=True,
+            act="leaky_relu",
+            enforce_positivity=True,
+            batch_normalisation=True,
+        )
+
+    @staticmethod
+    def cite(cite_format="MLA"):
+        if cite_format == "MLA":
+            print("Zhang, Kai, Wangmeng, Zuo, Yunjin, Chen, Deyu, Meng, Lei, Zhang.")
+            print(
+                '"Beyond a Gaussian Denoiser: Residual Learning of Deep CNN for Image Denoising".'
+            )
+            print("IEEE Transactions on Image Processing")
+            print("26. 7(2017): 3142–3155.")
+        elif cite_format == "bib":
+            print("@article{Zhang2017,")
+            print(
+                "title = {Beyond a {{Gaussian Denoiser}}: {{Residual Learning}} of {{Deep CNN}} for {{Image Denoising}}},"
+            )
+            print(
+                "author = {Zhang, Kai and Zuo, Wangmeng and Chen, Yunjin and Meng, Deyu and Zhang, Lei},"
+            )
+            print("year = {2017},")
+            print("journal = {IEEE Transactions on Image Processing},")
+            print("volume = {26},")
+            print("number = {7},")
+            print("pages = {3142--3155},")
+            print("issn = {1057-7149},")
+            print("doi = {10.1109/TIP.2017.2662206}")
+            print("}")
+        else:
+            raise ValueError(
+                f'`cite_format` "{cite_format}" is not understood, only "MLA" and "bib" are supported'
+            )
 
     def forward(self, x):
         z = self._act(self.lift(x))
