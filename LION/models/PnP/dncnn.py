@@ -5,67 +5,73 @@
 # Modifications: -
 # =============================================================================
 
-
+from inspect import getmembers, isfunction
 import torch
+from LION.models.LIONmodel import LIONmodel, LIONParameter
 
 
-class DnCNN(torch.nn.Module):
-    def __init__(
-        self,
-        in_channels=1,
-        int_channels=64,
-        kernel_size=(3, 3),
-        blocks=20,
-        residual=True,
-        bias_free=True,
-        act=torch.nn.LeakyReLU(),
-        enforce_positivity=True,
-        batch_normalisation=True,
-        device=None,
-    ):
-        super().__init__()
-        self._bias_free = bias_free
-        self._residual = residual
-        self._batch_normalisation = batch_normalisation
-        self._act = act
-        self._enforce_positivity = enforce_positivity
+class DnCNN(LIONmodel):
+    @staticmethod
+    def default_parameters():
+        return LIONParameter(
+            in_channels=1,
+            int_channels=64,
+            kernel_size=(3, 3),
+            blocks=20,
+            residual=True,
+            bias_free=True,
+            act="leaky_relu",
+            enforce_positivity=True,
+            batch_normalisation=True,
+        )
+
+    def __init__(self, model_parameters: LIONParameter):
+        super().__init__(model_parameters)
+        self._bias_free = model_parameters.bias_free
+        self._residual = model_parameters.residual
+        self._batch_normalisation = model_parameters.batch_normalisation
+        if model_parameters.act.lower() in getmembers(torch.nn.functional, isfunction):
+            self._act = torch.nn.functional.__dict__[model_parameters.act]
+        else:
+            raise ValueError(
+                f"`torch.nn.functional` does not export a function '{model_parameters.act}'."
+            )
+        self._enforce_positivity = self.model_parameters.enforce_positivity
         self.lift = torch.nn.Conv2d(
-            in_channels,
-            int_channels,
-            kernel_size,
-            padding=tuple(k // 2 for k in kernel_size),
-            device=device,
-            bias=not bias_free,
+            model_parameters.in_channels,
+            model_parameters.int_channels,
+            model_parameters.kernel_size,
+            padding=tuple(k // 2 for k in model_parameters.kernel_size),
+            bias=not model_parameters.bias_free,
         )
         self.convs = torch.nn.ModuleList(
             [
                 torch.nn.Conv2d(
-                    int_channels,
-                    int_channels,
-                    kernel_size,
-                    padding=tuple(k // 2 for k in kernel_size),
-                    device=device,
-                    bias=not bias_free,
+                    model_parameters.int_channels,
+                    model_parameters.int_channels,
+                    model_parameters.kernel_size,
+                    padding=tuple(k // 2 for k in model_parameters.kernel_size),
+                    bias=not model_parameters.bias_free,
                 )
-                for _ in range(blocks - 2)
+                for _ in range(model_parameters.blocks - 2)
             ]
         )
-        if batch_normalisation:
+        if model_parameters.batch_normalisation:
             self.bns = torch.nn.ModuleList(
                 [
                     torch.nn.BatchNorm2d(
-                        int_channels, affine=not bias_free, device=device
+                        model_parameters.int_channels,
+                        affine=not model_parameters.bias_free,
                     )
-                    for _ in range(blocks - 2)
+                    for _ in range(model_parameters.blocks - 2)
                 ]
             )
         self.project = torch.nn.Conv2d(
-            int_channels,
-            in_channels,
-            kernel_size,
-            padding=tuple(k // 2 for k in kernel_size),
-            device=device,
-            bias=not bias_free,
+            model_parameters.int_channels,
+            model_parameters.in_channels,
+            model_parameters.kernel_size,
+            padding=tuple(k // 2 for k in model_parameters.kernel_size),
+            bias=not model_parameters.bias_free,
         )
 
     def _set_weights_zero(self):
