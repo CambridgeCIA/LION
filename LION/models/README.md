@@ -6,9 +6,9 @@ There are 5 existing ways of doing CT reconstruction using data-driven methods:
 - Post-Processing methods: a "denoising" network. Takes a noisy recon and cleans it.
 - Iterative Unrolled methods: Uses the operator to imitate iterative recon algorithms, but has learned parts.
 - Learned regularizer: Explicitly learned regularization functions.
-- Plung and Play (PnP): Implicit learned regularization, a regularization optimization step is learned, rather than an explicit one. 
+- Plug and Play (PnP): Implicit learned regularization, a regularization optimization step is learned, rather than an explicit one. 
 
-On top of these, there are some techniques that don't fit this classification, particularly because they reffer to _modes of training_ rather than methodology. For these, often the model is not the important part, but the way of training. We will mention them here anyway, to avoid information fragmentation. 
+On top of these, there are some techniques that don't fit this classification, particularly because they refer to _modes of training_ rather than methodology. For these, often the model is not the important part, but the way of training. We will mention them here anyway, to avoid information fragmentation. 
 They tend to be either
 
 - Self-supervised networks: Uses noisy data to self train and obtain noisseless recosntruction.
@@ -35,7 +35,7 @@ LION supports the following models for each category
 
 WIP
 
-## Plung and Play
+## Plug and Play
 
 WIP
 
