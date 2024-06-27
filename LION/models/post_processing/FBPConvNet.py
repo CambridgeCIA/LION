@@ -63,7 +63,7 @@ class Down(nn.Module):
 
 
 class Up(nn.Module):
-    """Downscaling with transpose conv"""
+    """Upscaling with transpose conv"""
 
     def __init__(self, channels, stride=2, relu_type="ReLU"):
         super().__init__()
@@ -254,4 +254,5 @@ class FBPConvNet(LIONmodel.LIONmodel):
         res = self.block_3_up(torch.cat((block_2_res, self.up_3(res)), dim=1))
         res = self.block_4_up(torch.cat((block_1_res, self.up_4(res)), dim=1))
         res = self.block_last(res)
+        
         return image + res
