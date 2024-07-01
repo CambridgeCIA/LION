@@ -15,6 +15,7 @@
 #%% Imports
 
 # You will want to import LIONParameter, as all models must save and use Parameters.
+from typing import Optional
 from LION.utils.parameter import LIONParameter
 
 # We will need utilities
@@ -53,8 +54,8 @@ class LIONmodel(nn.Module, ABC):
     # for the geometry parameters of the inverse problem.
     def __init__(
         self,
-        model_parameters: LIONParameter,  # model parameters
-        geometry_parameters: ct.Geometry = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
+        model_parameters: Optional[LIONParameter],  # model parameters
+        geometry_parameters: Optional[ct.Geometry] = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
     ):
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.

@@ -80,10 +80,11 @@ def test_with_experiment(
     if not issubclass(model_type, LIONmodel):
         raise ValueError("model must inherit from LIONmodel: ")
     model, _, _ = model_type.load(model_fpath)
-    model.to(dev)
+    model = model.to(dev)
 
     # Sample a random batch (size n)
     data, gt = next(iter(test_dataloader))
+    data = data.to(dev)
     # run model on data
     with torch.autocast(device_type=dev.type):
         pred = model(data)

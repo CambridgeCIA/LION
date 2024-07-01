@@ -12,6 +12,8 @@ import pathlib
 import warnings
 from abc import ABC, abstractmethod, ABCMeta
 
+from zmq import device
+
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
