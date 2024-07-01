@@ -57,3 +57,50 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError("Boolean value expected.")
+    
+def unzip_file(
+        zipped_file_path : Path,
+        unzipped_file_path  : Path
+    ) -> None:
+    """ Unzip file. First tries unzip command then 7zip if unzip fails"""
+    try:
+        print(f"Unzipping {zipped_file_path} files with unzip...")
+        bash_command = f"unzip {zipped_file_path} -d {unzipped_file_path}"
+        run_cmd(bash_command)
+    except RuntimeError:
+        try:
+            print('Unzipping with Unzip failed. Unzipping with 7zip')
+            bash_command = f"7z x {zipped_file_path} -o {unzipped_file_path} -y"
+            run_cmd(bash_command)
+        except RuntimeError:
+            raise RuntimeError('Both unzip and 7zip failed for unzipping')
+    
+    print("Extraction done!")
+    zipped_file_path.unlink()
+    print(f"{zipped_file_path} deleted.")
+
+def download_file(
+        placeholder_url : str,
+        file_path  : Path
+    ) -> None:
+    """
+    Downloads file from placeholder_url. Tries first with wget, then with curl.
+
+    """
+    if not file_path.is_file():
+        try:
+            print(f'Downloading {placeholder_url} with wget...')
+            bash_command = f"wget {placeholder_url} -P {file_path.parent} -O {file_path.stem}"
+            run_cmd(bash_command)
+
+        except RuntimeError:
+            try:            
+                print('Downloading with wget failed. Downloading with curl...')
+                bash_command =f'curl {placeholder_url} > {file_path}'
+                run_cmd(bash_command)
+            except RuntimeError:
+                raise RuntimeError('curl and wget failed, cannot download')
+
+        print("Dowload DONE!")
+    else:
+        print(f'{file_path.stem} already exists in {file_path.parent}, passing')
