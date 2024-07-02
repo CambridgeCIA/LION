@@ -4,19 +4,17 @@
 #%% Imports
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 import pathlib
 from LION.models.CNNs.MSDNets.FBPMS_D import FBPMSD_Net
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
-from ts_algorithms import fdk
-from LION.CTtools.ct_utils import make_operator
 
 
 #%%
 # % Chose device:
-device = torch.device("cuda:0")
+device = torch.device("cuda:3")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
@@ -34,7 +32,9 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 4
+batch_size = 10
+#subset = Subset(lidc_dataset, [i for i in range(50)])
+#subset_val = Subset(lidc_dataset_val, [i for i in range(50)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
@@ -51,10 +51,11 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 2
+train_param.epochs = 4
 train_param.learning_rate = 1e-3
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
+train_param.accumulation_steps = 5
 optimiser = torch.optim.Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
@@ -76,7 +77,11 @@ start_epoch = 0
 model, optimiser, start_epoch, total_loss, _ = FBPMSD_Net.load_checkpoint_if_exists(
     checkpoint_fname, model, optimiser, total_loss
 )
+total_loss = np.resize(total_loss, train_param.epochs)
 print(f"Starting iteration at epoch {start_epoch}")
+optimiser.zero_grad()
+# can't get GradScaler to work, seems like an issue lots of people on forums are having aswell. Haven't been able to find a solution
+# scaler = torch.cuda.amp.grad_scaler.GradScaler()
 
 #%% train
 for epoch in range(start_epoch, train_param.epochs):
@@ -84,27 +89,36 @@ for epoch in range(start_epoch, train_param.epochs):
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
     print("Training...")
     model.train()
-    for sinogram, target_reconstruction in tqdm(lidc_dataloader):   
-        optimiser.zero_grad()
+    for idx, (sinogram, target_reconstruction) in enumerate(tqdm(lidc_dataloader)):   
         
+        #with torch.autocast("cuda"):
         reconstruction = model(sinogram)
         loss = loss_fcn(reconstruction, target_reconstruction)
+        loss = loss / train_param.accumulation_steps
 
+        #scaler.scale(loss).backward()
         loss.backward()
 
         train_loss += loss.item()
 
-        optimiser.step()
-        scheduler.step()
+        if (idx + 1) % train_param.accumulation_steps == 0:
+            #scaler.step(optimiser)
+            #scaler.update()
+            #scheduler.step()
+            optimiser.step()
+            scheduler.step()
+            optimiser.zero_grad()
+
     total_loss[epoch] = train_loss
     # Validation
     valid_loss = 0.0
     model.eval()
-    print("Validating...")
-    for sinogram, target_reconstruction in tqdm(lidc_validation):
-        reconstruction = model(sinogram)
-        loss = loss_fcn(target_reconstruction, reconstruction)
-        valid_loss += loss.item()
+    with torch.no_grad():
+        print("Validating...")
+        for sinogram, target_reconstruction in tqdm(lidc_validation):
+            reconstruction = model(sinogram)
+            loss = loss_fcn(target_reconstruction, reconstruction)
+            valid_loss += loss.item()
 
     print(
         f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
@@ -146,3 +160,5 @@ model.save(
 
 
 
+
+# %%
