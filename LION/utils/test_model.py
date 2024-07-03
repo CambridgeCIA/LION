@@ -1,11 +1,12 @@
 # % A small set of methods for testing trained models on unseen data
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, RandomSampler
 import matplotlib.pyplot as plt
 from LION.models.LIONmodel import LIONmodel
 import LION.experiments.ct_experiments as ct_experiments
 from typing import Type
+import random
 
 
 def test_with_img_output(
@@ -74,7 +75,8 @@ def test_with_experiment(
 
     # Load test data
     test_data = experiment.get_testing_dataset()
-    test_dataloader = DataLoader(test_data, n, shuffle=True)
+    random_sampler = RandomSampler(test_data)
+    test_dataloader = DataLoader(test_data, n, sampler=random_sampler)
 
     # Load trained model
     if not issubclass(model_type, LIONmodel):
@@ -86,7 +88,7 @@ def test_with_experiment(
     data, gt = next(iter(test_dataloader))
     data = data.to(dev)
     # run model on data
-    with torch.autocast(device_type=dev.type):
-        pred = model(data)
+    
+    pred = model(data)
 
     return pred, gt

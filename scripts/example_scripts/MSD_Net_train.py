@@ -4,7 +4,7 @@
 #%% Imports
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pathlib
 from LION.models.CNNs.MSDNets.FBPMS_D import FBPMSD_Net
@@ -19,9 +19,9 @@ torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
 
-final_result_fname = savefolder.joinpath("FBPMSDNet_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("FBPMSDNet_check_*.pt")  
-validation_fname = savefolder.joinpath("FBPMSDNet_min_val.pt")
+final_result_fname = savefolder.joinpath("FBPMSDNetw1d100lb20_final_iter.pt")
+checkpoint_fname = savefolder.joinpath("FBPMSDNetw1d100lb20_check_*.pt")  
+validation_fname = savefolder.joinpath("FBPMSDNetw1d100lb20_min_val.pt")
 #
 #%% Define experiment
 # experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
@@ -32,16 +32,28 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 10
+batch_size = 5
 #subset = Subset(lidc_dataset, [i for i in range(50)])
 #subset_val = Subset(lidc_dataset_val, [i for i in range(50)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
 #%% Model
-# Default model is already from the paper.
-model = FBPMSD_Net(geometry_parameters=experiment.geo).to(device)
-
+width, depth = 1, 100
+dilations = []
+for i in range(depth):
+    for j in range(width):
+        dilations.append((((i * width) + j) % 10) + 1)
+model_params = LIONParameter(
+    in_channels=1,
+    width=width,
+    depth=depth,
+    dilations=dilations,
+    look_back_depth=20,
+    final_look_back=-1,
+    activation="ReLU",
+)
+model = FBPMSD_Net(geometry_parameters=experiment.geo, model_parameters=model_params).to(device)
 
 #%% Optimizer
 train_param = LIONParameter()
@@ -51,11 +63,11 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 4
+train_param.epochs = 20
 train_param.learning_rate = 1e-3
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
-train_param.accumulation_steps = 5
+train_param.accumulation_steps = 1
 optimiser = torch.optim.Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
@@ -139,7 +151,8 @@ for epoch in range(start_epoch, train_param.epochs):
         )
 
     # Checkpoint every 10 iters anyway
-    if epoch % 10 == 0:
+    if (epoch + 1) %  1 == 0:
+        print("Checkpointing")
         model.save_checkpoint(
             pathlib.Path(str(checkpoint_fname).replace("*", f"{epoch+1:04d}")),
             epoch + 1,

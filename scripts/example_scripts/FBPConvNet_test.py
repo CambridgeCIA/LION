@@ -10,5 +10,5 @@ experiment = ct_experiments.clinicalCTRecon()
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
 final_result_fname = savefolder.joinpath("FBPConvNet_final_iter.pt")
 
-test_with_img_output(experiment, FBPConvNet, str(final_result_fname), "img.png", n=3, device="cuda:0")
+test_with_img_output(experiment, FBPConvNet, str(final_result_fname), "fbpimg.png", n=3, device="cuda:0")
 

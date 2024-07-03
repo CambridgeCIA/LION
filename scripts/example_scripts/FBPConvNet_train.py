@@ -14,7 +14,7 @@ import LION.experiments.ct_experiments as ct_experiments
 
 #%%
 # % Chose device:
-device = torch.device("cuda:0")
+device = torch.device("cuda:2")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
@@ -49,7 +49,7 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 2
+train_param.epochs = 20
 train_param.learning_rate = 1e-3
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
@@ -67,13 +67,15 @@ start_epoch = 0
 # %% Check if there is a checkpoint saved, and if so, start from there.
 
 # If there is a file with the final results, don't run again
-if model.final_file_exists(savefolder.joinpath(final_result_fname)):
-    print("final model exists! You already reached final iter")
-    exit()
+#if model.final_file_exists(savefolder.joinpath(final_result_fname)):
+#    print("final model exists! You already reached final iter")
+#    exit()
 
 model, optimiser, start_epoch, total_loss, _ = FBPConvNet.load_checkpoint_if_exists(
     checkpoint_fname, model, optimiser, total_loss
 )
+
+total_loss = np.resize(total_loss, train_param.epochs)
 print(f"Starting iteration at epoch {start_epoch}")
 
 #%% train
