@@ -1,4 +1,4 @@
-#%% This example shows how to train FBPConvNet for full angle, noisy measurements.
+#%% This example shows how to train MSDNet for full angle, noisy measurements.
 
 
 #%% Imports
@@ -14,14 +14,14 @@ import LION.experiments.ct_experiments as ct_experiments
 
 #%%
 # % Chose device:
-device = torch.device("cuda:3")
+device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
 
-final_result_fname = savefolder.joinpath("FBPMSDNetw1d100lb20_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("FBPMSDNetw1d100lb20_check_*.pt")  
-validation_fname = savefolder.joinpath("FBPMSDNetw1d100lb20_min_val.pt")
+final_result_fname = savefolder.joinpath("FBPMSDNetw1d500lball_final_iter.pt")
+checkpoint_fname = savefolder.joinpath("FBPMSDNetw1d500lball_check_*.pt")  
+validation_fname = savefolder.joinpath("FBPMSDNetw1d500lball_min_val.pt")
 #
 #%% Define experiment
 # experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
@@ -32,14 +32,14 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 5
+batch_size = 4
 #subset = Subset(lidc_dataset, [i for i in range(50)])
 #subset_val = Subset(lidc_dataset_val, [i for i in range(50)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
 #%% Model
-width, depth = 1, 100
+width, depth = 1, 200
 dilations = []
 for i in range(depth):
     for j in range(width):
@@ -49,7 +49,7 @@ model_params = LIONParameter(
     width=width,
     depth=depth,
     dilations=dilations,
-    look_back_depth=20,
+    look_back_depth=-1,
     final_look_back=-1,
     activation="ReLU",
 )
@@ -92,33 +92,31 @@ model, optimiser, start_epoch, total_loss, _ = FBPMSD_Net.load_checkpoint_if_exi
 total_loss = np.resize(total_loss, train_param.epochs)
 print(f"Starting iteration at epoch {start_epoch}")
 optimiser.zero_grad()
-# can't get GradScaler to work, seems like an issue lots of people on forums are having aswell. Haven't been able to find a solution
-# scaler = torch.cuda.amp.grad_scaler.GradScaler()
+
+scaler = torch.cuda.amp.grad_scaler.GradScaler()
 
 #%% train
 for epoch in range(start_epoch, train_param.epochs):
     train_loss = 0.0
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
     print("Training...")
     model.train()
     for idx, (sinogram, target_reconstruction) in enumerate(tqdm(lidc_dataloader)):   
         
-        #with torch.autocast("cuda"):
-        reconstruction = model(sinogram)
-        loss = loss_fcn(reconstruction, target_reconstruction)
-        loss = loss / train_param.accumulation_steps
+        with torch.autocast("cuda"):
+            reconstruction = model(sinogram)
+            loss = loss_fcn(reconstruction, target_reconstruction)
+            loss = loss / train_param.accumulation_steps
 
-        #scaler.scale(loss).backward()
-        loss.backward()
+        scaler.scale(loss).backward()
+        #loss.backward()
 
         train_loss += loss.item()
 
         if (idx + 1) % train_param.accumulation_steps == 0:
-            #scaler.step(optimiser)
-            #scaler.update()
-            #scheduler.step()
-            optimiser.step()
-            scheduler.step()
+            scaler.step(optimiser)
+            scaler.update()
+            # scheduler.step()
             optimiser.zero_grad()
 
     total_loss[epoch] = train_loss
@@ -172,6 +170,3 @@ model.save(
 )
 
 
-
-
-# %%

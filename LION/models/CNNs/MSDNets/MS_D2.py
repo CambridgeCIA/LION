@@ -1,11 +1,22 @@
+# This file is part of LION library
+# License : BSD-3
+#
+# Author  : Charlie Shoebridge
+# Modifications: -
+# =============================================================================
+
+# Implementation of Mixed-Scale Dense Network described in:
+# Daniël M. Pelt and James A. Sethian
+# A mixed-scale dense convolutional neural network for image analysis
+
 import torch.nn as nn
 import torch
 from typing import Optional
 from LION.utils.parameter import LIONParameter
 from LION.models.LIONmodel import LIONmodel
+from LION.utils.activations import ACTIVATIONS
 
 
-# TODO: add option to change activation function
 class MSD_Net(LIONmodel):
     def __init__(
         self,
@@ -14,14 +25,20 @@ class MSD_Net(LIONmodel):
         """_summary_
 
         Args:
-            width (int): _description_
-            depth (int): _description_
-            dilations (Collection[int]): Vectorized matrix of dilations s_ij. i from 0 to width, j from 0 to depth.
-                e.g first (width) entries correspond to dilations for first layer.
-            look_back_depth: -1 = no limit
-
-        Raises:
-            ValueError: _description_
+            model_parameters (Optional[LIONParameter]):
+                expects:
+                    in_channels (int): number of channels in input image
+                    width: number of channels in each hidden layer
+                    depth: desired depth of network (not including input and output layers, i.e number of hidden layers)
+                    dilations: vectorized matrix of dilations s_ij. i from 0 to width, j from 0 to depth,
+                        e.g first (width) entries correspond to dilations for first layer.
+                    look_back_depth: how many layers back to use when computing channels in a given layer. -1 = use all layers
+                    final_look_back: how many layers to use to construct output image
+                    activation: the activation function to be used between layers.
+                        One of:
+                            ReLU,
+                            sigmoid,
+                            ...
         """
         super().__init__(model_parameters)
 
@@ -31,10 +48,13 @@ class MSD_Net(LIONmodel):
         self.dilations = self.model_parameters.dilations
         self.look_back_depth = self.model_parameters.look_back_depth
         self.final_look_back = self.model_parameters.final_look_back
-        self.activation = nn.Sequential(
-            nn.BatchNorm2d(1), nn.ReLU()
-        )  # implement choosing activation
-
+        self.activation = nn.Sequential(nn.BatchNorm2d(1))
+        # this is bad practice, think of a better way to do this
+        try:
+            self.activation.append(ACTIVATIONS[(acti:=self.model_parameters.activation)]())
+        except KeyError:
+            print(f"Activation '{acti}' not recognised. Expected one of {ACTIVATIONS.keys()}. Defaulting to ReLU.")
+            self.activation.append(nn.ReLU())
         # total there should be width * depth distinct convolutions
         # so expect the same number of dilations to be given
         if len(self.dilations) != self.width * self.depth:
@@ -52,15 +72,10 @@ class MSD_Net(LIONmodel):
         for i, d in enumerate(self.dilations):
             layer = i // self.width
             channel = i % self.width
-            
+
             # number of input channels depends on whether we use original input to construct this layer
-            # TODO: maybe precalculate all of this, doesn't need to be done each loop
-            in_ch = (
-                self.width * self.look_back_depth
-                if layer >= self.look_back_depth and self.look_back_depth != -1
-                else self.width * layer + self.in_channels
-            )
-            
+            in_ch = self.count_channels_to_use(layer)
+
             # bias set to false since we perform a BatchNorm after each Conv, so bias would be cancelled out anyway
             convs.add_module(
                 f"{layer}_{channel}",
@@ -81,35 +96,41 @@ class MSD_Net(LIONmodel):
             final_in_ch = self.depth * self.width + self.in_channels
         else:
             final_in_ch = self.width * self.look_back_depth
-        self.final_conv = nn.Conv2d(in_channels=final_in_ch, out_channels=1, kernel_size=1)
+        self.final_conv = nn.Conv2d(
+            in_channels=final_in_ch, out_channels=1, kernel_size=1
+        )
 
-    def forward(self, x):
+    def count_channels_to_use(self, layer) -> int:
+        return (
+            self.width * self.look_back_depth
+            if layer >= self.look_back_depth and self.look_back_depth != -1
+            else self.width * layer + self.in_channels
+        )
+    
+
+    def forward(self, x: torch.Tensor):
         # maybe just combine these into a multi-channel tensor?
         B, C, W, H = x.shape
         if C != self.in_channels:
             raise ValueError(
                 f"Expected {self.in_channels} input channels, instead got {C}"
             )
-        lookbacks = x.clone()
-        still_using_input = True
+        lookbacks = torch.empty((B, C + self.width * self.depth, W, H), device=x.device)
+        lookbacks[:, :C, :, :] = x
+
         for layer in range(self.depth):
             for channel in range(self.width):
-                # apply convolution to all lookback layers and sum over them
-                z_ij = self.convs[f"{layer}_{channel}"](lookbacks)
+                # apply convolution to relevant lookback layers and sum over them
+                if self.look_back_depth > layer or self.look_back_depth == -1: # include input (x) in lookback
+                    start_ch_idx = 0
+                else: # doesn't include input
+                    start_layer = layer - self.look_back_depth
+                    start_ch_idx = C + start_layer * self.width
+                z_ij = lookbacks[:, C + layer * self.width: C + (layer + 1) * self.width]
+                z_ij = self.convs[f"{layer}_{channel}"](
+                    lookbacks[:, start_ch_idx : start_ch_idx + self.count_channels_to_use(layer), :, :]
+                )
                 z_ij = self.activation(z_ij)
-                # append newly calculated channel to lookbacks to use in next layers
-                lookbacks = torch.cat((lookbacks, z_ij), dim=1)
-
-                # make sure we're using the right number of lookback layers
-                if self.look_back_depth != -1 and lookbacks.shape[1] > self.look_back_depth:
-                    # remove furthest away layer from lookbacks
-                    lookbacks = lookbacks[
-                        :,
-                        (self.in_channels if still_using_input else self.width) :,
-                        :,
-                        :,
-                    ]
-                    still_using_input = False
 
         # apply final convolution
         return self.activation(self.final_conv(lookbacks))
@@ -132,7 +153,7 @@ class MSD_Net(LIONmodel):
             activation="ReLU",
         )
         return params
-    
+
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
@@ -140,7 +161,7 @@ class MSD_Net(LIONmodel):
             print(
                 '"A mixed-scale dense convolutional neural network for image analysis."'
             )
-            print("\x1B[3mProceedings of the National Academy of Sciences  \x1B[0m")
+            print("\x1b[3mProceedings of the National Academy of Sciences  \x1b[0m")
             print("115.2 (2018): 254-259.")
         elif cite_format == "bib":
             string = """
