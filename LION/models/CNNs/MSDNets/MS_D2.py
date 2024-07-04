@@ -74,7 +74,7 @@ class MSD_Net(LIONmodel):
             channel = i % self.width
 
             # number of input channels depends on whether we use original input to construct this layer
-            in_ch = self.count_channels_to_use(layer)
+            in_ch = self._count_channels_to_use(layer)
 
             # bias set to false since we perform a BatchNorm after each Conv, so bias would be cancelled out anyway
             convs.add_module(
@@ -100,7 +100,7 @@ class MSD_Net(LIONmodel):
             in_channels=final_in_ch, out_channels=1, kernel_size=1
         )
 
-    def count_channels_to_use(self, layer) -> int:
+    def _count_channels_to_use(self, layer) -> int:
         return (
             self.width * self.look_back_depth
             if layer >= self.look_back_depth and self.look_back_depth != -1
@@ -115,20 +115,22 @@ class MSD_Net(LIONmodel):
             raise ValueError(
                 f"Expected {self.in_channels} input channels, instead got {C}"
             )
+        # allocate lookback tensor maximally
         lookbacks = torch.empty((B, C + self.width * self.depth, W, H), device=x.device)
         lookbacks[:, :C, :, :] = x
 
         for layer in range(self.depth):
             for channel in range(self.width):
-                # apply convolution to relevant lookback layers and sum over them
-                if self.look_back_depth > layer or self.look_back_depth == -1: # include input (x) in lookback
+                if self.look_back_depth > layer or self.look_back_depth == -1: # lookback includes input, x
                     start_ch_idx = 0
                 else: # doesn't include input
                     start_layer = layer - self.look_back_depth
                     start_ch_idx = C + start_layer * self.width
+                # get a reference to the relevant lookback channels...
                 z_ij = lookbacks[:, C + layer * self.width: C + (layer + 1) * self.width]
+                # apply convolution to them
                 z_ij = self.convs[f"{layer}_{channel}"](
-                    lookbacks[:, start_ch_idx : start_ch_idx + self.count_channels_to_use(layer), :, :]
+                    lookbacks[:, start_ch_idx : start_ch_idx + self._count_channels_to_use(layer), :, :]
                 )
                 z_ij = self.activation(z_ij)
 
