@@ -51,7 +51,7 @@ class LIONsolver(ABC):
         assert isinstance(
             optimizer, torch.optim.Optimizer
         ), "optimizer must be a torch optimizer"
-        assert isinstance(loss_fn, nn.Module), "loss_fn must be a torch loss function"
+        assert isinstance(loss_fn, callable), "loss_fn must be a function"
 
         if optimizer_params is None:
             optimizer_params = self.default_parameters()
@@ -169,7 +169,7 @@ class LIONsolver(ABC):
         # Test 4: is the loss_fn set? if not, raise error or warn
         return_code = self.__check_attribute(
             "loss_fn",
-            expected_type=nn.Module,
+            expected_type=callable,
             error=error,
             autofill=False,
             verbose=verbose,
