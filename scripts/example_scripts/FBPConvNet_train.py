@@ -2,20 +2,13 @@
 
 
 #%% Imports
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pathlib
-import LION.CTtools.ct_geometry as ctgeo
-import LION.CTtools.ct_utils as ct
-from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
-from LION.models.FBPConvNet import FBPConvNet
-from LION.utils.parameter import Parameter
-from ts_algorithms import fdk
-
-
+from LION.models.post_processing.FBPConvNet import FBPConvNet
+from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 
 
@@ -24,17 +17,15 @@ import LION.experiments.ct_experiments as ct_experiments
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/clinical_dose/")
-datafolder = pathlib.Path(
-    "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
-)
+savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
+
 final_result_fname = savefolder.joinpath("FBPConvNet_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("FBPConvNet_check_*.pt")
+checkpoint_fname = savefolder.joinpath("FBPConvNet_check_*.pt")  
 validation_fname = savefolder.joinpath("FBPConvNet_min_val.pt")
 #
 #%% Define experiment
 # experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
-experiment = ct_experiments.clinicalCTRecon(datafolder=datafolder)
+experiment = ct_experiments.clinicalCTRecon()
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
@@ -47,18 +38,18 @@ lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
 #%% Model
 # Default model is already from the paper.
-model = FBPConvNet().to(device)
+model = FBPConvNet(geometry_parameters=experiment.geo).to(device)
 
 
 #%% Optimizer
-train_param = Parameter()
+train_param = LIONParameter()
 
 # loss fn
 loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 500
+train_param.epochs = 2
 train_param.learning_rate = 1e-3
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
@@ -77,7 +68,7 @@ start_epoch = 0
 
 # If there is a file with the final results, don't run again
 if model.final_file_exists(savefolder.joinpath(final_result_fname)):
-    print("final model exists! You already reahced final iter")
+    print("final model exists! You already reached final iter")
     exit()
 
 model, optimiser, start_epoch, total_loss, _ = FBPConvNet.load_checkpoint_if_exists(
@@ -89,13 +80,10 @@ print(f"Starting iteration at epoch {start_epoch}")
 for epoch in range(start_epoch, train_param.epochs):
     train_loss = 0.0
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
-    for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_dataloader)):
+    for sinogram, target_reconstruction in tqdm(lidc_dataloader):
 
         optimiser.zero_grad()
-        bad_recon = torch.zeros(target_reconstruction.shape, device=device)
-        for sino in range(sinogram.shape[0]):
-            bad_recon[sino] = fdk(lidc_dataset.operator, sinogram[sino])
-        reconstruction = model(bad_recon)
+        reconstruction = model(sinogram)
         loss = loss_fcn(reconstruction, target_reconstruction)
 
         loss.backward()
@@ -108,12 +96,8 @@ for epoch in range(start_epoch, train_param.epochs):
     # Validation
     valid_loss = 0.0
     model.eval()
-    for index, (sinogram, target_reconstruction) in tqdm(enumerate(lidc_validation)):
-
-        bad_recon = torch.zeros(target_reconstruction.shape, device=device)
-        for sino in range(sinogram.shape[0]):
-            bad_recon[sino] = fdk(lidc_dataset.operator, sinogram[sino])
-        reconstruction = model(bad_recon)
+    for sinogram, target_reconstruction in tqdm(lidc_validation):
+        reconstruction = model(sinogram)
         loss = loss_fcn(target_reconstruction, reconstruction)
         valid_loss += loss.item()
 
@@ -153,3 +137,6 @@ model.save(
     training=train_param,
     dataset=experiment.param,
 )
+
+
+
