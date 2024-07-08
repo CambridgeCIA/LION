@@ -14,14 +14,14 @@ import LION.experiments.ct_experiments as ct_experiments
 
 #%%
 # % Chose device:
-device = torch.device("cuda:0")
+device = torch.device("cuda:1")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
 
-final_result_fname = savefolder.joinpath("FBPMSDNetw1d500lball_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("FBPMSDNetw1d500lball_check_*.pt")  
-validation_fname = savefolder.joinpath("FBPMSDNetw1d500lball_min_val.pt")
+final_result_fname = savefolder.joinpath("FBPMSDNetw1d30lball_final_iter.pt")
+checkpoint_fname = savefolder.joinpath("FBPMSDNetw1d30lball_check_*.pt")  
+validation_fname = savefolder.joinpath("FBPMSDNetw1d30lball_min_val.pt")
 #
 #%% Define experiment
 # experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
@@ -32,14 +32,14 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 4
+batch_size = 10
 #subset = Subset(lidc_dataset, [i for i in range(50)])
 #subset_val = Subset(lidc_dataset_val, [i for i in range(50)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
 #%% Model
-width, depth = 1, 200
+width, depth = 1, 30
 dilations = []
 for i in range(depth):
     for j in range(width):

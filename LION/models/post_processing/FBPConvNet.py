@@ -237,7 +237,7 @@ class FBPConvNet(LIONmodel.LIONmodel):
     def forward(self, x):
         B, C, W, H = x.shape
 
-        image = fdk(x, self.geo)
+        image = fdk(x, self.op)
         block_1_res = self.block_1_down(image)
         block_2_res = self.block_2_down(self.down_1(block_1_res))
         block_3_res = self.block_3_down(self.down_2(block_2_res))

@@ -8,7 +8,7 @@ from LION.utils.test_model import test_with_img_output
 experiment = ct_experiments.clinicalCTRecon()
 
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
-final_result_fname = savefolder.joinpath("FBPMSDNetw1d100lball_min_val.pt")
+final_result_fname = savefolder.joinpath("FBPMSDNetw1d30lball_min_val.pt")
 
-test_with_img_output(experiment, FBPMSD_Net, str(final_result_fname), "img.png", n=2, device="cuda:0")
+test_with_img_output(experiment, FBPMSD_Net, str(final_result_fname), "img.png", n=3, device="cuda:0")
 

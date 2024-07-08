@@ -7,8 +7,9 @@ import LION.CTtools.ct_geometry as ct
 
 class FBPMSD_Net(MSD_Net):
     def __init__(self, geometry_parameters: ct.Geometry, model_parameters: Optional[LIONParameter]=None):
-        super().__init__(model_parameters, geometry_parameters)
+        super().__init__(model_parameters)
+        self.geo = geometry_parameters
         self._make_operator()
     
     def forward(self, sinogram):    
-        return super().forward(fdk(sinogram, self.geo))
+        return super().forward(fdk(sinogram, self.op))

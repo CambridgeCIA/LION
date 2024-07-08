@@ -6,12 +6,13 @@
 # Modifications: -
 # =============================================================================
 
-#%% This is a base class for solvers/trainers that gives you helpful functions.
+# %% This is a base class for solvers/trainers that gives you helpful functions.
 #
-# It definest a bunch of auxiliary functions
+# It defines a bunch of auxiliary functions
 #
 
 # You will want to import LIONParameter, as all models must save and use Parameters.
+from typing import Callable, Optional
 from LION.utils.parameter import LIONParameter
 
 # Lionmodels
@@ -34,14 +35,22 @@ import warnings
 import pathlib
 
 
+class SolverParams(LIONParameter):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class LIONsolver(ABC):
     def __init__(
         self,
-        model,
-        optimizer,
-        loss_fn,
-        optimizer_params,
-        verbose,
+        model: LIONmodel,
+        optimizer: torch.optim.Optimizer,
+        loss_fn: nn.Module,
+        save_folder: str | pathlib.Path,
+        final_result_fname: str,
+        solver_params: SolverParams,
+        verbose: bool,
+        device: torch.device=torch.device(f"cuda:{torch.cuda.current_device()}"),
         model_regularization=None,
     ) -> None:
         super().__init__()
@@ -53,21 +62,24 @@ class LIONsolver(ABC):
         ), "optimizer must be a torch optimizer"
         assert isinstance(loss_fn, nn.Module), "loss_fn must be a torch loss function"
 
-        if optimizer_params is None:
-            optimizer_params = self.default_parameters()
-
         self.model = model
         self.optimizer = optimizer
         self.loss_fn = loss_fn
-        self.device = optimizer_params.device
-        self.validation_loader = optimizer_params.validation_loader
-        self.validation_fn = optimizer_params.validation_fn
-        self.validation_freq = optimizer_params.validation_freq
-        self.save_folder = optimizer_params.save_folder
-        self.checkpoint_freq = optimizer_params.checkpoint_freq
-        self.final_result_fname = optimizer_params.final_result_fname
-        self.checkpoint_fname = optimizer_params.checkpoint_fname
-        self.validation_fname = optimizer_params.validation_fname
+        self.device = device
+        self.solver_params = solver_params
+        self.validation_loader: DataLoader
+        self.validation_fn: Optional[Callable]
+        self.validation_freq: int
+        self.validation_loss: np.ndarray
+        self.epochs: int
+        if isinstance(save_folder, str):
+            self.save_folder = pathlib.Path(save_folder)
+        else:
+            self.save_folder = save_folder
+        self.checkpoint_freq: int
+        self.final_result_fname = final_result_fname
+        self.checkpoint_fname: Optional[str] = None
+        self.validation_fname: Optional[str] = None
         self.verbose = verbose
         self.model_regularization = model_regularization
         self.metadata = LIONParameter()
@@ -76,7 +88,7 @@ class LIONsolver(ABC):
     # This should return the default parameters of the solver
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
-    def default_parameters() -> LIONParameter:
+    def default_parameters() -> SolverParams:
         pass
 
     def set_training(self, train_loader: DataLoader):
@@ -89,8 +101,8 @@ class LIONsolver(ABC):
         self,
         validation_loader: DataLoader,
         validation_freq: int,
-        validation_fn: callable = None,
-        validation_fname: pathlib.Path = None,
+        validation_fn: Optional[Callable] = None,
+        validation_fname: Optional[str] = None,
     ):
         """
         This function sets the validation data
@@ -100,7 +112,7 @@ class LIONsolver(ABC):
         self.validation_fn = validation_fn
         self.validation_fname = validation_fname
 
-    def set_testing(self, test_loader: DataLoader, testing_fn: callable):
+    def set_testing(self, test_loader: DataLoader, testing_fn: Callable):
         """
         This function sets the testing data
         """
@@ -109,19 +121,17 @@ class LIONsolver(ABC):
 
     def set_checkpointing(
         self,
-        save_folder: pathlib.Path,
-        checkpoint_fname: pathlib.Path,
+        checkpoint_fname: str,
         checkpoint_freq: int = 10,
         load_checkpoint: bool = True,
     ):
         """
         This function sets the checkpointing
         """
-        if not save_folder.is_dir():
-            raise ValueError(f"Save folder {save_folder} is not a directory")
+        if not self.save_folder.is_dir():
+            raise ValueError(f"Save folder '{self.save_folder}' is not a directory")
 
         self.checkpoint_freq = checkpoint_freq
-        self.save_folder = save_folder
         self.checkpoint_fname = checkpoint_fname
         self.do_load_checkpoint = load_checkpoint
 
@@ -246,8 +256,8 @@ class LIONsolver(ABC):
         # Test 13: is the checkpoint filename filename set? if not, raise error or warn or autofill
 
         if self.final_result_fname is not None:
-            default_checkpoint_fname = self.final_result_fname.parent / pathlib.Path(
-                str(self.final_result_fname.stem) + "_checkpoint_*.pt"
+            default_checkpoint_fname = self.save_folder.joinpath(
+                f"{self.final_result_fname}_checkpoint_*.pt"
             )
         else:
             default_checkpoint_fname = None
@@ -261,8 +271,8 @@ class LIONsolver(ABC):
         )
         # Test 14: is the validation filename set? if not, raise error or warn or autofill
         if self.final_result_fname is not None:
-            default_validation_fname = self.final_result_fname.parent / pathlib.Path(
-                str(self.final_result_fname.stem) + "_min_val.pt"
+            default_validation_fname = self.save_folder.joinpath(
+                f"{self.final_result_fname}_min_val.pt"
             )
         else:
             default_validation_fname = None
@@ -371,6 +381,9 @@ class LIONsolver(ABC):
         """
         This function saves the validation results
         """
+        assert (
+            self.validation_fname is not None
+        ), "No validation save filepath provided. This can be done via a call to set_validation."
         self.model.save(
             self.save_folder.joinpath(self.validation_fname),
             epoch=epoch,
@@ -424,6 +437,7 @@ class LIONsolver(ABC):
         """
         This function loads a checkpoint (if exists)
         """
+        assert self.checkpoint_fname is not None, "Checkpointing not set, failed to load checkpoint"
         (
             self.model,
             self.optimizer,
@@ -436,7 +450,7 @@ class LIONsolver(ABC):
             self.optimizer,
             self.train_loss,
         )
-        if self.validation_fn is not None and epoch > 0:
+        if self.validation_fn is not None and epoch > 0 and self.validation_fname is not None:
             self.validation_loss[epoch - 1] = self.model._read_min_validation(
                 self.save_folder.joinpath(self.validation_fname)
             )
@@ -454,9 +468,16 @@ class LIONsolver(ABC):
         pass
 
     @abstractmethod
-    def epoch_step(self):
+    def epoch_step(self, epoch):
         """
         This function should perform a single epoch of the optimization
+        """
+        pass
+
+    @abstractmethod
+    def train(self, n_epochs: int):
+        """
+        This function is responsible for performing the optimization.
         """
         pass
 
