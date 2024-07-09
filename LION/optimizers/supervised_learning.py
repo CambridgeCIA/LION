@@ -5,45 +5,32 @@ import numpy as np
 # Import base class
 from LION.optimizers.LIONsolver import LIONsolver
 
-# Parameter class
-from LION.utils.parameter import LIONParameter
-
 # standard imports
 from tqdm import tqdm
 
 
-class supervisedSolver(LIONsolver):
+class SupervisedSolver(LIONsolver):
     def __init__(
         self,
         model,
         optimizer,
         loss_fn,
-        optimizer_params=None,
-        verbose=True,
+        save_folder,
+        final_result_fname,
+        verbose=False,
+        device=torch.device(f"cuda:{torch.cuda.current_device()}"),
         model_regularization=None,
     ):
-
         super().__init__(
-            model, optimizer, loss_fn, optimizer_params, verbose, model_regularization
+            model,
+            optimizer,
+            loss_fn,
+            save_folder,
+            final_result_fname,
+            verbose=verbose,
+            device=device,
+            model_regularization=model_regularization,
         )
-
-    @staticmethod
-    def default_parameters():
-        param = LIONParameter()
-        param.model = None
-        param.optimizer = None
-        param.loss_fn = None
-        param.device = torch.cuda.current_device()
-        param.validation_loader = None
-        param.validation_fn = None
-        param.validation_freq = 10
-        param.save_folder = None
-        param.checkpoint_freq = 10
-        param.final_result_fname = None
-        param.checkpoint_fname = None
-        param.validation_fname = None
-        param.epoch = None
-        return param
 
     def mini_batch_step(self, data, target):
         """
@@ -86,12 +73,21 @@ class supervisedSolver(LIONsolver):
         This function is responsible for performing a single validation set of the optimization.
         returns the average loss of the validation set this epoch.
         """
+        # not a fan of using sentinel values like this, change for either ENUM or something like that
+        assert (
+            self.check_validation_ready() == 0
+        ), "Solver not ready for validation. Please call set_validation."
+
+        # these always pass if the above does, this is just to placate static type checker
+        assert self.validation_loader is not None
+        assert self.validation_fn is not None
+
         status = self.model.training
         self.model.eval()
         validation_loss = 0.0
         if self.verbose:
             print("Validating...")
-        for index, (data, target) in tqdm(
+        for _, (data, target) in tqdm(
             enumerate(self.validation_loader), disable=True
         ):
             with torch.no_grad():
@@ -108,7 +104,8 @@ class supervisedSolver(LIONsolver):
         This function is responsible for performing a single epoch of the optimization.
         """
         self.train_loss[epoch] = self.train_step()
-        if (epoch + 1) % self.validation_freq == 0:
+        # actually make sure we're doing validation
+        if (epoch + 1) % self.validation_freq == 0 and self.validation_loss is not None:
             self.validation_loss[epoch] = self.validate()
             if self.verbose:
                 print(
@@ -119,11 +116,10 @@ class supervisedSolver(LIONsolver):
                 epoch
             ] <= np.min(self.validation_loss[np.nonzero(self.validation_loss)]):
                 self.save_validation(epoch)
-
         elif self.verbose:
             print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
-        elif self.validation_freq is not None:
-            self.validation_loss[epoch] = self.validate()
+        # elif self.validation_freq is not None:
+        #     self.validation_loss[epoch] = self.validate()
 
     def train(self, n_epochs):
         """
@@ -133,18 +129,18 @@ class supervisedSolver(LIONsolver):
         # Make sure all parameters are set
         self.check_complete()
 
-        self.epochs = n_epochs
+        self.current_epoch = n_epochs
 
-        self.train_loss = np.zeros(self.epochs)
+        self.train_loss = np.zeros(self.current_epoch)
         if self.validation_fn is not None:
-            self.validation_loss = np.zeros(self.epochs)
+            self.validation_loss = np.zeros(self.current_epoch)
 
         init_epoch = 0
         if self.do_load_checkpoint:
             init_epoch = self.load_checkpoint()
 
         # train loop
-        for epoch in tqdm(range(init_epoch, self.epochs)):
+        for epoch in tqdm(range(init_epoch, self.current_epoch)):
             self.epoch_step(epoch)
             if (epoch + 1) % self.checkpoint_freq == 0:
                 self.save_checkpoint(epoch)

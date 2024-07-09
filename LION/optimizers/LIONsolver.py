@@ -40,7 +40,7 @@ class SolverParams(LIONParameter):
         super().__init__(**kwargs)
 
 
-class LIONsolver(ABC):
+class LIONsolver(ABC, metaclass=ABCMeta):
     def __init__(
         self,
         model: LIONmodel,
@@ -48,13 +48,11 @@ class LIONsolver(ABC):
         loss_fn: nn.Module,
         save_folder: str | pathlib.Path,
         final_result_fname: str,
-        solver_params: SolverParams,
-        verbose: bool,
-        device: torch.device=torch.device(f"cuda:{torch.cuda.current_device()}"),
+        verbose: bool=True,
+        device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
         model_regularization=None,
     ) -> None:
         super().__init__()
-        __metaclass__ = ABCMeta  # make class abstract.
 
         assert isinstance(model, LIONmodel), "model must be a LIONmodel"
         assert isinstance(
@@ -66,12 +64,14 @@ class LIONsolver(ABC):
         self.optimizer = optimizer
         self.loss_fn = loss_fn
         self.device = device
-        self.solver_params = solver_params
-        self.validation_loader: DataLoader
-        self.validation_fn: Optional[Callable]
-        self.validation_freq: int
-        self.validation_loss: np.ndarray
-        self.epochs: int
+        self.train_loss: np.ndarray = np.zeros(0)
+        self.validation_loader: Optional[DataLoader] = None
+        self.validation_fn: Optional[Callable] = None
+        self.validation_freq: Optional[int] = None
+        self.validation_loss: Optional[np.ndarray] = None
+        self.test_loader: DataLoader
+        self.testing_fn: Callable
+        self.current_epoch: int = 0
         if isinstance(save_folder, str):
             self.save_folder = pathlib.Path(save_folder)
         else:
@@ -85,11 +85,12 @@ class LIONsolver(ABC):
         self.metadata = LIONParameter()
         self.dataset_param = LIONParameter()
 
+    # Don't need this anymore, it's not the case that every Solver needs these parameters
     # This should return the default parameters of the solver
-    @staticmethod
-    @abstractmethod  # crash if not defined in derived class
-    def default_parameters() -> SolverParams:
-        pass
+    # @staticmethod
+    # @abstractmethod  # crash if not defined in derived class
+    # def default_parameters() -> SolverParams:
+    #     pass
 
     def set_training(self, train_loader: DataLoader):
         """
@@ -101,7 +102,7 @@ class LIONsolver(ABC):
         self,
         validation_loader: DataLoader,
         validation_freq: int,
-        validation_fn: Optional[Callable] = None,
+        validation_fn: Callable,
         validation_fname: Optional[str] = None,
     ):
         """
@@ -135,18 +136,17 @@ class LIONsolver(ABC):
         self.checkpoint_fname = checkpoint_fname
         self.do_load_checkpoint = load_checkpoint
 
-    def check_complete(self, error=True, autofill=True):
-        """
-        This function checks if the solver is complete, i.e. if all the necessary parameters are set to start traning.
-        """
+    def check_training_ready(self, error=True, autofill=True, verbose=True):
+        """This should always pass, all of these things are required to initialize a LIONsolver object
 
+        Args:
+            error (bool, optional): _description_. Defaults to True.
+            autofill (bool, optional): _description_. Defaults to True.
+
+        Returns:
+            _type_: _description_
+        """
         return_code = 0
-
-        # Set if we need to complain
-        if hasattr(self, "verbose"):
-            verbose = self.verbose
-        else:
-            verbose = True
 
         # Test 1: is the device set? if not, set it if autofill is True
         return_code = self.__check_attribute(
@@ -184,24 +184,7 @@ class LIONsolver(ABC):
             autofill=False,
             verbose=verbose,
         )
-
-        # Test 5: is the testing loader set? if not, raise error or warn
-        return_code = self.__check_attribute(
-            "test_loader",
-            expected_type=DataLoader,
-            error=error,
-            autofill=False,
-            verbose=verbose,
-        )
-        # Test 6: is the testing function set? if not, raise error or warn or autofill
-        return_code = self.__check_attribute(
-            "testing_fn",
-            expected_type=callable,
-            error=error,
-            autofill=False,
-            verbose=verbose,
-        )
-
+        
         # Test 7: is the training loader set? if not, raise error or warn
         return_code = self.__check_attribute(
             "train_loader",
@@ -210,6 +193,21 @@ class LIONsolver(ABC):
             autofill=False,
             verbose=verbose,
         )
+
+        # Test 12: is the final result filename set? if not, raise error or warn or autofill
+        return_code = self.__check_attribute(
+            "final_result_fname",
+            expected_type=pathlib.Path,
+            error=False,
+            autofill=False,
+            verbose=True,
+        )
+
+        return return_code
+    
+    def check_validation_ready(self, autofill=True, verbose=True):
+        return_code = 0
+
         # Test 8: is the validation loader set? if not, raise error or warn
         return_code = self.__check_attribute(
             "validation_loader",
@@ -237,38 +235,7 @@ class LIONsolver(ABC):
             verbose=verbose,
             default=10,
         )
-        # Test 11: is the save folder set? if not, raise error or warn or autofill
-        return_code = self.__check_attribute(
-            "save_folder",
-            expected_type=pathlib.Path,
-            error=False,
-            autofill=False,
-            verbose=True,
-        )
-        # Test 12: is the final result filename set? if not, raise error or warn or autofill
-        return_code = self.__check_attribute(
-            "final_result_fname",
-            expected_type=pathlib.Path,
-            error=False,
-            autofill=False,
-            verbose=True,
-        )
-        # Test 13: is the checkpoint filename filename set? if not, raise error or warn or autofill
 
-        if self.final_result_fname is not None:
-            default_checkpoint_fname = self.save_folder.joinpath(
-                f"{self.final_result_fname}_checkpoint_*.pt"
-            )
-        else:
-            default_checkpoint_fname = None
-        return_code = self.__check_attribute(
-            "checkpoint_fname",
-            expected_type=pathlib.Path,
-            error=False,
-            autofill=True,
-            verbose=False,
-            default=default_checkpoint_fname,
-        )
         # Test 14: is the validation filename set? if not, raise error or warn or autofill
         if self.final_result_fname is not None:
             default_validation_fname = self.save_folder.joinpath(
@@ -284,6 +251,50 @@ class LIONsolver(ABC):
             verbose=False,
             default=default_validation_fname,
         )
+
+        return return_code
+    
+    def check_testing_ready(self, error=True, verbose=True):
+        return_code = 0
+
+        # Test 5: is the testing loader set? if not, raise error or warn
+        return_code = self.__check_attribute(
+            "test_loader",
+            expected_type=DataLoader,
+            error=error,
+            autofill=False,
+            verbose=verbose,
+        )
+        # Test 6: is the testing function set? if not, raise error or warn or autofill
+        return_code = self.__check_attribute(
+            "testing_fn",
+            expected_type=callable,
+            error=error,
+            autofill=False,
+            verbose=verbose,
+        )
+
+        return return_code
+
+    def check_checkpointing_ready(self, autofill=True, verbose=True):
+        return_code = 0
+
+        # Test 13: is the checkpoint filename filename set? if not, raise error or warn or autofill
+        if self.final_result_fname is not None:
+            default_checkpoint_fname = self.save_folder.joinpath(
+                f"{self.final_result_fname}_checkpoint_*.pt"
+            )
+        else:
+            default_checkpoint_fname = None
+        return_code = self.__check_attribute(
+            "checkpoint_fname",
+            expected_type=pathlib.Path,
+            error=False,
+            autofill=True,
+            verbose=False,
+            default=default_checkpoint_fname,
+        )
+
         # Test 15: is the checkpoint frequency set? if not, raise error or warn or autofill
         return_code = self.__check_attribute(
             "checkpoint_freq",
@@ -303,14 +314,58 @@ class LIONsolver(ABC):
             verbose=verbose,
             default=True,
         )
+
+        return return_code
+
+    def check_saving_ready(self):
+        # Test 11: is the save folder set? if not, raise error or warn or autofill
+        return self.__check_attribute(
+            "save_folder",
+            expected_type=pathlib.Path,
+            error=False,
+            autofill=False,
+            verbose=True,
+        )
+    
+    def check_regularization_ready(self):
+        # might be more that needs to be done in here, don't really know much about regularization
+
         # Test 17: is the model regularization set?
-        return_code = self.__check_attribute(
+        return self.__check_attribute(
             "model_regularization",
             expected_type=nn.Module,
             error=False,
             autofill=False,
             verbose=False,
         )
+
+    def check_complete(self, error=True, autofill=True):
+        """
+        This function checks if the solver is complete, i.e. if all the necessary parameters are set to start traning.
+        """
+
+        return_code = 0
+
+        # Set if we need to complain
+        # should never have to go into the else, it's always set, but leave this here as legacy just in case...
+        if hasattr(self, "verbose"):
+            verbose = self.verbose
+        else:
+            verbose = True
+            self.verbose = verbose
+
+        return_code = self.check_training_ready(error, autofill, verbose)
+
+        return_code = self.check_testing_ready(error, verbose)
+
+        return_code = self.check_validation_ready(error, autofill)
+        
+        return_code = self.check_checkpointing_ready(autofill, verbose)
+
+        return_code = self.check_saving_ready()
+        
+        if self.model_regularization is not None:
+            return_code = self.check_regularization_ready() 
 
         self.verbose = verbose
 
@@ -382,8 +437,14 @@ class LIONsolver(ABC):
         This function saves the validation results
         """
         assert (
+            self.validation_fn is not None
+        ), "Validation not set up for this solver. Please call set_validation"
+
+        assert (
             self.validation_fname is not None
         ), "No validation save filepath provided. This can be done via a call to set_validation."
+
+        assert self.validation_loss is not None, "No validation losses found, failed to save."
         self.model.save(
             self.save_folder.joinpath(self.validation_fname),
             epoch=epoch,
@@ -397,12 +458,12 @@ class LIONsolver(ABC):
         This function saves the final results of the optimization
         """
         if epoch is None:
-            epoch = self.epochs
+            epoch = self.current_epoch
         if final_result_fname is not None:
             self.final_result_fname = final_result_fname
 
         self.model.save(
-            self.final_result_fname,
+            self.save_folder.joinpath(self.final_result_fname),
             epoch=epoch,
             training=self.metadata,
             loss=self.train_loss,
@@ -413,8 +474,10 @@ class LIONsolver(ABC):
         """
         This function cleans the checkpoints
         """
+        # TODO: This doesn't delete the .jsons only the .pt, is this intentional behaviour?
         for f in self.save_folder.glob(str(self.checkpoint_fname).replace("*", "*")):
             f.unlink()
+        
 
     def test(self):
         """
@@ -437,7 +500,9 @@ class LIONsolver(ABC):
         """
         This function loads a checkpoint (if exists)
         """
-        assert self.checkpoint_fname is not None, "Checkpointing not set, failed to load checkpoint"
+        assert (
+            self.checkpoint_fname is not None
+        ), "Checkpointing not set, failed to load checkpoint"
         (
             self.model,
             self.optimizer,
@@ -450,7 +515,12 @@ class LIONsolver(ABC):
             self.optimizer,
             self.train_loss,
         )
-        if self.validation_fn is not None and epoch > 0 and self.validation_fname is not None:
+        if (
+            self.validation_fn is not None
+            and epoch > 0
+            and self.validation_fname is not None
+            and self.validation_loss is not None
+        ):
             self.validation_loss[epoch - 1] = self.model._read_min_validation(
                 self.save_folder.joinpath(self.validation_fname)
             )

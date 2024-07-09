@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import pathlib
 import torch
 from torch.utils.data import DataLoader
-import torch.utils.data as data_utils
 from LION.models.CNNs.MSDNets.MS_D2 import MSD_Net
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
@@ -14,10 +13,9 @@ def my_ssim(x, y):
     y = y.cpu().numpy().squeeze()
     return ssim(x, y, data_range=x.max() - x.min())
 
-
 # %%
 # % Chose device:
-device = torch.device("cuda:1")
+device = torch.device("cuda:3")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
@@ -33,12 +31,12 @@ experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
 lidc_dataset = experiment.get_training_dataset()
 
 # smaller dataset for example. Remove this for full dataset
-lidc_dataset = data_utils.Subset(lidc_dataset, [i for i in range(100)])
+# lidc_dataset = data_utils.Subset(lidc_dataset, [i for i in range(50)])
 
 
 # %% Define DataLoader
 
-batch_size = 10
+batch_size = 12
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
 lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
 
@@ -54,8 +52,8 @@ loss_fn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 2
-train_param.learning_rate = 1e-4
+train_param.epochs = 100
+train_param.learning_rate = 10**(-3)
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
 optimiser = torch.optim.Adam(
@@ -82,11 +80,7 @@ solver.set_training(lidc_dataloader)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
-solver.set_checkpointing(checkpoint_fname, 10, load_checkpoint=False)
-
-# check ready
-solver.check_complete()
-
+solver.set_checkpointing(checkpoint_fname, 10, load_checkpoint=True)
 # train
 solver.train(train_param.epochs)
 # delete checkpoints if finished

@@ -44,7 +44,6 @@ class Noise2InverseSolver(LIONsolver):
             loss_fn,
             save_folder,
             final_result_fname,
-            solver_params,
             verbose,
             device,
         )
@@ -92,15 +91,15 @@ class Noise2InverseSolver(LIONsolver):
             sub_recon_j = self.recon_fn(sub_sino_j, self.sub_ops[j])
             if bad_recons is None:
                 bad_recons = torch.zeros(
-                    size=(sinos.shape[0], *sub_recon_j.shape), device=self.device
+                    size=(sinos.shape[0], self.sino_split_count, *sub_recon_j.shape[1:]), device=self.device
                 )
-            bad_recons[:, j, :, :, :] = sub_recon_j
+            bad_recons[:, j, :, :, :] = sub_recon_j # b, s, c, w, h
         assert bad_recons is not None
         return bad_recons
 
     @staticmethod
     def default_parameters() -> Noise2InverseParams:
-        sino_split_count = 10
+        sino_split_count = 4
         recon_fn = fdk
         cali_J = Noise2InverseSolver.X_one_strategy(sino_split_count)
         return Noise2InverseParams(
@@ -109,12 +108,12 @@ class Noise2InverseSolver(LIONsolver):
             cali_J,
         )
 
+
     def mini_batch_step(self, sinos):
         # sinos batch of sinos
         noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)
         # b, split, c, w, h
 
-        self.model.train()
         self.optimizer.zero_grad()
 
         # almost certain this can be made more efficient
@@ -162,21 +161,67 @@ class Noise2InverseSolver(LIONsolver):
         This function is responsible for performing a single epoch of the optimization.
         """
         self.train_loss[epoch] = self.train_step()
+        print(f"Training Loss: {self.train_loss[epoch]}")
 
     def train(self, n_epochs):
         """
         This function is responsible for performing the optimization.
+        Runs n_epochs additional epochs.
         """
         assert n_epochs > 0, "Number of epochs must be a positive integer"
         # Make sure all parameters are set
         self.check_complete()
 
-        self.epochs = n_epochs
-        self.train_loss = np.zeros(self.epochs)
+        if self.do_load_checkpoint:
+            print("Loading checkpoint...")
+            self.current_epoch = self.load_checkpoint()
+            self.train_loss = np.append(self.train_loss, np.zeros((n_epochs)))
+        else:
+            self.train_loss = np.zeros(n_epochs)            
 
+        self.model.train()
         # train loop
-        for epoch in tqdm(range(self.epochs)):
-            print(f"Training epoch {epoch + 1}")
-            self.epoch_step(epoch)
-            if (epoch + 1) % self.checkpoint_freq == 0:
-                self.save_checkpoint(epoch)
+        final_total_epochs = self.current_epoch + n_epochs
+        while self.current_epoch < final_total_epochs:
+            print(f"Training epoch {self.current_epoch + 1}")
+            self.epoch_step(self.current_epoch)
+
+            if self.current_epoch % self.checkpoint_freq == 0:
+                self.save_checkpoint(self.current_epoch)
+            
+            self.current_epoch += 1
+
+
+    def test(self):
+        """
+        This function performs a testing step
+        """
+        self.model.eval()
+
+        # do we want to be able to use this on a trained model? Surely yes?
+
+        with torch.no_grad():
+            test_loss = np.zeros(len(self.test_loader))
+            for i, (sinos, targets) in enumerate(tqdm(self.test_loader)):
+                noisy_sub_recons = self._calculate_noisy_sub_recons(sinos) # b, split, c, w, h
+                
+                outputs = torch.zeros((sinos.shape[0], *targets.shape[1:]), device=self.device)
+                for _, J in enumerate(self.cali_J):
+                    # fix indexing; J's are 1 indexed for user convenience
+                    J_zero_indexing = list(map(lambda n: n - 1, J))
+                    J_c = [n for n in np.arange(self.sino_split_count) if n not in J_zero_indexing]
+
+                    # calculate mean sub_recons
+                    jcnsr = noisy_sub_recons[:, J_c, :, :, :]
+                    mean_input_recons = torch.mean(jcnsr, dim=1)
+
+                    # pump it through NN
+                    outputs += self.model(mean_input_recons)
+                outputs /= len(self.cali_J)
+                test_loss[i] = self.testing_fn(outputs, targets)
+
+        if self.verbose:
+            print(
+                f"Testing loss: {test_loss.mean()} - Testing loss std: {test_loss.std()}"
+            )
+        return test_loss

@@ -382,6 +382,7 @@ class LIONmodel(nn.Module, ABC):
             total_loss = data["loss"]
             model.train()
         else:
+            print(f"checkpoint {fname} not found, failed to load.")
             return model, optimiser, 0, total_loss, None
         return model, optimiser, start_epoch, total_loss, data
 

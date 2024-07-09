@@ -22,7 +22,8 @@ class MSD_Net(LIONmodel):
         self,
         model_parameters: Optional[LIONParameter] = None,
     ) -> None:
-        """_summary_
+        """Mixed-Scale Dense Neural Network based on:
+        A mixed-scale dense convolutional neural network for image analysis, Daniël M. Pelt and James A. Sethian
 
         Args:
             model_parameters (Optional[LIONParameter]):
