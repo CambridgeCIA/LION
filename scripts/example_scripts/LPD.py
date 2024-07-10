@@ -16,7 +16,7 @@ import torch.utils.data as data_utils
 from LION.models.iterative_unrolled.LPD import LPD
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
-from LION.optimizers.supervised_learning import supervisedSolver
+from LION.optimizers.supervised_learning import SupervisedSolver
 
 
 def my_ssim(x, y):
@@ -89,7 +89,7 @@ optimiser = torch.optim.Adam(
 
 #%% Train
 # create solver
-solver = supervisedSolver(model, optimiser, loss_fcn, verbose=True)
+solver = SupervisedSolver(model, optimiser, loss_fcn, verbose=True)
 
 # YOU CAN IGNORE THIS. You can 100% just write your own pytorch training loop.
 # LIONSover is just a convinience class that does some stuff for you, no need to use it.

@@ -186,7 +186,7 @@ class Noise2InverseSolver(LIONsolver):
             print(f"Training epoch {self.current_epoch + 1}")
             self.epoch_step(self.current_epoch)
 
-            if self.current_epoch % self.checkpoint_freq == 0:
+            if (self.current_epoch + 1) % self.checkpoint_freq == 0:
                 self.save_checkpoint(self.current_epoch)
             
             self.current_epoch += 1
