@@ -44,15 +44,12 @@ class Noise2InverseSolver(LIONsolver):
             loss_fn,
             save_folder,
             final_result_fname,
+            geo,
             verbose,
             device,
+            solver_params=solver_params
         )
         self.sino_split_count = solver_params.sino_split_count
-        if geo is None:
-            raise ValueError(
-                "Argument 'geo' is None. Noise2InverseSolver requires a geometry"
-            )
-        self.geo = geo  # don't necessarily need to keep this around as is, but thought we might as well
         self.recon_fn = solver_params.recon_fn
         self.cali_J = np.array(solver_params.cali_J)
         self.sub_ops = self._make_sub_operators()

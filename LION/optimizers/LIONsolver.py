@@ -12,11 +12,14 @@
 #
 
 # You will want to import LIONParameter, as all models must save and use Parameters.
+from enum import Enum
 from typing import Callable, Optional
+from LION.CTtools.ct_geometry import Geometry
+from LION.CTtools.ct_utils import make_operator
 from LION.utils.parameter import LIONParameter
 
 # Lionmodels
-from LION.models.LIONmodel import LIONmodel
+from LION.models.LIONmodel import LIONmodel, ModelInputType
 
 # Some utils
 from LION.utils.utils import custom_format_warning
@@ -34,10 +37,13 @@ from abc import ABC, abstractmethod, ABCMeta
 import warnings
 import pathlib
 
+# TODO: finish this
+class SolverState(Enum):
+    COMPLETE=0
 
 class SolverParams(LIONParameter):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self):
+        super().__init__()
 
 
 class LIONsolver(ABC, metaclass=ABCMeta):
@@ -48,9 +54,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         loss_fn: nn.Module,
         save_folder: str | pathlib.Path,
         final_result_fname: str,
+        geometry: Geometry,
         verbose: bool=True,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
         model_regularization=None,
+        solver_params: SolverParams=SolverParams()
     ) -> None:
         super().__init__()
 
@@ -60,8 +68,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         ), "optimizer must be a torch optimizer"
         assert isinstance(loss_fn, nn.Module), "loss_fn must be a torch loss function"
 
+        self.solver_params = solver_params
+
         self.model = model
         self.optimizer = optimizer
+        self.geo = geometry
         self.loss_fn = loss_fn
         self.device = device
         self.train_loss: np.ndarray = np.zeros(0)
@@ -85,12 +96,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.metadata = LIONParameter()
         self.dataset_param = LIONParameter()
 
-    # Don't need this anymore, it's not the case that every Solver needs these parameters
     # This should return the default parameters of the solver
-    # @staticmethod
-    # @abstractmethod  # crash if not defined in derived class
-    # def default_parameters() -> SolverParams:
-    #     pass
+    @staticmethod
+    @abstractmethod  # crash if not defined in derived class
+    def default_parameters() -> SolverParams:
+        pass
 
     def set_training(self, train_loader: DataLoader):
         """
@@ -102,7 +112,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self,
         validation_loader: DataLoader,
         validation_freq: int,
-        validation_fn: Callable,
+        validation_fn: Optional[Callable] = None,
         validation_fname: Optional[str] = None,
     ):
         """
@@ -110,7 +120,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         self.validation_loader = validation_loader
         self.validation_freq = validation_freq
-        self.validation_fn = validation_fn
+        self.validation_fn = validation_fn if validation_fn is not None else self.loss_fn
         self.validation_fname = validation_fname
 
     def set_testing(self, test_loader: DataLoader, testing_fn: Callable):
@@ -124,7 +134,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self,
         checkpoint_fname: str,
         checkpoint_freq: int = 10,
-        load_checkpoint: bool = True,
+        load_checkpoint: bool = False,
     ):
         """
         This function sets the checkpointing
@@ -478,23 +488,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         for f in self.save_folder.glob(str(self.checkpoint_fname).replace("*", "*")):
             f.unlink()
         
-
+    @abstractmethod
     def test(self):
         """
         This function performs a testing step
         """
-        self.model.eval()
-        test_loss = np.zeros(len(self.test_loader))
-        with torch.no_grad():
-            for index, (data, target) in enumerate(self.test_loader):
-                output = self.model(data.to(self.device))
-                test_loss[index] = self.testing_fn(output, target.to(self.device))
-
-        if self.verbose:
-            print(
-                f"Testing loss: {test_loss.mean()} - Testing loss std: {test_loss.std()}"
-            )
-        return test_loss
+        pass
 
     def load_checkpoint(self):
         """

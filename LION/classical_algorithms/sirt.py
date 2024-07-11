@@ -5,6 +5,8 @@ from LION.CTtools.ct_utils import make_operator
 from ts_algorithms import sirt as ts_sirt
 import tomosipo as ts
 
+from LION.exceptions.exceptions import NoDataException
+
 
 def sirt_from_geo(
     sino: torch.Tensor,
@@ -49,8 +51,9 @@ def sirt(
     See ts_algorithms.tv_min2d for more details.
     """
     B, _, _, _ = sino.shape
+    if B == 0: 
+        raise NoDataException("Given 0 batches, no data to operate on!")
     recon = sino.new_zeros(B, *op.domain_shape)
-    assert B > 0, "Given 0 batches, no data to operate on!"
     for i in range(B):
         sub_recon = ts_sirt(
             op,

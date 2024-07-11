@@ -132,7 +132,7 @@ def from_HU_to_material_id(img):
     return materials
 
 
-def make_operator(geo):
+def make_operator(geo: Geometry):
     if not isinstance(geo, Geometry):
         raise ValueError("Input geo is not of class LION.CTtools.ct_geometry.Geometry")
     if geo.mode == "fan":

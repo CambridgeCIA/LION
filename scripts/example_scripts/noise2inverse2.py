@@ -80,7 +80,7 @@ solver.set_training(lidc_dataloader)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
-solver.set_checkpointing(checkpoint_fname, 10, load_checkpoint=True)
+solver.set_checkpointing(checkpoint_fname, 2, load_checkpoint=True)
 # train
 solver.train(train_param.epochs)
 # delete checkpoints if finished

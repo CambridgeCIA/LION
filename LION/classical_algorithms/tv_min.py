@@ -5,6 +5,8 @@ from LION.CTtools.ct_utils import make_operator
 from ts_algorithms import tv_min2d as ts_tv_min
 import tomosipo as ts
 
+from LION.exceptions.exceptions import NoDataException
+
 
 def tv_min_from_geo(
     sino: torch.Tensor,
@@ -36,8 +38,9 @@ def tv_min(
         See ts_algorithms.tv_min2d for more details.
     """
     B, _, _, _ = sino.shape
+    if B == 0: 
+        raise NoDataException("Given 0 batches, no data to operate on!")
     recon = sino.new_zeros(B, *op.domain_shape)
-    assert B > 0, "Given 0 batches, no data to operate on!"
     for i in range(B):
         sub_recon = ts_tv_min(
             op, sino, lam, num_iterations, L, non_negativity, progress_bar, callbacks
