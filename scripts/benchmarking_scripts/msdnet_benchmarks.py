@@ -5,6 +5,7 @@
 import time
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pathlib
@@ -27,7 +28,8 @@ savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
 experiments = [ct_experiments.clinicalCTRecon(), ct_experiments.ExtremeLowDoseCTRecon(), ct_experiments.LimitedAngleCTRecon(), ct_experiments.SparseAngleCTRecon()]
 
 for experiment in experiments:
-    experiment_str = str(type(experiment)).split("experiments.")[1][:-2]
+    experiment_str = str(type(experiment)).split("ct_experiments.")[1][:-2]
+    print(experiment_str)
     #%% Dataset
     lidc_dataset = experiment.get_training_dataset()
     lidc_dataset_val = experiment.get_validation_dataset()
@@ -51,7 +53,7 @@ for experiment in experiments:
         dilations=dilations,
         look_back_depth=-1,
         final_look_back_depth=-1,
-        activation="ReLU",
+        activation=nn.ReLU(),
     )
     model = FBPMSD_Net(geometry_parameters=experiment.geo, model_parameters=model_params).to(device)
     def count_parameters(model):
@@ -131,7 +133,8 @@ for experiment in experiments:
         print(
             f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
         )
-        
+        if valid_loss < min_valid_loss: 
+            min_valid_loss = valid_loss
         total_validation_time += time.time() - start_time
 
     with open(f"{experiment_str}_msd2_benchmarking.txt", 'w') as f:

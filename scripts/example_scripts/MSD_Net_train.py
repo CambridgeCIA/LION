@@ -5,6 +5,7 @@
 import time
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 import pathlib
@@ -55,7 +56,7 @@ model_params = MSD_Params(
     dilations=dilations,
     look_back_depth=-1,
     final_look_back_depth=-1,
-    activation="ReLU",
+    activation=nn.ReLU(),
 )
 model = OGFBPMSD_Net(geometry_parameters=experiment.geo, model_parameters=MS_D.default_parameters()).to(device)
 

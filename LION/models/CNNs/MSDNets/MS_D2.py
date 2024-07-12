@@ -13,28 +13,27 @@ import torch.nn as nn
 import torch
 from typing import Optional
 from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
-from LION.utils.activations import ACTIVATIONS
 
 
 class MSD_Params(ModelParams):
     def __init__(
         self,
-        in_channels,
-        width,
-        depth,
-        dilations,
-        look_back_depth,
-        final_look_back_depth,
-        activation,
+        in_channels: int,
+        width: int,
+        depth: int,
+        dilations: list[int],
+        look_back_depth: int,
+        final_look_back_depth: int,
+        activation: nn.Module,
     ):
         super().__init__(model_input_type=ModelInputType.NOISY_RECON)
-        self.in_channels = in_channels
-        self.width = width
-        self.depth = depth
-        self.dilations = dilations
-        self.look_back_depth = look_back_depth
-        self.final_look_back_depth = final_look_back_depth
-        self.activation = activation
+        self.in_channels: int = in_channels
+        self.width: int = width
+        self.depth: int = depth
+        self.dilations: list[int] = dilations
+        self.look_back_depth: int = look_back_depth
+        self.final_look_back_depth: int = final_look_back_depth
+        self.activation: nn.Module = activation
 
 
 class MSD_Net(LIONmodel):
@@ -56,10 +55,6 @@ class MSD_Net(LIONmodel):
                     look_back_depth: how many layers back to use when computing channels in a given layer. -1 = use all layers
                     final_look_back: how many layers to use to construct output image
                     activation: the activation function to be used between layers.
-                        One of:
-                            ReLU,
-                            sigmoid,
-                            ...
         """
         super().__init__(model_parameters)
         # it should definitely be not None here, as if it was none it's been set to default params,
@@ -76,18 +71,8 @@ class MSD_Net(LIONmodel):
         self.depth = self.model_parameters.depth
         self.dilations = self.model_parameters.dilations
         self.look_back_depth = self.model_parameters.look_back_depth
-        self.final_look_back = self.model_parameters.final_look_back_depth
-        self.activation = nn.Sequential(nn.BatchNorm2d(1))
-        # this is bad practice, think of a better way to do this
-        try:
-            self.activation.append(
-                ACTIVATIONS[(acti := self.model_parameters.activation)]()
-            )
-        except KeyError:
-            print(
-                f"Activation '{acti}' not recognised. Expected one of {ACTIVATIONS.keys()}. Defaulting to ReLU."
-            )
-            self.activation.append(nn.ReLU())
+        self.final_look_back_depth = self.model_parameters.final_look_back_depth
+        self.activation = nn.Sequential(self.model_parameters.activation, nn.BatchNorm2d(1))
         # total there should be width * depth distinct convolutions
         # so expect the same number of dilations to be given
         if len(self.dilations) != self.width * self.depth:
@@ -119,12 +104,13 @@ class MSD_Net(LIONmodel):
                     dilation=d,
                     padding="same",
                     padding_mode="reflect",
-                    bias=False,
+                    bias=True,
                 ),
             )
 
         self.convs = convs
 
+        # change this so it actually uses final_look_back_depth
         if self.look_back_depth == -1:
             final_in_ch = self.depth * self.width + self.in_channels
         else:
@@ -194,7 +180,7 @@ class MSD_Net(LIONmodel):
             dilations=dilations,
             look_back_depth=-1,
             final_look_back_depth=-1,
-            activation="ReLU",
+            activation=nn.ReLU(),
         )
         return params
 
