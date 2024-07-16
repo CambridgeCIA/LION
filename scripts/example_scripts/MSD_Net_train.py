@@ -1,45 +1,64 @@
-#%% This example shows how to train FBPConvNet for full angle, noisy measurements.
+#%% This example shows how to train MSDNet for full angle, noisy measurements.
 
 
 #%% Imports
+import time
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+import torch.nn as nn
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 import pathlib
-from LION.models.post_processing.FBPConvNet import FBPConvNet
+from LION.experiments import ct_benchmarking_experiments
+from LION.models.CNNs.MSDNets.FBPMS_D import FBPMSD_Net, OGFBPMSD_Net
+from LION.models.CNNs.MSDNets.MS_D import MS_D
+from LION.models.CNNs.MSDNets.MS_D2 import MSD_Params
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 
 
 #%%
 # % Chose device:
-device = torch.device("cuda:2")
+device = torch.device("cuda:1")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
 
-final_result_fname = savefolder.joinpath("FBPConvNet_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("FBPConvNet_check_*.pt")  
-validation_fname = savefolder.joinpath("FBPConvNet_min_val.pt")
+final_result_fname = savefolder.joinpath("FBPMSDNetw1d30lball_final_iter.pt")
+checkpoint_fname = savefolder.joinpath("FBPMSDNetw1d30lball_check_*.pt")  
+validation_fname = savefolder.joinpath("FBPMSDNetw1d30lball_min_val.pt")
 #
 #%% Define experiment
 # experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
-experiment = ct_experiments.clinicalCTRecon()
+experiment = ct_benchmarking_experiments.FullDataCTRecon()
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 4
+batch_size = 10
+lidc_dataset = Subset(lidc_dataset, [i for i in range(50)])
+lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(50)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
 #%% Model
-# Default model is already from the paper.
-model = FBPConvNet(geometry_parameters=experiment.geo).to(device)
-
+width, depth = 1, 100
+dilations = []
+for i in range(depth):
+    for j in range(width):
+        dilations.append((((i * width) + j) % 10) + 1)
+model_params = MSD_Params(
+    in_channels=1,
+    width=width,
+    depth=depth,
+    dilations=dilations,
+    look_back_depth=-1,
+    final_look_back_depth=-1,
+    activation=nn.ReLU(),
+)
+model = OGFBPMSD_Net(geometry_parameters=experiment.geo, model_parameters=MS_D.default_parameters()).to(device)
 
 #%% Optimizer
 train_param = LIONParameter()
@@ -49,10 +68,11 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 20
+train_param.epochs = 1
 train_param.learning_rate = 1e-3
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
+train_param.accumulation_steps = 1
 optimiser = torch.optim.Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
@@ -71,41 +91,62 @@ start_epoch = 0
 #    print("final model exists! You already reached final iter")
 #    exit()
 
-model, optimiser, start_epoch, total_loss, _ = FBPConvNet.load_checkpoint_if_exists(
-    checkpoint_fname, model, optimiser, total_loss
-)
-
+# model, optimiser, start_epoch, total_loss, _ = FBPMSD_Net.load_checkpoint_if_exists(
+#     checkpoint_fname, model, optimiser, total_loss
+# )
 total_loss = np.resize(total_loss, train_param.epochs)
 print(f"Starting iteration at epoch {start_epoch}")
+optimiser.zero_grad()
+
+scaler = torch.cuda.amp.grad_scaler.GradScaler()
+
+start_time = time.time()
 
 #%% train
 for epoch in range(start_epoch, train_param.epochs):
     train_loss = 0.0
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
-    for sinogram, target_reconstruction in tqdm(lidc_dataloader):
-
-        optimiser.zero_grad()
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
+    print("Training...")
+    model.train()
+    for idx, (sinogram, target_reconstruction) in enumerate(tqdm(lidc_dataloader)):   
+        sinogram = sinogram.to(device)
+        target_reconstruction = target_reconstruction.to(device)
+        #with torch.autocast("cuda"):
         reconstruction = model(sinogram)
         loss = loss_fcn(reconstruction, target_reconstruction)
+        loss = loss / train_param.accumulation_steps
 
-        loss.backward()
+        scaler.scale(loss).backward()
+        #loss.backward()
 
         train_loss += loss.item()
 
-        optimiser.step()
-        scheduler.step()
+        if (idx + 1) % train_param.accumulation_steps == 0:
+            scaler.step(optimiser)
+            scaler.update()
+            # scheduler.step()
+            optimiser.zero_grad()
+
     total_loss[epoch] = train_loss
+    print(f"Model took {time.time() - start_time}s to train")
+    print(f"Model achieved training loss of {train_loss}")
     # Validation
     valid_loss = 0.0
     model.eval()
-    for sinogram, target_reconstruction in tqdm(lidc_validation):
-        reconstruction = model(sinogram)
-        loss = loss_fcn(target_reconstruction, reconstruction)
-        valid_loss += loss.item()
+    start_time = time.time()
+    with torch.no_grad():
+        print("Validating...")
+        for sinogram, target_reconstruction in tqdm(lidc_validation):
+            reconstruction = model(sinogram)
+            loss = loss_fcn(target_reconstruction, reconstruction)
+            valid_loss += loss.item()
 
     print(
         f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
     )
+    
+    print(f"Model took {time.time() - start_time}s to validate")
+    print(f"Model achieved validation loss of {valid_loss}")
 
     if min_valid_loss > valid_loss:
         print(
@@ -122,7 +163,8 @@ for epoch in range(start_epoch, train_param.epochs):
         )
 
     # Checkpoint every 10 iters anyway
-    if epoch % 10 == 0:
+    if (epoch + 1) %  1 == 0:
+        print("Checkpointing")
         model.save_checkpoint(
             pathlib.Path(str(checkpoint_fname).replace("*", f"{epoch+1:04d}")),
             epoch + 1,
@@ -132,13 +174,12 @@ for epoch in range(start_epoch, train_param.epochs):
             dataset=experiment.param,
         )
 
-
 model.save(
     final_result_fname,
     epoch=train_param.epochs,
     training=train_param,
     dataset=experiment.param,
+    geometry=experiment.geo
 )
-
 
 

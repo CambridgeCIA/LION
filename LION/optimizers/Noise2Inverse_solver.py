@@ -145,11 +145,11 @@ class Noise2Inverse_solver(LIONsolver):
         # Make sure all parameters are set
         self.check_complete()
 
-        self.epochs = n_epochs
-        self.train_loss = np.zeros(self.epochs)
+        self.current_epoch = n_epochs
+        self.train_loss = np.zeros(self.current_epoch)
 
         # train loop
-        for epoch in tqdm(range(self.epochs)):
+        for epoch in tqdm(range(self.current_epoch)):
             self.epoch_step(epoch)
             if (epoch + 1) % self.checkpoint_freq == 0:
                 self.save_checkpoint(epoch)

@@ -24,6 +24,7 @@ class LIONParameter:
         if all(vars(self).values()):
             raise ValueError("Not all parameters set")
 
+
     def serialize(self):
         """
         This only exists to allow LIONParameter() inside LIONParameter()

@@ -43,9 +43,9 @@ savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
 # use min validation, or final result, whicever you prefer
 model_name = "FBPMSDnet_FullDataCTRecon_check_0030.pt"
 
-from LION.models.post_processing.FBPMSDNet import FBPMS_D
+from LION.models.post_processing.FBPConvNet import FBPConvNet
 
-model, options, data = FBPMS_D.load(savefolder.joinpath(model_name))
+model, options, data = FBPConvNet.load(savefolder.joinpath(model_name))
 model.to(device)
 model.eval()
 experiment = ct_benchmarking.FullDataCTRecon()

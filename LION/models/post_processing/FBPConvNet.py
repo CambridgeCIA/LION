@@ -11,7 +11,7 @@ import torch.nn as nn
 from LION.models import LIONmodel
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ct
-from ts_algorithms import fdk
+from LION.classical_algorithms.fdk import fdk
 
 # Implementation of:
 
@@ -100,7 +100,6 @@ class FBPConvNet(LIONmodel.LIONmodel):
             raise ValueError("Geometry parameters required. ")
 
         super().__init__(model_parameters, geometry_parameters)
-
         self._make_operator()
         # standard FBPConvNet (As per paper):
 
@@ -238,11 +237,7 @@ class FBPConvNet(LIONmodel.LIONmodel):
     def forward(self, x):
         B, C, W, H = x.shape
 
-        image = x.new_zeros(B, 1, *self.geo.image_shape[1:])
-        for i in range(B):
-            aux = fdk(self.op, x[i, 0])
-            aux = torch.clip(aux, min=0)
-            image[i] = aux
+        image = fdk(x, self.op)
         block_1_res = self.block_1_down(image)
         block_2_res = self.block_2_down(self.down_1(block_1_res))
         block_3_res = self.block_3_down(self.down_2(block_2_res))

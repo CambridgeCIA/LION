@@ -15,6 +15,8 @@
 #%% Imports
 
 # You will want to import LIONParameter, as all models must save and use Parameters.
+from enum import Enum
+from typing import Optional
 from LION.utils.parameter import LIONParameter
 
 # We will need utilities
@@ -40,8 +42,16 @@ from abc import ABC, abstractmethod, ABCMeta
 # Some other imports
 import warnings
 from pathlib import Path
-import subprocess
 
+class ModelInputType(int, Enum):
+    SINOGRAM=0
+    NOISY_RECON=1
+
+# it is the job of the subclass constructor to specify input_type
+class ModelParams(LIONParameter):
+    def __init__(self, model_input_type, **kwargs):
+        super().__init__(**kwargs)
+        self.model_input_type = model_input_type
 
 class LIONmodel(nn.Module, ABC):
     """
@@ -53,8 +63,8 @@ class LIONmodel(nn.Module, ABC):
     # for the geometry parameters of the inverse problem.
     def __init__(
         self,
-        model_parameters: LIONParameter,  # model parameters
-        geometry_parameters: ct.Geometry = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
+        model_parameters: Optional[ModelParams],  # model parameters
+        geometry_parameters: Optional[ct.Geometry] = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
     ):
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
@@ -68,7 +78,7 @@ class LIONmodel(nn.Module, ABC):
     # This should return the parameters from the paper the model is from
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
-    def default_parameters(mode="ct") -> LIONParameter:
+    def default_parameters(mode="ct") -> ModelParams:
         pass
 
     # makes operator and make it pytorch compatible.
@@ -173,7 +183,7 @@ class LIONmodel(nn.Module, ABC):
         if "geometry" in kwargs:
             geo = kwargs.pop("geometry")
             dic["geo"] = geo
-        elif hasattr(self, "geo") and self.geo:
+        elif hasattr(self, "geo") and self.geo is not None:
             geo = self.geo
             dic["geo"] = geo
         else:
@@ -381,6 +391,7 @@ class LIONmodel(nn.Module, ABC):
             total_loss = data["loss"]
             model.train()
         else:
+            print(f"checkpoint {fname} not found, failed to load.")
             return model, optimiser, 0, total_loss, None
         return model, optimiser, start_epoch, total_loss, data
 
