@@ -9,6 +9,7 @@
 # Daniël M. Pelt and James A. Sethian
 # A mixed-scale dense convolutional neural network for image analysis
 
+import numpy as np
 import torch.nn as nn
 import torch
 from typing import Optional
@@ -34,6 +35,54 @@ class MSD_Params(ModelParams):
         self.look_back_depth: int = look_back_depth
         self.final_look_back_depth: int = final_look_back_depth
         self.activation: nn.Module = activation
+
+
+class MSD_Layer(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        width: int,
+        dilations: int | list[int],
+        activation: nn.Module,
+    ) -> None:
+        super().__init__()
+        if isinstance(dilations, int):
+            dilations = [dilations] * width
+
+        self.in_channels = in_channels
+        self.width = width
+        self.convs = nn.ModuleList()
+        for ch in range(width):
+            conv = nn.Conv2d(
+                in_channels=in_channels,
+                out_channels=1,
+                kernel_size=3,
+                dilation=dilations[ch],
+                padding="same",
+                padding_mode="reflect",
+                bias=False,
+            )
+
+            # conv.apply(self._initialize_conv_weights) # actually decreases performance
+            self.convs.append(conv)
+
+        self.activation = nn.Sequential(nn.BatchNorm2d(1), activation)
+
+    def _initialize_conv_weights(self, layer: nn.Module):
+        assert isinstance(layer, nn.Conv2d), "layer not Conv2D"
+        n_c = layer.kernel_size[0] * layer.kernel_size[1] * layer.out_channels
+        torch.nn.init.normal_(layer.weight, 0, np.sqrt(2 / n_c))
+
+    def forward(self, x: torch.Tensor):  # x will be all of the previous channels to use
+        new_channels = []
+        for i in range(self.width):
+            new_channels.append(self.convs[i](x))
+        # with torch.no_grad():
+        x = torch.cat(new_channels, dim=1)
+
+        x = self.activation(x)
+
+        return x
 
 
 class MSD_Net(LIONmodel):
@@ -72,7 +121,8 @@ class MSD_Net(LIONmodel):
         self.dilations = self.model_parameters.dilations
         self.look_back_depth = self.model_parameters.look_back_depth
         self.final_look_back_depth = self.model_parameters.final_look_back_depth
-        self.activation = nn.Sequential(self.model_parameters.activation, nn.BatchNorm2d(1))
+        self.activation = self.model_parameters.activation
+        
         # total there should be width * depth distinct convolutions
         # so expect the same number of dilations to be given
         if len(self.dilations) != self.width * self.depth:
@@ -86,38 +136,60 @@ class MSD_Net(LIONmodel):
                 f"Lookback depth={self.look_back_depth} can not be bigger than total number of layers={self.depth + 1}"
             )
 
-        convs = nn.ModuleDict()
-        for i, d in enumerate(self.dilations):
-            layer = i // self.width
-            channel = i % self.width
-
-            # number of input channels depends on whether we use original input to construct this layer
-            in_ch = self._count_channels_to_use(layer)
-
-            # bias set to false since we perform a BatchNorm after each Conv, so bias would be cancelled out anyway
-            convs.add_module(
-                f"{layer}_{channel}",
-                nn.Conv2d(
-                    in_channels=in_ch,
-                    out_channels=1,
-                    kernel_size=3,
-                    dilation=d,
-                    padding="same",
-                    padding_mode="reflect",
-                    bias=True,
-                ),
+        self.layers = nn.ModuleList()
+        first_layer = MSD_Layer(
+            self.in_channels, self.width, self.dilations[: self.width], self.activation
+        )
+        self.layers.append(first_layer)
+        for layer_idx in range(1, self.depth):
+            self.layers.append(
+                MSD_Layer(
+                    self._count_channels_to_use(layer_idx),
+                    self.width,
+                    self.dilations[
+                        layer_idx * self.width : (layer_idx + 1) * self.width
+                    ],
+                    self.activation,
+                )
             )
 
-        self.convs = convs
+        for layer in self.layers:
+            assert isinstance(layer, MSD_Layer)
+            for conv in layer.convs:
+                conv.apply(self._initialize_conv_weights)
 
-        # change this so it actually uses final_look_back_depth
-        if self.look_back_depth == -1:
+        # final_look_back_depth should be no greater than number of hidden layers + 1
+        if self.final_look_back_depth > self.depth + 1:
+            raise ValueError(
+                f"Final Lookback depth={self.final_look_back_depth} can not be bigger than total number of layers={self.depth + 1}"
+            )
+
+        if self.final_look_back_depth == -1:
             final_in_ch = self.depth * self.width + self.in_channels
         else:
-            final_in_ch = self.width * self.look_back_depth
-        self.final_conv = nn.Conv2d(
-            in_channels=final_in_ch, out_channels=1, kernel_size=1
+            final_in_ch = self.width * self.final_look_back_depth
+
+        self.final_layer = nn.Sequential(
+            nn.Conv2d(
+                in_channels=final_in_ch,
+                out_channels=1,
+                kernel_size=1,
+                padding="same",
+                padding_mode="reflect",
+                bias=False,
+            ),
+            nn.BatchNorm2d(1),
+            self.activation
         )
+
+    def _initialize_conv_weights(self, layer: nn.Module):
+        assert isinstance(layer, nn.Conv2d), "layer not Conv2D"
+        n_c = (
+            np.product(layer.weight.shape[2:])
+            * (self.in_channels + self.width * (self.depth - 1))
+            + 1
+        )
+        torch.nn.init.normal_(layer.weight, 0, np.sqrt(2 / n_c))
 
     def _count_channels_to_use(self, layer) -> int:
         return (
@@ -126,44 +198,30 @@ class MSD_Net(LIONmodel):
             else self.width * layer + self.in_channels
         )
 
-    def forward(self, x: torch.Tensor):
-        # maybe just combine these into a multi-channel tensor?
-        B, C, W, H = x.shape
-        if C != self.in_channels:
+    def forward(self, x):
+        if (C := x.shape[1]) != self.in_channels:
             raise ValueError(
                 f"Expected {self.in_channels} input channels, instead got {C}"
             )
-        # allocate lookback tensor maximally
-        lookbacks = torch.empty((B, C + self.width * self.depth, W, H), device=x.device)
-        lookbacks[:, :C, :, :] = x
 
         for layer in range(self.depth):
-            for channel in range(self.width):
-                if (
-                    self.look_back_depth > layer or self.look_back_depth == -1
-                ):  # lookback includes input, x
-                    start_ch_idx = 0
-                else:  # doesn't include input
-                    start_layer = layer - self.look_back_depth
-                    start_ch_idx = C + start_layer * self.width
-                # get a reference to the relevant lookback channels...
-                z_ij = lookbacks[
-                    :, C + layer * self.width : C + (layer + 1) * self.width
-                ]
-                # apply convolution to them
-                z_ij = self.convs[f"{layer}_{channel}"](
-                    lookbacks[
+            prev = x
+            x = self.layers[layer](x)
+            # with torch.no_grad():
+            x = torch.cat(
+                [
+                    prev[
                         :,
-                        start_ch_idx : start_ch_idx
-                        + self._count_channels_to_use(layer),
-                        :,
-                        :,
-                    ]
-                )
-                z_ij = self.activation(z_ij)
-
-        # apply final convolution
-        return self.activation(self.final_conv(lookbacks))
+                        -self.look_back_depth * self.width
+                        if self.look_back_depth != -1
+                        else 0 :,
+                    ],
+                    x,
+                ],
+                dim=1,
+            )  # x now contains all previous layers aswell as newly calculated one
+        x = self.final_layer(x)
+        return x
 
     @staticmethod
     def default_parameters() -> MSD_Params:
