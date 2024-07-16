@@ -120,7 +120,7 @@ class MSD_Net(LIONmodel):
         self.look_back_depth = self.model_parameters.look_back_depth
         self.final_look_back_depth = self.model_parameters.final_look_back_depth
         self.activation = self.model_parameters.activation
-        
+
         # total there should be width * depth distinct convolutions
         # so expect the same number of dilations to be given
         if len(self.dilations) != self.width * self.depth:
@@ -177,7 +177,7 @@ class MSD_Net(LIONmodel):
                 bias=False,
             ),
             nn.BatchNorm2d(1),
-            self.activation
+            self.activation,
         )
 
     def _initialize_conv_weights(self, layer: nn.Module):
@@ -202,15 +202,23 @@ class MSD_Net(LIONmodel):
                 f"Expected {self.in_channels} input channels, instead got {C}"
             )
         start_collecting = False
-        final_lookbacks = [] if self.final_look_back_depth != -1 else [x] # not a huge fan of this, think of a better way
+        final_lookbacks = [] if self.final_look_back_depth != -1 else [x]
         for i, layer in enumerate(range(self.depth)):
-            x = self.layers[layer](x)[:, -self.look_back_depth * self.width if self.look_back_depth != -1 else 0:]
+            x = self.layers[layer](x)[
+                :,
+                -self.look_back_depth * self.width
+                if self.look_back_depth != -1
+                else 0 :,
+            ]
             # x now contains all layers to pass forward aswell as newly calculated one
-            if self.depth - i <= self.final_look_back_depth or self.final_look_back_depth == -1: # need all the following layers for final layer
+            if (
+                self.depth - i <= self.final_look_back_depth
+                or self.final_look_back_depth == -1
+            ):  # need all the following layers for final layer
                 start_collecting = True
             if start_collecting:
-                final_lookbacks.append(x[:, -self.width:]) # head layer
-        
+                final_lookbacks.append(x[:, -self.width :])  # head layer
+
         final_lookbacks = torch.cat(final_lookbacks, dim=1)
         x = self.final_layer(final_lookbacks)
         return x
