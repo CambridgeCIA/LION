@@ -1,3 +1,12 @@
+# =============================================================================
+# This file is part of LION library
+# License : BSD-3
+#
+# Author  : Hong Ye Tan
+# Modifications: -
+# Created: 16 July 2024
+# =============================================================================
+
 from LIONmodel import LIONmodel
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ct
@@ -33,14 +42,11 @@ class LIONmodelPhantom(LIONmodel):
     def forward(self, x):
         pass
 
-    # TODO: implement check and override for implicit sino2phantom (if checking datatype is possible)
-
 # Wraps a LIONmodelPhantom object to turn it into LIONmodelSino object
 # Adds a FBP operator before calling phantom -> phantom reconstruction
 
 class LIONmodelSinoConstructor(LIONmodelSino):
-    def __init__(self, baseLIONModelPhantom):
-        assert isinstance(baseLIONModelPhantom)
+    def __init__(self, baseLIONModelPhantom: LIONmodelPhantom):
         self.__dict__ = baseLIONModelPhantom.__dict__
         self.__baseObject__ = baseLIONModelPhantom
 
