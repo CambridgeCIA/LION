@@ -92,7 +92,7 @@ class Up(nn.Module):
         return self.block(x)
 
 
-class FBPConvNet(LIONmodel.LIONmodel):
+class FBPConvNet(LIONmodelSubclasses.LIONmodelPhantom):
     def __init__(
         self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
     ):
@@ -236,14 +236,7 @@ class FBPConvNet(LIONmodel.LIONmodel):
                 'cite_format not understood, only "MLA" and "bib" supported'
             )
 
-    def forward(self, x):
-        B, C, W, H = x.shape
-
-        image = x.new_zeros(B, 1, *self.geo.image_shape[1:])
-        for i in range(B):
-            aux = fdk(self.op, x[i, 0])
-            aux = torch.clip(aux, min=0)
-            image[i] = aux
+    def forward(self, image):
         block_1_res = self.block_1_down(image)
         block_2_res = self.block_2_down(self.down_1(block_1_res))
         block_3_res = self.block_3_down(self.down_2(block_2_res))

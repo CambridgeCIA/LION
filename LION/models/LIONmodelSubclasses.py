@@ -7,7 +7,7 @@
 # Created: 16 July 2024
 # =============================================================================
 
-from LIONmodel import LIONmodel
+from LION.models.LIONmodel import LIONmodel
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ct
 from abc import ABC, abstractmethod, ABCMeta
@@ -45,28 +45,51 @@ class LIONmodelPhantom(LIONmodel):
 # Wraps a LIONmodelPhantom object to turn it into LIONmodelSino object
 # Adds a FBP operator before calling phantom -> phantom reconstruction
 
-class LIONmodelSinoConstructor(LIONmodelSino):
-    def __init__(self, baseLIONModelPhantom: LIONmodelPhantom):
-        self.__dict__ = baseLIONModelPhantom.__dict__
-        self.__baseObject__ = baseLIONModelPhantom
 
-    def forward(self, x):
+def forward_decorator(self, f):
+    def wrapper(x):
+        # print("in wrapper")
         B, C, W, H = x.shape
-
+        # print(x.shape)
         image = x.new_zeros(B, 1, *self.geo.image_shape[1:])
         for i in range(B):
             aux = fdk(self.op, x[i, 0])
             aux = clip(aux, min=0)
             image[i] = aux
-        
-        return self.__baseObject__(image)
+        return f(image)
 
-    def phantom2phantom(self, x):
-        return self.__baseObject__(x)
+    return wrapper
+
+def Constructor(obj):
+    obj.phantom2phantom = obj.forward
+    obj.forward = forward_decorator(obj, obj.forward)
+    obj.__class__ = type(f"{obj.__class__.__name__}Sino", (obj.__class__, LIONmodelSino), obj.__dict__)
+    return obj
+
+# class LIONmodelSinoMetaclass(, LIONmodelSino):
+#     def __init__(self, baseLIONModelPhantom: LIONmodelPhantom):
+#         self.__dict__ = baseLIONModelPhantom.__dict__
+#         self.__baseObject__ = baseLIONModelPhantom
+#         self.__bases__ = (LIONmodelSino,)
+
+
+#     def forward(self, x):
+#         B, C, W, H = x.shape
+#         image = x.new_zeros(B, 1, *self.geo.image_shape[1:])
+#         for i in range(B):
+#             aux = fdk(self.op, x[i, 0])
+#             aux = clip(aux, min=0)
+#             image[i] = aux
+        
+#         return super(LIONmodelSinoConstructor,self).__getattribute__("__baseObject__")(image)
+
+
+#     @staticmethod
+#     def default_parameters():
+#         pass
     
-    def __getattr__(self, attr):
-        if attr in ['forward']:
-            # return the requested method
-            return self.forward
-        else:
-            return getattr(self.__baseObject__, attr)
+#     def phantom2phantom(self, x):
+#         return self.__baseObject__(x)
+    
+#     def __getattr__(self, attr):
+#         return getattr(self.__baseObject__, attr)

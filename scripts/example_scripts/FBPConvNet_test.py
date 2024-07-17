@@ -8,10 +8,10 @@ import LION.experiments.ct_experiments as ct_experiments
 
 #%% First run FBPConvNet_train.py to train and save model, then run this.
 # % Set device:
-device = torch.device("cuda:0")
+device = torch.device("cuda:3")
 torch.cuda.set_device(device)
 # Give paths to trained models
-savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
+savefolder = pathlib.Path("/home/hyt35/trained_models/clinical_dose/")
 final_result_fname = savefolder.joinpath("FBPConvNet_final_iter.pt")
 
 # set up experiment model was trained on

@@ -7,17 +7,20 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pathlib
-from LION.models.post_processing.FBPConvNet import FBPConvNet
+from LION.models.post_processing.FBPConvNet_subclassed import FBPConvNet
+import LION.models.LIONmodelSubclasses as LIONmodelSubclasses
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
-
+import os
 
 #%%
 # % Chose device:
 device = torch.device("cuda:3")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/home/hyt35/trained_models/clinical_dose/")
+savefolder = pathlib.Path("/home/hyt35/trained_models/clinical_dose_subclassed/")
+if not os.path.exists(savefolder):
+    os.makedirs(savefolder)
 
 final_result_fname = savefolder.joinpath("FBPConvNet_final_iter.pt")
 checkpoint_fname = savefolder.joinpath("FBPConvNet_check_*.pt")  
@@ -26,6 +29,7 @@ validation_fname = savefolder.joinpath("FBPConvNet_min_val.pt")
 #%% Define experiment
 # experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
 experiment = ct_experiments.clinicalCTRecon()
+
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
@@ -38,9 +42,25 @@ lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
 #%% Model
 # Default model is already from the paper.
-model = FBPConvNet(geometry_parameters=experiment.geo).to(device)
+# model = 
+model = FBPConvNet(geometry_parameters=experiment.geo)
+print(model.default_parameters())
+# print(model.__class__.__name__)
+print(isinstance(model, LIONmodelSubclasses.LIONmodelPhantom), isinstance(model, LIONmodelSubclasses.LIONmodelSino))
+model = LIONmodelSubclasses.Constructor(model).to(device)
+print(model.default_parameters())
+# print(isinstance(model, LIONmodelSubclasses.LIONmodelPhantom), isinstance(model, LIONmodelSubclasses.LIONmodelSino))
+print(isinstance(model, LIONmodelSubclasses.LIONmodelPhantom), isinstance(model, LIONmodelSubclasses.LIONmodelSino))
 
+for sinogram, target_reconstruction in tqdm(lidc_dataloader):
+    bar = sinogram
+    break
+print(model(sinogram))
 
+fbp = LIONmodelSubclasses.forward_decorator(model, lambda x:x)
+print(fbp(sinogram))
+print(model.phantom2phantom(fbp(sinogram)))
+# raise Exception()
 #%% Optimizer
 train_param = LIONParameter()
 
