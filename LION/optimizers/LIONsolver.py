@@ -86,6 +86,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.current_epoch: int = 0
         self.save_folder: Optional[pathlib.Path] = None
         self.load_folder: Optional[pathlib.Path] = None
+        self.do_load_checkpoint: bool = False
         self.checkpoint_freq: int
         self.final_result_fname: Optional[str] = None
         self.checkpoint_fname: Optional[str] = None
@@ -138,26 +139,25 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.save_folder = save_folder
         self.final_result_fname = final_result_fname
     
-    def set_loading(self, load_folder: str | pathlib.Path):
+    def set_loading(self, load_folder: str | pathlib.Path, do_load: bool=False):
         if isinstance(load_folder, str):
             load_folder = pathlib.Path(load_folder)
         if not load_folder.is_dir():
             raise ValueError(f"Save folder '{load_folder}' is not a directory, failed to set saving.")
         
         self.load_folder = load_folder
+        self.do_load_checkpoint = do_load
 
     def set_checkpointing(
         self,
         checkpoint_fname: str,
         checkpoint_freq: int = 10,
-        load_checkpoint: bool = False,
     ):
         """
         This function sets the checkpointing
         """
         self.checkpoint_freq = checkpoint_freq
         self.checkpoint_fname = checkpoint_fname
-        self.do_load_checkpoint = load_checkpoint
 
     def check_training_ready(self, error=True, autofill=True, verbose=True):
         """This should always pass, all of these things are required to initialize a LIONsolver object
