@@ -49,7 +49,6 @@ class SolverParams(LIONParameter):
 def normalize_input(func):
     def wrapper(self, *inputs):
         if self.do_normalize:
-            print(inputs)
             normalized_inputs = []
             for x in inputs:
                 normalized_x = (x - self.xmin) / (self.xmax - self.xmin)
