@@ -31,7 +31,7 @@ def my_ssim(x, y):
 device = torch.device("cuda:1")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
+savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debbuging/")
 final_result_fname = savefolder.joinpath("Noise2Inverse_MSD.pt")
 checkpoint_fname = "Noise2Inverse_MSD_check_*.pt"
 validation_fname = savefolder.joinpath("Noise2Inverse_MSD_min_val.pt")
@@ -102,7 +102,7 @@ solver.set_training(lidc_dataloader)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
-solver.set_checkpointing(savefolder, checkpoint_fname, 10, load_checkpoint=False)
+solver.set_checkpointing(checkpoint_fname, 10, load_checkpoint=False)
 # train
 solver.train(train_param.epochs)
 # delete checkpoints if finished

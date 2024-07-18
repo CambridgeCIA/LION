@@ -25,10 +25,9 @@ class Noise2Inverse_solver(LIONsolver):
         self, model, optimizer, loss_fn, optimizer_params=None, verbose=True, geo=None
     ):
 
-        super().__init__(model, optimizer, loss_fn, optimizer_params, verbose)
+        super().__init__(model, optimizer, loss_fn, geo, solver_params=optimizer_params)
         if geo is None:
             raise ValueError("Geometry must be given to Noise2Inverse_solver")
-        self.geo = geo
         self.sino_splits = optimizer_params.sino_splits
         self.sub_op = self.make_sub_operators(self.geo, self.sino_splits)
 
@@ -153,3 +152,35 @@ class Noise2Inverse_solver(LIONsolver):
             self.epoch_step(epoch)
             if (epoch + 1) % self.checkpoint_freq == 0:
                 self.save_checkpoint(epoch)
+
+    def test(self):
+        self.model.eval()
+
+        # do we want to be able to use this on a trained model? Surely yes?
+
+        with torch.no_grad():
+            test_loss = np.zeros(len(self.test_loader))
+            for i, (sinos, targets) in enumerate(tqdm(self.test_loader)):
+                noisy_sub_recons = self._calculate_noisy_sub_recons(sinos) # b, split, c, w, h
+                
+                outputs = torch.zeros((sinos.shape[0], *targets.shape[1:]), device=self.device)
+                for _, J in enumerate(self.cali_J):
+                    # fix indexing; J's are 1 indexed for user convenience
+                    J_zero_indexing = list(map(lambda n: n - 1, J))
+                    J_c = [n for n in np.arange(self.sino_split_count) if n not in J_zero_indexing]
+
+                    # calculate mean sub_recons
+                    jcnsr = noisy_sub_recons[:, J_c, :, :, :]
+                    mean_input_recons = torch.mean(jcnsr, dim=1)
+
+                    # pump it through NN
+                    outputs += self.model(mean_input_recons)
+                outputs /= len(self.cali_J)
+                test_loss[i] = self.testing_fn(outputs, targets)
+
+        if self.verbose:
+            print(
+                f"Testing loss: {test_loss.mean()} - Testing loss std: {test_loss.std()}"
+            )
+        return test_loss
+

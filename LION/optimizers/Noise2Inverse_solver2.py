@@ -34,16 +34,13 @@ class Noise2InverseSolver(LIONsolver):
         solver_params: Noise2InverseParams,
         verbose: bool,
         geo: Geometry,
-        save_folder: str | pathlib.Path,
-        final_result_fname: str,
+
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
     ) -> None:
         super().__init__(
             model,
             optimizer,
             loss_fn,
-            save_folder,
-            final_result_fname,
             geo,
             verbose,
             device,
