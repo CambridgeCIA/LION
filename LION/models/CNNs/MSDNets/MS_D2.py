@@ -19,13 +19,13 @@ from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
 class MSD_Params(ModelParams):
     def __init__(
         self,
-        in_channels: int,
-        width: int,
-        depth: int,
-        dilations: list[int],
-        look_back_depth: int,
-        final_look_back_depth: int,
-        activation: nn.Module,
+        in_channels: int = 1,
+        width: int = 1,
+        depth: int = 100,
+        dilations: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] * 10,
+        look_back_depth: int = -1,
+        final_look_back_depth: int = -1,
+        activation: nn.Module = nn.ReLU(),
     ):
         super().__init__(model_input_type=ModelInputType.NOISY_RECON)
         self.in_channels: int = in_channels
@@ -92,8 +92,8 @@ class MSD_Net(LIONmodel):
         A mixed-scale dense convolutional neural network for image analysis, Daniël M. Pelt and James A. Sethian
 
         Args:
-            model_parameters (Optional[LIONParameter]):
-                expects:
+            model_parameters (Optional[MSD_Params]):
+                includes:
                     in_channels (int): number of channels in input image
                     width: number of channels in each hidden layer
                     depth: desired depth of network (not including input and output layers, i.e number of hidden layers)
