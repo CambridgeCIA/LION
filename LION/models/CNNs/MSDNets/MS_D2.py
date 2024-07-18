@@ -110,16 +110,18 @@ class MSD_Net(LIONmodel):
         # We assert to make it happy and to ensure the model is actually initialized correctly.
         assert (
             self.model_parameters is not None
-            and isinstance(self.model_parameters, MSD_Params)
-        ), f"Failed to initialize MSD_Net model with given parameters: type {type(self.model_parameters)} is not acceptable for MSD_Params"
-
-        self.in_channels = self.model_parameters.in_channels
-        self.width = self.model_parameters.width
-        self.depth = self.model_parameters.depth
-        self.dilations = self.model_parameters.dilations
-        self.look_back_depth = self.model_parameters.look_back_depth
-        self.final_look_back_depth = self.model_parameters.final_look_back_depth
-        self.activation = self.model_parameters.activation
+        ), f"Failed to initialize model parameters"
+        try:
+            self.in_channels = self.model_parameters.in_channels
+            self.width = self.model_parameters.width
+            self.depth = self.model_parameters.depth
+            self.dilations = self.model_parameters.dilations
+            self.look_back_depth = self.model_parameters.look_back_depth
+            self.final_look_back_depth = self.model_parameters.final_look_back_depth
+            self.activation = self.model_parameters.activation
+        except AttributeError as e:
+            print(f"Couldn't load parameter {e.name}")
+            raise e
         
         # total there should be width * depth distinct convolutions
         # so expect the same number of dilations to be given
