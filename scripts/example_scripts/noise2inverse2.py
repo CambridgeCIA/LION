@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import pathlib
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
+from LION.models.CNNs.MSDNets.MS_D import MS_D
 from LION.models.CNNs.MSDNets.MS_D2 import MSD_Net
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
@@ -15,7 +16,7 @@ def my_ssim(x, y):
 
 # %%
 # % Chose device:
-device = torch.device("cuda:3")
+device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
@@ -31,7 +32,7 @@ experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
 lidc_dataset = experiment.get_training_dataset()
 
 # smaller dataset for example. Remove this for full dataset
-# lidc_dataset = data_utils.Subset(lidc_dataset, [i for i in range(50)])
+lidc_dataset = Subset(lidc_dataset, [i for i in range(100)])
 
 
 # %% Define DataLoader
@@ -42,7 +43,7 @@ lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=Fal
 
 # %% Model
 # Default model is already from the paper.
-model = MSD_Net().to(device)
+model = MS_D().to(device)
 
 # %% Optimizer
 train_param = LIONParameter()
@@ -52,8 +53,8 @@ loss_fn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 100
-train_param.learning_rate = 10**(-3)
+train_param.epochs = 3
+train_param.learning_rate = 10e-4
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
 optimiser = torch.optim.Adam(
@@ -70,8 +71,6 @@ solver = Noise2InverseSolver(
     noise2inverse_parameters,
     True,
     experiment.geo,
-    savefolder,
-    final_result_fname,
     device=device
 )
 
@@ -80,6 +79,8 @@ solver.set_training(lidc_dataloader)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
+solver.set_saving(savefolder, final_result_fname)
+solver.set_loading(savefolder)
 solver.set_checkpointing(checkpoint_fname, 2, load_checkpoint=True)
 # train
 solver.train(train_param.epochs)

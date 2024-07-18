@@ -31,10 +31,10 @@ def my_ssim(x, y):
 device = torch.device("cuda:1")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debbuging/")
-final_result_fname = savefolder.joinpath("Noise2Inverse_MSD.pt")
+savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
+final_result_fname = "Noise2Inverse_MSD.pt"
 checkpoint_fname = "Noise2Inverse_MSD_check_*.pt"
-validation_fname = savefolder.joinpath("Noise2Inverse_MSD_min_val.pt")
+validation_fname = "Noise2Inverse_MSD_min_val.pt"
 #
 #%% Define experiment
 
@@ -52,7 +52,7 @@ lidc_dataset = data_utils.Subset(lidc_dataset, indices)
 # Use the same amount of training
 
 
-batch_size = 10
+batch_size = 12
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
 lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
 
@@ -68,7 +68,7 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 100
+train_param.epochs = 3
 train_param.learning_rate = 1e-4
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
@@ -85,6 +85,7 @@ noise2inverse_parameters.sino_splits = (
 noise2inverse_parameters.base_algo = (
     fdk  # its default anyway, but this is how you can modify it
 )
+
 solver = Noise2Inverse_solver(
     model,
     optimiser,
@@ -102,6 +103,7 @@ solver.set_training(lidc_dataloader)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
+solver.set_saving(savefolder, final_result_fname)
 solver.set_checkpointing(checkpoint_fname, 10, load_checkpoint=False)
 # train
 solver.train(train_param.epochs)
