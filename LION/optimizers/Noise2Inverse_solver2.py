@@ -1,5 +1,5 @@
-import pathlib
 from typing import Callable
+import warnings
 import numpy as np
 from tqdm import tqdm
 from LION.CTtools.ct_geometry import Geometry
@@ -115,6 +115,7 @@ class Noise2InverseSolver(LIONsolver):
         loss = torch.zeros(len(self.cali_J), device=self.device)
         for i, J in enumerate(self.cali_J):
             # fix indexing J's are 1 indexed for user convenience
+            # maybe something to change
             J_zero_indexing = list(map(lambda i: i - 1, J))
             J_c = [i for i in np.arange(self.sino_split_count) if i not in J_zero_indexing]
 
@@ -131,7 +132,7 @@ class Noise2InverseSolver(LIONsolver):
         self.loss.backward()
         self.optimizer.step()
 
-        return self.loss.item()
+        return self.loss.item() / len(self.cali_J)
 
     def train_step(self):
         """
@@ -144,7 +145,7 @@ class Noise2InverseSolver(LIONsolver):
         # only makes sense to use noise2inverse if we only have the sinos.
         for index, (sino, _) in enumerate(tqdm(self.train_loader)):
             epoch_loss += self.mini_batch_step(sino)
-        return epoch_loss / len(self.train_loader)
+        return epoch_loss / (len(self.train_loader) * sino.shape[0])
 
     # No validation in Noise2Inverse (is this right?)
     def validate(self):
@@ -181,6 +182,8 @@ class Noise2InverseSolver(LIONsolver):
             self.epoch_step(self.current_epoch)
 
             if (self.current_epoch + 1) % self.checkpoint_freq == 0:
+                if self.verbose:
+                    print(f"Checkpointing at epoch {self.current_epoch}")
                 self.save_checkpoint(self.current_epoch)
             
             self.current_epoch += 1
@@ -190,32 +193,46 @@ class Noise2InverseSolver(LIONsolver):
         """
         This function performs a testing step
         """
+        if self.check_testing_ready() != 0:
+            warnings.warn("Solver not setup for testing. Please call set_testing")
+            return np.array([])
+        
+        was_training = self.model.training
         self.model.eval()
 
         # do we want to be able to use this on a trained model? Surely yes?
-
         with torch.no_grad():
-            test_loss = np.zeros(len(self.test_loader))
-            for i, (sinos, targets) in enumerate(tqdm(self.test_loader)):
-                noisy_sub_recons = self._calculate_noisy_sub_recons(sinos) # b, split, c, w, h
-                
-                outputs = torch.zeros((sinos.shape[0], *targets.shape[1:]), device=self.device)
-                for _, J in enumerate(self.cali_J):
-                    # fix indexing; J's are 1 indexed for user convenience
-                    J_zero_indexing = list(map(lambda n: n - 1, J))
-                    J_c = [n for n in np.arange(self.sino_split_count) if n not in J_zero_indexing]
-
-                    # calculate mean sub_recons
-                    jcnsr = noisy_sub_recons[:, J_c, :, :, :]
-                    mean_input_recons = torch.mean(jcnsr, dim=1)
-
-                    # pump it through NN
-                    outputs += self.model(mean_input_recons)
-                outputs /= len(self.cali_J)
-                test_loss[i] = self.testing_fn(outputs, targets)
+            test_loss = np.array([])
+            for sinos, targets in tqdm(self.test_loader):
+                outputs = self.process(sinos)
+                test_loss = np.append(test_loss, self.testing_fn(targets, outputs))
 
         if self.verbose:
             print(
                 f"Testing loss: {test_loss.mean()} - Testing loss std: {test_loss.std()}"
             )
+        
+        if was_training:
+            self.model.train()
+
         return test_loss
+    
+    # not convinced by this name
+    def process(self, sinos):
+        noisy_sub_recons = self._calculate_noisy_sub_recons(sinos) # b, split, c, w, h
+        
+        outputs = torch.zeros((sinos.shape[0], *self.geo.image_shape), device=self.device)
+
+        for _, J in enumerate(self.cali_J):
+            # fix indexing; J's are 1 indexed for user convenience
+            J_zero_indexing = list(map(lambda n: n - 1, J))
+            J_c = [n for n in np.arange(self.sino_split_count) if n not in J_zero_indexing]
+
+            # calculate mean sub_recons
+            jcnsr = noisy_sub_recons[:, J_c, :, :, :]
+            mean_input_recons = torch.mean(jcnsr, dim=1)
+
+            # pump it through NN
+            outputs += self.model(mean_input_recons)
+        outputs /= len(self.cali_J)
+        return outputs

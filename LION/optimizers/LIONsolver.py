@@ -156,6 +156,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         This function sets the checkpointing
         """
+        if self.save_folder is None:
+            warnings.warn("Save folder not set. Please call set_saving")
         self.checkpoint_freq = checkpoint_freq
         self.checkpoint_fname = checkpoint_fname
 
@@ -496,11 +498,14 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function cleans the checkpoints
         """
         if self.save_folder is None:
-            raise LIONSolverException("Saving not setup: Please call set_saving")
+            raise LIONSolverException("Saving not setup, unable to find save folder: Please call set_saving")
         if self.checkpoint_fname is None:
-            raise LIONSolverException("Checkpointing not setup, can't clear checkpoint: Please call set_checkpointing")
+            raise LIONSolverException("Checkpointing not setup, can't clear checkpoints: Please call set_checkpointing")
         # TODO: This doesn't delete the .jsons only the .pt, is this intentional behaviour?
-        for f in self.save_folder.glob(str(self.checkpoint_fname).replace("*", "*")):
+        # Quick and dirty fix with fancy regex
+        search_str = self.checkpoint_fname.replace('.pt', '').replace('*', '\\d{4}') + '\\.(pt|json)'
+        print(search_str) 
+        for f in self.save_folder.glob(search_str):
             f.unlink()
         
     @abstractmethod
