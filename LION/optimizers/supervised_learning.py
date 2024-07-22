@@ -27,8 +27,6 @@ class SupervisedSolver(LIONsolver):
         loss_fn: torch.nn.Module,
         verbose: bool,
         geo: Geometry,
-        save_folder: str | pathlib.Path,
-        final_result_fname: str,
         model_regularization=None,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}")
     ):
