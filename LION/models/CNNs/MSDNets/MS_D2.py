@@ -16,7 +16,7 @@ from typing import Optional
 from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
 
 
-class MSD_Params(ModelParams):
+class MSDParams(ModelParams):
     def __init__(
         self,
         in_channels: int,
@@ -86,7 +86,7 @@ class MSD_Layer(nn.Module):
 class MSD_Net(LIONmodel):
     def __init__(
         self,
-        model_parameters: Optional[MSD_Params] = None,
+        model_parameters: Optional[MSDParams] = None,
     ) -> None:
         """Mixed-Scale Dense Neural Network based on:
         A mixed-scale dense convolutional neural network for image analysis, Daniël M. Pelt and James A. Sethian
@@ -110,7 +110,7 @@ class MSD_Net(LIONmodel):
         # We assert to make it happy and to ensure the model is actually initialized correctly.
         assert (
             self.model_parameters is not None
-            and isinstance(self.model_parameters, MSD_Params)
+            and isinstance(self.model_parameters, MSDParams)
         ), f"Failed to initialize MSD_Net model with given parameters: type {type(self.model_parameters)} is not acceptable for MSD_Params"
 
         self.in_channels = self.model_parameters.in_channels
@@ -224,14 +224,14 @@ class MSD_Net(LIONmodel):
         return x
 
     @staticmethod
-    def default_parameters() -> MSD_Params:
+    def default_parameters() -> MSDParams:
         in_channels = 1
         width, depth = 1, 100
         dilations = []
         for i in range(depth):
             for j in range(width):
                 dilations.append((((i * width) + j) % 10) + 1)
-        params = MSD_Params(
+        params = MSDParams(
             in_channels=in_channels,
             width=width,
             depth=depth,

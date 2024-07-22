@@ -150,7 +150,7 @@ def train_experiment(experiment,savefolder):
     # Now to estimate the model parameter
     # model = ACR.load("/store/DAMTP/zs334/LION/ACRLimitedAngle90CTRecon_check_0005.pt")[0].to(device)
     # model.load("/store/DAMTP/zs334/LION/ACR.pt")
-    model.estimate_lambda(dataset = validation_dataloader)
+    model.estimate_alpha(dataset = validation_dataloader)
 
 
     #%% 6 - Define Loss and Optimizer
@@ -177,10 +177,10 @@ def train_experiment(experiment,savefolder):
     # Read demo d04_LION_models.py for more info.
 
     # You know how to write pytorch loops, so let me show you how to use LION for training.
-    from LION.optimizers.weaklysupervised_learning import weaklysupervisedSolver
+    from LION.optimizers.weaklysupervised_learning import WeaklySupervisedSolver
 
     # create solver
-    solver = weaklysupervisedSolver(model, optimiser, loss_fcn, verbose=True)
+    solver = WeaklySupervisedSolver(model, optimiser, loss_fcn, verbose=True)
 
     # YOU CAN IGNORE THIS. You can 100% just write your own pytorch training loop.
     # LIONSover is just a convinience class that does some stuff for you, no need to use it.

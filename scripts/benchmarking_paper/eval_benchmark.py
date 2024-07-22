@@ -84,7 +84,7 @@ validation_dataloader = DataLoader(validation_data, 1, shuffle=False)
 
 print(f'Data loaded testing: {len(testing_dataloader)}, validation: {len(validation_dataloader)}')
 
-model.estimate_lambda(dataset = validation_dataloader)
+model.estimate_alpha(dataset = validation_dataloader)
 model.model_parameters.no_steps = 300
 
 

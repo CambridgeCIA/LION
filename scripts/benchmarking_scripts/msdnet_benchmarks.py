@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pathlib
 from LION.models.CNNs.MSDNets.FBPMS_D import FBPMSD_Net, OGFBPMSD_Net
-from LION.models.CNNs.MSDNets.MS_D2 import MSD_Params
+from LION.models.CNNs.MSDNets.MS_D2 import MSDParams
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 
@@ -46,7 +46,7 @@ for experiment in experiments:
     for i in range(depth):
         for j in range(width):
             dilations.append((((i * width) + j) % 10) + 1)
-    model_params = MSD_Params(
+    model_params = MSDParams(
         in_channels=1,
         width=width,
         depth=depth,

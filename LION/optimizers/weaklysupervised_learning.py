@@ -1,9 +1,11 @@
 # numerical imports
 import torch
 import numpy as np
+import torch.nn as nn
 
 # Import base class
-from LION.optimizers.LIONsolver import LIONsolver
+from LION.models.LIONmodel import LIONmodel
+from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 
 # Parameter class
 from LION.utils.parameter import LIONParameter
@@ -14,30 +16,22 @@ from ts_algorithms import fdk
 import wandb
 
 
-
-class weaklysupervisedSolver(LIONsolver):
-    def __init__(self, model, optimizer, loss_fn, optimizer_params=None, verbose=True):
+class WeaklySupervisedSolver(LIONsolver):
+    def __init__(
+            self,
+        model: LIONmodel,
+        optimizer: torch.optim.Optimizer,
+        loss_fn: nn.Module,
+        save_folder: pathlib.Path,
+        final_result_fname: str,
+        geo: Geometry,
+        verbose=False,
+        device=torch.device(f"cuda:{torch.cuda.current_device()}"),
+        model_regularization=None,
+        solver_params: SolverParams=SolverParams(),):
 
         super().__init__(model, optimizer, loss_fn, optimizer_params, verbose)
 
-    @staticmethod
-    def default_parameters():
-        param = LIONParameter()
-        param.model = None
-        param.optimizer = None
-        param.loss_fn = None
-        param.device = torch.cuda.current_device()
-        param.validation_loader = None
-        param.validation_fn = None #torch.nn.MSELoss()
-        param.testing_fn = None #torch.nn.MSELoss()
-        param.validation_freq = 10
-        param.save_folder = None
-        param.checkpoint_freq = 10
-        param.final_result_fname = None
-        param.checkpoint_fname = None
-        param.validation_fname = None
-        param.epoch = None
-        return param
 
     def mini_batch_step(self, data_marginal_noisy,imagedata_marginal_real):
         """
