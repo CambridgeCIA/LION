@@ -1,5 +1,6 @@
 # numerical imports
 import pathlib
+from typing import Optional
 import torch
 import torch.nn as nn
 import numpy as np
@@ -7,7 +8,7 @@ import numpy as np
 # Import base class
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
-from LION.exceptions.exceptions import LIONSolverException
+from LION.exceptions.exceptions import LIONSolverException, NoDataException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.classical_algorithms.fdk import fdk
@@ -15,32 +16,29 @@ from LION.classical_algorithms.fdk import fdk
 # standard imports
 from tqdm import tqdm
 
+from LION.utils.parameter import LIONParameter
+
 
 class SupervisedSolver(LIONsolver):
     def __init__(
         self,
         model: LIONmodel,
         optimizer: torch.optim.Optimizer,
-        loss_fn: nn.Module,
-        save_folder: pathlib.Path,
-        final_result_fname: str,
+        loss_fn: torch.nn.Module,
+        verbose: bool,
         geo: Geometry,
-        verbose=False,
-        device=torch.device(f"cuda:{torch.cuda.current_device()}"),
         model_regularization=None,
-        solver_params: SolverParams=SolverParams(),
+        device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}")
     ):
         super().__init__(
             model,
             optimizer,
             loss_fn,
-            save_folder,
-            final_result_fname,
             geo,
             verbose=verbose,
             device=device,
             model_regularization=model_regularization,
-            solver_params=solver_params
+            solver_params=SolverParams()
         )
         self.op = make_operator(self.geo)
 
@@ -52,6 +50,10 @@ class SupervisedSolver(LIONsolver):
         if self.model.model_parameters.model_input_type == ModelInputType.NOISY_RECON:
             # reconstruct sino using fdk
             data = fdk(data, self.op)
+
+        if self.do_normalize:
+            data = self.normalize(data)
+
         # Zero gradients
         self.optimizer.zero_grad()
         # Forward pass
@@ -73,6 +75,8 @@ class SupervisedSolver(LIONsolver):
         This function is responsible for performing a single tranining set epoch of the optimization.
         returns the average loss of the epoch
         """
+        if self.train_loader is None:
+            raise NoDataException("Training dataloader not set: Please call set_training")
         self.model.train()
         epoch_loss = 0.0
         for _, (data, target) in enumerate(tqdm(self.train_loader)):

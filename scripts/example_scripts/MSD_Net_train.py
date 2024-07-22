@@ -15,6 +15,7 @@ from LION.models.CNNs.MSDNets.MS_D import MS_D
 from LION.models.CNNs.MSDNets.MS_D2 import MSD_Params
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
+from torchviz import make_dot
 
 
 #%%
@@ -37,14 +38,14 @@ lidc_dataset_val = experiment.get_validation_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 10
+batch_size = 3
 lidc_dataset = Subset(lidc_dataset, [i for i in range(50)])
 lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(50)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
 #%% Model
-width, depth = 1, 100
+width, depth = 1, 3
 dilations = []
 for i in range(depth):
     for j in range(width):
@@ -58,7 +59,7 @@ model_params = MSD_Params(
     final_look_back_depth=-1,
     activation=nn.ReLU(),
 )
-model = OGFBPMSD_Net(geometry_parameters=experiment.geo, model_parameters=MS_D.default_parameters()).to(device)
+model = FBPMSD_Net(geometry_parameters=experiment.geo, model_parameters=model_params).to(device)
 
 #%% Optimizer
 train_param = LIONParameter()
@@ -113,6 +114,8 @@ for epoch in range(start_epoch, train_param.epochs):
         target_reconstruction = target_reconstruction.to(device)
         #with torch.autocast("cuda"):
         reconstruction = model(sinogram)
+        make_dot(reconstruction, params=dict(list(model.named_parameters()))).render("msdnet1_3_alt_torchviz", format="png")
+        quit()
         loss = loss_fcn(reconstruction, target_reconstruction)
         loss = loss / train_param.accumulation_steps
 
@@ -126,6 +129,7 @@ for epoch in range(start_epoch, train_param.epochs):
             scaler.update()
             # scheduler.step()
             optimiser.zero_grad()
+
 
     total_loss[epoch] = train_loss
     print(f"Model took {time.time() - start_time}s to train")

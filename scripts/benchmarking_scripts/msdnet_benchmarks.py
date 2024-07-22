@@ -6,7 +6,7 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 import pathlib
 from LION.models.CNNs.MSDNets.FBPMS_D import FBPMSD_Net, OGFBPMSD_Net
@@ -21,7 +21,7 @@ device = torch.device("cuda:3")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
-
+torch.manual_seed(0)
 
 #
 #%% Define experiment
@@ -33,12 +33,14 @@ for experiment in experiments:
     #%% Dataset
     lidc_dataset = experiment.get_training_dataset()
     lidc_dataset_val = experiment.get_validation_dataset()
+    lidc_dataset = Subset(lidc_dataset, [i for i in range(50)])
+    lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(50)])
 
     #%% Define DataLoader
     # Use the same amount of training
-    batch_size = 10
-    lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
-    lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
+    batch_size = 3
+    lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
+    lidc_validation = DataLoader(lidc_dataset_val, 10, shuffle=False)
 
     #%% Model
     width, depth = 1, 100
@@ -74,7 +76,7 @@ for experiment in experiments:
     train_param.loss = "MSELoss"
     train_param.accumulation_steps = 1
     optimiser = torch.optim.Adam(
-        model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
+        model.parameters(), lr=train_param.learning_rate, betas=train_param.betas,
     )
 
     # learning parameter update
@@ -105,7 +107,6 @@ for experiment in experiments:
             reconstruction = model(sinogram)
             loss = loss_fcn(reconstruction, target_reconstruction)
             loss = loss / train_param.accumulation_steps
-
             scaler.scale(loss).backward()
 
             train_loss += loss.item()
@@ -131,7 +132,7 @@ for experiment in experiments:
                 valid_loss += loss.item()
 
         print(
-            f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
+            f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataset)} \t\t Validation Loss: {valid_loss / len(lidc_dataset_val)}"
         )
         if valid_loss < min_valid_loss: 
             min_valid_loss = valid_loss

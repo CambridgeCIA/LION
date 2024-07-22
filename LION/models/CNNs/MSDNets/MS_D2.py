@@ -19,13 +19,13 @@ from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
 class MSDParams(ModelParams):
     def __init__(
         self,
-        in_channels: int,
-        width: int,
-        depth: int,
-        dilations: list[int],
-        look_back_depth: int,
-        final_look_back_depth: int,
-        activation: nn.Module,
+        in_channels: int = 1,
+        width: int = 1,
+        depth: int = 100,
+        dilations: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] * 10,
+        look_back_depth: int = -1,
+        final_look_back_depth: int = -1,
+        activation: nn.Module = nn.ReLU(),
     ):
         super().__init__(model_input_type=ModelInputType.NOISY_RECON)
         self.in_channels: int = in_channels
@@ -92,8 +92,8 @@ class MSD_Net(LIONmodel):
         A mixed-scale dense convolutional neural network for image analysis, Daniël M. Pelt and James A. Sethian
 
         Args:
-            model_parameters (Optional[LIONParameter]):
-                expects:
+            model_parameters (Optional[MSD_Params]):
+                includes:
                     in_channels (int): number of channels in input image
                     width: number of channels in each hidden layer
                     depth: desired depth of network (not including input and output layers, i.e number of hidden layers)
@@ -203,6 +203,9 @@ class MSD_Net(LIONmodel):
             )
         start_collecting = False
         final_lookbacks = [] if self.final_look_back_depth != -1 else [x]
+        # start_collecting = False
+        # final_lookbacks = [] if self.final_look_back_depth != -1 else [x] # not a huge fan of this, think of a better way
+
         for i, layer in enumerate(range(self.depth)):
             x = self.layers[layer](x)[
                 :,
@@ -210,6 +213,7 @@ class MSD_Net(LIONmodel):
                 if self.look_back_depth != -1
                 else 0 :,
             ]
+            x = self.layers[layer](x) # [:, -self.look_back_depth * self.width if self.look_back_depth != -1 else 0:]
             # x now contains all layers to pass forward aswell as newly calculated one
             if (
                 self.depth - i <= self.final_look_back_depth
@@ -221,6 +225,13 @@ class MSD_Net(LIONmodel):
 
         final_lookbacks = torch.cat(final_lookbacks, dim=1)
         x = self.final_layer(final_lookbacks)
+            # if self.depth - i <= self.final_look_back_depth or self.final_look_back_depth == -1: # need all the following layers for final layer
+            #     start_collecting = True
+            # if start_collecting:
+                # final_lookbacks.append(x[:, -self.width:]) # head layer
+        # final_lookbacks = torch.cat(final_lookbacks, dim=1)
+        # x = self.final_layer(final_lookbacks)
+        x = self.final_layer(x)
         return x
 
     @staticmethod
