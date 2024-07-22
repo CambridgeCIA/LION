@@ -1,12 +1,13 @@
 import pathlib
-from typing import Callable
+from typing import Callable, Optional
 import numpy as np
 from tqdm import tqdm
 from LION.CTtools.ct_geometry import Geometry
 from LION.classical_algorithms.fdk import fdk
+from LION.exceptions.exceptions import NoDataException
 from LION.models.LIONmodel import LIONmodel
 import torch
-from LION.optimizers.LIONsolver import LIONsolver, SolverParams
+from LION.optimizers.LIONsolver import LIONsolver, SolverParams, normalize_input
 import tomosipo as ts
 import LION.CTtools.ct_utils as ct
 
@@ -31,7 +32,7 @@ class Noise2InverseSolver(LIONsolver):
         model: LIONmodel,
         optimizer: torch.optim.Optimizer,
         loss_fn: torch.nn.Module,
-        solver_params: Noise2InverseParams,
+        solver_params: Optional[Noise2InverseParams],
         verbose: bool,
         geo: Geometry,
         save_folder: str | pathlib.Path,
@@ -49,9 +50,9 @@ class Noise2InverseSolver(LIONsolver):
             device,
             solver_params=solver_params
         )
-        self.sino_split_count = solver_params.sino_split_count
-        self.recon_fn = solver_params.recon_fn
-        self.cali_J = np.array(solver_params.cali_J)
+        self.sino_split_count = self.solver_params.sino_split_count
+        self.recon_fn = self.solver_params.recon_fn
+        self.cali_J = np.array(self.solver_params.cali_J)
         self.sub_ops = self._make_sub_operators()
 
     @classmethod
@@ -105,12 +106,11 @@ class Noise2InverseSolver(LIONsolver):
             cali_J,
         )
 
-
     def mini_batch_step(self, sinos):
         # sinos batch of sinos
         noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)
         # b, split, c, w, h
-
+        
         self.optimizer.zero_grad()
 
         # almost certain this can be made more efficient
@@ -127,6 +127,10 @@ class Noise2InverseSolver(LIONsolver):
             mean_target_recons = torch.mean(jnsr, dim=1)
             mean_input_recons = torch.mean(jcnsr, dim=1)
 
+            if self.do_normalize:
+                mean_input_recons = self.normalize(mean_input_recons)
+                mean_target_recons = self.normalize(mean_target_recons)
+
             output = self.model(mean_input_recons)
             loss[i] = self.loss_fn(output, mean_target_recons)
 
@@ -141,6 +145,8 @@ class Noise2InverseSolver(LIONsolver):
         This function is responsible for performing a single tranining set epoch of the optimization.
         returns the average loss of the epoch
         """
+        if self.train_loader is None:
+            raise NoDataException("Training dataloader not set: Please call set_training")
         self.model.train()
         epoch_loss = 0.0
         # needs modifying, need some sort of guarantee as to what the dataset looks like.

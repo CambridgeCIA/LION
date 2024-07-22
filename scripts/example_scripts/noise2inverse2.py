@@ -77,6 +77,7 @@ solver = Noise2InverseSolver(
 
 # set data
 solver.set_training(lidc_dataloader)
+solver.set_normalization(True)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
