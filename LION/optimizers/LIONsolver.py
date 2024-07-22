@@ -46,6 +46,18 @@ class SolverParams(LIONParameter):
     def __init__(self):
         super().__init__()
 
+def normalize_input(func):
+    def wrapper(self, *inputs):
+        if self.do_normalize:
+            normalized_inputs = []
+            for x in inputs:
+                normalized_x = (x - self.xmin) / (self.xmax - self.xmin)
+                normalized_inputs.append(normalized_x)
+            return func(self, *normalized_x)
+        else:
+            return func(self, *inputs)
+    return wrapper
+
 
 class LIONsolver(ABC, metaclass=ABCMeta):
     def __init__(
@@ -57,9 +69,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         verbose: bool=True,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
         model_regularization=None,
-        solver_params: SolverParams=SolverParams()
+        solver_params: Optional[SolverParams]=None
     ) -> None:
         super().__init__()
+        if solver_params is None:
+            self.solver_params = self.default_parameters()
 
         assert isinstance(model, LIONmodel), "model must be a LIONmodel"
         assert isinstance(
@@ -74,9 +88,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model = model
         self.optimizer = optimizer
         self.geo = geometry
+        self.train_loader: Optional[DataLoader] = None
+        self.train_loss: np.ndarray = np.zeros(0)
         self.loss_fn = loss_fn
         self.device = device
-        self.train_loss: np.ndarray = np.zeros(0)
         self.validation_loader: Optional[DataLoader] = None
         self.validation_fn: Optional[Callable] = None
         self.validation_freq: Optional[int] = None
@@ -95,6 +110,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model_regularization = model_regularization
         self.metadata = LIONParameter()
         self.dataset_param = LIONParameter()
+
+        # normalization stuff
+        self.do_normalize: bool = False
+        self.xmin: Optional[float] = None
+        self.xmax: Optional[float] = None
 
     # This should return the default parameters of the solver
     @staticmethod
@@ -505,7 +525,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         # Quick and dirty fix with fancy regex
         for f in self.save_folder.glob(self.checkpoint_fname.replace('.pt','')):
             f.unlink()
-        
+    
+    def normalize(self, x):
+        """Normalizes input data
+        returns: Normalized input data
+        """
+        if self.do_normalize:
+            assert self.xmax is not None and self.xmin is not None
+            normalized_x = (x - self.xmin) / (self.xmax - self.xmin)
+        return normalized_x
+
     @abstractmethod
     def test(self):
         """
