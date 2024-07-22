@@ -503,9 +503,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             raise LIONSolverException("Checkpointing not setup, can't clear checkpoints: Please call set_checkpointing")
         # TODO: This doesn't delete the .jsons only the .pt, is this intentional behaviour?
         # Quick and dirty fix with fancy regex
-        search_str = self.checkpoint_fname.replace('.pt', '').replace('*', '\\d{4}') + '\\.(pt|json)'
-        print(search_str) 
-        for f in self.save_folder.glob(search_str):
+        for f in self.save_folder.glob(self.checkpoint_fname.replace('.pt','')):
             f.unlink()
         
     @abstractmethod
