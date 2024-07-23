@@ -10,68 +10,38 @@ from typing import Optional
 import torch
 import torch.nn as nn
 from LION.classical_algorithms.fdk import fdk
+from LION.exceptions.exceptions import WrongInputTypeException
 from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
 import LION.CTtools.ct_geometry as ct
-from LION.utils.parameter import LIONParameter
-import torch.nn.utils.parametrize as P
-from tqdm import tqdm
 import numpy as np
 from LION.utils.math import power_method
 
-from skimage.metrics import structural_similarity as ssim
-from skimage.metrics import peak_signal_noise_ratio as psnr
-# Just a temporary SSIM that takes troch tensors (will be added to LION at some point)
-def my_ssim(x: torch.Tensor, y: torch.Tensor):
-    if x.shape[0]==1:
-        x = x.cpu().numpy().squeeze()
-        y = y.cpu().numpy().squeeze()
-        return ssim(x, y, data_range=x.max() - x.min())
-    else: 
-        x = x.cpu().numpy().squeeze()
-        y = y.cpu().numpy().squeeze()
-        vals=[]
-        for i in range(x.shape[0]):
-            vals.append(ssim(x[i], y[i], data_range=x[i].max() - x[i].min()))
-        return np.array(vals)
-
-def my_psnr(x: torch.Tensor, y: torch.Tensor):
-    if x.shape[0]==1:
-        x = x.cpu().numpy().squeeze()
-        y = y.cpu().numpy().squeeze()
-        return psnr(x, y, data_range=x.max() - x.min())
-    else: 
-        x = x.cpu().numpy().squeeze()
-        y = y.cpu().numpy().squeeze()
-        vals=[]
-        for i in range(x.shape[0]):
-            vals.append(psnr(x[i], y[i], data_range=x[i].max() - x[i].min()))
-        return np.array(vals)
-
 
 class network(nn.Module):
-    def __init__(self,n_chan=1):
+    def __init__(self, n_chan=1):
         super(network, self).__init__()
 
         self.leaky_relu = nn.LeakyReLU()
         self.convnet = nn.Sequential(
-            nn.Conv2d(n_chan, 16, kernel_size=(5, 5),padding=2),
+            nn.Conv2d(n_chan, 16, kernel_size=(5, 5), padding=2),
             self.leaky_relu,
-            nn.Conv2d(16, 32, kernel_size=(5, 5),padding=2),
+            nn.Conv2d(16, 32, kernel_size=(5, 5), padding=2),
             self.leaky_relu,
-            nn.Conv2d(32, 32, kernel_size=(5, 5),padding=2,stride=2),
+            nn.Conv2d(32, 32, kernel_size=(5, 5), padding=2, stride=2),
             self.leaky_relu,
-            nn.Conv2d(32, 64, kernel_size=(5, 5),padding=2,stride=2),
+            nn.Conv2d(32, 64, kernel_size=(5, 5), padding=2, stride=2),
             self.leaky_relu,
-            nn.Conv2d(64, 64, kernel_size=(5, 5),padding=2,stride=2),
+            nn.Conv2d(64, 64, kernel_size=(5, 5), padding=2, stride=2),
             self.leaky_relu,
-            nn.Conv2d(64, 128, kernel_size=(5, 5),padding=2,stride=2),
-            self.leaky_relu
+            nn.Conv2d(64, 128, kernel_size=(5, 5), padding=2, stride=2),
+            self.leaky_relu,
         )
-        size=1024
+
+        size = 1024
         self.fc = nn.Sequential(
-            nn.Linear(128*(size//2**4)**2, 256),
+            nn.Linear(128 * (size // 2**4) ** 2, 256),
             self.leaky_relu,
-            nn.Linear(256, 1)
+            nn.Linear(256, 1),
         )
 
     def forward(self, image):
@@ -79,122 +49,153 @@ class network(nn.Module):
         output = output.view(image.size(0), -1)
         output = self.fc(output)
         return output
+
+
 class ARParams(ModelParams):
-        def __init__(self, early_stopping: bool=False, no_steps: int=150, step_size: float=1e-6, momentum: float=0.5, beta_rate: float=0.95):
-            super().__init__(model_input_type=ModelInputType.NOISY_RECON)
-            self.early_stopping = early_stopping
-            self.no_steps = no_steps
-            self.step_size = step_size
-            self.momentum = momentum
-            self.beta_rate = beta_rate
+    def __init__(
+        self,
+        early_stopping: bool = False,
+        no_steps: int = 150,
+        step_size: float = 1e-6,
+        momentum: float = 0.5,
+        beta_rate: float = 0.95,
+    ):
+        super().__init__(model_input_type=ModelInputType.SINOGRAM)
+        self.early_stopping = early_stopping
+        self.no_steps = no_steps
+        self.step_size = step_size
+        self.momentum = momentum
+        self.beta_rate = beta_rate
+
 
 class AR(LIONmodel):
-    def __init__(self,  network: LIONmodel, geometry_parameters: ct.Geometry, model_parameters: Optional[ARParams]=None):
+    def __init__(
+        self,
+        network: LIONmodel,
+        geometry_parameters: ct.Geometry,
+        model_parameters: Optional[ARParams] = None,
+    ):
 
         super().__init__(model_parameters, geometry_parameters)
         self.model_parameters: ARParams
         self._make_operator()
         self.network = network
+        if (
+            t := self.network.model_parameters.model_input_type
+        ) != ModelInputType.IMAGE:
+            raise WrongInputTypeException(
+                f"Adversarial Regularizer expects an architecture that takes an image input. Model provided takes {t} as input"
+            )
+        
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
         # First Conv
         self.estimate_alpha()
         self.step_amounts = torch.tensor([150.0])
         self.op_norm = float(power_method(self.op))
-        self.model_parameters.step_size = 0.2/(self.op_norm)**2
+        self.model_parameters.step_size = 0.2 / (self.op_norm) ** 2
 
-    def forward(self, x):
-        """Expects x to be in the image domain.
+        self.scalar = False
+
+    def forward(self, y):
+        """Expects y to be in the measurement domain.
 
         Args:
-            x (_type_): _description_
+            y (_type_): _description_
 
         Returns:
             _type_: _description_
         """
-        # x = fdk(self.op, x)
-        # x = self.normalise(x)
-        # print(self.pool(z).mean(),self.L2(z).mean())
-        return self.network(x).reshape(-1,1)# + self.L2(z)
-        
-    def estimate_alpha(self,dataset=None):
-        self.alpha=1.0
-        if dataset is None: self.alpha=1.0
-        else: 
+
+        if self.training or self.scalar:
+            return self.pool(self.network(
+                fdk(y, self.op)
+                if self.network.model_parameters.model_input_type
+                == ModelInputType.IMAGE
+                else y
+            ))
+        else:  # in eval (validataion or testing, so actually want to do the GD)
+            return self.output(y)
+
+    def estimate_alpha(self, dataset=None):
+        self.alpha = 1.0
+        if dataset is None:
+            self.alpha = 1.0
+        else:
             residual = 0.0
             for _, (data, target) in enumerate(dataset):
-                residual += torch.norm(self.AT(self.A(target) - data),dim=(2,3)).mean()
+                residual += torch.norm(
+                    self.AT(self.A(target) - data), dim=(2, 3)
+                ).mean()
                 # residual += torch.sqrt(((self.AT(self.A(target) - data))**2).sum())
-            self.alpha = residual/len(dataset)
-        print('Estimated alpha: ' + str(self.alpha))
-    
-    
-    # def output(self, x):
-        # return self.AT(x)
-    
-    def var_energy(self,x,y):
-        # return torch.norm(x) + 0.5*(torch.norm(self.A(x)-y,dim=(2,3))**2).sum()#self.lamb * self.forward(x).sum()
-        return 0.5*((self.A(x)-y)**2).sum() + self.alpha * self.forward(x).sum()
-      ### What is the difference between .sum() and .mean()??? idfk but PSNR is lower when I do .sum
-      
-    def output(self,y,truth=None):
-        # wandb.log({'Eearly_stopping_steps': self.step_amounts.mean().item(), 'Eearly_stopping_steps_std': self.step_amounts.std().item()})
-        # x0=[]
-        # device = torch.cuda.current_device()
-        # for i in range(y.shape[0]):
-        #     x0.append(fdk(self.op, y[i]))
-        # x = torch.stack(x0)
-        # print(x.shape)
-        # print(x.min(),x.max())
-        # print(my_psnr(truth.detach().to(device),x.detach()).mean(),my_ssim(truth.detach().to(device),x.detach()).mean())
-        x = fdk(y, self.op)
-        x=torch.nn.Parameter(x)#.requires_grad_(True)
+            self.alpha = residual / len(dataset)
+        print("Estimated alpha: " + str(self.alpha))
 
-        optimizer = torch.optim.SGD([x], lr=self.model_parameters.step_size, momentum=0.5)#self.model_parameters.momentum)
+    def wgan_loss(self, bad_recon, ground_truth):
+        """Calculates the gradient penalty loss for WGAN GP"""
+        epsilon = torch.Tensor(np.random.random((ground_truth.size(0), 1, 1, 1))).type_as(ground_truth)
+        interpolates = (epsilon * ground_truth + ((1 - epsilon) * bad_recon)).requires_grad_(True)
+        net_interpolates = self.forward(interpolates)
+        fake = torch.Tensor(ground_truth.shape[0], 1).fill_(1.0).type_as(ground_truth).requires_grad_(False)
+        gradients = torch.autograd.grad(
+            outputs=net_interpolates,
+            inputs=interpolates,
+            grad_outputs=fake,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True,
+        )[0]
+
+        gradients = gradients.view(gradients.size(0), -1)
+        # print(model(real_samples).mean()-model(fake_samples).mean(),self.mu*(((gradients.norm(2, dim=1) - 1)) ** 2).mean())
+        loss = self.forward(ground_truth).mean()-self.forward(bad_recon).mean()+self.mu*(((gradients.norm(2, dim=1) - 1)) ** 2).mean()
+        return loss
+
+    def var_energy(self, x, y):
+        # return torch.norm(x) + 0.5*(torch.norm(self.A(x)-y,dim=(2,3))**2).sum()#self.lamb * self.forward(x).sum()
+        return 0.5 * ((self.A(x) - y) ** 2).sum() + self.alpha * self.forward(x).sum()
+
+    ### What is the difference between .sum() and .mean()??? idfk but PSNR is lower when I do .sum
+
+    def output(self, y):
+        self.scalar = True
+        x = fdk(y, self.op)
+        x = torch.nn.Parameter(x)
+
+        optimizer = torch.optim.SGD(
+            [x], lr=self.model_parameters.step_size, momentum=0.5
+        )
         lr = self.model_parameters.step_size
-        prevpsn=0
-        curpsn=0
-        for j in range(self.model_parameters.no_steps):
-            # print(x.min(),x.max())
-            # data_misfit=self.A(x)-y
-            # data_misfit_grad = self.AT(data_misfit)
-            
+        for _ in range(self.model_parameters.no_steps):
             optimizer.zero_grad()
-            # reg_func=self.lamb * self.forward(x).mean()
-            # reg_func.backward()
-            # print(x.requires_grad, reg_func.requires_grad)
-            energy = self.var_energy(x,y)
+            energy = self.var_energy(x, y)
             energy.backward()
-            while(self.var_energy(x-x.grad*lr,y) > energy - 0.5*lr*(x.grad.norm(dim=(2,3))**2).mean()):
-                lr=self.model_parameters.beta_rate*lr
-                # print('decay')
+
+            assert x.grad is not None
+            while (
+                self.var_energy(x - x.grad * lr, y)
+                > energy - 0.5 * lr * (x.grad.norm(dim=(2, 3)) ** 2).mean()
+            ):
+                lr = self.model_parameters.beta_rate * lr
             for g in optimizer.param_groups:
-                g['lr'] = lr
-            # x.grad+=data_misfit_grad
-            if(truth is not None):
-                loss = torch.nn.MSELoss()(x.detach(),truth.detach().to(device))
-                psnr_val = my_psnr(truth.detach().to(device),x.detach()).mean()
-                ssim_val = my_ssim(truth.detach().to(device),x.detach()).mean()
-                # wandb.log({'MSE Loss': loss.item(),'SSIM':ssim_val,'PSNR':psnr_val})
-                # wandb.log({'MSE Loss'+str(self.model_parameters.step_size): loss.item(),'SSIM'+str(self.model_parameters.step_size):ssim_val,'PSNR'+str(self.model_parameters.step_size):psnr_val})
-                print(f"{j}: SSIM: {my_ssim(truth.to(device).detach(),x.detach())}, PSNR: {my_psnr(truth.to(device).detach(),x.detach())}, Energy: {energy.detach().item()}")
-        
-            #     if(self.args.outp):
-            #         print(j)
-                prevpsn=curpsn
-                curpsn=psnr_val
-                # if(curpsn<prevpsn):
-                #     self.step_amounts = torch.cat((self.step_amounts,torch.tensor([j*1.0])))
-                #     return x.detach()
-            elif(j > self.step_amounts.mean().item()): 
-                # print('only for testing')
-                x.clamp(min=0.0)
-                return x.detach()
-            elif(lr * self.op_norm**2 < 1e-3):
-                x.clamp(min=0.0)
-                return x.detach()
+                g["lr"] = lr
+
+            # what's going on with these?
+            # if(j > self.step_amounts.mean().item()):
+            #     # print('only for testing')
+            #     x.clamp(min=0.0)
+            #     return x
+            # elif(lr * self.op_norm**2 < 1e-3):
+            #     x.clamp(min=0.0)
+            #     return x
             optimizer.step()
-            x.clamp(min=0.0)
-        return x.detach()
-    
+            # x.clamp(min=0.0) do we need this?
+        self.scalar = False
+        return x
+
+    def train(self, dataloader):
+        
+
+
     # this functionality is now the responsibility of the LIONSolver
     # def normalise(self,x):
     #     return (x - self.model_parameters.xmin) / (self.model_parameters.xmax - self.model_parameters.xmin)
@@ -206,13 +207,14 @@ class AR(LIONmodel):
         param = ARParams(False, 150, 1e-6, 0.5, 0.95)
         return param
 
-
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
             print("Mukherjee, Subhadip, et al.")
             print('"Data-Driven Convex Regularizers for Inverse Problems."')
-            print("ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2024")
+            print(
+                "ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2024"
+            )
             print("arXiv:2008.02839 (2020).")
         elif cite_format == "bib":
             string = """

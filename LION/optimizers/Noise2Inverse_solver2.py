@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 import warnings
 import numpy as np
 from tqdm import tqdm
@@ -35,7 +35,6 @@ class Noise2InverseSolver(LIONsolver):
         solver_params: Optional[Noise2InverseParams],
         verbose: bool,
         geo: Geometry,
-
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
     ) -> None:
         super().__init__(

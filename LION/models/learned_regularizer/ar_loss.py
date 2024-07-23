@@ -10,7 +10,7 @@ class WGAN_gradient_penalty_loss(nn.Module):
         super().__init__()
 
 
-    def forward(self,model, data_marginal_noisy,data_marginal_real):
+    def forward(self, model, data_marginal_noisy, data_marginal_real):
         """Calculates the gradient penalty loss for WGAN GP"""
         real_samples=data_marginal_real
         fake_samples=data_marginal_noisy

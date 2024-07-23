@@ -25,8 +25,8 @@ class SupervisedSolver(LIONsolver):
         model: LIONmodel,
         optimizer: torch.optim.Optimizer,
         loss_fn: torch.nn.Module,
-        verbose: bool,
         geo: Geometry,
+        verbose: bool = False,
         model_regularization=None,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}")
     ):
@@ -40,6 +40,7 @@ class SupervisedSolver(LIONsolver):
             model_regularization=model_regularization,
             solver_params=SolverParams()
         )
+
         self.op = make_operator(self.geo)
 
     def mini_batch_step(self, data, target):
@@ -47,7 +48,7 @@ class SupervisedSolver(LIONsolver):
         This function isresponsible for performing a single mini-batch step of the optimization.
         returns the loss of the mini-batch
         """
-        if self.model.model_parameters.model_input_type == ModelInputType.NOISY_RECON:
+        if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
             # reconstruct sino using fdk
             data = fdk(data, self.op)
 
@@ -90,9 +91,14 @@ class SupervisedSolver(LIONsolver):
         This function is responsible for performing a single validation set of the optimization.
         returns the average loss of the validation set this epoch.
         """
-        # not a fan of using sentinel values like this, change for either enum or something like that
+        """
+        This function is responsible for performing a single validation set of the optimization.
+        returns the average loss of the validation set this epoch.
+        """
         if self.check_validation_ready() != 0:
-            raise LIONSolverException("Solver not ready for validation. Please call set_validation.")
+            raise LIONSolverException(
+                "Solver not ready for validation. Please call set_validation."
+            )
 
         # these always pass if the above does, this is just to placate static type checker
         assert self.validation_loader is not None
@@ -100,20 +106,25 @@ class SupervisedSolver(LIONsolver):
 
         status = self.model.training
         self.model.eval()
-        validation_loss = 0.0
+
+        with torch.no_grad():
+            validation_loss = np.array([])
+            for data, targets in tqdm(self.test_loader):
+                if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
+                    data = fdk(data, self.op)
+                outputs = self.model(data)
+                validation_loss = np.append(validation_loss, self.testing_fn(targets, outputs))
+
         if self.verbose:
-            print("Validating...")
-        for _, (data, target) in tqdm(
-            enumerate(self.validation_loader), disable=True
-        ):
-            with torch.no_grad():
-                output = self.model(data.to(self.device))
-                validation_loss = self.validation_fn(output, target.to(self.device))
+            print(
+                f"Testing loss: {validation_loss.mean()} - Testing loss std: {validation_loss.std()}"
+            )
 
         # return to train if it was in train
         if status:
             self.model.train()
-        return validation_loss / len(self.validation_loader)
+
+        return np.mean(validation_loss)
 
     def epoch_step(self, epoch):
         """
@@ -134,8 +145,8 @@ class SupervisedSolver(LIONsolver):
                 self.save_validation(epoch)
         elif self.verbose:
             print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
-        # elif self.validation_freq is not None:
-        #     self.validation_loss[epoch] = self.validate()
+        elif self.validation_freq is not None and self.validation_loss is not None:
+            self.validation_loss[epoch] = self.validate()
 
     def train(self, n_epochs):
         """
@@ -143,7 +154,7 @@ class SupervisedSolver(LIONsolver):
         """
         assert n_epochs > 0, "Number of epochs must be a positive integer"
         # Make sure all parameters are set
-        self.check_complete()
+        self.check_training_ready()
 
         if self.do_load_checkpoint:
             print("Loading checkpoint...")
@@ -173,7 +184,7 @@ class SupervisedSolver(LIONsolver):
         test_loss = np.zeros(len(self.test_loader))
         with torch.no_grad():                
             for index, (data, target) in enumerate(self.test_loader):
-                if self.model.model_parameters.model_input_type == ModelInputType.NOISY_RECON:
+                if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
                     data = fdk(data, self.op)
                 output = self.model(data.to(self.device))
                 test_loss[index] = self.testing_fn(output, target.to(self.device))

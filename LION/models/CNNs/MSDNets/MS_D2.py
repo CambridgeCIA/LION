@@ -27,7 +27,7 @@ class MSDParams(ModelParams):
         final_look_back_depth: int = -1,
         activation: nn.Module = nn.ReLU(),
     ):
-        super().__init__(model_input_type=ModelInputType.NOISY_RECON)
+        super().__init__(model_input_type=ModelInputType.IMAGE)
         self.in_channels: int = in_channels
         self.width: int = width
         self.depth: int = depth
