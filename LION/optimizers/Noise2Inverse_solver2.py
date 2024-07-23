@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 import warnings
 import numpy as np
 from tqdm import tqdm

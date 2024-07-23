@@ -29,7 +29,7 @@ class Noise2Inverse_solver(LIONsolver):
         if geo is None:
             raise ValueError("Geometry must be given to Noise2Inverse_solver")
         self.sino_splits = optimizer_params.sino_splits
-        self.base_algo = optimizer_params.base_algo
+        self.recon_fn = optimizer_params.base_algo
         self.sub_op = self.make_sub_operators(self.geo, self.sino_splits)
 
     @staticmethod
@@ -78,7 +78,7 @@ class Noise2Inverse_solver(LIONsolver):
         # compute noisy reconstructions
         for sino in range(data.shape[0]):
             for split in range(self.sino_splits):
-                bad_recon[split, sino] = self.base_algo(
+                bad_recon[split, sino] = self.recon_fn(
                     self.sub_op[split], data[sino, 0, split : -1 : self.sino_splits]
                 )
 

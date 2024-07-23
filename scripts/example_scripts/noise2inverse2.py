@@ -10,6 +10,7 @@ from LION.models.CNNs.MS_D import MS_D
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 from LION.optimizers.Noise2Inverse_solver2 import Noise2InverseSolver
+from LION.optimizers.Noise2Inverse_solver import Noise2Inverse_solver
 from skimage.metrics import structural_similarity as ssim, peak_signal_noise_ratio as psnr
 import numpy as np
 
@@ -41,13 +42,13 @@ def my_psnr(x: torch.Tensor, y: torch.Tensor):
         return np.array(vals)
 # %%
 # % Chose device:
-device = torch.device("cuda:0")
+device = torch.device("cuda:3")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
-final_result_fname = "Noise2Inverse_MSD.pt"
-checkpoint_fname = "Noise2Inverse_MSD_check_*.pt"
-validation_fname = "Noise2Inverse_MSD_min_val.pt"
+final_result_fname = "Noise2InverseOG_MSD.pt"
+checkpoint_fname = "Noise2InverseOG_MSD_check_*.pt"
+validation_fname = "Noise2InverseOG_MSD_min_val.pt"
 #
 # %% Define experiment
 
@@ -63,7 +64,7 @@ lidc_dataset = Subset(lidc_dataset, [i for i in range(100)])
 
 # %% Define DataLoader
 
-batch_size = 20
+batch_size = 4
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
 lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
 
@@ -93,20 +94,19 @@ optimiser = torch.optim.Adam(
 
 # %% Train
 # create solver
-noise2inverse_parameters = Noise2InverseSolver.default_parameters()
-solver = Noise2InverseSolver(
+noise2inverse_parameters = Noise2Inverse_solver.default_parameters()
+solver = Noise2Inverse_solver(
     model,
     optimiser,
     loss_fn,
     noise2inverse_parameters,
-    False,
+    True,
     experiment.geo,
-    device=device
 )
 
 # set data
 solver.set_training(lidc_dataloader)
-solver.set_normalization(True)
+# solver.set_normalization(True)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
@@ -115,15 +115,15 @@ solver.set_checkpointing(checkpoint_fname, 10)
 solver.set_loading(savefolder, False)
 
 # train
-# solver.train(train_param.epochs)
+solver.train(train_param.epochs)
 # delete checkpoints if finished
 solver.clean_checkpoints()
 # save final result
 # solver.save_final_results(final_result_fname)
 
 # for after you've trained the model.
-trained_model, options, data = MS_D.load(savefolder.joinpath(final_result_fname))
-solver.model = trained_model
+# trained_model, options, data = MS_D.load(savefolder.joinpath(final_result_fname))
+# solver.model = trained_model
 
 # print("-"*20)
 # print(data)
