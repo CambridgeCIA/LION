@@ -4,7 +4,7 @@
 #%% Imports
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 import pathlib
 from LION.models.post_processing.FBPConvNet_subclassed import FBPConvNet
@@ -15,7 +15,7 @@ import os
 
 #%%
 # % Chose device:
-device = torch.device("cuda:3")
+device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/home/hyt35/trained_models/clinical_dose_subclassed/")
@@ -37,6 +37,8 @@ lidc_dataset_val = experiment.get_validation_dataset()
 #%% Define DataLoader
 # Use the same amount of training
 batch_size = 4
+# lidc_dataloader = DataLoader(Subset(lidc_dataset, range(20), batch_size, shuffle=True)
+# lidc_validation = DataLoader(Subset(lidc_dataset_val, range(20)), batch_size, shuffle=True)
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
@@ -44,22 +46,22 @@ lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 # Default model is already from the paper.
 # model = 
 model = FBPConvNet(geometry_parameters=experiment.geo)
-print(model.default_parameters())
+# print(model.default_parameters())
 # print(model.__class__.__name__)
-print(isinstance(model, LIONmodelSubclasses.LIONmodelPhantom), isinstance(model, LIONmodelSubclasses.LIONmodelSino))
-model = LIONmodelSubclasses.Constructor(model).to(device)
-print(model.default_parameters())
 # print(isinstance(model, LIONmodelSubclasses.LIONmodelPhantom), isinstance(model, LIONmodelSubclasses.LIONmodelSino))
-print(isinstance(model, LIONmodelSubclasses.LIONmodelPhantom), isinstance(model, LIONmodelSubclasses.LIONmodelSino))
+model = LIONmodelSubclasses.Constructor(model).to(device)
+# print(model.default_parameters())
+# print(isinstance(model, LIONmodelSubclasses.LIONmodelPhantom), isinstance(model, LIONmodelSubclasses.LIONmodelSino))
+# print(isinstance(model, LIONmodelSubclasses.LIONmodelPhantom), isinstance(model, LIONmodelSubclasses.LIONmodelSino))
 
-for sinogram, target_reconstruction in tqdm(lidc_dataloader):
-    bar = sinogram
-    break
-print(model(sinogram))
+# for sinogram, target_reconstruction in tqdm(lidc_dataloader):
+#     bar = sinogram
+#     break
+# print(model(sinogram))
 
-fbp = LIONmodelSubclasses.forward_decorator(model, lambda x:x)
-print(fbp(sinogram))
-print(model.phantom2phantom(fbp(sinogram)))
+# fbp = LIONmodelSubclasses.forward_decorator(model, lambda x:x)
+# print(fbp(sinogram))
+# print(model.phantom2phantom(fbp(sinogram)))
 # raise Exception()
 #%% Optimizer
 train_param = LIONParameter()
@@ -69,7 +71,7 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 2
+train_param.epochs = 5
 train_param.learning_rate = 1e-3
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
@@ -116,10 +118,11 @@ for epoch in range(start_epoch, train_param.epochs):
     # Validation
     valid_loss = 0.0
     model.eval()
-    for sinogram, target_reconstruction in tqdm(lidc_validation):
-        reconstruction = model(sinogram)
-        loss = loss_fcn(target_reconstruction, reconstruction)
-        valid_loss += loss.item()
+    with torch.no_grad():
+        for sinogram, target_reconstruction in tqdm(lidc_validation):
+            reconstruction = model(sinogram)
+            loss = loss_fcn(target_reconstruction, reconstruction)
+            valid_loss += loss.item()
 
     print(
         f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"

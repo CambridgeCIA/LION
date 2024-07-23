@@ -63,33 +63,7 @@ def forward_decorator(self, f):
 def Constructor(obj):
     obj.phantom2phantom = obj.forward
     obj.forward = forward_decorator(obj, obj.forward)
+    # create a new class that extends both the existing object class and LIONmodelSino
+    # new class will extend both LIONmodelSino and LIONmodelPhantom
     obj.__class__ = type(f"{obj.__class__.__name__}Sino", (obj.__class__, LIONmodelSino), obj.__dict__)
     return obj
-
-# class LIONmodelSinoMetaclass(, LIONmodelSino):
-#     def __init__(self, baseLIONModelPhantom: LIONmodelPhantom):
-#         self.__dict__ = baseLIONModelPhantom.__dict__
-#         self.__baseObject__ = baseLIONModelPhantom
-#         self.__bases__ = (LIONmodelSino,)
-
-
-#     def forward(self, x):
-#         B, C, W, H = x.shape
-#         image = x.new_zeros(B, 1, *self.geo.image_shape[1:])
-#         for i in range(B):
-#             aux = fdk(self.op, x[i, 0])
-#             aux = clip(aux, min=0)
-#             image[i] = aux
-        
-#         return super(LIONmodelSinoConstructor,self).__getattribute__("__baseObject__")(image)
-
-
-#     @staticmethod
-#     def default_parameters():
-#         pass
-    
-#     def phantom2phantom(self, x):
-#         return self.__baseObject__(x)
-    
-#     def __getattr__(self, attr):
-#         return getattr(self.__baseObject__, attr)
