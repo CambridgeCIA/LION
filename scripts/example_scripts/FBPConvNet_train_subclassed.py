@@ -44,25 +44,9 @@ lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
 
 #%% Model
 # Default model is already from the paper.
-# model = 
 model = FBPConvNet(geometry_parameters=experiment.geo)
-# print(model.default_parameters())
-# print(model.__class__.__name__)
-# print(isinstance(model, LIONmodelSubclasses.LIONmodelPhantom), isinstance(model, LIONmodelSubclasses.LIONmodelSino))
 model = LIONmodelSubclasses.Constructor(model).to(device)
-# print(model.default_parameters())
-# print(isinstance(model, LIONmodelSubclasses.LIONmodelPhantom), isinstance(model, LIONmodelSubclasses.LIONmodelSino))
-# print(isinstance(model, LIONmodelSubclasses.LIONmodelPhantom), isinstance(model, LIONmodelSubclasses.LIONmodelSino))
 
-# for sinogram, target_reconstruction in tqdm(lidc_dataloader):
-#     bar = sinogram
-#     break
-# print(model(sinogram))
-
-# fbp = LIONmodelSubclasses.forward_decorator(model, lambda x:x)
-# print(fbp(sinogram))
-# print(model.phantom2phantom(fbp(sinogram)))
-# raise Exception()
 #%% Optimizer
 train_param = LIONParameter()
 

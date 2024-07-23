@@ -8,7 +8,7 @@
 
 # Lionmodels
 from LION.models.LIONmodel import LIONmodel
-from LION.models.LIONmodelSubclasses import LIONmodelSino, LIONmodelPhantom, forward_decorator
+from LION.models.LIONmodelSubclasses import LIONmodelSino, LIONmodelRecon, forward_decorator
 from LION.experiments.ct_experiments import Experiment
 
 import numpy as np
@@ -32,7 +32,7 @@ class LIONreconstructor(nn.Module):
         self.model.eval()
 
 
-        if isinstance(self.model, LIONmodelPhantom) and not isinstance(self.model, LIONmodelSino):
+        if isinstance(self.model, LIONmodelRecon) and not isinstance(self.model, LIONmodelSino):
             self.sino2recon = forward_decorator(self.model.forward)
 
         if data is not None:
@@ -62,7 +62,7 @@ class LIONreconstructor(nn.Module):
         
         if isinstance(self.model, LIONmodelSino):
             pass
-        elif isinstance(self.model, LIONmodelPhantom):
+        elif isinstance(self.model, LIONmodelRecon):
             pass
         else:
             raise NotImplementedError(f"Reconstruction is not supported for model of type {type(self.model)}")
@@ -75,19 +75,19 @@ class LIONreconstructor(nn.Module):
     def reconstructSino(self, sino):
         if isinstance(self.model, LIONmodelSino):
             return self.model(sino)
-        elif isinstance(self.model, LIONmodelPhantom):
+        elif isinstance(self.model, LIONmodelRecon):
             return self.sino2recon(sino)
         else:
-            raise NotImplementedError("Did not pass LIONmodelSino or LIONmodelPhantom")
+            raise NotImplementedError("Did not pass LIONmodelSino or LIONmodelRecon")
 
-    def reconstructPhantom(self, phantom):
-        if not isinstance(self.model, LIONmodelPhantom):
-            raise TypeError(f"Passed class is {self.model.__class__} which is not an instance of LIONmodelPhantom")
+    def reconstructRecon(self, recon):
+        if not isinstance(self.model, LIONmodelRecon):
+            raise TypeError(f"Passed class is {self.model.__class__} which is not an instance of LIONmodelRecon")
         if isinstance(self.model, LIONmodelSino):
-            return self.model.phantom2phantom(phantom)
+            return self.model.recon2recon(recon)
             # use phantom2phantom
-        else:
-            return self.model(phantom)
+        else: #then it is LIONmodelRecon and not LIONmodelSino, so forward is recon -> recon
+            return self.model(recon)
 
         
 
