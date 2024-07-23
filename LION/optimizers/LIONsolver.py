@@ -16,7 +16,7 @@ from enum import Enum
 from typing import Callable, Optional
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
-from LION.exceptions.exceptions import LIONSolverException
+from LION.exceptions.exceptions import LIONSolverException, NoDataException
 from LION.utils.parameter import LIONParameter
 
 # Lionmodels
@@ -180,6 +180,21 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             warnings.warn("Save folder not set. Please call set_saving")
         self.checkpoint_freq = checkpoint_freq
         self.checkpoint_fname = checkpoint_fname
+
+
+    def set_normalization(self, do_normalize: bool):
+        if self.train_loader is None:
+            raise NoDataException("Training dataloader not set: Please call set_training")
+        self.do_normalize = do_normalize
+        if self.do_normalize:
+            xmax = -np.inf
+            xmin = np.inf
+            for x in self.train_loader:
+                xmax = max(x[1].max(), xmax)
+                xmin = min(x[1].min(), xmin)
+            self.xmin = xmin
+            self.xmax = xmax
+
 
     def check_training_ready(self, error=True, autofill=True, verbose=True):
         """This should always pass, all of these things are required to initialize a LIONsolver object
