@@ -8,7 +8,7 @@
 
 # Lionmodels
 from LION.models.LIONmodel import LIONmodel
-from LION.models.LIONmodelSubclasses import LIONmodelSino, LIONmodelPhantom
+from LION.models.LIONmodelSubclasses import LIONmodelSino, LIONmodelPhantom, forward_decorator
 from LION.experiments.ct_experiments import Experiment
 
 import numpy as np
@@ -31,6 +31,10 @@ class LIONreconstructor(nn.Module):
         self.model = model
         self.model.eval()
 
+
+        if isinstance(self.model, LIONmodelPhantom) and not isinstance(self.model, LIONmodelSino):
+            self.sino2recon = forward_decorator(self.model.forward)
+
         if data is not None:
             assert isinstance(data, Experiment) or isinstance(data, Dataset) or torch.is_tensor(data), "data must be Experiment, Dataset or batched input"
             if torch.is_tensor(data):
@@ -38,7 +42,7 @@ class LIONreconstructor(nn.Module):
         
         self.dataloader = data # Contains parameters of images to be reconstructed.
 
-    def forward(self, *args):
+    def forward(self, *args, **kwargs):
         if args:
             data = args[0]
             assert isinstance(data, Experiment) or isinstance(data, Dataset) or torch.is_tensor(data), "data must be Experiment, Dataset or batched input"
@@ -48,7 +52,7 @@ class LIONreconstructor(nn.Module):
             raise RuntimeError("Either pass data when constructing LIONreconstructor, or pass data into the forward operator.")
 
         if isinstance(data, Experiment):
-            data_iterator = None # TODO get iterator
+            data_iterator = data.get_testing_dataset() # TODO get iterator
         elif isinstance(data, Dataset):
             data_iterator = None # TODO get iterator
         elif torch.is_tensor(data):
@@ -65,8 +69,27 @@ class LIONreconstructor(nn.Module):
 
 
         # TODO iterate
+        for dat in data_iterator:
+            pass # todo
 
+    def reconstructSino(self, sino):
+        if isinstance(self.model, LIONmodelSino):
+            return self.model(sino)
+        elif isinstance(self.model, LIONmodelPhantom):
+            return self.sino2recon(sino)
+        else:
+            raise NotImplementedError("Did not pass LIONmodelSino or LIONmodelPhantom")
 
+    def reconstructPhantom(self, phantom):
+        if not isinstance(self.model, LIONmodelPhantom):
+            raise TypeError(f"Passed class is {self.model.__class__} which is not an instance of LIONmodelPhantom")
+        if isinstance(self.model, LIONmodelSino):
+            return self.model.phantom2phantom(phantom)
+            # use phantom2phantom
+        else:
+            return self.model(phantom)
+
+        
 
 # Postprocessing eg FBPConvNet: takes sinogram and performs FDK reconstruction
 # iterative unrolled: also takes sinogram
