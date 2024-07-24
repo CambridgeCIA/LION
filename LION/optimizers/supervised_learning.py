@@ -10,13 +10,12 @@ from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.optimizers.LIONloss import LIONloss
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.classical_algorithms.fdk import fdk
 
 # standard imports
 from tqdm import tqdm
-
-from LION.utils.parameter import LIONParameter
 
 
 class SupervisedSolver(LIONsolver):
@@ -24,7 +23,7 @@ class SupervisedSolver(LIONsolver):
         self,
         model: LIONmodel,
         optimizer: torch.optim.Optimizer,
-        loss_fn: torch.nn.Module,
+        loss_fn: LIONloss,
         verbose: bool,
         geo: Geometry,
         model_regularization=None,

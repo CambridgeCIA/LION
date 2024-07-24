@@ -1,5 +1,6 @@
+from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Callable
+from typing import Callable, Optional
 import inspect
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -8,6 +9,7 @@ from LION.CTtools.ct_utils import make_operator
 from LION.classical_algorithms.fdk import fdk
 from LION.exceptions.exceptions import LossSchemaException
 import LION.experiments.ct_experiments as ct_experiments
+from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.models.CNNs.MS_D import MS_D
 
 
@@ -18,8 +20,8 @@ class LossRequirement(Enum):
     GROUND_TRUTH = 3
 
 
-class LIONloss:
-    def __init__(self, loss_fn: Callable, schema: list[LossRequirement]) -> None:
+class LIONloss(nn.Module):
+    def __init__(self, loss_fn: Callable, schema: list[LossRequirement], model: Optional[LIONmodel]) -> None:
         """_summary_
 
         Args:
@@ -45,17 +47,59 @@ class LIONloss:
 
         self.loss_fn = loss_fn
         self.schema = schema
+        self.model = model
 
-    def __call__(self, *args):
+    def forward(self, *args):
         if len(args) != len(self.schema):
             raise TypeError(f"Expected {len(self.schema)} arguments, {len(args)} were provided")
         
         return self.loss_fn(*args)
 
+class LIONloss2(nn.Module, ABC):
+    def __init__(self, model: LIONmodel) -> None:
+        super().__init__()
+        self.model = model
+    
+    @abstractmethod
+    def forward(self, sino, gt):
+        pass
+
+class LIONmse2(LIONloss2):
+    def __init__(self, model) -> None:
+        super().__init__(model)
+        assert self.model is not None, "need model"
+        self.loss = nn.MSELoss()
+
+    def forward(self, sino, target):
+        if self.model.model_parameters.model_input_type == ModelInputType.NOISY_RECON:
+            data = fdk(sino, self.model.op)
+        else:
+            data = sino
+        return self.loss(self.model(data), target)
+    
+class WeirdLoss2(LIONloss2):
+    def __init__(self, model) -> None:
+        super().__init__(model)
+
+    def forward(self, sino, target):
+        bad_recon = fdk(sino, self.model.op)
+        return self.model(bad_recon) - self.model(target)
+
 
 class LIONmse(LIONloss):
     def __init__(self):
-        super().__init__(loss_fn=nn.MSELoss(), schema=[LossRequirement.PREDICTION, LossRequirement.GROUND_TRUTH])
+        super().__init__(loss_fn=nn.MSELoss(), schema=[LossRequirement.PREDICTION, LossRequirement.GROUND_TRUTH], model=None)
+    
+
+class WeirdLoss(LIONloss):
+    def __init__(self, model):
+        super().__init__(loss_fn=self.loss, schema=[LossRequirement.SINOGRAM, LossRequirement.GROUND_TRUTH], model=model)
+    
+    def loss(self, sino, gt):
+        print("doing weird stuff with sino gt and model...")
+        return 1
+    
+
 
 if __name__ == "__main__":
     loss_fn = LIONmse()
@@ -70,18 +114,23 @@ if __name__ == "__main__":
     bad_recon = fdk(sino, op)
 
     model = MS_D()
-    clean_recon = model(bad_recon)
+    # clean_recon = model(bad_recon)
 
-    args = []
-    for param in loss_fn.schema:
-        if param == LossRequirement.GROUND_TRUTH:
-            args.append(gt)
-        elif param == LossRequirement.NOISY_RECON:
-            args.append(bad_recon)
-        elif param == LossRequirement.PREDICTION:
-            args.append(clean_recon)
-        elif param == LossRequirement.SINOGRAM:
-            args.append(sino)
-    loss = loss_fn(*args)
+    # args = []
+    # for param in loss_fn.schema:
+    #     if param == LossRequirement.GROUND_TRUTH:
+    #         args.append(gt)
+    #     elif param == LossRequirement.NOISY_RECON:
+    #         args.append(bad_recon)
+    #     elif param == LossRequirement.PREDICTION:
+    #         args.append(clean_recon)
+    #     elif param == LossRequirement.SINOGRAM:
+    #         args.append(sino)
+    # loss = loss_fn(*args)
+    # print(loss)
+
+    loss_fn2 = WeirdLoss2(model)
+
+    loss = loss_fn2(sino, gt)
     print(loss)
 
