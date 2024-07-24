@@ -5,6 +5,7 @@ import pathlib
 import torch
 from torch.utils.data import DataLoader, Subset
 from LION.CTtools.ct_utils import make_operator
+from LION.classical_algorithms.fdk import fdk
 from LION.models.CNNs.MSDNets.MS_D2 import MSD_Net, MSD_Params
 from LION.models.CNNs.MS_D import MS_D
 from LION.utils.parameter import LIONParameter
@@ -94,14 +95,15 @@ optimiser = torch.optim.Adam(
 
 # %% Train
 # create solver
-noise2inverse_parameters = Noise2Inverse_solver.default_parameters()
-solver = Noise2Inverse_solver(
+noise2inverse_parameters = Noise2InverseSolver.default_parameters()
+solver = Noise2InverseSolver(
     model,
     optimiser,
     loss_fn,
     noise2inverse_parameters,
     True,
     experiment.geo,
+    device
 )
 
 # set data

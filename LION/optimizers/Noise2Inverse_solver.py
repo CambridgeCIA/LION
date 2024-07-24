@@ -187,3 +187,20 @@ class Noise2Inverse_solver(LIONsolver):
             )
         return test_loss
 
+    def process(self, sinos, targets):
+        bad_recon = self.compute_noisy_sub_recon(sinos, targets) # b, split, c, w, h
+                
+        # we train K->1 so, pick one of these to be the target, at random.
+        label_array = torch.zeros(targets.shape, device=self.device)
+        random_target = torch.zeros(targets.shape, device=self.device)
+        for sino in range(sinos.shape[0]):
+            indices = np.arange(self.sino_splits)
+            label = np.random.randint(self.sino_splits)
+            random_target[sino] = bad_recon[label, sino].detach().clone()
+            label_array[sino] = torch.mean(
+                bad_recon[np.delete(indices, label), sino].detach().clone(), axis=0
+            )
+            # Forward pass
+        output = self.model(label_array)
+        return output
+
