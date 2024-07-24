@@ -45,7 +45,7 @@ from pathlib import Path
 
 class ModelInputType(int, Enum):
     SINOGRAM=0
-    NOISY_RECON=1
+    IMAGE=1
 
 # it is the job of the subclass constructor to specify input_type
 class ModelParams(LIONParameter):

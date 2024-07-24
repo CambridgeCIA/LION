@@ -1,34 +1,33 @@
 # numerical imports
-import pathlib
-from typing import Optional
 import torch
-import torch.nn as nn
 import numpy as np
+import torch.nn as nn
 
 # Import base class
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
+from LION.classical_algorithms.fdk import fdk
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
-from LION.optimizers.LIONloss import LIONloss
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
-from LION.classical_algorithms.fdk import fdk
+
+# Parameter class
+from LION.utils.parameter import LIONParameter
 
 # standard imports
 from tqdm import tqdm
 
 
-class SupervisedSolver(LIONsolver):
+class WeaklySupervisedSolver(LIONsolver):
     def __init__(
         self,
         model: LIONmodel,
         optimizer: torch.optim.Optimizer,
-        loss_fn: LIONloss,
+        loss_fn: torch.nn.Module,
         verbose: bool,
         geo: Geometry,
-        verbose: bool = False,
         model_regularization=None,
-        device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}")
+        device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
     ):
         super().__init__(
             model,
@@ -38,34 +37,27 @@ class SupervisedSolver(LIONsolver):
             verbose=verbose,
             device=device,
             model_regularization=model_regularization,
-            solver_params=SolverParams()
+            solver_params=SolverParams(),
         )
-
         self.op = make_operator(self.geo)
 
-    def mini_batch_step(self, data, target):
+    def mini_batch_step(self, data, ground_truth):
         """
         This function isresponsible for performing a single mini-batch step of the optimization.
         returns the loss of the mini-batch
         """
-        if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
-            # reconstruct sino using fdk
-            data = fdk(data, self.op)
-
-        if self.do_normalize:
-            data = self.normalize(data)
-
+        # set model to train
+        self.model.train()
         # Zero gradients
         self.optimizer.zero_grad()
+        if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
+            data = fdk(data, self.op)
+
         # Forward pass
         output = self.model(data)
-        # Compute loss
-        if self.model_regularization is not None:
-            self.loss = self.loss_fn(output, target) + self.model_regularization(
-                self.model
-            )
-        else:
-            self.loss = self.loss_fn(output, target)
+        self.loss = self.loss_fn(
+            output, ground_truth
+        )
         # Update optimizer and model
         self.loss.backward()
         self.optimizer.step()
@@ -73,24 +65,22 @@ class SupervisedSolver(LIONsolver):
 
     def train_step(self):
         """
-        This function is responsible for performing a single tranining set epoch of the optimization.
-        returns the average loss of the epoch
+        This function is responsible for performing the optimization.
+        Runs n_epochs additional epochs.
         """
         if self.train_loader is None:
-            raise NoDataException("Training dataloader not set: Please call set_training")
+            raise NoDataException(
+                "Training dataloader not set: Please call set_training"
+            )
         self.model.train()
         epoch_loss = 0.0
         for _, (data, target) in enumerate(tqdm(self.train_loader)):
             epoch_loss += self.mini_batch_step(
                 data.to(self.device), target.to(self.device)
             )
-        return epoch_loss / len(self.train_loader)
+        return epoch_loss / len(self.train_loader.dataset)
 
     def validate(self):
-        """
-        This function is responsible for performing a single validation set of the optimization.
-        returns the average loss of the validation set this epoch.
-        """
         """
         This function is responsible for performing a single validation set of the optimization.
         returns the average loss of the validation set this epoch.
@@ -110,7 +100,7 @@ class SupervisedSolver(LIONsolver):
         with torch.no_grad():
             validation_loss = np.array([])
             for data, targets in tqdm(self.test_loader):
-                if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
+                if self.model.model_parameters.model_input_type == ModelInputType.SINOGRAM:
                     data = fdk(data, self.op)
                 outputs = self.model(data)
                 validation_loss = np.append(validation_loss, self.testing_fn(targets, outputs))
@@ -151,17 +141,18 @@ class SupervisedSolver(LIONsolver):
     def train(self, n_epochs):
         """
         This function is responsible for performing the optimization.
+        Runs n_epochs additional epochs.
         """
         assert n_epochs > 0, "Number of epochs must be a positive integer"
         # Make sure all parameters are set
-        self.check_training_ready()
+        self.check_complete()
 
         if self.do_load_checkpoint:
             print("Loading checkpoint...")
             self.current_epoch = self.load_checkpoint()
             self.train_loss = np.append(self.train_loss, np.zeros((n_epochs)))
         else:
-            self.train_loss = np.zeros(n_epochs)            
+            self.train_loss = np.zeros(n_epochs)
 
         self.model.train()
         # train loop
@@ -171,28 +162,26 @@ class SupervisedSolver(LIONsolver):
             self.epoch_step(self.current_epoch)
 
             if (self.current_epoch + 1) % self.checkpoint_freq == 0:
+                if self.verbose:
+                    print(f"Checkpointing at epoch {self.current_epoch}")
                 self.save_checkpoint(self.current_epoch)
-            
+
             self.current_epoch += 1
 
-    @staticmethod
-    def default_parameters() -> SolverParams:
-        return SolverParams()
-
     def test(self):
-        self.model.eval()
+        """
+        This function performs a testing step
+        """
+        # self.model.eval()
         test_loss = np.zeros(len(self.test_loader))
-        with torch.no_grad():                
-            for index, (data, target) in enumerate(self.test_loader):
-                if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
-                    data = fdk(data, self.op)
-                output = self.model(data.to(self.device))
-                test_loss[index] = self.testing_fn(output, target.to(self.device))
+        print(test_loss, test_loss.shape)
+        # with torch.no_grad():
+        for index, (data, target) in enumerate(self.test_loader):
+            output = self.model(data.to(self.device))
+            test_loss[index] = self.testing_fn(output, target.to(self.device))
 
         if self.verbose:
             print(
                 f"Testing loss: {test_loss.mean()} - Testing loss std: {test_loss.std()}"
             )
         return test_loss
-
-

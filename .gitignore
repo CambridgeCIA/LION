@@ -14,3 +14,5 @@ dist
 
 example.py
 /slurm
+
+wandb

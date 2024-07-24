@@ -96,8 +96,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.validation_fn: Optional[Callable] = None
         self.validation_freq: Optional[int] = None
         self.validation_loss: Optional[np.ndarray] = None
-        self.test_loader: DataLoader
-        self.testing_fn: Callable
+        self.test_loader: Optional[DataLoader] = None
+        self.testing_fn: Optional[Callable] = None
         self.current_epoch: int = 0
         self.save_folder: Optional[pathlib.Path] = None
         self.load_folder: Optional[pathlib.Path] = None
@@ -122,11 +122,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     def default_parameters() -> SolverParams:
         pass
 
-    def set_training(self, train_loader: DataLoader):
+    def set_training(self, train_loader: DataLoader, loss_fn: Optional[Callable]=None):
         """
         This function sets the training data
         """
         self.train_loader = train_loader
+        if loss_fn is not None:
+            self.loss_fn = loss_fn
 
     def set_validation(
         self,
