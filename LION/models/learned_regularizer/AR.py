@@ -80,12 +80,6 @@ class AR(LIONmodel):
         self.model_parameters: ARParams
         self._make_operator()
         self.network = network
-        if (
-            t := self.network.model_parameters.model_input_type
-        ) != ModelInputType.IMAGE:
-            raise WrongInputTypeException(
-                f"Adversarial Regularizer expects an architecture that takes an image input. Model provided takes {t} as input"
-            )
         
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
         # First Conv
@@ -93,8 +87,6 @@ class AR(LIONmodel):
         self.step_amounts = torch.tensor([150.0])
         self.op_norm = float(power_method(self.op))
         self.model_parameters.step_size = 0.2 / (self.op_norm) ** 2
-
-        self.scalar = False
 
     def forward(self, y):
         """Expects y to be in the measurement domain.
@@ -106,7 +98,7 @@ class AR(LIONmodel):
             _type_: _description_
         """
 
-        if self.training or self.scalar:
+        if self.training:
             return self.pool(self.network(
                 fdk(y, self.op)
                 if self.network.model_parameters.model_input_type
@@ -130,43 +122,27 @@ class AR(LIONmodel):
             self.alpha = residual / len(dataset)
         print("Estimated alpha: " + str(self.alpha))
 
-    def wgan_loss(self, bad_recon, ground_truth):
-        """Calculates the gradient penalty loss for WGAN GP"""
-        epsilon = torch.Tensor(np.random.random((ground_truth.size(0), 1, 1, 1))).type_as(ground_truth)
-        interpolates = (epsilon * ground_truth + ((1 - epsilon) * bad_recon)).requires_grad_(True)
-        net_interpolates = self.forward(interpolates)
-        fake = torch.Tensor(ground_truth.shape[0], 1).fill_(1.0).type_as(ground_truth).requires_grad_(False)
-        gradients = torch.autograd.grad(
-            outputs=net_interpolates,
-            inputs=interpolates,
-            grad_outputs=fake,
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True,
-        )[0]
-
-        gradients = gradients.view(gradients.size(0), -1)
-        # print(model(real_samples).mean()-model(fake_samples).mean(),self.mu*(((gradients.norm(2, dim=1) - 1)) ** 2).mean())
-        loss = self.forward(ground_truth).mean()-self.forward(bad_recon).mean()+self.mu*(((gradients.norm(2, dim=1) - 1)) ** 2).mean()
-        return loss
 
     def var_energy(self, x, y):
         # return torch.norm(x) + 0.5*(torch.norm(self.A(x)-y,dim=(2,3))**2).sum()#self.lamb * self.forward(x).sum()
-        return 0.5 * ((self.A(x) - y) ** 2).sum() + self.alpha * self.forward(x).sum()
+        return 0.5 * ((self.A(x) - y) ** 2).sum() + self.alpha * self.pool(self.network(x)).sum()
 
     ### What is the difference between .sum() and .mean()??? idfk but PSNR is lower when I do .sum
 
-    def output(self, y):
-        self.scalar = True
+    def output(self, y: torch.Tensor):
         x = fdk(y, self.op)
         x = torch.nn.Parameter(x)
+        y.grad
 
         optimizer = torch.optim.SGD(
             [x], lr=self.model_parameters.step_size, momentum=0.5
         )
+
         lr = self.model_parameters.step_size
-        for _ in range(self.model_parameters.no_steps):
+        for i in range(self.model_parameters.no_steps):
+            print(i)
             optimizer.zero_grad()
+
             energy = self.var_energy(x, y)
             energy.backward()
 
@@ -190,10 +166,7 @@ class AR(LIONmodel):
             optimizer.step()
             # x.clamp(min=0.0) do we need this?
         self.scalar = False
-        return x
-
-    def train(self, dataloader):
-        
+        return x        
 
 
     # this functionality is now the responsibility of the LIONSolver

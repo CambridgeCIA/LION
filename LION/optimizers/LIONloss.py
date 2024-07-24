@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Callable, Optional
 import inspect
+import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
@@ -61,7 +62,7 @@ class LIONloss2(nn.Module, ABC):
         self.model = model
     
     @abstractmethod
-    def forward(self, sino, gt):
+    def forward(self, sino: torch.Tensor, gt: torch.Tensor):
         pass
 
 class LIONmse2(LIONloss2):
@@ -71,7 +72,7 @@ class LIONmse2(LIONloss2):
         self.loss = nn.MSELoss()
 
     def forward(self, sino, target):
-        if self.model.model_parameters.model_input_type == ModelInputType.NOISY_RECON:
+        if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
             data = fdk(sino, self.model.op)
         else:
             data = sino

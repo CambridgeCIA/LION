@@ -11,9 +11,11 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 import pathlib
+from LION.CTtools.ct_utils import make_operator
 from LION.models.CNNs.MS_D import MS_D
 from LION.models.LIONmodel import ModelInputType
 from LION.models.learned_regularizer.AR import AR
+from LION.models.learned_regularizer.ar_loss import WGAN_gradient_penalty_loss
 from LION.optimizers.supervised_learning import SupervisedSolver
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
@@ -37,15 +39,17 @@ experiment = ct_experiments.clinicalCTRecon()
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
+lidc_dataset_test = experiment.get_testing_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 3
-lidc_dataset = Subset(lidc_dataset, [i for i in range(50)])
-lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(50)])
+batch_size = 1
+lidc_dataset = Subset(lidc_dataset, [i for i in range(5)])
+lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(5)])
+lidc_dataset_test = Subset(lidc_dataset_test, [i for i in range(5)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
-
+lidc_test = DataLoader(lidc_dataset_test, batch_size, shuffle=True)
 #%% Model
 width, depth = 1, 3
 dilations = []
@@ -71,14 +75,17 @@ optimizer = torch.optim.Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
 
+
+train_loss = WGAN_gradient_penalty_loss(model, regularizer.op)
 val_loss = nn.MSELoss()
 #%% Solver
-solver = SupervisedSolver(regularizer, optimizer, regularizer.wgan_loss, experiment.geo, device=device, verbose=True)
+solver = SupervisedSolver(regularizer, optimizer, train_loss, experiment.geo, device=device, verbose=True)
 
 solver.set_saving(savefolder, final_result_fname)
 solver.set_checkpointing(checkpoint_fname)
 solver.set_training(lidc_dataloader)
 solver.set_validation(lidc_validation, 1, val_loss, validation_fname)
+solver.set_testing(lidc_test)
 
 # train regularizer
 solver.train(3)
