@@ -121,6 +121,12 @@ class SupervisedSolver(LIONsolver):
         """
         self.train_loss[epoch] = self.train_step()
         # actually make sure we're doing validation
+        if self.verbose:
+            print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
+
+        if not self.do_validation:
+            return
+        
         if (epoch + 1) % self.validation_freq == 0 and self.validation_loss is not None:
             self.validation_loss[epoch] = self.validate()
             if self.verbose:
@@ -132,10 +138,6 @@ class SupervisedSolver(LIONsolver):
                 epoch
             ] <= np.min(self.validation_loss[np.nonzero(self.validation_loss)]):
                 self.save_validation(epoch)
-        elif self.verbose:
-            print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
-        # elif self.validation_freq is not None:
-        #     self.validation_loss[epoch] = self.validate()
 
     def train(self, n_epochs):
         """
@@ -143,7 +145,7 @@ class SupervisedSolver(LIONsolver):
         """
         assert n_epochs > 0, "Number of epochs must be a positive integer"
         # Make sure all parameters are set
-        self.check_complete()
+        self.check_training_ready()
 
         if self.do_load_checkpoint:
             print("Loading checkpoint...")

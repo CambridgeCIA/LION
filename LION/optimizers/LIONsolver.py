@@ -92,6 +92,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.train_loss: np.ndarray = np.zeros(0)
         self.loss_fn = loss_fn
         self.device = device
+        self.do_validation: bool = False
         self.validation_loader: Optional[DataLoader] = None
         self.validation_fn: Optional[Callable] = None
         self.validation_freq: Optional[int] = None
@@ -138,6 +139,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         This function sets the validation data
         """
+        self.do_validation = True
         self.validation_loader = validation_loader
         self.validation_freq = validation_freq
         self.validation_fn = validation_fn if validation_fn is not None else self.loss_fn
