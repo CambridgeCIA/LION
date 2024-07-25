@@ -83,7 +83,7 @@ class SupervisedSolver(LIONsolver):
             epoch_loss += self.mini_batch_step(
                 data.to(self.device), target.to(self.device)
             )
-        return epoch_loss / len(self.train_loader)
+        return epoch_loss / len(self.train_loader.dataset)
 
     def validate(self):
         """
@@ -92,7 +92,7 @@ class SupervisedSolver(LIONsolver):
         """
         # not a fan of using sentinel values like this, change for either enum or something like that
         if self.check_validation_ready() != 0:
-            raise LIONSolverException("Solver not ready for validation. Please call set_validation.")
+            raise LIONSolverException("Solver not setup for validation. Please call set_validation.")
 
         # these always pass if the above does, this is just to placate static type checker
         assert self.validation_loader is not None
@@ -103,29 +103,30 @@ class SupervisedSolver(LIONsolver):
         validation_loss = 0.0
         if self.verbose:
             print("Validating...")
-        for _, (data, target) in tqdm(
-            enumerate(self.validation_loader), disable=True
+        for _, (data, target) in enumerate(
+            tqdm(self.validation_loader)
         ):
             with torch.no_grad():
                 output = self.model(data.to(self.device))
-                validation_loss = self.validation_fn(output, target.to(self.device))
+                validation_loss += self.validation_fn(output, target.to(self.device))
 
         # return to train if it was in train
         if status:
             self.model.train()
-        return validation_loss / len(self.validation_loader)
+        return validation_loss / len(self.validation_loader.dataset)
 
     def epoch_step(self, epoch):
         """
         This function is responsible for performing a single epoch of the optimization.
         """
         self.train_loss[epoch] = self.train_step()
-        # actually make sure we're doing validation
-        if self.verbose:
-            print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
+        # actually make sure we're doing validation            
 
-        if not self.do_validation:
+        if self.check_validation_ready() != 0:
+            if self.verbose:
+                print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
             return
+        
         
         if (epoch + 1) % self.validation_freq == 0 and self.validation_loss is not None:
             self.validation_loss[epoch] = self.validate()
@@ -152,7 +153,10 @@ class SupervisedSolver(LIONsolver):
             self.current_epoch = self.load_checkpoint()
             self.train_loss = np.append(self.train_loss, np.zeros((n_epochs)))
         else:
-            self.train_loss = np.zeros(n_epochs)            
+            self.train_loss = np.zeros(n_epochs)          
+
+        if self.check_validation_ready() == 0:
+            self.validation_loss = np.zeros(n_epochs)  
 
         self.model.train()
         # train loop
@@ -160,6 +164,11 @@ class SupervisedSolver(LIONsolver):
         while self.current_epoch < final_total_epochs:
             print(f"Training epoch {self.current_epoch + 1}")
             self.epoch_step(self.current_epoch)
+
+            if self.check_checkpointing_ready() != 0:
+                continue
+
+            assert self.checkpoint_freq is not None, "check_checkpointing_ready should ensure that checkpoint_freq is not None"
 
             if (self.current_epoch + 1) % self.checkpoint_freq == 0:
                 self.save_checkpoint(self.current_epoch)
@@ -174,7 +183,7 @@ class SupervisedSolver(LIONsolver):
         self.model.eval()
         test_loss = np.zeros(len(self.test_loader))
         with torch.no_grad():                
-            for index, (data, target) in enumerate(self.test_loader):
+            for index, (data, target) in enumerate(tqdm(self.test_loader)):
                 if self.model.model_parameters.model_input_type == ModelInputType.NOISY_RECON:
                     data = fdk(data, self.op)
                 output = self.model(data.to(self.device))

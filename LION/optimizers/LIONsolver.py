@@ -103,7 +103,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.save_folder: Optional[pathlib.Path] = None
         self.load_folder: Optional[pathlib.Path] = None
         self.do_load_checkpoint: bool = False
-        self.checkpoint_freq: int
+        self.checkpoint_freq: Optional[int] = None
         self.final_result_fname: Optional[str] = None
         self.checkpoint_fname: Optional[str] = None
         self.validation_fname: Optional[str] = None
@@ -132,7 +132,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     def set_validation(
         self,
         validation_loader: DataLoader,
-        validation_freq: int,
+        validation_freq: int = 1,
         validation_fn: Optional[Callable] = None,
         validation_fname: Optional[str] = None,
     ):
