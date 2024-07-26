@@ -68,7 +68,7 @@ class LIONloss2(nn.Module, ABC):
 class LIONmse2(LIONloss2):
     def __init__(self, model) -> None:
         super().__init__(model)
-        assert self.model is not None, "need model"
+        assert self.model is None, "need model"
         self.loss = nn.MSELoss()
 
     def forward(self, sino, target):
@@ -81,6 +81,7 @@ class LIONmse2(LIONloss2):
 class WeirdLoss2(LIONloss2):
     def __init__(self, model) -> None:
         super().__init__(model)
+        assert self.model is None, "need model"
 
     def forward(self, sino, target):
         bad_recon = fdk(sino, self.model.op)

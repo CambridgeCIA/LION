@@ -202,7 +202,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             warnings.warn(
                 """Normalization will not be carried out on this model,
                 as it takes inputs in the measurement domain. 
-                As such inputs cannot be normalized in the image domain before being passed to the model."""
+                As such inputs cannot be normalized in the image domain before being passed to the model.
+                Normalization should be implemented within the model itself"""
             )
         if self.train_loader is None:
             raise NoDataException(
