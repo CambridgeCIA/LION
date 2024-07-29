@@ -10,8 +10,7 @@ from ts_algorithms import fdk
 
 # Torch imports
 import torch
-from torch.utils.data import DataLoader
-import torch.utils.data as data_utils
+from torch.utils.data import DataLoader, Subset
 
 # Lion imports
 from LION.models.CNNs.MS_D import MS_D
@@ -44,8 +43,7 @@ experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
 lidc_dataset = experiment.get_training_dataset()
 
 # smaller dataset for example. Remove this for full dataset
-indices = torch.arange(100)
-lidc_dataset = data_utils.Subset(lidc_dataset, indices)
+lidc_dataset = Subset(lidc_dataset, range(50))
 
 
 #%% Define DataLoader

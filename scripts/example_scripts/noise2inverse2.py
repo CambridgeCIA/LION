@@ -5,42 +5,46 @@ import pathlib
 import torch
 from torch.utils.data import DataLoader, Subset
 from LION.CTtools.ct_utils import make_operator
-from LION.classical_algorithms.fdk import fdk
-from LION.models.CNNs.MSDNets.MS_D2 import MSD_Net, MSD_Params
-from LION.models.CNNs.MS_D import MS_D
+from LION.models.post_processing.FBPConvNet import FBPConvNet
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 from LION.optimizers.Noise2Inverse_solver2 import Noise2InverseSolver
 from LION.optimizers.Noise2Inverse_solver import Noise2Inverse_solver
-from skimage.metrics import structural_similarity as ssim, peak_signal_noise_ratio as psnr
+from skimage.metrics import (
+    structural_similarity as ssim,
+    peak_signal_noise_ratio as psnr,
+)
 import numpy as np
 
 
 def my_ssim(x: torch.Tensor, y: torch.Tensor):
-    if x.shape[0]==1:
+    if x.shape[0] == 1:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
         return ssim(x, y, data_range=x.max() - x.min())
-    else: 
+    else:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
-        vals=[]
+        vals = []
         for i in range(x.shape[0]):
             vals.append(ssim(x[i], y[i], data_range=x[i].max() - x[i].min()))
         return np.array(vals)
 
+
 def my_psnr(x: torch.Tensor, y: torch.Tensor):
-    if x.shape[0]==1:
+    if x.shape[0] == 1:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
         return psnr(x, y, data_range=x.max() - x.min())
-    else: 
+    else:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
-        vals=[]
+        vals = []
         for i in range(x.shape[0]):
             vals.append(psnr(x[i], y[i], data_range=x[i].max() - x[i].min()))
         return np.array(vals)
+
+
 # %%
 # % Chose device:
 device = torch.device("cuda:3")
@@ -71,9 +75,10 @@ lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=Fal
 
 # %% Model
 # Default model is already from the paper.
-model_params = MS_D.default_parameters()
-model_params.depth = 50
-model = MS_D(model_params).to(device)
+model_params = FBPConvNet.default_parameters()
+model = FBPConvNet(
+    geometry_parameters=experiment.geo, model_parameters=model_params
+).to(device)
 
 # %% Optimizer
 @dataclass
@@ -83,6 +88,7 @@ class TrainParams(LIONParameter):
     learning_rate: float
     betas: Tuple[float, float]
     loss: str
+
 
 train_param = TrainParams("adam", 100, 1e-4, (0.9, 0.99), "MSELoss")
 
@@ -97,13 +103,7 @@ optimiser = torch.optim.Adam(
 # create solver
 noise2inverse_parameters = Noise2InverseSolver.default_parameters()
 solver = Noise2InverseSolver(
-    model,
-    optimiser,
-    loss_fn,
-    noise2inverse_parameters,
-    True,
-    experiment.geo,
-    device
+    model, optimiser, loss_fn, noise2inverse_parameters, True, experiment.geo, device
 )
 
 # set data
@@ -114,12 +114,12 @@ solver.set_testing(lidc_test, my_ssim)
 # set checkpointing procedure
 solver.set_saving(savefolder, final_result_fname)
 solver.set_checkpointing(checkpoint_fname, 10)
-solver.set_loading(savefolder, False)
+solver.set_loading(savefolder, True)
 
 # train
-solver.train(train_param.epochs)
+# solver.train(train_param.epochs)
 # delete checkpoints if finished
-solver.clean_checkpoints()
+# solver.clean_checkpoints()
 # save final result
 # solver.save_final_results(final_result_fname)
 
@@ -138,7 +138,7 @@ solver.clean_checkpoints()
 # quit()
 
 
-with open("n2i2results.txt", "w") as f:
+with open("OGn2i2results.txt", "w") as f:
     # test
     # test with ssim
     solver.testing_fn = my_ssim
@@ -179,7 +179,7 @@ for i in range(len(good_recon)):
     plt.clim(torch.min(gt[i]).item(), torch.max(gt[i]).item())
     plt.gca().set_title(f"N2I. SSIM: {good_ssim[i]:.2f}. PSNR: {good_psnr[i]:.2f}")
     # reconstruct filepath with suffix i
-    plt.savefig(f'n2i2_test{i}walljs.png', dpi=700)
+    plt.savefig(f"n2i2_test{i}walljs.png", dpi=700)
     plt.close()
 
 plt.figure()

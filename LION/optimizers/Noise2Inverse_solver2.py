@@ -7,9 +7,11 @@ from LION.classical_algorithms.fdk import fdk
 from LION.exceptions.exceptions import NoDataException
 from LION.models.LIONmodel import LIONmodel
 import torch
-from LION.optimizers.LIONsolver import LIONsolver, SolverParams, normalize_input
+from torch.optim.optimizer import Optimizer
+from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 import tomosipo as ts
 import LION.CTtools.ct_utils as ct
+from LION.optimizers.losses.LIONloss import LIONtrainingLoss
 
 
 class Noise2InverseParams(SolverParams):
@@ -30,22 +32,15 @@ class Noise2InverseSolver(LIONsolver):
     def __init__(
         self,
         model: LIONmodel,
-        optimizer: torch.optim.Optimizer,
-        loss_fn: torch.nn.Module,
+        optimizer: Optimizer,
+        loss_fn: LIONtrainingLoss | torch.nn.Module,
         solver_params: Optional[Noise2InverseParams],
         verbose: bool,
         geo: Geometry,
-
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
     ) -> None:
         super().__init__(
-            model,
-            optimizer,
-            loss_fn,
-            geo,
-            verbose,
-            device,
-            solver_params=solver_params
+            model, optimizer, loss_fn, geo, verbose, device, solver_params=solver_params
         )
         self.sino_split_count = self.solver_params.sino_split_count
         self.recon_fn = self.solver_params.recon_fn
@@ -86,9 +81,14 @@ class Noise2InverseSolver(LIONsolver):
             sub_recon_j = self.recon_fn(sub_sino_j, self.sub_ops[j])
             if bad_recons is None:
                 bad_recons = torch.zeros(
-                    size=(sinos.shape[0], self.sino_split_count, *sub_recon_j.shape[1:]), device=self.device
+                    size=(
+                        sinos.shape[0],
+                        self.sino_split_count,
+                        *sub_recon_j.shape[1:],
+                    ),
+                    device=self.device,
                 )
-            bad_recons[:, j, :, :, :] = sub_recon_j # b, s, c, w, h
+            bad_recons[:, j, :, :, :] = sub_recon_j  # b, s, c, w, h
         assert bad_recons is not None
         return bad_recons
 
@@ -107,7 +107,7 @@ class Noise2InverseSolver(LIONsolver):
         # sinos batch of sinos
         noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)
         # b, split, c, w, h
-        
+
         self.optimizer.zero_grad()
 
         # almost certain this can be made more efficient
@@ -117,7 +117,9 @@ class Noise2InverseSolver(LIONsolver):
             # fix indexing J's are 1 indexed for user convenience
             # maybe something to change
             J_zero_indexing = list(map(lambda i: i - 1, J))
-            J_c = [i for i in np.arange(self.sino_split_count) if i not in J_zero_indexing]
+            J_c = [
+                i for i in np.arange(self.sino_split_count) if i not in J_zero_indexing
+            ]
 
             # calculate mean sub_recons
             jnsr = noisy_sub_recons[:, J_zero_indexing, :, :, :]
@@ -144,7 +146,9 @@ class Noise2InverseSolver(LIONsolver):
         returns the average loss of the epoch
         """
         if self.train_loader is None:
-            raise NoDataException("Training dataloader not set: Please call set_training")
+            raise NoDataException(
+                "Training dataloader not set: Please call set_training"
+            )
         self.model.train()
         epoch_loss = 0.0
         # needs modifying, need some sort of guarantee as to what the dataset looks like.
@@ -178,7 +182,7 @@ class Noise2InverseSolver(LIONsolver):
             self.current_epoch = self.load_checkpoint()
             self.train_loss = np.append(self.train_loss, np.zeros((n_epochs)))
         else:
-            self.train_loss = np.zeros(n_epochs)            
+            self.train_loss = np.zeros(n_epochs)
 
         self.model.train()
         # train loop
@@ -191,9 +195,8 @@ class Noise2InverseSolver(LIONsolver):
                 if self.verbose:
                     print(f"Checkpointing at epoch {self.current_epoch}")
                 self.save_checkpoint(self.current_epoch)
-            
-            self.current_epoch += 1
 
+            self.current_epoch += 1
 
     def test(self):
         """
@@ -202,7 +205,7 @@ class Noise2InverseSolver(LIONsolver):
         if self.check_testing_ready() != 0:
             warnings.warn("Solver not setup for testing. Please call set_testing")
             return np.array([])
-        
+
         was_training = self.model.training
         self.model.eval()
 
@@ -217,22 +220,26 @@ class Noise2InverseSolver(LIONsolver):
             print(
                 f"Testing loss: {test_loss.mean()} - Testing loss std: {test_loss.std()}"
             )
-        
+
         if was_training:
             self.model.train()
 
         return test_loss
-    
+
     # not convinced by this name
     def process(self, sinos):
-        noisy_sub_recons = self._calculate_noisy_sub_recons(sinos) # b, split, c, w, h
-        
-        outputs = torch.zeros((sinos.shape[0], *self.geo.image_shape), device=self.device)
+        noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)  # b, split, c, w, h
+
+        outputs = torch.zeros(
+            (sinos.shape[0], *self.geo.image_shape), device=self.device
+        )
 
         for _, J in enumerate(self.cali_J):
             # fix indexing; J's are 1 indexed for user convenience
             J_zero_indexing = list(map(lambda n: n - 1, J))
-            J_c = [n for n in np.arange(self.sino_split_count) if n not in J_zero_indexing]
+            J_c = [
+                n for n in np.arange(self.sino_split_count) if n not in J_zero_indexing
+            ]
 
             # calculate mean sub_recons
             jcnsr = noisy_sub_recons[:, J_c, :, :, :]

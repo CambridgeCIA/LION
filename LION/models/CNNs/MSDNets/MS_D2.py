@@ -16,7 +16,7 @@ from typing import Optional
 from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
 
 
-class MSD_Params(ModelParams):
+class MSDParams(ModelParams):
     def __init__(
         self,
         in_channels: int = 1,
@@ -27,7 +27,7 @@ class MSD_Params(ModelParams):
         final_look_back_depth: int = -1,
         activation: nn.Module = nn.ReLU(),
     ):
-        super().__init__(model_input_type=ModelInputType.NOISY_RECON)
+        super().__init__(model_input_type=ModelInputType.IMAGE)
         self.in_channels: int = in_channels
         self.width: int = width
         self.depth: int = depth
@@ -86,7 +86,7 @@ class MSD_Layer(nn.Module):
 class MSD_Net(LIONmodel):
     def __init__(
         self,
-        model_parameters: Optional[MSD_Params] = None,
+        model_parameters: Optional[MSDParams] = None,
     ) -> None:
         """Mixed-Scale Dense Neural Network based on:
         A mixed-scale dense convolutional neural network for image analysis, Daniël M. Pelt and James A. Sethian
@@ -110,7 +110,7 @@ class MSD_Net(LIONmodel):
         # We assert to make it happy and to ensure the model is actually initialized correctly.
         assert (
             self.model_parameters is not None
-            and isinstance(self.model_parameters, MSD_Params)
+            and isinstance(self.model_parameters, MSDParams)
         ), f"Failed to initialize MSD_Net model with given parameters: type {type(self.model_parameters)} is not acceptable for MSD_Params"
 
         self.in_channels = self.model_parameters.in_channels
@@ -120,7 +120,7 @@ class MSD_Net(LIONmodel):
         self.look_back_depth = self.model_parameters.look_back_depth
         self.final_look_back_depth = self.model_parameters.final_look_back_depth
         self.activation = self.model_parameters.activation
-        
+
         # total there should be width * depth distinct convolutions
         # so expect the same number of dilations to be given
         if len(self.dilations) != self.width * self.depth:
@@ -177,7 +177,7 @@ class MSD_Net(LIONmodel):
                 bias=False,
             ),
             nn.BatchNorm2d(1),
-            self.activation
+            self.activation,
         )
 
     def _initialize_conv_weights(self, layer: nn.Module):
@@ -201,12 +201,30 @@ class MSD_Net(LIONmodel):
             raise ValueError(
                 f"Expected {self.in_channels} input channels, instead got {C}"
             )
+        start_collecting = False
+        final_lookbacks = [] if self.final_look_back_depth != -1 else [x]
         # start_collecting = False
         # final_lookbacks = [] if self.final_look_back_depth != -1 else [x] # not a huge fan of this, think of a better way
 
         for i, layer in enumerate(range(self.depth)):
+            x = self.layers[layer](x)[
+                :,
+                -self.look_back_depth * self.width
+                if self.look_back_depth != -1
+                else 0 :,
+            ]
             x = self.layers[layer](x) # [:, -self.look_back_depth * self.width if self.look_back_depth != -1 else 0:]
             # x now contains all layers to pass forward aswell as newly calculated one
+            if (
+                self.depth - i <= self.final_look_back_depth
+                or self.final_look_back_depth == -1
+            ):  # need all the following layers for final layer
+                start_collecting = True
+            if start_collecting:
+                final_lookbacks.append(x[:, -self.width :])  # head layer
+
+        final_lookbacks = torch.cat(final_lookbacks, dim=1)
+        x = self.final_layer(final_lookbacks)
             # if self.depth - i <= self.final_look_back_depth or self.final_look_back_depth == -1: # need all the following layers for final layer
             #     start_collecting = True
             # if start_collecting:
@@ -217,14 +235,14 @@ class MSD_Net(LIONmodel):
         return x
 
     @staticmethod
-    def default_parameters() -> MSD_Params:
+    def default_parameters() -> MSDParams:
         in_channels = 1
         width, depth = 1, 100
         dilations = []
         for i in range(depth):
             for j in range(width):
                 dilations.append((((i * width) + j) % 10) + 1)
-        params = MSD_Params(
+        params = MSDParams(
             in_channels=in_channels,
             width=width,
             depth=depth,

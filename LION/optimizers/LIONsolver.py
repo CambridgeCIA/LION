@@ -15,8 +15,8 @@
 from enum import Enum
 from typing import Callable, Optional
 from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
-from LION.exceptions.exceptions import LIONSolverException
+from LION.exceptions.exceptions import LIONSolverException, NoDataException
+from LION.optimizers.losses.LIONloss import LIONtrainingLoss
 from LION.utils.parameter import LIONParameter
 
 # Lionmodels
@@ -28,8 +28,8 @@ from LION.utils.utils import custom_format_warning
 # some numerical standard imports, e.g.
 import numpy as np
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
+from torch.optim.optimizer import Optimizer
 
 # imports related to class organization
 from abc import ABC, abstractmethod, ABCMeta
@@ -38,13 +38,16 @@ from abc import ABC, abstractmethod, ABCMeta
 import warnings
 import pathlib
 
+
 # TODO: finish this
 class SolverState(Enum):
-    COMPLETE=0
+    COMPLETE = 0
+
 
 class SolverParams(LIONParameter):
     def __init__(self):
         super().__init__()
+
 
 def normalize_input(func):
     def wrapper(self, *inputs):
@@ -56,6 +59,7 @@ def normalize_input(func):
             return func(self, *normalized_x)
         else:
             return func(self, *inputs)
+
     return wrapper
 
 
@@ -63,23 +67,19 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     def __init__(
         self,
         model: LIONmodel,
-        optimizer: torch.optim.Optimizer,
-        loss_fn: nn.Module,
+        optimizer: Optimizer,
+        loss_fn: LIONtrainingLoss | torch.nn.Module,
         geometry: Geometry,
-        verbose: bool=True,
+        verbose: bool = True,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
-        model_regularization=None,
-        solver_params: Optional[SolverParams]=None
+        solver_params: Optional[SolverParams] = None,
     ) -> None:
         super().__init__()
         if solver_params is None:
             self.solver_params = self.default_parameters()
 
         assert isinstance(model, LIONmodel), "model must be a LIONmodel"
-        assert isinstance(
-            optimizer, torch.optim.Optimizer
-        ), "optimizer must be a torch optimizer"
-        assert callable(loss_fn), "loss_fn must be a function"
+        assert isinstance(optimizer, Optimizer), "optimizer must be a torch optimizer"
 
         # currently not used in subclasses or here, but we'll save it with the view that we'll want to serialize these at some point
         # relevant solver_params are extracted into data members on a subclass level
@@ -88,26 +88,40 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model = model
         self.optimizer = optimizer
         self.geo = geometry
+
         self.train_loader: Optional[DataLoader] = None
         self.train_loss: np.ndarray = np.zeros(0)
-        self.loss_fn = loss_fn
+
+        if isinstance(loss_fn, torch.nn.Module):
+            self.loss_fn = LIONtrainingLoss.from_torch(loss_fn)
+        else:
+            self.loss_fn = loss_fn
+
+        self.loss_fn.set_model(model)
+
         self.device = device
+
         self.validation_loader: Optional[DataLoader] = None
         self.validation_fn: Optional[Callable] = None
         self.validation_freq: Optional[int] = None
         self.validation_loss: Optional[np.ndarray] = None
-        self.test_loader: DataLoader
-        self.testing_fn: Callable
+
+        self.test_loader: Optional[DataLoader] = None
+        self.testing_fn: Optional[Callable] = None
+
         self.current_epoch: int = 0
+
         self.save_folder: Optional[pathlib.Path] = None
         self.load_folder: Optional[pathlib.Path] = None
+
         self.do_load_checkpoint: bool = False
         self.checkpoint_freq: int
+
         self.final_result_fname: Optional[str] = None
         self.checkpoint_fname: Optional[str] = None
         self.validation_fname: Optional[str] = None
+
         self.verbose = verbose
-        self.model_regularization = model_regularization
         self.metadata = LIONParameter()
         self.dataset_param = LIONParameter()
 
@@ -122,11 +136,15 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     def default_parameters() -> SolverParams:
         pass
 
-    def set_training(self, train_loader: DataLoader):
+    def set_training(
+        self, train_loader: DataLoader, loss_fn: Optional[Callable] = None
+    ):
         """
         This function sets the training data
         """
         self.train_loader = train_loader
+        if loss_fn is not None:
+            self.loss_fn = loss_fn
 
     def set_validation(
         self,
@@ -140,31 +158,39 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         self.validation_loader = validation_loader
         self.validation_freq = validation_freq
-        self.validation_fn = validation_fn if validation_fn is not None else self.loss_fn
+        self.validation_fn = (
+            validation_fn if validation_fn is not None else self.loss_fn
+        )
         self.validation_fname = validation_fname
 
-    def set_testing(self, test_loader: DataLoader, testing_fn: Callable):
+    def set_testing(
+        self, test_loader: DataLoader, testing_fn: Optional[Callable] = None
+    ):
         """
         This function sets the testing data
         """
         self.test_loader = test_loader
-        self.testing_fn = testing_fn
+        self.testing_fn = testing_fn if testing_fn is not None else self.loss_fn
 
     def set_saving(self, save_folder: str | pathlib.Path, final_result_fname: str):
         if isinstance(save_folder, str):
             save_folder = pathlib.Path(save_folder)
         if not save_folder.is_dir():
-            raise ValueError(f"Save folder '{save_folder}' is not a directory, failed to set saving.")
-        
+            raise ValueError(
+                f"Save folder '{save_folder}' is not a directory, failed to set saving."
+            )
+
         self.save_folder = save_folder
         self.final_result_fname = final_result_fname
-    
-    def set_loading(self, load_folder: str | pathlib.Path, do_load: bool=False):
+
+    def set_loading(self, load_folder: str | pathlib.Path, do_load: bool = False):
         if isinstance(load_folder, str):
             load_folder = pathlib.Path(load_folder)
         if not load_folder.is_dir():
-            raise ValueError(f"Save folder '{load_folder}' is not a directory, failed to set saving.")
-        
+            raise ValueError(
+                f"Save folder '{load_folder}' is not a directory, failed to set saving."
+            )
+
         self.load_folder = load_folder
         self.do_load_checkpoint = do_load
 
@@ -180,6 +206,29 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             warnings.warn("Save folder not set. Please call set_saving")
         self.checkpoint_freq = checkpoint_freq
         self.checkpoint_fname = checkpoint_fname
+
+    def set_normalization(self, do_normalize: bool):
+        print(self.model.model_parameters.model_input_type)
+        if self.model.get_input_type() == ModelInputType.SINOGRAM:
+            warnings.warn(
+                """Normalization will not be carried out on this model,
+                as it takes inputs in the measurement domain. 
+                As such inputs cannot be normalized in the image domain before being passed to the model.
+                In such a case, normalization should be implemented within the model itself"""
+            )
+        if self.train_loader is None:
+            raise NoDataException(
+                "Training dataloader not set: Please call set_training"
+            )
+        self.do_normalize = do_normalize
+        if self.do_normalize:
+            xmax = -np.inf
+            xmin = np.inf
+            for x in self.train_loader:
+                xmax = max(x[1].max(), xmax)
+                xmin = min(x[1].min(), xmin)
+            self.xmin = xmin
+            self.xmax = xmax
 
     def check_training_ready(self, error=True, autofill=True, verbose=True):
         """This should always pass, all of these things are required to initialize a LIONsolver object
@@ -215,7 +264,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         # Test 3: is the optimizer set? if not, raise error or warn
         return_code = self.__check_attribute(
             "optimizer",
-            expected_type=torch.optim.Optimizer,
+            expected_type=Optimizer,
             error=error,
             autofill=False,
             verbose=verbose,
@@ -229,7 +278,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             autofill=False,
             verbose=verbose,
         )
-        
+
         # Test 7: is the training loader set? if not, raise error or warn
         return_code = self.__check_attribute(
             "train_loader",
@@ -249,7 +298,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         )
 
         return return_code
-    
+
     def check_validation_ready(self, autofill=True, verbose=True):
         return_code = 0
 
@@ -296,7 +345,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         )
 
         return return_code
-    
+
     def check_testing_ready(self, error=True, verbose=True):
         return_code = 0
 
@@ -367,18 +416,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             autofill=False,
             verbose=True,
         )
-    
-    def check_regularization_ready(self):
-        # might be more that needs to be done in here, don't really know much about regularization
-
-        # Test 17: is the model regularization set?
-        return self.__check_attribute(
-            "model_regularization",
-            expected_type=nn.Module,
-            error=False,
-            autofill=False,
-            verbose=False,
-        )
 
     def check_complete(self, error=True, autofill=True):
         """
@@ -402,11 +439,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return_code = self.check_saving_ready()
 
         return_code = self.check_validation_ready(error, autofill)
-        
+
         return_code = self.check_checkpointing_ready(autofill, verbose)
-        
-        if self.model_regularization is not None:
-            return_code = self.check_regularization_ready() 
 
         self.verbose = verbose
 
@@ -480,14 +514,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function saves the validation results
         """
         if self.validation_fname is None or self.validation_fn is None:
-            raise LIONSolverException("No validation save filepath provided. Please call set_validation.")
+            raise LIONSolverException(
+                "No validation save filepath provided. Please call set_validation."
+            )
 
-        if self.validation_loss is None: 
+        if self.validation_loss is None:
             raise LIONSolverException("No validation losses found, failed to save.")
 
         if self.save_folder is None:
             raise LIONSolverException("Saving not setup: Please call set_saving.")
-        
+
         self.model.save(
             self.save_folder.joinpath(self.validation_fname),
             epoch=epoch,
@@ -518,14 +554,18 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function cleans the checkpoints
         """
         if self.save_folder is None:
-            raise LIONSolverException("Saving not setup, unable to find save folder: Please call set_saving")
+            raise LIONSolverException(
+                "Saving not setup, unable to find save folder: Please call set_saving"
+            )
         if self.checkpoint_fname is None:
-            raise LIONSolverException("Checkpointing not setup, can't clear checkpoints: Please call set_checkpointing")
+            raise LIONSolverException(
+                "Checkpointing not setup, can't clear checkpoints: Please call set_checkpointing"
+            )
         # TODO: This doesn't delete the .jsons only the .pt, is this intentional behaviour?
         # Quick and dirty fix with fancy regex
-        for f in self.save_folder.glob(self.checkpoint_fname.replace('.pt','')):
+        for f in self.save_folder.glob(self.checkpoint_fname.replace(".pt", "")):
             f.unlink()
-    
+
     def normalize(self, x):
         """Normalizes input data
         returns: Normalized input data
@@ -547,9 +587,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function loads a checkpoint (if exists)
         """
         if self.load_folder is None:
-            raise LIONSolverException( "Loading not set. Please call set_loading ")
+            raise LIONSolverException("Loading not set. Please call set_loading ")
         if self.checkpoint_fname is None:
-            raise LIONSolverException( "Checkpointing not set, failed to load checkpoint. Please call set_checkpointing")
+            raise LIONSolverException(
+                "Checkpointing not set, failed to load checkpoint. Please call set_checkpointing"
+            )
         (
             self.model,
             self.optimizer,
