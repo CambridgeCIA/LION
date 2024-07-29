@@ -16,17 +16,23 @@ class LIONtrainingLoss(nn.Module, ABC):
         self.model: Optional[LIONmodel] = None
 
     @classmethod
-    def from_torch(cls, torch_loss):
+    def from_torch(cls, torch_loss, op=None):
         class TempLoss(LIONtrainingLoss):
             def __init__(self):
                 super().__init__()
+                self.op = op
 
             def forward(self, sino: torch.Tensor, gt: torch.Tensor) -> torch.Tensor:
                 assert (
                     self.model is not None
                 ), "Model required but not set. Please call set_model"
+
                 if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
-                    data = fdk(sino, self.model.op)
+                    assert (
+                        self.op is not None
+                    ), "Operator must be provided  to LIONtrainingLoss for model that reconstructs from an image"
+                    data = fdk(sino, self.op)
+
                     if hasattr(self, "do_normalize") and self.do_normalize is not None:
                         assert (
                             hasattr(self, "normalize") and self.normalize is not None
@@ -47,18 +53,22 @@ class LIONtrainingLoss(nn.Module, ABC):
         raise NotImplementedError("")
 
 
-def basic_torch_loss_to_lion(torch_loss: nn.Module) -> LIONtrainingLoss:
+def basic_torch_loss_to_lion(torch_loss: nn.Module, op=None) -> LIONtrainingLoss:
     class TempLoss(LIONtrainingLoss):
         def __init__(self) -> None:
             super().__init__()
             self.loss = torch_loss
+            self.op = op
 
         def forward(self, sino: torch.Tensor, gt: torch.Tensor):
             assert (
                 self.model is not None
             ), "Model required but not set. Please call set_model"
             if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
-                data = fdk(sino, self.model.op)
+                assert (
+                    self.op is not None
+                ), "Operator must be provided to LIONtrainingLoss for model that reconstructs from an image"
+                data = fdk(sino, self.op)
             else:
                 data = sino
             return self.loss(self.model(data), gt)

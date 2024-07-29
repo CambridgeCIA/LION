@@ -15,6 +15,7 @@
 from enum import Enum
 from typing import Callable, Optional
 from LION.CTtools.ct_geometry import Geometry
+from LION.CTtools.ct_utils import make_operator
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
 from LION.optimizers.losses.LIONloss import LIONtrainingLoss
 from LION.utils.parameter import LIONParameter
@@ -88,16 +89,15 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model = model
         self.optimizer = optimizer
         self.geo = geometry
+        self.op = make_operator(self.geo)
 
         self.train_loader: Optional[DataLoader] = None
         self.train_loss: np.ndarray = np.zeros(0)
 
-        if isinstance(loss_fn, torch.nn.Module):
-            self.loss_fn = LIONtrainingLoss.from_torch(loss_fn)
-        else:
-            self.loss_fn = loss_fn
+        self.loss_fn = loss_fn
 
-        self.loss_fn.set_model(model)
+        if isinstance(self.loss_fn, LIONtrainingLoss):
+            self.loss_fn.set_model(model)
 
         self.device = device
 

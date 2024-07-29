@@ -5,13 +5,12 @@ from tqdm import tqdm
 from LION.CTtools.ct_geometry import Geometry
 from LION.classical_algorithms.fdk import fdk
 from LION.exceptions.exceptions import NoDataException
-from LION.models.LIONmodel import LIONmodel
+from LION.models.LIONmodel import LIONmodel, ModelInputType
 import torch
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 import tomosipo as ts
 import LION.CTtools.ct_utils as ct
-from LION.optimizers.losses.LIONloss import LIONtrainingLoss
 
 
 class Noise2InverseParams(SolverParams):
@@ -33,7 +32,7 @@ class Noise2InverseSolver(LIONsolver):
         self,
         model: LIONmodel,
         optimizer: Optimizer,
-        loss_fn: LIONtrainingLoss | torch.nn.Module,
+        loss_fn: torch.nn.Module,
         solver_params: Optional[Noise2InverseParams],
         verbose: bool,
         geo: Geometry,
@@ -42,6 +41,10 @@ class Noise2InverseSolver(LIONsolver):
         super().__init__(
             model, optimizer, loss_fn, geo, verbose, device, solver_params=solver_params
         )
+        assert (
+            model.model_parameters.model_input_type == ModelInputType.IMAGE
+        ), "As reconstructions are done in a special way in Noise2Inverse, require a model that takes Images as input"
+
         self.sino_split_count = self.solver_params.sino_split_count
         self.recon_fn = self.solver_params.recon_fn
         self.cali_J = np.array(self.solver_params.cali_J)
@@ -126,10 +129,6 @@ class Noise2InverseSolver(LIONsolver):
             jcnsr = noisy_sub_recons[:, J_c, :, :, :]
             mean_target_recons = torch.mean(jnsr, dim=1)
             mean_input_recons = torch.mean(jcnsr, dim=1)
-
-            if self.do_normalize:
-                mean_input_recons = self.normalize(mean_input_recons)
-                mean_target_recons = self.normalize(mean_target_recons)
 
             output = self.model(mean_input_recons)
             loss[i] = self.loss_fn(output, mean_target_recons)

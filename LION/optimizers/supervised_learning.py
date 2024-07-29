@@ -38,17 +38,11 @@ class SupervisedSolver(LIONsolver):
             solver_params=SolverParams(),
         )
 
-        self.op = make_operator(self.geo)
-
     def mini_batch_step(self, data, target):
         """
         This function isresponsible for performing a single mini-batch step of the optimization.
         returns the loss of the mini-batch
         """
-        if self.do_normalize:
-            self.loss_fn.do_normalize = True
-            self.loss_fn.normalize = self.normalize
-
         # Zero gradients
         self.optimizer.zero_grad()
         # Forward pass
@@ -159,6 +153,10 @@ class SupervisedSolver(LIONsolver):
 
         if self.check_validation_ready() == 0:
             self.validation_loss = np.zeros((n_epochs))
+
+        if self.do_normalize:
+            self.loss_fn.do_normalize = True
+            self.loss_fn.normalize = self.normalize
 
         self.model.train()
         # train loop

@@ -5,6 +5,8 @@ import pathlib
 import torch
 from torch.utils.data import DataLoader, Subset
 from LION.CTtools.ct_utils import make_operator
+from LION.models.LIONmodel import ModelInputType
+from LION.models.iterative_unrolled.ItNet import UNet
 from LION.models.post_processing.FBPConvNet import FBPConvNet
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
@@ -57,7 +59,7 @@ validation_fname = "Noise2InverseOG_MSD_min_val.pt"
 #
 # %% Define experiment
 
-experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
+experiment = ct_experiments.clinicalCTRecon(dataset="LIDC-IDRI")
 
 # %% Dataset
 lidc_dataset = experiment.get_training_dataset()
@@ -75,10 +77,9 @@ lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=Fal
 
 # %% Model
 # Default model is already from the paper.
-model_params = FBPConvNet.default_parameters()
-model = FBPConvNet(
-    geometry_parameters=experiment.geo, model_parameters=model_params
-).to(device)
+model_params = UNet.default_parameters()
+model_params.model_input_type = ModelInputType.IMAGE
+model = UNet(model_parameters=model_params).to(device)
 
 # %% Optimizer
 @dataclass
@@ -117,11 +118,11 @@ solver.set_checkpointing(checkpoint_fname, 10)
 solver.set_loading(savefolder, True)
 
 # train
-# solver.train(train_param.epochs)
+solver.train(train_param.epochs)
 # delete checkpoints if finished
-# solver.clean_checkpoints()
+solver.clean_checkpoints()
 # save final result
-# solver.save_final_results(final_result_fname)
+solver.save_final_results(final_result_fname)
 
 # for after you've trained the model.
 # trained_model, options, data = MS_D.load(savefolder.joinpath(final_result_fname))
