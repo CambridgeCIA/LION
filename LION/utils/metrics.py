@@ -7,21 +7,32 @@
 # Created: 11 July 2024
 # =============================================================================
 
-from skimage.metrics import structural_similarity as ssim
+from torchmetrics.functional.image import (
+    peak_signal_noise_ratio,
+    structural_similarity_index_measure,
+)
 import numpy as np
 import torch
 
-def SSIM(x, y):
-    x = x.cpu().numpy().squeeze()
-    y = y.cpu().numpy().squeeze()
-    return ssim(x, y, data_range=x.max() - x.min())
+####
+# All functions here are in order preds, target
+####
+
+# wrapper around SSIM and PSNR
+def SSIM(pred, gt):
+    return structural_similarity_index_measure(pred, gt, reduction="none")
 
 
-def PSNR(x_test, x_true):
+def avgSSIM(pred, gt):
+    return structural_similarity_index_measure(pred, gt)
+
+
+def PSNR(pred, gt, data_range=1.0):
     # x_true: reference image
-    mse = torch.mean( (x_test - x_true) ** 2, dim=[1,2,3] )
-    PIXEL_MAX = torch.amax(x_true, dim=[1,2,3])
-    return 20 * torch.log10(PIXEL_MAX / torch.sqrt(mse))
+    return peak_signal_noise_ratio(
+        pred, gt, reduction="none", data_range=data_range, dim=[1, 2, 3]
+    )
 
-def avgPSNR(x_true, x_test):
-    return torch.mean(PSNR(x_true, x_test))
+
+def avgPSNR(pred, gt):
+    return peak_signal_noise_ratio(pred, gt, data_range=1.0)

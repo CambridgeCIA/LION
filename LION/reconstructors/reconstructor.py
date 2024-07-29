@@ -8,94 +8,215 @@
 
 # Lionmodels
 from LION.models.LIONmodel import LIONmodel
-from LION.models.LIONmodelSubclasses import LIONmodelSino, LIONmodelRecon, forward_decorator
+from LION.models.LIONmodelSubclasses import (
+    LIONmodelSino,
+    LIONmodelRecon,
+    forward_decorator,
+)
 from LION.experiments.ct_experiments import Experiment
-
+import warnings
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset
+from LION.utils.metrics import SSIM, PSNR
+from typing_extensions import Literal
 
 # imports related to class organization
 from abc import ABC, abstractmethod, ABCMeta
 
+
+def to_dataset(data):
+    # Takes an Experiment, Dataset or data tensor
+    # Returns Dataset, containing test if Experiment is passed
+    if data is None:
+        return None
+    assert (
+        isinstance(data, Experiment)
+        or isinstance(data, Dataset)
+        or torch.is_tensor(data)
+    ), "data must be Experiment, Dataset or batched input"
+    if isinstance(data, Experiment):
+        dataset = data.get_testing_dataset()
+        has_gt = True
+    elif isinstance(data, Dataset):
+        dataset = data
+        has_gt = True
+    elif torch.is_tensor(data):
+        if len(data.shape) == 3:
+            print(
+                "Got data of shape (N,H,W), expanding to shape (N,1,H,W). Please manually expand if this is not desired."
+            )
+            data = torch.unsqueeze(data, 1)
+        elif len(data.shape) == 4:
+            pass
+        else:
+            print(
+                f"input Tensor must have shape (C,W,H) or (C,D,H,W), currently {data.shape}"
+            )
+        # Construct virtual dataloader
+        dataset = TensorDataset(data)
+    return dataset, has_gt
+
+
+def reduce_dict(
+    dict_input: dict, reduction: Literal["mean", "sum", "none", None]
+) -> dict:
+    reduced_dict = {}
+    for key, val in dict_input:
+        if reduction == "mean":
+            reduced_dict[key] = torch.mean(val)
+        if reduction == "none" or reduction is None:
+            reduced_dict[key] = val
+        if reduction == "sum":
+            reduced_dict[key] = torch.sum(val)
+    return reduced_dict
+
+
 class LIONreconstructor(nn.Module):
     def __init__(
-            self, 
-            model, 
-            data = None) -> None:
-        
+        self,
+        model,
+        data=None,
+        has_gt=None,
+        metrics={"ssim": SSIM, "psnr": PSNR},
+        reduction: Literal["mean", "sum", "none", None] = "mean",
+    ) -> None:
+
         assert isinstance(model, LIONmodel), "model must be a LIONmodel"
         super().__init__()
-        
+
         self.model = model
         self.model.eval()
+        self.device = self.model.device
+        self.dataset = None
+        self.has_gt = has_gt  # Flag true if dataset has ground truth available
+        self.metrics = metrics  # metrics should take preds and gt, and return tensor of length N, where N is batch size
+        self.reduction = reduction
 
-
-        if isinstance(self.model, LIONmodelRecon) and not isinstance(self.model, LIONmodelSino):
-            self.sino2recon = forward_decorator(self.model.forward)
+        # Initialize sino2recon and recon2recon where applicable
+        # Context from subtyping of LIONmodelRecon and LIONmodelSino
+        # LIONmodelSino has priority over LIONmodelRecon for torch forward calls
+        # If LIONmodelRecon is passed, sino2recon is achieved using FBP decorator
+        if isinstance(self.model, LIONmodelRecon) and not isinstance(
+            self.model, LIONmodelSino
+        ):
+            self.sino2recon = forward_decorator(
+                self.model, self.model.forward
+            )  # Geometry grabbed from model
+            self.recon2recon = self.model.forward
+        elif isinstance(self.model, LIONmodelRecon) and isinstance(
+            self.model, LIONmodelSino
+        ):
+            self.sino2recon = self.model.forward
+            self.recon2recon = self.model.recon2recon
+        elif not isinstance(self.model, LIONmodelRecon) and isinstance(
+            self.model, LIONmodelSino
+        ):
+            self.sino2recon = self.model.forward
+            self.recon2recon = None
+        else:
+            raise TypeError(
+                f"Model is not a LIONmodelSino or LIONmodelRecon, model class {model.__class__}"
+            )
 
         if data is not None:
-            assert isinstance(data, Experiment) or isinstance(data, Dataset) or torch.is_tensor(data), "data must be Experiment, Dataset or batched input"
-            if torch.is_tensor(data):
-                assert len(data.shape) == 3 or len(data.shape) == 4, f"input Tensor must have shape (C,W,H) or (C,D,H,W), currently {data.shape}"
-        
-        self.dataloader = data # Contains parameters of images to be reconstructed.
+            self.dataset, self.has_gt = to_dataset(data)
 
-    def forward(self, *args, **kwargs):
-        if args:
-            data = args[0]
-            assert isinstance(data, Experiment) or isinstance(data, Dataset) or torch.is_tensor(data), "data must be Experiment, Dataset or batched input"
+        # override has_gt if given
+        # used in case dataset or experiment does not have gt available
+        if has_gt is not None:
+            self.has_gt = has_gt
+
+    def forward(
+        self,
+        data=None,
+        reduction: Literal["mean", "sum", "none", None] = None,
+        **kwargs,
+    ):
+
+        if data is not None:
+            assert (
+                isinstance(data, Experiment)
+                or isinstance(data, Dataset)
+                or torch.is_tensor(data)
+            ), "data must be Experiment, Dataset or batched input"
+            dataset = to_dataset(data)
         elif self.dataloader:
-            data = self.dataloader
+            dataset = self.dataset
         else:
-            raise RuntimeError("Either pass data when constructing LIONreconstructor, or pass data into the forward operator.")
+            raise RuntimeError(
+                "Either pass data when constructing LIONreconstructor, or pass data into the forward operator."
+            )
 
-        if isinstance(data, Experiment):
-            data_iterator = data.get_testing_dataset() # TODO get iterator
-        elif isinstance(data, Dataset):
-            data_iterator = None # TODO get iterator
-        elif torch.is_tensor(data):
-            data_iterator = [data]
-        else:
-            raise NotImplementedError(f"Reconstruction is not supported for data of type {type(self.data)}")
-        
-        if isinstance(self.model, LIONmodelSino):
-            pass
-        elif isinstance(self.model, LIONmodelRecon):
-            pass
-        else:
-            raise NotImplementedError(f"Reconstruction is not supported for model of type {type(self.model)}")
+        if reduction is None:
+            reduction = self.reduction  # allow override reduction
 
+        # default arguments
+        batch_size = kwargs.get(batch_size, 1)
 
-        # TODO iterate
-        for dat in data_iterator:
-            pass # todo
+        # if isinstance(data, Experiment):
+        #     data_iterator = data.get_testing_dataset() # TODO get iterator
+        # elif isinstance(data, Dataset):
+        #     data_iterator = None # TODO get iterator
+        # elif torch.is_tensor(data):
+        #     data_iterator = [data]
+        # else:
+        #     raise NotImplementedError(f"Reconstruction is not supported for data of type {type(self.data)}")
+
+        dataset = dataset.to(self.device)
+        dataloader = DataLoader(dataset, batch_size=batch_size)
+
+        if self.has_gt:
+            # preload to prevent excessive copying
+            eval_metrics = dict.fromkeys(self.metrics.keys(), torch.zeros(len(dataset)))
+            ctr = 0  # track where to replace
+            with torch.no_grad():
+                for sino, gt in dataloader:
+                    batch_len = len(
+                        gt
+                    )  # usually should be batch_size, but may be smaller at the end. this catches edge case
+                    # concatenate metrics
+                    for key, metric in self.metrics:
+                        computed_metric = metric(self.reconstructSino(sino), gt)
+                        eval_metrics[key][ctr : ctr + len(gt)] = computed_metric
+
+                    ctr += batch_len
+            return reduce_dict(eval_metrics, reduction)
+        else:  # no gt provided, compute reconstruction.
+            print(
+                "Ground truth not provided (or flagged False), creating reconstructions"
+            )
+            with torch.no_grad():
+                recons = torch.Tensor([]).to(self.device)
+                for sino in dataloader:
+                    current_recon = self.reconstructSino(sino)
+                    recons = torch.cat(recons, current_recon)
+                return recons
 
     def reconstructSino(self, sino):
-        if isinstance(self.model, LIONmodelSino):
-            return self.model(sino)
-        elif isinstance(self.model, LIONmodelRecon):
-            return self.sino2recon(sino)
-        else:
-            raise NotImplementedError("Did not pass LIONmodelSino or LIONmodelRecon")
+        return self.sino2recon(sino)
 
     def reconstructRecon(self, recon):
-        if not isinstance(self.model, LIONmodelRecon):
-            raise TypeError(f"Passed class is {self.model.__class__} which is not an instance of LIONmodelRecon")
-        if isinstance(self.model, LIONmodelSino):
-            return self.model.recon2recon(recon)
-            # use phantom2phantom
-        else: #then it is LIONmodelRecon and not LIONmodelSino, so forward is recon -> recon
-            return self.model(recon)
+        if self.recon2recon is None:
+            warnings.warn(
+                f"Model of type {self.model.__class__} does not support recon2recon"
+            )
+            return recon
+        else:
+            return self.recon2recon(recon)
 
-        
+    def compute_metrics(self, data=None, metrics=[SSIM, PSNR], **kwargs):
+        if data is not None:
+            assert isinstance(data, Experiment) or isinstance(
+                data, Dataset
+            ), "data must be Experiment or Dataset for metrics"
+        assert metrics, "Cannot have empty metrics"
 
-# Postprocessing eg FBPConvNet: takes sinogram and performs FDK reconstruction
-# iterative unrolled: also takes sinogram
-# class End2EndReconstructor(LIONreconstructor):
-#     def __init__(
-#             self, 
-#             model, 
-#             data) -> None:
-#         super().__init__(model, data)
+        # grab data
+        # default arguments
+        batch_size = kwargs.get(batch_size, 1)
+        shuffle = kwargs.get(batch_size, True)
+
+        dataloader = DataLoader()
+        pass

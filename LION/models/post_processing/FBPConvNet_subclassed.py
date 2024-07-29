@@ -92,7 +92,7 @@ class Up(nn.Module):
         return self.block(x)
 
 
-class FBPConvNet(LIONmodelSubclasses.LIONmodelPhantom):
+class FBPConvNet(LIONmodelSubclasses.LIONmodelRecon):
     def __init__(
         self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
     ):
@@ -248,5 +248,5 @@ class FBPConvNet(LIONmodelSubclasses.LIONmodelPhantom):
         res = self.block_3_up(torch.cat((block_2_res, self.up_3(res)), dim=1))
         res = self.block_4_up(torch.cat((block_1_res, self.up_4(res)), dim=1))
         res = self.block_last(res)
-        
+
         return image + res
