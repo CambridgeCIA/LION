@@ -25,7 +25,14 @@ class Noise2Inverse_solver(LIONsolver):
     def __init__(
         self, model, optimizer, loss_fn, optimizer_params=None, verbose=True, geo=None
     ):
-        super().__init__(model, optimizer, loss_fn, geo, solver_params=optimizer_params, device=optimizer_params.device)
+        super().__init__(
+            model,
+            optimizer,
+            loss_fn,
+            geo,
+            solver_params=optimizer_params,
+            device=optimizer_params.device,
+        )
         if geo is None:
             raise ValueError("Geometry must be given to Noise2Inverse_solver")
         self.sino_splits = optimizer_params.sino_splits
@@ -136,6 +143,7 @@ class Noise2Inverse_solver(LIONsolver):
         This function is responsible for performing a single epoch of the optimization.
         """
         self.train_loss[epoch] = self.train_step()
+        print(f"Train loss epoch {epoch + 1}: {self.train_loss[epoch]}")
 
     def train(self, n_epochs):
         """
@@ -162,9 +170,10 @@ class Noise2Inverse_solver(LIONsolver):
         with torch.no_grad():
             test_loss = np.zeros(len(self.test_loader))
             for i, (sinos, targets) in enumerate(tqdm(self.test_loader)):
-                bad_recon = self.compute_noisy_sub_recon(sinos, targets) # b, split, c, w, h
-                
-                
+                bad_recon = self.compute_noisy_sub_recon(
+                    sinos, targets
+                )  # b, split, c, w, h
+
                 # we train K->1 so, pick one of these to be the target, at random.
                 label_array = torch.zeros(targets.shape, device=self.device)
                 random_target = torch.zeros(targets.shape, device=self.device)
@@ -173,7 +182,8 @@ class Noise2Inverse_solver(LIONsolver):
                     label = np.random.randint(self.sino_splits)
                     random_target[sino] = bad_recon[label, sino].detach().clone()
                     label_array[sino] = torch.mean(
-                        bad_recon[np.delete(indices, label), sino].detach().clone(), axis=0
+                        bad_recon[np.delete(indices, label), sino].detach().clone(),
+                        axis=0,
                     )
                     # Forward pass
                 output = self.model(label_array)
@@ -188,8 +198,8 @@ class Noise2Inverse_solver(LIONsolver):
         return test_loss
 
     def process(self, sinos, targets):
-        bad_recon = self.compute_noisy_sub_recon(sinos, targets) # b, split, c, w, h
-                
+        bad_recon = self.compute_noisy_sub_recon(sinos, targets)  # b, split, c, w, h
+
         # we train K->1 so, pick one of these to be the target, at random.
         label_array = torch.zeros(targets.shape, device=self.device)
         random_target = torch.zeros(targets.shape, device=self.device)
@@ -203,4 +213,3 @@ class Noise2Inverse_solver(LIONsolver):
             # Forward pass
         output = self.model(label_array)
         return output
-

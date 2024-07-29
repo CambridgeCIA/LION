@@ -102,9 +102,9 @@ optimiser = torch.optim.Adam(
 
 # %% Train
 # create solver
-noise2inverse_parameters = Noise2InverseSolver.default_parameters()
-solver = Noise2InverseSolver(
-    model, optimiser, loss_fn, noise2inverse_parameters, True, experiment.geo, device
+noise2inverse_parameters = Noise2Inverse_solver.default_parameters()
+solver = Noise2Inverse_solver(
+    model, optimiser, loss_fn, noise2inverse_parameters, True, experiment.geo
 )
 
 # set data
