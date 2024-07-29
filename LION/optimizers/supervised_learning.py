@@ -1,9 +1,7 @@
 # numerical imports
 import warnings
-import pathlib
-from typing import Optional
 import torch
-import torch.nn as nn
+from torch.optim.optimizer import Optimizer
 import numpy as np
 
 # Import base class
@@ -11,7 +9,7 @@ from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
-from LION.optimizers.LIONloss import LIONloss2
+from LION.optimizers.losses.LIONloss import LIONtrainingLoss
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.classical_algorithms.fdk import fdk
 
@@ -23,12 +21,12 @@ class SupervisedSolver(LIONsolver):
     def __init__(
         self,
         model: LIONmodel,
-        optimizer: torch.optim.Optimizer,
-        loss_fn: LIONloss2,
+        optimizer: Optimizer,
+        loss_fn: LIONtrainingLoss | torch.nn.Module,
         geo: Geometry,
         verbose: bool = False,
         model_regularization=None,
-        device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}")
+        device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
     ):
         super().__init__(
             model,
@@ -37,8 +35,7 @@ class SupervisedSolver(LIONsolver):
             geo,
             verbose=verbose,
             device=device,
-            model_regularization=model_regularization,
-            solver_params=SolverParams()
+            solver_params=SolverParams(),
         )
 
         self.op = make_operator(self.geo)
@@ -48,12 +45,9 @@ class SupervisedSolver(LIONsolver):
         This function isresponsible for performing a single mini-batch step of the optimization.
         returns the loss of the mini-batch
         """
-        if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
-            # reconstruct sino using fdk
-            data = fdk(data, self.op)
-
-            if self.do_normalize:
-                data = self.normalize(data)
+        if self.do_normalize:
+            self.loss_fn.do_normalize = True
+            self.loss_fn.normalize = self.normalize
 
         # Zero gradients
         self.optimizer.zero_grad()
@@ -62,7 +56,7 @@ class SupervisedSolver(LIONsolver):
         # Update optimizer and model
         self.loss.backward()
         self.optimizer.step()
-        
+
         return self.loss.item()
 
     def train_step(self):
@@ -71,7 +65,9 @@ class SupervisedSolver(LIONsolver):
         returns the average loss of the epoch
         """
         if self.train_loader is None:
-            raise NoDataException("Training dataloader not set: Please call set_training")
+            raise NoDataException(
+                "Training dataloader not set: Please call set_training"
+            )
         self.model.train()
         epoch_loss = 0.0
         for _, (data, target) in enumerate(tqdm(self.train_loader)):
@@ -104,10 +100,14 @@ class SupervisedSolver(LIONsolver):
         with torch.no_grad():
             validation_loss = np.array([])
             for _, (data, targets) in enumerate(tqdm(self.validation_loader)):
-                if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
+                print(self.model.model_parameters.model_input_type)
+                if self.model.get_input_type() == ModelInputType.IMAGE:
                     data = fdk(data, self.op)
+                print(data.shape)
                 outputs = self.model(data)
-                validation_loss = np.append(validation_loss, self.validation_fn(targets, outputs))
+                validation_loss = np.append(
+                    validation_loss, self.validation_fn(targets, outputs)
+                )
 
         if self.verbose:
             print(
@@ -155,10 +155,10 @@ class SupervisedSolver(LIONsolver):
             self.current_epoch = self.load_checkpoint()
             self.train_loss = np.append(self.train_loss, np.zeros((n_epochs)))
         else:
-            self.train_loss = np.zeros(n_epochs)      
+            self.train_loss = np.zeros(n_epochs)
 
         if self.check_validation_ready() == 0:
-            self.validation_loss = np.zeros((n_epochs))      
+            self.validation_loss = np.zeros((n_epochs))
 
         self.model.train()
         # train loop
@@ -169,7 +169,7 @@ class SupervisedSolver(LIONsolver):
 
             if (self.current_epoch + 1) % self.checkpoint_freq == 0:
                 self.save_checkpoint(self.current_epoch)
-            
+
             self.current_epoch += 1
 
     @staticmethod
@@ -183,11 +183,11 @@ class SupervisedSolver(LIONsolver):
             return
         assert self.test_loader is not None
         assert self.testing_fn is not None
-        
+
         test_loss = np.zeros(len(self.test_loader))
-        with torch.no_grad():                
+        with torch.no_grad():
             for index, (data, target) in enumerate(self.test_loader):
-                if self.model.model_parameters.model_input_type == ModelInputType.IMAGE:
+                if self.model.get_input_type() == ModelInputType.IMAGE:
                     data = fdk(data, self.op)
                 output = self.model(data.to(self.device))
                 test_loss[index] = self.testing_fn(output, target.to(self.device))
@@ -198,5 +198,3 @@ class SupervisedSolver(LIONsolver):
             )
 
         return test_loss
-
-

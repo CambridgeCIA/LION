@@ -3,19 +3,18 @@
 
 #%% Imports
 from dataclasses import dataclass
-import time
 from typing import Tuple
-import numpy as np
 import torch
 import torch.nn as nn
+from torch.optim.adam import Adam
 from torch.utils.data import DataLoader, Subset
-from tqdm import tqdm
 import pathlib
-from LION.CTtools.ct_utils import make_operator
-from LION.models.CNNs.MS_D import MS_D
+from LION.models.CNNs.MSDNets.MS_D2 import MSD_Net
 from LION.models.LIONmodel import ModelInputType
+from LION.models.iterative_unrolled.ItNet import UNet
+from LION.models.iterative_unrolled.LPD import LPD
 from LION.models.learned_regularizer.AR import AR
-from LION.models.learned_regularizer.ar_loss import WGAN_gradient_penalty_loss
+from LION.optimizers.losses.WGANloss import WGANloss
 from LION.optimizers.supervised_learning import SupervisedSolver
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
@@ -30,7 +29,7 @@ torch.cuda.set_device(device)
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
 
 final_result_fname = "ar_final_iter.pt"
-checkpoint_fname = "ar_check_*.pt"  
+checkpoint_fname = "ar_check_*.pt"
 validation_fname = "ar_min_val.pt"
 #
 #%% Define experiment
@@ -56,7 +55,7 @@ dilations = []
 for i in range(depth):
     for j in range(width):
         dilations.append((((i * width) + j) % 10) + 1)
-model = MS_D().to(device)
+model = UNet().to(device)
 model.model_parameters.model_input_type = ModelInputType.IMAGE
 regularizer = AR(model, experiment.geo)
 
@@ -69,26 +68,30 @@ class TrainParam(LIONParameter):
     betas: Tuple[float, float]
     loss: str
     accumulation_steps: int
+
+
 train_param = TrainParam("adam", 1, 1e-3, (0.9, 0.99), "MSELoss", 1)
 
-optimizer = torch.optim.Adam(
+optimizer = Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
 
 
-train_loss = WGAN_gradient_penalty_loss(model, regularizer.op)
+train_loss = WGANloss()
 val_loss = nn.MSELoss()
 #%% Solver
-solver = SupervisedSolver(regularizer, optimizer, train_loss, experiment.geo, device=device, verbose=True)
+solver = SupervisedSolver(
+    regularizer, optimizer, train_loss, experiment.geo, device=device, verbose=True
+)
 
 solver.set_saving(savefolder, final_result_fname)
 solver.set_checkpointing(checkpoint_fname)
 solver.set_training(lidc_dataloader)
 solver.set_validation(lidc_validation, 1, val_loss, validation_fname)
 solver.set_testing(lidc_test)
+solver.set_normalization(True)
 
 # train regularizer
 solver.train(3)
 
 #%% Use regularizer
-

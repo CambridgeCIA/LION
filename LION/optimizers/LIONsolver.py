@@ -15,8 +15,8 @@
 from enum import Enum
 from typing import Callable, Optional
 from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
+from LION.optimizers.losses.LIONloss import LIONtrainingLoss
 from LION.utils.parameter import LIONParameter
 
 # Lionmodels
@@ -28,8 +28,8 @@ from LION.utils.utils import custom_format_warning
 # some numerical standard imports, e.g.
 import numpy as np
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
+from torch.optim.optimizer import Optimizer
 
 # imports related to class organization
 from abc import ABC, abstractmethod, ABCMeta
@@ -67,12 +67,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     def __init__(
         self,
         model: LIONmodel,
-        optimizer: torch.optim.Optimizer,
-        loss_fn: nn.Module,
+        optimizer: Optimizer,
+        loss_fn: LIONtrainingLoss | torch.nn.Module,
         geometry: Geometry,
         verbose: bool = True,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
-        model_regularization=None,
         solver_params: Optional[SolverParams] = None,
     ) -> None:
         super().__init__()
@@ -80,10 +79,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.solver_params = self.default_parameters()
 
         assert isinstance(model, LIONmodel), "model must be a LIONmodel"
-        assert isinstance(
-            optimizer, torch.optim.Optimizer
-        ), "optimizer must be a torch optimizer"
-        assert callable(loss_fn), "loss_fn must be a function"
+        assert isinstance(optimizer, Optimizer), "optimizer must be a torch optimizer"
 
         # currently not used in subclasses or here, but we'll save it with the view that we'll want to serialize these at some point
         # relevant solver_params are extracted into data members on a subclass level
@@ -92,26 +88,40 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model = model
         self.optimizer = optimizer
         self.geo = geometry
+
         self.train_loader: Optional[DataLoader] = None
         self.train_loss: np.ndarray = np.zeros(0)
-        self.loss_fn = loss_fn
+
+        if isinstance(loss_fn, torch.nn.Module):
+            self.loss_fn = LIONtrainingLoss.from_torch(loss_fn)
+        else:
+            self.loss_fn = loss_fn
+
+        self.loss_fn.set_model(model)
+
         self.device = device
+
         self.validation_loader: Optional[DataLoader] = None
         self.validation_fn: Optional[Callable] = None
         self.validation_freq: Optional[int] = None
         self.validation_loss: Optional[np.ndarray] = None
+
         self.test_loader: Optional[DataLoader] = None
         self.testing_fn: Optional[Callable] = None
+
         self.current_epoch: int = 0
+
         self.save_folder: Optional[pathlib.Path] = None
         self.load_folder: Optional[pathlib.Path] = None
+
         self.do_load_checkpoint: bool = False
         self.checkpoint_freq: int
+
         self.final_result_fname: Optional[str] = None
         self.checkpoint_fname: Optional[str] = None
         self.validation_fname: Optional[str] = None
+
         self.verbose = verbose
-        self.model_regularization = model_regularization
         self.metadata = LIONParameter()
         self.dataset_param = LIONParameter()
 
@@ -198,12 +208,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.checkpoint_fname = checkpoint_fname
 
     def set_normalization(self, do_normalize: bool):
-        if self.model.model_parameters.model_input_type == ModelInputType.SINOGRAM:
+        print(self.model.model_parameters.model_input_type)
+        if self.model.get_input_type() == ModelInputType.SINOGRAM:
             warnings.warn(
                 """Normalization will not be carried out on this model,
                 as it takes inputs in the measurement domain. 
                 As such inputs cannot be normalized in the image domain before being passed to the model.
-                Normalization should be implemented within the model itself"""
+                In such a case, normalization should be implemented within the model itself"""
             )
         if self.train_loader is None:
             raise NoDataException(
@@ -253,7 +264,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         # Test 3: is the optimizer set? if not, raise error or warn
         return_code = self.__check_attribute(
             "optimizer",
-            expected_type=torch.optim.Optimizer,
+            expected_type=Optimizer,
             error=error,
             autofill=False,
             verbose=verbose,
@@ -406,18 +417,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             verbose=True,
         )
 
-    def check_regularization_ready(self):
-        # might be more that needs to be done in here, don't really know much about regularization
-
-        # Test 17: is the model regularization set?
-        return self.__check_attribute(
-            "model_regularization",
-            expected_type=nn.Module,
-            error=False,
-            autofill=False,
-            verbose=False,
-        )
-
     def check_complete(self, error=True, autofill=True):
         """
         This function checks if the solver is complete, i.e. if all the necessary parameters are set to start traning.
@@ -442,9 +441,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return_code = self.check_validation_ready(error, autofill)
 
         return_code = self.check_checkpointing_ready(autofill, verbose)
-
-        if self.model_regularization is not None:
-            return_code = self.check_regularization_ready()
 
         self.verbose = verbose
 

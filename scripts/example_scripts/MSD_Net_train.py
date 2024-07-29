@@ -10,9 +10,7 @@ from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 import pathlib
 from LION.experiments import ct_benchmarking_experiments
-from LION.models.CNNs.MSDNets.FBPMS_D import FBPMSD_Net, OGFBPMSD_Net
-from LION.models.CNNs.MSDNets.MS_D import MS_D
-from LION.models.CNNs.MSDNets.MS_D2 import MSD_Params
+from LION.models.CNNs.MSDNets.MS_D2 import MSD_Net, MSDParams
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 from torchviz import make_dot
@@ -26,7 +24,7 @@ torch.cuda.set_device(device)
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
 
 final_result_fname = savefolder.joinpath("FBPMSDNetw1d30lball_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("FBPMSDNetw1d30lball_check_*.pt")  
+checkpoint_fname = savefolder.joinpath("FBPMSDNetw1d30lball_check_*.pt")
 validation_fname = savefolder.joinpath("FBPMSDNetw1d30lball_min_val.pt")
 #
 #%% Define experiment
@@ -50,7 +48,7 @@ dilations = []
 for i in range(depth):
     for j in range(width):
         dilations.append((((i * width) + j) % 10) + 1)
-model_params = MSD_Params(
+model_params = MSDParams(
     in_channels=1,
     width=width,
     depth=depth,
@@ -59,7 +57,9 @@ model_params = MSD_Params(
     final_look_back_depth=-1,
     activation=nn.ReLU(),
 )
-model = FBPMSD_Net(geometry_parameters=experiment.geo, model_parameters=model_params).to(device)
+model = MSD_Net(geometry_parameters=experiment.geo, model_parameters=model_params).to(
+    device
+)
 
 #%% Optimizer
 train_param = LIONParameter()
@@ -88,7 +88,7 @@ start_epoch = 0
 # %% Check if there is a checkpoint saved, and if so, start from there.
 
 # If there is a file with the final results, don't run again
-#if model.final_file_exists(savefolder.joinpath(final_result_fname)):
+# if model.final_file_exists(savefolder.joinpath(final_result_fname)):
 #    print("final model exists! You already reached final iter")
 #    exit()
 
@@ -109,18 +109,20 @@ for epoch in range(start_epoch, train_param.epochs):
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, steps)
     print("Training...")
     model.train()
-    for idx, (sinogram, target_reconstruction) in enumerate(tqdm(lidc_dataloader)):   
+    for idx, (sinogram, target_reconstruction) in enumerate(tqdm(lidc_dataloader)):
         sinogram = sinogram.to(device)
         target_reconstruction = target_reconstruction.to(device)
-        #with torch.autocast("cuda"):
+        # with torch.autocast("cuda"):
         reconstruction = model(sinogram)
-        make_dot(reconstruction, params=dict(list(model.named_parameters()))).render("msdnet1_3_alt_torchviz", format="png")
+        make_dot(reconstruction, params=dict(list(model.named_parameters()))).render(
+            "msdnet1_3_alt_torchviz", format="png"
+        )
         quit()
         loss = loss_fcn(reconstruction, target_reconstruction)
         loss = loss / train_param.accumulation_steps
 
         scaler.scale(loss).backward()
-        #loss.backward()
+        # loss.backward()
 
         train_loss += loss.item()
 
@@ -129,7 +131,6 @@ for epoch in range(start_epoch, train_param.epochs):
             scaler.update()
             # scheduler.step()
             optimiser.zero_grad()
-
 
     total_loss[epoch] = train_loss
     print(f"Model took {time.time() - start_time}s to train")
@@ -148,7 +149,7 @@ for epoch in range(start_epoch, train_param.epochs):
     print(
         f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
     )
-    
+
     print(f"Model took {time.time() - start_time}s to validate")
     print(f"Model achieved validation loss of {valid_loss}")
 
@@ -167,7 +168,7 @@ for epoch in range(start_epoch, train_param.epochs):
         )
 
     # Checkpoint every 10 iters anyway
-    if (epoch + 1) %  1 == 0:
+    if (epoch + 1) % 1 == 0:
         print("Checkpointing")
         model.save_checkpoint(
             pathlib.Path(str(checkpoint_fname).replace("*", f"{epoch+1:04d}")),
@@ -183,7 +184,5 @@ model.save(
     epoch=train_param.epochs,
     training=train_param,
     dataset=experiment.param,
-    geometry=experiment.geo
+    geometry=experiment.geo,
 )
-
-

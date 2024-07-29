@@ -77,10 +77,13 @@ class AR(LIONmodel):
     ):
 
         super().__init__(model_parameters, geometry_parameters)
+        assert (
+            network.model_parameters.model_input_type == ModelInputType.IMAGE
+        ), "AR needs to use a network that takes an Image as input"
         self.model_parameters: ARParams
         self._make_operator()
         self.network = network
-        
+
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
         # First Conv
         self.estimate_alpha()
@@ -88,8 +91,8 @@ class AR(LIONmodel):
         self.op_norm = float(power_method(self.op))
         self.model_parameters.step_size = 0.2 / (self.op_norm) ** 2
 
-    def forward(self, y):
-        """Expects y to be in the measurement domain.
+    def forward(self, x):
+        """
 
         Args:
             y (_type_): _description_
@@ -97,16 +100,10 @@ class AR(LIONmodel):
         Returns:
             _type_: _description_
         """
-
         if self.training:
-            return self.pool(self.network(
-                fdk(y, self.op)
-                if self.network.model_parameters.model_input_type
-                == ModelInputType.IMAGE
-                else y
-            ))
+            return self.pool(self.network(x))
         else:  # in eval (validataion or testing, so actually want to do the GD)
-            return self.output(y)
+            return self.output(x)
 
     def estimate_alpha(self, dataset=None):
         self.alpha = 1.0
@@ -122,10 +119,12 @@ class AR(LIONmodel):
             self.alpha = residual / len(dataset)
         print("Estimated alpha: " + str(self.alpha))
 
-
     def var_energy(self, x, y):
         # return torch.norm(x) + 0.5*(torch.norm(self.A(x)-y,dim=(2,3))**2).sum()#self.lamb * self.forward(x).sum()
-        return 0.5 * ((self.A(x) - y) ** 2).sum() + self.alpha * self.pool(self.network(x)).sum()
+        return (
+            0.5 * ((self.A(x) - y) ** 2).sum()
+            + self.alpha * self.pool(self.network(x)).sum()
+        )
 
     ### What is the difference between .sum() and .mean()??? idfk but PSNR is lower when I do .sum
 
@@ -166,14 +165,19 @@ class AR(LIONmodel):
             optimizer.step()
             # x.clamp(min=0.0) do we need this?
         self.scalar = False
-        return x        
-
+        return x
 
     # this functionality is now the responsibility of the LIONSolver
     # def normalise(self,x):
     #     return (x - self.model_parameters.xmin) / (self.model_parameters.xmax - self.model_parameters.xmin)
     # def unnormalise(self,x):
     #     return x * (self.model_parameters.xmax - self.model_parameters.xmin) + self.model_parameters.xmin
+
+    def get_input_type(self) -> ModelInputType:
+        if self.training:
+            return ModelInputType.IMAGE
+        else:
+            return ModelInputType.SINOGRAM
 
     @staticmethod
     def default_parameters() -> ARParams:
