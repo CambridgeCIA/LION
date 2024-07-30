@@ -49,14 +49,14 @@ def my_psnr(x, y):
 
 # %%
 # % Chose device:
-device = torch.device("cuda:3")
+device = torch.device("cuda:2")
 torch.cuda.set_device(device)
 print(torch.cuda.current_device())
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
-final_result_fname = "Noise2InverseOG_MSD.pt"
-checkpoint_fname = "Noise2InverseOG_MSD_check_*.pt"
-validation_fname = "Noise2InverseOG_MSD_min_val.pt"
+final_result_fname = "Noise2Inverse_MSD.pt"
+checkpoint_fname = "Noise2Inverse_MSD_check_*.pt"
+validation_fname = "Noise2Inverse_MSD_min_val.pt"
 #
 # %% Define experiment
 
@@ -67,7 +67,7 @@ lidc_dataset = experiment.get_training_dataset()
 
 # smaller dataset for example. Remove this for full dataset
 # lidc_dataset = Subset(lidc_dataset, [i for i in range(len(lidc_dataset) // 2)])
-lidc_dataset = Subset(lidc_dataset, [i for i in range(100)])
+lidc_dataset = Subset(lidc_dataset, [i for i in range(300)])
 
 
 # %% Define DataLoader
@@ -140,7 +140,7 @@ plt.savefig("loss.png")
 # quit()
 
 
-with open("OGn2i2results.txt", "w") as f:
+with open("n2i2results.txt", "w") as f:
     # test
     # test with ssim
     solver.testing_fn = my_ssim
