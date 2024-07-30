@@ -18,9 +18,10 @@ import warnings
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset, TensorDataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset, Subset
 from LION.utils.metrics import SSIM, PSNR
 from typing_extensions import Literal
+from tqdm import tqdm
 
 # imports related to class organization
 from abc import ABC, abstractmethod, ABCMeta
@@ -63,7 +64,7 @@ def reduce_dict(
     dict_input: dict, reduction: Literal["mean", "sum", "none", None]
 ) -> dict:
     reduced_dict = {}
-    for key, val in dict_input:
+    for key, val in dict_input.items():
         if reduction == "mean":
             reduced_dict[key] = torch.mean(val)
         if reduction == "none" or reduction is None:
@@ -88,7 +89,7 @@ class LIONreconstructor(nn.Module):
 
         self.model = model
         self.model.eval()
-        self.device = self.model.device
+        # self.device = self.model.device
         self.dataset = None
         self.has_gt = has_gt  # Flag true if dataset has ground truth available
         self.metrics = metrics  # metrics should take preds and gt, and return tensor of length N, where N is batch size
@@ -134,6 +135,9 @@ class LIONreconstructor(nn.Module):
         reduction: Literal["mean", "sum", "none", None] = None,
         **kwargs,
     ):
+        # default arguments
+        batch_size = kwargs.get("batch_size", 1)
+        subset_size = kwargs.get("subset_size", None)
 
         if data is not None:
             assert (
@@ -142,7 +146,7 @@ class LIONreconstructor(nn.Module):
                 or torch.is_tensor(data)
             ), "data must be Experiment, Dataset or batched input"
             dataset = to_dataset(data)
-        elif self.dataloader:
+        elif self.dataset:
             dataset = self.dataset
         else:
             raise RuntimeError(
@@ -152,8 +156,9 @@ class LIONreconstructor(nn.Module):
         if reduction is None:
             reduction = self.reduction  # allow override reduction
 
-        # default arguments
-        batch_size = kwargs.get(batch_size, 1)
+        # for creating the subset if passed
+        if subset_size is not None:
+            dataset = Subset(dataset, range(min(subset_size, len(dataset))))
 
         # if isinstance(data, Experiment):
         #     data_iterator = data.get_testing_dataset() # TODO get iterator
@@ -164,21 +169,26 @@ class LIONreconstructor(nn.Module):
         # else:
         #     raise NotImplementedError(f"Reconstruction is not supported for data of type {type(self.data)}")
 
-        dataset = dataset.to(self.device)
+        # dataset = dataset.to(self.device)
         dataloader = DataLoader(dataset, batch_size=batch_size)
 
         if self.has_gt:
             # preload to prevent excessive copying
-            eval_metrics = dict.fromkeys(self.metrics.keys(), torch.zeros(len(dataset)))
+            eval_metrics = dict.fromkeys(self.metrics.keys())
+            # default value does not work since torch.zeros will all refer to same object
+            for key in eval_metrics.keys():
+                eval_metrics[key] = torch.zeros(len(dataset))
+
             ctr = 0  # track where to replace
             with torch.no_grad():
-                for sino, gt in dataloader:
+                for sino, gt in tqdm(dataloader):
                     batch_len = len(
                         gt
                     )  # usually should be batch_size, but may be smaller at the end. this catches edge case
                     # concatenate metrics
-                    for key, metric in self.metrics:
-                        computed_metric = metric(self.reconstructSino(sino), gt)
+                    reconstruction = self.reconstructSino(sino)
+                    for key, metric in self.metrics.items():
+                        computed_metric = metric(reconstruction, gt)
                         eval_metrics[key][ctr : ctr + len(gt)] = computed_metric
 
                     ctr += batch_len
@@ -188,10 +198,10 @@ class LIONreconstructor(nn.Module):
                 "Ground truth not provided (or flagged False), creating reconstructions"
             )
             with torch.no_grad():
-                recons = torch.Tensor([]).to(self.device)
-                for sino in dataloader:
+                # recons = torch.Tensor([]).to(self.device)
+                for sino in tqdm(dataloader):
                     current_recon = self.reconstructSino(sino)
-                    recons = torch.cat(recons, current_recon)
+                    recons = torch.cat(recons, current_recon.cpu())
                 return recons
 
     def reconstructSino(self, sino):

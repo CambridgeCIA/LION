@@ -6,6 +6,9 @@ import LION.models.LIONmodelSubclasses as LIONmodelSubclasses
 import matplotlib.pyplot as plt
 import LION.experiments.ct_experiments as ct_experiments
 
+from LION.reconstructors.reconstructor import LIONreconstructor
+
+from torch.utils.data import Subset
 
 #%% First run FBPConvNet_train.py to train and save model, then run this.
 # % Set device:
@@ -18,8 +21,7 @@ final_result_fname = savefolder.joinpath("FBPConvNet_final_iter.pt")
 # set up experiment model was trained on
 # the same experiment should be used, results cannot be guaranteed otherwise
 experiment = ct_experiments.clinicalCTRecon()
-test_data = experiment.get_testing_dataset()
-test_dataloader = DataLoader(test_data, 1, shuffle=True)
+
 
 # load trained model
 model, _, _ = FBPConvNet.load(final_result_fname)  # loads statedict only
@@ -27,22 +29,8 @@ print(model.__class__)
 model = LIONmodelSubclasses.Constructor(model)
 model.to(device)
 
-# sample a random batch (size 1, so really just one image, truth pair)
-data, gt = next(iter(test_dataloader))
-print(data.shape, gt.shape)
-x = model(data)
-
-# put stuff back on the cpu, otherwise matplotlib throws an error
-x = x.detach().cpu().numpy()
-gt = gt.detach().cpu().numpy()
-
-dat = next(iter(test_dataloader))
-print(dat)
-plt.figure()
-plt.subplot(121)
-plt.imshow(x[0].T)
-plt.colorbar()
-plt.subplot(122)
-plt.imshow(gt[0].T)
-plt.colorbar()
-plt.savefig("img.png")
+# reconstruct
+dataset = experiment.get_testing_dataset()
+reconstructor = LIONreconstructor(model, dataset, reduction="none")
+metrics = reconstructor(batch_size=2, subset_size=50)
+print(metrics)
