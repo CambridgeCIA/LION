@@ -19,7 +19,7 @@ from skimage.metrics import (
 import numpy as np
 
 
-def my_ssim(x: torch.Tensor, y: torch.Tensor):
+def my_ssim(x, y):
     if x.shape[0] == 1:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
@@ -33,7 +33,7 @@ def my_ssim(x: torch.Tensor, y: torch.Tensor):
         return np.array(vals)
 
 
-def my_psnr(x: torch.Tensor, y: torch.Tensor):
+def my_psnr(x, y):
     if x.shape[0] == 1:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
@@ -51,6 +51,7 @@ def my_psnr(x: torch.Tensor, y: torch.Tensor):
 # % Chose device:
 device = torch.device("cuda:3")
 torch.cuda.set_device(device)
+print(torch.cuda.current_device())
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
 final_result_fname = "Noise2InverseOG_MSD.pt"
@@ -72,8 +73,8 @@ lidc_dataset = Subset(lidc_dataset, [i for i in range(100)])
 # %% Define DataLoader
 
 batch_size = 4
-lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
-lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
+lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
+lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=True)
 
 # %% Model
 # Default model is already from the paper.
@@ -91,7 +92,7 @@ class TrainParams(LIONParameter):
     loss: str
 
 
-train_param = TrainParams("adam", 100, 1e-4, (0.9, 0.99), "MSELoss")
+train_param = TrainParams("adam", 5, 1e-4, (0.9, 0.99), "MSELoss")
 
 # loss fn
 loss_fn = torch.nn.MSELoss()
@@ -102,9 +103,9 @@ optimiser = torch.optim.Adam(
 
 # %% Train
 # create solver
-noise2inverse_parameters = Noise2Inverse_solver.default_parameters()
-solver = Noise2Inverse_solver(
-    model, optimiser, loss_fn, noise2inverse_parameters, True, experiment.geo
+noise2inverse_parameters = Noise2InverseSolver.default_parameters()
+solver = Noise2InverseSolver(
+    model, optimiser, loss_fn, noise2inverse_parameters, True, experiment.geo, device
 )
 
 # set data
@@ -132,9 +133,9 @@ solver.save_final_results(final_result_fname)
 # print(data)
 
 # loss_epoch = data.get('loss')
-# plt.plot(loss_epoch)
-# plt.yscale('log')
-# plt.savefig('loss.png')
+plt.plot(solver.train_loss[1:])
+plt.yscale("log")
+plt.savefig("loss.png")
 
 # quit()
 
@@ -156,7 +157,7 @@ with open("OGn2i2results.txt", "w") as f:
 # batch worth of visualisations
 op = make_operator(experiment.geo)
 
-sino, gt = next(iter(solver.test_loader))
+sino, gt = next(iter(lidc_test))
 noisy_recon = solver.recon_fn(sino, op)
 bad_ssim = my_ssim(noisy_recon, gt)
 bad_psnr = my_psnr(noisy_recon, gt)

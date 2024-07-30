@@ -38,6 +38,7 @@ class Noise2InverseSolver(LIONsolver):
         geo: Geometry,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
     ) -> None:
+        print(device)
         super().__init__(
             model, optimizer, loss_fn, geo, verbose, device, solver_params=solver_params
         )
@@ -204,6 +205,7 @@ class Noise2InverseSolver(LIONsolver):
         if self.check_testing_ready() != 0:
             warnings.warn("Solver not setup for testing. Please call set_testing")
             return np.array([])
+        assert self.testing_fn is not None and self.test_loader is not None
 
         was_training = self.model.training
         self.model.eval()

@@ -15,7 +15,6 @@
 from enum import Enum
 from typing import Callable, Optional
 from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
 from LION.optimizers.losses.LIONloss import LIONtrainingLoss
 from LION.utils.parameter import LIONParameter
@@ -75,6 +74,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
         solver_params: Optional[SolverParams] = None,
     ) -> None:
+        print(device)
         super().__init__()
         if solver_params is None:
             self.solver_params = self.default_parameters()
@@ -89,14 +89,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model = model
         self.optimizer = optimizer
         self.geo = geometry
-        self.op = make_operator(self.geo)
 
         self.train_loader: Optional[DataLoader] = None
         self.train_loss: np.ndarray = np.zeros(0)
 
         self.loss_fn = loss_fn
-
-        if isinstance(self.loss_fn, LIONtrainingLoss):
+        if isinstance(loss_fn, LIONtrainingLoss):
             self.loss_fn.set_model(model)
 
         self.device = device
