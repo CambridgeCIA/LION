@@ -10,35 +10,41 @@ from LION.models.CNNs.MS_D import MS_D
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 from LION.optimizers.Noise2Inverse_solver2 import Noise2InverseSolver
-from skimage.metrics import structural_similarity as ssim, peak_signal_noise_ratio as psnr
+from skimage.metrics import (
+    structural_similarity as ssim,
+    peak_signal_noise_ratio as psnr,
+)
 import numpy as np
 
 
 def my_ssim(x: torch.Tensor, y: torch.Tensor):
-    if x.shape[0]==1:
+    if x.shape[0] == 1:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
         return ssim(x, y, data_range=x.max() - x.min())
-    else: 
+    else:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
-        vals=[]
+        vals = []
         for i in range(x.shape[0]):
             vals.append(ssim(x[i], y[i], data_range=x[i].max() - x[i].min()))
         return np.array(vals)
 
+
 def my_psnr(x: torch.Tensor, y: torch.Tensor):
-    if x.shape[0]==1:
+    if x.shape[0] == 1:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
         return psnr(x, y, data_range=x.max() - x.min())
-    else: 
+    else:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
-        vals=[]
+        vals = []
         for i in range(x.shape[0]):
             vals.append(psnr(x[i], y[i], data_range=x[i].max() - x[i].min()))
         return np.array(vals)
+
+
 # %%
 # % Chose device:
 device = torch.device("cuda:0")
@@ -82,6 +88,7 @@ class TrainParams(LIONParameter):
     betas: Tuple[float, float]
     loss: str
 
+
 train_param = TrainParams("adam", 100, 1e-4, (0.9, 0.99), "MSELoss")
 
 # loss fn
@@ -101,7 +108,7 @@ solver = Noise2InverseSolver(
     noise2inverse_parameters,
     False,
     experiment.geo,
-    device=device
+    device=device,
 )
 
 # set data
@@ -153,7 +160,7 @@ with open("n2i2results.txt", "w") as f:
 # batch worth of visualisations
 op = make_operator(experiment.geo)
 
-sino, gt = next(iter(solver.test_loader))
+sino, gt = next(iter(lidc_test))
 noisy_recon = solver.recon_fn(sino, op)
 bad_ssim = my_ssim(noisy_recon, gt)
 bad_psnr = my_psnr(noisy_recon, gt)
@@ -177,7 +184,7 @@ for i in range(len(good_recon)):
     plt.clim(torch.min(gt[i]).item(), torch.max(gt[i]).item())
     plt.gca().set_title(f"N2I. SSIM: {good_ssim[i]:.2f}. PSNR: {good_psnr[i]:.2f}")
     # reconstruct filepath with suffix i
-    plt.savefig(f'n2i2_test{i}walljs.png', dpi=700)
+    plt.savefig(f"n2i2_test{i}walljs.png", dpi=700)
     plt.close()
 
 plt.figure()

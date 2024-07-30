@@ -14,9 +14,12 @@
 # You will want to import LIONParameter, as all models must save and use Parameters.
 from enum import Enum
 from typing import Callable, Optional
+
+from tqdm import tqdm
 from LION.CTtools.ct_geometry import Geometry
+from LION.CTtools.ct_utils import make_operator
+from LION.classical_algorithms.fdk import fdk
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
-from LION.optimizers.losses.LIONloss import LIONtrainingLoss
 from LION.utils.parameter import LIONParameter
 
 # Lionmodels
@@ -68,7 +71,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self,
         model: LIONmodel,
         optimizer: Optimizer,
-        loss_fn: LIONtrainingLoss | torch.nn.Module,
+        loss_fn: torch.nn.Module,
         geometry: Geometry,
         verbose: bool = True,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
@@ -88,16 +91,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model = model
         self.optimizer = optimizer
         self.geo = geometry
+        self.op = make_operator(self.geo)
 
         self.train_loader: Optional[DataLoader] = None
         self.train_loss: np.ndarray = np.zeros(0)
 
-        if isinstance(loss_fn, torch.nn.Module):
-            self.loss_fn = LIONtrainingLoss.from_torch(loss_fn)
-        else:
-            self.loss_fn = loss_fn
-
-        self.loss_fn.set_model(model)
+        self.loss_fn = loss_fn
 
         self.device = device
 
@@ -575,12 +574,30 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             normalized_x = (x - self.xmin) / (self.xmax - self.xmin)
         return normalized_x
 
-    @abstractmethod
     def test(self):
-        """
-        This function performs a testing step
-        """
-        pass
+        self.model.eval()
+        if self.check_testing_ready() != 0:
+            warnings.warn("Solver not setup to test. Please call set_testing.")
+            return np.array([])
+        assert self.test_loader is not None
+        assert self.testing_fn is not None
+
+        with torch.no_grad():
+            test_loss = np.array([])
+            for data, target in tqdm(self.test_loader):
+                if self.model.get_input_type() == ModelInputType.IMAGE:
+                    data = fdk(data, self.op)
+                output = self.model(data.to(self.device))
+                test_loss = np.append(
+                    test_loss, self.testing_fn(output, target.to(self.device))
+                )
+
+        if self.verbose:
+            print(
+                f"Testing loss: {test_loss.mean()} - Testing loss std: {test_loss.std()}"
+            )
+
+        return test_loss
 
     def load_checkpoint(self):
         """
@@ -619,30 +636,85 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 )
         return epoch
 
-    @abstractmethod
-    def mini_batch_step(self):
+    def train_step(self):
         """
-        This function should perform a single step of the optimization
+        This function is responsible for performing a single tranining set epoch of the optimization.
+        returns the average loss of the epoch
         """
-        pass
+        if self.train_loader is None:
+            raise NoDataException(
+                "Training dataloader not set: Please call set_training"
+            )
+        self.model.train()
+        epoch_loss = 0.0
+        for _, (data, target) in enumerate(tqdm(self.train_loader)):
+            epoch_loss += self.mini_batch_step(
+                data.to(self.device), target.to(self.device)
+            )
+        return epoch_loss / len(self.train_loader)
 
-    @abstractmethod
     def epoch_step(self, epoch):
         """
-        This function should perform a single epoch of the optimization
+        This function is responsible for performing a single epoch of the optimization.
         """
-        pass
+        self.train_loss[epoch] = self.train_step()
+        # actually make sure we're doing validation
+        if (epoch + 1) % self.validation_freq == 0 and self.validation_loss is not None:
+            self.validation_loss[epoch] = self.validate()
+            if self.verbose:
+                print(
+                    f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
+                )
 
-    @abstractmethod
-    def train(self, n_epochs: int):
+            if self.validation_fname is not None and self.validation_loss[
+                epoch
+            ] <= np.min(self.validation_loss[np.nonzero(self.validation_loss)]):
+                self.save_validation(epoch)
+        elif self.verbose:
+            print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
+        elif self.validation_freq is not None and self.validation_loss is not None:
+            self.validation_loss[epoch] = self.validate()
+
+    def train(self, n_epochs):
         """
         This function is responsible for performing the optimization.
         """
-        pass
+        assert n_epochs > 0, "Number of epochs must be a positive integer"
+        # Make sure all parameters are set
+        self.check_training_ready()
+
+        if self.do_load_checkpoint:
+            print("Loading checkpoint...")
+            self.current_epoch = self.load_checkpoint()
+            self.train_loss = np.append(self.train_loss, np.zeros((n_epochs)))
+        else:
+            self.train_loss = np.zeros(n_epochs)
+
+        if self.check_validation_ready() == 0:
+            self.validation_loss = np.zeros((n_epochs))
+
+        self.model.train()
+        # train loop
+        final_total_epochs = self.current_epoch + n_epochs
+        while self.current_epoch < final_total_epochs:
+            print(f"Training epoch {self.current_epoch + 1}")
+            self.epoch_step(self.current_epoch)
+
+            if (self.current_epoch + 1) % self.checkpoint_freq == 0:
+                self.save_checkpoint(self.current_epoch)
+
+            self.current_epoch += 1
 
     @abstractmethod
     def validate(self):
         """
         This function should perform a validation step
+        """
+        pass
+
+    @abstractmethod
+    def mini_batch_step(self, sino_batch, target_batch) -> float:
+        """
+        This function should perform a single step of the optimization
         """
         pass
