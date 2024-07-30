@@ -6,13 +6,30 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 import pathlib
-from LION.models.CNNs.MSDNets.FBPMS_D import FBPMSD_Net, OGFBPMSD_Net
-from LION.models.CNNs.MSDNets.MS_D2 import MSD_Params
+from LION.CTtools.ct_utils import make_operator
+from LION.classical_algorithms.fdk import fdk
+from LION.models.CNNs.MSDNets.MSDNet import MSD_Params, MSDNet
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
+from skimage.metrics import (
+    structural_similarity as ssim,
+    peak_signal_noise_ratio as psnr,
+)
+
+
+def my_ssim(x, y):
+    x = x.cpu().numpy().squeeze()
+    y = y.cpu().numpy().squeeze()
+    return ssim(x, y, data_range=x.max() - x.min())
+
+
+def my_psnr(x, y):
+    x = x.cpu().numpy().squeeze()
+    y = y.cpu().numpy().squeeze()
+    return psnr(x, y, data_range=x.max() - x.min())
 
 
 #%%
@@ -25,20 +42,34 @@ savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
 
 #
 #%% Define experiment
-experiments = [ct_experiments.clinicalCTRecon(), ct_experiments.ExtremeLowDoseCTRecon(), ct_experiments.LimitedAngleCTRecon(), ct_experiments.SparseAngleCTRecon()]
+
+experiments = [
+    ct_experiments.clinicalCTRecon(),
+    ct_experiments.ExtremeLowDoseCTRecon(),
+    ct_experiments.LimitedAngleCTRecon(),
+    ct_experiments.SparseAngleCTRecon(),
+]
+f = open("msd_benchmarks.txt", "w")
 
 for experiment in experiments:
     experiment_str = str(type(experiment)).split("ct_experiments.")[1][:-2]
     print(experiment_str)
+    f.write(experiment_str)
+    op = make_operator(experiment.geo)
     #%% Dataset
     lidc_dataset = experiment.get_training_dataset()
     lidc_dataset_val = experiment.get_validation_dataset()
+    lidc_dataset = Subset(lidc_dataset, range(250))
+    lidc_dataset_val = Subset(lidc_dataset_val, range(100))
+    lidc_dataset_test = experiment.get_testing_dataset()
+    lidc_dataset_test = Subset(lidc_dataset_test, range(100))
 
     #%% Define DataLoader
     # Use the same amount of training
-    batch_size = 10
+    batch_size = 2
     lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
     lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
+    lidc_testing = DataLoader(lidc_dataset_test, batch_size, shuffle=True)
 
     #%% Model
     width, depth = 1, 100
@@ -55,9 +86,11 @@ for experiment in experiments:
         final_look_back_depth=-1,
         activation=nn.ReLU(),
     )
-    model = FBPMSD_Net(geometry_parameters=experiment.geo, model_parameters=model_params).to(device)
+    model = MSDNet(model_parameters=model_params).to(device)
+
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
     print(f"Model has {count_parameters(model)} parameters")
 
     #%% Optimizer
@@ -68,7 +101,7 @@ for experiment in experiments:
     train_param.optimiser = "adam"
 
     # optimizer
-    train_param.epochs = 1
+    train_param.epochs = 25
     train_param.learning_rate = 1e-3
     train_param.betas = (0.9, 0.99)
     train_param.loss = "MSELoss"
@@ -88,8 +121,6 @@ for experiment in experiments:
     print(f"Starting iteration at epoch {start_epoch}")
     optimiser.zero_grad()
 
-    scaler = torch.cuda.amp.grad_scaler.GradScaler()
-
     start_time = time.time()
     total_train_time = 0
     total_validation_time = 0
@@ -98,25 +129,24 @@ for experiment in experiments:
         train_loss = 0.0
         print("Training...")
         model.train()
-        for idx, (sinogram, target_reconstruction) in enumerate(tqdm(lidc_dataloader)):   
+        for idx, (sinogram, target_reconstruction) in enumerate(tqdm(lidc_dataloader)):
+            optimiser.zero_grad()
             sinogram = sinogram.to(device)
             target_reconstruction = target_reconstruction.to(device)
-            
-            reconstruction = model(sinogram)
+
+            reconstruction = model(fdk(sinogram, op))
             loss = loss_fcn(reconstruction, target_reconstruction)
             loss = loss / train_param.accumulation_steps
 
-            scaler.scale(loss).backward()
+            loss.backward()
 
             train_loss += loss.item()
 
-            scaler.step(optimiser)
-            scaler.update()
-            optimiser.zero_grad()
+            optimiser.step()
 
         total_loss[epoch] = train_loss
         total_train_time += time.time() - start_time
-        
+
         # Validation
         valid_loss = 0.0
         model.eval()
@@ -126,22 +156,49 @@ for experiment in experiments:
             for sinogram, target_reconstruction in tqdm(lidc_validation):
                 sinogram = sinogram.to(device)
                 target_reconstruction.to(device)
-                reconstruction = model(sinogram)
+                reconstruction = model(fdk(sinogram, op))
                 loss = loss_fcn(target_reconstruction, reconstruction.to(device))
                 valid_loss += loss.item()
 
         print(
-            f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataloader)} \t\t Validation Loss: {valid_loss / len(lidc_validation)}"
+            f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataset)} \t\t Validation Loss: {valid_loss / len(lidc_dataset_val)}"
         )
-        if valid_loss < min_valid_loss: 
+        if valid_loss < min_valid_loss:
             min_valid_loss = valid_loss
         total_validation_time += time.time() - start_time
 
-    with open(f"{experiment_str}_msd2_benchmarking.txt", 'w') as f:
-        f.write(f"Model has {count_parameters(model)} trainable parameters")
-        f.write(f"Model took {total_train_time/train_param.epochs}s /epoch to train on average\n")
-        f.write(f"Model achieved minimum training loss of {min(total_loss)}\n")
-        f.write(f"Model took {total_validation_time/train_param.epochs}s /epoch to validate on average\n")
-        f.write(f"Model achieved validation loss of {min_valid_loss}\n")
+    f.write("------Training------")
+    f.write(f"Model has {count_parameters(model)} trainable parameters")
+    f.write(
+        f"Model took {total_train_time/train_param.epochs}s /epoch to train on average\n"
+    )
+    f.write(f"Model achieved minimum training loss of {min(total_loss)}\n")
+    f.write(
+        f"Model took {total_validation_time/train_param.epochs}s /epoch to validate on average\n"
+    )
+    f.write(f"Model achieved validation loss of {min_valid_loss}\n")
 
+    with torch.no_grad():
+        model.eval()
+        ssims = []
+        psnrs = []
+        for sino, gt in tqdm(lidc_testing):
+            sinogram = sinogram[0].to(device)
+            gt = gt[0].to(device)
+            output = model(fdk(sino, op))
+            cur_ssim = my_ssim(output, gt)
+            cur_psnr = my_psnr(output, gt)
+            ssims.append(cur_ssim)
+            psnrs.append(cur_psnr)
 
+        f.write("------Training-------")
+        f.write(f"Average psnr: {np.mean(psnrs)}")
+        f.write(f"Max psnr: {max(psnrs)}")
+        f.write(f"Min psnr: {min(psnrs)}")
+        f.write(f"Average ssim: {np.mean(ssims)}")
+        f.write(f"Max ssim: {max(psnrs)}")
+        f.write(f"Min ssim: {min(psnrs)}")
+
+    model.save(f"MSD{experiment_str}")
+
+f.close()
