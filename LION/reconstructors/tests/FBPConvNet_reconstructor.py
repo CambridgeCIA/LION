@@ -29,8 +29,14 @@ print(model.__class__)
 model = LIONmodelSubclasses.Constructor(model)
 model.to(device)
 
-# reconstruct
-dataset = experiment.get_testing_dataset()
+
+# simple version: computes everything
+reconstructor = LIONreconstructor(model, experiment)
+metrics = reconstructor()
+print(metrics)
+
+# verbose: allows your own dataset
+dataset = experiment.get_validation_dataset()
 reconstructor = LIONreconstructor(model, dataset, reduction="none")
 metrics = reconstructor(batch_size=2, subset_size=50)
 print(metrics)
