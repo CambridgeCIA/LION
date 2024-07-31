@@ -8,7 +8,6 @@ from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
-from LION.optimizers.losses.LIONloss import LIONtrainingLoss
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.classical_algorithms.fdk import fdk
 
@@ -21,7 +20,7 @@ class SupervisedSolver(LIONsolver):
         self,
         model: LIONmodel,
         optimizer: Optimizer,
-        loss_fn: LIONtrainingLoss | torch.nn.Module,
+        loss_fn: torch.nn.Module,
         geo: Geometry,
         verbose: bool = False,
         model_regularization=None,
