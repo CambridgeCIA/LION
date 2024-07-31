@@ -20,16 +20,26 @@ from skimage.metrics import (
 )
 
 
-def my_ssim(x, y):
-    x = x.cpu().numpy().squeeze()
-    y = y.cpu().numpy().squeeze()
-    return ssim(x, y, data_range=x.max() - x.min())
+def my_ssim(x: torch.Tensor, y: torch.Tensor):
+    x = x.detach().cpu().numpy().squeeze()
+    y = y.detach().cpu().numpy().squeeze()
+    vals = []
+    if x.shape[0] == 1:
+        return ssim(x, y, data_range=x.max() - x.min())
+    for i in range(x.shape[0]):
+        vals.append(ssim(x[i], y[i], data_range=x[i].max() - x[i].min()))
+    return np.array(vals).mean()
 
 
-def my_psnr(x, y):
+def my_psnr(x: torch.Tensor, y: torch.Tensor):
     x = x.cpu().numpy().squeeze()
     y = y.cpu().numpy().squeeze()
-    return psnr(x, y, data_range=x.max() - x.min())
+    vals = []
+    if x.shape[0] == 1:
+        return psnr(x, y, data_range=x.max() - x.min())
+    for i in range(x.shape[0]):
+        vals.append(psnr(x[i], y[i], data_range=x[i].max() - x[i].min()))
+    return np.array(vals).mean()
 
 
 #%%
@@ -66,11 +76,10 @@ for experiment in experiments:
 
     #%% Define DataLoader
     # Use the same amount of training
-    batch_size = 2
+    batch_size = 1
     lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
     lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
     lidc_testing = DataLoader(lidc_dataset_test, batch_size, shuffle=True)
-
     #%% Model
     width, depth = 1, 100
     dilations = []
@@ -124,12 +133,14 @@ for experiment in experiments:
     start_time = time.time()
     total_train_time = 0
     total_validation_time = 0
+
     #%% train
     for epoch in range(start_epoch, train_param.epochs):
         train_loss = 0.0
         print("Training...")
         model.train()
         for idx, (sinogram, target_reconstruction) in enumerate(tqdm(lidc_dataloader)):
+            output = model(fdk(sinogram, op))
             optimiser.zero_grad()
             sinogram = sinogram.to(device)
             target_reconstruction = target_reconstruction.to(device)
@@ -178,6 +189,8 @@ for experiment in experiments:
     )
     f.write(f"Model achieved validation loss of {min_valid_loss}\n")
 
+    model.save(f"MSD{experiment_str}")
+
     with torch.no_grad():
         model.eval()
         ssims = []
@@ -199,6 +212,5 @@ for experiment in experiments:
         f.write(f"Max ssim: {max(psnrs)}")
         f.write(f"Min ssim: {min(psnrs)}")
 
-    model.save(f"MSD{experiment_str}")
 
 f.close()
