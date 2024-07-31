@@ -92,7 +92,7 @@ class TrainParams(LIONParameter):
     loss: str
 
 
-train_param = TrainParams("adam", 5, 1e-4, (0.9, 0.99), "MSELoss")
+train_param = TrainParams("adam", 25, 1e-4, (0.9, 0.99), "MSELoss")
 
 # loss fn
 loss_fn = torch.nn.MSELoss()
@@ -145,12 +145,16 @@ with open("n2i2results.txt", "w") as f:
     # test with ssim
     solver.testing_fn = my_ssim
     ssims = solver.test()
+    f.write(f"Min ssim: {np.min(ssims)}")
+    f.write(f"Min ssim: {np.min(ssims)}")
     f.write(f"Mean ssim: {np.mean(ssims)}\n")
     f.write(f"std ssim: {np.std(ssims)}\n")
 
     # test with psnr
     solver.testing_fn = my_psnr
     psnrs = solver.test()
+    f.write(f"Max psnrs: {np.max(psnrs)}")
+    f.write(f"Min psnrs: {np.min(psnrs)}")
     f.write(f"Mean psnrs: {np.mean(psnrs)}\n")
     f.write(f"std psnrs: {np.std(psnrs)}\n")
 
@@ -175,11 +179,11 @@ for i in range(len(good_recon)):
     # should cap max / min of plots to actual max / min of gt
     plt.imshow(noisy_recon[i].detach().cpu().numpy().T)
     plt.clim(torch.min(gt[i]).item(), torch.max(gt[i]).item())
-    plt.gca().set_title(f"FBP. SSIM: {bad_ssim[i]:.2f}. PSNR: {bad_psnr[i]:.2f}")
+    plt.gca().set_title(f"FBP. {bad_ssim[i]:.2f}, {bad_psnr[i]:.2f}")
     plt.subplot(133)
     plt.imshow(good_recon[i].detach().cpu().numpy().T)
     plt.clim(torch.min(gt[i]).item(), torch.max(gt[i]).item())
-    plt.gca().set_title(f"N2I. SSIM: {good_ssim[i]:.2f}. PSNR: {good_psnr[i]:.2f}")
+    plt.gca().set_title(f"N2I. {good_ssim[i]:.2f}, {good_psnr[i]:.2f}")
     # reconstruct filepath with suffix i
     plt.savefig(f"n2i2_test{i}walljs.png", dpi=700)
     plt.close()
