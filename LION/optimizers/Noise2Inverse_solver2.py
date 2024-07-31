@@ -4,8 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from LION.CTtools.ct_geometry import Geometry
 from LION.classical_algorithms.fdk import fdk
-from LION.exceptions.exceptions import NoDataException
-from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.models.LIONmodel import LIONmodel
 import torch
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
@@ -140,63 +139,9 @@ class Noise2InverseSolver(LIONsolver):
 
         return self.loss.item() / len(self.cali_J)
 
-    def train_step(self):
-        """
-        This function is responsible for performing a single tranining set epoch of the optimization.
-        returns the average loss of the epoch
-        """
-        if self.train_loader is None:
-            raise NoDataException(
-                "Training dataloader not set: Please call set_training"
-            )
-        self.model.train()
-        epoch_loss = 0.0
-        # needs modifying, need some sort of guarantee as to what the dataset looks like.
-        # only makes sense to use noise2inverse if we only have the sinos.
-        for index, (sino, _) in enumerate(tqdm(self.train_loader)):
-            epoch_loss += self.mini_batch_step(sino)
-        return epoch_loss / (len(self.train_loader) * sino.shape[0])
-
     # No validation in Noise2Inverse (is this right?)
     def validate(self):
         return 0
-
-    def epoch_step(self, epoch):
-        """
-        This function is responsible for performing a single epoch of the optimization.
-        """
-        self.train_loss[epoch] = self.train_step()
-        print(f"Training Loss: {self.train_loss[epoch]}")
-
-    def train(self, n_epochs):
-        """
-        This function is responsible for performing the optimization.
-        Runs n_epochs additional epochs.
-        """
-        assert n_epochs > 0, "Number of epochs must be a positive integer"
-        # Make sure all parameters are set
-        self.check_complete()
-
-        if self.do_load_checkpoint:
-            print("Loading checkpoint...")
-            self.current_epoch = self.load_checkpoint()
-            self.train_loss = np.append(self.train_loss, np.zeros((n_epochs)))
-        else:
-            self.train_loss = np.zeros(n_epochs)
-
-        self.model.train()
-        # train loop
-        final_total_epochs = self.current_epoch + n_epochs
-        while self.current_epoch < final_total_epochs:
-            print(f"Training epoch {self.current_epoch + 1}")
-            self.epoch_step(self.current_epoch)
-
-            if (self.current_epoch + 1) % self.checkpoint_freq == 0:
-                if self.verbose:
-                    print(f"Checkpointing at epoch {self.current_epoch}")
-                self.save_checkpoint(self.current_epoch)
-
-            self.current_epoch += 1
 
     def test(self):
         """
@@ -205,7 +150,8 @@ class Noise2InverseSolver(LIONsolver):
         if self.check_testing_ready() != 0:
             warnings.warn("Solver not setup for testing. Please call set_testing")
             return np.array([])
-        assert self.testing_fn is not None and self.test_loader is not None
+        assert self.test_loader is not None
+        assert self.testing_fn is not None
 
         was_training = self.model.training
         self.model.eval()

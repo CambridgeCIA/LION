@@ -7,11 +7,9 @@ from torch.utils.data import DataLoader, Subset
 from LION.CTtools.ct_utils import make_operator
 from LION.models.LIONmodel import ModelInputType
 from LION.models.iterative_unrolled.ItNet import UNet
-from LION.models.post_processing.FBPConvNet import FBPConvNet
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 from LION.optimizers.Noise2Inverse_solver2 import Noise2InverseSolver
-from LION.optimizers.Noise2Inverse_solver import Noise2Inverse_solver
 from skimage.metrics import (
     structural_similarity as ssim,
     peak_signal_noise_ratio as psnr,
@@ -23,13 +21,13 @@ def my_ssim(x, y):
     if x.shape[0] == 1:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
-        return ssim(x, y, data_range=x.max() - x.min())
+        return ssim(x, y, data_range=y.max() - y.min())
     else:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
         vals = []
         for i in range(x.shape[0]):
-            vals.append(ssim(x[i], y[i], data_range=x[i].max() - x[i].min()))
+            vals.append(ssim(x[i], y[i], data_range=y[i].max() - y[i].min()))
         return np.array(vals)
 
 
@@ -37,13 +35,13 @@ def my_psnr(x, y):
     if x.shape[0] == 1:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
-        return psnr(x, y, data_range=x.max() - x.min())
+        return psnr(x, y, data_range=y.max() - y.min())
     else:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
         vals = []
         for i in range(x.shape[0]):
-            vals.append(psnr(x[i], y[i], data_range=x[i].max() - x[i].min()))
+            vals.append(psnr(x[i], y[i], data_range=y[i].max() - y[i].min()))
         return np.array(vals)
 
 
@@ -92,7 +90,7 @@ class TrainParams(LIONParameter):
     loss: str
 
 
-train_param = TrainParams("adam", 25, 1e-4, (0.9, 0.99), "MSELoss")
+train_param = TrainParams("adam", 100, 1e-4, (0.9, 0.99), "MSELoss")
 
 # loss fn
 loss_fn = torch.nn.MSELoss()
