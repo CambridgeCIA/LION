@@ -1,7 +1,7 @@
-#%% This example shows how to train MSDNet for full angle, noisy measurements.
+# %% This example shows how to train MSDNet for full angle, noisy measurements.
 
 
-#%% Imports
+# %% Imports
 import time
 import numpy as np
 import torch
@@ -25,9 +25,9 @@ def my_ssim(x: torch.Tensor, y: torch.Tensor):
     y = y.detach().cpu().numpy().squeeze()
     vals = []
     if x.shape[0] == 1:
-        return ssim(x, y, data_range=x.max() - x.min())
+        return ssim(x, y, data_range=y.max() - y.min())
     for i in range(x.shape[0]):
-        vals.append(ssim(x[i], y[i], data_range=x[i].max() - x[i].min()))
+        vals.append(ssim(x[i], y[i], data_range=y[i].max() - y[i].min()))
     return np.array(vals).mean()
 
 
@@ -36,13 +36,13 @@ def my_psnr(x: torch.Tensor, y: torch.Tensor):
     y = y.cpu().numpy().squeeze()
     vals = []
     if x.shape[0] == 1:
-        return psnr(x, y, data_range=x.max() - x.min())
+        return psnr(x, y, data_range=y.max() - y.min())
     for i in range(x.shape[0]):
-        vals.append(psnr(x[i], y[i], data_range=x[i].max() - x[i].min()))
+        vals.append(psnr(x[i], y[i], data_range=y[i].max() - y[i].min()))
     return np.array(vals).mean()
 
 
-#%%
+# %%
 # % Chose device:
 device = torch.device("cuda:3")
 torch.cuda.set_device(device)
@@ -51,7 +51,7 @@ savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
 
 
 #
-#%% Define experiment
+# %% Define experiment
 
 experiments = [
     ct_experiments.clinicalCTRecon(),
@@ -66,21 +66,21 @@ for experiment in experiments:
     print(experiment_str)
     f.write(experiment_str)
     op = make_operator(experiment.geo)
-    #%% Dataset
+    # %% Dataset
     lidc_dataset = experiment.get_training_dataset()
     lidc_dataset_val = experiment.get_validation_dataset()
     lidc_dataset = Subset(lidc_dataset, range(250))
-    lidc_dataset_val = Subset(lidc_dataset_val, range(100))
+    lidc_dataset_val = Subset(lidc_dataset_val, range(250))
     lidc_dataset_test = experiment.get_testing_dataset()
-    lidc_dataset_test = Subset(lidc_dataset_test, range(100))
+    lidc_dataset_test = Subset(lidc_dataset_test, range(250))
 
-    #%% Define DataLoader
+    # %% Define DataLoader
     # Use the same amount of training
     batch_size = 1
     lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
-    lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=True)
-    lidc_testing = DataLoader(lidc_dataset_test, batch_size, shuffle=True)
-    #%% Model
+    lidc_validation = DataLoader(lidc_dataset_val, 1, shuffle=True)
+    lidc_testing = DataLoader(lidc_dataset_test, 1, shuffle=True)
+    # %% Model
     width, depth = 1, 100
     dilations = []
     for i in range(depth):
@@ -102,7 +102,7 @@ for experiment in experiments:
 
     print(f"Model has {count_parameters(model)} parameters")
 
-    #%% Optimizer
+    # %% Optimizer
     train_param = LIONParameter()
 
     # loss fn
@@ -134,7 +134,7 @@ for experiment in experiments:
     total_train_time = 0
     total_validation_time = 0
 
-    #%% train
+    # %% train
     for epoch in range(start_epoch, train_param.epochs):
         train_loss = 0.0
         print("Training...")
@@ -178,8 +178,8 @@ for experiment in experiments:
             min_valid_loss = valid_loss
         total_validation_time += time.time() - start_time
 
-    f.write("------Training------")
-    f.write(f"Model has {count_parameters(model)} trainable parameters")
+    f.write("------Training-----\n-")
+    f.write(f"Model has {count_parameters(model)} trainable parameters\n")
     f.write(
         f"Model took {total_train_time/train_param.epochs}s /epoch to train on average\n"
     )
@@ -189,28 +189,34 @@ for experiment in experiments:
     )
     f.write(f"Model achieved validation loss of {min_valid_loss}\n")
 
-    model.save(f"MSD{experiment_str}")
+    # model.save(
+    #     f"MSD{experiment_str}",
+    #     epoch=train_param.epochs,
+    #     training=train_param,
+    #     dataset=experiment.param,
+    #     geometry=experiment.geo,
+    # )
 
     with torch.no_grad():
         model.eval()
         ssims = []
         psnrs = []
-        for sino, gt in tqdm(lidc_testing):
-            sinogram = sinogram[0].to(device)
-            gt = gt[0].to(device)
-            output = model(fdk(sino, op))
+        for sinogram, gt in tqdm(lidc_testing):
+            sinogram = sinogram.to(device)
+            gt = gt.to(device)
+            output = model(fdk(sinogram, op))
             cur_ssim = my_ssim(output, gt)
             cur_psnr = my_psnr(output, gt)
             ssims.append(cur_ssim)
             psnrs.append(cur_psnr)
 
-        f.write("------Training-------")
-        f.write(f"Average psnr: {np.mean(psnrs)}")
-        f.write(f"Max psnr: {max(psnrs)}")
-        f.write(f"Min psnr: {min(psnrs)}")
-        f.write(f"Average ssim: {np.mean(ssims)}")
-        f.write(f"Max ssim: {max(psnrs)}")
-        f.write(f"Min ssim: {min(psnrs)}")
+        f.write("------Testing-------\n")
+        f.write(f"Average psnr: {np.mean(psnrs)}\n")
+        f.write(f"Max psnr: {max(psnrs)}\n")
+        f.write(f"Min psnr: {min(psnrs)}\n")
+        f.write(f"Average ssim: {np.mean(ssims)}\n")
+        f.write(f"Max ssim: {max(psnrs)}\n")
+        f.write(f"Min ssim: {min(psnrs)}\n")
 
 
 f.close()
