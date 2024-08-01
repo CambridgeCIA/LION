@@ -64,7 +64,7 @@ f = open("msd_benchmarks.txt", "w")
 for experiment in experiments:
     experiment_str = str(type(experiment)).split("ct_experiments.")[1][:-2]
     print(experiment_str)
-    f.write(experiment_str)
+    f.write(experiment_str + "\n")
     op = make_operator(experiment.geo)
     # %% Dataset
     lidc_dataset = experiment.get_training_dataset()
@@ -110,7 +110,7 @@ for experiment in experiments:
     train_param.optimiser = "adam"
 
     # optimizer
-    train_param.epochs = 25
+    train_param.epochs = 3
     train_param.learning_rate = 1e-3
     train_param.betas = (0.9, 0.99)
     train_param.loss = "MSELoss"
@@ -209,6 +209,9 @@ for experiment in experiments:
             cur_psnr = my_psnr(output, gt)
             ssims.append(cur_ssim)
             psnrs.append(cur_psnr)
+
+        print(ssims)
+        print(psnrs)
 
         f.write("------Testing-------\n")
         f.write(f"Average psnr: {np.mean(psnrs)}\n")
