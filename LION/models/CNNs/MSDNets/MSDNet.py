@@ -26,7 +26,7 @@ class MSD_Params(ModelParams):
         dilations: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] * 10,
         look_back_depth: int = -1,
         final_look_back_depth: int = -1,
-        activation: nn.Module = nn.ReLU(),
+        activation: str = "ReLU",
     ):
         super().__init__(model_input_type=ModelInputType.NOISY_RECON)
         self.in_channels: int = in_channels
@@ -35,7 +35,7 @@ class MSD_Params(ModelParams):
         self.dilations: list[int] = dilations
         self.look_back_depth: int = look_back_depth
         self.final_look_back_depth: int = final_look_back_depth
-        self.activation: nn.Module = activation
+        self.activation: str = activation
 
 
 class MSD_Layer(nn.Module):
@@ -119,7 +119,18 @@ class MSDNet(LIONmodel):
             self.dilations = self.model_parameters.dilations
             self.look_back_depth = self.model_parameters.look_back_depth
             self.final_look_back_depth = self.model_parameters.final_look_back_depth
-            self.activation = self.model_parameters.activation
+            if (acti := self.model_parameters.activation.lower()) == "relu":
+                self.activation = nn.ReLU()
+            elif acti == "prelu":
+                self.activation = nn.PReLU()
+            elif acti == "leakyrelu":
+                self.activation = nn.LeakyReLU()
+            elif acti == "tanh":
+                self.activation = nn.Tanh()
+            else:
+                raise ValueError(
+                    f"Unrecognised activation '{self.model_parameters.activation}'. Expected one of 'ReLU', 'PReLU, 'LeakyReLU', 'Tanh'"
+                )
         except AttributeError as e:
             warnings.warn(
                 f"Couldn't load parameter {e.name}, ensure model file actually corresponds to an MSDNet"

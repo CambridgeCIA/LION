@@ -69,14 +69,14 @@ for experiment in experiments:
     # %% Dataset
     lidc_dataset = experiment.get_training_dataset()
     lidc_dataset_val = experiment.get_validation_dataset()
-    lidc_dataset = Subset(lidc_dataset, range(500))
+    lidc_dataset = Subset(lidc_dataset, range(250))
     lidc_dataset_val = Subset(lidc_dataset_val, range(250))
     lidc_dataset_test = experiment.get_testing_dataset()
     lidc_dataset_test = Subset(lidc_dataset_test, range(250))
 
     # %% Define DataLoader
     # Use the same amount of training
-    batch_size = 1
+    batch_size = 2
     lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
     lidc_validation = DataLoader(lidc_dataset_val, 1, shuffle=True)
     lidc_testing = DataLoader(lidc_dataset_test, 1, shuffle=True)
@@ -93,7 +93,7 @@ for experiment in experiments:
         dilations=dilations,
         look_back_depth=-1,
         final_look_back_depth=-1,
-        activation=nn.ReLU(),
+        activation="ReLU",
     )
     model = MSDNet(model_parameters=model_params).to(device)
 
@@ -110,7 +110,7 @@ for experiment in experiments:
     train_param.optimiser = "adam"
 
     # optimizer
-    train_param.epochs = 25
+    train_param.epochs = 20
     train_param.learning_rate = 1e-3
     train_param.betas = (0.9, 0.99)
     train_param.loss = "MSELoss"
@@ -189,26 +189,26 @@ for experiment in experiments:
     )
     f.write(f"Model achieved validation loss of {min_valid_loss}\n")
 
-    # model.save(
-    #     f"MSD{experiment_str}",
-    #     epoch=train_param.epochs,
-    #     training=train_param,
-    #     dataset=experiment.param,
-    #     geometry=experiment.geo,
-    # )
+    model.save(
+        f"MSD{experiment_str}",
+        epoch=train_param.epochs,
+        training=train_param,
+        dataset=experiment.param,
+        geometry=experiment.geo,
+    )
 
     with torch.no_grad():
         model.eval()
-        ssims = []
-        psnrs = []
+        ssims = np.array([])
+        psnrs = np.array([])
         for sinogram, gt in tqdm(lidc_testing):
             sinogram = sinogram.to(device)
             gt = gt.to(device)
             output = model(fdk(sinogram, op))
             cur_ssim = my_ssim(output, gt)
             cur_psnr = my_psnr(output, gt)
-            ssims.append(cur_ssim)
-            psnrs.append(cur_psnr)
+            ssims = np.append(ssims, cur_ssim)
+            psnrs = np.append(psnrs, cur_psnr)
 
         ssims = ssims[np.isfinite(ssims)]
         psnrs = psnrs[np.isfinite(psnrs)]
