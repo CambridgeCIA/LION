@@ -25,9 +25,9 @@ torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
 
-final_result_fname = "ar_final_iter.pt"
-checkpoint_fname = "ar_check_*.pt"
-validation_fname = "ar_min_val.pt"
+final_result_fname = "arlessdata_final_iter.pt"
+checkpoint_fname = "arlessdata_check_*.pt"
+validation_fname = "arlessdata_min_val.pt"
 #
 #%% Define experiment
 # experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
@@ -39,10 +39,10 @@ lidc_dataset_test = experiment.get_testing_dataset()
 
 #%% Define DataLoader
 # Use the same amount of training
-batch_size = 1
-lidc_dataset = Subset(lidc_dataset, [i for i in range(500)])
-lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(3)])
-lidc_dataset_test = Subset(lidc_dataset_test, [i for i in range(3)])
+batch_size = 4
+# lidc_dataset = Subset(lidc_dataset, [i for i in range(250)])
+lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(25)])
+lidc_dataset_test = Subset(lidc_dataset_test, [i for i in range(25)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, 1, shuffle=True)
 lidc_test = DataLoader(lidc_dataset_test, 1, shuffle=True)
@@ -97,7 +97,7 @@ class TrainParam(LIONParameter):
     accumulation_steps: int
 
 
-train_param = TrainParam("adam", 25, 1e-3, (0.9, 0.99), "MSELoss", 1)
+train_param = TrainParam("adam", 20, 1e-3, (0.9, 0.99), "MSELoss", 1)
 
 optimizer = Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
@@ -110,9 +110,9 @@ val_loss = nn.MSELoss()
 solver = ARSolver(model, optimizer, SGD, experiment.geo, True, device)
 
 solver.set_saving(savefolder, final_result_fname)
-solver.set_checkpointing(checkpoint_fname)
+solver.set_checkpointing(checkpoint_fname, 5)
 solver.set_training(lidc_dataloader)
-solver.set_validation(lidc_validation, 1, val_loss, validation_fname)
+solver.set_validation(lidc_validation, 5, val_loss, validation_fname)
 solver.set_normalization(False)
 
 # train regularizer
@@ -121,7 +121,7 @@ solver.train(train_param.epochs)
 solver.save_final_results()
 solver.clean_checkpoints()
 
-# model, *data, = UNet.load(savefolder.joinpath(final_result_fname))
+# model, *data, = network.load(savefolder.joinpath(validation_fname))
 # model.model_parameters.model_input_type = ModelInputType.IMAGE
 # solver.model = model
 
