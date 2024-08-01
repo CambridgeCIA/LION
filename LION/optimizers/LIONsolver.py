@@ -71,7 +71,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self,
         model: LIONmodel,
         optimizer: Optimizer,
-        loss_fn: torch.nn.Module,
+        loss_fn: Callable,
         geometry: Geometry,
         verbose: bool = True,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
@@ -80,13 +80,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         super().__init__()
         if solver_params is None:
             self.solver_params = self.default_parameters()
-
+        else:
+            self.solver_params = solver_params
         assert isinstance(model, LIONmodel), "model must be a LIONmodel"
         assert isinstance(optimizer, Optimizer), "optimizer must be a torch optimizer"
-
-        # currently not used in subclasses or here, but we'll save it with the view that we'll want to serialize these at some point
-        # relevant solver_params are extracted into data members on a subclass level
-        self.solver_params = solver_params
 
         self.model = model
         self.optimizer = optimizer
@@ -207,7 +204,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.checkpoint_fname = checkpoint_fname
 
     def set_normalization(self, do_normalize: bool):
-        print(self.model.model_parameters.model_input_type)
         if self.model.get_input_type() == ModelInputType.SINOGRAM:
             warnings.warn(
                 """Normalization will not be carried out on this model,
@@ -648,9 +644,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model.train()
         epoch_loss = 0.0
         for _, (data, target) in enumerate(tqdm(self.train_loader)):
-            epoch_loss += self.mini_batch_step(
+            self.optimizer.zero_grad()
+            batch_loss = self.mini_batch_step(
                 data.to(self.device), target.to(self.device)
             )
+            batch_loss.backward()
+            epoch_loss += batch_loss.item()
+            self.optimizer.step()
         return epoch_loss / len(self.train_loader)
 
     def epoch_step(self, epoch):
@@ -713,8 +713,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def mini_batch_step(self, sino_batch, target_batch) -> float:
+    def mini_batch_step(self, sino_batch, target_batch) -> torch.Tensor:
         """
-        This function should perform a single step of the optimization
+        This function should perform a single step of the optimization and return the loss
         """
         pass

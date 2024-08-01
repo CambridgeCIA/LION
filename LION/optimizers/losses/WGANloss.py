@@ -1,11 +1,11 @@
 import numpy as np
 import torch
+import torch.nn as nn
 from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import ModelInputType
-from LION.optimizers.losses.LIONloss import LIONtrainingLoss
 
 
-class WGANloss(LIONtrainingLoss):
+class WGANloss(nn.Module):
     def __init__(self, mu=10e-2) -> None:
         super().__init__()
         self.mu = mu

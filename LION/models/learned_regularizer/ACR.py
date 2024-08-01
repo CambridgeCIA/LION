@@ -13,37 +13,37 @@ import LION.CTtools.ct_geometry as ct
 from LION.utils.parameter import LIONParameter
 import torch.nn.utils.parametrize as P
 from ts_algorithms import fdk
-from tqdm import tqdm
 import numpy as np
-import wandb
 from LION.utils.math import power_method
 
 
 from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
+
 # Just a temporary SSIM that takes troch tensors (will be added to LION at some point)
 def my_ssim(x: torch.tensor, y: torch.tensor):
-    if x.shape[0]==1:
+    if x.shape[0] == 1:
         x = x.cpu().numpy().squeeze()
         y = y.cpu().numpy().squeeze()
         return ssim(x, y, data_range=x.max() - x.min())
-    else: 
+    else:
         x = x.cpu().numpy().squeeze()
         y = y.cpu().numpy().squeeze()
-        vals=[]
+        vals = []
         for i in range(x.shape[0]):
             vals.append(ssim(x[i], y[i], data_range=x[i].max() - x[i].min()))
         return np.array(vals)
 
+
 def my_psnr(x: torch.tensor, y: torch.tensor):
-    if x.shape[0]==1:
+    if x.shape[0] == 1:
         x = x.cpu().numpy().squeeze()
         y = y.cpu().numpy().squeeze()
         return psnr(x, y, data_range=x.max() - x.min())
-    else: 
+    else:
         x = x.cpu().numpy().squeeze()
         y = y.cpu().numpy().squeeze()
-        vals=[]
+        vals = []
         for i in range(x.shape[0]):
             vals.append(psnr(x[i], y[i], data_range=x[i].max() - x[i].min()))
         return np.array(vals)
@@ -108,9 +108,11 @@ class L2net(nn.Module):
 
 
 class ACR(LIONmodel.LIONmodel):
-    def __init__(self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None):
+    def __init__(
+        self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
+    ):
 
-        super().__init__(model_parameters,geometry_parameters)
+        super().__init__(model_parameters, geometry_parameters)
         self._make_operator()
         # First Conv
         self.first_layer = nn.Conv2d(
@@ -155,17 +157,21 @@ class ACR(LIONmodel.LIONmodel):
         self.initialize_weights()
         self.estimate_lambda()
         self.op_norm = power_method(self.op)
-        self.model_parameters.step_size = 1/(self.op_norm)**2
+        self.model_parameters.step_size = 1 / (self.op_norm) ** 2
 
     # a weight initialization routine for the ICNN
     def initialize_weights(self, min_val=0.0, max_val=1e-3):
         device = torch.cuda.current_device()
         for i in range(self.model_parameters.layers):
             block = getattr(self, f"ICNN_layer_{i}")
-            block.blue.weight.data = min_val + (max_val - min_val) * torch.rand_like(block.blue.weight.data)
-        self.last_layer.weight.data = min_val + (max_val - min_val) * torch.rand_like(self.last_layer.weight.data)
+            block.blue.weight.data = min_val + (max_val - min_val) * torch.rand_like(
+                block.blue.weight.data
+            )
+        self.last_layer.weight.data = min_val + (max_val - min_val) * torch.rand_like(
+            self.last_layer.weight.data
+        )
         return self
-    
+
     def improved_initialize_weights(self, min_val=0.0, max_val=0.001):
         ###
         ### This is based on a recent paper https://openreview.net/pdf?id=pWZ97hUQtQ
@@ -183,7 +189,9 @@ class ACR(LIONmodel.LIONmodel):
                 self.model_parameters.kernel_size,
                 self.model_parameters.kernel_size,
             ).to(device)
-        self.last_layer.weight.data = min_val + (max_val - min_val) * torch.rand_like(self.last_layer.weight.data)
+        self.last_layer.weight.data = min_val + (max_val - min_val) * torch.rand_like(
+            self.last_layer.weight.data
+        )
         return self
 
     def forward(self, x):
@@ -194,33 +202,35 @@ class ACR(LIONmodel.LIONmodel):
         for i in range(self.model_parameters.layers):
             layer = primal_module = getattr(self, f"ICNN_layer_{i}")
             z = layer(z, x)
-            
+
         z = self.last_layer(z)
         # print(self.pool(z).mean(),self.L2(z).mean())
-        return self.pool(z).reshape(-1,1) + self.L2(z)
-    
-    def estimate_lambda(self,dataset=None):
-        self.lamb=1.0
-        if dataset is None: self.lamb=1.0
-        else: 
+        return self.pool(z).reshape(-1, 1) + self.L2(z)
+
+    def estimate_lambda(self, dataset=None):
+        self.lamb = 1.0
+        if dataset is None:
+            self.lamb = 1.0
+        else:
             residual = 0.0
             for index, (data, target) in enumerate(dataset):
-                residual += torch.norm(self.AT(self.A(target) - data),dim=(2,3)).mean()
-            self.lamb = residual.mean()/len(dataset)
-        print('Estimated lambda: ' + str(self.lamb))
-    
-       
-    
+                residual += torch.norm(
+                    self.AT(self.A(target) - data), dim=(2, 3)
+                ).mean()
+            self.lamb = residual.mean() / len(dataset)
+        print("Estimated lambda: " + str(self.lamb))
+
     # def output(self, x):
-        # return self.AT(x)
-    
-    def var_energy(self,x,y):
+    # return self.AT(x)
+
+    def var_energy(self, x, y):
         # return torch.norm(x) + 0.5*(torch.norm(self.A(x)-y,dim=(2,3))**2).sum()#self.lamb * self.forward(x).sum()
-        return 0.5*((self.A(x)-y)**2).sum() + self.lamb * self.forward(x).sum()
-      ### What is the difference between .sum() and .mean()??? idfk but PSNR is lower when I do .sum
-      
-    def output(self,y,truth=None):
-        x0=[]
+        return 0.5 * ((self.A(x) - y) ** 2).sum() + self.lamb * self.forward(x).sum()
+
+    ### What is the difference between .sum() and .mean()??? idfk but PSNR is lower when I do .sum
+
+    def output(self, y, truth=None):
+        x0 = []
         device = torch.cuda.current_device()
         for i in range(y.shape[0]):
             x0.append(fdk(self.op, y[i]))
@@ -228,36 +238,45 @@ class ACR(LIONmodel.LIONmodel):
         # print(x.shape)
         # print(x.min(),x.max())
         # print(my_psnr(truth.detach().to(device),x.detach()).mean(),my_ssim(truth.detach().to(device),x.detach()).mean())
-        x=torch.nn.Parameter(x)#.requires_grad_(True)
+        x = torch.nn.Parameter(x)  # .requires_grad_(True)
 
-        optimizer = torch.optim.SGD([x], lr=self.model_parameters.step_size, momentum=self.model_parameters.momentum)
+        optimizer = torch.optim.SGD(
+            [x],
+            lr=self.model_parameters.step_size,
+            momentum=self.model_parameters.momentum,
+        )
         lr = self.model_parameters.step_size
-        prevpsn=0
-        curpsn=0
+        prevpsn = 0
+        curpsn = 0
         for j in range(self.model_parameters.no_steps):
             # print(x.min(),x.max())
             # data_misfit=self.A(x)-y
             # data_misfit_grad = self.AT(data_misfit)
-            
+
             optimizer.zero_grad()
             # reg_func=self.lamb * self.forward(x).mean()
             # reg_func.backward()
             # print(x.requires_grad, reg_func.requires_grad)
-            energy = self.var_energy(x,y)
+            energy = self.var_energy(x, y)
             energy.backward()
-            while(self.var_energy(x-x.grad*lr,y) > energy - 0.5*lr*(x.grad.norm(dim=(2,3))**2).mean()):
-                lr=self.model_parameters.beta_rate*lr
+            while (
+                self.var_energy(x - x.grad * lr, y)
+                > energy - 0.5 * lr * (x.grad.norm(dim=(2, 3)) ** 2).mean()
+            ):
+                lr = self.model_parameters.beta_rate * lr
             for g in optimizer.param_groups:
-                g['lr'] = lr
+                g["lr"] = lr
             # x.grad+=data_misfit_grad
-            if(truth is not None):
-                loss = torch.nn.MSELoss()(x.detach(),truth.detach().to(device))
-                psnr_val = my_psnr(truth.detach().to(device),x.detach()).mean()
-                ssim_val = my_ssim(truth.detach().to(device),x.detach()).mean()
+            if truth is not None:
+                loss = torch.nn.MSELoss()(x.detach(), truth.detach().to(device))
+                psnr_val = my_psnr(truth.detach().to(device), x.detach()).mean()
+                ssim_val = my_ssim(truth.detach().to(device), x.detach()).mean()
                 # wandb.log({'MSE Loss': loss.item(),'SSIM':ssim_val,'PSNR':psnr_val})
                 # wandb.log({'MSE Loss'+str(self.model_parameters.step_size): loss.item(),'SSIM'+str(self.model_parameters.step_size):ssim_val,'PSNR'+str(self.model_parameters.step_size):psnr_val})
-                print(f"{j}: SSIM: {my_ssim(truth.to(device).detach(),x.detach())}, PSNR: {my_psnr(truth.to(device).detach(),x.detach())}, Energy: {energy.detach().item()}")
-        
+                print(
+                    f"{j}: SSIM: {my_ssim(truth.to(device).detach(),x.detach())}, PSNR: {my_psnr(truth.to(device).detach(),x.detach())}, Energy: {energy.detach().item()}"
+                )
+
             #     if(self.args.outp):
             #         print(j)
             #     prevpsn=curpsn
@@ -268,11 +287,17 @@ class ACR(LIONmodel.LIONmodel):
             optimizer.step()
             x.clamp(min=0.0)
         return x.detach()
-    
-    def normalise(self,x):
-        return (x - self.model_parameters.xmin) / (self.model_parameters.xmax - self.model_parameters.xmin)
-    def unnormalise(self,x):
-        return x * (self.model_parameters.xmax - self.model_parameters.xmin) + self.model_parameters.xmin
+
+    def normalise(self, x):
+        return (x - self.model_parameters.xmin) / (
+            self.model_parameters.xmax - self.model_parameters.xmin
+        )
+
+    def unnormalise(self, x):
+        return (
+            x * (self.model_parameters.xmax - self.model_parameters.xmin)
+            + self.model_parameters.xmin
+        )
 
     @staticmethod
     def default_parameters():
@@ -286,9 +311,9 @@ class ACR(LIONmodel.LIONmodel):
         param.no_steps = 150
         param.step_size = 1e-6
         param.momentum = 0.5
-        param.beta_rate=0.95
-        param.xmin = 0.
-        param.xmax = 1.
+        param.beta_rate = 0.95
+        param.xmin = 0.0
+        param.xmax = 1.0
         return param
 
     @staticmethod
@@ -296,7 +321,9 @@ class ACR(LIONmodel.LIONmodel):
         if cite_format == "MLA":
             print("Mukherjee, Subhadip, et al.")
             print('"Data-Driven Convex Regularizers for Inverse Problems."')
-            print("ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2024")
+            print(
+                "ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2024"
+            )
             print("arXiv:2008.02839 (2020).")
         elif cite_format == "bib":
             string = """
