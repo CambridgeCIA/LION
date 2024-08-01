@@ -11,7 +11,6 @@ from torch.optim.sgd import SGD
 from torch.utils.data import DataLoader, Subset
 import pathlib
 from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
-from LION.models.iterative_unrolled.ItNet import UNet
 from LION.models.learned_regularizer.ACR import my_psnr, my_ssim
 from LION.optimizers.ARsolver import ARSolver
 from LION.utils.parameter import LIONParameter
@@ -41,7 +40,7 @@ lidc_dataset_test = experiment.get_testing_dataset()
 #%% Define DataLoader
 # Use the same amount of training
 batch_size = 1
-lidc_dataset = Subset(lidc_dataset, [i for i in range(250)])
+lidc_dataset = Subset(lidc_dataset, [i for i in range(500)])
 lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(3)])
 lidc_dataset_test = Subset(lidc_dataset_test, [i for i in range(3)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
@@ -128,10 +127,8 @@ solver.clean_checkpoints()
 
 solver.set_testing(lidc_test, my_ssim)
 ssims = solver.test()
-print(ssims)
 solver.set_testing(lidc_test, my_psnr)
 psnrs = solver.test()
-print(psnrs)
 
 with open("ar_results.txt", "w") as f:
     f.write(

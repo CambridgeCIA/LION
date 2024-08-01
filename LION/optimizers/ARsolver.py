@@ -57,8 +57,6 @@ class ARSolver(LIONsolver):
                     self.AT(self.A(target) - sino), dim=(2, 3)
                 ).mean()
                 # residual += torch.sqrt(((self.AT(self.A(target) - data))**2).sum())
-            print(residual)
-            print(len(dataloader.dataset))
             self.alpha = residual / len(dataloader.dataset)
         if self.verbose:
             print("Estimated alpha: " + str(self.alpha))
@@ -83,8 +81,9 @@ class ARSolver(LIONsolver):
         status = self.model.training
         self.model.eval()
 
-        self.alpha = 0.1
-        # self.estimate_alpha(self.validation_loader if self.validation_loader is not None else None)
+        self.estimate_alpha(
+            self.validation_loader if self.validation_loader is not None else None
+        )
 
         validation_loss = np.array([])
         for sino, target in tqdm(self.validation_loader):
@@ -151,8 +150,7 @@ class ARSolver(LIONsolver):
         if self.verbose:
             print(f"Testing model after {self.current_epoch} epochs of training")
 
-        # self.estimate_alpha(self.test_loader)
-        self.alpha = 0.1
+        self.estimate_alpha(self.test_loader)
 
         test_loss = np.array([])
         printed = 0
@@ -172,7 +170,7 @@ class ARSolver(LIONsolver):
             )
             lr = self.solver_params.step_size
 
-            for i in tqdm(range(self.solver_params.no_steps)):
+            for _ in tqdm(range(self.solver_params.no_steps)):
                 optimizer.zero_grad()
 
                 energy = self.var_energy(recon, sino)
@@ -222,7 +220,7 @@ class ARSolver(LIONsolver):
         if status:
             self.model.train()
 
-        return np.mean(test_loss)
+        return test_loss
 
     def wgan_loss(self, sino_batch, target_batch):
         bad_recon = fdk(sino_batch, self.op)
