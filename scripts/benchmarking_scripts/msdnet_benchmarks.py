@@ -69,7 +69,7 @@ for experiment in experiments:
     # %% Dataset
     lidc_dataset = experiment.get_training_dataset()
     lidc_dataset_val = experiment.get_validation_dataset()
-    lidc_dataset = Subset(lidc_dataset, range(250))
+    lidc_dataset = Subset(lidc_dataset, range(500))
     lidc_dataset_val = Subset(lidc_dataset_val, range(250))
     lidc_dataset_test = experiment.get_testing_dataset()
     lidc_dataset_test = Subset(lidc_dataset_test, range(250))
@@ -110,7 +110,7 @@ for experiment in experiments:
     train_param.optimiser = "adam"
 
     # optimizer
-    train_param.epochs = 3
+    train_param.epochs = 25
     train_param.learning_rate = 1e-3
     train_param.betas = (0.9, 0.99)
     train_param.loss = "MSELoss"
@@ -210,8 +210,8 @@ for experiment in experiments:
             ssims.append(cur_ssim)
             psnrs.append(cur_psnr)
 
-        print(ssims)
-        print(psnrs)
+        ssims = ssims[np.isfinite(ssims)]
+        psnrs = psnrs[np.isfinite(psnrs)]
 
         f.write("------Testing-------\n")
         f.write(f"Average psnr: {np.mean(psnrs)}\n")
