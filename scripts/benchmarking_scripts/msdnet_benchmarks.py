@@ -3,6 +3,7 @@
 
 # %% Imports
 import time
+from matplotlib import pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
@@ -98,8 +99,6 @@ for experiment in experiments:
     )
     # model = MSDNet(model_parameters=model_params).to(device)
     model, data, options = MSDNet.load(f"MSD{experiment_str}.pt")
-
-    print(options)
 
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -206,10 +205,15 @@ for experiment in experiments:
         mses = np.array([])
         ssims = np.array([])
         psnrs = np.array([])
-        for sinogram, gt in tqdm(lidc_testing):
+        for i, (sinogram, gt) in enumerate(tqdm(lidc_testing)):
             sinogram = sinogram.to(device)
             gt = gt.to(device)
-            output = model(fdk(sinogram, op))
+            bad_recon = fdk(sinogram, op)
+            bad_mse = mse(bad_recon.cpu().numpy(), gt.cpu().numpy())
+            bad_ssim = my_ssim(bad_recon, gt)
+            bad_psnr = my_psnr(bad_recon, gt)
+
+            output = model(bad_recon)
             cur_mse = mse(output.cpu().numpy(), gt.cpu().numpy())
             cur_ssim = my_ssim(output, gt)
             cur_psnr = my_psnr(output, gt)
@@ -217,6 +221,29 @@ for experiment in experiments:
             mses = np.append(mses, cur_mse)
             ssims = np.append(ssims, cur_ssim)
             psnrs = np.append(psnrs, cur_psnr)
+
+            plt.figure()
+            plt.subplot(131)
+            plt.imshow(gt[0].detach().cpu().numpy().T)
+            plt.clim(torch.min(gt[0]).item(), torch.max(gt[0]).item())
+            plt.gca().set_title("Ground Truth")
+            plt.axis("off")
+            plt.subplot(132)
+            # should cap max / min of plots to actual max / min of gt
+            plt.imshow(bad_recon[0].detach().cpu().numpy().T)
+            plt.clim(torch.min(gt[0]).item(), torch.max(gt[0]).item())
+            plt.gca().set_title("FBP")
+            plt.text(0, 650, f"{bad_ssim:.2f}\n{bad_psnr:.2f}")
+            plt.axis("off")
+            plt.subplot(133)
+            plt.imshow(output[0].detach().cpu().numpy().T)
+            plt.clim(torch.min(gt[0]).item(), torch.max(gt[0]).item())
+            plt.gca().set_title("MSDNet")
+            plt.text(0, 650, f"{cur_ssim:.2f}\n{cur_psnr:.2f}")
+            plt.axis("off")
+            # reconstruct filepath with suffix i
+            plt.savefig(f"msdnet{i}.png", dpi=700)
+            plt.close()
 
         print(mses)
         print(ssims)
