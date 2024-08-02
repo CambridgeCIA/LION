@@ -56,9 +56,9 @@ torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
 
-final_result_fname = "ar_final_iter.pt"
+final_result_fname = "arninaparams_final_iter.pt"
 checkpoint_fname = "ar_check_*.pt"
-validation_fname = "arfulldata_min_val.pt"
+validation_fname = "arninaparams_min_val.pt"
 #
 #%% Define experiment
 # experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
@@ -128,7 +128,7 @@ class TrainParam(LIONParameter):
     accumulation_steps: int
 
 
-train_param = TrainParam("adam", 10, 1e-3, (0.9, 0.99), "MSELoss", 1)
+train_param = TrainParam("adam", 10, 1e-4, (0.9, 0.99), "MSELoss", 1)
 
 optimizer = Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
@@ -138,14 +138,14 @@ optimizer = Adam(
 val_loss = nn.MSELoss()
 
 #%% Solver
-solver_params = ARParams(LIONParameter(momentum=0.0), False, 500, 1e-6, 0.95, 1e-3)
+solver_params = ARParams(LIONParameter(momentum=0.0), False, 500, 1e-6, 0.95, 1e-1)
 solver = ARSolver(model, optimizer, SGD, experiment.geo, True, device, solver_params)
 
 solver.set_saving(savefolder, final_result_fname)
 solver.set_checkpointing(checkpoint_fname, 5)
 solver.set_loading(savefolder, True)
 solver.set_training(lidc_dataloader)
-solver.set_validation(lidc_validation, 5, val_loss, validation_fname)
+solver.set_validation(lidc_validation, 1, val_loss, validation_fname)
 solver.set_normalization(False)
 
 # train regularizer
@@ -166,7 +166,7 @@ ssims = solver.test()
 solver.set_testing(lidc_test, my_psnr)
 psnrs = solver.test()
 
-with open("ar_results.txt", "w") as f:
+with open("ar_results_ninaparams.txt", "w") as f:
     f.write(
         f"Min SSIM {np.min(ssims)}, Max SSIM {np.max(ssims)}, Mean SSIM {np.mean(ssims)}, SSIM std {np.std(ssims)}\n"
     )
