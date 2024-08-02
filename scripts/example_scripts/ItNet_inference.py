@@ -27,14 +27,14 @@ device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/ab2860/low_dose/")
-datafolder = pathlib.Path(
-    "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
-)
+# datafolder = pathlib.Path(
+#     "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
+# )
 final_result_fname = savefolder.joinpath("LPD_final_iter.pt")
 checkpoint_fname = savefolder.joinpath("LPD_check_*.pt")
 #
 #%% Define experiment
-experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+experiment = ct_experiments.LowDoseCTRecon()
 
 #%% Dataset
 dataset = experiment.get_testing_dataset()

@@ -14,20 +14,25 @@ from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 from LION.models.iterative_unrolled.ItNet import ItNet, UNet
 from LION.utils.parameter import LIONParameter
 from ts_algorithms import fdk
-
+import os
 
 import LION.experiments.ct_experiments as ct_experiments
 
 
 #%%
 # % Chose device:
-device = torch.device("cuda:1")
+device = torch.device("cuda:2")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/low_dose/")
-datafolder = pathlib.Path(
-    "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
-)
+savefolder = pathlib.Path("/home/hyt35/trained_models/low_dose/")
+# datafolder = pathlib.Path(
+#     "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
+# )
+if not os.path.exists(savefolder):
+    os.makedirs(savefolder)
+# if not os.path.exists(datafolder):
+#     os.makedirs(datafolder)
+
 final_result_fname = savefolder.joinpath("ItNet_final_iter.pt")
 checkpoint_fname = savefolder.joinpath("ItNet_check_*.pt")
 validation_fname = savefolder.joinpath("ItNet_min_val.pt")
@@ -36,7 +41,7 @@ unet_checkpoint_fname = savefolder.joinpath("ItNet_Unet_check_*.pt")
 unet_validation_fname = savefolder.joinpath("ItNet_Unet_min_val.pt")
 #
 #%% Define experiment
-experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+experiment = ct_experiments.LowDoseCTRecon()
 
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()

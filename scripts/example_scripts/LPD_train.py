@@ -5,16 +5,16 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 import pathlib
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
-from LION.models.LPD import LPD
-from LION.utils.parameter import Parameter
+from LION.models.iterative_unrolled.LPD import LPD
+from LION.utils.parameter import LIONParameter
 from ts_algorithms import fdk
-
+import os
 
 import LION.experiments.ct_experiments as ct_experiments
 
@@ -34,8 +34,8 @@ def str2bool(v):
 # %%
 # arguments for argparser
 parser = argparse.ArgumentParser()
-parser.add_argument("--geometry", type=str)
-parser.add_argument("--dose", type=str)
+parser.add_argument("--geometry", type=str, default="limited_angle")
+parser.add_argument("--dose", type=str, default="low")
 parser.add_argument("--instance_norm", type=str2bool)
 
 # %%
@@ -45,16 +45,17 @@ device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
 if args.dose == "low":
-    savefolder = pathlib.Path(
-        "/home/cr661/rds/hpc-work/store/LION/trained_models/low_dose/"
-    )
+    savefolder = pathlib.Path("/home/hyt35/trained_models/LPD/low_dose/")
 elif args.dose == "extreme_low":
-    savefolder = pathlib.Path(
-        "/home/cr661/rds/hpc-work/store/LION/trained_models/extreme_low_dose/"
-    )
+    savefolder = pathlib.Path("/home/hyt35/trained_models/LPD/extreme_low_dose/")
 else:
     raise ValueError("Dose not recognised")
-datafolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/data/LIDC-IDRI/")
+if not os.path.exists(savefolder):
+    os.makedirs(savefolder)
+
+# datafolder = pathlib.Path("/home/hyt35/data/LIDC-IDRI/")
+# if not os.path.exists(datafolder):
+#     os.makedirs(datafolder)
 final_result_fname = savefolder.joinpath(
     f"LPD_final_iterBS2fixedsmallLR_in{args.instance_norm}_{args.dose}_{args.geometry}.pt"
 )
@@ -68,27 +69,23 @@ validation_fname = savefolder.joinpath(
 # %% Define experiment
 if args.geometry == "full":
     if args.dose == "low":
-        experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
+        experiment = ct_experiments.LowDoseCTRecon()
     elif args.dose == "extreme_low":
-        experiment = ct_experiments.ExtremeLowDoseCTRecon(datafolder=datafolder)
+        experiment = ct_experiments.ExtremeLowDoseCTRecon()
     else:
         raise ValueError("Dose not recognised")
 elif args.geometry == "limited_angle":
     if args.dose == "low":
-        experiment = ct_experiments.LimitedAngleLowDoseCTRecon(datafolder=datafolder)
+        experiment = ct_experiments.LimitedAngleLowDoseCTRecon()
     elif args.dose == "extreme_low":
-        experiment = ct_experiments.LimitedAngleExtremeLowDoseCTRecon(
-            datafolder=datafolder
-        )
+        experiment = ct_experiments.LimitedAngleExtremeLowDoseCTRecon()
     else:
         raise ValueError("Dose not recognised")
 elif args.geometry == "sparse_angle":
     if args.dose == "low":
-        experiment = ct_experiments.SparseAngleLowDoseCTRecon(datafolder=datafolder)
+        experiment = ct_experiments.SparseAngleLowDoseCTRecon()
     elif args.dose == "extreme_low":
-        experiment = ct_experiments.SparseAngleExtremeLowDoseCTRecon(
-            datafolder=datafolder
-        )
+        experiment = ct_experiments.SparseAngleExtremeLowDoseCTRecon()
     else:
         raise ValueError("Dose not recognised")
 else:
@@ -97,7 +94,9 @@ else:
 # %% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
-
+indices = torch.arange(100)
+lidc_dataset = Subset(lidc_dataset, indices)
+lidc_dataset_val = Subset(lidc_dataset_val, indices)
 # %% Define DataLoader
 # Use the same amount of training
 batch_size = 2
@@ -115,12 +114,12 @@ default_parameters.n_iters = 5
 model = LPD(
     geometry_parameters=experiment.geo,
     model_parameters=default_parameters,
-    instance_norm=args.instance_norm,
+    # instance_norm=args.instance_norm,
 ).to(device)
 
 
 # %% Optimizer
-train_param = Parameter()
+train_param = LIONParameter()
 
 # loss fn
 loss_fcn = torch.nn.MSELoss()
