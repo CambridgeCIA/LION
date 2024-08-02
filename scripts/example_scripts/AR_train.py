@@ -11,10 +11,41 @@ from torch.optim.sgd import SGD
 from torch.utils.data import DataLoader, Subset
 import pathlib
 from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
-from LION.models.learned_regularizer.ACR import my_psnr, my_ssim
 from LION.optimizers.ARsolver import ARParams, ARSolver
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
+from skimage.metrics import (
+    structural_similarity as ssim,
+    peak_signal_noise_ratio as psnr,
+)
+
+
+def my_ssim(x: torch.Tensor, y: torch.Tensor):
+    if x.shape[0] == 1:
+        x = x.cpu().numpy().squeeze()
+        y = y.cpu().numpy().squeeze()
+        return ssim(x, y, data_range=y.max() - y.min())
+    else:
+        x = x.cpu().numpy().squeeze()
+        y = y.cpu().numpy().squeeze()
+        vals = []
+        for i in range(x.shape[0]):
+            vals.append(ssim(x[i], y[i], data_range=y[i].max() - y[i].min()))
+        return np.array(vals)
+
+
+def my_psnr(x: torch.Tensor, y: torch.Tensor):
+    if x.shape[0] == 1:
+        x = x.cpu().numpy().squeeze()
+        y = y.cpu().numpy().squeeze()
+        return psnr(x, y, data_range=x.max() - x.min())
+    else:
+        x = x.cpu().numpy().squeeze()
+        y = y.cpu().numpy().squeeze()
+        vals = []
+        for i in range(x.shape[0]):
+            vals.append(psnr(x[i], y[i], data_range=y[i].max() - y[i].min()))
+        return np.array(vals)
 
 
 #%%
@@ -42,7 +73,7 @@ lidc_dataset_test = experiment.get_testing_dataset()
 batch_size = 4
 # lidc_dataset = Subset(lidc_dataset, [i for i in range(250)])
 lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(3)])
-lidc_dataset_test = Subset(lidc_dataset_test, [i for i in range(20)])
+lidc_dataset_test = Subset(lidc_dataset_test, [i for i in range(3)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, 1, shuffle=True)
 lidc_test = DataLoader(lidc_dataset_test, 1, shuffle=True)
@@ -107,34 +138,32 @@ optimizer = Adam(
 val_loss = nn.MSELoss()
 
 #%% Solver
-solver_params = ARParams(False, 500, 1e-6, 0.5, 0.95, 1e-3)
-solver = ARSolver(model, optimizer, SGD, experiment.geo, True, device)
-solver.solver_params.no_steps = 500
-solver.solver_params.momentum = 0
+solver_params = ARParams(LIONParameter(momentum=0.0), False, 500, 1e-6, 0.95, 1e-3)
+solver = ARSolver(model, optimizer, SGD, experiment.geo, True, device, solver_params)
 
 solver.set_saving(savefolder, final_result_fname)
 solver.set_checkpointing(checkpoint_fname, 5)
 solver.set_training(lidc_dataloader)
 solver.set_validation(lidc_validation, 5, val_loss, validation_fname)
-solver.set_normalization(False)
+solver.set_normalization(True)
 
 # train regularizer
-# solver.train(train_param.epochs)
+solver.train(train_param.epochs)
 
-# solver.save_final_results()
-# solver.clean_checkpoints()
+solver.save_final_results()
+solver.clean_checkpoints()
 
-model, _, _ = network.load(savefolder.joinpath(final_result_fname))
+# model, _, _ = network.load(savefolder.joinpath(final_result_fname))
 
-model.model_parameters.model_input_type = ModelInputType.IMAGE
-solver.model = model
+# model.model_parameters.model_input_type = ModelInputType.IMAGE
+# solver.model = model
 
 solver.set_testing(lidc_test, my_ssim)
 ssims = solver.test()
 solver.set_testing(lidc_test, my_psnr)
 psnrs = solver.test()
 
-with open("ar_results.txt", "w") as f:
+with open("ar_normalized_results.txt", "w") as f:
     f.write(
         f"Min SSIM {np.min(ssims)}, Max SSIM {np.max(ssims)}, Mean SSIM {np.mean(ssims)}, SSIM std {np.std(ssims)}\n"
     )
@@ -143,3 +172,25 @@ with open("ar_results.txt", "w") as f:
     )
 
 #%% Use regularizer
+# if printed < 3:
+#                 printed += 1
+#                 print(f"Printing img {printed}")
+#                 plt.figure()
+#                 plt.subplot(131)
+#                 plt.imshow(target[0].detach().cpu().numpy().T)
+#                 plt.clim(torch.min(target[0]).item(), torch.max(target[0]).item())
+#                 plt.gca().set_title("Ground Truth")
+#                 plt.subplot(132)
+#                 # should cap max / min of plots to actual max / min of gt
+#                 plt.imshow(bad_recon[0].detach().cpu().numpy().T)
+#                 plt.clim(torch.min(target[0]).item(), torch.max(target[0]).item())
+#                 plt.gca().set_title("FBP")
+#                 plt.subplot(133)
+#                 plt.imshow(recon[0].detach().cpu().numpy().T)
+#                 plt.clim(torch.min(target[0]).item(), torch.max(target[0]).item())
+#                 plt.gca().set_title("AR")
+#                 plt.text(0, 650, f"SSIM: {loss:.2f}")
+#                 plt.axis("off")
+#                 # reconstruct filepath with suffix i
+#                 plt.savefig(f"ar_test{printed}.png", dpi=700)
+#                 plt.close()

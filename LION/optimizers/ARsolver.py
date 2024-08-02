@@ -1,4 +1,3 @@
-from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from torch.optim.optimizer import Optimizer
@@ -9,15 +8,16 @@ from tomosipo.torch_support import to_autograd
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
+from LION.utils.parameter import LIONParameter
 
 
 class ARParams(SolverParams):
     def __init__(
         self,
+        optimizer_params: LIONParameter,
         early_stopping: bool = False,
         no_steps: int = 150,
         step_size: float = 1e-6,
-        momentum: float = 0.5,
         beta_rate: float = 0.95,
         lambd_gp: float = 1e-3,
     ):
@@ -25,7 +25,7 @@ class ARParams(SolverParams):
         self.early_stopping = early_stopping
         self.no_steps = no_steps
         self.step_size = step_size
-        self.momentum = momentum
+        self.optimizer_params = optimizer_params
         self.beta_rate = beta_rate
         self.lambd_gp = lambd_gp
 
@@ -63,7 +63,9 @@ class ARSolver(LIONsolver):
 
     @staticmethod
     def default_parameters() -> ARParams:
-        return ARParams()
+        raise LIONSolverException(
+            "Cannot construct default parameters for ARSolver, need to provide validation/testing optimizer parameters"
+        )
 
     def var_energy(self, x, y):
         return 0.5 * ((self.A(x) - y) ** 2).sum() + self.alpha * (self.model(x)).sum()
@@ -89,16 +91,16 @@ class ARSolver(LIONsolver):
         for sino, target in tqdm(self.validation_loader):
             sino.requires_grad_()
             recon = fdk(sino, self.op)
-            if self.do_normalize:
-                recon = self.normalize(recon)
-                target = self.normalize(target)
+            # if self.do_normalize:
+            #     recon = self.normalize(recon)
+            #     target = self.normalize(target)
 
             recon = torch.nn.Parameter(recon)
 
             optimizer = self.recon_optimizer_type(
                 [recon],
+                *self.solver_params.optimizer_params.unpack(),
                 lr=self.solver_params.step_size,
-                momentum=self.solver_params.momentum,
             )
             lr = self.solver_params.step_size
 
@@ -153,20 +155,20 @@ class ARSolver(LIONsolver):
         self.estimate_alpha(self.test_loader)
 
         test_loss = np.array([])
-        printed = 0
         for sino, target in tqdm(self.test_loader):
             sino.requires_grad_()
             bad_recon = fdk(sino, self.op)
-            if self.do_normalize:
-                bad_recon = self.normalize(bad_recon)
-                target = self.normalize(target)
+            # is it worth normalizing in testing?
+            # if self.do_normalize:
+            #     bad_recon = self.normalize(bad_recon)
+            #     target = self.normalize(target)
 
             recon = torch.nn.Parameter(bad_recon.clone())
 
             optimizer = self.recon_optimizer_type(
                 [recon],
+                *self.solver_params.optimizer_params.unpack(),
                 lr=self.solver_params.step_size,
-                momentum=self.solver_params.momentum,
             )
             lr = self.solver_params.step_size
 
@@ -186,27 +188,6 @@ class ARSolver(LIONsolver):
                     g["lr"] = lr
 
                 optimizer.step()
-
-            if printed < 3:
-                printed += 1
-                print(f"Printing img {printed}")
-                plt.figure()
-                plt.subplot(131)
-                plt.imshow(target[0].detach().cpu().numpy().T)
-                plt.clim(torch.min(target[0]).item(), torch.max(target[0]).item())
-                plt.gca().set_title("Ground Truth")
-                plt.subplot(132)
-                # should cap max / min of plots to actual max / min of gt
-                plt.imshow(bad_recon[0].detach().cpu().numpy().T)
-                plt.clim(torch.min(target[0]).item(), torch.max(target[0]).item())
-                plt.gca().set_title("FBP")
-                plt.subplot(133)
-                plt.imshow(recon[0].detach().cpu().numpy().T)
-                plt.clim(torch.min(target[0]).item(), torch.max(target[0]).item())
-                plt.gca().set_title("AR")
-                # reconstruct filepath with suffix i
-                plt.savefig(f"ar_test{printed}.png", dpi=700)
-                plt.close()
 
             with torch.no_grad():
                 test_loss = np.append(test_loss, self.testing_fn(recon, target).item())

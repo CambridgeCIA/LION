@@ -219,9 +219,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if self.do_normalize:
             xmax = -np.inf
             xmin = np.inf
-            for x in self.train_loader:
-                xmax = max(x[1].max(), xmax)
-                xmin = min(x[1].min(), xmin)
+            for _, gt in self.train_loader:
+                xmax = max(gt.max(), xmax)
+                xmin = min(gt.min(), xmin)
             self.xmin = xmin
             self.xmax = xmax
 
@@ -568,7 +568,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if self.do_normalize:
             assert self.xmax is not None and self.xmin is not None
             normalized_x = (x - self.xmin) / (self.xmax - self.xmin)
-        return normalized_x
+            return normalized_x
+        else:
+            return x
 
     def test(self):
         self.model.eval()

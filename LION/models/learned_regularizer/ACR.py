@@ -25,13 +25,13 @@ def my_ssim(x: torch.tensor, y: torch.tensor):
     if x.shape[0] == 1:
         x = x.cpu().numpy().squeeze()
         y = y.cpu().numpy().squeeze()
-        return ssim(x, y, data_range=x.max() - x.min())
+        return ssim(x, y, data_range=y.max() - y.min())
     else:
         x = x.cpu().numpy().squeeze()
         y = y.cpu().numpy().squeeze()
         vals = []
         for i in range(x.shape[0]):
-            vals.append(ssim(x[i], y[i], data_range=x[i].max() - x[i].min()))
+            vals.append(ssim(x[i], y[i], data_range=y[i].max() - y[i].min()))
         return np.array(vals)
 
 
@@ -45,7 +45,7 @@ def my_psnr(x: torch.tensor, y: torch.tensor):
         y = y.cpu().numpy().squeeze()
         vals = []
         for i in range(x.shape[0]):
-            vals.append(psnr(x[i], y[i], data_range=x[i].max() - x[i].min()))
+            vals.append(psnr(x[i], y[i], data_range=y[i].max() - y[i].min()))
         return np.array(vals)
 
 
