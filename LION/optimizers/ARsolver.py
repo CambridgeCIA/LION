@@ -20,7 +20,7 @@ class ARParams(SolverParams):
         no_steps: int = 150,
         step_size: float = 1e-6,
         beta_rate: float = 0.95,
-        lambd_gp: float = 1e-3,
+        lambd_gp: float = 1e-1,
     ):
         super().__init__()
         self.early_stopping = early_stopping
