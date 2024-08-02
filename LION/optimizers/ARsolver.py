@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from torch.optim.optimizer import Optimizer
@@ -67,8 +68,11 @@ class ARSolver(LIONsolver):
             "Cannot construct default parameters for ARSolver, need to provide validation/testing optimizer parameters"
         )
 
-    def var_energy(self, x, y):
-        return 0.5 * ((self.A(x) - y) ** 2).sum() + self.alpha * (self.model(x)).sum()
+    def var_energy(self, recon, sino):
+        return (
+            0.5 * ((self.A(recon) - sino) ** 2).sum()
+            + self.alpha * (self.model(recon)).sum()
+        )
 
     def validate(self):
         if self.check_validation_ready() != 0:
@@ -89,7 +93,6 @@ class ARSolver(LIONsolver):
 
         validation_loss = np.array([])
         for sino, target in tqdm(self.validation_loader):
-            sino.requires_grad_()
             recon = fdk(sino, self.op)
             # if self.do_normalize:
             #     recon = self.normalize(recon)
@@ -156,14 +159,13 @@ class ARSolver(LIONsolver):
 
         test_loss = np.array([])
         for sino, target in tqdm(self.test_loader):
-            sino.requires_grad_()
             bad_recon = fdk(sino, self.op)
             # is it worth normalizing in testing?
             # if self.do_normalize:
             #     bad_recon = self.normalize(bad_recon)
             #     target = self.normalize(target)
 
-            recon = torch.nn.Parameter(bad_recon.clone())
+            recon = torch.nn.Parameter(bad_recon.clone()).requires_grad_(True)
 
             optimizer = self.recon_optimizer_type(
                 [recon],
@@ -189,8 +191,10 @@ class ARSolver(LIONsolver):
 
                 optimizer.step()
 
-            with torch.no_grad():
-                test_loss = np.append(test_loss, self.testing_fn(recon, target).item())
+                with torch.no_grad():
+                    test_loss = np.append(
+                        test_loss, self.testing_fn(recon, target).item()
+                    )
 
         if self.verbose:
             print(

@@ -50,15 +50,15 @@ def my_psnr(x: torch.Tensor, y: torch.Tensor):
 
 #%%
 # % Chose device:
-device = torch.device("cuda:1")
+device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
 
-final_result_fname = "arlessdata_final_iter.pt"
-checkpoint_fname = "arlessdata_check_*.pt"
-validation_fname = "arlessdata_min_val.pt"
+final_result_fname = "ar_final_iter.pt"
+checkpoint_fname = "ar_check_*.pt"
+validation_fname = "arfulldata_min_val.pt"
 #
 #%% Define experiment
 # experiment = ct_experiments.LowDoseCTRecon(datafolder=datafolder)
@@ -71,7 +71,7 @@ lidc_dataset_test = experiment.get_testing_dataset()
 #%% Define DataLoader
 # Use the same amount of training
 batch_size = 4
-# lidc_dataset = Subset(lidc_dataset, [i for i in range(250)])
+# lidc_dataset = Subset(lidc_dataset, [i for i in range(100)])
 lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(3)])
 lidc_dataset_test = Subset(lidc_dataset_test, [i for i in range(3)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
@@ -128,7 +128,7 @@ class TrainParam(LIONParameter):
     accumulation_steps: int
 
 
-train_param = TrainParam("adam", 5, 1e-3, (0.9, 0.99), "MSELoss", 1)
+train_param = TrainParam("adam", 10, 1e-3, (0.9, 0.99), "MSELoss", 1)
 
 optimizer = Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
@@ -143,9 +143,10 @@ solver = ARSolver(model, optimizer, SGD, experiment.geo, True, device, solver_pa
 
 solver.set_saving(savefolder, final_result_fname)
 solver.set_checkpointing(checkpoint_fname, 5)
+solver.set_loading(savefolder, True)
 solver.set_training(lidc_dataloader)
 solver.set_validation(lidc_validation, 5, val_loss, validation_fname)
-solver.set_normalization(True)
+solver.set_normalization(False)
 
 # train regularizer
 solver.train(train_param.epochs)
@@ -153,7 +154,9 @@ solver.train(train_param.epochs)
 solver.save_final_results()
 solver.clean_checkpoints()
 
-# model, _, _ = network.load(savefolder.joinpath(final_result_fname))
+# model, data, options = network.load(savefolder.joinpath(final_result_fname))
+# print(data)
+# print(options)
 
 # model.model_parameters.model_input_type = ModelInputType.IMAGE
 # solver.model = model
@@ -163,34 +166,10 @@ ssims = solver.test()
 solver.set_testing(lidc_test, my_psnr)
 psnrs = solver.test()
 
-with open("ar_normalized_results.txt", "w") as f:
+with open("ar_results.txt", "w") as f:
     f.write(
         f"Min SSIM {np.min(ssims)}, Max SSIM {np.max(ssims)}, Mean SSIM {np.mean(ssims)}, SSIM std {np.std(ssims)}\n"
     )
     f.write(
         f"Min PSNR {np.min(psnrs)}, Max PSNR {np.max(psnrs)}, Mean PSNR {np.mean(psnrs)}, PSNR std {np.std(psnrs)}\n"
     )
-
-#%% Use regularizer
-# if printed < 3:
-#                 printed += 1
-#                 print(f"Printing img {printed}")
-#                 plt.figure()
-#                 plt.subplot(131)
-#                 plt.imshow(target[0].detach().cpu().numpy().T)
-#                 plt.clim(torch.min(target[0]).item(), torch.max(target[0]).item())
-#                 plt.gca().set_title("Ground Truth")
-#                 plt.subplot(132)
-#                 # should cap max / min of plots to actual max / min of gt
-#                 plt.imshow(bad_recon[0].detach().cpu().numpy().T)
-#                 plt.clim(torch.min(target[0]).item(), torch.max(target[0]).item())
-#                 plt.gca().set_title("FBP")
-#                 plt.subplot(133)
-#                 plt.imshow(recon[0].detach().cpu().numpy().T)
-#                 plt.clim(torch.min(target[0]).item(), torch.max(target[0]).item())
-#                 plt.gca().set_title("AR")
-#                 plt.text(0, 650, f"SSIM: {loss:.2f}")
-#                 plt.axis("off")
-#                 # reconstruct filepath with suffix i
-#                 plt.savefig(f"ar_test{printed}.png", dpi=700)
-#                 plt.close()
