@@ -12,14 +12,14 @@ from torch.utils.data import DataLoader, Subset
 import pathlib
 from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
 from LION.models.learned_regularizer.ACR import my_psnr, my_ssim
-from LION.optimizers.ARsolver import ARSolver
+from LION.optimizers.ARsolver import ARParams, ARSolver
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 
 
 #%%
 # % Chose device:
-device = torch.device("cuda:0")
+device = torch.device("cuda:1")
 torch.cuda.set_device(device)
 
 # Define your data paths
@@ -41,8 +41,8 @@ lidc_dataset_test = experiment.get_testing_dataset()
 # Use the same amount of training
 batch_size = 4
 # lidc_dataset = Subset(lidc_dataset, [i for i in range(250)])
-lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(25)])
-lidc_dataset_test = Subset(lidc_dataset_test, [i for i in range(25)])
+lidc_dataset_val = Subset(lidc_dataset_val, [i for i in range(3)])
+lidc_dataset_test = Subset(lidc_dataset_test, [i for i in range(20)])
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, 1, shuffle=True)
 lidc_test = DataLoader(lidc_dataset_test, 1, shuffle=True)
@@ -97,7 +97,7 @@ class TrainParam(LIONParameter):
     accumulation_steps: int
 
 
-train_param = TrainParam("adam", 20, 1e-3, (0.9, 0.99), "MSELoss", 1)
+train_param = TrainParam("adam", 5, 1e-3, (0.9, 0.99), "MSELoss", 1)
 
 optimizer = Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
@@ -107,7 +107,10 @@ optimizer = Adam(
 val_loss = nn.MSELoss()
 
 #%% Solver
+solver_params = ARParams(False, 500, 1e-6, 0.5, 0.95, 1e-3)
 solver = ARSolver(model, optimizer, SGD, experiment.geo, True, device)
+solver.solver_params.no_steps = 500
+solver.solver_params.momentum = 0
 
 solver.set_saving(savefolder, final_result_fname)
 solver.set_checkpointing(checkpoint_fname, 5)
@@ -116,14 +119,15 @@ solver.set_validation(lidc_validation, 5, val_loss, validation_fname)
 solver.set_normalization(False)
 
 # train regularizer
-solver.train(train_param.epochs)
+# solver.train(train_param.epochs)
 
-solver.save_final_results()
-solver.clean_checkpoints()
+# solver.save_final_results()
+# solver.clean_checkpoints()
 
-# model, *data, = network.load(savefolder.joinpath(validation_fname))
-# model.model_parameters.model_input_type = ModelInputType.IMAGE
-# solver.model = model
+model, _, _ = network.load(savefolder.joinpath(final_result_fname))
+
+model.model_parameters.model_input_type = ModelInputType.IMAGE
+solver.model = model
 
 solver.set_testing(lidc_test, my_ssim)
 ssims = solver.test()
