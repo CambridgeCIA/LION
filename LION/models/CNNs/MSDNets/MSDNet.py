@@ -14,9 +14,10 @@ import torch.nn as nn
 import torch
 from typing import Optional
 from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
+import warnings
 
 
-class MSDParams(ModelParams):
+class MSD_Params(ModelParams):
     def __init__(
         self,
         in_channels: int = 1,
@@ -25,16 +26,16 @@ class MSDParams(ModelParams):
         dilations: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] * 10,
         look_back_depth: int = -1,
         final_look_back_depth: int = -1,
-        activation: nn.Module = nn.ReLU(),
+        activation: str = "ReLU",
     ):
-        super().__init__(model_input_type=ModelInputType.IMAGE)
+        super().__init__(model_input_type=ModelInputType.NOISY_RECON)
         self.in_channels: int = in_channels
         self.width: int = width
         self.depth: int = depth
         self.dilations: list[int] = dilations
         self.look_back_depth: int = look_back_depth
         self.final_look_back_depth: int = final_look_back_depth
-        self.activation: nn.Module = activation
+        self.activation: str = activation
 
 
 class MSD_Layer(nn.Module):
@@ -83,10 +84,9 @@ class MSD_Layer(nn.Module):
         return x
 
 
-class MSD_Net(LIONmodel):
+class MSDNet(LIONmodel):
     def __init__(
-        self,
-        model_parameters: Optional[MSDParams] = None,
+        self, model_parameters: Optional[MSD_Params] = None, geometry_parameters=None
     ) -> None:
         """Mixed-Scale Dense Neural Network based on:
         A mixed-scale dense convolutional neural network for image analysis, Daniël M. Pelt and James A. Sethian
@@ -110,16 +110,31 @@ class MSD_Net(LIONmodel):
         # We assert to make it happy and to ensure the model is actually initialized correctly.
         assert (
             self.model_parameters is not None
-            and isinstance(self.model_parameters, MSDParams)
-        ), f"Failed to initialize MSD_Net model with given parameters: type {type(self.model_parameters)} is not acceptable for MSD_Params"
-
-        self.in_channels = self.model_parameters.in_channels
-        self.width = self.model_parameters.width
-        self.depth = self.model_parameters.depth
-        self.dilations = self.model_parameters.dilations
-        self.look_back_depth = self.model_parameters.look_back_depth
-        self.final_look_back_depth = self.model_parameters.final_look_back_depth
-        self.activation = self.model_parameters.activation
+        ), "Failed to initialize model parameters"
+        try:
+            self.in_channels = self.model_parameters.in_channels
+            self.width = self.model_parameters.width
+            self.depth = self.model_parameters.depth
+            self.dilations = self.model_parameters.dilations
+            self.look_back_depth = self.model_parameters.look_back_depth
+            self.final_look_back_depth = self.model_parameters.final_look_back_depth
+            if (acti := self.model_parameters.activation.lower()) == "relu":
+                self.activation = nn.ReLU()
+            elif acti == "prelu":
+                self.activation = nn.PReLU()
+            elif acti == "leakyrelu":
+                self.activation = nn.LeakyReLU()
+            elif acti == "tanh":
+                self.activation = nn.Tanh()
+            else:
+                raise ValueError(
+                    f"Unrecognised activation '{self.model_parameters.activation}'. Expected one of 'ReLU', 'PReLU, 'LeakyReLU', 'Tanh'"
+                )
+        except AttributeError as e:
+            warnings.warn(
+                f"Couldn't load parameter {e.name}, ensure model file actually corresponds to an MSDNet"
+            )
+            raise e
 
         # total there should be width * depth distinct convolutions
         # so expect the same number of dilations to be given
@@ -202,10 +217,9 @@ class MSD_Net(LIONmodel):
                 f"Expected {self.in_channels} input channels, instead got {C}"
             )
         start_collecting = False
-        final_lookbacks = [] if self.final_look_back_depth != -1 else [x]
-        # start_collecting = False
-        # final_lookbacks = [] if self.final_look_back_depth != -1 else [x] # not a huge fan of this, think of a better way
-
+        final_lookbacks = (
+            [] if self.final_look_back_depth != -1 else [x]
+        )  # not a huge fan of this, think of a better way
         for i, layer in enumerate(range(self.depth)):
             x = self.layers[layer](x)[
                 :,
@@ -213,7 +227,6 @@ class MSD_Net(LIONmodel):
                 if self.look_back_depth != -1
                 else 0 :,
             ]
-            x = self.layers[layer](x) # [:, -self.look_back_depth * self.width if self.look_back_depth != -1 else 0:]
             # x now contains all layers to pass forward aswell as newly calculated one
             if (
                 self.depth - i <= self.final_look_back_depth
@@ -225,31 +238,24 @@ class MSD_Net(LIONmodel):
 
         final_lookbacks = torch.cat(final_lookbacks, dim=1)
         x = self.final_layer(final_lookbacks)
-            # if self.depth - i <= self.final_look_back_depth or self.final_look_back_depth == -1: # need all the following layers for final layer
-            #     start_collecting = True
-            # if start_collecting:
-                # final_lookbacks.append(x[:, -self.width:]) # head layer
-        # final_lookbacks = torch.cat(final_lookbacks, dim=1)
-        # x = self.final_layer(final_lookbacks)
-        x = self.final_layer(x)
         return x
 
     @staticmethod
-    def default_parameters() -> MSDParams:
+    def default_parameters() -> MSD_Params:
         in_channels = 1
         width, depth = 1, 100
         dilations = []
         for i in range(depth):
             for j in range(width):
                 dilations.append((((i * width) + j) % 10) + 1)
-        params = MSDParams(
+        params = MSD_Params(
             in_channels=in_channels,
             width=width,
             depth=depth,
             dilations=dilations,
             look_back_depth=-1,
             final_look_back_depth=-1,
-            activation=nn.ReLU(),
+            activation="ReLU",
         )
         return params
 

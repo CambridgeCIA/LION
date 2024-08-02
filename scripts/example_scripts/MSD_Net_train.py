@@ -10,7 +10,9 @@ from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 import pathlib
 from LION.experiments import ct_benchmarking_experiments
-from LION.models.CNNs.MSDNets.MS_D2 import MSD_Net, MSDParams
+from LION.models.CNNs.MSDNets.FBPMS_D import FBPMSD_Net, OGFBPMSD_Net
+from LION.models.CNNs.MSDNets.MSD_pytorch import MSD_pytorch
+from LION.models.CNNs.MSDNets.MSDNet import MSD_Params
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 from torchviz import make_dot
@@ -57,9 +59,10 @@ model_params = MSDParams(
     final_look_back_depth=-1,
     activation=nn.ReLU(),
 )
-model = MSD_Net(geometry_parameters=experiment.geo, model_parameters=model_params).to(
-    device
-)
+model = OGFBPMSD_Net(
+    geometry_parameters=experiment.geo,
+    model_parameters=MSD_pytorch.default_parameters(),
+).to(device)
 
 #%% Optimizer
 train_param = LIONParameter()

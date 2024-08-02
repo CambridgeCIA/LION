@@ -6,14 +6,12 @@
 # =============================================================================
 
 
-import torch
-import torch.nn as nn
 from LION.models import LIONmodel
 from LION.utils.parameter import LIONParameter
 import msd_pytorch as msd
 
 
-class MS_D(LIONmodel.LIONmodel):
+class MSD_pytorch(LIONmodel.LIONmodel):
     def __init__(self, model_parameters=None):
 
         super().__init__(model_parameters)
