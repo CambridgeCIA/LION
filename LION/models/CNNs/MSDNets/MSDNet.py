@@ -255,7 +255,7 @@ class MSDNet(LIONmodel):
             dilations=dilations,
             look_back_depth=-1,
             final_look_back_depth=-1,
-            activation=nn.ReLU(),
+            activation="ReLU",
         )
         return params
 
