@@ -86,8 +86,7 @@ class MSD_Layer(nn.Module):
 
 class MSDNet(LIONmodel):
     def __init__(
-        self,
-        model_parameters: Optional[MSD_Params] = None,
+        self, model_parameters: Optional[MSD_Params] = None, geometry_parameters=None
     ) -> None:
         """Mixed-Scale Dense Neural Network based on:
         A mixed-scale dense convolutional neural network for image analysis, Daniël M. Pelt and James A. Sethian

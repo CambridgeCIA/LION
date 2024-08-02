@@ -17,6 +17,7 @@ import LION.experiments.ct_experiments as ct_experiments
 from skimage.metrics import (
     structural_similarity as ssim,
     peak_signal_noise_ratio as psnr,
+    mean_squared_error as mse,
 )
 
 
@@ -72,7 +73,7 @@ for experiment in experiments:
     lidc_dataset = Subset(lidc_dataset, range(250))
     lidc_dataset_val = Subset(lidc_dataset_val, range(250))
     lidc_dataset_test = experiment.get_testing_dataset()
-    lidc_dataset_test = Subset(lidc_dataset_test, range(250))
+    lidc_dataset_test = Subset(lidc_dataset_test, range(10))
 
     # %% Define DataLoader
     # Use the same amount of training
@@ -95,7 +96,10 @@ for experiment in experiments:
         final_look_back_depth=-1,
         activation="ReLU",
     )
-    model = MSDNet(model_parameters=model_params).to(device)
+    # model = MSDNet(model_parameters=model_params).to(device)
+    model, data, options = MSDNet.load(f"MSD{experiment_str}.pt")
+
+    print(options)
 
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -135,91 +139,103 @@ for experiment in experiments:
     total_validation_time = 0
 
     # %% train
-    for epoch in range(start_epoch, train_param.epochs):
-        train_loss = 0.0
-        print("Training...")
-        model.train()
-        for idx, (sinogram, target_reconstruction) in enumerate(tqdm(lidc_dataloader)):
-            output = model(fdk(sinogram, op))
-            optimiser.zero_grad()
-            sinogram = sinogram.to(device)
-            target_reconstruction = target_reconstruction.to(device)
+    # for epoch in range(start_epoch, train_param.epochs):
+    #     train_loss = 0.0
+    #     print("Training...")
+    #     model.train()
+    #     for idx, (sinogram, target_reconstruction) in enumerate(tqdm(lidc_dataloader)):
+    #         output = model(fdk(sinogram, op))
+    #         optimiser.zero_grad()
+    #         sinogram = sinogram.to(device)
+    #         target_reconstruction = target_reconstruction.to(device)
 
-            reconstruction = model(fdk(sinogram, op))
-            loss = loss_fcn(reconstruction, target_reconstruction)
-            loss = loss / train_param.accumulation_steps
+    #         reconstruction = model(fdk(sinogram, op))
+    #         loss = loss_fcn(reconstruction, target_reconstruction)
+    #         loss = loss / train_param.accumulation_steps
 
-            loss.backward()
+    #         loss.backward()
 
-            train_loss += loss.item()
+    #         train_loss += loss.item()
 
-            optimiser.step()
+    #         optimiser.step()
 
-        total_loss[epoch] = train_loss
-        total_train_time += time.time() - start_time
+    #     total_loss[epoch] = train_loss
+    #     total_train_time += time.time() - start_time
 
-        # Validation
-        valid_loss = 0.0
-        model.eval()
-        start_time = time.time()
-        with torch.no_grad():
-            print("Validating...")
-            for sinogram, target_reconstruction in tqdm(lidc_validation):
-                sinogram = sinogram.to(device)
-                target_reconstruction.to(device)
-                reconstruction = model(fdk(sinogram, op))
-                loss = loss_fcn(target_reconstruction, reconstruction.to(device))
-                valid_loss += loss.item()
+    #     # Validation
+    #     valid_loss = 0.0
+    #     model.eval()
+    #     start_time = time.time()
+    #     with torch.no_grad():
+    #         print("Validating...")
+    #         for sinogram, target_reconstruction in tqdm(lidc_validation):
+    #             sinogram = sinogram.to(device)
+    #             target_reconstruction.to(device)
+    #             reconstruction = model(fdk(sinogram, op))
+    #             loss = loss_fcn(target_reconstruction, reconstruction.to(device))
+    #             valid_loss += loss.item()
 
-        print(
-            f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataset)} \t\t Validation Loss: {valid_loss / len(lidc_dataset_val)}"
-        )
-        if valid_loss < min_valid_loss:
-            min_valid_loss = valid_loss
-        total_validation_time += time.time() - start_time
+    #     print(
+    #         f"Epoch {epoch+1} \t\t Training Loss: {train_loss / len(lidc_dataset)} \t\t Validation Loss: {valid_loss / len(lidc_dataset_val)}"
+    #     )
+    #     if valid_loss < min_valid_loss:
+    #         min_valid_loss = valid_loss
+    #     total_validation_time += time.time() - start_time
 
-    f.write("------Training-----\n-")
-    f.write(f"Model has {count_parameters(model)} trainable parameters\n")
-    f.write(
-        f"Model took {total_train_time/train_param.epochs}s /epoch to train on average\n"
-    )
-    f.write(f"Model achieved minimum training loss of {min(total_loss)}\n")
-    f.write(
-        f"Model took {total_validation_time/train_param.epochs}s /epoch to validate on average\n"
-    )
-    f.write(f"Model achieved validation loss of {min_valid_loss}\n")
+    # f.write("------Training-----\n-")
+    # f.write(f"Model has {count_parameters(model)} trainable parameters\n")
+    # f.write(
+    #     f"Model took {total_train_time/train_param.epochs}s /epoch to train on average\n"
+    # )
+    # f.write(f"Model achieved minimum training loss of {min(total_loss)}\n")
+    # f.write(
+    #     f"Model took {total_validation_time/train_param.epochs}s /epoch to validate on average\n"
+    # )
+    # f.write(f"Model achieved validation loss of {min_valid_loss}\n")
 
-    model.save(
-        f"MSD{experiment_str}",
-        epoch=train_param.epochs,
-        training=train_param,
-        dataset=experiment.param,
-        geometry=experiment.geo,
-    )
+    # model.save(
+    #     f"MSD{experiment_str}",
+    #     epoch=train_param.epochs,
+    #     training=train_param,
+    #     dataset=experiment.param,
+    #     geometry=experiment.geo,
+    # )
 
     with torch.no_grad():
         model.eval()
+        mses = np.array([])
         ssims = np.array([])
         psnrs = np.array([])
         for sinogram, gt in tqdm(lidc_testing):
             sinogram = sinogram.to(device)
             gt = gt.to(device)
             output = model(fdk(sinogram, op))
+            cur_mse = mse(output.cpu().numpy(), gt.cpu().numpy())
             cur_ssim = my_ssim(output, gt)
             cur_psnr = my_psnr(output, gt)
+
+            mses = np.append(mses, cur_mse)
             ssims = np.append(ssims, cur_ssim)
             psnrs = np.append(psnrs, cur_psnr)
 
+        print(mses)
+        print(ssims)
+        print(psnrs)
+
+        mses = mses[np.isfinite(mses)]
         ssims = ssims[np.isfinite(ssims)]
         psnrs = psnrs[np.isfinite(psnrs)]
 
         f.write("------Testing-------\n")
+        f.write(f"Average mse: {np.mean(mses)}\n")
+        f.write(f"Max mse: {max(mses)}\n")
+        f.write(f"Min mse: {min(mses)}\n")
         f.write(f"Average psnr: {np.mean(psnrs)}\n")
         f.write(f"Max psnr: {max(psnrs)}\n")
         f.write(f"Min psnr: {min(psnrs)}\n")
         f.write(f"Average ssim: {np.mean(ssims)}\n")
-        f.write(f"Max ssim: {max(psnrs)}\n")
-        f.write(f"Min ssim: {min(psnrs)}\n")
+        f.write(f"Max ssim: {max(ssims)}\n")
+        f.write(f"Min ssim: {min(ssims)}\n")
 
 
 f.close()
