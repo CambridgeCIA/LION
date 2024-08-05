@@ -43,15 +43,18 @@ from abc import ABC, abstractmethod, ABCMeta
 import warnings
 from pathlib import Path
 
+
 class ModelInputType(int, Enum):
-    SINOGRAM=0
-    NOISY_RECON=1
+    SINOGRAM = 0
+    IMAGE = 1
+
 
 # it is the job of the subclass constructor to specify input_type
 class ModelParams(LIONParameter):
     def __init__(self, model_input_type, **kwargs):
         super().__init__(**kwargs)
         self.model_input_type = model_input_type
+
 
 class LIONmodel(nn.Module, ABC):
     """
@@ -64,7 +67,9 @@ class LIONmodel(nn.Module, ABC):
     def __init__(
         self,
         model_parameters: Optional[ModelParams],  # model parameters
-        geometry_parameters: Optional[ct.Geometry] = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
+        geometry_parameters: Optional[
+            ct.Geometry
+        ] = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
     ):
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
@@ -98,6 +103,9 @@ class LIONmodel(nn.Module, ABC):
             return self.model_parameters, self.geo
         else:
             return self.model_parameters
+
+    def get_input_type(self) -> ModelInputType:
+        return self.model_parameters.model_input_type
 
     # All classes should have this method. This is the example for Learned Primal Dual.
     # You can obtain this exact text from Google Scholar's page of the paper.
