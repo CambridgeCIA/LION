@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pathlib
 import torch
 from torch.utils.data import DataLoader
-from LION.models.CNNs.MSDNets.MSDNet import MSDNet
+from LION.models.CNNs.MSDNet import MSDNet
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 from LION.optimizers.Noise2Inverse_solver2 import Noise2InverseSolver
@@ -20,7 +20,7 @@ def my_ssim(x, y):
 device = torch.device("cuda:3")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
+savefolder = pathlib.Path("/path/")
 final_result_fname = "Noise2Inverse_MSD.pt"
 checkpoint_fname = "Noise2Inverse_MSD_check_*.pt"
 validation_fname = "Noise2Inverse_MSD_min_val.pt"
@@ -38,7 +38,7 @@ lidc_dataset = experiment.get_training_dataset()
 
 # %% Define DataLoader
 
-batch_size = 12
+batch_size = 3
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
 lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
 
