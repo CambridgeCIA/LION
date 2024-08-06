@@ -160,7 +160,7 @@ class Noise2InverseSolver(LIONsolver):
         with torch.no_grad():
             test_loss = np.array([])
             for sinos, targets in tqdm(self.test_loader):
-                outputs = self.process(sinos)
+                outputs = self.reconstruct(sinos)
                 test_loss = np.append(test_loss, self.testing_fn(targets, outputs))
 
         if self.verbose:
@@ -173,8 +173,7 @@ class Noise2InverseSolver(LIONsolver):
 
         return test_loss
 
-    # not convinced by this name
-    def process(self, sinos):
+    def reconstruct(self, sinos):
         noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)  # b, split, c, w, h
 
         outputs = torch.zeros(
