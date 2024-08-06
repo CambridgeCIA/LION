@@ -77,6 +77,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
         solver_params: Optional[SolverParams] = None,
     ) -> None:
+        print(device)
         super().__init__()
         if solver_params is None:
             self.solver_params = self.default_parameters()

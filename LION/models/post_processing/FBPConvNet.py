@@ -91,6 +91,11 @@ class Up(nn.Module):
         return self.block(x)
 
 
+class FBPConvNetParams(LIONmodel.ModelParams):
+    def __init__(self):
+        super().__init__(LIONmodel.ModelInputType.SINOGRAM)
+
+
 class FBPConvNet(LIONmodel.LIONmodel):
     def __init__(
         self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
@@ -188,7 +193,7 @@ class FBPConvNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        FBPConvNet_params = LIONParameter()
+        FBPConvNet_params = FBPConvNetParams()
         FBPConvNet_params.down_1_channels = [1, 64, 64, 64]
         FBPConvNet_params.down_2_channels = [64, 128, 128]
         FBPConvNet_params.down_3_channels = [128, 256, 256]
@@ -249,5 +254,5 @@ class FBPConvNet(LIONmodel.LIONmodel):
         res = self.block_3_up(torch.cat((block_2_res, self.up_3(res)), dim=1))
         res = self.block_4_up(torch.cat((block_1_res, self.up_4(res)), dim=1))
         res = self.block_last(res)
-        
+
         return image + res
