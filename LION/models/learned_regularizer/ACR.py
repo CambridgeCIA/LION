@@ -11,9 +11,7 @@ import torch
 import torch.nn as nn
 from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
 import LION.CTtools.ct_geometry as ct
-from LION.utils.parameter import LIONParameter
 import torch.nn.utils.parametrize as P
-from ts_algorithms import fdk
 from LION.utils.math import power_method
 
 
