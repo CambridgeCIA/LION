@@ -1,4 +1,10 @@
-from matplotlib import pyplot as plt
+# This file is part of LION library
+# License : BSD-3
+#
+# Author  : Zakhar Shumaylow, Charlie Shoebridge
+# Modifications: Ander Biguri
+# =============================================================================
+
 import numpy as np
 import torch
 from torch.optim.optimizer import Optimizer
@@ -249,6 +255,7 @@ class ARSolver(LIONsolver):
     def mini_batch_step(self, sino_batch, target_batch) -> float:
         return self.wgan_loss(sino_batch, target_batch)
 
+    # Change this to original paper
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
