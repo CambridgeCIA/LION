@@ -9,6 +9,7 @@ import torch
 import numpy as np
 from torch.utils.data import DataLoader
 import torch.utils.data as data_utils
+from tqdm import tqdm
 
 # Lion imports
 from LION.utils.parameter import LIONParameter
@@ -36,18 +37,29 @@ def my_psnr(x: torch.tensor, y: torch.tensor, data_range=None):
     return psnr(x, y, data_range=data_range)
 
 
-device = torch.device("cuda:2")
+device = torch.device("cuda:0")
+torch.cuda.set_device(device) ####IMPORTANT FOR A
 
-
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
+savefolder = pathlib.Path("/store/DAMTP/zs334/LION/eval/")
 # use min validation, or final result, whicever you prefer
-model_name = "FBPMSDnet_FullDataCTRecon_check_0030.pt"
+# model_name = "ACRLimitedAngle90CTRecon_check_0002.pt"
+# model_name = "ACRLimitedAngle90CTRecon_check_0002.pt"
+model_name = "ARFullDataCTRecon.pt"
 
-from LION.models.post_processing.FBPConvNet import FBPConvNet
+# from LION.models.post_processing.FBPMSDNet import FBPMS_D
+from LION.models.learned_regularizer.ACR import ACR
+from LION.models.learned_regularizer.AR import AR
 
-model, options, data = FBPConvNet.load(savefolder.joinpath(model_name))
-model.to(device)
-model.eval()
+
+# model, options, data = ACR.load(savefolder.joinpath(model_name))
+# model = ACR.load(savefolder.joinpath(model_name))[0]
+model = AR.load(savefolder.joinpath(model_name))[0]
+model.model_parameters.step_size = 0.2/(model.op_norm)**2
+# model.to(device)
+# model.load("/store/DAMTP/zs334/LION/ACR.pt")
+print('Model loaded')
+
+# model.eval()
 experiment = ct_benchmarking.FullDataCTRecon()
 # Limited angle
 # experiment = ct_benchmarking.LimitedAngle150CTRecon()
@@ -65,11 +77,20 @@ experiment = ct_benchmarking.FullDataCTRecon()
 testing_data = experiment.get_testing_dataset()
 testing_dataloader = DataLoader(testing_data, 1, shuffle=False)
 
+validation_data = experiment.get_validation_dataset()
+indices_val = torch.arange(50)
+validation_data = data_utils.Subset(validation_data, indices_val)
+validation_dataloader = DataLoader(validation_data, 1, shuffle=False)
+
+print(f'Data loaded testing: {len(testing_dataloader)}, validation: {len(validation_dataloader)}')
+
+model.estimate_alpha(dataset = validation_dataloader)
+model.model_parameters.no_steps = 300
+
 
 # prepare models/algos
 from ts_algorithms import fdk, sirt, tv_min, nag_ls
 
-model.eval()
 
 from LION.CTtools.ct_utils import make_operator
 
@@ -81,16 +102,22 @@ test_psnr = np.zeros(len(testing_dataloader))
 
 fdk_ssim = np.zeros(len(testing_dataloader))
 fdk_psnr = np.zeros(len(testing_dataloader))
-with torch.no_grad():
-    for index, (data, target) in enumerate(testing_dataloader):
-        # model
-        output = model(data.to(device))
-        test_ssim[index] = my_ssim(target, output)
-        test_psnr[index] = my_psnr(target, output)
-        # standard algo:
-        recon = fdk(op, data[0].to(device))
-        fdk_ssim[index] = my_ssim(target, recon)
-        fdk_psnr[index] = my_psnr(target, recon)
+
+print(len(testing_dataloader))
+
+pbar = tqdm(enumerate(testing_dataloader), total=len(testing_dataloader))
+for index, (data, target) in pbar:
+    # model
+    # print(index)
+    pbar.set_description(f"Testing {index}")
+    output = model.output(data.to(device))
+    # print(index, output, output.shape)
+    test_ssim[index] = my_ssim(target, output)
+    test_psnr[index] = my_psnr(target, output)
+    # standard algo:
+    recon = fdk(op, data[0].to(device))
+    fdk_ssim[index] = my_ssim(target, recon)
+    fdk_psnr[index] = my_psnr(target, recon)
 
 print(f"Testing SSIM: {test_ssim.mean()} +- {test_ssim.std()}")
 print(f"FDK SSIM: {fdk_ssim.mean()} +- {fdk_ssim.std()}")
@@ -129,7 +156,7 @@ max_val = 0.010
 target = testing_data[max_idx][1]
 data = testing_data[max_idx][0]
 recon = fdk(op, data)
-output = model(data.unsqueeze(0).to(device))
+output = model.output(data.unsqueeze(0).to(device))
 
 plt.figure()
 plt.subplot(231)
@@ -180,7 +207,7 @@ cbar.set_ticks(
 cbar.ax.tick_params(labelsize=5)
 
 plt.suptitle("Best PSNR")
-plt.savefig("eval_best_psnr.png", dpi=300)
+plt.savefig("eval_best_psnr_ACR.png", dpi=300)
 
 del target, data, recon, output
 
@@ -240,7 +267,7 @@ cbar.set_ticks(
 cbar.ax.tick_params(labelsize=5)
 
 plt.suptitle("Worst PSNR")
-plt.savefig("eval_worst_psnr.png", dpi=300)
+plt.savefig("eval_worst_psnr_ACR.png", dpi=300)
 del target, data, recon, output
 
 # MEAN PSNR
@@ -298,4 +325,4 @@ cbar.set_ticks(
 cbar.ax.tick_params(labelsize=5)
 
 plt.suptitle("Mean PSNR")
-plt.savefig("eval_mean_psnr.png", dpi=300)
+plt.savefig("eval_mean_psnr_ACR.png", dpi=300)
