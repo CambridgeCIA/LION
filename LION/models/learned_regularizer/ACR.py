@@ -197,22 +197,19 @@ class ACR(LIONmodel):
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
-            print("Mukherjee, Subhadip, et al.")
-            print('"Data-Driven Convex Regularizers for Inverse Problems."')
             print(
-                "ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2024"
+                'MMukherjee, Subhadip and Dittmer, S{"o}ren and Shumaylov, Zakhar and Lunz, Sebastian and {"O}ktem, Ozan and Sch{"o}nlieb, Carola-Bibiane'
             )
+            print('"Learned convex regularizers for inverse problems"')
+            print("arXiv preprint arXiv:2008.02839 (2020)")
             print("arXiv:2008.02839 (2020).")
         elif cite_format == "bib":
             string = """
-            @inproceedings{mukherjee2024data,
-            title={Data-Driven Convex Regularizers for Inverse Problems},
-            author={Mukherjee, S and Dittmer, S and Shumaylov, Z and Lunz, S and {\"O}ktem, O and Sch{\"o}nlieb, C-B},
-            booktitle={ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
-            pages={13386--13390},
-            year={2024},
-            organization={IEEE}
-            }
+            @article{mukherjee2020learned,
+            title={Learned convex regularizers for inverse problems},
+            author={Mukherjee, Subhadip and Dittmer, S{\"o}ren and Shumaylov, Zakhar and Lunz, Sebastian and {\"O}ktem, Ozan and Sch{\"o}nlieb, Carola-Bibiane},
+            journal={arXiv preprint arXiv:2008.02839},
+            year={2020}}
             """
             print(string)
         else:
