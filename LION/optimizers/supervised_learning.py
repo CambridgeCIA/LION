@@ -43,8 +43,6 @@ class SupervisedSolver(LIONsolver):
         This function isresponsible for performing a single mini-batch step of the optimization.
         returns the loss of the mini-batch
         """
-        # Zero gradients
-        self.optimizer.zero_grad()
         # Forward pass
         if self.model.get_input_type() == ModelInputType.IMAGE:
             data = fdk(sino, self.op)
@@ -54,13 +52,7 @@ class SupervisedSolver(LIONsolver):
             data = sino
 
         output = self.model(data)
-        self.loss = self.loss_fn(output, target)
-
-        # Update optimizer and model
-        self.loss.backward()
-        self.optimizer.step()
-
-        return self.loss.item()
+        return self.loss_fn(output, target)
 
     def validate(self):
         """
