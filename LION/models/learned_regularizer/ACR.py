@@ -60,10 +60,10 @@ class ICNN_layer(nn.Module):
 ###An L2 tern with learnable weight
 # define a network for training the l2 term
 class L2net(nn.Module):
-    def __init__(self):
+    def __init__(self, l2_penalty: float):
         super(L2net, self).__init__()
 
-        self.l2_penalty = nn.Parameter((-36.0) * torch.ones(1))
+        self.l2_penalty = nn.Parameter((l2_penalty) * torch.ones(1))
 
     def forward(self, x):
         l2_term = torch.sum(x.view(x.size(0), -1) ** 2, dim=1)
