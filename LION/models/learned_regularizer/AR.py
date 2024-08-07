@@ -18,7 +18,7 @@ class ARNetworkParams(ModelParams):
         self.n_channels = n_channels
 
 
-class ARNetwork(LIONmodel):
+class AR(LIONmodel):
     def __init__(
         self, model_parameters: ARNetworkParams, geometry_parametrs: ct.Geometry
     ):
