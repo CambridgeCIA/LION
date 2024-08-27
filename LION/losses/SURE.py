@@ -5,13 +5,11 @@ import torch
 
 
 class SURE(nn.Module):
-    def __init__(self, epsilon: Optional[float] = None) -> None:
+    def __init__(self, noise_std: float, epsilon: Optional[float] = None) -> None:
         super().__init__()
         self.epsilon = epsilon
-
-    def _estimate_noise_std(self):
-        # TODO: Figure out how to actually do this
-        return 1
+        self.noise_std = noise_std
+        self.mse = nn.MSELoss()
 
     def _monte_carlo_divergence(self, f, y: torch.Tensor):
         # y is B, C, W, H
@@ -20,7 +18,7 @@ class SURE(nn.Module):
         b = torch.normal(0.0, 1.0, (B, N)).to(y.device)
 
         if self.epsilon is None:
-            epsilon = torch.max(y) / 1000
+            epsilon = SURE.default_epsilon(y)
         else:
             epsilon = self.epsilon
 
@@ -29,20 +27,13 @@ class SURE(nn.Module):
         return (1 / epsilon) * (1 / N) * (torch.sum(b * (diff).reshape((B, N)), dim=1))
 
     def forward(self, model, noisy):
-        std = self._estimate_noise_std()
-        return (
-            F.mse_loss(noisy, model(noisy))
-            - std**2
-            + 2 * (std**2) * self._monte_carlo_divergence(model, noisy)
+        # mean loss over batch
+        return torch.mean(
+            self.mse(noisy, model(noisy))
+            - self.noise_std**2
+            + 2 * (self.noise_std**2) * self._monte_carlo_divergence(model, noisy)
         )
 
-
-if __name__ == "__main__":
-    device = torch.device("cuda:0")
-    my_sure = SURE().to(device)
-
-    def model(x):
-        return x**2
-
-    phantom = torch.rand((2, 1, 2, 2)).to(device)
-    print(my_sure(model, phantom))
+    @staticmethod
+    def default_epsilon(y):
+        return torch.max(y) / 1000
