@@ -30,21 +30,6 @@ class SURE(nn.Module):
         return torch.sum((1 / (N * epsilon)) * torch.sum(b * diff))
 
     def forward(self, model, noisy):
-        # print("MSE: ", self.mse(noisy, model(noisy)))
-        # # print("Noise_var: ", self.noise_std**2)
-        # # print("Divergence term", 2 * (self.noise_std**2) * self._monte_carlo_divergence(model, noisy))
-        # print("SURE loss ", torch.mean(
-        #     self.mse(noisy, model(noisy))
-        #     - self.noise_std**2
-        #     + 2 * (self.noise_std**2) * self._monte_carlo_divergence(model, noisy)
-        # ))
-        # if torch.mean(
-        #     self.mse(noisy, model(noisy))
-        #     - self.noise_std**2
-        #     + 2 * (self.noise_std**2) * self._monte_carlo_divergence(model, noisy)
-        # ) < 0:
-        #     print("NEGATIVE SURE LOSS")
-        #     quit()
         # mean loss over batch
         return torch.abs(
             torch.mean(
