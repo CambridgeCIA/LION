@@ -6,7 +6,7 @@ from LION.exceptions.exceptions import ShapeMismatchException
 
 
 class PSNR(nn.Module):
-    """PSNR: A wrapper for skimage.metrics.structural_similarity that operates on (potentially) batched pytorch tensors"""
+    """PSNR: A wrapper for skimage.metrics.peak_signal_noise_ratio that operates on (potentially) batched pytorch tensors"""
 
     def __init__(self):
         super().__init__()
