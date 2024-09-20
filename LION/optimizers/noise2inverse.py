@@ -111,8 +111,6 @@ class Noise2InverseSolver(LIONsolver):
         noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)
         # b, split, c, w, h
 
-        self.optimizer.zero_grad()
-
         # almost certain this can be made more efficient
         # use all the Js, this is different from Ander's
         loss = torch.zeros(len(self.cali_J), device=self.device)
@@ -133,11 +131,7 @@ class Noise2InverseSolver(LIONsolver):
             output = self.model(mean_input_recons)
             loss[i] = self.loss_fn(output, mean_target_recons)
 
-        self.loss = loss.sum()
-        self.loss.backward()
-        self.optimizer.step()
-
-        return self.loss.item() / len(self.cali_J)
+        return loss.sum() / len(self.cali_J)
 
     # No validation in Noise2Inverse (is this right?)
     def validate(self):

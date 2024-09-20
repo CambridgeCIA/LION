@@ -71,7 +71,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self,
         model: LIONmodel,
         optimizer: Optimizer,
-        loss_fn: torch.nn.Module,
+        loss_fn: Callable,
         geometry: Geometry,
         verbose: bool = True,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
@@ -81,13 +81,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         super().__init__()
         if solver_params is None:
             self.solver_params = self.default_parameters()
-
+        else:
+            self.solver_params = solver_params
         assert isinstance(model, LIONmodel), "model must be a LIONmodel"
         assert isinstance(optimizer, Optimizer), "optimizer must be a torch optimizer"
-
-        # currently not used in subclasses or here, but we'll save it with the view that we'll want to serialize these at some point
-        # relevant solver_params are extracted into data members on a subclass level
-        self.solver_params = solver_params
 
         self.model = model
         self.optimizer = optimizer
@@ -112,7 +109,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.current_epoch: int = 0
 
         self.save_folder: Optional[pathlib.Path] = None
-        self.load_folder: Optional[pathlib.Path] = None
 
         self.do_load_checkpoint: bool = False
         self.checkpoint_freq: int
@@ -120,6 +116,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.final_result_fname: Optional[str] = None
         self.checkpoint_fname: Optional[str] = None
         self.validation_fname: Optional[str] = None
+        self.load_folder: Optional[pathlib.Path] = None
+        self.checkpoint_save_folder: Optional[pathlib.Path] = None
 
         self.verbose = verbose
         self.metadata = LIONParameter()
@@ -173,6 +171,15 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.testing_fn = testing_fn if testing_fn is not None else self.loss_fn
 
     def set_saving(self, save_folder: str | pathlib.Path, final_result_fname: str):
+        """Sets save_folder and filename for saving final result and min_val result
+
+        Args:
+            save_folder (str | pathlib.Path): _description_
+            final_result_fname (str): _description_
+
+        Raises:
+            ValueError: _description_
+        """
         if isinstance(save_folder, str):
             save_folder = pathlib.Path(save_folder)
         if not save_folder.is_dir():
@@ -183,32 +190,38 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.save_folder = save_folder
         self.final_result_fname = final_result_fname
 
-    def set_loading(self, load_folder: str | pathlib.Path, do_load: bool = False):
-        if isinstance(load_folder, str):
-            load_folder = pathlib.Path(load_folder)
-        if not load_folder.is_dir():
-            raise ValueError(
-                f"Save folder '{load_folder}' is not a directory, failed to set saving."
-            )
-
-        self.load_folder = load_folder
-        self.do_load_checkpoint = do_load
-
     def set_checkpointing(
         self,
         checkpoint_fname: str,
+        save_folder: str | pathlib.Path,
+        load_folder: str | pathlib.Path,
         checkpoint_freq: int = 10,
+        do_load: bool = False,
     ):
         """
         This function sets the checkpointing
         """
-        if self.save_folder is None:
-            warnings.warn("Save folder not set. Please call set_saving")
+        if isinstance(save_folder, str):
+            save_folder = pathlib.Path(save_folder)
+        if isinstance(load_folder, str):
+            load_folder = pathlib.Path(load_folder)
+
+        if not save_folder.is_dir():
+            raise ValueError(
+                f"Save folder '{save_folder}' is not a directory, failed to set checkpointing."
+            )
+        if not load_folder.is_dir():
+            raise ValueError(
+                f"Load folder '{load_folder}' is not a directory, failed to set load checkpointing."
+            )
+
         self.checkpoint_freq = checkpoint_freq
         self.checkpoint_fname = checkpoint_fname
+        self.do_load_checkpoint = do_load
+        self.load_folder = load_folder
+        self.checkpoint_save_folder = save_folder
 
     def set_normalization(self, do_normalize: bool):
-        print(self.model.model_parameters.model_input_type)
         if self.model.get_input_type() == ModelInputType.SINOGRAM:
             warnings.warn(
                 """Normalization will not be carried out on this model,
@@ -224,9 +237,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if self.do_normalize:
             xmax = -np.inf
             xmin = np.inf
-            for x in self.train_loader:
-                xmax = max(x[1].max(), xmax)
-                xmin = min(x[1].min(), xmin)
+            for _, gt in self.train_loader:
+                xmax = max(gt.max(), xmax)
+                xmin = min(gt.min(), xmin)
             self.xmin = xmin
             self.xmax = xmax
 
@@ -496,10 +509,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         This function saves a checkpoint of the model and the optimizer
         """
-        if self.save_folder is None:
+        if self.checkpoint_save_folder is None:
             raise LIONSolverException("Saving not set: please call set_saving")
         self.model.save_checkpoint(
-            self.save_folder.joinpath(
+            self.checkpoint_save_folder.joinpath(
                 pathlib.Path(str(self.checkpoint_fname).replace("*", f"{epoch+1:04d}"))
             ),
             epoch + 1,
@@ -573,7 +586,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if self.do_normalize:
             assert self.xmax is not None and self.xmin is not None
             normalized_x = (x - self.xmin) / (self.xmax - self.xmin)
-        return normalized_x
+            return normalized_x
+        else:
+            return x
 
     def test(self):
         self.model.eval()
@@ -649,9 +664,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model.train()
         epoch_loss = 0.0
         for _, (data, target) in enumerate(tqdm(self.train_loader)):
-            epoch_loss += self.mini_batch_step(
+            self.optimizer.zero_grad()
+            batch_loss = self.mini_batch_step(
                 data.to(self.device), target.to(self.device)
             )
+            batch_loss.backward()
+            epoch_loss += batch_loss.item()
+            self.optimizer.step()
         return epoch_loss / len(self.train_loader)
 
     def epoch_step(self, epoch):
@@ -714,8 +733,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def mini_batch_step(self, sino_batch, target_batch) -> float:
+    def mini_batch_step(self, sino_batch, target_batch) -> torch.Tensor:
         """
-        This function should perform a single step of the optimization
+        This function should perform a single step of the optimization and return the loss
         """
         pass
