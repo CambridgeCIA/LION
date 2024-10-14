@@ -94,6 +94,17 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "cshoebridge",
+      "name": "Charlie Shoebridge",
+      "avatar_url": "https://avatars.githubusercontent.com/u/74095041?v=4",
+      "profile": "https://github.com/cshoebridge",
+      "contributions": [
+        "code",
+        "design",
+        "ideas"
+      ]
     }
   ],
   "contributorsPerLine": 7,
