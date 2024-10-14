@@ -89,6 +89,7 @@ Read `developers.md`
     </tr>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Zakobian"><img src="https://avatars.githubusercontent.com/u/46059070?v=4?s=100" width="100px;" alt="Zak Shumaylov"/><br /><sub><b>Zak Shumaylov</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=Zakobian" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://hyt35.github.io"><img src="https://avatars.githubusercontent.com/u/56555137?v=4?s=100" width="100px;" alt="Hong Ye Tan"/><br /><sub><b>Hong Ye Tan</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=hyt35" title="Code">💻</a> <a href="#design-hyt35" title="Design">🎨</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/cshoebridge"><img src="https://avatars.githubusercontent.com/u/74095041?v=4?s=100" width="100px;" alt="Charlie Shoebridge"/><br /><sub><b>Charlie Shoebridge</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=cshoebridge" title="Code">💻</a> <a href="#design-cshoebridge" title="Design">🎨</a> <a href="#ideas-cshoebridge" title="Ideas, Planning, & Feedback">🤔</a></td>
     </tr>
   </tbody>
