@@ -94,6 +94,16 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "hyt35",
+      "name": "Hong Ye Tan",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56555137?v=4",
+      "profile": "http://hyt35.github.io",
+      "contributions": [
+        "code",
+        "design"
+      ]
     }
   ],
   "contributorsPerLine": 7,
