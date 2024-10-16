@@ -157,7 +157,7 @@ def make_operator(geo: Geometry):
     return A
 
 
-def forward_projection_fan(image, geo, backend="tomosipo"):
+def forward_projection(image, geo, backend="tomosipo"):
     """
     Produces a noise free forward projection, given np.array image, a size (in real world units), a sinogram shape and size,
     distances from source to detector DSD and distance from source to object DSO.
