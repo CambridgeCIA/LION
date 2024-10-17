@@ -183,6 +183,21 @@ class deteCT(Dataset):
             )
         ]
 
+        if hasattr(parameters, "add_noise") and parameters.add_noise:
+            self.add_noise = parameters.add_noise
+            self.noise_params = parameters.noise_params
+            if self.task not in ["sino2sino", "sino2recon", "joint", "sino2seg"]:
+                warnings.warn(
+                    "You have defined noise parameters, but the task is not 'sino2sino', 'sino2recon', 'joint', or 'sino2seg'. Noise will not be added"
+                )
+                self.add_noise = False
+            if not hasattr(parameters, "noise_params") and self.add_noise:
+                raise ValueError(
+                    "You have to define noise parameters if you want to add noise"
+                )
+        else:
+            self.add_noise = False
+
         self.flat_field_correction = parameters.flat_field_correction
         self.dark_field_correction = parameters.dark_field_correction
         self.log_transform = parameters.log_transform
@@ -206,6 +221,8 @@ class deteCT(Dataset):
         param.dark_field_correction = True
         param.log_transform = True
         param.query = ""
+
+        param.add_noise = False
 
         param.geo = deteCT.get_default_geometry()
         return param
@@ -287,6 +304,9 @@ class deteCT(Dataset):
     def get_operator(self):
         return make_operator(self.geo)
 
+    def set_sinogram_transform(self, sinogram_transform):
+        self.sinogram_transform = sinogram_transform
+
     def compute_sample_dataframe(self):
         unique_identifiers = self.slice_dataframe["sample_index"].unique()
         record = {"sample_index": [], "first_slice": [], "last_slice": []}
@@ -306,6 +326,50 @@ class deteCT(Dataset):
             + 1
         )
 
+    def add_sinogram_noise(self, sinogram, I0, cross_talk=0.05):
+        """
+        Add noise to a measured sinogram.
+        The reason this data loader has a bestpoke function for this is that the noise is that the
+        noise simulator in LION.ct_tools.ct_utils assumes noiseles sinograms in X-ray absobtion.
+        However, adding noise to a real measured sinogram is not the same as adding noise to a noiseless sinogram.
+
+        The assumption here is that the input sinogram is measured, and contains enough photon counts as to ignore the poisson noise.
+        However, effects due to the detector, electronics, etc. are still present. In particular, it assumes that there is electronic noise,
+        modelled by a signal-independent Gaussian noise, and that it has detector cross-talk, modelled by a convolution.
+
+        Under those assumptions, we can say thus that the noisy sinogram is:
+        $$
+        sino_{noisy} = sino_{measured} + corss_talk(P_{I0}),
+        $$
+        where $P_{I0}$ is the noise conponent of adding Poisson noise at $I0$ counts to the input sinogram (input is assumed at $I0=\inf$).
+        This is not exactly correct, but approximately so. See Kiss et al. 2024 for more details
+
+        Input:
+        sinogram: torch.Tensor, the sinogram to add noise to. It has to be flat field corrected, and in absobrtion units (i.e. log transformed)
+        I0: float, the number of counts in the measurement (lower=more noise)
+        """
+        dev = torch.cuda.current_device()
+
+        Im = I0 * torch.exp(-sinogram)
+        # Add Poisson noise
+        Pm = torch.poisson(Im)
+        PI = Pm - Im
+        # Detector cross talk
+
+        kernel = torch.tensor(
+            [[0.0, 0.0, 0.0], [cross_talk, 1, cross_talk], [0.0, 0.0, 0.0]]
+        ).view(1, 1, 3, 3).repeat(1, 1, 1, 1) / (1 + 2 * cross_talk)
+
+        conv = torch.nn.Conv2d(1, 1, 3, bias=False, padding="same")
+        with torch.no_grad():
+            conv.weight = torch.nn.Parameter(kernel)
+        conv = conv.to(dev)
+
+        noisy = Im + conv(PI.unsqueeze(0).to(dev)).cpu()[0]
+        noisy = torch.clip(noisy, min=0.0, max=I0)
+        noisy[noisy <= 0] = 1e-6
+        return -torch.log(noisy / I0)
+
     def __load_and_preprocess_sinogram__(self, index, mode):
         slice_row = self.slice_dataframe.iloc[index]
         path_to_input = self.path_to_dataset.joinpath(
@@ -314,6 +378,7 @@ class deteCT(Dataset):
         sinogram = torch.from_numpy(
             np.load(path_to_input.joinpath("sinogram.npy")).astype(np.float32)
         ).unsqueeze(0)
+
         if self.flat_field_correction:
             flat = torch.from_numpy(
                 np.load(path_to_input.joinpath("flat.npy")).astype(np.float32)
@@ -331,6 +396,11 @@ class deteCT(Dataset):
         sinogram = torch.clip(sinogram, min=1e-6)
         if self.log_transform:
             sinogram = -torch.log(sinogram)
+
+        if self.add_noise:
+            sinogram = self.add_sinogram_noise(
+                sinogram, self.noise_params.I0, self.noise_params.cross_talk
+            )
 
         sinogram = torch.flip(sinogram, [2])
         sinogram = sinogram[:, self.angle_index, :]
@@ -406,13 +476,22 @@ class deteCT(Dataset):
 
         # If target is sinogram, we need to load the sinogram
         if self.task in ["sino2sino", "recon2sino", "joint"]:
+            # lets make sure we don't add noise to the target.
+            noise = self.add_noise
+            self.add_noise = False
             target = self.__load_and_preprocess_sinogram__(index, self.target_mode)
+            self.add_noise = noise
         # if target is reconstruction, we need to load the reconstruction
         elif self.task in ["recon2recon", "sino2recon", "groundtruth"]:
             if self.do_recon:
+                # lets make sure we don't add noise to the target.
+                noise = self.add_noise
+                self.add_noise = False
                 sinogram = self.__load_and_preprocess_sinogram__(
                     index, self.target_mode
                 )
+                self.add_noise = noise
+
                 op = deteCT.get_operator()
                 if self.recon_algo == "nag_ls":
                     target = nag_ls(op, sinogram, 100, min_constraint=0)
