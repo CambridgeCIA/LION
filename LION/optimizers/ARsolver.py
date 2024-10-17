@@ -1,4 +1,10 @@
-from matplotlib import pyplot as plt
+# This file is part of LION library
+# License : BSD-3
+#
+# Author  : Zakhar Shumaylow, Charlie Shoebridge
+# Modifications: Ander Biguri
+# =============================================================================
+
 import numpy as np
 import torch
 from torch.optim.optimizer import Optimizer
@@ -20,7 +26,7 @@ class ARParams(SolverParams):
         no_steps: int = 150,
         step_size: float = 1e-6,
         beta_rate: float = 0.95,
-        lambd_gp: float = 1e-3,
+        lambd_gp: float = 1e-1,
     ):
         super().__init__()
         self.early_stopping = early_stopping
@@ -252,21 +258,18 @@ class ARSolver(LIONsolver):
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
-            print("Mukherjee, Subhadip, et al.")
-            print('"Data-Driven Convex Regularizers for Inverse Problems."')
-            print(
-                "ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2024"
-            )
+            print("Lunz, Sebastian, Ozan Öktem, and Carola-Bibiane Schönlieb")
+            print('"Adversarial regularizers in inverse problems."')
+            print("neural information processing systems 31 (2018).")
             print("arXiv:2008.02839 (2020).")
         elif cite_format == "bib":
             string = """
-            @inproceedings{mukherjee2024data,
-            title={Data-Driven Convex Regularizers for Inverse Problems},
-            author={Mukherjee, S and Dittmer, S and Shumaylov, Z and Lunz, S and {\"O}ktem, O and Sch{\"o}nlieb, C-B},
-            booktitle={ICASSP 2024-2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
-            pages={13386--13390},
-            year={2024},
-            organization={IEEE}
+            @article{lunz2018adversarial,
+            title={Adversarial regularizers in inverse problems},
+            author={Lunz, Sebastian and {\"O}ktem, Ozan and Sch{\"o}nlieb, Carola-Bibiane},
+            journal={Advances in neural information processing systems},
+            volume={31},
+            year={2018}
             }
             """
             print(string)

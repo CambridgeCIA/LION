@@ -1,22 +1,12 @@
-#%% This example shows how to train Learned Primal dual for full angle, noisy measurements.
-
-#%% Imports
-
-# Standard imports
 import matplotlib.pyplot as plt
 import pathlib
-from skimage.metrics import structural_similarity as ssim
-from ts_algorithms import fdk
-
-# Torch imports
 import torch
-from torch.utils.data import DataLoader, Subset
-
-# Lion imports
-from LION.models.CNNs.MS_D import MS_D
+from torch.utils.data import DataLoader
+from LION.models.CNNs.MSDNet import MSDNet
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
-from LION.optimizers.Noise2Inverse_solver import Noise2Inverse_solver
+from LION.optimizers.Noise2Inverse_solver2 import Noise2InverseSolver
+from skimage.metrics import structural_similarity as ssim
 
 
 def my_ssim(x, y):
@@ -25,84 +15,75 @@ def my_ssim(x, y):
     return ssim(x, y, data_range=x.max() - x.min())
 
 
-#%%
+# %%
 # % Chose device:
-device = torch.device("cuda:1")
+device = torch.device("cuda:3")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/test_debugging/")
+savefolder = pathlib.Path("/path/")
 final_result_fname = "Noise2Inverse_MSD.pt"
 checkpoint_fname = "Noise2Inverse_MSD_check_*.pt"
 validation_fname = "Noise2Inverse_MSD_min_val.pt"
 #
-#%% Define experiment
+# %% Define experiment
 
 experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
 
-#%% Dataset
+# %% Dataset
 lidc_dataset = experiment.get_training_dataset()
 
 # smaller dataset for example. Remove this for full dataset
-lidc_dataset = Subset(lidc_dataset, range(50))
+# lidc_dataset = data_utils.Subset(lidc_dataset, [i for i in range(50)])
 
 
-#%% Define DataLoader
-# Use the same amount of training
+# %% Define DataLoader
 
-
-batch_size = 12
+batch_size = 3
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
 lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
 
-#%% Model
+# %% Model
 # Default model is already from the paper.
-model = MS_D().to(device)
+model = MSDNet().to(device)
 
-#%% Optimizer
+# %% Optimizer
 train_param = LIONParameter()
 
 # loss fn
-loss_fcn = torch.nn.MSELoss()
+loss_fn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 3
-train_param.learning_rate = 1e-4
+train_param.epochs = 100
+train_param.learning_rate = 10 ** (-3)
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
 optimiser = torch.optim.Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
 
-#%% Train
+# %% Train
 # create solver
-noise2inverse_parameters = Noise2Inverse_solver.default_parameters()
-noise2inverse_parameters.sino_splits = (
-    4  # its default anyway, but this is how you can modify it
-)
-noise2inverse_parameters.base_algo = (
-    fdk  # its default anyway, but this is how you can modify it
-)
-
-solver = Noise2Inverse_solver(
+noise2inverse_parameters = Noise2InverseSolver.default_parameters()
+solver = Noise2InverseSolver(
     model,
     optimiser,
-    loss_fcn,
-    verbose=True,
-    geo=experiment.geo,
-    optimizer_params=noise2inverse_parameters,
+    loss_fn,
+    noise2inverse_parameters,
+    True,
+    experiment.geo,
+    savefolder,
+    final_result_fname,
+    device=device,
 )
-
-# YOU CAN IGNORE THIS. You can 100% just write your own pytorch training loop.
-# LIONSover is just a convinience class that does some stuff for you, no need to use it.
 
 # set data
 solver.set_training(lidc_dataloader)
+solver.set_normalization(True)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
-solver.set_saving(savefolder, final_result_fname)
-solver.set_checkpointing(checkpoint_fname, 10, load_checkpoint=False)
+solver.set_checkpointing(checkpoint_fname, 2, load_checkpoint=True)
 # train
 solver.train(train_param.epochs)
 # delete checkpoints if finished

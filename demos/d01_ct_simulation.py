@@ -137,7 +137,7 @@ phantom = torch.from_numpy(phantom).to(dev)
 # In essence, this is the same as using the operator we defined above.
 
 # We can use the following function
-sino = ct.forward_projection_fan(phantom, geo)
+sino = ct.forward_projection(phantom, geo)
 # If you defined the operator as in step 3 or 4, you can also do (its the same):
 sino = A(phantom)
 # For noise simulation, a good approximation of CT noise is to add Poisson noise to the non-log transformed sinograms,
