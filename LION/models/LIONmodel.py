@@ -47,6 +47,7 @@ from pathlib import Path
 class ModelInputType(int, Enum):
     SINOGRAM = 0
     NOISY_RECON = 1
+    IMAGE = 1
 
 
 # it is the job of the subclass constructor to specify input_type
@@ -103,6 +104,9 @@ class LIONmodel(nn.Module, ABC):
             return self.model_parameters, self.geo
         else:
             return self.model_parameters
+
+    def get_input_type(self) -> ModelInputType:
+        return self.model_parameters.model_input_type
 
     # All classes should have this method. This is the example for Learned Primal Dual.
     # You can obtain this exact text from Google Scholar's page of the paper.

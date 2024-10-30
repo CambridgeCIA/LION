@@ -50,7 +50,7 @@ device = torch.device("cuda:3")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/cs2186/trained_models/clinical_dose/")
-
+torch.manual_seed(0)
 
 #
 # %% Define experiment
@@ -88,7 +88,7 @@ for experiment in experiments:
     for i in range(depth):
         for j in range(width):
             dilations.append((((i * width) + j) % 10) + 1)
-    model_params = MSD_Params(
+    model_params = MSDParams(
         in_channels=1,
         width=width,
         depth=depth,
@@ -119,7 +119,9 @@ for experiment in experiments:
     train_param.loss = "MSELoss"
     train_param.accumulation_steps = 1
     optimiser = torch.optim.Adam(
-        model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
+        model.parameters(),
+        lr=train_param.learning_rate,
+        betas=train_param.betas,
     )
 
     # learning parameter update

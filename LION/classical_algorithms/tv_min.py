@@ -19,10 +19,10 @@ def tv_min(
     callbacks: list[Callable] = [],
 ) -> torch.Tensor:
     """Computes the total-variation minimization using Chambolle-Pock on a batched input.\n
-        See ts_algorithms.tv_min2d for more details.
+    See ts_algorithms.tv_min2d for more details.
     """
     B, _, _, _ = sino.shape
-    if B == 0: 
+    if B == 0:
         raise NoDataException("Given 0 batches, no data to operate on!")
     if isinstance(op, Geometry):
         op = make_operator(op)

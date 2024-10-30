@@ -1,16 +1,18 @@
 # This file is part of LION library
 # License : BSD-3
 #
-# Author  : Subhadip Mukherjee
-# Modifications: Ander Biguri
+# Author  : Zakhar Shumaylov, Subhadip Mukherjee
+# Modifications: Ander Biguri, Zakhar Shumaylov
 # =============================================================================
 
 
+from typing import Optional
 import torch
 import torch.nn as nn
-from LION.models import LIONmodel
-from LION.utils.parameter import LIONParameter
+from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
+import LION.CTtools.ct_geometry as ct
 import torch.nn.utils.parametrize as P
+from LION.utils.math import power_method
 
 
 class Positive(nn.Module):
@@ -19,7 +21,7 @@ class Positive(nn.Module):
 
 
 class ICNN_layer(nn.Module):
-    def __init__(self, channels, kernel_size=3, stride=1, relu_type="LeakyReLU"):
+    def __init__(self, channels, kernel_size=5, stride=1, relu_type="LeakyReLU"):
         super().__init__()
 
         # The paper diagram is in color, channels are described by "blue" and "orange"
@@ -58,10 +60,10 @@ class ICNN_layer(nn.Module):
 ###An L2 tern with learnable weight
 # define a network for training the l2 term
 class L2net(nn.Module):
-    def __init__(self):
+    def __init__(self, l2_penalty: float):
         super(L2net, self).__init__()
 
-        self.l2_penalty = nn.Parameter((-9.0) * torch.ones(1))
+        self.l2_penalty = nn.Parameter((l2_penalty) * torch.ones(1))
 
     def forward(self, x):
         l2_term = torch.sum(x.view(x.size(0), -1) ** 2, dim=1)
@@ -71,58 +73,32 @@ class L2net(nn.Module):
         return out
 
 
-# sparsifying filter-bank (SFB) module
-class SFB(LIONmodel.LIONmodel):
-    def __init__(self, model_parameters):
-
-        super().__init__(model_parameters)
-        # FoE kernels
-        self.penalty = nn.Parameter((-12.0) * torch.ones(1))
-        self.n_kernels = model_parameters.n_kernels
-        self.conv = nn.ModuleList(
-            [
-                nn.Conv2d(
-                    1,
-                    model_parameters.n_filters,
-                    kernel_size=7,
-                    stride=1,
-                    padding=3,
-                    bias=False,
-                )
-                for i in range(self.n_kernels)
-            ]
-        )
-        if model_parameters.L2net:
-            self.L2net = L2net()
-
-    @staticmethod
-    def default_parameters():
-        param = LIONParameter()
-        param.n_kernels = 10
-        param.n_filters = 32
-        param.L2net = True
-        return param
-
-    def forward(self, x):
-        # compute the output of the FoE part
-        total_out = 0.0
-        for kernel_idx in range(self.n_kernels):
-            x_out = torch.abs(self.conv[kernel_idx](x))
-            x_out_flat = x_out.view(x.size(0), -1)
-            total_out += torch.sum(x_out_flat, dim=1)
-
-        total_out = total_out.view(x.size(0), -1)
-        out = (torch.nn.functional.softplus(self.penalty)) * total_out
-        if self.model_parameters.L2net:
-            out = out + self.L2net(x)
-        return out
+class ACRParams(ModelParams):
+    def __init__(
+        self,
+        channels: int = 16,
+        kernel_size: int = 5,
+        stride: int = 1,
+        relu_type: str = "LeakyReLU",
+        layers: int = 5,
+    ):
+        super().__init__(ModelInputType.IMAGE)
+        self.channels = channels
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.relu_type = relu_type
+        self.layers = layers
 
 
-class ACR(LIONmodel.LIONmodel):
-    def __init__(self, model_parameters: LIONParameter = None):
+class ACR(LIONmodel):
+    def __init__(
+        self,
+        geometry_parameters: ct.Geometry,
+        model_parameters: Optional[ACRParams] = None,
+    ):
 
-        super().__init__(model_parameters)
-
+        super().__init__(model_parameters, geometry_parameters)
+        self._make_operator()
         # First Conv
         self.first_layer = nn.Conv2d(
             in_channels=1,
@@ -162,10 +138,32 @@ class ACR(LIONmodel.LIONmodel):
         P.register_parametrization(self.last_layer, "weight", Positive())
 
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.L2 = L2net()
         self.initialize_weights()
+        self.estimate_lambda()
+        self.op_norm = power_method(self.op)
+        self.model_parameters.step_size = 1 / (self.op_norm) ** 2
 
     # a weight initialization routine for the ICNN
-    def initialize_weights(self, min_val=0.0, max_val=0.001):
+    def initialize_weights(self, min_val=0.0, max_val=1e-3):
+        for i in range(self.model_parameters.layers):
+            block = getattr(self, f"ICNN_layer_{i}")
+            block.blue.weight.data = min_val + (max_val - min_val) * torch.rand_like(
+                block.blue.weight.data
+            )
+        self.last_layer.weight.data = min_val + (max_val - min_val) * torch.rand_like(
+            self.last_layer.weight.data
+        )
+        return self
+
+    def improved_initialize_weights(self, min_val=0.0, max_val=0.001):
+        ###
+        ### This is based on a recent paper https://openreview.net/pdf?id=pWZ97hUQtQ
+        ###
+        # convex_init = ConvexInitialiser()
+        # w1, b1 = icnn[1].parameters()
+        # convex_init(w1, b1)
+        # assert torch.all(w1 >= 0) and b1.var() > 0
         device = torch.cuda.current_device()
         for i in range(self.model_parameters.layers):
             block = getattr(self, f"ICNN_layer_{i}")
@@ -175,35 +173,35 @@ class ACR(LIONmodel.LIONmodel):
                 self.model_parameters.kernel_size,
                 self.model_parameters.kernel_size,
             ).to(device)
-
+        self.last_layer.weight.data = min_val + (max_val - min_val) * torch.rand_like(
+            self.last_layer.weight.data
+        )
         return self
 
     def forward(self, x):
-
+        # x = fdk(self.op, x)
+        x = self.normalise(x)
         z = self.first_layer(x)
         z = self.first_activation(z)
         for i in range(self.model_parameters.layers):
-            layer = primal_module = getattr(self, f"ICNN_layer_{i}")
+            layer = getattr(self, f"ICNN_layer_{i}")
             z = layer(z, x)
+
         z = self.last_layer(z)
-        return self.pool(z)
+        return self.pool(z).reshape(-1, 1) + self.L2(z)
 
     @staticmethod
     def default_parameters():
-        param = LIONParameter()
-        param.channels = 48
-        param.kernel_size = 5
-        param.stride = 1
-        param.relu_type = "LeakyReLU"
-        param.layers = 10
-        return param
+        return ACRParams(16, 5, 1, "LeakyReLU", 5)
 
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
-            print("Mukherjee, Subhadip, et al.")
-            print('"Learned convex regularizers for inverse problems."')
-            print("\x1B[3marXiv preprint \x1B[0m")
+            print(
+                'MMukherjee, Subhadip and Dittmer, S{"o}ren and Shumaylov, Zakhar and Lunz, Sebastian and {"O}ktem, Ozan and Sch{"o}nlieb, Carola-Bibiane'
+            )
+            print('"Learned convex regularizers for inverse problems"')
+            print("arXiv preprint arXiv:2008.02839 (2020)")
             print("arXiv:2008.02839 (2020).")
         elif cite_format == "bib":
             string = """
@@ -211,8 +209,8 @@ class ACR(LIONmodel.LIONmodel):
             title={Learned convex regularizers for inverse problems},
             author={Mukherjee, Subhadip and Dittmer, S{\"o}ren and Shumaylov, Zakhar and Lunz, Sebastian and {\"O}ktem, Ozan and Sch{\"o}nlieb, Carola-Bibiane},
             journal={arXiv preprint arXiv:2008.02839},
-            year={2020}
-            }"""
+            year={2020}}
+            """
             print(string)
         else:
             raise AttributeError(
