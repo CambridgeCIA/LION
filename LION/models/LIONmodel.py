@@ -43,15 +43,18 @@ from abc import ABC, abstractmethod, ABCMeta
 import warnings
 from pathlib import Path
 
+
 class ModelInputType(int, Enum):
-    SINOGRAM=0
-    NOISY_RECON=1
+    SINOGRAM = 0
+    NOISY_RECON = 1
+
 
 # it is the job of the subclass constructor to specify input_type
 class ModelParams(LIONParameter):
     def __init__(self, model_input_type, **kwargs):
         super().__init__(**kwargs)
         self.model_input_type = model_input_type
+
 
 class LIONmodel(nn.Module, ABC):
     """
@@ -64,7 +67,9 @@ class LIONmodel(nn.Module, ABC):
     def __init__(
         self,
         model_parameters: Optional[ModelParams],  # model parameters
-        geometry_parameters: Optional[ct.Geometry] = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
+        geometry_parameters: Optional[
+            ct.Geometry
+        ] = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
     ):
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
@@ -203,7 +208,10 @@ class LIONmodel(nn.Module, ABC):
         options = LIONParameter()
         # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
         # we need to at least know exactly when the model was saved, to at least be able to reproduce.
-        options.commit_hash = ai_utils.get_git_revision_hash()
+        try:
+            options.commit_hash = ai_utils.get_git_revision_hash()
+        except:
+            warnings.warn("\nCould not get git hash.\n")
         options.model_name = self.__class__.__name__
         options.model_parameters = self.model_parameters
         if geo:

@@ -38,7 +38,7 @@ validation_fname = savefolder.joinpath("LPD_min_val.pt")
 #%% Define experiment
 
 experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
-
+experiment = ct_experiments.ExtremeLowDoseCTRecon(dataset="LIDC-IDRI")
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
@@ -54,15 +54,30 @@ lidc_dataset_val = data_utils.Subset(lidc_dataset_val, indices)
 
 
 batch_size = 1
-lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
+lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=False)
 lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
 
+sample, target = next(iter(lidc_dataloader))
+from LION.classical_algorithms.fdk import fdk
+
+recon = fdk(sample, experiment.geo)
+plt.figure()
+plt.subplot(1, 2, 1)
+plt.imshow(recon[0, 0].cpu().numpy(), cmap="gray")
+plt.clim(0, 3)
+plt.axis("off")
+plt.subplot(1, 2, 2)
+plt.imshow(target[0, 0].cpu().numpy(), cmap="gray")
+plt.clim(0, 3)
+plt.axis("off")
+plt.savefig("fdk.png")
+exit()
 #%% Model
 # Default model is already from the paper.
-from LION.models.iterative_unrolled.cLPD import cLPD
+from LION.models.iterative_unrolled.cLPD import LPD
 
-default_parameters = cLPD.default_parameters()
+default_parameters = LPD.default_parameters()
 # This makes the LPD calculate the step size for the backprojection, which in my experience results in much much better pefromace
 # as its all in the correct scale.
 default_parameters.learned_step = True
