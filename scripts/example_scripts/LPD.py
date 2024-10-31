@@ -61,21 +61,10 @@ lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=Fal
 sample, target = next(iter(lidc_dataloader))
 from LION.classical_algorithms.fdk import fdk
 
-recon = fdk(sample, experiment.geo)
-plt.figure()
-plt.subplot(1, 2, 1)
-plt.imshow(recon[0, 0].cpu().numpy(), cmap="gray")
-plt.clim(0, 3)
-plt.axis("off")
-plt.subplot(1, 2, 2)
-plt.imshow(target[0, 0].cpu().numpy(), cmap="gray")
-plt.clim(0, 3)
-plt.axis("off")
-plt.savefig("fdk.png")
-exit()
+
 #%% Model
 # Default model is already from the paper.
-from LION.models.iterative_unrolled.cLPD import LPD
+from LION.models.iterative_unrolled.LPD import LPD
 
 default_parameters = LPD.default_parameters()
 # This makes the LPD calculate the step size for the backprojection, which in my experience results in much much better pefromace

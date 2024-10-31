@@ -43,7 +43,7 @@ class ARSolver(LIONsolver):
         model: LIONmodel,
         optimizer: Optimizer,
         recon_optimizer_type,
-        geometry: Geometry,
+        geometry: Geometry = None,
         verbose: bool = True,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
         solver_params: ARParams | None = None,

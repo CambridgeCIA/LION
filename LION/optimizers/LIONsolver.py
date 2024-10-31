@@ -72,7 +72,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         model: LIONmodel,
         optimizer: Optimizer,
         loss_fn: Callable,
-        geometry: Geometry,
+        geometry: Geometry = None,
         verbose: bool = True,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
         solver_params: Optional[SolverParams] = None,
@@ -88,7 +88,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         self.model = model
         self.optimizer = optimizer
-        self.geo = geometry
+
+        if (
+            hasattr(model, "geometry_parameters")
+            and model.geometry_parameters is not None
+        ):
+            self.geo = model.geometry_parameters
+        else:
+            assert geometry is not None, "Geometry must be provided"
+            self.geo = geometry
+
         self.op = make_operator(self.geo)
 
         self.train_loader: Optional[DataLoader] = None

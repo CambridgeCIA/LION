@@ -31,19 +31,22 @@ class Noise2InverseSolver(LIONsolver):
         self,
         model: LIONmodel,
         optimizer: Optimizer,
-        loss_fn: torch.nn.Module,
+        loss_fn,
         solver_params: Optional[Noise2InverseParams],
-        verbose: bool,
-        geo: Geometry,
+        geometry: Geometry = None,
+        verbose: bool = True,
         device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
     ) -> None:
         print(device)
         super().__init__(
-            model, optimizer, loss_fn, geo, verbose, device, solver_params=solver_params
+            model,
+            optimizer,
+            loss_fn,
+            geometry,
+            verbose,
+            device,
+            solver_params=solver_params,
         )
-        assert (
-            model.model_parameters.model_input_type == ModelInputType.IMAGE
-        ), "As reconstructions are done in a special way in Noise2Inverse, require a model that takes Images as input"
 
         self.sino_split_count = self.solver_params.sino_split_count
         self.recon_fn = self.solver_params.recon_fn
