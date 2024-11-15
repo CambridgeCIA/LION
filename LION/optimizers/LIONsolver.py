@@ -637,7 +637,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         (
             self.model,
             self.optimizer,
-            epoch,
+            self.current_epoch,
             self.train_loss,
             _,
         ) = self.model.load_checkpoint_if_exists(
@@ -648,18 +648,20 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         )
         if (
             self.validation_fn is not None
-            and epoch > 0
+            and self.current_epoch > 0
             and self.validation_fname is not None
             and self.validation_loss is not None
         ):
-            self.validation_loss[epoch - 1] = self.model._read_min_validation(
+            self.validation_loss[
+                self.current_epoch - 1
+            ] = self.model._read_min_validation(
                 self.load_folder.joinpath(self.validation_fname)
             )
             if self.verbose:
                 print(
-                    f"Loaded checkpoint at epoch {epoch}. Current min validation loss is {self.validation_loss[epoch-1]}"
+                    f"Loaded checkpoint at epoch {self.current_epoch}. Current min validation loss is {self.validation_loss[self.current_epoch-1]}"
                 )
-        return epoch
+        return self.current_epoch
 
     def train_step(self):
         """
@@ -688,7 +690,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         self.train_loss[epoch] = self.train_step()
         # actually make sure we're doing validation
-        if (epoch + 1) % self.validation_freq == 0 and self.validation_loss is not None:
+        if self.validation_loss is not None and (epoch + 1) % self.validation_freq == 0:
             self.validation_loss[epoch] = self.validate()
             if self.verbose:
                 print(
@@ -734,12 +736,43 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
             self.current_epoch += 1
 
-    @abstractmethod
     def validate(self):
         """
-        This function should perform a validation step
+        This function is responsible for performing a single validation set of the optimization.
+        returns the average loss of the validation set this epoch.
         """
-        pass
+        if self.check_validation_ready() != 0:
+            raise LIONSolverException(
+                "Solver not ready for validation. Please call set_validation."
+            )
+
+        # these always pass if the above does, this is just to placate static type checker
+        assert self.validation_loader is not None
+        assert self.validation_fn is not None
+
+        status = self.model.training
+        self.model.eval()
+
+        with torch.no_grad():
+            validation_loss = np.array([])
+            for data, targets in tqdm(self.validation_loader):
+                if self.model.get_input_type() == ModelInputType.IMAGE:
+                    data = fdk(data, self.op)
+                outputs = self.model(data)
+                validation_loss = np.append(
+                    validation_loss, self.validation_fn(targets, outputs)
+                )
+
+        if self.verbose:
+            print(
+                f"Testing loss: {validation_loss.mean()} - Testing loss std: {validation_loss.std()}"
+            )
+
+        # return to train if it was in train
+        if status:
+            self.model.train()
+
+        return np.mean(validation_loss)
 
     @abstractmethod
     def mini_batch_step(self, sino_batch, target_batch) -> torch.Tensor:

@@ -109,7 +109,7 @@ class Noise2InverseSolver(LIONsolver):
             cali_J,
         )
 
-    def mini_batch_step(self, sinos):
+    def mini_batch_step(self, sinos, targets):
         # sinos batch of sinos
         noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)
         # b, split, c, w, h
