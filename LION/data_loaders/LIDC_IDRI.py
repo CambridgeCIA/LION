@@ -103,7 +103,7 @@ class LIDC_IDRI(Dataset):
         ], f'Wrong mode argument, must be in ["train", "validation", "test"]'
 
         if parameters is None:
-            parameters = LIDC_IDRI.default_parameters()
+            parameters = LIDC_IDRI.default_parameters(geo=geometry_parameters)
         self.params = parameters
 
         task = self.params.task
