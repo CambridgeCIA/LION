@@ -74,10 +74,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         loss_fn: Callable,
         geometry: Geometry = None,
         verbose: bool = True,
-        device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
+        device: torch.device = None,
         solver_params: Optional[SolverParams] = None,
     ) -> None:
-        print(device)
+
         super().__init__()
         if solver_params is None:
             self.solver_params = self.default_parameters()
@@ -89,22 +89,20 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model = model
         self.optimizer = optimizer
 
-        if (
-            hasattr(model, "geometry_parameters")
-            and model.geometry_parameters is not None
-        ):
-            self.geo = model.geometry_parameters
+        if hasattr(model, "geometry") and model.geometry is not None:
+            self.geometry = model.geometry
         else:
             assert geometry is not None, "Geometry must be provided"
-            self.geo = geometry
+            self.geometry = geometry
 
-        self.op = make_operator(self.geo)
+        self.op = make_operator(self.geometry)
 
         self.train_loader: Optional[DataLoader] = None
         self.train_loss: np.ndarray = np.zeros(0)
 
         self.loss_fn = loss_fn
-
+        if device is None:
+            device = torch.device(torch.cuda.current_device())
         self.device = device
 
         self.validation_loader: Optional[DataLoader] = None
@@ -202,32 +200,26 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     def set_checkpointing(
         self,
         checkpoint_fname: str,
-        save_folder: str | pathlib.Path,
-        load_folder: str | pathlib.Path,
         checkpoint_freq: int = 10,
-        do_load: bool = False,
+        load_checkpoint_if_exists: bool = True,
+        save_folder: str | pathlib.Path = None,
     ):
         """
         This function sets the checkpointing
         """
         if isinstance(save_folder, str):
             save_folder = pathlib.Path(save_folder)
-        if isinstance(load_folder, str):
-            load_folder = pathlib.Path(load_folder)
+        elif save_folder is None:
+            save_folder = self.save_folder
 
         if not save_folder.is_dir():
             raise ValueError(
                 f"Save folder '{save_folder}' is not a directory, failed to set checkpointing."
             )
-        if not load_folder.is_dir():
-            raise ValueError(
-                f"Load folder '{load_folder}' is not a directory, failed to set load checkpointing."
-            )
 
         self.checkpoint_freq = checkpoint_freq
         self.checkpoint_fname = checkpoint_fname
-        self.do_load_checkpoint = do_load
-        self.load_folder = load_folder
+        self.do_load_checkpoint = load_checkpoint_if_exists
         self.checkpoint_save_folder = save_folder
 
     def set_normalization(self, do_normalize: bool):
@@ -554,10 +546,14 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             dataset=self.dataset_param,
         )
 
-    def save_final_results(self, epoch=None):
+    def save_final_results(self, final_result_fname=None, save_folder=None, epoch=None):
         """
         This function saves the final results of the optimization
         """
+        if save_folder is not None:
+            self.save_folder = save_folder
+        if final_result_fname is not None:
+            self.final_result_fname = final_result_fname
         if self.save_folder is None or self.final_result_fname is None:
             raise LIONSolverException("Saving not setup: Please call set_saving.")
         if epoch is None:
@@ -575,7 +571,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         This function cleans the checkpoints
         """
-        if self.save_folder is None:
+        if self.checkpoint_save_folder is None:
             raise LIONSolverException(
                 "Saving not setup, unable to find save folder: Please call set_saving"
             )
@@ -585,7 +581,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             )
         # TODO: This doesn't delete the .jsons only the .pt, is this intentional behaviour?
         # Quick and dirty fix with fancy regex
-        for f in self.save_folder.glob(self.checkpoint_fname.replace(".pt", "")):
+        for f in self.checkpoint_save_folder.glob(
+            self.checkpoint_fname.replace(".pt", "")
+        ):
             f.unlink()
 
     def normalize(self, x):

@@ -16,7 +16,7 @@ import torch.utils.data as data_utils
 from LION.models.iterative_unrolled.LPD import LPD
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
-from LION.optimizers.supervised_learning import SupervisedSolver
+from LION.optimizers.SupervisedSolver import SupervisedSolver
 
 
 def my_ssim(x, y):
@@ -29,11 +29,12 @@ def my_ssim(x, y):
 # % Chose device:
 device = torch.device("cuda:1")
 torch.cuda.set_device(device)
+
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
-final_result_fname = savefolder.joinpath("LPD.pt")
+final_result_fname = "LPD.pt"
 checkpoint_fname = "LPD_check_*.pt"
-validation_fname = savefolder.joinpath("LPD_min_val.pt")
+validation_fname = "LPD_min_val.pt"
 #
 #%% Define experiment
 
@@ -42,7 +43,7 @@ experiment = ct_experiments.ExtremeLowDoseCTRecon(dataset="LIDC-IDRI")
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
-
+lidc_dataset_test = experiment.get_testing_dataset()
 # smaller dataset for example. Remove this for full dataset
 indices = torch.arange(100)
 lidc_dataset = data_utils.Subset(lidc_dataset, indices)
@@ -56,10 +57,7 @@ lidc_dataset_val = data_utils.Subset(lidc_dataset_val, indices)
 batch_size = 1
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=False)
-lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
-
-sample, target = next(iter(lidc_dataloader))
-from LION.classical_algorithms.fdk import fdk
+lidc_test = DataLoader(lidc_dataset_test, batch_size, shuffle=False)
 
 
 #%% Model
@@ -104,13 +102,15 @@ solver.set_validation(lidc_validation, 10, validation_fname=validation_fname)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
-solver.set_checkpointing(savefolder, checkpoint_fname, 10, load_checkpoint=False)
+solver.set_checkpointing(
+    checkpoint_fname, 10, load_checkpoint_if_exists=False, save_folder=savefolder
+)
 # train
 solver.train(train_param.epochs)
 # delete checkpoints if finished
 solver.clean_checkpoints()
 # save final result
-solver.save_final_results(final_result_fname)
+solver.save_final_results(final_result_fname, savefolder)
 
 # test
 

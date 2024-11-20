@@ -230,12 +230,12 @@ class LimitedAngleExtremeLowDoseCTRecon(Experiment):
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
-        param = Parameter()
+        param = LIONParameter()
         param.name = "Clinical dose limited angular sampling experiment"
         # Parameters for the geometry
         param.geo = ctgeo.Geometry.sparse_angle_parameters()
         # Parameters for the noise in the sinogram.
-        param.noise_params = Parameter()
+        param.noise_params = LIONParameter()
         param.noise_params.I0 = 1000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
@@ -281,12 +281,12 @@ class SparseAngleLowDoseCTRecon(Experiment):
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
-        param = Parameter()
+        param = LIONParameter()
         param.name = "Clinical dose sparse angular sampling experiment"
         # Parameters for the geometry
         param.geo = ctgeo.Geometry.sparse_view_parameters()
         # Parameters for the noise in the sinogram.
-        param.noise_params = Parameter()
+        param.noise_params = LIONParameter()
         param.noise_params.I0 = 3500
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05
@@ -308,12 +308,12 @@ class SparseAngleExtremeLowDoseCTRecon(Experiment):
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
-        param = Parameter()
+        param = LIONParameter()
         param.name = "Clinical dose sparse angular sampling experiment"
         # Parameters for the geometry
         param.geo = ctgeo.Geometry.sparse_view_parameters()
         # Parameters for the noise in the sinogram.
-        param.noise_params = Parameter()
+        param.noise_params = LIONParameter()
         param.noise_params.I0 = 1000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05

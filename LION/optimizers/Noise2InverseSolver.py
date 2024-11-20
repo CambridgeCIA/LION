@@ -64,16 +64,16 @@ class Noise2InverseSolver(LIONsolver):
     def _make_sub_operators(self) -> list[ts.Operator.Operator]:
         ops = []
         # maintain a copy of the original angles to restore later
-        angles = self.geo.angles.copy()
+        angles = self.geometry.angles.copy()
         assert (
             len(angles) % self.sino_split_count == 0
         ), f"Cannot construct {self.sino_split_count} sinogram splits from {len(angles)} view angles. Ensure that sino_split_count divides #view angles"
         for k in range(self.sino_split_count):
-            self.geo.angles = angles[k :: self.sino_split_count]
-            sub_op = ct.make_operator(self.geo)
+            self.geometry.angles = angles[k :: self.sino_split_count]
+            sub_op = ct.make_operator(self.geometry)
             ops.append(sub_op)
-        # restore self.geo.angles
-        self.geo.angles = angles
+        # restore self.geometry.angles
+        self.geometry.angles = angles
         return ops
 
     def _calculate_noisy_sub_recons(self, sinos):
@@ -174,7 +174,7 @@ class Noise2InverseSolver(LIONsolver):
         noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)  # b, split, c, w, h
 
         outputs = torch.zeros(
-            (sinos.shape[0], *self.geo.image_shape), device=self.device
+            (sinos.shape[0], *self.geometry.image_shape), device=self.device
         )
 
         for _, J in enumerate(self.cali_J):

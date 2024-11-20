@@ -68,7 +68,7 @@ class LIONmodel(nn.Module, ABC):
     def __init__(
         self,
         model_parameters: Optional[ModelParams],  # model parameters
-        geometry_parameters: Optional[
+        geometry: Optional[
             ct.Geometry
         ] = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
     ):
@@ -78,7 +78,7 @@ class LIONmodel(nn.Module, ABC):
         if model_parameters is None:
             model_parameters = self.default_parameters()
         # Pass all relevant parameters to internal storage.
-        self.geo = geometry_parameters
+        self.geometry = geometry
         self.model_parameters = model_parameters
 
     # This should return the parameters from the paper the model is from
@@ -91,17 +91,17 @@ class LIONmodel(nn.Module, ABC):
     def _make_operator(self):
         # if self.model_parameters.mode.lower() != "ct":
         #     raise NotImplementedError("Only CT operators supported")
-        if hasattr(self, "geo") and self.geo is not None:
-            self.op = ct_utils.make_operator(self.geo)
+        if hasattr(self, "geometry") and self.geometry is not None:
+            self.op = ct_utils.make_operator(self.geometry)
             self.A = to_autograd(self.op, num_extra_dims=1)
             self.AT = to_autograd(self.op.T, num_extra_dims=1)
         else:
-            raise AttributeError("Can't make operator without geo parameters.")
+            raise AttributeError("Can't make operator without geometry parameters.")
 
     # All classes should have this method, just change the amount of Parameters it returns of you have more/less
     def get_parameters(self):
-        if self.geo is not None:
-            return self.model_parameters, self.geo
+        if self.geometry is not None:
+            return self.model_parameters, self.geometry
         else:
             return self.model_parameters
 
@@ -188,13 +188,13 @@ class LIONmodel(nn.Module, ABC):
             dic["optimizer_state_dict"] = kwargs.pop("optimizer")
 
         # (optional)
-        geo = []
+        geometry = []
         if "geometry" in kwargs:
-            geo = kwargs.pop("geometry")
-            dic["geo"] = geo
-        elif hasattr(self, "geo") and self.geo is not None:
-            geo = self.geo
-            dic["geo"] = geo
+            geometry = kwargs.pop("geometry")
+            dic["geometry"] = geometry
+        elif hasattr(self, "geometry") and self.geometry is not None:
+            geometry = self.geometry
+            dic["geometry"] = geometry
         else:
             warnings.warn(
                 "Expected 'geometry' parameter! Only ignore if tomographic reconstruction was not part of the model."
@@ -218,8 +218,8 @@ class LIONmodel(nn.Module, ABC):
             warnings.warn("\nCould not get git hash.\n")
         options.model_name = self.__class__.__name__
         options.model_parameters = self.model_parameters
-        if geo:
-            options.geometry_parameters = geo
+        if geometry:
+            options.geometry = geometry
         if dataset_params:
             options.dataset_params = dataset_params
         if training:

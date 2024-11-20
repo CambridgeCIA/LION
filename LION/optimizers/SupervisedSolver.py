@@ -7,9 +7,10 @@ import numpy as np
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
 from LION.exceptions.exceptions import LIONSolverException
-from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.models.LIONmodel import LIONmodel
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.classical_algorithms.fdk import fdk
+from LION.models.LIONmodel import ModelInputType
 
 # standard imports
 from tqdm import tqdm
@@ -21,22 +22,24 @@ class SupervisedSolver(LIONsolver):
         model: LIONmodel,
         optimizer: Optimizer,
         loss_fn,
-        geo: Geometry = None,
+        geometry: Geometry = None,
         verbose: bool = False,
         model_regularization=None,
-        device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
+        device: torch.device = None,
     ):
+
         super().__init__(
             model,
             optimizer,
             loss_fn,
-            geo,
+            geometry=geometry,
             verbose=verbose,
             device=device,
             solver_params=SolverParams(),
         )
-
-        self.op = make_operator(self.geo)
+        if verbose:
+            print("Supervised solver training on device: ", device)
+        self.op = make_operator(self.geometry)
 
     def mini_batch_step(self, sino, target):
         """

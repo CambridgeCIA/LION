@@ -6,7 +6,7 @@
 # =============================================================================
 
 
-from LION.models import LIONmodel
+from LION.models.LIONmodel import LIONmodel, ModelInputType
 
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
@@ -50,12 +50,16 @@ class dataProximal(nn.Module):
             # PReLUs and 3x3 kernels all the way except the last
             if ii < layers - 1:
                 layer_list.append(
-                    nn.Conv2d(channels[ii], channels[ii + 1], 3, padding=1, bias=conv_bias)
+                    nn.Conv2d(
+                        channels[ii], channels[ii + 1], 3, padding=1, bias=conv_bias
+                    )
                 )
                 layer_list.append(nn.PReLU())
             else:
                 layer_list.append(
-                    nn.Conv2d(channels[ii], channels[ii + 1], 1, padding=0, bias=conv_bias)
+                    nn.Conv2d(
+                        channels[ii], channels[ii + 1], 1, padding=0, bias=conv_bias
+                    )
                 )
         self.block = nn.Sequential(*layer_list)
 
@@ -84,12 +88,16 @@ class RegProximal(nn.Module):
             # PReLUs and 3x3 kernels all the way except the last
             if ii < layers - 1:
                 layer_list.append(
-                    nn.Conv2d(channels[ii], channels[ii + 1], 3, padding=1, bias=conv_bias)
+                    nn.Conv2d(
+                        channels[ii], channels[ii + 1], 3, padding=1, bias=conv_bias
+                    )
                 )
                 layer_list.append(nn.PReLU())
             else:
                 layer_list.append(
-                    nn.Conv2d(channels[ii], channels[ii + 1], 1, padding=0, bias=conv_bias)
+                    nn.Conv2d(
+                        channels[ii], channels[ii + 1], 1, padding=0, bias=conv_bias
+                    )
                 )
         self.block = nn.Sequential(*layer_list)
 
@@ -97,22 +105,22 @@ class RegProximal(nn.Module):
         return self.block(x)
 
 
-class LPD(LIONmodel.LIONmodel):
+class LPD(LIONmodel):
     """Learned Primal Dual network"""
 
     def __init__(
         self,
-        geometry_parameters: ct.Geometry,
+        geometry: ct.Geometry,
         model_parameters: LIONParameter = None,
     ):
 
-        if geometry_parameters is None:
+        if geometry is None:
             raise ValueError("Geometry parameters required. ")
 
-        super().__init__(model_parameters, geometry_parameters)
+        super().__init__(model_parameters, geometry)
         # Pass all relevant parameters to internal storage.
         # AItomotmodel does this:
-        # self.geo = geometry_parameters
+        # self.geometry = geometry
         # self.model_parameters = model_parameters
 
         # Create layers per iteration
@@ -202,6 +210,7 @@ class LPD(LIONmodel.LIONmodel):
         LPD_params.mode = "ct"
         LPD_params.instance_norm = False
         LPD_params.conv_bias = True
+        LPD_params.model_input_type = ModelInputType.SINOGRAM
         return LPD_params
 
     @staticmethod
@@ -264,12 +273,12 @@ class LPD(LIONmodel.LIONmodel):
         if C != 1:
             raise NotImplementedError("Only 2D CT images supported")
 
-        if len(self.geo.angles) != W or self.geo.detector_shape[1] != H:
+        if len(self.geometry.angles) != W or self.geometry.detector_shape[1] != H:
             raise ValueError("geo description and sinogram size do not match")
 
         # initialize parameters
         h = g.new_zeros(B, 5, W, H)
-        f_primal = g.new_zeros(B, 5, *self.geo.image_shape[1:])
+        f_primal = g.new_zeros(B, 5, *self.geometry.image_shape[1:])
         for i in range(B):
             aux = fdk(self.op, g[i, 0])
             aux = torch.clip(aux, min=0)

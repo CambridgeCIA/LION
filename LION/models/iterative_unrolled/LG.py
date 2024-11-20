@@ -46,11 +46,9 @@ class LGblock(nn.Module):
 
 
 class LG(LIONmodel.LIONmodel):
-    def __init__(
-        self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
-    ):
-        super().__init__(model_parameters, geometry_parameters)
-        self.geo = geometry_parameters
+    def __init__(self, geometry: ct.Geometry, model_parameters: LIONParameter = None):
+        super().__init__(model_parameters, geometry)
+        self.geometry = geometry
         self.channels = self.model_parameters.channels
         self.M = self.channels[-1] - 1
         self.n_iters = self.model_parameters.n_iters
@@ -130,7 +128,7 @@ class LG(LIONmodel.LIONmodel):
 
         B, C, W, H = x.shape
 
-        f = x.new_zeros(B, 1, *self.geo.image_shape[1:])
+        f = x.new_zeros(B, 1, *self.geometry.image_shape[1:])
         for i in range(B):
             aux = fdk(self.op, x[i, 0])
             aux = torch.clip(aux, min=0)

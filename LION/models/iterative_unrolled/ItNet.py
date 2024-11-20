@@ -187,13 +187,11 @@ class UNet(LIONmodel.LIONmodel):
 
 
 class ItNet(LIONmodel.LIONmodel):
-    def __init__(
-        self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
-    ):
-        if geometry_parameters is None:
+    def __init__(self, geometry: ct.Geometry, model_parameters: LIONParameter = None):
+        if geometry is None:
             raise ValueError("Geometry parameters required. ")
 
-        super().__init__(model_parameters, geometry_parameters)
+        super().__init__(model_parameters, geometry)
 
         # Create layers per iteration
         for i in range(self.model_parameters.n_iters):
@@ -285,8 +283,8 @@ class ItNet(LIONmodel.LIONmodel):
     def forward(self, sino):
 
         B, C, W, H = sino.shape
-        img = sino.new_zeros(B, 1, *self.geo.image_shape[1:])
-        update = sino.new_zeros(B, 1, *self.geo.image_shape[1:])
+        img = sino.new_zeros(B, 1, *self.geometry.image_shape[1:])
+        update = sino.new_zeros(B, 1, *self.geometry.image_shape[1:])
         # Start from FDK
         for i in range(sino.shape[0]):
             img[i] = fdk(self.op, sino[i])
