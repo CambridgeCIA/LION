@@ -62,7 +62,9 @@ class EquivariantSolver(LIONsolver):
     def mini_batch_step(self, sino_batch, target_batch) -> torch.Tensor:
         random_transform = random.choice(self.transformation_group)
 
-        if needs_image := (self.model.get_input_type() == ModelInputType.IMAGE):
+        if needs_image := (
+            self.model.model_parameters.model_input_type == ModelInputType.IMAGE
+        ):
             recon1 = self.model(fdk(sino_batch, self.op))
         else:
             recon1 = self.model(sino_batch)
@@ -78,3 +80,28 @@ class EquivariantSolver(LIONsolver):
             recon2, transformed_recon1
         )
         # data consistency + equivariance
+
+    @staticmethod
+    def cite(cite_format="MLA"):
+
+        if cite_format == "MLA":
+            print("Chen, Dongdong, Julián Tachella, and Mike E. Davies.")
+            print('"Equivariant imaging: Learning beyond the range space."')
+            print(
+                "\x1B[3m Proceedings of the IEEE/CVF International Conference on Computer Vision. \x1B[0m"
+            )
+            print("2021")
+        elif cite_format == "bib":
+            string = """
+            @inproceedings{chen2021equivariant,
+            title={Equivariant imaging: Learning beyond the range space},
+            author={Chen, Dongdong and Tachella, Juli{\'a}n and Davies, Mike E},
+            booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
+            pages={4379--4388},
+            year={2021}
+            }"""
+            print(string)
+        else:
+            raise AttributeError(
+                'cite_format not understood, only "MLA" and "bib" supported'
+            )

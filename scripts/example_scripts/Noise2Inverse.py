@@ -34,6 +34,9 @@ model = MSD_pytorch()
 optimizer = Adam(model.parameters())
 loss_fn = nn.MSELoss()
 
+
+Noise2InverseSolver.cite()
+
 # LION's Noise2InverseSolver.
 n2i_params = Noise2InverseSolver.default_parameters()
 # Noise to inverse requires certain user specifications.

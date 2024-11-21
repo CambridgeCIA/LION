@@ -578,8 +578,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             raise LIONSolverException(
                 "Checkpointing not setup, can't clear checkpoints: Please call set_checkpointing"
             )
-        # TODO: This doesn't delete the .jsons only the .pt, is this intentional behaviour?
-        # Quick and dirty fix with fancy regex
+        # this ensures all files with the same extension are removed
         for f in self.checkpoint_save_folder.glob(
             self.checkpoint_fname.replace(".pt", "")
         ):

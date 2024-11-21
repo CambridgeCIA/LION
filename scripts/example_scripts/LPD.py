@@ -71,7 +71,8 @@ default_parameters.learned_step = True
 default_parameters.step_positive = True
 default_parameters.n_iters = 5
 model = LPD(experiment.geo, default_parameters)
-
+model.cite()
+model.cite("bib")
 
 #%% Optimizer
 train_param = LIONParameter()

@@ -176,3 +176,32 @@ class Noise2InverseSolver(LIONsolver):
             outputs += self.model(mean_input_recons)
         outputs /= len(self.cali_J)
         return outputs
+
+    @staticmethod
+    def cite(cite_format="MLA"):
+
+        if cite_format == "MLA":
+            print(
+                "Hendriksen, Allard Adriaan, Daniël Maria Pelt, and K. Joost Batenburg"
+            )
+            print(
+                ' "Noise2inverse: Self-supervised deep convolutional denoising for tomography."'
+            )
+            print("\x1B[3m  IEEE Transactions on Computational Imaging \x1B[0m")
+            print("6 (2020): 1320-1335.")
+        elif cite_format == "bib":
+            string = """
+            @article{hendriksen2020noise2inverse,
+            title={Noise2inverse: Self-supervised deep convolutional denoising for tomography},
+            author={Hendriksen, Allard Adriaan and Pelt, Dani{\"e}l Maria and Batenburg, K Joost},
+            journal={IEEE Transactions on Computational Imaging},
+            volume={6},
+            pages={1320--1335},
+            year={2020},
+            publisher={IEEE}
+            }"""
+            print(string)
+        else:
+            raise AttributeError(
+                'cite_format not understood, only "MLA" and "bib" supported'
+            )
