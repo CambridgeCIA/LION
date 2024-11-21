@@ -52,6 +52,28 @@ def from_HU_to_mu(img):
 
 
 def sinogram_add_noise(
+    proj,
+    I0=1000,
+    sigma=5,
+    cross_talk=0.05,
+    flat_field=None,
+    dark_field=None,
+    enable_gradients=False,
+):
+    """
+    Wraper for _sinogram_add_noise to support gradients
+    """
+    if enable_gradients:
+        sino = _sinogram_add_noise(proj, I0, sigma, cross_talk, flat_field, dark_field)
+    else:
+        with torch.no_grad():
+            sino = _sinogram_add_noise(
+                proj.detach(), I0, sigma, cross_talk, flat_field, dark_field
+            )
+    return sino
+
+
+def _sinogram_add_noise(
     proj, I0=1000, sigma=5, cross_talk=0.05, flat_field=None, dark_field=None
 ):
     """
