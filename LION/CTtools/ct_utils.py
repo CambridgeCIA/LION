@@ -132,24 +132,30 @@ def from_HU_to_material_id(img):
     return materials
 
 
-def make_operator(geo: Geometry):
-    if not isinstance(geo, Geometry):
-        raise ValueError("Input geo is not of class LION.CTtools.ct_geometry.Geometry")
-    if geo.mode == "fan":
-        vg = ts.volume(shape=geo.image_shape, size=geo.image_size, pos=geo.image_pos)
-        pg = ts.cone(
-            angles=geo.angles,
-            shape=geo.detector_shape,
-            size=geo.detector_size,
-            src_orig_dist=geo.dso,
-            src_det_dist=geo.dsd,
+def make_operator(geometry: Geometry):
+    if not isinstance(geometry, Geometry):
+        raise ValueError(
+            "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"
         )
-    elif geo.mode == "parallel":
-        vg = ts.volume(shape=geo.image_shape, size=geo.image_size, pos=geo.image_pos)
+    if geometry.mode == "fan":
+        vg = ts.volume(
+            shape=geometry.image_shape, size=geometry.image_size, pos=geometry.image_pos
+        )
+        pg = ts.cone(
+            angles=geometry.angles,
+            shape=geometry.detector_shape,
+            size=geometry.detector_size,
+            src_orig_dist=geometry.dso,
+            src_det_dist=geometry.dsd,
+        )
+    elif geometry.mode == "parallel":
+        vg = ts.volume(
+            shape=geometry.image_shape, size=geometry.image_size, pos=geometry.image_pos
+        )
         pg = ts.parallel(
-            angles=geo.angles,
-            shape=geo.detector_shape,
-            size=geo.detector_size,
+            angles=geometry.angles,
+            shape=geometry.detector_shape,
+            size=geometry.detector_size,
         )
     else:
         raise ValueError("Geometry mode not understood, has to be 'fan' or 'parallel'")
@@ -157,7 +163,7 @@ def make_operator(geo: Geometry):
     return A
 
 
-def forward_projection(image, geo, backend="tomosipo"):
+def forward_projection(image, geometry, backend="tomosipo"):
     """
     Produces a noise free forward projection, given np.array image, a size (in real world units), a sinogram shape and size,
     distances from source to detector DSD and distance from source to object DSO.
@@ -179,13 +185,13 @@ def forward_projection(image, geo, backend="tomosipo"):
     else:
         raise ValueError("Image must be 2D")
 
-    vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
+    vg = ts.volume(shape=geometry.image_shape, size=geometry.image_size)
     pg = ts.cone(
-        angles=geo.angles,
-        shape=geo.detector_shape,
-        size=geo.detector_size,
-        src_orig_dist=geo.dso,
-        src_det_dist=geo.dsd,
+        angles=geometry.angles,
+        shape=geometry.detector_shape,
+        size=geometry.detector_size,
+        src_orig_dist=geometry.dso,
+        src_det_dist=geometry.dsd,
     )
     A = ts.operator(vg, pg)
     sino = A(image)[0]

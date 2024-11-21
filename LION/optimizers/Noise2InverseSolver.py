@@ -7,23 +7,10 @@ from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
 import torch
 from torch.optim.optimizer import Optimizer
-from LION.optimizers.LIONsolver import LIONsolver, SolverParams
+from LION.optimizers.LIONsolver import LIONsolver
+from LION.utils.parameter import LIONParameter
 import tomosipo as ts
 import LION.CTtools.ct_utils as ct
-
-
-class Noise2InverseParams(SolverParams):
-    def __init__(
-        self,
-        sino_split_count: int,
-        recon_fn: Callable[[torch.Tensor, ts.Operator.Operator], torch.Tensor],
-        cali_J: list[list[int]],
-    ):
-        super().__init__()
-
-        self.sino_split_count = sino_split_count
-        self.recon_fn = recon_fn
-        self.cali_J = cali_J
 
 
 class Noise2InverseSolver(LIONsolver):
@@ -32,10 +19,10 @@ class Noise2InverseSolver(LIONsolver):
         model: LIONmodel,
         optimizer: Optimizer,
         loss_fn,
-        solver_params: Optional[Noise2InverseParams],
+        solver_params: Optional[LIONParameter] = None,
         geometry: Geometry = None,
         verbose: bool = True,
-        device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
+        device: torch.device = None,
     ) -> None:
         print(device)
         super().__init__(
@@ -99,15 +86,12 @@ class Noise2InverseSolver(LIONsolver):
         return bad_recons
 
     @staticmethod
-    def default_parameters() -> Noise2InverseParams:
-        sino_split_count = 4
-        recon_fn = fdk
-        cali_J = Noise2InverseSolver.X_one_strategy(sino_split_count)
-        return Noise2InverseParams(
-            sino_split_count,
-            recon_fn,
-            cali_J,
-        )
+    def default_parameters() -> LIONParameter:
+        params = LIONParameter()
+        params.sino_split_count = 4
+        params.recon_fn = fdk
+        params.cali_J = Noise2InverseSolver.X_one_strategy(params.sino_split_count)
+        return params
 
     def mini_batch_step(self, sinos, targets):
         # sinos batch of sinos

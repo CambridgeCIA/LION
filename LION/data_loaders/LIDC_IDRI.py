@@ -91,7 +91,7 @@ class LIDC_IDRI(Dataset):
             - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. Default is -1, which takes all slices we have of each patient and pcg_slices_nodule gets ignored.
             - pcg_slices_nodule (float): Defines percentage of slices with nodule in dataset. 0 meaning "no nodules at all" and 1 meaning "just take slices that contain annotated nodules". Only used if max_num_slices_per_patient != -1. Default is 0.5.
             - clevel (float): Defines consensus level if annotation=consensus. Value between 0-1. Default is 0.5.
-            - geo: Geometry() type, if sinograms are requied (e.g. fo "reconstruction")
+            - geometry: Geometry() type, if sinograms are requied (e.g. fo "reconstruction")
 
         """
 
@@ -103,7 +103,7 @@ class LIDC_IDRI(Dataset):
         ], f'Wrong mode argument, must be in ["train", "validation", "test"]'
 
         if parameters is None:
-            parameters = LIDC_IDRI.default_parameters(geo=geometry_parameters)
+            parameters = LIDC_IDRI.default_parameters(geometry=geometry_parameters)
         self.params = parameters
 
         task = self.params.task
@@ -121,9 +121,9 @@ class LIDC_IDRI(Dataset):
         if (
             task in ["reconstruction"]
             and geometry_parameters is None
-            and self.params.geo is None
+            and self.params.geometry is None
         ):
-            raise ValueError("geo input required for recosntruction modes")
+            raise ValueError("geometry input required for recosntruction modes")
 
         # Aux variable setting
         self.sinogram_transform = None
@@ -136,10 +136,10 @@ class LIDC_IDRI(Dataset):
             self.image_transform = ct.from_HU_to_normal
 
         if geometry_parameters is not None:
-            self.params.geo = geometry_parameters
+            self.params.geometry = geometry_parameters
             self.operator = ct.make_operator(geometry_parameters)
-        elif self.params.geo is not None:
-            self.operator = ct.make_operator(self.params.geo)
+        elif self.params.geometry is not None:
+            self.operator = ct.make_operator(self.params.geometry)
         # Start of Patient pre-processing
 
         self.path_to_processed_dataset = pathlib.Path(self.params.folder)
@@ -317,7 +317,7 @@ class LIDC_IDRI(Dataset):
         print(f"Patient lists ready for {self.params.mode} dataset")
 
     @staticmethod
-    def default_parameters(geo=None, task="reconstruction"):
+    def default_parameters(geometry=None, task="reconstruction"):
         param = LIONParameter()
         param.name = "LIDC-IDRI Data Loader"
         param.training_proportion = 0.8
@@ -329,16 +329,16 @@ class LIDC_IDRI(Dataset):
         param.pcg_slices_nodule = 0.5
         param.task = task
         param.folder = LIDC_IDRI_PROCESSED_DATASET_PATH
-        if task == "reconstruction" and geo is None:
+        if task == "reconstruction" and geometry is None:
             raise ValueError(
-                "For reconstruction task geometry needs to be input to default_parameters(geo=geometry_param)"
+                "For reconstruction task geometry needs to be input to default_parameters(geometry=geometry_param)"
             )
 
         # segmentation specific
         param.clevel = 0.5
         param.annotation = "consensus"
         param.device = torch.cuda.current_device()
-        param.geo = geo
+        param.geometry = geometry
         return param
 
     def get_slices_to_load(

@@ -70,7 +70,7 @@ default_parameters = LPD.default_parameters()
 default_parameters.learned_step = True
 default_parameters.step_positive = True
 default_parameters.n_iters = 5
-model = LPD(experiment.geo, default_parameters).to(device)
+model = LPD(experiment.geo, default_parameters)
 
 
 #%% Optimizer
@@ -81,7 +81,7 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 1
+train_param.epochs = 100
 train_param.learning_rate = 1e-4
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"

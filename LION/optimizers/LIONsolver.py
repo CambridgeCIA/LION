@@ -104,6 +104,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if device is None:
             device = torch.device(torch.cuda.current_device())
         self.device = device
+        self.model.to(self.device)
 
         self.validation_loader: Optional[DataLoader] = None
         self.validation_fn: Optional[Callable] = None
@@ -123,9 +124,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.final_result_fname: Optional[str] = None
         self.checkpoint_fname: Optional[str] = None
         self.validation_fname: Optional[str] = None
-        self.load_folder: Optional[pathlib.Path] = None
         self.checkpoint_save_folder: Optional[pathlib.Path] = None
-
         self.verbose = verbose
         self.metadata = LIONParameter()
         self.dataset_param = LIONParameter()
@@ -626,7 +625,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         This function loads a checkpoint (if exists)
         """
-        if self.load_folder is None:
+        if self.checkpoint_save_folder is None:
             raise LIONSolverException("Loading not set. Please call set_loading ")
         if self.checkpoint_fname is None:
             raise LIONSolverException(
@@ -639,7 +638,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.train_loss,
             _,
         ) = self.model.load_checkpoint_if_exists(
-            self.load_folder.joinpath(self.checkpoint_fname),
+            self.checkpoint_save_folder.joinpath(self.checkpoint_fname),
             self.model,
             self.optimizer,
             self.train_loss,
@@ -653,7 +652,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.validation_loss[
                 self.current_epoch - 1
             ] = self.model._read_min_validation(
-                self.load_folder.joinpath(self.validation_fname)
+                self.checkpoint_save_folder.joinpath(self.validation_fname)
             )
             if self.verbose:
                 print(

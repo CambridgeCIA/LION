@@ -41,7 +41,7 @@ class sample_delete_when_happy(CTNoiseExperiment):
         param.name = "xxxx"
 
         # Parameters for the geometry
-        param.geo = deteCT.get_default_geometry()
+        param.geometry = deteCT.get_default_geometry()
 
         param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
