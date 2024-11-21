@@ -8,9 +8,11 @@ from LION.exceptions.exceptions import NoDataException
 
 
 # add option to clip?
-def fdk(sino: torch.Tensor, op: ts.Operator.Operator | Geometry, clip=True) -> torch.Tensor:
+def fdk(
+    sino: torch.Tensor, op: ts.Operator.Operator | Geometry, clip=True
+) -> torch.Tensor:
     B, _, _, _ = sino.shape
-    if B == 0: 
+    if B == 0:
         raise NoDataException("Given 0 batches, no data to operate on!")
     if isinstance(op, Geometry):
         op = make_operator(op)

@@ -24,7 +24,7 @@ def sirt(
     See ts_algorithms.tv_min2d for more details.
     """
     B, _, _, _ = sino.shape
-    if B == 0: 
+    if B == 0:
         raise NoDataException("Given 0 batches, no data to operate on!")
     if isinstance(op, Geometry):
         op = make_operator(op)

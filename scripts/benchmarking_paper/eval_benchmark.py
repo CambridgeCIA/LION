@@ -38,7 +38,7 @@ def my_psnr(x: torch.tensor, y: torch.tensor, data_range=None):
 
 
 device = torch.device("cuda:0")
-torch.cuda.set_device(device) ####IMPORTANT FOR A
+torch.cuda.set_device(device)  ####IMPORTANT FOR A
 
 savefolder = pathlib.Path("/store/DAMTP/zs334/LION/eval/")
 # use min validation, or final result, whicever you prefer
@@ -54,10 +54,10 @@ from LION.models.learned_regularizer.AR import AR
 # model, options, data = ACR.load(savefolder.joinpath(model_name))
 # model = ACR.load(savefolder.joinpath(model_name))[0]
 model = AR.load(savefolder.joinpath(model_name))[0]
-model.model_parameters.step_size = 0.2/(model.op_norm)**2
+model.model_parameters.step_size = 0.2 / (model.op_norm) ** 2
 # model.to(device)
 # model.load("/store/DAMTP/zs334/LION/ACR.pt")
-print('Model loaded')
+print("Model loaded")
 
 # model.eval()
 experiment = ct_benchmarking.FullDataCTRecon()
@@ -82,9 +82,11 @@ indices_val = torch.arange(50)
 validation_data = data_utils.Subset(validation_data, indices_val)
 validation_dataloader = DataLoader(validation_data, 1, shuffle=False)
 
-print(f'Data loaded testing: {len(testing_dataloader)}, validation: {len(validation_dataloader)}')
+print(
+    f"Data loaded testing: {len(testing_dataloader)}, validation: {len(validation_dataloader)}"
+)
 
-model.estimate_alpha(dataset = validation_dataloader)
+model.estimate_alpha(dataset=validation_dataloader)
 model.model_parameters.no_steps = 300
 
 

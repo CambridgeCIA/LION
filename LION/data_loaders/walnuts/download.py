@@ -29,7 +29,7 @@ for series_name, series_ids in file_ids.items():
         placeholder_url = (
             f"https://zenodo.org/record/{series_name}/files/Walnut{serie_id}.zip"
         )
-        zipped_file_path   = storage_path.joinpath(f'{file_name}.zip')
+        zipped_file_path = storage_path.joinpath(f"{file_name}.zip")
         unzipped_file_path = storage_path.joinpath(file_name)
         download_file(placeholder_url, zipped_file_path)
         unzip_file(zipped_file_path, unzipped_file_path)

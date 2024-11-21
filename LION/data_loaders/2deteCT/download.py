@@ -28,13 +28,15 @@ data_ids = {
     "2DeteCT_slicesOOD_RecSeg": 8017653,
 }  # recon, seg
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     for series_name, zenodo_id in data_ids.items():
-        placeholder_url = f"https://zenodo.org/records/{zenodo_id}/files/{series_name}.zip"
-        zipped_file_path   = storage_path.joinpath(f"{series_name}.zip")
+        placeholder_url = (
+            f"https://zenodo.org/records/{zenodo_id}/files/{series_name}.zip"
+        )
+        zipped_file_path = storage_path.joinpath(f"{series_name}.zip")
         unzipped_file_path = storage_path.joinpath(f"{series_name}")
 
         download_file(placeholder_url, zipped_file_path)
         unzip_file(zipped_file_path, unzipped_file_path)
-    
+
     print("done!")

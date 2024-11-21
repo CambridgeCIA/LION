@@ -36,8 +36,8 @@ def test_with_img_output(
     preds = preds.detach().cpu().numpy()
     gts = gts.detach().cpu().numpy()
 
-    # split path into actual path and file extension 
-    split_path = img_fpath.rsplit('.', 1)
+    # split path into actual path and file extension
+    split_path = img_fpath.rsplit(".", 1)
     for i in range(len(preds)):
         plt.figure()
         plt.subplot(121)
@@ -48,7 +48,7 @@ def test_with_img_output(
         # should cap max / min of plots to actual max / min of gt
         plt.colorbar()
         # reconstruct filepath with suffix i
-        plt.savefig(f'{split_path[0]}{i+1}.{split_path[1]}')
+        plt.savefig(f"{split_path[0]}{i+1}.{split_path[1]}")
 
 
 def test_with_experiment(
@@ -89,7 +89,7 @@ def test_with_experiment(
     data, gt = next(iter(test_dataloader))
     data = data.to(dev)
     # run model on data
-    
+
     pred = model(data)
 
     return pred, gt
