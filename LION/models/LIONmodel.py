@@ -275,10 +275,8 @@ class LIONmodel(nn.Module, ABC):
         ##############################
         options = LIONParameter()
         options.load(fname.with_suffix(".json"))
-        if hasattr(options, "geometry_parameters"):
-            options.geometry_parameters = ct.Geometry.init_from_parameter(
-                options.geometry_parameters
-            )
+        if hasattr(options, "geometry"):
+            options.geometry = ct.Geometry.init_from_parameter(options.geometry)
         # Error check
         ################################
         # Check if model has been changed since save.
@@ -324,10 +322,10 @@ class LIONmodel(nn.Module, ABC):
         data = LIONmodel._load_data(fname)
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
-        if hasattr(options, "geometry_parameters"):
+        if hasattr(options, "geometry"):
             model = cls(
                 model_parameters=options.model_parameters,
-                geometry_parameters=options.geometry_parameters,
+                geometry=options.geometry,
             )
         else:
             model = cls(model_parameters=options.model_parameters)
@@ -354,10 +352,10 @@ class LIONmodel(nn.Module, ABC):
         data = LIONmodel._load_data(fname, supress_warnings=True)
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
-        if hasattr(options, "geometry_parameters"):
+        if hasattr(options, "geometry"):
             model = cls(
                 model_parameters=options.model_parameters,
-                geometry_parameters=options.geometry_parameters,
+                geometry=options.geometry,
             )
         else:
             model = cls(model_parameters=options.model_parameters)

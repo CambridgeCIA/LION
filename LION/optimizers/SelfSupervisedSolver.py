@@ -15,8 +15,14 @@ from LION.models.LIONmodel import ModelInputType
 # standard imports
 from tqdm import tqdm
 
+""" 
+This file contains the implementation of the SelfSupervisedSolver class, which is a subclass of the LIONsolver class.
+The main difference with other solver is the shape of the loss function. 
+A self-supervised loss should take 
+"""
 
-class SupervisedSolver(LIONsolver):
+
+class SelfSupervisedSolver(LIONsolver):
     def __init__(
         self,
         model: LIONmodel,
@@ -43,7 +49,7 @@ class SupervisedSolver(LIONsolver):
 
     def mini_batch_step(self, sino, target):
         """
-        This function isresponsible for performing a single mini-batch step of the optimization.
+        This function is responsible for performing a single mini-batch step of the optimization.
         returns the loss of the mini-batch
         """
         # Forward pass
@@ -51,12 +57,10 @@ class SupervisedSolver(LIONsolver):
             data = fdk(sino, self.op)
             if self.do_normalize:
                 data = self.normalize(data)
-                data = self.normalize(target)
         else:
             data = sino
 
-        output = self.model(data)
-        return self.loss_fn(output, target)
+        return self.loss_fn(data, self.model)
 
     @staticmethod
     def default_parameters() -> SolverParams:

@@ -5,7 +5,7 @@
 
 University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction, LION (Learned Iterative Optimization Networks)
 
-The toolbox contains data dowloading and pre-processing, torch `DataSet` classes for the existing data, and `Experiments` class with implementation of default realistic experiments, several data-driven methods and models, and features to enhacne reproduciblity. 
+The library is a place to gather and provide resources for Computed Tomography reconstruction using machine learning tools. It contains data dowloading and pre-processing, torch `DataSet` classes for the existing data, and `Experiments` class with implementation of default realistic experiments, several data-driven methods and models, and features to enhance reproduciblity. 
 
 
 **WARNING** Building in progress. This is a tool in development in very early stages. 
@@ -44,7 +44,7 @@ pip install .
 ```
 We are working on reimplementing MS-D due to the repo bein obsolete.
 
-# Datasets
+## Datasets
 
 Currently there are several DataSets supported by LION. LION automatically knows where these are, but currently it only works for people working on the servers of CMS at University of Cambridge. To make it work in somewhere else, you just want to change LION/utils/paths.py line 7 `LION_DATA_PATH = pathlib.Path("/store/LION/datasets/")` to the actual location in your system. We are working on figuring out how to make LION flexible at install. 
 
@@ -54,7 +54,7 @@ The supported Datasets are `2DeteCT`, `LIDC-IDRI`,
 
 [Read more about them here](LION/data_loaders/README.md)
 
-# Models/Methods
+## Models/Methods
 
 LION supports all types of data-driven methods for CT reconstructions. They can, as a general taxonomy, be described as:
 
@@ -67,7 +67,9 @@ Folders for each of these exist in `LION/models`. An extra folder for standard `
 
 [Read more about which models are available in each class here](LION/models/README.md)
 
-# Developers:
+[Read more about which papers are implemented in LION here](papers_in_LION.md)
+
+## Developers:
 Read `developers.md`
 
 

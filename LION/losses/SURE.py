@@ -2,6 +2,8 @@ from typing import Optional
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
+import warnings
+from LION.models.LIONmodel import ModelInputType
 
 
 class SURE(nn.Module):
@@ -10,34 +12,30 @@ class SURE(nn.Module):
         self.epsilon = epsilon
         self.noise_std = noise_std
         self.mse = nn.MSELoss()
-
-    def _monte_carlo_divergence(self, model, y: torch.Tensor):
-        # y is B, C, W, H
-        B, C, W, H = y.shape
-        N = C * W * H
-        b = torch.normal(0.0, 1.0, (B, N)).to(y.device)
-        y = y.reshape((B, N))
-
-        def f(x):
-            return model(x.reshape((B, C, W, H))).reshape((B, N))
-
-        if self.epsilon is None:
-            epsilon = SURE.default_epsilon(y)
-        else:
-            epsilon = self.epsilon
-
-        diff = f(y + epsilon * b) - f(y)
-        return torch.sum((1 / (N * epsilon)) * torch.sum(b * diff))
+        warnings.warn(
+            "SURE expects Gaussian noise, which is not the case in noisy recosntruction of CT, so this may not work as expected"
+        )
 
     def forward(self, model, noisy):
-        # mean loss over batch
-        return torch.abs(
-            torch.mean(
-                self.mse(noisy, model(noisy))
-                - self.noise_std**2
-                + 2 * (self.noise_std**2) * self._monte_carlo_divergence(model, noisy)
+
+        if model.get_input_type() != ModelInputType.IMAGE:
+            raise NotImplementedError(
+                "Generalized SURE loss is not implemented yet, this only works for denoising networks"
             )
+
+        epsilon = (
+            self.epsilon if self.epsilon is not None else self.default_epsilon(noisy)
         )
+
+        b = torch.normal(0.0, 1.0, noisy.shape).to(noisy.device)
+        model_y = model(noisy)
+        mc_div = torch.mean(
+            b * (model(noisy + epsilon * b) - model_y) / epsilon, dim=(1, 2, 3)
+        )
+
+        return self.mse(noisy, model_y) - torch.sum(
+            self.noise_std**2 + 2 * (self.noise_std**2) * mc_div, dim=0
+        )  # the sum over the batch is already being applied by mse
 
     @staticmethod
     def default_epsilon(y):

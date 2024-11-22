@@ -1,16 +1,14 @@
 import random
 from typing import Callable
-import numpy as np
 import torch
 import torchvision.transforms.functional as TF
 from torch.optim.optimizer import Optimizer
 from tomosipo.torch_support import to_autograd
-from tqdm import tqdm
 from LION.CTtools.ct_geometry import Geometry
 from LION.classical_algorithms.fdk import fdk
-from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
+from LION.utils.parameter import LIONParameter
 
 
 def get_rotation_matrix(angle: float):
@@ -18,15 +16,6 @@ def get_rotation_matrix(angle: float):
     s = torch.sin(theta)
     c = torch.cos(theta)
     return torch.tensor([[c, -s], [s, c]])
-
-
-class EquivariantSolverParams(SolverParams):
-    def __init__(
-        self, transformation_group: list[Callable], equivariance_strength: float
-    ):
-        super().__init__()
-        self.transformation_group = transformation_group
-        self.equivariance_strength = equivariance_strength
 
 
 class EquivariantSolver(LIONsolver):
@@ -56,8 +45,11 @@ class EquivariantSolver(LIONsolver):
         return [lambda x: TF.rotate(x, i * angle_increment) for i in range(cardinality)]
 
     @staticmethod
-    def default_parameters() -> EquivariantSolverParams:
-        return EquivariantSolverParams(EquivariantSolver.rotation_group(360), 100)
+    def default_parameters() -> LIONParameter:
+        param = LIONParameter()
+        param.transformation_group = EquivariantSolver.rotation_group(360)
+        param.equivariance_strength = 100
+        return param
 
     def mini_batch_step(self, sino_batch, target_batch) -> torch.Tensor:
         random_transform = random.choice(self.transformation_group)
