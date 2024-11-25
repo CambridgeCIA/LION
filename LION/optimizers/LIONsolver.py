@@ -329,7 +329,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             "validation_fn",
             expected_type=callable,
             error=False,
-            autofill=True,
+            autofill=self.validation_loader is not None,
             verbose=verbose,
             default=self.loss_fn,
         )
@@ -338,7 +338,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             "validation_freq",
             expected_type=int,
             error=False,
-            autofill=autofill,
+            autofill=self.validation_loader is not None,
             verbose=verbose,
             default=10,
         )
@@ -699,8 +699,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 self.save_validation(epoch)
         elif self.verbose:
             print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
-        elif self.validation_freq is not None and self.validation_loss is not None:
-            self.validation_loss[epoch] = self.validate()
 
     def train(self, n_epochs):
         """
@@ -719,6 +717,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         if self.check_validation_ready() == 0:
             self.validation_loss = np.zeros((n_epochs))
+        if self.validation_loader is None:
+            self.validation_loss = None
 
         self.model.train()
         # train loop

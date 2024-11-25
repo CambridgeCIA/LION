@@ -15,8 +15,11 @@ class SURE(nn.Module):
         warnings.warn(
             "SURE expects Gaussian noise, which is not the case in noisy recosntruction of CT, so this may not work as expected"
         )
+        raise NotImplementedError(
+            "This is not working as expected, it is not implemented for CT reconstruction. See issue #144 to develop this"
+        )
 
-    def forward(self, model, noisy):
+    def forward(self, noisy, model):
 
         if model.get_input_type() != ModelInputType.IMAGE:
             raise NotImplementedError(
@@ -40,3 +43,26 @@ class SURE(nn.Module):
     @staticmethod
     def default_epsilon(y):
         return torch.max(y) / 1000
+
+    @staticmethod
+    def cite(cite_format="MLA"):
+
+        if cite_format == "MLA":
+            print("Metzler, Christopher A., et al.")
+            print('"Unsupervised learning with Steins unbiased risk estimator."')
+            print("\x1B[3m  arXiv preprint arXiv:1805.10531 \x1B[0m")
+            print("2018")
+
+        elif cite_format == "bib":
+            string = """
+            @article{metzler2018unsupervised,
+            title={Unsupervised learning with Stein's unbiased risk estimator},
+            author={Metzler, Christopher A and Mousavi, Ali and Heckel, Reinhard and Baraniuk, Richard G},
+            journal={arXiv preprint arXiv:1805.10531},
+            year={2018}
+            }"""
+            print(string)
+        else:
+            raise AttributeError(
+                'cite_format not understood, only "MLA" and "bib" supported'
+            )

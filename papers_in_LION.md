@@ -10,7 +10,9 @@ Pelt, Daniël M., and James A. Sethian. "A mixed-scale dense convolutional neura
 [https://doi.org/10.1073/pnas.1715832114](https://doi.org/10.1073/pnas.1715832114)
 
 `LION/models/CNNs/MS-D/`               Submodule with the original repo
+
 `LION/models/CNNs/MSD_pytorch.py`      the LIONmodel to load the original code
+
 `LION/models/CNNs/MSDNet.py`           Our version of the MSD_pytorch model. Uses more memory
 
 #### Learned Primal Dual (LPD)
@@ -66,6 +68,7 @@ Kiss, Maximilian B., et al. "2DeteCT-A large 2D expandable, trainable, experimen
 [https://doi.org/10.1038/s41597-023-02484-6](https://doi.org/10.1038/s41597-023-02484-6)
 
 `LION/data_loaders/2deteCT/`       Code to download and pre-process a LION version of the 2deteCT, made with the authors. 
+
 `LION/data_loaders/deteCT.py`      Pytorch DataSet
 
 #### LIDC-IDRI
@@ -74,8 +77,16 @@ Armato III, Samuel G., et al. "The lung image database consortium (LIDC) and ima
 [https://doi.org/10.1118/1.3528204](https://doi.org/10.1118/1.3528204)
 
 `LION/data_loaders/LIDC_IDRI/`     Code to pre-process a LION version of the dataset
+
 `LION/data_loaders/LIDC_IDRI.py`   Pytorch DataSet
 
 ## Loss functions
+
+#### Steins Unbased risk estimator (SURE)
+
+Metzler, Christopher A., et al. "Unsupervised learning with Stein's unbiased risk estimator." arXiv preprint arXiv:1805.10531 (2018).
+[https://doi.org/10.48550/arXiv.1805.10531](https://doi.org/10.48550/arXiv.1805.10531)
+
+`LION/losses/SURE.py`     The loss function itself. Use with `SelfSupervisedSolver`
 
 ## Misc
