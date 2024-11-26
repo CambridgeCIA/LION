@@ -304,16 +304,16 @@ class cLPD(LIONmodel.LIONmodel):
 
     def __init__(
         self,
-        geometry_parameters: ct.Geometry,
+        geometry: ct.Geometry,
         model_parameters: LIONParameter = None,
     ):
-        if geometry_parameters is None:
+        if geometry is None:
             raise ValueError("Geometry parameters required. ")
 
-        super().__init__(model_parameters, geometry_parameters)
+        super().__init__(model_parameters, geometry)
         # Pass all relevant parameters to internal storage.
-        # AItomotmodel does this:
-        # self.geo = geometry_parameters
+        # LIONmodel does this:
+        # self.geometry = geometry
         # self.model_parameters = model_parameters
 
         # Create layers per iteration
@@ -463,12 +463,12 @@ class cLPD(LIONmodel.LIONmodel):
         if C != 1:
             raise NotImplementedError("Only 2D CT images supported")
 
-        if len(self.geo.angles) != W or self.geo.detector_shape[1] != H:
+        if len(self.geometry.angles) != W or self.geometry.detector_shape[1] != H:
             raise ValueError("geo description and sinogram size do not match")
 
         # initialize parameters
         h = g.new_zeros(B, 5, W, H)
-        f_primal = g.new_zeros(B, 5, *self.geo.image_shape[1:])
+        f_primal = g.new_zeros(B, 5, *self.geometry.image_shape[1:])
         for i in range(B):
             aux = fdk(self.op, g[i, 0])
             aux = torch.clip(aux, min=0)

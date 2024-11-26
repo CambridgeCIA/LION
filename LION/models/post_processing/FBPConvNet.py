@@ -6,13 +6,14 @@
 # =============================================================================
 
 
+from typing import Optional
 import torch
 import torch.nn as nn
 from LION.models import LIONmodel
 from LION.models import LIONmodelSubclasses
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ct
-from ts_algorithms import fdk
+from LION.classical_algorithms.fdk import fdk
 
 # Implementation of:
 
@@ -92,16 +93,51 @@ class Up(nn.Module):
         return self.block(x)
 
 
+class FBPConvNetParams(LIONmodel.ModelParams):
+    def __init__(
+        self,
+        down_1_channels: list[int],
+        down_2_channels: list[int],
+        down_3_channels: list[int],
+        down_4_channels: list[int],
+        latent_channels: list[int],
+        up_1_channels: list[int],
+        up_2_channels: list[int],
+        up_3_channels: list[int],
+        up_4_channels: list[int],
+        last_block: list[int],
+        activation: str,
+    ):
+        super().__init__(LIONmodel.ModelInputType.SINOGRAM)
+        self.down_1_channels = down_1_channels
+        self.down_2_channels = down_2_channels
+        self.down_3_channels = down_3_channels
+        self.down_4_channels = down_4_channels
+
+        self.latent_channels = latent_channels
+
+        self.up_1_channels = up_1_channels
+        self.up_2_channels = up_2_channels
+        self.up_3_channels = up_3_channels
+        self.up_4_channels = up_4_channels
+
+        self.last_block = last_block
+
+        self.activation = activation
+
+
 class FBPConvNet(LIONmodel.LIONmodel):
     def __init__(
-        self, geometry_parameters: ct.Geometry, model_parameters: LIONParameter = None
+        self,
+        geometry_parameters: ct.Geometry,
+        model_parameters: Optional[LIONmodel.ModelParams] = None,
     ):
 
-        if geometry_parameters is None:
-            raise ValueError("Geometry parameters required. ")
+        assert (
+            geometry_parameters is not None
+        ), "Geometry parameters required for FBPConvNet."
 
         super().__init__(model_parameters, geometry_parameters)
-
         self._make_operator()
         # standard FBPConvNet (As per paper):
 
@@ -190,22 +226,19 @@ class FBPConvNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        FBPConvNet_params = LIONParameter()
-        FBPConvNet_params.down_1_channels = [1, 64, 64, 64]
-        FBPConvNet_params.down_2_channels = [64, 128, 128]
-        FBPConvNet_params.down_3_channels = [128, 256, 256]
-        FBPConvNet_params.down_4_channels = [256, 512, 512]
-
-        FBPConvNet_params.latent_channels = [512, 1024, 1024]
-
-        FBPConvNet_params.up_1_channels = [1024, 512, 512]
-        FBPConvNet_params.up_2_channels = [512, 256, 256]
-        FBPConvNet_params.up_3_channels = [256, 128, 128]
-        FBPConvNet_params.up_4_channels = [128, 64, 64]
-
-        FBPConvNet_params.last_block = [64, 1, 1]
-
-        FBPConvNet_params.activation = "ReLU"
+        FBPConvNet_params = FBPConvNetParams(
+            [1, 64, 64, 64],
+            [64, 128, 128],
+            [128, 256, 256],
+            [256, 512, 512],
+            [512, 1024, 1024],
+            [1024, 512, 512],
+            [512, 256, 256],
+            [256, 128, 128],
+            [128, 64, 64],
+            [64, 1, 1],
+            "ReLU",
+        )
 
         return FBPConvNet_params
 
@@ -239,11 +272,7 @@ class FBPConvNet(LIONmodel.LIONmodel):
     def forward(self, x):
         B, C, W, H = x.shape
 
-        image = x.new_zeros(B, 1, *self.geo.image_shape[1:])
-        for i in range(B):
-            aux = fdk(self.op, x[i, 0])
-            aux = torch.clip(aux, min=0)
-            image[i] = aux
+        image = fdk(x, self.op)
         block_1_res = self.block_1_down(image)
         block_2_res = self.block_2_down(self.down_1(block_1_res))
         block_3_res = self.block_3_down(self.down_2(block_2_res))
@@ -255,5 +284,5 @@ class FBPConvNet(LIONmodel.LIONmodel):
         res = self.block_3_up(torch.cat((block_2_res, self.up_3(res)), dim=1))
         res = self.block_4_up(torch.cat((block_1_res, self.up_4(res)), dim=1))
         res = self.block_last(res)
-        
+
         return image + res

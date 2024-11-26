@@ -15,6 +15,8 @@
 #%% Imports
 
 # You will want to import LIONParameter, as all models must save and use Parameters.
+from enum import Enum
+from typing import Optional
 from LION.utils.parameter import LIONParameter
 
 # We will need utilities
@@ -40,7 +42,19 @@ from abc import ABC, abstractmethod, ABCMeta
 # Some other imports
 import warnings
 from pathlib import Path
-import subprocess
+
+
+class ModelInputType(int, Enum):
+    SINOGRAM = 0
+    NOISY_RECON = 1
+    IMAGE = 1
+
+
+# it is the job of the subclass constructor to specify input_type
+class ModelParams(LIONParameter):
+    def __init__(self, model_input_type, **kwargs):
+        super().__init__(**kwargs)
+        self.model_input_type = model_input_type
 
 
 class LIONmodel(nn.Module, ABC):
@@ -53,8 +67,10 @@ class LIONmodel(nn.Module, ABC):
     # for the geometry parameters of the inverse problem.
     def __init__(
         self,
-        model_parameters: LIONParameter,  # model parameters
-        geometry_parameters: ct.Geometry = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
+        model_parameters: Optional[ModelParams],  # model parameters
+        geometry: Optional[
+            ct.Geometry
+        ] = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
     ):
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
@@ -62,32 +78,35 @@ class LIONmodel(nn.Module, ABC):
         if model_parameters is None:
             model_parameters = self.default_parameters()
         # Pass all relevant parameters to internal storage.
-        self.geo = geometry_parameters
+        self.geometry = geometry
         self.model_parameters = model_parameters
 
     # This should return the parameters from the paper the model is from
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
-    def default_parameters(mode="ct") -> LIONParameter:
+    def default_parameters(mode="ct") -> ModelParams:
         pass
 
     # makes operator and make it pytorch compatible.
     def _make_operator(self):
         # if self.model_parameters.mode.lower() != "ct":
         #     raise NotImplementedError("Only CT operators supported")
-        if hasattr(self, "geo") and self.geo is not None:
-            self.op = ct_utils.make_operator(self.geo)
+        if hasattr(self, "geometry") and self.geometry is not None:
+            self.op = ct_utils.make_operator(self.geometry)
             self.A = to_autograd(self.op, num_extra_dims=1)
             self.AT = to_autograd(self.op.T, num_extra_dims=1)
         else:
-            raise AttributeError("Can't make operator without geo parameters.")
+            raise AttributeError("Can't make operator without geometry parameters.")
 
     # All classes should have this method, just change the amount of Parameters it returns of you have more/less
     def get_parameters(self):
-        if self.geo is not None:
-            return self.model_parameters, self.geo
+        if self.geometry is not None:
+            return self.model_parameters, self.geometry
         else:
             return self.model_parameters
+
+    def get_input_type(self) -> ModelInputType:
+        return self.model_parameters.model_input_type
 
     # All classes should have this method. This is the example for Learned Primal Dual.
     # You can obtain this exact text from Google Scholar's page of the paper.
@@ -169,13 +188,13 @@ class LIONmodel(nn.Module, ABC):
             dic["optimizer_state_dict"] = kwargs.pop("optimizer")
 
         # (optional)
-        geo = []
+        geometry = []
         if "geometry" in kwargs:
-            geo = kwargs.pop("geometry")
-            dic["geo"] = geo
-        elif hasattr(self, "geo") and self.geo:
-            geo = self.geo
-            dic["geo"] = geo
+            geometry = kwargs.pop("geometry")
+            dic["geometry"] = geometry
+        elif hasattr(self, "geometry") and self.geometry is not None:
+            geometry = self.geometry
+            dic["geometry"] = geometry
         else:
             warnings.warn(
                 "Expected 'geometry' parameter! Only ignore if tomographic reconstruction was not part of the model."
@@ -193,11 +212,14 @@ class LIONmodel(nn.Module, ABC):
         options = LIONParameter()
         # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
         # we need to at least know exactly when the model was saved, to at least be able to reproduce.
-        options.commit_hash = ai_utils.get_git_revision_hash()
+        try:
+            options.commit_hash = ai_utils.get_git_revision_hash()
+        except:
+            warnings.warn("\nCould not get git hash.\n")
         options.model_name = self.__class__.__name__
         options.model_parameters = self.model_parameters
-        if geo:
-            options.geometry_parameters = geo
+        if geometry:
+            options.geometry = geometry
         if dataset_params:
             options.dataset_params = dataset_params
         if training:
@@ -253,10 +275,8 @@ class LIONmodel(nn.Module, ABC):
         ##############################
         options = LIONParameter()
         options.load(fname.with_suffix(".json"))
-        if hasattr(options, "geometry_parameters"):
-            options.geometry_parameters = ct.Geometry.init_from_parameter(
-                options.geometry_parameters
-            )
+        if hasattr(options, "geometry"):
+            options.geometry = ct.Geometry.init_from_parameter(options.geometry)
         # Error check
         ################################
         # Check if model has been changed since save.
@@ -302,10 +322,10 @@ class LIONmodel(nn.Module, ABC):
         data = LIONmodel._load_data(fname)
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
-        if hasattr(options, "geometry_parameters"):
+        if hasattr(options, "geometry"):
             model = cls(
                 model_parameters=options.model_parameters,
-                geometry_parameters=options.geometry_parameters,
+                geometry=options.geometry,
             )
         else:
             model = cls(model_parameters=options.model_parameters)
@@ -332,10 +352,10 @@ class LIONmodel(nn.Module, ABC):
         data = LIONmodel._load_data(fname, supress_warnings=True)
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
-        if hasattr(options, "geometry_parameters"):
+        if hasattr(options, "geometry"):
             model = cls(
                 model_parameters=options.model_parameters,
-                geometry_parameters=options.geometry_parameters,
+                geometry=options.geometry,
             )
         else:
             model = cls(model_parameters=options.model_parameters)
@@ -381,6 +401,7 @@ class LIONmodel(nn.Module, ABC):
             total_loss = data["loss"]
             model.train()
         else:
+            print(f"checkpoint {fname} not found, failed to load.")
             return model, optimiser, 0, total_loss, None
         return model, optimiser, start_epoch, total_loss, data
 

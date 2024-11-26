@@ -164,11 +164,11 @@ optimiser = torch.optim.Adam(model.parameters(), lr=learning_rate, betas=betas)
 
 # You know how to write pytorch loops, so let me show you how to use LION for training.
 
-from LION.optimizers.supervised_learning import supervisedSolver
+from LION.optimizers.supervised_learning import SupervisedSolver
 from LION.optimizers.Noise2Inverse_solver import Noise2Inverse_solver
 
 # create solver
-solver = supervisedSolver(model, optimiser, loss_fcn, verbose=True)
+solver = SupervisedSolver(model, optimiser, loss_fcn, verbose=True)
 
 # YOU CAN IGNORE THIS. You can 100% just write your own pytorch training loop.
 # LIONSover is just a convinience class that does some stuff for you, no need to use it.

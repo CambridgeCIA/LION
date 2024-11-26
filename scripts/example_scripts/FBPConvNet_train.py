@@ -20,7 +20,7 @@ torch.cuda.set_device(device)
 savefolder = pathlib.Path("/home/hyt35/trained_models/clinical_dose/")
 
 final_result_fname = savefolder.joinpath("FBPConvNet_final_iter.pt")
-checkpoint_fname = savefolder.joinpath("FBPConvNet_check_*.pt")  
+checkpoint_fname = savefolder.joinpath("FBPConvNet_check_*.pt")
 validation_fname = savefolder.joinpath("FBPConvNet_min_val.pt")
 #
 #%% Define experiment
@@ -137,6 +137,3 @@ model.save(
     training=train_param,
     dataset=experiment.param,
 )
-
-
-

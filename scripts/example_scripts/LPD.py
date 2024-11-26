@@ -16,7 +16,7 @@ import torch.utils.data as data_utils
 from LION.models.iterative_unrolled.LPD import LPD
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
-from LION.optimizers.supervised_learning import supervisedSolver
+from LION.optimizers.SupervisedSolver import SupervisedSolver
 
 
 def my_ssim(x, y):
@@ -29,20 +29,22 @@ def my_ssim(x, y):
 # % Chose device:
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
+
 # Define your data paths
-savefolder = pathlib.Path("/home/hyt35/trained_models/LPD/")
-final_result_fname = savefolder.joinpath("LPD.pt")
+
+savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
+final_result_fname = "LPD.pt"
 checkpoint_fname = "LPD_check_*.pt"
-validation_fname = savefolder.joinpath("LPD_min_val.pt")
+validation_fname = "LPD_min_val.pt"
 #
 #%% Define experiment
 
 experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
-
+experiment = ct_experiments.ExtremeLowDoseCTRecon(dataset="LIDC-IDRI")
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
-
+lidc_dataset_test = experiment.get_testing_dataset()
 # smaller dataset for example. Remove this for full dataset
 indices = torch.arange(100)
 lidc_dataset = data_utils.Subset(lidc_dataset, indices)
@@ -54,22 +56,24 @@ lidc_dataset_val = data_utils.Subset(lidc_dataset_val, indices)
 
 
 batch_size = 1
-lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
+lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=True)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=False)
-lidc_test = DataLoader(experiment.get_testing_dataset(), batch_size, shuffle=False)
+lidc_test = DataLoader(lidc_dataset_test, batch_size, shuffle=False)
+
 
 #%% Model
 # Default model is already from the paper.
-from LION.models.iterative_unrolled.cLPD import cLPD
+from LION.models.iterative_unrolled.LPD import LPD
 
-default_parameters = cLPD.default_parameters()
+default_parameters = LPD.default_parameters()
 # This makes the LPD calculate the step size for the backprojection, which in my experience results in much much better pefromace
 # as its all in the correct scale.
 default_parameters.learned_step = True
 default_parameters.step_positive = True
 default_parameters.n_iters = 5
-model = LPD(experiment.geo, default_parameters).to(device)
-
+model = LPD(experiment.geo, default_parameters)
+model.cite()
+model.cite("bib")
 
 #%% Optimizer
 train_param = LIONParameter()
@@ -79,7 +83,7 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 1
+train_param.epochs = 100
 train_param.learning_rate = 1e-4
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
@@ -89,7 +93,7 @@ optimiser = torch.optim.Adam(
 
 #%% Train
 # create solver
-solver = supervisedSolver(model, optimiser, loss_fcn, verbose=True)
+solver = SupervisedSolver(model, optimiser, loss_fcn, verbose=True)
 
 # YOU CAN IGNORE THIS. You can 100% just write your own pytorch training loop.
 # LIONSover is just a convinience class that does some stuff for you, no need to use it.
@@ -100,13 +104,15 @@ solver.set_validation(lidc_validation, 10, validation_fname=validation_fname)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
-solver.set_checkpointing(savefolder, checkpoint_fname, 10, load_checkpoint=False)
+solver.set_checkpointing(
+    checkpoint_fname, 10, load_checkpoint_if_exists=False, save_folder=savefolder
+)
 # train
 solver.train(train_param.epochs)
 # delete checkpoints if finished
 solver.clean_checkpoints()
 # save final result
-solver.save_final_results(final_result_fname)
+solver.save_final_results(final_result_fname, savefolder)
 
 # test
 

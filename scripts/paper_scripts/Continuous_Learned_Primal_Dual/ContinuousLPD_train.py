@@ -123,11 +123,11 @@ optimiser = torch.optim.Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
 
-from LION.optimizers.supervised_learning import supervisedSolver
+from LION.optimizers.supervised_learning import SupervisedSolver
 
 
 # create solver
-solver = supervisedSolver(model, optimiser, loss_fcn, verbose=True)
+solver = SupervisedSolver(model, optimiser, loss_fcn, verbose=True)
 
 # set data
 solver.set_training(training_dataloader)

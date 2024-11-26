@@ -13,7 +13,7 @@ packages = setuptools.find_namespace_packages()
 
 setuptools.setup(
     name="LION",
-    version="0.1",
+    version="0.2",
     author="Ander Biguri",
     author_email="ander.biguri@gmail.com",
     description=("Tomographic tools for AI-driven reconstruction"),

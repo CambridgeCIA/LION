@@ -28,7 +28,7 @@ class Luna16Dataset(Dataset):
         self,
         device: torch.device,
         mode: str,
-        geo: Geometry() = None,
+        geometry: Geometry() = None,
         sinogram_transform=None,
         image_transform=None,
     ) -> None:
@@ -41,9 +41,9 @@ class Luna16Dataset(Dataset):
 
         self.device = device
         self.mode = mode
-        if geo is not None:
-            self.operator = ct.make_operator(geo)
-        self.geometry = geo
+        if geometry is not None:
+            self.operator = ct.make_operator(geometry)
+        self.geometry = geometry
         self.sinogram_transform = sinogram_transform
         self.image_transform = image_transform
 

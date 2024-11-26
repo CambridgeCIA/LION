@@ -33,16 +33,18 @@ class deteCT(Dataset):
 
         # Get geometry default, or validate if given geometry is valid for 2DeteCT, as its raw sinogram data, we can't allow any geometry
         if geometry_params is None:
-            self.geo = self.get_default_geometry()
-            self.angle_index = list(range(len(self.geo.angles)))
+            self.geometry = self.get_default_geometry()
+            self.angle_index = list(range(len(self.geometry.angles)))
         else:
             self.__is_valid_geo(geometry_params)
-            self.geo = geometry_params
-            if not np.array_equal(self.geo.angles, self.get_default_geometry().angles):
+            self.geometry = geometry_params
+            if not np.array_equal(
+                self.geometry.angles, self.get_default_geometry().angles
+            ):
                 # if we are here we already know that the angles are at least valid.
                 self.angle_index = []
                 full_angles = self.get_default_geometry().angles
-                for angle in self.geo.angles:
+                for angle in self.geometry.angles:
                     index = next(
                         i
                         for i, _ in enumerate(full_angles)
@@ -50,7 +52,7 @@ class deteCT(Dataset):
                     )
                     self.angle_index.append(index)
             else:
-                self.angle_index = list(range(len(self.geo.angles)))
+                self.angle_index = list(range(len(self.geometry.angles)))
 
         if parameters.query == "" and (
             not parameters.flat_field_correction or not parameters.dark_field_correction
@@ -183,6 +185,21 @@ class deteCT(Dataset):
             )
         ]
 
+        if hasattr(parameters, "add_noise") and parameters.add_noise:
+            self.add_noise = parameters.add_noise
+            self.noise_params = parameters.noise_params
+            if self.task not in ["sino2sino", "sino2recon", "joint", "sino2seg"]:
+                warnings.warn(
+                    "You have defined noise parameters, but the task is not 'sino2sino', 'sino2recon', 'joint', or 'sino2seg'. Noise will not be added"
+                )
+                self.add_noise = False
+            if not hasattr(parameters, "noise_params") and self.add_noise:
+                raise ValueError(
+                    "You have to define noise parameters if you want to add noise"
+                )
+        else:
+            self.add_noise = False
+
         self.flat_field_correction = parameters.flat_field_correction
         self.dark_field_correction = parameters.dark_field_correction
         self.log_transform = parameters.log_transform
@@ -207,12 +224,14 @@ class deteCT(Dataset):
         param.log_transform = True
         param.query = ""
 
-        param.geo = deteCT.get_default_geometry()
+        param.add_noise = False
+
+        param.geometry = deteCT.get_default_geometry()
         return param
 
     @staticmethod
     def get_default_geometry():
-        geo = ctgeo.Geometry.default_parameters()
+        geometry = ctgeo.Geometry.default_parameters()
         # From Max Kiss code
         SOD = 431.019989
         SDD = 529.000488
@@ -229,47 +248,47 @@ class deteCT(Dataset):
         SOD = SOD * scaleFactor
         detPixSz = detPixSz * scaleFactor
 
-        geo.dsd = SDD
-        geo.dso = SOD
-        geo.detector_shape = [1, 956]
-        geo.detector_size = [detPixSz, detPixSz * 956]
-        geo.image_shape = [1, 1024, 1024]
-        geo.image_size = [1, 1024, 1024]
-        geo.image_pos = [0, -1, -1]
-        geo.angles = -np.linspace(0, 2 * np.pi, 3600, endpoint=False) + np.pi
-        return geo
+        geometry.dsd = SDD
+        geometry.dso = SOD
+        geometry.detector_shape = [1, 956]
+        geometry.detector_size = [detPixSz, detPixSz * 956]
+        geometry.image_shape = [1, 1024, 1024]
+        geometry.image_size = [1, 1024, 1024]
+        geometry.image_pos = [0, -1, -1]
+        geometry.angles = -np.linspace(0, 2 * np.pi, 3600, endpoint=False) + np.pi
+        return geometry
 
-    def __is_valid_geo(self, geo):
-        if not isinstance(geo, ctgeo.Geometry):
-            raise ValueError("geo must be a ctgeo.Geometry object")
+    def __is_valid_geo(self, geometry):
+        if not isinstance(geometry, ctgeo.Geometry):
+            raise ValueError("geometry must be a ctgeo.Geometry object")
         default_geo = deteCT.get_default_geometry()
 
-        if geo.dsd != default_geo.dsd or geo.dso != default_geo.dso:
+        if geometry.dsd != default_geo.dsd or geometry.dso != default_geo.dso:
             raise ValueError(
                 f"dsd and dso must be the same as the default geometry: DSO = {default_geo.dso}, DSD = {default_geo.dsd}"
             )
-        if geo.detector_shape[0] != default_geo.detector_shape[0]:
+        if geometry.detector_shape[0] != default_geo.detector_shape[0]:
             raise ValueError(f"detector_shape[0] must be 1")
-        if geo.detector_shape[1] != default_geo.detector_shape[1]:
+        if geometry.detector_shape[1] != default_geo.detector_shape[1]:
             warnings.warn(
-                f"Raw data detector_shape[1] must be 956, it is {geo.detector_shape[1]}. Interpolation will be used, but note that you are not using exactly the raw data"
+                f"Raw data detector_shape[1] must be 956, it is {geometry.detector_shape[1]}. Interpolation will be used, but note that you are not using exactly the raw data"
             )
-        if geo.detector_size != default_geo.detector_size:
+        if geometry.detector_size != default_geo.detector_size:
             raise ValueError(f"detector_size must be {default_geo.detector_size}")
-        if geo.image_shape != default_geo.image_shape:
+        if geometry.image_shape != default_geo.image_shape:
             warnings.warn(
-                f"image_shape must be {default_geo.image_shape}, it is {geo.image_shape}. Interpolation will be used, but note that you are not using exactly the raw data"
+                f"image_shape must be {default_geo.image_shape}, it is {geometry.image_shape}. Interpolation will be used, but note that you are not using exactly the raw data"
             )
-        if geo.image_size[1:] != default_geo.image_size[1:]:
+        if geometry.image_size[1:] != default_geo.image_size[1:]:
             raise ValueError(f"image_size must be {default_geo.image_size}")
-        if geo.image_pos != default_geo.image_pos:
+        if geometry.image_pos != default_geo.image_pos:
             raise ValueError(f"image_pos must be {default_geo.image_pos}")
 
         full_angles = self.get_default_geometry().angles
-        if not np.array_equal(geo.angles, full_angles):
+        if not np.array_equal(geometry.angles, full_angles):
             # I think this is slow, maybe there is abetter way
 
-            for angle in geo.angles:
+            for angle in geometry.angles:
                 index = next(
                     i for i, _ in enumerate(full_angles) if np.isclose(_, angle, 10e-4)
                 )
@@ -281,11 +300,14 @@ class deteCT(Dataset):
 
     @staticmethod
     def get_default_operator():
-        geo = deteCT.get_default_geometry()
-        return make_operator(geo)
+        geometry = deteCT.get_default_geometry()
+        return make_operator(geometry)
 
     def get_operator(self):
-        return make_operator(self.geo)
+        return make_operator(self.geometry)
+
+    def set_sinogram_transform(self, sinogram_transform):
+        self.sinogram_transform = sinogram_transform
 
     def compute_sample_dataframe(self):
         unique_identifiers = self.slice_dataframe["sample_index"].unique()
@@ -306,6 +328,50 @@ class deteCT(Dataset):
             + 1
         )
 
+    def add_sinogram_noise(self, sinogram, I0, cross_talk=0.05):
+        """
+        Add noise to a measured sinogram.
+        The reason this data loader has a bestpoke function for this is that the noise is that the
+        noise simulator in LION.ct_tools.ct_utils assumes noiseles sinograms in X-ray absobtion.
+        However, adding noise to a real measured sinogram is not the same as adding noise to a noiseless sinogram.
+
+        The assumption here is that the input sinogram is measured, and contains enough photon counts as to ignore the poisson noise.
+        However, effects due to the detector, electronics, etc. are still present. In particular, it assumes that there is electronic noise,
+        modelled by a signal-independent Gaussian noise, and that it has detector cross-talk, modelled by a convolution.
+
+        Under those assumptions, we can say thus that the noisy sinogram is:
+        $$
+        sino_{noisy} = sino_{measured} + corss_talk(P_{I0}),
+        $$
+        where $P_{I0}$ is the noise conponent of adding Poisson noise at $I0$ counts to the input sinogram (input is assumed at $I0=\inf$).
+        This is not exactly correct, but approximately so. See Kiss et al. 2024 for more details
+
+        Input:
+        sinogram: torch.Tensor, the sinogram to add noise to. It has to be flat field corrected, and in absobrtion units (i.e. log transformed)
+        I0: float, the number of counts in the measurement (lower=more noise)
+        """
+        dev = torch.cuda.current_device()
+
+        Im = I0 * torch.exp(-sinogram)
+        # Add Poisson noise
+        Pm = torch.poisson(Im)
+        PI = Pm - Im
+        # Detector cross talk
+
+        kernel = torch.tensor(
+            [[0.0, 0.0, 0.0], [cross_talk, 1, cross_talk], [0.0, 0.0, 0.0]]
+        ).view(1, 1, 3, 3).repeat(1, 1, 1, 1) / (1 + 2 * cross_talk)
+
+        conv = torch.nn.Conv2d(1, 1, 3, bias=False, padding="same")
+        with torch.no_grad():
+            conv.weight = torch.nn.Parameter(kernel)
+        conv = conv.to(dev)
+
+        noisy = Im + conv(PI.unsqueeze(0).to(dev)).cpu()[0]
+        noisy = torch.clip(noisy, min=0.0, max=I0)
+        noisy[noisy <= 0] = 1e-6
+        return -torch.log(noisy / I0)
+
     def __load_and_preprocess_sinogram__(self, index, mode):
         slice_row = self.slice_dataframe.iloc[index]
         path_to_input = self.path_to_dataset.joinpath(
@@ -314,6 +380,7 @@ class deteCT(Dataset):
         sinogram = torch.from_numpy(
             np.load(path_to_input.joinpath("sinogram.npy")).astype(np.float32)
         ).unsqueeze(0)
+
         if self.flat_field_correction:
             flat = torch.from_numpy(
                 np.load(path_to_input.joinpath("flat.npy")).astype(np.float32)
@@ -332,14 +399,19 @@ class deteCT(Dataset):
         if self.log_transform:
             sinogram = -torch.log(sinogram)
 
+        if self.add_noise:
+            sinogram = self.add_sinogram_noise(
+                sinogram, self.noise_params.I0, self.noise_params.cross_talk
+            )
+
         sinogram = torch.flip(sinogram, [2])
         sinogram = sinogram[:, self.angle_index, :]
 
         # Interpolate if geometry is not default
-        if self.geo.detector_shape != self.get_default_geometry().detector_shape:
+        if self.geometry.detector_shape != self.get_default_geometry().detector_shape:
             sinogram = torch.nn.functional.interpolate(
                 sinogram.unsqueeze(0),
-                size=(sinogram.shape[1], self.geo.detector_shape[1]),
+                size=(sinogram.shape[1], self.geometry.detector_shape[1]),
                 mode="bilinear",
             )
             sinogram = torch.squeeze(sinogram, 0)
@@ -355,10 +427,10 @@ class deteCT(Dataset):
             np.load(path_to_input.joinpath("reconstruction.npy")).astype(np.float32)
         ).unsqueeze(0)
         # Interpolate if geometry is not default
-        if self.geo.image_shape != self.get_default_geometry().image_shape:
+        if self.geometry.image_shape != self.get_default_geometry().image_shape:
             reconstruction = torch.nn.functional.interpolate(
                 reconstruction.unsqueeze(0),
-                size=(self.geo.image_shape[1], self.geo.image_shape[2]),
+                size=(self.geometry.image_shape[1], self.geometry.image_shape[2]),
                 mode="bilinear",
             )
             reconstruction = torch.squeeze(reconstruction, 0)
@@ -373,10 +445,10 @@ class deteCT(Dataset):
             np.load(path_to_input.joinpath("segmentation.npy"))
         ).unsqueeze(0)
         # Interpolate if geometry is not default
-        if self.geo.image_shape != self.get_default_geometry().image_shape:
+        if self.geometry.image_shape != self.get_default_geometry().image_shape:
             segmentation = torch.nn.functional.interpolate(
                 segmentation.unsqueeze(0),
-                size=(self.geo.image_shape[1], self.geo.image_shape[2]),
+                size=(self.geometry.image_shape[1], self.geometry.image_shape[2]),
                 mode="nearest",
             )
             segmentation = torch.squeeze(segmentation, 0)
@@ -406,13 +478,22 @@ class deteCT(Dataset):
 
         # If target is sinogram, we need to load the sinogram
         if self.task in ["sino2sino", "recon2sino", "joint"]:
+            # lets make sure we don't add noise to the target.
+            noise = self.add_noise
+            self.add_noise = False
             target = self.__load_and_preprocess_sinogram__(index, self.target_mode)
+            self.add_noise = noise
         # if target is reconstruction, we need to load the reconstruction
         elif self.task in ["recon2recon", "sino2recon", "groundtruth"]:
             if self.do_recon:
+                # lets make sure we don't add noise to the target.
+                noise = self.add_noise
+                self.add_noise = False
                 sinogram = self.__load_and_preprocess_sinogram__(
                     index, self.target_mode
                 )
+                self.add_noise = noise
+
                 op = deteCT.get_operator()
                 if self.recon_algo == "nag_ls":
                     target = nag_ls(op, sinogram, 100, min_constraint=0)
