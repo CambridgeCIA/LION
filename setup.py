@@ -25,8 +25,3 @@ setuptools.setup(
 )
 
 # os.system("pip install ./LION/models/MS-D/")
-
-wd = os.getcwd()
-os.chdir("./LION/metrics/radiomics/")
-os.system("pip install .")
-os.chdir(wd)

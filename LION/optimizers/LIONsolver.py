@@ -753,10 +753,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             validation_loss = np.array([])
             for data, targets in tqdm(self.validation_loader):
                 if self.model.get_input_type() == ModelInputType.IMAGE:
-                    data = fdk(data, self.op)
+                    data = fdk(data.to(self.device), self.op)
                 outputs = self.model(data)
                 validation_loss = np.append(
-                    validation_loss, self.validation_fn(targets, outputs)
+                    validation_loss,
+                    self.validation_fn(targets.to(self.device), outputs.to(self.device))
+                    .cpu()
+                    .numpy(),
                 )
 
         if self.verbose:
