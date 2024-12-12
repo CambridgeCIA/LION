@@ -27,11 +27,11 @@ def my_ssim(x, y):
 
 #%%
 # % Chose device:
-device = torch.device("cuda:1")
+device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
+savefolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models")
 final_result_fname = "LPD.pt"
 checkpoint_fname = "LPD_check_*.pt"
 validation_fname = "LPD_min_val.pt"
@@ -39,7 +39,7 @@ validation_fname = "LPD_min_val.pt"
 #%% Define experiment
 
 experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
-experiment = ct_experiments.ExtremeLowDoseCTRecon(dataset="LIDC-IDRI")
+#experiment = ct_experiments.ExtremeLowDoseCTRecon(dataset="LIDC-IDRI")
 #%% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
