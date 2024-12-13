@@ -76,6 +76,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         verbose: bool = True,
         device: torch.device = None,
         solver_params: Optional[SolverParams] = None,
+        save_folder: Optional[pathlib.Path] = None,
     ) -> None:
 
         super().__init__()
@@ -116,7 +117,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         self.current_epoch: int = 0
 
-        self.save_folder: Optional[pathlib.Path] = None
+        self.save_folder: Optional[pathlib.Path] = save_folder
 
         self.do_load_checkpoint: bool = False
         self.checkpoint_freq: int
@@ -156,16 +157,23 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         validation_freq: int,
         validation_fn: Optional[Callable] = None,
         validation_fname: Optional[str] = None,
+        save_folder: Optional[pathlib.Path] = None,
     ):
         """
         This function sets the validation data
         """
+        if isinstance(save_folder, str):
+            save_folder = pathlib.Path(save_folder)
+        elif save_folder is None:
+            save_folder = self.save_folder
+
         self.validation_loader = validation_loader
         self.validation_freq = validation_freq
         self.validation_fn = (
             validation_fn if validation_fn is not None else self.loss_fn
         )
         self.validation_fname = validation_fname
+        self.validation_save_folder = save_folder
 
     def set_testing(
         self, test_loader: DataLoader, testing_fn: Optional[Callable] = None
@@ -343,8 +351,20 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             default=10,
         )
 
+        return_code = self.__check_attribute(
+            "validation_save_folder",
+            expected_type=pathlib.Path,
+            error=False,
+            autofill=True,
+            verbose=True,
+            default=self.save_folder,
+        )
+
         # Test 14: is the validation filename set? if not, raise error or warn or autofill
-        if self.final_result_fname is not None and self.save_folder is not None:
+        if (
+            self.final_result_fname is not None
+            and self.validation_save_folder is not None
+        ):
             default_validation_fname = f"{self.final_result_fname}_min_val.pt"
         else:
             default_validation_fname = None
@@ -384,8 +404,20 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     def check_checkpointing_ready(self, autofill=True, verbose=True):
         return_code = 0
 
+        return_code = self.__check_attribute(
+            "checkpoint_save_folder",
+            expected_type=pathlib.Path,
+            error=False,
+            autofill=True,
+            verbose=True,
+            default=self.save_folder,
+        )
+
         # Test 13: is the checkpoint filename filename set? if not, raise error or warn or autofill
-        if self.final_result_fname is not None and self.save_folder is not None:
+        if (
+            self.final_result_fname is not None
+            and self.checkpoint_save_folder is not None
+        ):
             default_checkpoint_fname = f"{self.final_result_fname}_checkpoint_*.pt"
         else:
             default_checkpoint_fname = None
@@ -534,11 +566,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if self.validation_loss is None:
             raise LIONSolverException("No validation losses found, failed to save.")
 
-        if self.save_folder is None:
-            raise LIONSolverException("Saving not setup: Please call set_saving.")
+        if self.validation_save_folder is None:
+            raise LIONSolverException(
+                "SaviValidation save folder not setup: Please call set_saving() or pass validation foder to set_validation()."
+            )
 
         self.model.save(
-            self.save_folder.joinpath(self.validation_fname),
+            self.validation_save_folder.joinpath(self.validation_fname),
             epoch=epoch,
             training=self.metadata,
             loss=self.validation_loss[epoch],

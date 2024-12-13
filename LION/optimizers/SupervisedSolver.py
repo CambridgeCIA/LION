@@ -26,6 +26,7 @@ class SupervisedSolver(LIONsolver):
         verbose: bool = False,
         model_regularization=None,
         device: torch.device = None,
+        save_folder: str = None,
     ):
 
         super().__init__(
@@ -36,6 +37,7 @@ class SupervisedSolver(LIONsolver):
             verbose=verbose,
             device=device,
             solver_params=SolverParams(),
+            save_folder=save_folder,
         )
         if verbose:
             print("Supervised solver training on device: ", device)

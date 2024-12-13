@@ -45,7 +45,7 @@ lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
 lidc_dataset_test = experiment.get_testing_dataset()
 # smaller dataset for example. Remove this for full dataset
-indices = torch.arange(100)
+indices = torch.arange(1)
 lidc_dataset = data_utils.Subset(lidc_dataset, indices)
 lidc_dataset_val = data_utils.Subset(lidc_dataset_val, indices)
 
@@ -70,7 +70,7 @@ default_parameters = LPD.default_parameters()
 default_parameters.learned_step = True
 default_parameters.step_positive = True
 default_parameters.n_iters = 5
-model = LPD(experiment.geo, default_parameters)
+model = LPD(experiment.geometry, default_parameters)
 model.cite()
 model.cite("bib")
 
@@ -92,7 +92,9 @@ optimiser = torch.optim.Adam(
 
 #%% Train
 # create solver
-solver = SupervisedSolver(model, optimiser, loss_fcn, verbose=True)
+solver = SupervisedSolver(
+    model, optimiser, loss_fcn, verbose=True, save_folder=savefolder
+)
 
 # YOU CAN IGNORE THIS. You can 100% just write your own pytorch training loop.
 # LIONSover is just a convinience class that does some stuff for you, no need to use it.
