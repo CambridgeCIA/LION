@@ -69,7 +69,7 @@ class DnCNN(LIONmodel):
             kernel_size=(3, 3),
             blocks=20,
             residual=True,
-            bias_free=False,
+            bias_free=True,
             act="leaky_relu",
             enforce_positivity=False,
             batch_normalisation=True,
