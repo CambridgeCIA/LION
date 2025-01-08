@@ -1,6 +1,6 @@
-#%% This example shows how to train Learned Primal dual for full angle, noisy measurements.
+# %% This example shows how to train Learned Primal dual for full angle, noisy measurements.
 
-#%% Imports
+# %% Imports
 
 # Standard imports
 import matplotlib.pyplot as plt
@@ -25,22 +25,22 @@ def my_ssim(x, y):
     return ssim(x, y, data_range=x.max() - x.min())
 
 
-#%%
+# %%
 # % Chose device:
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 
 # Define your data paths
-savefolder = pathlib.Path("/home/cr661/rds/hpc-work/store/LION/trained_models")
+savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
 final_result_fname = "LPD.pt"
 checkpoint_fname = "LPD_check_*.pt"
 validation_fname = "LPD_min_val.pt"
 #
-#%% Define experiment
+# %% Define experiment
 
 experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
-#experiment = ct_experiments.ExtremeLowDoseCTRecon(dataset="LIDC-IDRI")
-#%% Dataset
+# experiment = ct_experiments.ExtremeLowDoseCTRecon(dataset="LIDC-IDRI")
+# %% Dataset
 lidc_dataset = experiment.get_training_dataset()
 lidc_dataset_val = experiment.get_validation_dataset()
 lidc_dataset_test = experiment.get_testing_dataset()
@@ -50,7 +50,7 @@ lidc_dataset = data_utils.Subset(lidc_dataset, indices)
 lidc_dataset_val = data_utils.Subset(lidc_dataset_val, indices)
 
 
-#%% Define DataLoader
+# %% Define DataLoader
 # Use the same amount of training
 
 
@@ -60,7 +60,7 @@ lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=False)
 lidc_test = DataLoader(lidc_dataset_test, batch_size, shuffle=False)
 
 
-#%% Model
+# %% Model
 # Default model is already from the paper.
 from LION.models.iterative_unrolled.LPD import LPD
 
@@ -74,7 +74,7 @@ model = LPD(experiment.geometry, default_parameters)
 model.cite()
 model.cite("bib")
 
-#%% Optimizer
+# %% Optimizer
 train_param = LIONParameter()
 
 # loss fn
@@ -90,7 +90,7 @@ optimiser = torch.optim.Adam(
     model.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
 
-#%% Train
+# %% Train
 # create solver
 solver = SupervisedSolver(
     model, optimiser, loss_fcn, verbose=True, save_folder=savefolder
