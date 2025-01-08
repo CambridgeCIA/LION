@@ -6,7 +6,7 @@
 # =============================================================================
 
 
-from LION.models import LIONmodel
+from LION.models.LIONmodel import LIONmodel, ModelInputType
 
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
@@ -241,7 +241,6 @@ class ContinuousDataProximal(nn.Module):
         x = self.first_layer(x)
         if self.do_secon_order:
             x = self.initial_velocity(x)
-        print(x.shape)
         x = self.odeblock(x, solver=self.solver)
         return self.last_layer(x)
 
@@ -299,7 +298,7 @@ class ContinuousRegProximal(nn.Module):
         return self.last_layer(x)
 
 
-class cLPD(LIONmodel.LIONmodel):
+class cLPD(LIONmodel):
     """Learn Primal Dual network with continuous blocks"""
 
     def __init__(
@@ -404,6 +403,7 @@ class cLPD(LIONmodel.LIONmodel):
         params.mode = "ct"
         params.do_secon_order = False
         params.instance_norm = False
+        params.model_input_type = ModelInputType.SINOGRAM
         return params
 
     @staticmethod
