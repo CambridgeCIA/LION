@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 import torch.utils.data as data_utils
 
 # Lion imports
-from LION.models.iterative_unrolled.LPD import LPD
+from LION.models.iterative_unrolled.cLPD import cLPD
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 from LION.optimizers.SupervisedSolver import SupervisedSolver
@@ -32,9 +32,9 @@ torch.cuda.set_device(device)
 
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
-final_result_fname = "LPD.pt"
-checkpoint_fname = "LPD_check_*.pt"
-validation_fname = "LPD_min_val.pt"
+final_result_fname = "cLPD.pt"
+checkpoint_fname = "cLPD_check_*.pt"
+validation_fname = "cLPD_min_val.pt"
 #
 # %% Define experiment
 
@@ -62,15 +62,15 @@ lidc_test = DataLoader(lidc_dataset_test, batch_size, shuffle=False)
 
 # %% Model
 # Default model is already from the paper.
-from LION.models.iterative_unrolled.LPD import LPD
+from LION.models.iterative_unrolled.cLPD import cLPD
 
-default_parameters = LPD.default_parameters()
+default_parameters = cLPD.default_parameters()
 # This makes the LPD calculate the step size for the backprojection, which in my experience results in much much better pefromace
 # as its all in the correct scale.
 default_parameters.learned_step = True
 default_parameters.step_positive = True
 default_parameters.n_iters = 5
-model = LPD(experiment.geometry, default_parameters)
+model = cLPD(experiment.geometry, default_parameters)
 model.cite()
 model.cite("bib")
 
