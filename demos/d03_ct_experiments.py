@@ -22,7 +22,7 @@ import LION.experiments.ct_experiments as ct_experiments
 
 # There are several Experiments defined for you to use. You can load/define them as:
 experiment = ct_experiments.clinicalCTRecon()
-# you can also pass optional parameters. As with all classes in LION, you can pass them the experiment Parameter class as:
+# you can also pass optional parameters. As with all classes in LION, you can pass them the experiment LIONParameter class as:
 experiment_parameters = ct_experiments.clinicalCTRecon.default_parameters()
 experiment = ct_experiments.clinicalCTRecon(experiment_params=experiment_parameters)
 # however this is HIGHLY DISCOURAGED. The purpose of the experiment class is to have reliable and repeatable experiments.
@@ -83,7 +83,7 @@ testing_dataset = experiment.get_testing_dataset()
 from LION.experiments.ct_experiments import Experiment
 
 # Import other classes you will need (these are imported in LION/experiments/ct_experiments.py)
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
@@ -98,12 +98,12 @@ class TestExperiment(Experiment):
     # The only other method you need to define is default_parameters(), e.g. this is the one for clinicalCT
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
-        param = Parameter()
+        param = LIONParameter()
         param.name = "Clinical dose experiment"
         # Parameters for the geometry
         param.geo = ctgeo.Geometry.default_parameters()
         # Parameters for the noise in the sinogram.
-        param.noise_params = Parameter()
+        param.noise_params = LIONParameter()
         param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
         param.noise_params.cross_talk = 0.05

@@ -10,15 +10,15 @@
 import numpy as np
 import os
 
-#%% Demo on Parameter class, used all across the toolbox to save and load parameters reproducibly.
+#%% Demo on LIONParameter class, used all across the toolbox to save and load parameters reproducibly.
 # This demo shows how the tool manages the parameters of geometries, models and results.
 # While as a user, you may not need to know most of this, it is convenient you learn about it. Your models and results should use these parameters
 # so you can reproduce your experiments.
-#%% 1-Parameters
-from LION.utils.parameter import Parameter
+#%% 1-LIONParameters
+from LION.utils.parameter import LIONParameter
 
 # You can make a parameter of whatever you want.
-my_params = Parameter()
+my_params = LIONParameter()
 # It is now empty.
 print("Parameters:")
 print(my_params)
@@ -36,7 +36,7 @@ my_params.save("fruit.json")
 # Exercise 1: Modify the file, and see what its loaded after.
 
 # You can also load it:
-new_my_params = Parameter()
+new_my_params = LIONParameter()
 new_my_params.load("fruit.json")
 print("Parameters:")
 print(new_my_params)
@@ -45,8 +45,8 @@ print("")
 # lets clean up:
 os.remove("fruit.json")
 
-#%% 2-Special instances of Parameters.
-# The tool provides (and you can make) special Parameters sets (that inherit from Parameter class).
+#%% 2-Special instances of LIONParameters.
+# The tool provides (and you can make) special LIONParameters sets (that inherit from LIONParameter class).
 # In particular, for CT, we have the Geometry() class, describing a CT geometry.
 # You can load it as:
 from LION.CTtools.ct_geometry import Geometry

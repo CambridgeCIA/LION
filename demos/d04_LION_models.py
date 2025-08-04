@@ -23,7 +23,7 @@ import LION.CTtools.ct_geometry as ct
 # %% 1- Example of LION models implemented in LION
 # e.g. the Learned Primal Dual model
 from LION.models.iterative_unrolled.LPD import LPD
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 
 # Get a geometry
 geo = ctgeo.Geometry.default_parameters()
@@ -143,13 +143,13 @@ model_lpd.AT(sinogram)
 # Lets make a dummy LIONmodel to show
 
 from LION.models.LIONmodel import LIONmodel
-from LION.utils.parameter import Parameter
+from LION.utils.parameter import LIONParameter
 import torch
 
 
 class DummyModel(LIONmodel):
     def __init__(
-        self, model_parameters: Parameter, geometry_parameters: ctgeo.Geometry
+        self, model_parameters: LIONParameter, geometry_parameters: ctgeo.Geometry
     ):
 
         super().__init__(model_parameters, geometry_parameters)  # initialize LIONmodel
@@ -167,7 +167,7 @@ class DummyModel(LIONmodel):
     # You must define this method
     @staticmethod
     def default_parameters():
-        param = Parameter()
+        param = LIONParameter()
         param.channel_in = 1
         param.channel_out = 1
         return param
