@@ -13,7 +13,7 @@ from torchdiffeq import odeint, odeint_adjoint
 from ts_algorithms import fdk
 import LION.CTtools.ct_geometry as ct
 
-from LION.models import LIONmodel
+from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.utils.parameter import LIONParameter
 
 # Implementation of: continuous version of FBPConvNet
@@ -442,6 +442,7 @@ class cFBPConvNet(LIONmodel.LIONmodel):
     @staticmethod
     def default_parameters():
         params = LIONParameter()
+        params = ModelInputType.IMAGE
         params.down_1_channels = [64, 64, 64, 64]
         params.down_2_channels = [128, 128, 128]
         params.down_3_channels = [256, 256, 256]

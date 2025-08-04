@@ -17,7 +17,7 @@ from collections import OrderedDict
 import LION.CTtools.ct_geometry as ct
 
 from LION.utils.parameter import LIONParameter
-from LION.models import LIONmodel
+from LION.models.LIONmodel import LIONmodel, ModelInputType
 
 from LION.models.CNNs.UNets.Unet import UNet
 
@@ -88,6 +88,8 @@ class ItNet(LIONmodel.LIONmodel):
         param.n_iters = 4
         param.Unet_params = UNet.default_parameters()
         param.mode = "ct"
+        param.model_input_type = ModelInputType.SINOGRAM
+
         return param
 
     @staticmethod

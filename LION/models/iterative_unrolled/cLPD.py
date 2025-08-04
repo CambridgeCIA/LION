@@ -6,7 +6,7 @@
 # =============================================================================
 
 
-from LION.models import LIONmodel
+from LION.models.LIONmodel import LIONmodel, ModelInputType
 
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
@@ -404,6 +404,7 @@ class cLPD(LIONmodel.LIONmodel):
         params.mode = "ct"
         params.do_secon_order = False
         params.instance_norm = False
+        params.model_input_type = ModelInputType.SINOGRAM
         return params
 
     @staticmethod
@@ -418,6 +419,7 @@ class cLPD(LIONmodel.LIONmodel):
         params.mode = "ct"
         params.do_secon_order = False
         params.instance_norm = False
+        params.model_input_type = ModelInputType.SINOGRAM
         return params
 
     @staticmethod

@@ -164,8 +164,8 @@ optimiser = torch.optim.Adam(model.parameters(), lr=learning_rate, betas=betas)
 
 # You know how to write pytorch loops, so let me show you how to use LION for training.
 
-from LION.optimizers.supervised_learning import SupervisedSolver
-from LION.optimizers.Noise2Inverse_solver import Noise2Inverse_solver
+from LION.optimizers.SupervisedSolver import SupervisedSolver
+from LION.optimizers.Noise2InverseSolver import Noise2Inverse_solver
 
 # create solver
 solver = SupervisedSolver(model, optimiser, loss_fcn, verbose=True)
@@ -202,10 +202,6 @@ solver.train(epochs)
 # save final result
 solver.save_final_results(final_result_fname)
 
-# Save the training.
-plt.figure()
-plt.semilogy(solver.train_loss)
-plt.savefig("loss.png")
 
 # Now your savefolder should have the min validation and the final result.
 

@@ -225,6 +225,7 @@ class LPD(LIONmodel):
         LPD_params.mode = "ct"
         LPD_params.instance_norm = True
         LPD_params.conv_bias = False
+        LPD_params.model_input_type = ModelInputType.SINOGRAM
         return LPD_params
 
     @staticmethod

@@ -5,7 +5,7 @@
 # Based on: https://arxiv.org/pdf/1704.04058.pdf
 # =============================================================================
 
-from LION.models import LIONmodel
+from LION.models.LIONmodel import LIONmodel, ModelInputType
 
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
@@ -70,9 +70,8 @@ class LG(LIONmodel.LIONmodel):
     def default_parameters():
         LG_params = LIONParameter()
         LG_params.channels = [8, 32, 32, 6]
-
         LG_params.n_iters = 5
-
+        LG_params.model_input_type = ModelInputType.SINOGRAM
         return LG_params
 
     @staticmethod

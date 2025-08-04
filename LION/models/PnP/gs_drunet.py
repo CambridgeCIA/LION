@@ -6,7 +6,8 @@
 # =============================================================================
 
 from .drunet import DRUNet
-from LION.models.LIONmodel import LIONmodel, LIONParameter
+from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.utils.parameter import LIONParameter
 
 from typing import Optional
 import torch
@@ -21,17 +22,18 @@ class GSDRUNet(LIONmodel):
 
     @staticmethod
     def default_parameters():
-        return LIONParameter(
-            in_channels=1,
-            out_channels=1,
-            int_channels=32,
-            kernel_size=(3, 3),
-            n_blocks=2,
-            use_noise_level=False,
-            bias_free=False,
-            act="elu",
-            enforce_positivity=False,
-        )
+        params = LIONParameter()
+        params.model_input_type = ModelInputType.IMAGE
+        params.in_channels = 1
+        params.out_channels = 1
+        params.int_channels = 32
+        params.kernel_size = (3, 3)
+        params.n_blocks = 2
+        params.use_noise_level = False
+        params.bias_free = False
+        params.act = "leaky_relu"
+        params.enforce_positivity = False
+        return params
 
     @staticmethod
     def cite(cite_format="MLA"):

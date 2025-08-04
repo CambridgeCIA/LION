@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  : Emilien Valat
+# Author  : Emilien Valat, Ander Biguri
 # =============================================================================
 
 from pathlib import Path
@@ -95,6 +95,7 @@ class deteCT(Dataset):
             Tube Voltage |   90kV   |   90kV   |  60kV
             Tube power   |    3W    |    90W   |  60W
             Filter       | Thoraeus | Thoraeus | No Filter
+            Meaning      | Low Dose | High Dose| Beam hardening
         """
 
         # Defining the task

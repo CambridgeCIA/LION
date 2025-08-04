@@ -5,7 +5,8 @@
 # Modifications: -
 # =============================================================================
 
-from LION.models.LIONmodel import LIONmodel, LIONParameter
+from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.utils.parameter import LIONParameter
 
 from inspect import getmembers, isfunction
 from typing import Optional
@@ -120,7 +121,7 @@ class DRUNet(LIONmodel):
         self.down2 = torch.nn.Sequential(
             *[
                 ResBlock(
-                    model_parameters.int_channels * 2,
+                    model_p.defauarameters.int_channels * 2,
                     kernel_size=model_parameters.kernel_size,
                     bias_free=model_parameters.bias_free,
                     act=self._act,
@@ -221,17 +222,18 @@ class DRUNet(LIONmodel):
 
     @staticmethod
     def default_parameters():
-        return LIONParameter(
-            in_channels=1,
-            out_channels=1,
-            int_channels=64,
-            kernel_size=(3, 3),
-            n_blocks=4,
-            use_noise_level=False,
-            bias_free=True,
-            act="leaky_relu",
-            enforce_positivity=False,
-        )
+        params = LIONParameter()
+        params.model_input_type = ModelInputType.IMAGE
+        params.in_channels = 1
+        params.out_channels = 1
+        params.int_channels = 64
+        params.kernel_size = (3, 3)
+        params.n_blocks = 4
+        params.use_noise_level = False
+        params.bias_free = True
+        params.act = "leaky_relu"
+        params.enforce_positivity = False
+        return params
 
     @staticmethod
     def cite(cite_format="MLA"):

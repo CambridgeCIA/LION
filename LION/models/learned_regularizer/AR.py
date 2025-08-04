@@ -9,26 +9,15 @@ from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
 import LION.CTtools.ct_geometry as ct
 
 
-class ARNetworkParams(ModelParams):
-    def __init__(
-        self,
-        n_channels: int,
-    ):
-        super().__init__(model_input_type=ModelInputType.IMAGE)
-        self.n_channels = n_channels
-
-
 class AR(LIONmodel):
     def __init__(
-        self, model_parameters: ARNetworkParams, geometry_parametrs: ct.Geometry
+        self, model_parameters: LIONParameter, geometry_parametrs: ct.Geometry
     ):
         super().__init__(model_parameters, geometry_parametrs)
 
         self.leaky_relu = nn.LeakyReLU()
         self.convnet = nn.Sequential(
-            nn.Conv2d(
-                self.model_parameters.n_channels, 16, kernel_size=(5, 5), padding=2
-            ),
+            nn.Conv2d(1, 16, kernel_size=(5, 5), padding=2),
             self.leaky_relu,
             nn.Conv2d(16, 32, kernel_size=(5, 5), padding=2),
             self.leaky_relu,
@@ -54,6 +43,12 @@ class AR(LIONmodel):
         output = output.view(image.size(0), -1)
         output = self.fc(output)
         return output
+
+    @staticmethod
+    def default_parameters():
+        params = LIONParameter()
+        params.model_input_type = ModelInputType.IMAGE
+        return params
 
     @staticmethod
     def cite(cite_format="MLA"):

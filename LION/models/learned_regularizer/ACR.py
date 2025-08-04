@@ -73,23 +73,6 @@ class L2net(nn.Module):
         return out
 
 
-class ACRParams(ModelParams):
-    def __init__(
-        self,
-        channels: int = 16,
-        kernel_size: int = 5,
-        stride: int = 1,
-        relu_type: str = "LeakyReLU",
-        layers: int = 5,
-    ):
-        super().__init__(ModelInputType.IMAGE)
-        self.channels = channels
-        self.kernel_size = kernel_size
-        self.stride = stride
-        self.relu_type = relu_type
-        self.layers = layers
-
-
 class ACR(LIONmodel):
     def __init__(
         self,
@@ -98,7 +81,6 @@ class ACR(LIONmodel):
     ):
 
         super().__init__(model_parameters, geometry_parameters)
-        self._make_operator()
         # First Conv
         self.first_layer = nn.Conv2d(
             in_channels=1,
@@ -192,7 +174,14 @@ class ACR(LIONmodel):
 
     @staticmethod
     def default_parameters():
-        return ACRParams(16, 5, 1, "LeakyReLU", 5)
+        params = LIONParameter()
+        params.channels = 16
+        params.kernel_size = 5
+        params.stride = 1
+        params.relu_type = "LeakyReLU"
+        params.layers = 5
+        params.input_type = ModelInputType.IMAGE
+        return params
 
     @staticmethod
     def cite(cite_format="MLA"):

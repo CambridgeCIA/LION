@@ -5,7 +5,9 @@
 # Modifications: -
 # =============================================================================
 
-from LION.models.LIONmodel import LIONmodel, LIONParameter
+from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.utils.parameter import LIONParameter
+
 
 from inspect import getmembers, isfunction
 import torch
@@ -13,9 +15,8 @@ import torch
 
 class DnCNN(LIONmodel):
     def __init__(self, model_parameters: LIONParameter = None):
-        if model_parameters is None:
-            model_parameters = DnCNN.default_parameters()
         super().__init__(model_parameters)
+
         if model_parameters.act.lower() in dict(
             getmembers(torch.nn.functional, isfunction)
         ):
@@ -63,17 +64,18 @@ class DnCNN(LIONmodel):
 
     @staticmethod
     def default_parameters():
-        return LIONParameter(
-            in_channels=1,
-            int_channels=64,
-            kernel_size=(3, 3),
-            blocks=20,
-            residual=True,
-            bias_free=False,
-            act="leaky_relu",
-            enforce_positivity=False,
-            batch_normalisation=True,
-        )
+        params = LIONParameter()
+        params.model_input_type = ModelInputType.IMAGE
+        params.in_channels = 1
+        params.int_channels = 64
+        params.kernel_size = (3, 3)
+        params.blocks = 20
+        params.residual = True
+        params.bias_free = False
+        params.act = "leaky_relu"
+        params.enforce_positivity = False
+        params.batch_normalisation = True
+        return params
 
     @staticmethod
     def cite(cite_format="MLA"):

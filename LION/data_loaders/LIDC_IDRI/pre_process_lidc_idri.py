@@ -61,6 +61,9 @@ def process_patient_mask(scan, path_to_processed_volume_folder: pathlib.Path) ->
     list_of_annotated_nodules: List[
         List[pl.Annotation]
     ] = scan.cluster_annotations()  # type:ignore
+    print(scan.annotations)
+
+    print(f"\t Found {len(list_of_annotated_nodules)} nodules")
     for nodule_index, annotated_nodule in enumerate(list_of_annotated_nodules):
         for annotation in annotated_nodule:
             xmin, xmax, ymin, ymax, zmin, zmax = get_nodule_boundaries(annotation)
@@ -127,7 +130,8 @@ def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
 
     patients_masks = {}
 
-    for patient_index in range(1, 1012):
+    # for patient_index in range(1, 1012):
+    for patient_index in [197]:
         formatted_index = format_index(patient_index)
         formatted_index = f"LIDC-IDRI-{formatted_index}"
         path_to_processed_volume_folder = path_to_processed_dataset.joinpath(
@@ -141,7 +145,7 @@ def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
         if type(scan) == type(None):
             print(f"Current patient {formatted_index} has no scan")
         else:
-            if len(list(path_to_processed_volume_folder.glob("*"))) == 0:
+            if len(list(path_to_processed_volume_folder.glob("*"))) == 0 or True:
 
                 ### Pre-process the volume
                 process_volume(scan, path_to_processed_volume_folder)
@@ -161,6 +165,7 @@ def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
     else:
         with open(path_to_patients_masks_dict, "w") as out_f:
             json.dump(patients_masks, out_f, indent=4)
+    exit()
 
 
 def compute_diagnosis_file(

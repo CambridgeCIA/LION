@@ -18,7 +18,7 @@ git clone https://github.com/CambridgeCIA/LION.git
 cd LION
 git submodule update --init --recursive
 conda env create --file=env.yml
-conda activate LION
+conda activate lion
 pip install .
 ```
 If you would like to contribute to the development of LION, you can replace the last line of the above set of commands by
@@ -32,17 +32,10 @@ Install pre commits for auto-formating your commits.
 Highly suggested if you want reproducibility, this will auto-save changes in your conda enviroments and will update your conda enviroment when pulling
 
 ```
-conda activate LION
+conda activate lion
 pip install pre-commit
 pre-commit install --hook-type pre-commit --hook-type post-merge
 ```
-
-If you want the MS-D networks installed, you need to 
-```
-cd ./LION/models/CNNs/MS-D
-pip install .
-```
-We are working on reimplementing MS-D due to the repo bein obsolete.
 
 ## Datasets
 

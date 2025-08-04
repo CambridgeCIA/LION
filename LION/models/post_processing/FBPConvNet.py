@@ -92,39 +92,6 @@ class Up(nn.Module):
         return self.block(x)
 
 
-class FBPConvNetParams(LIONmodel.ModelParams):
-    def __init__(
-        self,
-        down_1_channels: list[int],
-        down_2_channels: list[int],
-        down_3_channels: list[int],
-        down_4_channels: list[int],
-        latent_channels: list[int],
-        up_1_channels: list[int],
-        up_2_channels: list[int],
-        up_3_channels: list[int],
-        up_4_channels: list[int],
-        last_block: list[int],
-        activation: str,
-    ):
-        super().__init__(LIONmodel.ModelInputType.SINOGRAM)
-        self.down_1_channels = down_1_channels
-        self.down_2_channels = down_2_channels
-        self.down_3_channels = down_3_channels
-        self.down_4_channels = down_4_channels
-
-        self.latent_channels = latent_channels
-
-        self.up_1_channels = up_1_channels
-        self.up_2_channels = up_2_channels
-        self.up_3_channels = up_3_channels
-        self.up_4_channels = up_4_channels
-
-        self.last_block = last_block
-
-        self.activation = activation
-
-
 class FBPConvNet(LIONmodel.LIONmodel):
     def __init__(
         self,
@@ -240,6 +207,23 @@ class FBPConvNet(LIONmodel.LIONmodel):
         )
 
         return FBPConvNet_params
+
+    @staticmethod
+    def default_parameters():
+        params = LIONParameter()
+        params.down_1_channels = [1, 64, 64, 64]
+        params.down_2_channels = [64, 128, 128]
+        params.down_3_channels = [128, 256, 256]
+        params.down_4_channels = [256, 512, 512]
+        params.latent_channels = [512, 1024, 1024]
+        params.up_1_channels = [1024, 512, 512]
+        params.up_2_channels = [512, 256, 256]
+        params.up_3_channels = [256, 128, 128]
+        params.up_4_channels = [128, 64, 64]
+        params.last_block = [64, 1, 1]
+        params.activation = "ReLU"
+        params.model_input_type = LIONmodel.ModelInputType.SINOGRAM
+        return params
 
     @staticmethod
     def cite(cite_format="MLA"):
