@@ -241,7 +241,6 @@ class ContinuousDataProximal(nn.Module):
         x = self.first_layer(x)
         if self.do_secon_order:
             x = self.initial_velocity(x)
-        print(x.shape)
         x = self.odeblock(x, solver=self.solver)
         return self.last_layer(x)
 
@@ -299,7 +298,7 @@ class ContinuousRegProximal(nn.Module):
         return self.last_layer(x)
 
 
-class cLPD(LIONmodel.LIONmodel):
+class cLPD(LIONmodel):
     """Learn Primal Dual network with continuous blocks"""
 
     def __init__(
