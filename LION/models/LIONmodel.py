@@ -50,11 +50,12 @@ class ModelInputType(int, Enum):
     IMAGE = 1
 
 
-# it is the job of the subclass constructor to specify input_type
-class ModelParams(LIONParameter):
-    def __init__(self, model_input_type, **kwargs):
+# Class for Model parameters that should be true for all models
+class LIONModelParameter(LIONParameter):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.model_input_type = model_input_type
+        self.model_input_type = None
+        self.normalise = None
 
 
 class LIONmodel(nn.Module, ABC):

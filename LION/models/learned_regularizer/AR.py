@@ -46,7 +46,7 @@ class AR(LIONmodel):
 
     @staticmethod
     def default_parameters():
-        params = LIONParameter()
+        params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
         return params
 

@@ -541,6 +541,9 @@ class LIDC_IDRI(Dataset):
         )
 
     def __getitem__(self, index):
+        assert index < len(self.slice_index_to_patient_id_list), print(
+            f"Index {index} out of range, max index is {len(self.slice_index_to_patient_id_list)-1}"
+        )
         patient_id = self.slice_index_to_patient_id_list[index]
         first_slice_index = self.patient_id_to_first_index_dict[patient_id]
         dict_slice_index = index - first_slice_index

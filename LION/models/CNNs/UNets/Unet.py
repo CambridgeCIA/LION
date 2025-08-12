@@ -170,7 +170,7 @@ class UNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        param = LIONParameter()
+        param = LIONModelParameter()
         param.inChan = 1
         param.outChan = 1
         param.baseDim = 32

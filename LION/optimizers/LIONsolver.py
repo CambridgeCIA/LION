@@ -756,8 +756,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         self.model.train()
         # train loop
-        final_total_epochs = self.current_epoch + n_epochs
-        while self.current_epoch < final_total_epochs:
+        while self.current_epoch < n_epochs:
             print(f"Training epoch {self.current_epoch + 1}")
             self.epoch_step(self.current_epoch)
 
@@ -806,6 +805,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.model.train()
 
         return np.mean(validation_loss)
+
+    def get_model(self) -> LIONmodel:
+        """
+        Returns the model used by the solver.
+        """
+        return self.model
 
     @abstractmethod
     def mini_batch_step(self, sino_batch, target_batch) -> torch.Tensor:

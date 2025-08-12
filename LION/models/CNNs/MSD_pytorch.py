@@ -45,7 +45,7 @@ class MSD_pytorch(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters(mode="regression"):
-        param = LIONParameter()
+        param = LIONModelParameter()
         if mode == "regression":
             param.type = "regression"
             param.c_in = 1

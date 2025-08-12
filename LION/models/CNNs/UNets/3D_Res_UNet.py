@@ -137,7 +137,7 @@ class ResUNet3D(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        ResUNet3D = LIONParameter()
+        ResUNet3D = LIONModelParameter()
         ResUNet3D.down_1_channels = [1, 8, 8]
         ResUNet3D.down_2_channels = [8, 16, 16]
         ResUNet3D.down_3_channels = [16, 32, 32]

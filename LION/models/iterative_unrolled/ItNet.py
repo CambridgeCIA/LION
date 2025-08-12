@@ -81,7 +81,7 @@ class ItNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        param = LIONParameter()
+        param = LIONModelParameter()
         param.learned_step = True
         param.step_positive = False
         param.step_size = [1.1183, 1.3568, 1.4271, 0.0808]

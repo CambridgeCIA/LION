@@ -53,7 +53,7 @@ class SupervisedSolver(LIONsolver):
             data = fdk(sino, self.op)
             if self.do_normalize:
                 data = self.normalize(data)
-                data = self.normalize(target)
+                target = self.normalize(target)
         else:
             data = sino
 

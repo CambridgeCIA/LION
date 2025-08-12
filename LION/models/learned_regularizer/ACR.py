@@ -174,7 +174,7 @@ class ACR(LIONmodel):
 
     @staticmethod
     def default_parameters():
-        params = LIONParameter()
+        params = LIONModelParameter()
         params.channels = 16
         params.kernel_size = 5
         params.stride = 1

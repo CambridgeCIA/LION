@@ -41,14 +41,14 @@ class GaussianDenoiserSolver(LIONsolver):
             save_folder=save_folder,
         )
         if verbose:
-            print("Gaussian Denoiser solver training on device: ", device)
+            print("Gaussian Denoiser solver training on device: ", self.device)
         self.op = make_operator(self.geometry)
         self.patch = None
 
         # Make range of noise levels if noise_level is a single value
-        if noise_level.ndim == 1 and noise_level.size == 1:
+        if noise_level.ndim == 1 and noise_level.size(0) == 1:
             noise_level = np.array([noise_level[0], noise_level[0]])
-        elif noise_level.ndim != 1 or noise_level.size != 2:
+        elif noise_level.ndim != 1 or noise_level.size(0) != 2:
             raise LIONSolverException(
                 "noise_level must be a numpy array of length 2, or a single value."
             )
@@ -73,16 +73,22 @@ class GaussianDenoiserSolver(LIONsolver):
                     dim=0,
                 )
             )
+        else:
+            data = target
 
         noise_level = np.random.uniform(
             self.noise_level[0], self.noise_level[1], size=(1)
         )
-        y = data + noise_level * torch.randn_like(data)
+        y = data + noise_level[0] * torch.randn_like(data)
 
-        # if the model accepsts noise level as input
-        if hasattr(self.model, "use_noise_level") and self.model.use_noise_level:
-            y = torch.cat([y, noise_level * torch.ones_like(y)], dim=1)
-        output = self.model(y)
+        # if the model accepts noise level as input
+        if (
+            hasattr(self.model.model_parameters, "use_noise_level")
+            and self.model.model_parameters.use_noise_level
+        ):
+            output = self.model(y, noise_level=noise_level[0])
+        else:
+            output = self.model(y)
         return self.loss_fn(output, target)
 
     @staticmethod
@@ -134,19 +140,21 @@ class GaussianDenoiserSolver(LIONsolver):
                             dim=0,
                         )
                     )
-
+                else:
+                    data = targets
                 noise_level = np.random.uniform(
                     self.noise_level[0], self.noise_level[1], size=(1)
                 )
-                y = data + noise_level * torch.randn_like(data)
+                y = data + noise_level[0] * torch.randn_like(data)
 
-                # if the model accepsts noise level as input
+                # if the model accepts noise level as input
                 if (
-                    hasattr(self.model, "use_noise_level")
-                    and self.model.use_noise_level
+                    hasattr(self.model.model_parameters, "use_noise_level")
+                    and self.model.model_parameters.use_noise_level
                 ):
-                    y = torch.cat([y, noise_level * torch.ones_like(y)], dim=1)
-                outputs = self.model(y)
+                    outputs = self.model(y, noise_level=noise_level[0])
+                else:
+                    outputs = self.model(y)
                 validation_loss = np.append(
                     validation_loss,
                     self.validation_fn(y.to(self.device), outputs.to(self.device))

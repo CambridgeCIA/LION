@@ -210,7 +210,7 @@ class FBPConvNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        params = LIONParameter()
+        params = LIONModelParameter()
         params.down_1_channels = [1, 64, 64, 64]
         params.down_2_channels = [64, 128, 128]
         params.down_3_channels = [128, 256, 256]

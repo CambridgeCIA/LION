@@ -441,7 +441,7 @@ class cFBPConvNet(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        params = LIONParameter()
+        params = LIONModelParameter()
         params = ModelInputType.IMAGE
         params.down_1_channels = [64, 64, 64, 64]
         params.down_2_channels = [128, 128, 128]

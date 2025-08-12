@@ -68,7 +68,7 @@ class LG(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
-        LG_params = LIONParameter()
+        LG_params = LIONModelParameter()
         LG_params.channels = [8, 32, 32, 6]
         LG_params.n_iters = 5
         LG_params.model_input_type = ModelInputType.SINOGRAM

@@ -393,7 +393,7 @@ class cLPD(LIONmodel):
 
     @staticmethod
     def default_parameters():
-        params = LIONParameter()
+        params = LIONModelParameter()
         params.n_iters = 10
         params.data_channels = [7, 32, 32, 32, 5]
         params.reg_channels = [6, 32, 32, 32, 5]
@@ -408,7 +408,7 @@ class cLPD(LIONmodel):
 
     @staticmethod
     def continous_LPD_paper():
-        params = LIONParameter()
+        params = LIONModelParameter()
         params.n_iters = 10
         params.data_channels = [7, 32, 32, 32, 5]
         params.reg_channels = [6, 32, 32, 32, 5]

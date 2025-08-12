@@ -64,7 +64,7 @@ class DnCNN(LIONmodel):
 
     @staticmethod
     def default_parameters():
-        params = LIONParameter()
+        params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
         params.in_channels = 1
         params.int_channels = 64

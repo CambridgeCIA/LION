@@ -49,6 +49,8 @@ indices = torch.arange(1)
 lidc_dataset = data_utils.Subset(lidc_dataset, indices)
 lidc_dataset_val = data_utils.Subset(lidc_dataset_val, indices)
 
+# get one sample
+
 
 # %% Define DataLoader
 # Use the same amount of training

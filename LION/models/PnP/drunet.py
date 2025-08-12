@@ -92,7 +92,7 @@ class DRUNet(LIONmodel):
             )
         self.lift = torch.nn.Conv2d(
             (
-                2 * model_parameters.in_channels
+                model_parameters.in_channels + 1
                 if model_parameters.use_noise_level
                 else model_parameters.in_channels
             ),
@@ -121,7 +121,7 @@ class DRUNet(LIONmodel):
         self.down2 = torch.nn.Sequential(
             *[
                 ResBlock(
-                    model_p.defauarameters.int_channels * 2,
+                    model_parameters.int_channels * 2,
                     kernel_size=model_parameters.kernel_size,
                     bias_free=model_parameters.bias_free,
                     act=self._act,
@@ -222,7 +222,7 @@ class DRUNet(LIONmodel):
 
     @staticmethod
     def default_parameters():
-        params = LIONParameter()
+        params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
         params.in_channels = 1
         params.out_channels = 1
@@ -270,7 +270,9 @@ class DRUNet(LIONmodel):
         if self.model_parameters.use_noise_level:
             assert (
                 isinstance(noise_level, float) and noise_level >= 0.0
-            ), "`noise_level` must be a non-negative float"
+            ), "`noise_level` must be a non-negative float, instead got: " + str(
+                type(noise_level)
+            )
             x0 = torch.cat((x0, noise_level * torch.ones_like(x0)), dim=1)
         x1 = self.lift(x0)
         x2 = self.down1(x1)
