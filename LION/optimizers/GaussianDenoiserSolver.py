@@ -60,8 +60,8 @@ class GaussianDenoiserSolver(LIONsolver):
         returns the loss of the mini-batch
         """
         # Forward pass
-        if self.do_normalize:
-            target = self.normalize(target)
+        if self.do_normalise:
+            target = self.model.normalise.normalise(target)
 
         if self.patch is not None:
             data = self.patch.random_erasing(
@@ -127,8 +127,8 @@ class GaussianDenoiserSolver(LIONsolver):
             validation_loss = np.array([])
             for _, targets in tqdm(self.validation_loader):
                 targets = targets.to(self.device)
-                if self.do_normalize:
-                    targets = self.normalize(targets)
+                if self.do_normalise:
+                    targets = self.model.normalise.normalise(targets)
 
                 if self.patch is not None:
                     data = self.patch.random_erasing(

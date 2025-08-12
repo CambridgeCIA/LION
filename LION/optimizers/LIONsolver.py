@@ -52,20 +52,6 @@ class SolverParams(LIONParameter):
         super().__init__()
 
 
-def normalize_input(func):
-    def wrapper(self, *inputs):
-        if self.do_normalize:
-            normalized_inputs = []
-            for x in inputs:
-                normalized_x = (x - self.xmin) / (self.xmax - self.xmin)
-                normalized_inputs.append(normalized_x)
-            return func(self, *normalized_x)
-        else:
-            return func(self, *inputs)
-
-    return wrapper
-
-
 class LIONsolver(ABC, metaclass=ABCMeta):
     def __init__(
         self,
@@ -131,9 +117,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.dataset_param = LIONParameter()
 
         # normalization stuff
-        self.do_normalize: bool = False
-        self.xmin: Optional[float] = None
-        self.xmax: Optional[float] = None
+        self.do_normalise: bool = self.model.model_parameters.normalisator is not None
 
     # This should return the default parameters of the solver
     @staticmethod
@@ -228,28 +212,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.checkpoint_fname = checkpoint_fname
         self.do_load_checkpoint = load_checkpoint_if_exists
         self.checkpoint_save_folder = save_folder
-
-    def set_normalization(self, do_normalize: bool):
-        if self.model.get_input_type() == ModelInputType.SINOGRAM:
-            warnings.warn(
-                """Normalization will not be carried out on this model,
-                as it takes inputs in the measurement domain. 
-                As such inputs cannot be normalized in the image domain before being passed to the model.
-                In such a case, normalization should be implemented within the model itself"""
-            )
-        if self.train_loader is None:
-            raise NoDataException(
-                "Training dataloader not set: Please call set_training"
-            )
-        self.do_normalize = do_normalize
-        if self.do_normalize:
-            xmax = -np.inf
-            xmin = np.inf
-            for _, gt in self.train_loader:
-                xmax = max(gt.max(), xmax)
-                xmin = min(gt.min(), xmin)
-            self.xmin = xmin
-            self.xmax = xmax
 
     def check_training_ready(self, error=True, autofill=True, verbose=True):
         """This should always pass, all of these things are required to initialize a LIONsolver object
@@ -617,17 +579,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.checkpoint_fname.replace(".pt", "")
         ):
             f.unlink()
-
-    def normalize(self, x):
-        """Normalizes input data
-        returns: Normalized input data
-        """
-        if self.do_normalize:
-            assert self.xmax is not None and self.xmin is not None
-            normalized_x = (x - self.xmin) / (self.xmax - self.xmin)
-            return normalized_x
-        else:
-            return x
 
     def test(self):
         self.model.eval()

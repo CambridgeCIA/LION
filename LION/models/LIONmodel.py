@@ -21,6 +21,7 @@ from LION.utils.parameter import LIONParameter
 
 # We will need utilities
 import LION.utils.utils as ai_utils
+from LION.utils.normaliser import Normalisation
 
 # (optional) Given this is a tomography library, it is likely that you will want to load geometries of the tomogprahic problem you are solving, e.g. a ct_geometry
 import LION.CTtools.ct_geometry as ct
@@ -55,7 +56,7 @@ class LIONModelParameter(LIONParameter):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.model_input_type = None
-        self.normalise = None
+        self.normalisator = None
 
 
 class LIONmodel(nn.Module, ABC):
@@ -68,7 +69,7 @@ class LIONmodel(nn.Module, ABC):
     # for the geometry parameters of the inverse problem.
     def __init__(
         self,
-        model_parameters: Optional[ModelParams],  # model parameters
+        model_parameters: Optional[LIONModelParameter],  # model parameters
         geometry: Optional[
             ct.Geometry
         ] = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
@@ -85,7 +86,7 @@ class LIONmodel(nn.Module, ABC):
     # This should return the parameters from the paper the model is from
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
-    def default_parameters(mode="ct") -> ModelParams:
+    def default_parameters(mode="ct") -> LIONModelParameter:
         pass
 
     # makes operator and make it pytorch compatible.
@@ -108,6 +109,33 @@ class LIONmodel(nn.Module, ABC):
 
     def get_input_type(self) -> ModelInputType:
         return self.model_parameters.model_input_type
+
+    def set_normalisation(
+        self, normalisation_type="sample", dataset=None, data_range=None
+    ):
+        if self.get_input_type() == ModelInputType.SINOGRAM:
+            warnings.warn(
+                """Normalization will not be carried out on this model,
+                as it takes inputs in the measurement domain. 
+                As such inputs cannot be normalized in the image domain before being passed to the model.
+                In such a case, normalization should be implemented within the model itself"""
+            )
+        if normalisation_type == "dataset" and dataset is None:
+            raise NoDataException("dataloader not set: Please call set_training")
+
+        self.normalisator = Normalisation(normalisation_type, dataset, data_range)
+
+    def normalise(self, x):
+        try:
+            return self.normalisator.normalise(x)
+        except:
+            return x
+
+    def unnormalise(self, x, target=None):
+        try:
+            return self.normalisator.unnormalise(x, target)
+        except:
+            return x
 
     # All classes should have this method. This is the example for Learned Primal Dual.
     # You can obtain this exact text from Google Scholar's page of the paper.

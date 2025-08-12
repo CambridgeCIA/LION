@@ -100,9 +100,6 @@ class ARSolver(LIONsolver):
         validation_loss = np.array([])
         for sino, target in tqdm(self.validation_loader):
             recon = fdk(sino, self.op)
-            # if self.do_normalize:
-            #     recon = self.normalize(recon)
-            #     target = self.normalize(target)
 
             recon = torch.nn.Parameter(recon)
 
@@ -166,10 +163,6 @@ class ARSolver(LIONsolver):
         test_loss = np.array([])
         for sino, target in tqdm(self.test_loader):
             bad_recon = fdk(sino, self.op)
-            # is it worth normalizing in testing?
-            # if self.do_normalize:
-            #     bad_recon = self.normalize(bad_recon)
-            #     target = self.normalize(target)
 
             recon = torch.nn.Parameter(bad_recon.clone()).requires_grad_(True)
 
@@ -215,9 +208,9 @@ class ARSolver(LIONsolver):
 
     def wgan_loss(self, sino_batch, target_batch):
         bad_recon = fdk(sino_batch, self.op)
-        if self.do_normalize and self.model.get_input_type() == ModelInputType.IMAGE:
-            bad_recon = self.normalize(bad_recon)
-            target_batch = self.normalize(target_batch)
+        if self.do_normalise and self.model.get_input_type() == ModelInputType.IMAGE:
+            bad_recon = self.model.normalise.normalise(bad_recon)
+            target_batch = self.model.normalise.normalise(target_batch)
 
         epsilon = torch.Tensor(
             np.random.random((target_batch.shape[0], 1, 1, 1))
