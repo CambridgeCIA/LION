@@ -11,7 +11,7 @@ import torch.nn as nn
 from collections import OrderedDict
 
 from LION.utils.parameter import LIONParameter
-from LION.models import LIONmodel
+from LION.models import LIONmodel, LIONModelParameter, ModelInputType
 
 ##Code for UNet
 class UNet(LIONmodel.LIONmodel):
@@ -171,12 +171,12 @@ class UNet(LIONmodel.LIONmodel):
     @staticmethod
     def default_parameters():
         param = LIONModelParameter()
+        param.model_input_type = ModelInputType.IMAGE
         param.inChan = 1
         param.outChan = 1
         param.baseDim = 32
         param.dropFac = 0
         param.kerSiz = 2
         param.noGrp = 32
-        param.model_input_type = LIONmodel.ModelInputType.IMAGE
 
         return param

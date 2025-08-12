@@ -6,7 +6,7 @@
 # =============================================================================
 
 
-from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter

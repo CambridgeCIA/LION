@@ -1,7 +1,7 @@
 from LION.CTtools.ct_geometry import Geometry
 from LION.classical_algorithms.fdk import fdk
 from LION.models.CNNs.MSDNet import MSD_Params, MSDNet
-from LION.models.LIONmodel import LIONmodel
+from LION.models.LIONmodel import LIONmodel, LIONModelParameter
 
 
 class FBPMSDNet(LIONmodel):

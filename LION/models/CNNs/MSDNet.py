@@ -13,7 +13,7 @@ import numpy as np
 import torch.nn as nn
 import torch
 from typing import Optional
-from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.models.LIONmodel import LIONModelParameter
 import warnings
 

@@ -13,7 +13,7 @@ from torchdiffeq import odeint, odeint_adjoint
 from ts_algorithms import fdk
 import LION.CTtools.ct_geometry as ct
 
-from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 
 # Implementation of: continuous version of FBPConvNet

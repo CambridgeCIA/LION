@@ -6,7 +6,7 @@
 # =============================================================================
 
 from .drunet import DRUNet
-from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 
 from typing import Optional

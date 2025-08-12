@@ -17,7 +17,7 @@ from collections import OrderedDict
 import LION.CTtools.ct_geometry as ct
 
 from LION.utils.parameter import LIONParameter
-from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.models.CNNs.UNets.Unet import UNet
 
