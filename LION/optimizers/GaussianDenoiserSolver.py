@@ -11,9 +11,12 @@ from LION.models.LIONmodel import LIONmodel
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import ModelInputType
+from LION.utils.parameter import LIONParameter
 
 # standard imports
 from tqdm import tqdm
+
+from kornia.augmentation import RandomCrop, RandomErasing
 
 
 class GaussianDenoiserSolver(LIONsolver):
@@ -64,7 +67,7 @@ class GaussianDenoiserSolver(LIONsolver):
             target = self.model.normalise.normalise(target)
 
         if self.patch is not None:
-            data = self.patch.random_erasing(
+            target = self.patch.random_erasing(
                 torch.cat(
                     [
                         self.patch.random_crop(target)
@@ -73,13 +76,11 @@ class GaussianDenoiserSolver(LIONsolver):
                     dim=0,
                 )
             )
-        else:
-            data = target
 
         noise_level = np.random.uniform(
             self.noise_level[0], self.noise_level[1], size=(1)
         )
-        y = data + noise_level[0] * torch.randn_like(data)
+        y = target + noise_level[0] * torch.randn_like(target)
 
         # if the model accepts noise level as input
         if (
@@ -89,6 +90,7 @@ class GaussianDenoiserSolver(LIONsolver):
             output = self.model(y, noise_level=noise_level[0])
         else:
             output = self.model(y)
+        print(output.shape, target.shape)
         return self.loss_fn(output, target)
 
     @staticmethod
