@@ -41,6 +41,9 @@ from abc import ABC, abstractmethod, ABCMeta
 import warnings
 import pathlib
 
+# Imports for models that use grandients of themselves inside:
+from LION.models.PnP.gradient_step_denoiser import GSD
+
 
 # TODO: finish this
 class SolverState(Enum):
@@ -717,7 +720,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.current_epoch += 1
 
     # Models that need gradients
-    from LION.models.PnP.gradient_step_denoiser import GSD
 
     def validate(self):
         """
