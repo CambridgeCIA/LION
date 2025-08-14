@@ -79,13 +79,11 @@ def upsample_convtranspose(
 
 class DRUNet(LIONmodel):
     def __init__(self, model_parameters: LIONParameter = None):
-        if model_parameters is None:
-            model_parameters = DRUNet.default_parameters()
         super().__init__(model_parameters)
-        if model_parameters.act.lower() in dict(
+        if self.model_parameters.act.lower() in dict(
             getmembers(torch.nn.functional, isfunction)
         ):
-            self._act = torch.nn.functional.__dict__[model_parameters.act]
+            self._act = torch.nn.functional.__dict__[self.model_parameters.act]
         else:
             raise ValueError(
                 f"`torch.nn.functional` does not export a function '{model_parameters.act}'."

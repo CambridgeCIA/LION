@@ -90,7 +90,6 @@ class GaussianDenoiserSolver(LIONsolver):
             output = self.model(y, noise_level=noise_level[0])
         else:
             output = self.model(y)
-        print(output.shape, target.shape)
         return self.loss_fn(output, target)
 
     @staticmethod

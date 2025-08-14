@@ -716,6 +716,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
             self.current_epoch += 1
 
+    # Models that need gradients
+    from LION.models.PnP.gradient_step_denoiser import GSD
+
     def validate(self):
         """
         This function is responsible for performing a single validation set of the optimization.
@@ -733,18 +736,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         status = self.model.training
         self.model.eval()
 
-        with torch.no_grad():
-            validation_loss = np.array([])
-            for data, targets in tqdm(self.validation_loader):
-                if self.model.get_input_type() == ModelInputType.IMAGE:
-                    data = fdk(data.to(self.device), self.op)
-                outputs = self.model(data)
-                validation_loss = np.append(
-                    validation_loss,
-                    self.validation_fn(targets.to(self.device), outputs.to(self.device))
-                    .cpu()
-                    .numpy(),
-                )
+        # if the model is something that needs a gradient, do not use torch.no_grad()
+        # this is an efficiency problem.
+        if not isinstance(self.model, GSD):
+            with torch.no_grad():
+                validation_loss = self._validation_loop()
+        else:
+            validation_loss = self._validation_loop()
 
         if self.verbose:
             print(
@@ -756,6 +754,23 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.model.train()
 
         return np.mean(validation_loss)
+
+    def _validation_loop(self):
+        """
+        This function performs the validation loop.
+        """
+        validation_loss = np.array([])
+        for data, targets in tqdm(self.validation_loader):
+            if self.model.get_input_type() == ModelInputType.IMAGE:
+                data = fdk(data.to(self.device), self.op)
+                outputs = self.model(data)
+                validation_loss = np.append(
+                    validation_loss,
+                    self.validation_fn(targets.to(self.device), outputs.to(self.device))
+                    .cpu()
+                    .numpy(),
+                )
+        return validation_loss
 
     def get_model(self) -> LIONmodel:
         """

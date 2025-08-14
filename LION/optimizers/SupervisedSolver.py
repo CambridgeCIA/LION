@@ -56,7 +56,6 @@ class SupervisedSolver(LIONsolver):
                 target = self.model.normalise.normalise(target)
         else:
             data = sino
-
         output = self.model(data)
         return self.loss_fn(output, target)
 
