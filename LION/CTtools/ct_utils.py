@@ -197,7 +197,7 @@ def forward_projection(image, geometry, backend="tomosipo"):
     # You can add other backends here
     import tomosipo as ts
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.cuda.current_device()
 
     if isinstance(image, np.ndarray):
         image = torch.from_numpy(image).float().to(device)
