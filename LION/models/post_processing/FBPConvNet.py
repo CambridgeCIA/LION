@@ -9,8 +9,7 @@
 from typing import Optional
 import torch
 import torch.nn as nn
-from LION.models import LIONmodel
-from LION.utils.parameter import LIONParameter
+from LION.models.LIONmodel import LIONModelParameter, LIONmodel
 import LION.CTtools.ct_geometry as ct
 from LION.classical_algorithms.fdk import fdk
 
@@ -96,7 +95,7 @@ class FBPConvNet(LIONmodel.LIONmodel):
     def __init__(
         self,
         geometry_parameters: ct.Geometry,
-        model_parameters: Optional[LIONmodel.ModelParams] = None,
+        model_parameters: Optional[LIONmodel.LIONModelParameter] = None,
     ):
 
         assert (
@@ -189,24 +188,6 @@ class FBPConvNet(LIONmodel.LIONmodel):
                 padding=0,
             )
         )
-
-    @staticmethod
-    def default_parameters():
-        FBPConvNet_params = FBPConvNetParams(
-            [1, 64, 64, 64],
-            [64, 128, 128],
-            [128, 256, 256],
-            [256, 512, 512],
-            [512, 1024, 1024],
-            [1024, 512, 512],
-            [512, 256, 256],
-            [256, 128, 128],
-            [128, 64, 64],
-            [64, 1, 1],
-            "ReLU",
-        )
-
-        return FBPConvNet_params
 
     @staticmethod
     def default_parameters():
