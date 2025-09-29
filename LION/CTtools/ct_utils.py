@@ -197,8 +197,10 @@ def forward_projection(image, geometry, backend="tomosipo"):
     # You can add other backends here
     import tomosipo as ts
 
+    device = torch.cuda.current_device()
+
     if isinstance(image, np.ndarray):
-        image = torch.from_numpy(image).float().cuda()
+        image = torch.from_numpy(image).float().to(device)
     if len(image.shape) == 3:
         if image.shape[0] > 1:  # there is no reason to have this constraint
             raise ValueError("Image must be 2D")
