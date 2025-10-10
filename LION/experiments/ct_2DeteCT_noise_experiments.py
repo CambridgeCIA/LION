@@ -25,7 +25,7 @@ class CTNoiseExperiment(Experiment):
         dataset = "2DeteCT"
         if dataset != "2DeteCT":
             raise ValueError(
-                "Benchmarking experiments only supports 2DeteCT dataset, currently"
+                "CTNoiseExperiment experiments only supports 2DeteCT dataset, currently"
             )
         super().__init__(experiment_params, dataset, datafolder)
 

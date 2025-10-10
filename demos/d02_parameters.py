@@ -80,8 +80,8 @@ print(LPD_params)
 print("")
 
 # You can also initialize all ML-models from parameter files.
-# As this is a tomography ML tool, you need to also give it geometry parameters.
-model = LPD(LPD_params, geo)
+# As this is a tomography ML tool, you need to also give it geometry parameters (only models that require it).
+model = LPD(geo, LPD_params)
 # tada!
 
 # You can now get such parameters:

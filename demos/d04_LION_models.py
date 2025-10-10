@@ -142,20 +142,27 @@ model_lpd.AT(sinogram)
 # %% 5- Making your own LIONmodel
 # Lets make a dummy LIONmodel to show
 
-from LION.models.LIONmodel import LIONmodel
-from LION.utils.parameter import LIONParameter
+from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 import torch
 
 
 class DummyModel(LIONmodel):
     def __init__(
-        self, model_parameters: LIONParameter, geometry_parameters: ctgeo.Geometry
+        self,
+        geometry_parameters: ctgeo.Geometry,
+        model_parameters: LIONModelParameter = None,
     ):
 
+        # If the model prameters are not given, the parent class will initialize them by calling default_parameters()
+        # and it will put the parameters in self.model_parameters
+
+        # If a geometry is given, then self.geometry is set, and allows you to use the operator and autograd it.
         super().__init__(model_parameters, geometry_parameters)  # initialize LIONmodel
 
         # you may want to e.g. have pytorch compatible operators
         self._make_operator()  # done!
+        # Now self.A and self.AT are available for use, and they will be autogradable
+
         self.layer = torch.nn.Conv2d(
             self.model_parameters.channel_in,
             self.model_parameters.channel_out,
@@ -167,7 +174,10 @@ class DummyModel(LIONmodel):
     # You must define this method
     @staticmethod
     def default_parameters():
-        param = LIONParameter()
+        param = LIONModelParameter()
+        # LIONModelParameters have this. It helps the training code know that it needs to do a recon (or not) to train the model.
+        # it can also be ModelInputType.IMAGE
+        param.model_input_type = ModelInputType.SINOGRAM
         param.channel_in = 1
         param.channel_out = 1
         return param

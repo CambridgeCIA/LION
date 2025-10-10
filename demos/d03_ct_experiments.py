@@ -30,6 +30,7 @@ experiment = ct_experiments.clinicalCTRecon(experiment_params=experiment_paramet
 
 # you can also change the data loader. By default, Experiments use the LIDC-IDRI data loader.
 experiment = ct_experiments.clinicalCTRecon(dataset="LIDC-IDRI")
+experiment = ct_experiments.clinicalCTRecon(dataset="2DeteCT")
 
 # you can print the experiment parameters
 print(experiment)

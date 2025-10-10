@@ -119,7 +119,7 @@ solver.save_final_results(final_result_fname, savefolder)
 
 # test
 
-solver.test()
+# solver.test()
 
 plt.figure()
 plt.semilogy(solver.train_loss[1:])
