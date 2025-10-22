@@ -21,7 +21,7 @@ class LIONParameter:
         """
         Check if the values are not None
         """
-        if all(vars(self).values()):
+        if not all(vars(self).values()):
             raise ValueError("Not all parameters set")
 
     def serialize(self):
