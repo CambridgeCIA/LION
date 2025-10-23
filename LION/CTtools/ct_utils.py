@@ -6,15 +6,17 @@
 # Modifications: -
 # =============================================================================
 
+# typing imports
+from typing import Union
 
 # math/science imports
 import numpy as np
 import torch
-import torch.nn.functional as F
 import tomosipo as ts
 
 # AItomotools imports
 from LION.CTtools.ct_geometry import Geometry
+from LION.operators.tomographic_proj_op import TomographicProjOp
 
 
 def from_HU_to_normal(img):
@@ -154,7 +156,7 @@ def from_HU_to_material_id(img):
     return materials
 
 
-def make_operator(geometry: Geometry):
+def make_operator(geometry: Geometry) -> TomographicProjOp:
     if not isinstance(geometry, Geometry):
         raise ValueError(
             "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"
@@ -182,10 +184,15 @@ def make_operator(geometry: Geometry):
     else:
         raise ValueError("Geometry mode not understood, has to be 'fan' or 'parallel'")
     A = ts.operator(vg, pg)
+    A = TomographicProjOp(A)  # make it a LION Operator too for type checking
     return A
 
 
-def forward_projection(image, geometry, backend="tomosipo"):
+def forward_projection(
+    image: Union[np.ndarray, torch.Tensor],
+    geometry: Geometry,
+    backend: str = "tomosipo",
+) -> torch.Tensor:
     """
     Produces a noise free forward projection, given np.array image, a size (in real world units), a sinogram shape and size,
     distances from source to detector DSD and distance from source to object DSO.

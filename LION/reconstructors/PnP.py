@@ -1,24 +1,64 @@
-import torch
-import numpy as np
+"""Plug-and-Play Reconstructor using a denoiser as prior."""
 
+from typing import Callable, Literal, Union
+
+import numpy as np
+import torch
+
+from LION.CTtools.ct_geometry import Geometry
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.classical_algorithms.fdk import fdk
 from LION.utils.math import power_method
+from LION.utils.conjugate_gradient import ConjugateGradient
+from LION.operators.operator import Operator
 
 
 class PnP(LIONReconstructor):
-    def __init__(self, geometry, model, algorithm):
-        super().__init__(geometry)
-        self.model = model
-        self.model.eval()
 
-        if algorithm == "HQS":
+    def __init__(
+        self,
+        operator: Union[Geometry, Operator],
+        denoiser: Callable[[torch.Tensor], torch.Tensor],
+        algorithm: Literal["ADMM", "HQS", "FBS"] = "ADMM",
+    ):
+        """
+        Plug-and-Play Reconstructor using a denoiser as prior.
+
+        Parameters
+        ----------
+        operator : Geometry or Operator
+            The forward operator representing the imaging system.
+            If a Geometry is provided, the corresponding CT operator will be created.
+        denoiser : Callable[[torch.Tensor], torch.Tensor]
+            A denoising function that takes a torch.Tensor and returns a denoised torch.Tensor.
+            This is most likely a pre-trained model.
+        algorithm : Literal["ADMM", "HQS", "FBS"], optional
+            The reconstruction algorithm to use. See the options in the notes below. Default is "ADMM".
+
+        Notes
+        -----
+        The following algorithms are implemented:
+        - "ADMM": Alternating Direction Method of Multipliers
+        - "HQS": Half Quadratic Splitting
+        - "FBS": Forward-Backward Splitting
+        """
+        super().__init__(operator)
+        self.denoiser = denoiser
+
+        algorithms = {
             # Half Quadratic Splitting, as from the paper "Plug-and-Play Image Restoration with Deep Denoiser Prior"
-            self.algorithm = "HQS"  # Half Quadratic Splitting
-        elif algorithm == "FBS" or algorithm == "ForwardBackwardSplitting":
-            self.algorithm = "FBS"  # Forward-Backward Splitting
-        else:
+            "HQS": self.half_quadratic_splitting_algorithm,
+            #
+            # Forward-Backward Splitting
+            "FBS": self.forward_backward_splitting_algorithm,
+            #
+            # Alternating direction method of multipliers (ADMM)
+            "ADMM": self.admm_algorithm,
+        }
+
+        if algorithm not in algorithms:
             raise ValueError(f"Unknown algorithm: {algorithm}")
+        self.algorithm_fn = algorithms[algorithm]
 
     def reconstruct_sample(self, sino, **kwargs):
         """
@@ -36,18 +76,12 @@ class PnP(LIONReconstructor):
                 )
             )
         # Apply the reconstruction algorithm
-        if self.algorithm == "HQS":
-            # Implement the Half Quadratic Splitting algorithm here
-            # This is a placeholder for the actual implementation
-            recon = self.hqs_algorithm(sino, **kwargs)
-        elif self.algorithm == "FBS":
-            # Implement the Forward-Backward Splitting algorithm here
-            # This is a placeholder for the actual implementation
-            recon = self.forward_backward_splitting(sino, **kwargs)
-
+        recon = self.algorithm_fn(sino, **kwargs)
         return recon
 
-    def hqs_algorithm(self, sino, lambda_=0.23, mu=0.1, max_iter=100, noise_level=None):
+    def half_quadratic_splitting_algorithm(
+        self, sino, lambda_=0.23, mu=0.1, max_iter=100, noise_level=None
+    ):
         """
         Placeholder for the Half Quadratic Splitting algorithm implementation.
 
@@ -76,14 +110,14 @@ class PnP(LIONReconstructor):
                 hasattr(self.model_parameters, "use_noise_level")
                 and self.model_parameters.use_noise_level
             ):
-                z = self.model(x, noise_level=noise_level)
+                z = self.denoiser(x, noise_level=noise_level)
             else:
-                z = self.model(x)
+                z = self.denoiser(x)
         # This is where the actual HQS algorithm would be implemented
         # For now, we return a dummy tensor
         return torch.zeros_like(sino)
 
-    def forward_backward_splitting(
+    def forward_backward_splitting_algorithm(
         self, sino, step_size=None, max_iter=10, noise_level=None
     ):
         """
@@ -99,21 +133,46 @@ class PnP(LIONReconstructor):
             for i in range(max_iter):
                 # TODO: would it not make sense to have an adaptive noise_level?
                 if (
-                    hasattr(self.model.model_parameters, "use_noise_level")
-                    and self.model.model_parameters.use_noise_level
+                    # hasattr(self.denoiser.model_parameters, "use_noise_level")
+                    # and self.denoiser.model_parameters.use_noise_level
+                    False
                 ):
                     step = x - step_size * self.op.T(self.op(x) - sino)
 
-                    step = self.model.normalise(step)
-                    x = self.model(step.unsqueeze(0), noise_level=noise_level).squeeze(
-                        0
-                    )
-                    x = self.model.unnormalise(x)
+                    step = self.denoiser.normalise(step)
+                    x = self.denoiser(
+                        step.unsqueeze(0), noise_level=noise_level
+                    ).squeeze(0)
+                    x = self.denoiser.unnormalise(x)
                 else:
                     step = x - step_size * self.op.T(self.op(x) - sino)
 
-                    step = self.model.normalise(step)
-                    x = self.model(step.unsqueeze(0)).squeeze(0)
-                    x = self.model.unnormalise(x)
+                    # step = self.denoiser.normalise(step)
+                    x = self.denoiser(step.unsqueeze(0)).squeeze(0)
+                    # x = self.denoiser.unnormalise(x)
 
+        return x
+
+    def admm_algorithm(
+        self,
+        measurement: torch.Tensor,
+        eta: float = 1e-4,
+        max_iter: int = 10,
+        cg_max_iter: int = 100,
+        cg_tol: float = 1e-7
+    ) -> torch.Tensor:
+        x = torch.zeros(self.op.image_shape, device=measurement.device)
+        v = torch.zeros(self.op.image_shape, device=measurement.device)
+        u = torch.zeros(self.op.image_shape, device=measurement.device)
+
+        def matmul_closure(x: torch.Tensor) -> torch.Tensor:
+            return self.op.T(self.op(x)) + eta * x
+
+        cg_solver = ConjugateGradient(max_iter=cg_max_iter, tol=cg_tol)
+        AT_y = self.op.T(measurement)
+        for _ in range(max_iter):
+            d = AT_y + eta * (v - u)
+            x = cg_solver.solve(matmul_closure, d, x)
+            v = self.denoiser(x + u)
+            u = u + (x - v)
         return x

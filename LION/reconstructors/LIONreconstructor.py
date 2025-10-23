@@ -1,18 +1,42 @@
+"""Base class for LION Reconstructors."""
+
+from typing import Union
+
 # Import CT utils
 from LION.CTtools.ct_utils import make_operator
 from abc import ABC, ABCMeta, abstractmethod
 import torch
 
-# Base class for a Reconstructor in the LION framework.
-# This assumes a trained model
+from LION.CTtools.ct_geometry import Geometry
+from LION.operators.operator import Operator
+from LION.models.LIONmodel import to_autograd
 
 
 class LIONReconstructor(ABC):
-    def __init__(self, geometry):
+    def __init__(self, operator: Union[Geometry, Operator]):
+        """
+        Base class for a Reconstructor in the LION framework.
+        This assumes a trained model.
+
+        Parameters
+        ----------
+        operator : Geometry or Operator
+            The forward operator representing the imaging system.
+            If a Geometry is provided, the corresponding CT operator will be created.
+        """
         __metaclass__ = ABCMeta
 
-        self.geometry = geometry
-        self.op = make_operator(self.geometry)
+        if isinstance(operator, Operator):
+            self.geometry = None
+            self.op = operator
+        elif isinstance(operator, Geometry):
+            self.geometry = operator
+            self.op = make_operator(self.geometry)
+        else:
+            raise ValueError(
+                "Input operator is neither of class LION.operators.operator.Operator nor LION.CTtools.ct_geometry.Geometry"
+            )
+        self.op_autograd = to_autograd(self.op)
 
     def reconstruct(self, sino, **kwargs):
         """
