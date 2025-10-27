@@ -1,0 +1,6 @@
+name: lion_base
+channels:
+  - astra-toolbox
+dependencies:
+  - astra-toolbox>=2.4.0
+  - python=3.12
