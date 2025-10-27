@@ -23,15 +23,17 @@ readme = "README.md"
 requires-python = ">=3.12, <3.13"  # Python 3.13 and later no longer supports numpy 1.x which is needed for tomosipo
 dynamic = ["version"]
 dependencies = [
-    # Dependencies with stricter version constraints due to compatibility issues
-    # "numpy>=1.26, <2.0",  # tomosipo doesn't work with numpy 2.x (but it only specifies >=1.21)
-    # Note: astra_toolbox need to be installed with conda first
-    "tomosipo @ git+https://github.com/ahendriksen/tomosipo.git@v0.7.0",  # will include 'astra-toolbox>=2.0,!=2.3.0','numpy>=1.21', and pytorch 2.4.1
+    # IMPORTANT: astra-toolbox needs to be installed with conda first!
+    # While astra-tool is available on pip, it is recommended to install it via conda due to better compatibility with CUDA and system libraries.
+    # Installing from pip requires the user to explicitly set up the CUDA runtime libraries which makes cross-platform installation more difficult.
+    # tomosipo supports numpy 2.x starting from 0.7.0 (not available on conda yet)
+    "tomosipo @ git+https://github.com/ahendriksen/tomosipo.git@v0.7.0",  # will include pytorch 2.4.1? But the actual torch installed is the latest 2.9.0
     # Note: in tomosipo's setup.py, the requirements are 'astra-toolbox>=2.0,!=2.3.0', 'numpy>=1.21'
-    "ts_algorithms @ git+https://github.com/ahendriksen/ts_algorithms.git",  # release v0.1.0 is missing `nag_ls` so we install directly from main branch.
-    # Note: ts_algorithms doesn't specify any requirements in its setup.py
+    "ts_algorithms @ git+https://github.com/ahendriksen/ts_algorithms.git",  # release v0.1.0 is missing `nag_ls` so we install the latest version directly from main branch.
+    # Note: ts_algorithms doesn't specify any requirements in its setup.py so we need to make sure the dependencies are installed ourselves.
+    # The main dependency is tomosipo which in turns depends on astra-toolbox.
 
-    # The following dependencies can use the latest versions
+    # The followings are currently set to the latest versions (make sure they don't conflict with the above)
     "deepinv>=0.3.5",  # pretrained DRUNet
     "spyrit>=3.0",  # Fast Walsh-Hadamard Transform
     "pandas>=2.3",
