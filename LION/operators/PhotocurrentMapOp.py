@@ -2,7 +2,7 @@ import numpy as np
 from spyrit.core.torch import fwht, ifwht
 import torch
 
-from LION.operators.operator import Operator
+from LION.operators import Operator
 
 
 def normal_to_dyadic_permutation(J: int) -> np.ndarray:
@@ -60,14 +60,14 @@ class PhotocurrentMapOp(Operator):
         self.subsampler = subsampler
 
     @property
-    def image_shape(self):
+    def domain_shape(self):
         return self._image_shape
 
     @property
-    def data_shape(self):
+    def range_shape(self):
         return self._data_shape
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, out: torch.Tensor = None) -> torch.Tensor:
         # Forward Hadamard
         y_std = fwht(x.ravel(), order=False, dim=self.wht_dim)
 
@@ -77,7 +77,7 @@ class PhotocurrentMapOp(Operator):
         y_subsampled = y_reordered[self.subsampler.get_subsampled_indices()]
         return y_subsampled
 
-    def adjoint(self, y: torch.Tensor) -> torch.Tensor:
+    def adjoint(self, y: torch.Tensor, out: torch.Tensor = None) -> torch.Tensor:
         y_reordered_full = torch.zeros(self.num_pixels, dtype=y.dtype)
         y_reordered_full[self.subsampler.get_subsampled_indices()] = y
         y_standard_full = torch.zeros(self.num_pixels, dtype=y.dtype)

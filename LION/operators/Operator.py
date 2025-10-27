@@ -1,3 +1,5 @@
+"""Base class for operators in LION."""
+
 import torch
 
 
@@ -12,7 +14,7 @@ class Operator:
     """
 
     @property
-    def image_shape(self) -> torch.Size:
+    def domain_shape(self) -> torch.Size:
         """
         Get the shape of the image domain.
 
@@ -21,21 +23,21 @@ class Operator:
         torch.Size
             Shape of the image domain.
         """
-        raise NotImplementedError("image_shape property must be implemented by subclasses.")
+        raise NotImplementedError("property must be implemented by subclasses.")
 
     @property
-    def data_shape(self) -> torch.Size:
+    def range_shape(self) -> torch.Size:
         """
-        Get the shape of the data domain.
+        Get the shape of the data (measurement) domain.
 
         Returns
         -------
         torch.Size
-            Shape of the data domain.
+            Shape of the data (measurement) domain.
         """
-        raise NotImplementedError("data_shape property must be implemented by subclasses.")
+        raise NotImplementedError("property must be implemented by subclasses.")
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, out: torch.Tensor = None) -> torch.Tensor:
         """
         Apply the forward operation of the operator.
 
@@ -43,6 +45,8 @@ class Operator:
         ----------
         x : torch.Tensor
             Input tensor to which the operator is applied.
+        out : torch.Tensor, optional
+            Optional output tensor to store the result.
 
         Returns
         -------
@@ -51,7 +55,7 @@ class Operator:
         """
         raise NotImplementedError("Forward method must be implemented by subclasses.")
 
-    def adjoint(self, y: torch.Tensor) -> torch.Tensor:
+    def adjoint(self, y: torch.Tensor, out: torch.Tensor = None) -> torch.Tensor:
         """
         Apply the adjoint (backward) operation of the operator.
 
@@ -59,6 +63,8 @@ class Operator:
         ----------
         y : torch.Tensor
             Input tensor to which the adjoint operator is applied.
+        out : torch.Tensor, optional
+            Optional output tensor to store the result.
 
         Returns
         -------
@@ -67,30 +73,5 @@ class Operator:
         """
         raise NotImplementedError("Adjoint method must be implemented by subclasses.")
 
-    def transpose(self, y: torch.Tensor) -> torch.Tensor:
-        """
-        Alias for the adjoint operation.
-
-        Parameters
-        ----------
-        y : torch.Tensor
-            Input tensor to which the transpose operator is applied.
-
-        Returns
-        -------
-        torch.Tensor
-            Result of applying the transpose operation.
-        """
-        return self.adjoint(y)
-
-    def __call__(self, x: torch.Tensor) -> torch.Tensor:
-        return self.forward(x)
-
-    def T(self, y: torch.Tensor) -> torch.Tensor:
-        return self.adjoint(y)
-
-    def A(self, x: torch.Tensor) -> torch.Tensor:
-        return self.forward(x)
-
-    def AT(self, y: torch.Tensor) -> torch.Tensor:
-        return self.adjoint(y)
+    def __call__(self, x: torch.Tensor, out: torch.Tensor = None) -> torch.Tensor:
+        return self.forward(x, out=out)

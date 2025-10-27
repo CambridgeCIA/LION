@@ -31,8 +31,8 @@ from spyrit.core.torch import fwht_2d
 import torch
 
 # Lion imports
-from LION.reconstructors.PnP import PnP
-from LION.operators.photocurrent_map_op import PhotocurrentMapOp, Subsampler
+from LION.reconstructors.PnPReconstructor import PnPReconstructor
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
 
 
 def run_demo(dataset: torch.utils.data.Dataset, subtract_from_J: int = 1, delta_divided_by: int = 4):
@@ -53,7 +53,7 @@ def run_demo(dataset: torch.utils.data.Dataset, subtract_from_J: int = 1, delta_
     subsampler = Subsampler(n=N * N, coarseJ=coarseJ, delta=delta)
     op = PhotocurrentMapOp(J=J, subsampler=subsampler)
     y_subsampled_tensor = op(im_tensor)
-    im_reconstructed_tensor = op.T(y_subsampled_tensor)
+    im_reconstructed_tensor = op.adjoint(y_subsampled_tensor)
 
     # %%
 
@@ -138,7 +138,7 @@ def run_demo(dataset: torch.utils.data.Dataset, subtract_from_J: int = 1, delta_
     cg_max_iter = 100
     cg_tol = 1e-7
 
-    pnp = PnP(operator=op, denoiser=denoiser_fn_admm, algorithm="ADMM")
+    pnp = PnPReconstructor(physics=op, denoiser=denoiser_fn_admm, algorithm="ADMM")
     pnp_admm_result = pnp.admm_algorithm(
         measurement=y_subsampled_tensor,
         eta=1e-4,

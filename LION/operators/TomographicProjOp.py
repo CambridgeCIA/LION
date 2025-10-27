@@ -4,8 +4,9 @@ tomosipo's operator class.
 """
 
 import tomosipo as ts
+import torch
 
-from LION.operators.operator import Operator
+from LION.operators.Operator import Operator
 
 
 class TomographicProjOp(Operator):
@@ -16,15 +17,15 @@ class TomographicProjOp(Operator):
         return getattr(self._ts, name)
 
     @property
-    def image_shape(self):
+    def domain_shape(self):
         return self._ts.domain_shape
 
     @property
-    def data_shape(self):
+    def range_shape(self):
         return self._ts.range_shape
 
-    def forward(self, x):
-        return self._ts._fp(x)
+    def forward(self, x: torch.Tensor, out: torch.Tensor = None) -> torch.Tensor:
+        return self._ts._fp(x, out=out)
 
-    def adjoint(self, y):
-        return self._ts._bp(y)
+    def adjoint(self, y: torch.Tensor, out: torch.Tensor = None) -> torch.Tensor:
+        return self._ts._bp(y, out=out)

@@ -16,7 +16,7 @@ import tomosipo as ts
 
 # AItomotools imports
 from LION.CTtools.ct_geometry import Geometry
-from LION.operators.tomographic_proj_op import TomographicProjOp
+from LION.operators import TomographicProjOp
 
 
 def from_HU_to_normal(img):

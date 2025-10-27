@@ -6,18 +6,17 @@ import numpy as np
 import torch
 
 from LION.CTtools.ct_geometry import Geometry
-from LION.reconstructors.LIONreconstructor import LIONReconstructor
-from LION.classical_algorithms.fdk import fdk
+from LION.classical_algorithms import conjugate_gradient, fdk
+from LION.operators import Operator
+from LION.reconstructors import LIONReconstructor
 from LION.utils.math import power_method
-from LION.utils.conjugate_gradient import ConjugateGradient
-from LION.operators.operator import Operator
 
 
-class PnP(LIONReconstructor):
+class PnPReconstructor(LIONReconstructor):
 
     def __init__(
         self,
-        operator: Union[Geometry, Operator],
+        physics: Union[Geometry, Operator],
         denoiser: Callable[[torch.Tensor], torch.Tensor],
         algorithm: Literal["ADMM", "HQS", "FBS"] = "ADMM",
     ):
@@ -26,8 +25,8 @@ class PnP(LIONReconstructor):
 
         Parameters
         ----------
-        operator : Geometry or Operator
-            The forward operator representing the imaging system.
+        physics : Geometry or Operator
+            The forward operator or information required to create a forward operator.
             If a Geometry is provided, the corresponding CT operator will be created.
         denoiser : Callable[[torch.Tensor], torch.Tensor]
             A denoising function that takes a torch.Tensor and returns a denoised torch.Tensor.
@@ -42,7 +41,7 @@ class PnP(LIONReconstructor):
         - "HQS": Half Quadratic Splitting
         - "FBS": Forward-Backward Splitting
         """
-        super().__init__(operator)
+        super().__init__(physics)
         self.denoiser = denoiser
 
         algorithms = {
@@ -105,7 +104,7 @@ class PnP(LIONReconstructor):
         x = fdk(sino, self.op)  # Use FDK as an initial guess
         z = torch.zeros_like(x)
         for i in range(max_iter):
-            x = x - 1 / (sigma**2) * self.op.T(self.op(x) - sino) + 2 * mu * (x - z)
+            x = x - 1 / (sigma**2) * self.op.adjoint(self.op(x) - sino) + 2 * mu * (x - z)
             if (
                 hasattr(self.model_parameters, "use_noise_level")
                 and self.model_parameters.use_noise_level
@@ -137,7 +136,7 @@ class PnP(LIONReconstructor):
                     # and self.denoiser.model_parameters.use_noise_level
                     False
                 ):
-                    step = x - step_size * self.op.T(self.op(x) - sino)
+                    step = x - step_size * self.op.adjoint(self.op(x) - sino)
 
                     step = self.denoiser.normalise(step)
                     x = self.denoiser(
@@ -145,7 +144,7 @@ class PnP(LIONReconstructor):
                     ).squeeze(0)
                     x = self.denoiser.unnormalise(x)
                 else:
-                    step = x - step_size * self.op.T(self.op(x) - sino)
+                    step = x - step_size * self.op.adjoint(self.op(x) - sino)
 
                     # step = self.denoiser.normalise(step)
                     x = self.denoiser(step.unsqueeze(0)).squeeze(0)
@@ -161,18 +160,17 @@ class PnP(LIONReconstructor):
         cg_max_iter: int = 100,
         cg_tol: float = 1e-7
     ) -> torch.Tensor:
-        x = torch.zeros(self.op.image_shape, device=measurement.device)
-        v = torch.zeros(self.op.image_shape, device=measurement.device)
-        u = torch.zeros(self.op.image_shape, device=measurement.device)
+        x = torch.zeros(self.op.domain_shape, device=measurement.device)
+        v = torch.zeros(self.op.domain_shape, device=measurement.device)
+        u = torch.zeros(self.op.domain_shape, device=measurement.device)
 
         def matmul_closure(x: torch.Tensor) -> torch.Tensor:
-            return self.op.T(self.op(x)) + eta * x
+            return self.op.adjoint(self.op(x)) + eta * x
 
-        cg_solver = ConjugateGradient(max_iter=cg_max_iter, tol=cg_tol)
-        AT_y = self.op.T(measurement)
+        AT_y = self.op.adjoint(measurement)
         for _ in range(max_iter):
             d = AT_y + eta * (v - u)
-            x = cg_solver.solve(matmul_closure, d, x)
+            x = conjugate_gradient(matmul_closure, d, x, max_iter=cg_max_iter, tol=cg_tol)
             v = self.denoiser(x + u)
             u = u + (x - v)
         return x
