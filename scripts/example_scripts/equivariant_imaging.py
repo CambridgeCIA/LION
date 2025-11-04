@@ -35,7 +35,7 @@ def my_ssim(x: torch.Tensor, y: torch.Tensor):
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
-savefolder = pathlib.Path("/store/LION/as3628/trained_models/")
+savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/")
 final_result_fname = "Equivariance.pt"
 checkpoint_fname = "Equivariance_check_*.pt"
 validation_fname = "Equivariance_min_val.pt"
