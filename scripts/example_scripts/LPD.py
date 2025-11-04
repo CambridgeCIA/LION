@@ -31,13 +31,13 @@ device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 
 # Define your data paths
-savefolder = pathlib.Path("/store/LION/as3628/trained_models/")
+savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
 # Creates the folder if it does not exist
 savefolder.mkdir(parents=True, exist_ok=True)
 final_result_fname = "LPD.pt"
 checkpoint_fname = "LPD_check_*.pt"
 validation_fname = "LPD_min_val.pt"
-#/mhome/damtp/r/as3628/trained_models/test_debugging
+
 # %% Define experiment
 
 experiment = ct_experiments.LowDoseCTRecon(dataset="LIDC-IDRI")
