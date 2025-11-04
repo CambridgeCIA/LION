@@ -11,10 +11,10 @@ import torch.nn as nn
 from collections import OrderedDict
 
 from LION.utils.parameter import LIONParameter
-from LION.models import LIONmodel, LIONModelParameter, ModelInputType
+from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 ##Code for UNet
-class UNet(LIONmodel.LIONmodel):
+class UNet(LIONmodel):
     def __init__(self, model_parameters=None):
         # set properties of UNet
         if model_parameters is None:

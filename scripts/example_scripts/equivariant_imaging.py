@@ -20,14 +20,14 @@ def my_ssim(x: torch.Tensor, y: torch.Tensor):
     if x.shape[0] == 1:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
-        return np.array([ssim(x, y, data_range=x.max() - x.min())])
+        return torch.tensor(np.array([ssim(x, y, data_range=x.max() - x.min())]), dtype=torch.float32)
     else:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
         vals = []
         for i in range(x.shape[0]):
             vals.append(ssim(x[i], y[i], data_range=x[i].max() - x[i].min()))
-        return np.array(vals)
+        return torch.tensor(np.array(vals), dtype=torch.float32)
 
 
 # %%
@@ -95,8 +95,8 @@ solver.cite()
 
 # set data
 solver.set_training(lidc_dataloader)
-solver.set_validation(lidc_val, 1, my_ssim, validation_fname)
-solver.set_normalization(True)
+solver.set_validation(lidc_val, 1, my_ssim, validation_fname, save_folder=savefolder)
+#solver.set_normalization(True)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
