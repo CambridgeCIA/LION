@@ -126,6 +126,18 @@
         "bug",
         "research"
       ]
+    },
+    {
+      "login": "trung-vt",
+      "name": "Thanh Trung Vu",
+      "avatar_url": "https://avatars.githubusercontent.com/u/65380717?v=4",
+      "profile": "https://github.com/trung-vt",
+      "contributions": [
+        "code",
+        "bug",
+        "research",
+        "design"
+      ]
     }
   ],
   "contributorsPerLine": 7,
