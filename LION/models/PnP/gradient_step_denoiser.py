@@ -8,7 +8,6 @@
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 
-from typing import Optional
 import torch
 import importlib
 
@@ -70,9 +69,8 @@ class GSD(LIONmodel):
                 f'`cite_format` "{cite_format}" is not understood, only "MLA" and "bib" are supported'
             )
 
-    def grad(self, x, noise_level: Optional[float] = None):
-        x = x.detach()
-        x.requires_grad = True
+    def grad(self, x: torch.Tensor, noise_level: float = None):
+        x = x.detach().requires_grad_(True)
         obj = 0.5 * torch.sum((self._backbone_model(x, noise_level) - x) ** 2)
         grad = torch.autograd.grad(
             obj,
@@ -83,6 +81,6 @@ class GSD(LIONmodel):
         )[0]
         return obj, grad
 
-    def forward(self, x, noise_level: Optional[float] = None):
+    def forward(self, x, noise_level: float = None):
         _, grad = self.grad(x, noise_level)
         return x - grad

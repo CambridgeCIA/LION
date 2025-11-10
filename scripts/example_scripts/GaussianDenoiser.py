@@ -28,6 +28,8 @@ torch.cuda.set_device(device)
 
 # Define your data paths
 savefolder = pathlib.Path("/store/LION/ab2860/trained_models/LIDC-IDRI/PnP")
+# Creates the folders if they does not exist
+savefolder.mkdir(parents=True, exist_ok=True)
 name = "DRUnet_supervised"
 final_result_fname = f"{name}.pt"
 checkpoint_fname = f"{name}_check_*.pt"

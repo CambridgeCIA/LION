@@ -6,11 +6,11 @@
 # Modifications: -
 # =============================================================================
 
+from __future__ import annotations
 
 # math/science imports
 import numpy as np
 import torch
-import torch.nn.functional as F
 import tomosipo as ts
 
 # AItomotools imports
@@ -185,7 +185,11 @@ def make_operator(geometry: Geometry):
     return A
 
 
-def forward_projection(image, geometry, backend="tomosipo"):
+def forward_projection(
+    image: np.ndarray | torch.Tensor,
+    geometry: Geometry,
+    backend: str = "tomosipo",
+) -> torch.Tensor:
     """
     Produces a noise free forward projection, given np.array image, a size (in real world units), a sinogram shape and size,
     distances from source to detector DSD and distance from source to object DSO.

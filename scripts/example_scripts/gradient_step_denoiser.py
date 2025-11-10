@@ -23,11 +23,13 @@ from LION.optimizers.SupervisedSolver import SupervisedSolver
 
 # %%
 # % Chose device:
-device = torch.device("cuda:2")
+device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 
 # Define your data paths
 savefolder = pathlib.Path("/store/LION/ab2860/trained_models/LIDC-IDRI/PnP")
+# Creates the folders if they does not exist
+savefolder.mkdir(parents=True, exist_ok=True)
 name = "GSD_supervised"
 final_result_fname = f"{name}.pt"
 checkpoint_fname = f"{name}_check_*.pt"
@@ -69,7 +71,7 @@ loss_fcn = torch.nn.MSELoss()
 train_param.optimiser = "adam"
 
 # optimizer
-train_param.epochs = 100
+train_param.epochs = 1
 train_param.learning_rate = 1e-4
 train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
@@ -137,7 +139,7 @@ from LION.classical_algorithms.fdk import fdk
 
 model = solver.get_model()
 
-model, _, _ = DRUNet.load(savefolder / final_result_fname)
+model, _, _ = GSD.load(savefolder / final_result_fname)
 model.to(device)
 model.eval()
 
@@ -145,53 +147,50 @@ from LION.reconstructors.PnP import PnP
 
 reconstructor = PnP(experiment.geometry, model, algorithm="FBS")
 
-with torch.no_grad():
-    for i, (sino, target) in enumerate(lidc_dataloader):
-        for noise_level in [0.001, 0.0001, 0.0000]:
-            print(f"Testing with noise level: {noise_level}")
-            sino = sino.to(device)
-            target = target.to(device)
-            recon = fdk(sino, op=experiment.geometry)
-            # normalize recon
-            recon = model.normalise(recon)
-            denoised = model(recon, noise_level=noise_level)
-            # unnormalize denoised and recon
-            recon = model.unnormalise(recon)
-            denoised = model.unnormalise(denoised)
+for i, (sino, target) in enumerate(lidc_dataloader):
+    for noise_level in [0.001, 0.0001, 0.0000]:
+        print(f"Testing with noise level: {noise_level}")
+        sino = sino.to(device)
+        target = target.to(device)
+        recon = fdk(sino, op=experiment.geometry)
+        # normalize recon
+        recon = model.normalise(recon)
+        denoised = model(recon, noise_level=noise_level)
+        # unnormalize denoised and recon
+        recon = model.unnormalise(recon)
+        denoised = model.unnormalise(denoised)
 
-            # PnP recon
-            pnp = reconstructor.reconstruct(
-                sino.to(device), noise_level=noise_level, max_iter=5
-            )
+        # PnP recon
+        pnp = reconstructor.reconstruct(
+            sino.to(device), noise_level=noise_level, max_iter=5
+        )
 
-            plt.figure()
-            plt.subplot(1, 4, 1)
-            plt.imshow(recon[0, 0].cpu(), cmap="gray")
-            plt.clim(0, 2)
-            plt.axis("off")
-            plt.title(
-                "Recon: SSIM = {:.2f}".format(my_ssim(target[0], recon[0])), fontsize=6
-            )
-            plt.subplot(1, 4, 2)
-            plt.imshow(denoised[0, 0].cpu(), cmap="gray")
-            plt.clim(0, 2)
-            plt.axis("off")
-            plt.title(
-                "Denoised: SSIM = {:.2f}".format(my_ssim(target[0], denoised[0])),
-                fontsize=6,
-            )
-            plt.subplot(1, 4, 3)
-            plt.imshow(pnp[0, 0].cpu(), cmap="gray")
-            plt.title(
-                "PnP: SSIM = {:.2f}".format(my_ssim(target[0], pnp[0])), fontsize=6
-            )
-            plt.clim(0, 2)
-            plt.axis("off")
+        plt.figure()
+        plt.subplot(1, 4, 1)
+        plt.imshow(recon[0, 0].cpu(), cmap="gray")
+        plt.clim(0, 2)
+        plt.axis("off")
+        plt.title(
+            "Recon: SSIM = {:.2f}".format(my_ssim(target[0], recon[0])), fontsize=6
+        )
+        plt.subplot(1, 4, 2)
+        plt.imshow(denoised[0, 0].cpu(), cmap="gray")
+        plt.clim(0, 2)
+        plt.axis("off")
+        plt.title(
+            "Denoised: SSIM = {:.2f}".format(my_ssim(target[0], denoised[0])),
+            fontsize=6,
+        )
+        plt.subplot(1, 4, 3)
+        plt.imshow(pnp[0, 0].cpu(), cmap="gray")
+        plt.title("PnP: SSIM = {:.2f}".format(my_ssim(target[0], pnp[0])), fontsize=6)
+        plt.clim(0, 2)
+        plt.axis("off")
 
-            plt.subplot(1, 4, 4)
-            plt.imshow(target[0, 0].cpu(), cmap="gray")
-            plt.title("Ground Truth", fontsize=6)
-            plt.axis("off")
-            plt.clim(0, 2)
-            plt.savefig(f"test_{i}_{noise_level}.png", bbox_inches="tight", dpi=300)
-        exit()
+        plt.subplot(1, 4, 4)
+        plt.imshow(target[0, 0].cpu(), cmap="gray")
+        plt.title("Ground Truth", fontsize=6)
+        plt.axis("off")
+        plt.clim(0, 2)
+        plt.savefig(f"test_{i}_{noise_level}.png", bbox_inches="tight", dpi=300)
+    exit()

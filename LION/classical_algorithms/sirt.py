@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Callable, Optional
 import torch
 from LION.CTtools.ct_geometry import Geometry

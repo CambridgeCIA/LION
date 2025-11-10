@@ -32,6 +32,8 @@ torch.cuda.set_device(device)
 
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
+# Creates the folders if they does not exist
+savefolder.mkdir(parents=True, exist_ok=True)
 final_result_fname = "cLPD.pt"
 checkpoint_fname = "cLPD_check_*.pt"
 validation_fname = "cLPD_min_val.pt"

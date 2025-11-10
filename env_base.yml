@@ -1,0 +1,12 @@
+name: lion
+channels:
+  - astra-toolbox
+  # - aahendriksen
+dependencies:
+  - astra-toolbox>=2.4
+  # - msd_pytorch>=0.10  # LION/models/CNNs/MSD_pytorch.py
+  # # msd_pytorch is an old package that doesn't support pytorch>1.8, python>3.9, astra-toolbox>2.2, etc.
+  # #  which is not ideal since we want to use newer GPUs (CUDA capabilities after sm_70)
+  # #  TODO: Rewrite the MSD_pytorch code to remove this dependency
+  - pip<=25.2  # pip 25.3 drops support for setup.py install which is used to install tomosipo and ts_algorithms from source 
+  - python=3.12

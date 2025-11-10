@@ -1,3 +1,4 @@
+from __future__ import annotations
 from skimage.metrics import structural_similarity as skim_ssim
 import torch
 import torch.nn as nn

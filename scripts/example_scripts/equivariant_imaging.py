@@ -20,7 +20,9 @@ def my_ssim(x: torch.Tensor, y: torch.Tensor):
     if x.shape[0] == 1:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
-        return torch.tensor(np.array([ssim(x, y, data_range=x.max() - x.min())]), dtype=torch.float32)
+        return torch.tensor(
+            np.array([ssim(x, y, data_range=x.max() - x.min())]), dtype=torch.float32
+        )
     else:
         x = x.detach().cpu().numpy().squeeze()
         y = y.detach().cpu().numpy().squeeze()
@@ -36,6 +38,8 @@ device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 # Define your data paths
 savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/")
+# Creates the folders if they does not exist
+savefolder.mkdir(parents=True, exist_ok=True)
 final_result_fname = "Equivariance.pt"
 checkpoint_fname = "Equivariance_check_*.pt"
 validation_fname = "Equivariance_min_val.pt"
@@ -96,7 +100,7 @@ solver.cite()
 # set data
 solver.set_training(lidc_dataloader)
 solver.set_validation(lidc_val, 1, my_ssim, validation_fname, save_folder=savefolder)
-#solver.set_normalization(True)
+# solver.set_normalization(True)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
