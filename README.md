@@ -1,6 +1,6 @@
 # LION: AI tools for learned tomographic reconstruction
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-11-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-12-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 University of Cambridge Computational Image Analysis (CIA) groups AI tools for tomographic reconstruction, LION (Learned Iterative Optimization Networks)
@@ -87,6 +87,7 @@ Read `developers.md`
       <td align="center" valign="top" width="14.28%"><a href="http://hyt35.github.io"><img src="https://avatars.githubusercontent.com/u/56555137?v=4?s=100" width="100px;" alt="Hong Ye Tan"/><br /><sub><b>Hong Ye Tan</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=hyt35" title="Code">💻</a> <a href="#design-hyt35" title="Design">🎨</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/cshoebridge"><img src="https://avatars.githubusercontent.com/u/74095041?v=4?s=100" width="100px;" alt="Charlie Shoebridge"/><br /><sub><b>Charlie Shoebridge</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=cshoebridge" title="Code">💻</a> <a href="#design-cshoebridge" title="Design">🎨</a> <a href="#ideas-cshoebridge" title="Ideas, Planning, & Feedback">🤔</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/AndreaSainz"><img src="https://avatars.githubusercontent.com/u/185353475?v=4?s=100" width="100px;" alt="Andrea Sainz Bear"/><br /><sub><b>Andrea Sainz Bear</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=AndreaSainz" title="Code">💻</a> <a href="https://github.com/CambridgeCIA/LION/issues?q=author%3AAndreaSainz" title="Bug reports">🐛</a> <a href="#research-AndreaSainz" title="Research">🔬</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/trung-vt"><img src="https://avatars.githubusercontent.com/u/65380717?v=4?s=100" width="100px;" alt="Thanh Trung Vu"/><br /><sub><b>Thanh Trung Vu</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=trung-vt" title="Code">💻</a> <a href="https://github.com/CambridgeCIA/LION/issues?q=author%3Atrung-vt" title="Bug reports">🐛</a> <a href="#research-trung-vt" title="Research">🔬</a> <a href="#design-trung-vt" title="Design">🎨</a></td>
     </tr>
   </tbody>
 </table>
