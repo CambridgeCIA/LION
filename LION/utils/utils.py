@@ -9,6 +9,10 @@ import argparse
 ## JSON numpy encoder
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
+        # NumPy scalar -> native Python scalar
+        if isinstance(obj, np.generic):
+            return obj.item()
+        # NumPy array -> list
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)

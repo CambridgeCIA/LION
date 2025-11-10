@@ -1,3 +1,4 @@
+from __future__ import annotations
 import torch
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator

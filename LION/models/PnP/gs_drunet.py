@@ -5,43 +5,34 @@
 # Modifications: -
 # =============================================================================
 
+from .drunet import DRUNet
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 
+from typing import Optional
 import torch
-import importlib
 
 
-class GSD(LIONmodel):
+class GSDRUNet(LIONmodel):
     def __init__(self, model_parameters: LIONParameter = None):
+        if model_parameters is None:
+            model_parameters = GSDRUNet.default_parameters()
         super().__init__(model_parameters)
-
-        denoiser = getattr(
-            importlib.import_module("LION.models.CNNs"),
-            self.model_parameters.backbone_model,
-        )
-
-        self._backbone_model = denoiser(self.model_parameters.backbone_params)
+        self._backbone_model = DRUNet(model_parameters)
 
     @staticmethod
     def default_parameters():
-        backbone_params = LIONModelParameter()
-        backbone_params.model_input_type = ModelInputType.IMAGE
-        backbone_params.in_channels = 1
-        backbone_params.out_channels = 1
-        backbone_params.int_channels = 32
-        backbone_params.kernel_size = (3, 3)
-        backbone_params.n_blocks = 2
-        backbone_params.use_noise_level = False
-        backbone_params.bias_free = False
-        backbone_params.act = "leaky_relu"
-        backbone_params.enforce_positivity = False
-
         params = LIONModelParameter()
-        params.backbone_model = "DRUNet"
-        params.backbone_params = backbone_params
         params.model_input_type = ModelInputType.IMAGE
-
+        params.in_channels = 1
+        params.out_channels = 1
+        params.int_channels = 32
+        params.kernel_size = (3, 3)
+        params.n_blocks = 2
+        params.use_noise_level = False
+        params.bias_free = False
+        params.act = "leaky_relu"
+        params.enforce_positivity = False
         return params
 
     @staticmethod
@@ -69,8 +60,9 @@ class GSD(LIONmodel):
                 f'`cite_format` "{cite_format}" is not understood, only "MLA" and "bib" are supported'
             )
 
-    def grad(self, x: torch.Tensor, noise_level: float = None):
-        x = x.detach().requires_grad_(True)
+    def obj_grad(self, x, noise_level: Optional[float] = None):
+        x = x.detach()
+        x.requires_grad = True
         obj = 0.5 * torch.sum((self._backbone_model(x, noise_level) - x) ** 2)
         grad = torch.autograd.grad(
             obj,
@@ -81,6 +73,6 @@ class GSD(LIONmodel):
         )[0]
         return obj, grad
 
-    def forward(self, x, noise_level: float = None):
-        _, grad = self.grad(x, noise_level)
+    def forward(self, x, noise_level: Optional[float] = None):
+        _, grad = self.obj_grad(x, noise_level)
         return x - grad

@@ -12,6 +12,7 @@
 #
 
 # You will want to import LIONParameter, as all models must save and use Parameters.
+from __future__ import annotations
 from enum import Enum
 from typing import Callable, Optional
 

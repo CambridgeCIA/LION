@@ -277,7 +277,7 @@ class LIONmodel(nn.Module, ABC):
         )
 
     @staticmethod
-    def _load_data(fname, supress_warnings=False):
+    def _load_data(fname, *, weights_only=False, supress_warnings=False):
         # Make it a Path if needed
         if isinstance(fname, str):
             fname = Path(fname)
@@ -290,6 +290,7 @@ class LIONmodel(nn.Module, ABC):
         data = torch.load(
             fname,
             map_location=torch.device(torch.cuda.current_device()),
+            weights_only=weights_only,
         )
         if len(data) > 1 and not supress_warnings:
             # this should be only 1 thing, but you may be loading a checkpoint or may have saved more data.  Its OK, but we warn.
@@ -332,7 +333,7 @@ class LIONmodel(nn.Module, ABC):
         return options
 
     @classmethod
-    def load(cls, fname, supress_warnings=False):
+    def load(cls, fname, *, weights_only=False, supress_warnings=False):
         """
         Function that loads a model from memory.
         """
@@ -348,7 +349,9 @@ class LIONmodel(nn.Module, ABC):
             )
 
         # load data
-        data = LIONmodel._load_data(fname)
+        data = LIONmodel._load_data(
+            fname, weights_only=weights_only, supress_warnings=supress_warnings
+        )
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
         if hasattr(options, "geometry"):
