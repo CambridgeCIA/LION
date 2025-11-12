@@ -55,8 +55,6 @@ lidc_dataset = data_utils.Subset(lidc_dataset, indices)
 lidc_dataset_val = data_utils.Subset(lidc_dataset_val, indices)
 
 
-
-
 # %% Define DataLoader
 # Use the same amount of training
 
@@ -64,7 +62,7 @@ lidc_dataset_val = data_utils.Subset(lidc_dataset_val, indices)
 batch_size = 1
 lidc_dataloader = DataLoader(lidc_dataset, batch_size, shuffle=False)
 lidc_validation = DataLoader(lidc_dataset_val, batch_size, shuffle=False)
-# I just want to check if the models are working so I'll use de training as testing to check if the SSIM loss is near 1 
+# I just want to check if the models are working so I'll use de training as testing to check if the SSIM loss is near 1
 lidc_test = DataLoader(lidc_dataset, batch_size, shuffle=False)
 
 
@@ -73,24 +71,24 @@ from LION.models.learned_fbp.DeepFBP import DeepFBPNetwork
 from LION.models.learned_fbp.DeepFusionBP import DeepFusionBPNetwork
 from LION.models.learned_fbp.FusionFBP import FusionFBPNetwork
 
-# selects default parameters and create models 
+# selects default parameters and create models
 default_parameters_DeepFBP = DeepFBPNetwork.default_parameters()
 default_parameters_DeepFBP.n_iters = 5
 model_DeepFBP = DeepFBPNetwork(experiment.geometry, default_parameters_DeepFBP)
 
 default_parameters_DeepFusionBP = DeepFusionBPNetwork.default_parameters()
 default_parameters_DeepFusionBP.n_iters = 5
-model_DeepFusionBP = DeepFusionBPNetwork(experiment.geometry, default_parameters_DeepFusionBP)
+model_DeepFusionBP = DeepFusionBPNetwork(
+    experiment.geometry, default_parameters_DeepFusionBP
+)
 
 default_parameters_FusionFBP = FusionFBPNetwork.default_parameters()
 default_parameters_FusionFBP.n_iters = 5
 model_FusionFBP = FusionFBPNetwork(experiment.geometry, default_parameters_FusionFBP)
 
 
-
-
 # Define general optimizer
-# 
+#
 # # %% Optimizer
 train_param = LIONParameter()
 
@@ -105,11 +103,9 @@ train_param.betas = (0.9, 0.99)
 train_param.loss = "MSELoss"
 
 
-
-
 ##################################################### DeepFBP #####################################################
 
-#define specific optimizer for each model
+# define specific optimizer for each model
 optimiser = torch.optim.Adam(
     model_DeepFBP.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
@@ -130,7 +126,10 @@ solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
 solver.set_checkpointing(
-    checkpoint_fname_DeepFBP, 10, load_checkpoint_if_exists=False, save_folder=savefolder
+    checkpoint_fname_DeepFBP,
+    10,
+    load_checkpoint_if_exists=False,
+    save_folder=savefolder,
 )
 # train
 solver.train(train_param.epochs)
@@ -141,7 +140,7 @@ solver.save_final_results(final_result_fname_DeepFBP, savefolder)
 
 # test
 
-test_losses = solver.test()   
+test_losses = solver.test()
 print(f"\nDeepFBP Mean test loss = {test_losses.mean():.6f}")
 print(f"DeepFBP Std test loss  = {test_losses.std():.6f}")
 
@@ -150,16 +149,13 @@ plt.semilogy(solver.train_loss[1:])
 plt.savefig("loss_DeepFBP.png")
 
 
-
-
-
-
-
 ##################################################### DeepFusionBP #####################################################
 
-#define specific optimizer for each model
+# define specific optimizer for each model
 optimiser = torch.optim.Adam(
-    model_DeepFusionBP.parameters(), lr=train_param.learning_rate, betas=train_param.betas
+    model_DeepFusionBP.parameters(),
+    lr=train_param.learning_rate,
+    betas=train_param.betas,
 )
 
 # %% Train
@@ -173,12 +169,17 @@ solver = SupervisedSolver(
 
 # set data
 solver.set_training(lidc_dataloader)
-solver.set_validation(lidc_validation, 10, validation_fname=validation_fname_DeepFusionBP)
+solver.set_validation(
+    lidc_validation, 10, validation_fname=validation_fname_DeepFusionBP
+)
 solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
 solver.set_checkpointing(
-    checkpoint_fname_DeepFusionBP, 10, load_checkpoint_if_exists=False, save_folder=savefolder
+    checkpoint_fname_DeepFusionBP,
+    10,
+    load_checkpoint_if_exists=False,
+    save_folder=savefolder,
 )
 # train
 solver.train(train_param.epochs)
@@ -189,7 +190,7 @@ solver.save_final_results(final_result_fname_DeepFusionBP, savefolder)
 
 # test
 
-test_losses = solver.test()   
+test_losses = solver.test()
 print(f"\nDeepFusionBP Mean test loss = {test_losses.mean():.6f}")
 print(f"DeepFusionBP Std test loss  = {test_losses.std():.6f}")
 
@@ -198,15 +199,10 @@ plt.semilogy(solver.train_loss[1:])
 plt.savefig("loss_DeepFusionBP.png")
 
 
-
-
-
-
-
 ##################################################### FusionFBP #####################################################
 
 
-#define specific optimizer for each model
+# define specific optimizer for each model
 optimiser = torch.optim.Adam(
     model_FusionFBP.parameters(), lr=train_param.learning_rate, betas=train_param.betas
 )
@@ -227,7 +223,10 @@ solver.set_testing(lidc_test, my_ssim)
 
 # set checkpointing procedure
 solver.set_checkpointing(
-    checkpoint_fname_FusionFBP, 10, load_checkpoint_if_exists=False, save_folder=savefolder
+    checkpoint_fname_FusionFBP,
+    10,
+    load_checkpoint_if_exists=False,
+    save_folder=savefolder,
 )
 # train
 solver.train(train_param.epochs)
@@ -238,12 +237,10 @@ solver.save_final_results(final_result_fname_FusionFBP, savefolder)
 
 # test
 
-test_losses = solver.test()   
+test_losses = solver.test()
 print(f"\nFusionFBP Mean test loss = {test_losses.mean():.6f}")
 print(f"FusionFBP Std test loss  = {test_losses.std():.6f}")
 
 plt.figure()
 plt.semilogy(solver.train_loss[1:])
 plt.savefig("loss_FusionFBP.png")
-
-

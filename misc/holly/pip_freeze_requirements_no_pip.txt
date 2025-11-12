@@ -1,0 +1,25 @@
+annotated-types==0.7.0
+appdirs==1.4.4
+astra-toolbox @ file:///root/miniconda3/conda-bld/astra-toolbox_1753370053547/work/python
+click==8.3.0
+condax==0.2.4
+ensureconda==1.6.0
+filelock==3.20.0
+markdown-it-py==4.0.0
+mdurl==0.1.2
+numpy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_numpy_1761161698/work/dist/numpy-2.3.4-cp312-cp312-linux_x86_64.whl#sha256=79c666d07103be5d9b660f1e9e31acb1feac4b5915c9ed27da1fc67423c046b5
+pydantic==2.12.3
+pydantic-settings==2.11.0
+pydantic_core==2.41.4
+Pygments==2.19.2
+python-dotenv==1.2.1
+PyYAML==6.0.3
+rich==14.2.0
+scipy @ file:///home/conda/feedstock_root/build_artifacts/scipy-split_1761689805279/work/dist/scipy-1.16.3-cp312-cp312-linux_x86_64.whl#sha256=99192edb305485cb50d0365378a3f86e5776626d1565153a1a3c2d4be32f8b87
+setuptools==80.9.0
+shellingham==1.5.4
+typer==0.20.0
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+userpath==1.9.2
+wheel==0.45.1

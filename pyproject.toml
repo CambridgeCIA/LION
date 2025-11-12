@@ -87,7 +87,10 @@ notebooks = [
     "jupytext",
     "cmap",
 ]
-dev = ["LION[tests, docs]"]
+ci = [
+    "pre-commit",
+]
+dev = ["LION[tests, docs, ci]"]
 
 # PyTest section
 [tool.pytest.ini_options]

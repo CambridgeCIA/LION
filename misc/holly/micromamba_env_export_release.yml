@@ -1,51 +1,52 @@
-name: lion
+name: lion_release
 channels:
   - astra-toolbox
-  - pkgs/main
+  - conda-forge
 dependencies:
-  - _libgcc_mutex=0.1=main
-  - _openmp_mutex=5.1=1_gnu
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=2_gnu
   - astra-toolbox=2.4.0=py312hf5d4436_0
-  - blas=1.0=openblas
-  - bzip2=1.0.8=h5eee18b_6
-  - ca-certificates=2025.11.4=h06a4308_0
-  - cuda-cudart=12.8.90=hbdd6827_0
-  - cuda-cudart_linux-64=12.8.90=hd1a145a_0
-  - cuda-version=12.8=h30beaf8_3
-  - expat=2.7.3=h3385a95_0
-  - ld_impl_linux-64=2.44=h153f514_2
-  - libastra=2.4.0=cuda_12.8_0
-  - libcufft=11.3.3.83=hbdd6827_1
-  - libffi=3.4.4=h6a678d5_1
-  - libgcc-ng=11.2.0=h1234567_1
-  - libgfortran-ng=11.2.0=h00389a5_1
-  - libgfortran5=11.2.0=h1234567_1
-  - libgomp=11.2.0=h1234567_1
-  - libnsl=2.0.0=h5eee18b_0
-  - libopenblas=0.3.30=h46f56fc_0
-  - libstdcxx-ng=11.2.0=h1234567_1
-  - libuuid=1.41.5=h5eee18b_0
-  - libxcb=1.17.0=h9b100fa_0
-  - libzlib=1.3.1=hb25bd0a_0
-  - ncurses=6.5=h7934f7d_0
-  - numpy=2.3.4=py312h816806e_1
-  - openssl=3.0.18=hd6dcaed_0
-  - pip=25.2=pyhc872135_1
-  - pthread-stubs=0.3=h0ce48e5_1
-  - python=3.12.12=hd17a9e1_1
-  - readline=8.3=hc2a1206_0
-  - scipy=1.16.3=py312he2bc341_0
-  - setuptools=80.9.0=py312h06a4308_0
-  - sqlite=3.51.0=h2a70700_0
-  - tk=8.6.15=h54e0aa7_0
-  - tzdata=2025b=h04d1e81_0
-  - wheel=0.45.1=py312h06a4308_0
-  - xorg-libx11=1.8.12=h9b100fa_1
-  - xorg-libxau=1.0.12=h9b100fa_0
-  - xorg-libxdmcp=1.1.5=h9b100fa_0
-  - xorg-xorgproto=2024.1=h5eee18b_1
-  - xz=5.6.4=h5eee18b_1
-  - zlib=1.3.1=hb25bd0a_0
+  - bzip2=1.0.8=hda65f42_8
+  - ca-certificates=2025.11.12=hbd8a1cb_0
+  - cuda-cudart=12.9.79=h5888daf_0
+  - cuda-cudart_linux-64=12.9.79=h3f2d84a_0
+  - cuda-version=12.9=h4f385c5_3
+  - icu=75.1=he02047a_0
+  - ld_impl_linux-64=2.44=h1aa0949_5
+  - libastra=2.4.0=cuda_12.9_0
+  - libblas=3.9.0=38_h4a7cf45_openblas
+  - libcblas=3.9.0=38_h0358290_openblas
+  - libcufft=11.4.1.4=hecca717_1
+  - libexpat=2.7.1=hecca717_0
+  - libffi=3.5.2=h9ec8514_0
+  - libgcc=15.2.0=h767d61c_7
+  - libgcc-ng=15.2.0=h69a702a_7
+  - libgfortran=15.2.0=h69a702a_7
+  - libgfortran5=15.2.0=hcd61629_7
+  - libgomp=15.2.0=h767d61c_7
+  - liblapack=3.9.0=38_h47877c9_openblas
+  - liblzma=5.8.1=hb9d3cd8_2
+  - libnsl=2.0.1=hb9d3cd8_1
+  - libopenblas=0.3.30=pthreads_h94d23a6_3
+  - libsqlite=3.51.0=hee844dc_0
+  - libstdcxx=15.2.0=h8f9b012_7
+  - libstdcxx-ng=15.2.0=h4852527_7
+  - libuuid=2.41.2=he9a06e4_0
+  - libxcrypt=4.4.36=hd590300_1
+  - libzlib=1.3.1=hb9d3cd8_2
+  - ncurses=6.5=h2d0b736_3
+  - numpy=2.3.4=py312h33ff503_0
+  - openssl=3.6.0=h26f9b46_0
+  - pip=25.2=pyh8b19718_0
+  - python=3.12.12=hd63d673_1_cpython
+  - python_abi=3.12=8_cp312
+  - readline=8.2=h8c095d6_2
+  - scipy=1.16.3=py312h7a1785b_0
+  - setuptools=80.9.0=pyhff2d567_0
+  - tk=8.6.13=noxft_hd72426e_102
+  - tzdata=2025b=h78e105d_0
+  - wheel=0.45.1=pyhd8ed1ab_1
+  - zstd=1.5.7=hb8e6e7a_2
   - pip:
     - GitPython==3.1.45
     - ImageIO==2.37.2
@@ -54,22 +55,26 @@ dependencies:
     - MarkupSafe==3.0.3
     - PyWavelets==1.9.0
     - PyYAML==6.0.3
+    - Pygments==2.19.2
     - SQLAlchemy==2.0.44
     - aiohappyeyeballs==2.6.1
     - aiohttp==3.13.2
     - aiosignal==1.4.0
     - annotated-types==0.7.0
+    - appdirs==1.4.4
     - astropy==7.1.1
-    - astropy-iers-data==0.2025.11.3.0.38.37
+    - astropy-iers-data==0.2025.11.10.0.38.31
     - attrs==25.4.0
-    - certifi==2025.10.5
+    - certifi==2025.11.12
     - charset-normalizer==3.4.4
     - click==8.3.0
+    - condax==0.2.4
     - contourpy==1.3.3
     - cycler==0.12.1
     - deepinv==0.3.6
     - diskcache==5.6.3
     - einops==0.8.1
+    - ensureconda==1.6.0
     - filelock==3.20.0
     - fonttools==4.60.1
     - frozenlist==1.8.0
@@ -85,7 +90,9 @@ dependencies:
     - lazy_loader==0.4
     - lightning==2.5.6
     - lightning-utilities==0.15.2
+    - markdown-it-py==4.0.0
     - matplotlib==3.10.7
+    - mdurl==0.1.2
     - mpmath==1.3.0
     - multidict==6.7.0
     - natsort==8.4.0
@@ -113,36 +120,44 @@ dependencies:
     - platformdirs==4.5.0
     - propcache==0.4.1
     - protobuf==6.33.0
-    - pydantic==2.12.4
-    - pydantic_core==2.41.5
+    - pydantic==2.12.3
+    - pydantic-settings==2.11.0
+    - pydantic_core==2.41.4
     - pydicom==3.0.1
     - pyerfa==2.0.1.5
     - pylidc==0.2.3
     - pyparsing==3.2.5
     - python-dateutil==2.9.0.post0
+    - python-dotenv==1.2.1
     - pytorch-lightning==2.5.6
     - pytz==2025.2
     - requests==2.32.5
     - requests-toolbelt==1.0.0
+    - rich==14.2.0
     - scikit-image==0.25.2
-    - sentry-sdk==2.43.0
+    - sentry-sdk==2.44.0
+    - shellingham==1.5.4
     - six==1.17.0
     - smmap==5.0.2
     - spyrit==3.0.2
     - sympy==1.14.0
     - tifffile==2025.10.16
     - tomosipo==0.7.0
-    - torch==2.9.0
+    - torch==2.9.1
     - torchdiffeq==0.2.5
     - torchmetrics==1.8.2
-    - torchvision==0.24.0
+    - torchvision==0.24.1
     - tqdm==4.67.1
-    - triton==3.5.0
+    - triton==3.5.1
     - ts_algorithms==0.1.0
+    - typer==0.20.0
     - typing-inspection==0.4.2
     - typing_extensions==4.15.0
     - tzdata==2025.2
     - urllib3==2.5.0
-    - wandb==0.22.3
+    - userpath==1.9.2
+    - wandb==0.23.0
     - wget==3.2
     - yarl==1.22.0
+
+prefix: "/store/LION/ttv22/anaconda/envs/lion_release"
