@@ -1,0 +1,149 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "AnderBiguri",
+      "name": "Biguri",
+      "avatar_url": "https://avatars.githubusercontent.com/u/11854388?v=4",
+      "profile": "https://github.com/AnderBiguri",
+      "contributions": [
+        "code",
+        "design",
+        "ideas",
+        "tutorial"
+      ]
+    },
+    {
+      "login": "Emvlt",
+      "name": "Emilien Valat",
+      "avatar_url": "https://avatars.githubusercontent.com/u/46785587?v=4",
+      "profile": "https://emilienvalat.net/",
+      "contributions": [
+        "code",
+        "design",
+        "ideas",
+        "data"
+      ]
+    },
+    {
+      "login": "fsherry",
+      "name": "Ferdia",
+      "avatar_url": "https://avatars.githubusercontent.com/u/12610714?v=4",
+      "profile": "https://ferdiasherry.com",
+      "contributions": [
+        "design",
+        "tool",
+        "code"
+      ]
+    },
+    {
+      "login": "michi217",
+      "name": "michi217",
+      "avatar_url": "https://avatars.githubusercontent.com/u/62284237?v=4",
+      "profile": "https://github.com/michi217",
+      "contributions": [
+        "code",
+        "data"
+      ]
+    },
+    {
+      "login": "OliverCoughlan",
+      "name": "Oliver Coughlan",
+      "avatar_url": "https://avatars.githubusercontent.com/u/39098447?v=4",
+      "profile": "https://github.com/OliverCoughlan",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "mbkiss",
+      "name": "mbkiss",
+      "avatar_url": "https://avatars.githubusercontent.com/u/78095730?v=4",
+      "profile": "https://github.com/mbkiss",
+      "contributions": [
+        "design",
+        "code"
+      ]
+    },
+    {
+      "login": "ChristinaRunkel",
+      "name": "ChristinaRunkel",
+      "avatar_url": "https://avatars.githubusercontent.com/u/20678760?v=4",
+      "profile": "https://github.com/ChristinaRunkel",
+      "contributions": [
+        "code",
+        "bug",
+        "design",
+        "example",
+        "ideas",
+        "research",
+        "userTesting"
+      ]
+    },
+    {
+      "login": "Zakobian",
+      "name": "Zak Shumaylov",
+      "avatar_url": "https://avatars.githubusercontent.com/u/46059070?v=4",
+      "profile": "https://github.com/Zakobian",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "hyt35",
+      "name": "Hong Ye Tan",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56555137?v=4",
+      "profile": "http://hyt35.github.io",
+      "contributions": [
+        "code",
+        "design"
+      ]
+    },
+    {
+      "login": "cshoebridge",
+      "name": "Charlie Shoebridge",
+      "avatar_url": "https://avatars.githubusercontent.com/u/74095041?v=4",
+      "profile": "https://github.com/cshoebridge",
+      "contributions": [
+        "code",
+        "design",
+        "ideas"
+      ]
+    },
+    {
+      "login": "AndreaSainz",
+      "name": "Andrea Sainz Bear",
+      "avatar_url": "https://avatars.githubusercontent.com/u/185353475?v=4",
+      "profile": "https://github.com/AndreaSainz",
+      "contributions": [
+        "code",
+        "bug",
+        "research"
+      ]
+    },
+    {
+      "login": "trung-vt",
+      "name": "Thanh Trung Vu",
+      "avatar_url": "https://avatars.githubusercontent.com/u/65380717?v=4",
+      "profile": "https://github.com/trung-vt",
+      "contributions": [
+        "code",
+        "bug",
+        "research",
+        "design"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "skipCi": true,
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "projectName": "LION",
+  "projectOwner": "CambridgeCIA"
+}
