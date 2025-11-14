@@ -5,17 +5,29 @@ from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ct
 import LION.CTtools.ct_utils as ct_utils
 import LION.utils.utils as ai_utils
-#new
+
+# new
 
 import torch
-from torch.nn import Module, ModuleList, Sequential, Conv1d, Conv2d, BatchNorm1d, PReLU, ReLU, Parameter, BatchNorm2d
+from torch.nn import (
+    Module,
+    ModuleList,
+    Sequential,
+    Conv1d,
+    Conv2d,
+    BatchNorm1d,
+    PReLU,
+    ReLU,
+    Parameter,
+    BatchNorm2d,
+)
 from torch.nn.functional import pad
 import matplotlib.pyplot as plt
 import tomosipo as ts
 from tomosipo.torch_support import to_autograd
 import json
-#from .model import ModelBase
 
+# from .model import ModelBase
 
 
 class LearnableFilter(Module):
@@ -26,11 +38,11 @@ class LearnableFilter(Module):
     in the frequency domain, optionally per projection angle.
 
     Args:
-        init_filter (torch.Tensor): 
+        init_filter (torch.Tensor):
             Initial filter in frequency domain.
-        per_angle (bool): 
+        per_angle (bool):
             If True, uses one filter per angle.
-        num_angles (int, optional): 
+        num_angles (int, optional):
             Required when per_angle=True.
     """
 
@@ -39,8 +51,12 @@ class LearnableFilter(Module):
         self.per_angle = per_angle
 
         if per_angle:
-            assert num_angles is not None, "num_angles must be provided when per_angle=True"
-            filters = torch.stack([init_filter.clone().detach() for _ in range(num_angles)])
+            assert (
+                num_angles is not None
+            ), "num_angles must be provided when per_angle=True"
+            filters = torch.stack(
+                [init_filter.clone().detach() for _ in range(num_angles)]
+            )
             self.register_parameter("weights", Parameter(filters))
         else:
             filters = torch.stack([init_filter.clone().detach()])  # shape: (1, D)
@@ -51,11 +67,11 @@ class LearnableFilter(Module):
         Applies learnable frequency-domain filtering to each projection.
 
         Args:
-            x (Tensor): 
+            x (Tensor):
                 Input sinogram of shape [B, A, D].
 
         Returns:
-            Tensor: 
+            Tensor:
                 Filtered sinogram of shape [B, A, D].
         """
 
@@ -66,7 +82,7 @@ class LearnableFilter(Module):
             filter_shared = self.weights.expand(ftt1d.shape[1], -1)
             filtered = ftt1d * filter_shared[None, :, :]
         return torch.fft.ifft(filtered, dim=-1).real
-    
+
 
 class IntermediateResidualBlock(Module):
     """
@@ -76,16 +92,18 @@ class IntermediateResidualBlock(Module):
     followed by BatchNorm1d and PReLU, with a residual connection.
 
     Args:
-        channels (int): 
+        channels (int):
             Number of input/output channels.
     """
 
     def __init__(self, channels):
         super().__init__()
         self.block = Sequential(
-            Conv1d(channels, channels, kernel_size=3, padding=1, groups=channels, bias=True),
+            Conv1d(
+                channels, channels, kernel_size=3, padding=1, groups=channels, bias=True
+            ),
             BatchNorm1d(channels),
-            PReLU()
+            PReLU(),
         )
 
     def forward(self, x):
@@ -100,13 +118,13 @@ class single_back_projections(Module):
     forming a stack of angle-specific reconstructions.
 
     Args:
-        angles_sparse (torch.Tensor):   
+        angles_sparse (torch.Tensor):
             Sparse angles to backproject.
-        src_orig_dist (float):  
+        src_orig_dist (float):
             Source-to-origin distance.
-        num_detectors (int):    
+        num_detectors (int):
             Number of detector bins.
-        vg (ts.VolumeGeometry):     
+        vg (ts.VolumeGeometry):
             Volume geometry for tomosipo operator.
     """
 
@@ -121,7 +139,11 @@ class single_back_projections(Module):
         self.tomosipo_geometries = []
         for angle in self.angles_sparse:
             # Define Fan Beam Geometry for each angle
-            proj_geom_single = ts.cone(angles= angle, src_orig_dist=self.src_orig_dist, shape=(1, self.num_detectors))
+            proj_geom_single = ts.cone(
+                angles=angle,
+                src_orig_dist=self.src_orig_dist,
+                shape=(1, self.num_detectors),
+            )
 
             # Compute Back Projection
             A_single = ts.operator(self.vg, proj_geom_single)
@@ -131,7 +153,6 @@ class single_back_projections(Module):
 
             self.tomosipo_geometries.append(self.AT)
 
-
     def forward(self, sinogram):
         """
         Generates a set of backprojections from  sparse-view sinogram.
@@ -139,20 +160,20 @@ class single_back_projections(Module):
         Each angle is used to generate a single-angle backprojection using tomosipo.
 
         Args:
-            sinogram (torch.Tensor): 
+            sinogram (torch.Tensor):
                 Noisy sinogram of shape (1, num_angles, num_detectors).
 
         Returns:
-            torch.Tensor: 
+            torch.Tensor:
                 Stack of backprojections of shape (n_single_BP, H, W).
         """
 
         projections = []
-        
+
         for i, operator in enumerate(self.tomosipo_geometries):
-            
+
             # Extract only the sinogram at this specific angle
-            sinogram_angle = sinogram[:,:, i:i+1, :]
+            sinogram_angle = sinogram[:, :, i : i + 1, :]
 
             # Back projection at single angle
             projection = operator(sinogram_angle)
@@ -173,7 +194,7 @@ class DBP_block(Module):
     and a final Conv2d output layer. Adapted from the DBP architecture.
 
     Args:
-        channels (int): 
+        channels (int):
             Number of input channels (i.e., number of angles).
     """
 
@@ -181,24 +202,29 @@ class DBP_block(Module):
 
         # Initialize the base training infrastructure
         super().__init__()
-        
+
         # initial layer
-        self.conv1 = self.initial_layer(in_channels=channels, out_channels=64, kernel_size=3, stride=1, padding=1)
+        self.conv1 = self.initial_layer(
+            in_channels=channels, out_channels=64, kernel_size=3, stride=1, padding=1
+        )
 
         # middel layer (15 equal layers)
-        self.middle_blocks = ModuleList([
-            self.conv_block(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1) 
-            for _ in range(15)])
+        self.middle_blocks = ModuleList(
+            [
+                self.conv_block(
+                    in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1
+                )
+                for _ in range(15)
+            ]
+        )
 
         # last layer
-        self.final = self.final_layer(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1)
+        self.final = self.final_layer(
+            in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1
+        )
 
-        #change parameters
-        self.model = Sequential(self.conv1,*self.middle_blocks,self.final)
-
-        
-
-
+        # change parameters
+        self.model = Sequential(self.conv1, *self.middle_blocks, self.final)
 
     def initial_layer(self, in_channels, out_channels, kernel_size, stride, padding):
         """
@@ -209,26 +235,33 @@ class DBP_block(Module):
             - ReLU activation
 
         Args:
-            in_channels (int): 
+            in_channels (int):
                 Number of input channels.
-            out_channels (int): 
+            out_channels (int):
                 Number of output channels.
-            kernel_size (int): 
+            kernel_size (int):
                 Size of the convolutional kernel.
-            stride (int): 
+            stride (int):
                 Convolution stride.
-            padding (int): 
+            padding (int):
                 Zero-padding to add to each side.
 
         Returns:
-            nn.Sequential: 
+            nn.Sequential:
                 A sequential block with Conv2d and ReLU.
         """
 
-        initial = Sequential(Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding), ReLU(inplace=True))
+        initial = Sequential(
+            Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+            ),
+            ReLU(inplace=True),
+        )
         return initial
-
-
 
     def conv_block(self, in_channels, out_channels, kernel_size, stride, padding):
         """
@@ -240,26 +273,34 @@ class DBP_block(Module):
             - ReLU activation
 
         Args:
-            in_channels (int): 
+            in_channels (int):
                 Number of input feature channels.
-            out_channels (int): 
+            out_channels (int):
                 Number of output feature channels.
-            kernel_size (int): 
+            kernel_size (int):
                 Size of the convolutional kernel.
-            stride (int): 
+            stride (int):
                 Convolution stride.
-            padding (int): 
+            padding (int):
                 Zero-padding to apply.
 
         Returns:
-            nn.Sequential: 
+            nn.Sequential:
                 A sequential block with Conv2d, BatchNorm2d, and ReLU.
         """
 
-        convolution = Sequential(Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding), BatchNorm2d(out_channels), ReLU(inplace=True))
+        convolution = Sequential(
+            Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+            ),
+            BatchNorm2d(out_channels),
+            ReLU(inplace=True),
+        )
         return convolution
-
-
 
     def final_layer(self, in_channels, out_channels, kernel_size, stride, padding):
         """
@@ -268,25 +309,29 @@ class DBP_block(Module):
         This layer does not include an activation function.
 
         Args:
-            in_channels (int): 
+            in_channels (int):
                 Number of input channels.
-            out_channels (int): 
+            out_channels (int):
                 Number of output channels (typically 1).
-            kernel_size (int): 
+            kernel_size (int):
                 Size of the convolutional kernel.
-            stride (int): 
+            stride (int):
                 Convolution stride.
-            padding (int): 
+            padding (int):
                 Zero-padding to apply.
 
         Returns:
             nn.Conv2d: Final convolutional layer.
         """
 
-        final = Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
+        final = Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+        )
         return final
-
-
 
     def forward(self, x):
         """
@@ -304,7 +349,7 @@ class DBP_block(Module):
                 H, W = spatial dimensions.
 
         Returns:
-            torch.Tensor: 
+            torch.Tensor:
                 Output tensor of shape (B, 1, H, W), representing the reconstructed image.
         """
 
@@ -316,15 +361,13 @@ class DBP_block(Module):
         for block in self.middle_blocks:
             middle = block(middle)
 
-        #final part
+        # final part
         final_layer = self.final(middle)
 
         return final_layer
-    
 
 
-
-class DeepFusionBPNetwork(LIONmodel):        #(Module) -> (LIONmodel)
+class DeepFusionBPNetwork(LIONmodel):  # (Module) -> (LIONmodel)
     """
     Neural architecture for Deep Fusion Backprojection (DeepFusionBP).
 
@@ -335,21 +378,21 @@ class DeepFusionBPNetwork(LIONmodel):        #(Module) -> (LIONmodel)
         - A deep CNN (based on DBP) to fuse and denoise reconstructed views.
 
     Args:
-        angles_sparse (torch.Tensor): 
+        angles_sparse (torch.Tensor):
             Sparse subset of projection angles.
-        src_orig_dist (float): 
+        src_orig_dist (float):
             Source-to-origin distance used in CT geometry.
-        num_detectors (int): 
+        num_detectors (int):
             Number of detector bins per projection.
-        num_angles (int): 
+        num_angles (int):
             Number of sparse angles used in this configuration.
-        vg (ts.VolumeGeometry): 
+        vg (ts.VolumeGeometry):
             Tomosipo volume geometry for reconstruction.
-        A (ts.Operator): 
+        A (ts.Operator):
             Tomosipo projection operator (unused here but stored).
-        filter_type (str): 
+        filter_type (str):
             Either "Filter I" (shared filter) or "per-angle".
-        device (torch.device): 
+        device (torch.device):
             Device where the model will run (e.g., "cuda").
 
     Forward Input:
@@ -359,20 +402,28 @@ class DeepFusionBPNetwork(LIONmodel):        #(Module) -> (LIONmodel)
             - D: number of detector bins.
 
     Returns:
-        Tensor: 
+        Tensor:
             Reconstructed CT images of shape [B, 1, H, W].
     """
 
-    def __init__(self,geometry:ct.Geometry,model_parameters: LIONParameter = None): #delete angles_sparse,src_orig_dist,vg
+    def __init__(
+        self, geometry: ct.Geometry, model_parameters: LIONParameter = None
+    ):  # delete angles_sparse,src_orig_dist,vg
         super().__init__(model_parameters, geometry)
 
         self._make_operator()
 
         self.num_detectors = geometry.detector_shape[1]
         self.view_angles = len(geometry.angles)
-        self.angles_sparse = geometry.angles   # new, may need to be modify
-        self.src_orig_dist = geometry.dso    # new, may need to be modify 
-        self.vg= ts.volume(shape=(geometry.image_shape[0],geometry.image_shape[1],geometry.image_shape[2])) #new
+        self.angles_sparse = geometry.angles  # new, may need to be modify
+        self.src_orig_dist = geometry.dso  # new, may need to be modify
+        self.vg = ts.volume(
+            shape=(
+                geometry.image_shape[0],
+                geometry.image_shape[1],
+                geometry.image_shape[2],
+            )
+        )  # new
 
         # Padding parameters
         self.projection_size_padded = self.compute_projection_size_padded()
@@ -383,22 +434,23 @@ class DeepFusionBPNetwork(LIONmodel):        #(Module) -> (LIONmodel)
         if self.model_parameters.filter_type == "Filter I":
             self.learnable_filter = LearnableFilter(ram_lak, per_angle=False)
         else:
-            self.learnable_filter = LearnableFilter(ram_lak, per_angle=True, num_angles=self.view_angles)
+            self.learnable_filter = LearnableFilter(
+                ram_lak, per_angle=True, num_angles=self.view_angles
+            )
 
         # Interpolation blocks
         self.interpolator_1 = IntermediateResidualBlock(1)
         self.interpolator_2 = IntermediateResidualBlock(1)
         self.interpolator_3 = IntermediateResidualBlock(1)
-        self.interpolator_conv = Conv1d(1, 1, kernel_size=3, padding=1, bias = False)
+        self.interpolator_conv = Conv1d(1, 1, kernel_size=3, padding=1, bias=False)
 
         # Single views backprojection
-        self.back_projections = single_back_projections(self.angles_sparse, self.src_orig_dist, self.num_detectors, self.vg)
-
+        self.back_projections = single_back_projections(
+            self.angles_sparse, self.src_orig_dist, self.num_detectors, self.vg
+        )
 
         # DBP_model for ct reconstructions
         self.dbp_layer = DBP_block(len(self.angles_sparse))
-
-
 
     def compute_projection_size_padded(self):
         """
@@ -408,12 +460,15 @@ class DeepFusionBPNetwork(LIONmodel):        #(Module) -> (LIONmodel)
         aliasing artifacts when applying FFT-based filters.
 
         Returns:
-            int: 
+            int:
                 Projection size after zero-padding.
         """
-        
-        return 2 ** int(torch.ceil(torch.log2(torch.tensor(self.num_detectors, dtype=torch.float32))).item())
 
+        return 2 ** int(
+            torch.ceil(
+                torch.log2(torch.tensor(self.num_detectors, dtype=torch.float32))
+            ).item()
+        )
 
     def ram_lak_filter(self, size):
         """
@@ -425,8 +480,8 @@ class DeepFusionBPNetwork(LIONmodel):        #(Module) -> (LIONmodel)
         down = torch.linspace(1, 0, steps, dtype=torch.float32)
         f = torch.cat([ramp, down[:-2]])
         return f
-    
-    #New
+
+    # New
     @staticmethod
     def default_parameters():
         DFuBP_params = LIONModelParameter()
@@ -434,9 +489,8 @@ class DeepFusionBPNetwork(LIONmodel):        #(Module) -> (LIONmodel)
         DFuBP_params.mode = "ct"
         DFuBP_params.model_input_type = ModelInputType.SINOGRAM
         return DFuBP_params
-    #new
 
-
+    # new
 
     def forward(self, x):
         """
@@ -462,8 +516,7 @@ class DeepFusionBPNetwork(LIONmodel):        #(Module) -> (LIONmodel)
         x = x.squeeze(1)  # [B, A, D]
         x = pad(x, (0, self.padding), mode="constant", value=0)
         x = self.learnable_filter(x)
-        x = x[..., :self.num_detectors]  # Remove padding
-
+        x = x[..., : self.num_detectors]  # Remove padding
 
         # Interpolation network
         x = x.reshape(-1, 1, self.num_detectors)
@@ -473,11 +526,10 @@ class DeepFusionBPNetwork(LIONmodel):        #(Module) -> (LIONmodel)
         x = self.interpolator_conv(x)
         x = x.view(-1, self.view_angles, self.num_detectors).unsqueeze(1)
 
-
         # Differentiable backprojection
         projections = self.back_projections(x)
 
-        #reconstruction with DBP model
+        # reconstruction with DBP model
         img = self.dbp_layer(projections)
 
         return img

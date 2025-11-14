@@ -11,6 +11,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-python@v3
+      with:
+        python-version: '3.12'  # Avoid "error: cannot format ...: module 'ast' has no attribute 'Str'" due to incompatible Python version (3.14+ not yet supported by black)
     - uses: pre-commit/action@v3.0.0
       with:
         extra_args: black --all-files
