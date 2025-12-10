@@ -1,0 +1,148 @@
+name: Sphinx Docs
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  get_notebooks:
+    name: Get list of notebooks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout LION repo
+        uses: actions/checkout@v6
+
+      - id: set-matrix
+        run: |
+          echo "notebook_paths=$(find examples/notebooks -type f -name '*.ipynb' | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
+
+      - name: Notebook overview
+        run: |
+          echo "jupyter-notebooks: ${{ steps.set-matrix.outputs.notebook_paths }}"
+
+    outputs:
+      notebook_paths: ${{ steps.set-matrix.outputs.notebook_paths }}
+
+  run_notebook:
+    name: Run notebook
+    needs: get_notebooks
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        notebook_path: ${{ fromJson(needs.get_notebooks.outputs.notebook_paths) }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Install LION and dependencies
+        run: pip install -e .[notebooks]
+
+      - name: Notebook name
+        run: |
+          echo "current jupyter-notebook: ${{ matrix.notebook_path }}"
+
+      - name: Add nb-myst download badge
+        run: |
+          notebook=${{ matrix.notebook_path }}
+          notebook_name=$(basename $notebook)
+          download_badge_md="[![Download notebook](https://img.shields.io/badge/Download-notebook-blue?logo=jupyter)](path:$notebook_name)"
+          python_command="import nbformat as nbf\n\
+          nb = nbf.read(open('$notebook'), as_version=4)\n\
+          # if the 1st cell is md and has colab text => add space after\n\
+          if nb['cells'][0]['cell_type'] == 'markdown' and 'colab' in nb['cells'][0]['source'].lower():\n\
+              nb['cells'][0]['source'] += ' '\n\
+          # if there is no md cell with colab => create empty md cell on top\n\
+          else:\n\
+              nb['cells'].insert(0, nbf.v4.new_markdown_cell())\n\
+          nb['cells'][0]['source'] += '$download_badge_md'\n\
+          nbf.write(nb, open('$notebook', 'w'))"
+
+          python -c "exec (\"$python_command\")"
+
+      - name: Run notebook
+        uses: fzimmermann89/run-notebook@v3
+        env:
+          RUNNER: ${{ toJson(runner) }}
+        with:
+          notebook: ${{ matrix.notebook_path }}
+
+      - name: Get artifact names
+        id: artifact_names
+        run: |
+          notebook=${{ matrix.notebook_path }}
+          echo "ARTIFACT_NAME=$(basename ${notebook/.ipynb})" >> $GITHUB_OUTPUT
+          echo "IPYNB_EXECUTED=$(basename $notebook)" >> $GITHUB_OUTPUT
+
+      - name: Upload notebook
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: ${{ steps.artifact_names.outputs.ARTIFACT_NAME }}
+          path: ${{ github.workspace }}/nb-runner.out/${{ steps.artifact_names.outputs.IPYNB_EXECUTED }}
+        env:
+          RUNNER: ${{ toJson(runner) }}
+
+  create_documentation:
+    name: Build and deploy documentation
+    needs: run_notebook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # fetch history for github links
+          fetch-tags: true
+
+      - name: Install LION and dependencies
+        run: pip install -e .[docs]
+
+      - name: Download executed notebook ipynb files
+        id: download
+        uses: actions/download-artifact@v6
+        with:
+          path: ./docs/source/_notebooks/
+          merge-multiple: true
+
+      - name: Build docs
+        run: |
+          sphinx-build -b html ./docs/source ./docs/build/html
+          rm -rf ./docs/build/html/.doctrees
+
+      - name: Upload documentation artifact
+        id: upload_docs
+        uses: actions/upload-artifact@v5
+        with:
+          name: Documentation
+          path: docs/build/html/
+
+      # if the one of above steps fails the "artifact-url" will be an empty string
+      - name: Dump documentation info
+        if: always()
+        run: |
+          echo "${{ steps.upload_docs.outputs.artifact-url }}" > artifact_url
+
+      - name: Upload docs-metadata artifact
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: artifact_url
+          path: artifact_url
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+  # Cancel in-progress runs when a new workflow with the same group name is triggered
+  cancel-in-progress: true
