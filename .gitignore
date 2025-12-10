@@ -16,3 +16,7 @@ example.py
 /slurm
 
 wandb
+
+# Sphinx documentation
+docs/build/
+docs/source/_notebooks/
