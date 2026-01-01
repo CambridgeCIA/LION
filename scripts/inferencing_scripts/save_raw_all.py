@@ -211,7 +211,10 @@ for list in model_paths:
 for iiii, model in enumerate(models):
     NN_model, dataloader, op, name, exp_name = model
 
-    pathname = f"./../Images/raw/"
+    pathname = "notset"
+    if pathname == "notset":
+        print("Path for save folder not set!")
+	quit()
     # output_path = savefolder / pathname
     # output_path.mkdir(parents = True, exist_ok = True)
 
