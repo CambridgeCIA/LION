@@ -33,7 +33,7 @@ from skimage.transform import iradon
 
 import pandas as pd
 
-
+#import neural network models
 from LION.models.iterative_unrolled.LPD import LPD
 print("LPD imported")
 from LION.models.iterative_unrolled.LPD_SIRT import LPD_SIRT
@@ -55,6 +55,9 @@ print("ItNet LBFGSTV imported")
 from LION.models.iterative_unrolled.ScharrNet import ItNetScharr
 print("ItNetScharr imported")
 from LION.models.iterative_unrolled.SobelNet import ItNetSobel
+
+
+#link imported class to string identifier based on naming convention in ALL_MODELS folder. Part before first under score.
 
 string_to_class = {}
 string_to_class['LPD_FBP'] = LPD
@@ -261,3 +264,4 @@ for iiii, model in enumerate(models):
 #         f.write(str(vers))
 # mylock.release()
 # print(f'\nYour result is the {vers-1}th version')
+
