@@ -31,19 +31,16 @@ def normal_to_dyadic_permutation(J: int) -> np.ndarray:
 class Subsampler:
     def __init__(
         self, n: int,
-        delta: float,
+        sampling_ratio: float,
         in_order_ratio: float,
-        # coarseJ: int,
         rng: np.random.Generator | None = None
     ) -> None:
-        if rng is None:
-            rng = np.random.default_rng()
-        # ---- random undersampling with coarseJ fully kept ----
-        num_samples = int(delta * n)
-        # m1 = min(1 << (2 * coarseJ), num_samples)
-        m1 = min(int(in_order_ratio * num_samples), num_samples)
+        num_samples = int(sampling_ratio * n)
+        m1 = int(in_order_ratio * num_samples)
         m2 = num_samples - m1
         if m2 > 0:
+            if rng is None:
+                rng = np.random.default_rng()
             idx_tail = rng.choice(n - m1, size=m2, replace=False) + m1
             self._subsampled_indices = np.concatenate(
                 [np.arange(m1, dtype=np.int64), idx_tail.astype(np.int64)]
