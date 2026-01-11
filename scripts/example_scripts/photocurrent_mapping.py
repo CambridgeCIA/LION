@@ -198,7 +198,7 @@ def run_pcm_demo(
     csv_path = Path(log_dir) / f"{csv_name}.csv"
     with csv_path.open("a") as f:
         f.write(
-            f"{sampling_percentage:.4f},  {in_order_measurements_percentage:.4f},  {psnr_zero_filled:.4f},  {ssim_zero_filled:.4f},  {psnr_recon:.4f},  {ssim_recon:.4f}\n"
+            f"{sampling_percentage},  {in_order_measurements_percentage},  {psnr_zero_filled},  {ssim_zero_filled},  {psnr_recon},  {ssim_recon}\n"
         )
 
     filename = f"{image_name}_{recon_method_name}_sampling_percentage={sampling_percentage:.2f}_in_order_measurements={in_order_measurements_percentage:.2f}"
