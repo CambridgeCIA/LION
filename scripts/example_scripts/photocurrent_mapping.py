@@ -84,11 +84,18 @@ data_dir = Path("data/photocurrent_data")
 
 assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 
-cigs_filename = "example_CIGS_256x256.npy"
+data_name = "CIGS"
+# data_name = "silion"
+# data_name = "organic"
+# data_name = "perovskite"
+data_filename = f"example_{data_name}_256x256.npy"
 
-assert (data_dir / cigs_filename).exists(), f"Data file not found in {data_dir}."
+assert (data_dir / data_filename).exists(), f"Data file not found in {data_dir}."
 
 
+runs_pnp_admm = False
+runs_fista_l1 = False
+runs_spgl1 = True
 
 
 # %% [markdown]
@@ -431,8 +438,8 @@ def run_experiments():
     # reconstruction methods.
 
     # %%
-    cigs_raw_data: GrayscaleImage2D = np.load(data_dir / cigs_filename)
-    print(f"CIGS data shape: {cigs_raw_data.shape}")
+    raw_data: GrayscaleImage2D = np.load(data_dir / data_filename)
+    print(f"Raw data shape: {raw_data.shape}")
 
     # %% [markdown]
     # In the examples below:
@@ -451,9 +458,6 @@ def run_experiments():
     #     2  # keep 2^{J-2} x 2^{J-2} = 64x64 in-order measurements, or 6.25% of the total
     # )
 
-    runs_pnp_admm = True
-    runs_fista_l1 = True
-    runs_spgl1 = True
     test_cases = make_test_cases()
     # pprint(test_cases)
     # return
@@ -464,7 +468,7 @@ def run_experiments():
     # time, which makes it easier to keep track of different experiments.
 
     current_datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_dir = Path("pcm_demo_output") / current_datetime_str
+    log_dir = Path("pcm_demo_output") / f"{current_datetime_str}_{data_name}"
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # %% [markdown]
@@ -495,7 +499,7 @@ def run_experiments():
             run_pcm_demo(
                 recon_method_name="PnP-ADMM",
                 recon_fn=run_pnp_admm,
-                ground_truth_image=cigs_raw_data,
+                ground_truth_image=raw_data,
                 method_name="pnp_admm",
                 image_name="cigs",
                 J=8,  # image size is 2^J x 2^J = 256x256
@@ -547,7 +551,7 @@ def run_experiments():
             run_pcm_demo(
                 recon_method_name="FISTA-L1",
                 recon_fn=run_fista_l1,
-                ground_truth_image=cigs_raw_data,
+                ground_truth_image=raw_data,
                 method_name="fista_l1",
                 image_name="cigs",
                 J=8,  # image size is 2^J x 2^J = 256x256
@@ -577,7 +581,7 @@ def run_experiments():
             run_pcm_demo(
                 recon_method_name="SPGL1",
                 recon_fn=run_spgl1,
-                ground_truth_image=cigs_raw_data,
+                ground_truth_image=raw_data,
                 method_name="spgl1",
                 image_name="cigs",
                 J=8,  # image size is 2^J x 2^J = 256x256
