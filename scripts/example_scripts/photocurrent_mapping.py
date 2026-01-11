@@ -48,6 +48,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from jaxtyping import Float
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
+from functools import partial
+from tqdm import tqdm as std_tqdm
 
 from LION.classical_algorithms.fista import fista_l1
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
@@ -58,6 +60,10 @@ from LION.operators.DebiasOp import debias_ls
 # LION imports
 from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
 from LION.reconstructors.PnP import PnP
+
+
+# Use tqdm with dynamic column width that adapts to the terminal width
+tqdm = partial(std_tqdm, dynamic_ncols=True)
 
 GrayscaleImage2D = Float[torch.Tensor, "height width"]
 Measurement1D = Float[torch.Tensor, "num_measurements"]
@@ -105,7 +111,7 @@ log_dir.mkdir(parents=True, exist_ok=True)
 # - Reports PSNR and SSIM for both reconstructions, displays and saves the images.
 
 
-# %% mystnb={"code_prompt_show": "Show plotting details"} tags=["hide-cell"]
+# %% mystnb={"code_prompt_show": "Show utility details"} tags=["hide-cell"]
 def show_images(
     images: list[torch.Tensor],
     fig_filepath: Path,
@@ -116,7 +122,7 @@ def show_images(
     n_images = len(images)
     _, axes = plt.subplots(1, n_images, squeeze=False, figsize=(n_images * 4, 4))
     for i in range(n_images):
-        axes[0][i].imshow(images[i].detach().cpu().squeeze(), cmap="gray")
+        axes[0][i].imshow(images[i].detach().cpu().squeeze(), cmap="gray", vmin=0, vmax=1)
         axes[0][i].axis("off")
         if titles:
             axes[0][i].set_title(titles[i])
@@ -125,11 +131,21 @@ def show_images(
     plt.savefig(fig_filepath, dpi=150)
 
 
+
+def make_csv(csv_name: str, log_dir: Path | str) -> None:
+    csv_path = Path(log_dir) / f"{csv_name}.csv"
+    with csv_path.open("w") as f:
+        f.write(
+            "sampling_percentage,  in_order_measurements_percentage,  psnr_zero_filled,  ssim_zero_filled,  psnr_recon,  ssim_recon\n"
+        )
+
+
 # %%
 def run_pcm_demo(
     recon_method_name: str,
     recon_fn: Callable[[PhotocurrentMapOp, Measurement1D], GrayscaleImage2D],
     ground_truth_image: GrayscaleImage2D,
+    csv_name: str,
     image_name: str,
     J: int,  # image size will be 2^J x 2^J
     subtract_from_J: int = 1,
@@ -175,10 +191,16 @@ def run_pcm_demo(
     ssim_zero_filled = ssim(zero_filled_recon_tensor, im_tensor)
     ssim_recon = ssim(recon_tensor, im_tensor)
 
+    csv_path = Path(log_dir) / f"{csv_name}.csv"
+    with csv_path.open("a") as f:
+        f.write(
+            f"{sampling_percentage:.4f},  {in_order_measurements_percentage:.4f},  {psnr_zero_filled:.4f},  {ssim_zero_filled:.4f},  {psnr_recon:.4f},  {ssim_recon:.4f}\n"
+        )
+
+    filename = f"{image_name}_{recon_method_name}_sampling_percentage={sampling_percentage:.2f}_in_order_measurements={in_order_measurements_percentage:.2f}"
     show_images(
         [im_tensor, zero_filled_recon_tensor, recon_tensor],
-        fig_filepath=Path(log_dir)
-        / f"{image_name}_{recon_method_name}_sampling_percentage={sampling_percentage:.2f}_in_order_measurements={in_order_measurements_percentage:.2f}.png",
+        fig_filepath=Path(log_dir) / f"{filename}.png",
         titles=[
             "Original Image",
             f"Zero-filled Reconstruction\nPSNR: {psnr_zero_filled:.2f} dB, SSIM: {ssim_zero_filled:.4f}",
@@ -213,11 +235,28 @@ print(f"CIGS data shape: {cigs_raw_data.shape}")
 #   the remaining samples are taken in a compressed sensing fashion.
 
 # %%
-J = 8  # image size is 2^J x 2^J = 256x256
-delta_divided_by = 4  # 25% sampling
-subtract_from_J = (
-    2  # keep 2^{J-2} x 2^{J-2} = 64x64 in-order measurements, or 6.25% of the total
-)
+# J = 8  # image size is 2^J x 2^J = 256x256
+# delta_divided_by = 4  # 25% sampling
+# subtract_from_J = (
+#     2  # keep 2^{J-2} x 2^{J-2} = 64x64 in-order measurements, or 6.25% of the total
+# )
+
+test_cases = [
+    (32, 3),  # 3.125% sampling, 1.5625% in-order (half in-order)
+    (32, 2),  # 3.125% sampling, 6.25% in-order (all in-order)
+    (16, 3),  # 6.25% sampling, 1.5625% in-order (1/4 of in-order)
+    (16, 2),  # 6.25% sampling, 6.25% in-order (all in-order)
+    (8, 3),  # 12.5% sampling, 1.5625% in-order (1/8 in-order)
+    (8, 2),  # 12.5% sampling, 6.25% in-order (half in-order)
+    (8, 1),  # 12.5% sampling, 25% in-order (all in-order)
+    (4, 3),  # 25% sampling, 1.5625% in-order (1/16 in-order)
+    (4, 2),  # 25% sampling, 6.25% in-order (1/4 in-order)
+    (4, 1),  # 25% sampling, 25% in-order (all in-order)
+    (2, 2),  # 50% sampling, 6.25% in-order (1/8 in-order)
+    (2, 1),  # 50% sampling, 25% in-order (half in-order)
+    (2, 0),  # 50% sampling, 100% in-order (all in-order)
+    (1, 0),  # 100% sampling, 100% in-order (all in-order)
+]
 
 # %% [markdown]
 # ## First experiment: PnP-ADMM on CIGS data
@@ -280,17 +319,20 @@ def run_pnp_admm(
 
 
 # %%
-run_pcm_demo(
-    recon_method_name="PnP-ADMM",
-    recon_fn=run_pnp_admm,
-    ground_truth_image=cigs_raw_data,
-    image_name="cigs",
-    J=8,  # image size is 2^J x 2^J = 256x256
-    delta_divided_by=4,  # 25% sampling
-    subtract_from_J=2,  # keep 2^{J-2} x 2^{J-2} = 64x64 in-order measurements, or 6.25% of the total
-    log_dir=log_dir,
-    device=device,
-)
+make_csv(csv_name="pnp_admm", log_dir=log_dir)
+for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
+    run_pcm_demo(
+        recon_method_name="PnP-ADMM",
+        recon_fn=run_pnp_admm,
+        ground_truth_image=cigs_raw_data,
+        csv_name="pnp_admm",
+        image_name="cigs",
+        J=8,  # image size is 2^J x 2^J = 256x256
+        delta_divided_by=delta_divided_by,
+        subtract_from_J=subtract_from_J,
+        log_dir=log_dir,
+        device=device,
+    )
 
 
 # %% [markdown]
@@ -378,17 +420,20 @@ def run_fista_l1(
 
 
 # %%
-run_pcm_demo(
-    recon_method_name="FISTA-L1",
-    recon_fn=run_fista_l1,
-    ground_truth_image=cigs_raw_data,
-    image_name="cigs",
-    J=8,  # image size is 2^J x 2^J = 256x256
-    delta_divided_by=4,  # 25% sampling
-    subtract_from_J=2,  # keep 2^{J-2} x 2^{J-2} = 64x64 in-order measurements, or 6.25% of the total
-    log_dir=log_dir,
-    device=device,
-)
+make_csv(csv_name="fista_l1", log_dir=log_dir)
+for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running FISTA-L1 experiments"):
+    run_pcm_demo(
+        recon_method_name="FISTA-L1",
+        recon_fn=run_fista_l1,
+        ground_truth_image=cigs_raw_data,
+        csv_name="fista_l1",
+        image_name="cigs",
+        J=8,  # image size is 2^J x 2^J = 256x256
+        delta_divided_by=delta_divided_by,
+        subtract_from_J=subtract_from_J,  # keep 2^{J-2} x 2^{J-2} in-order measurements
+        log_dir=log_dir,
+        device=device,
+    )
 
 # %% [markdown]
 # ## Compressed sensing baseline: SPGL1 with wavelet sparsity
@@ -449,14 +494,17 @@ def run_spgl1(
 
 
 # %%
-run_pcm_demo(
-    recon_method_name="SPGL1",
-    recon_fn=run_spgl1,
-    ground_truth_image=cigs_raw_data,
-    image_name="cigs",
-    J=8,  # image size is 2^J x 2^J = 256x256
-    delta_divided_by=4,  # 25% sampling
-    subtract_from_J=2,  # keep 2^{J-2} x 2^{J-2} = 64x64 in-order measurements, or 6.25% of the total
-    log_dir=log_dir,
-    device=device,
-)
+make_csv(csv_name="spgl1", log_dir=log_dir)
+for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running SPGL1 experiments"):
+    run_pcm_demo(
+        recon_method_name="SPGL1",
+        recon_fn=run_spgl1,
+        ground_truth_image=cigs_raw_data,
+        csv_name="spgl1",
+        image_name="cigs",
+        J=8,  # image size is 2^J x 2^J = 256x256
+        delta_divided_by=delta_divided_by,  # 1/delta_divided_by sampling
+        subtract_from_J=subtract_from_J,  # keep 2^{J-2} x 2^{J-2} in-order measurements
+        log_dir=log_dir,
+        device=device,
+    )
