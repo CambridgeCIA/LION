@@ -138,7 +138,7 @@ def run_pcm_demo(
     device: torch.device | str = "cuda:0",
 ):
     N = 1 << J
-    im_tensor = torch.tensor(ground_truth_image, dtype=torch.float32).unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
+    im_tensor = torch.tensor(ground_truth_image, dtype=torch.float32, device=device).unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
 
     coarseJ = J - subtract_from_J
     delta = 1.0 / delta_divided_by
