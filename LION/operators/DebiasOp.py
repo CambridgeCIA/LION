@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from tabnanny import verbose
+from typing import Callable
 
 import torch
 from tqdm import tqdm
@@ -112,7 +113,7 @@ def debias_ls(
     support_tol: float = 1e-3,
     max_iter: int = 200,
     tol: float = 1e-5,
-    progress_bar: bool = False,
+    prog_bar: Callable | None = None,
 ) -> torch.Tensor:
     """Debiasing least squares on the support of w.
 
@@ -152,9 +153,7 @@ def debias_ls(
 
     v = w[support].clone()
 
-    iterator = range(max_iter)
-    if progress_bar:
-        iterator = tqdm(iterator, desc="Debiasing LS")
+    iterator = prog_bar(range(max_iter), desc="Debiasing LS") if prog_bar else range(max_iter)
     for _ in iterator:
         r = op_s(v) - y
         grad = op_s.adjoint(r)

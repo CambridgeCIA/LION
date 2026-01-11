@@ -186,7 +186,7 @@ class PnP(LIONReconstructor):
         max_iter: int = 10,
         cg_max_iter: int = 100,
         cg_tol: float = 1e-7,
-        prog_bar: bool = False,
+        prog_bar: Callable | None = None,
     ) -> torch.Tensor:
         x = torch.zeros(self.op.domain_shape, device=measurement.device)
         v = torch.zeros(self.op.domain_shape, device=measurement.device)
@@ -196,9 +196,7 @@ class PnP(LIONReconstructor):
             return self.op.adjoint(self.op(x)) + eta * x
 
         AT_y = self.op.adjoint(measurement)
-        iterator = range(max_iter)
-        if prog_bar:
-            iterator = tqdm(iterator, desc="ADMM iterations")
+        iterator = prog_bar(range(max_iter), desc="ADMM iterations") if prog_bar else range(max_iter)
         for _ in iterator:
             d = AT_y + eta * (v - u)
             x = conjugate_gradient(

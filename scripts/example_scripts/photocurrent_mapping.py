@@ -250,24 +250,32 @@ runs_fista_l1 = True
 runs_spgl1 = True
 
 # (sampling_ratio, in_order_ratio)
-test_cases = [
-    # (32, 3),  # 3.125% sampling, 1.5625% in-order (half in-order)
-    # (32, 2),  # 3.125% sampling, 6.25% in-order (all in-order)
-    # (16, 3),  # 6.25% sampling, 1.5625% in-order (1/4 of in-order)
-    # (16, 2),  # 6.25% sampling, 6.25% in-order (all in-order)
-    # (8, 3),  # 12.5% sampling, 1.5625% in-order (1/8 in-order)
-    # (8, 2),  # 12.5% sampling, 6.25% in-order (half in-order)
-    # (8, 1),  # 12.5% sampling, 25% in-order (all in-order)
-    # (4, 3),  # 25% sampling, 1.5625% in-order (1/16 in-order)
-    # (4, 2),  # 25% sampling, 6.25% in-order (1/4 in-order)
-    # (4, 1),  # 25% sampling, 25% in-order (all in-order)
-    # (2, 2),  # 50% sampling, 6.25% in-order (1/8 in-order)
-    # (2, 1),  # 50% sampling, 25% in-order (half in-order)
-    # (2, 0.5),  # 50% sampling, half of which are in-order
-    (0.5, 0.5),  # 50% sampling, half of which are in-order
-    # (2, 0),  # 50% sampling, 100% in-order (all in-order)
-    # (1, 0),  # 100% sampling, 100% in-order (all in-order)
-]
+test_cases = []
+for sampling_ratio in np.arange(0.1, 1.1, 0.1):
+    for in_order_ratio_abs in np.arange(0.1, sampling_ratio + 0.1, 0.1):
+        in_order_ratio_rel = in_order_ratio_abs / sampling_ratio  # relative to sampling ratio
+        test_cases.append((sampling_ratio, in_order_ratio_rel))
+
+test_cases = [(0.5, 0.5)]  # 50% sampling, half of which are in-order
+
+# test_cases = [
+#     # (32, 3),  # 3.125% sampling, 1.5625% in-order (half in-order)
+#     # (32, 2),  # 3.125% sampling, 6.25% in-order (all in-order)
+#     # (16, 3),  # 6.25% sampling, 1.5625% in-order (1/4 of in-order)
+#     # (16, 2),  # 6.25% sampling, 6.25% in-order (all in-order)
+#     # (8, 3),  # 12.5% sampling, 1.5625% in-order (1/8 in-order)
+#     # (8, 2),  # 12.5% sampling, 6.25% in-order (half in-order)
+#     # (8, 1),  # 12.5% sampling, 25% in-order (all in-order)
+#     # (4, 3),  # 25% sampling, 1.5625% in-order (1/16 in-order)
+#     # (4, 2),  # 25% sampling, 6.25% in-order (1/4 in-order)
+#     # (4, 1),  # 25% sampling, 25% in-order (all in-order)
+#     # (2, 2),  # 50% sampling, 6.25% in-order (1/8 in-order)
+#     # (2, 1),  # 50% sampling, 25% in-order (half in-order)
+#     # (2, 0.5),  # 50% sampling, half of which are in-order
+#     (0.5, 0.5),  # 50% sampling, half of which are in-order
+#     # (2, 0),  # 50% sampling, 100% in-order (all in-order)
+#     # (1, 0),  # 100% sampling, 100% in-order (all in-order)
+# ]
 
 # %% [markdown]
 # ## First experiment: PnP-ADMM on CIGS data
@@ -325,7 +333,7 @@ def run_pnp_admm(
         max_iter=admm_iterations,
         cg_max_iter=cg_max_iter,
         cg_tol=cg_tol,
-        prog_bar=True,
+        prog_bar=tqdm,
     )
 
 
@@ -412,7 +420,7 @@ def run_fista_l1(
         tol=tol,
         L=None,
         verbose=False,
-        progress_bar=True,
+        prog_bar=tqdm,
     )
 
     # Optional debiasing
@@ -424,7 +432,7 @@ def run_fista_l1(
         support_tol=debias_support_tol,
         max_iter=debias_max_iter,
         tol=debias_tol,
-        progress_bar=True,
+        prog_bar=tqdm,
     )
 
     # Current map reconstruction
@@ -500,7 +508,7 @@ def run_spgl1(
         support_tol=debias_support_tol,
         max_iter=debias_max_iter,
         tol=debias_tol,
-        progress_bar=True,
+        prog_bar=tqdm,
     )
 
     # Current map reconstruction

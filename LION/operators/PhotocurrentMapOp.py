@@ -35,6 +35,8 @@ class Subsampler:
         in_order_ratio: float,
         rng: np.random.Generator | None = None
     ) -> None:
+        assert 0 < sampling_ratio <= 1.0, f"sampling_ratio must be in (0, 1], got {sampling_ratio}"
+        assert 0 <= in_order_ratio <= 1.0, f"in_order_ratio must be in [0, 1], got {in_order_ratio}"
         num_samples = int(sampling_ratio * n)
         m1 = int(in_order_ratio * num_samples)
         m2 = num_samples - m1
