@@ -30,7 +30,7 @@
 # %%
 import torch
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("mps" if torch.backends.mps.is_available() else "cuda:0" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
 
 # %% [markdown]
@@ -47,11 +47,12 @@ import deepinv
 import matplotlib.pyplot as plt
 import numpy as np
 from jaxtyping import Float
-from torchmetrics import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
+from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
-from LION.classical_algorithms import fista_l1
+from LION.classical_algorithms.fista import fista_l1
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
-from LION.operators import CompositeOp, Wavelet2D
+from LION.operators.Wavelet2D import Wavelet2D
+from LION.operators.CompositeOp import CompositeOp
 from LION.operators.DebiasOp import debias_ls
 
 # LION imports
@@ -69,7 +70,7 @@ Measurement1D = Float[torch.Tensor, "num_measurements"]
 # experiments.
 
 # %%
-data_dir = Path("/home/t/Documents/GIT/LION/data/photocurrent_data")
+data_dir = Path("data/photocurrent_data")
 # data_dir = Path("your/path/to/photocurrent_data")
 
 assert data_dir.exists(), f"Data directory {data_dir} does not exist."
@@ -137,7 +138,7 @@ def run_pcm_demo(
     device: torch.device | str = "cuda:0",
 ):
     N = 1 << J
-    im_tensor = torch.tensor(ground_truth_image).unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
+    im_tensor = torch.tensor(ground_truth_image, dtype=torch.float32).unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
 
     coarseJ = J - subtract_from_J
     delta = 1.0 / delta_divided_by
@@ -147,7 +148,7 @@ def run_pcm_demo(
     print(f"Sampling rate:         {sampling_percentage:.2f}%")
     print(f"In-order measurements: {in_order_measurements_percentage:.2f}%")
 
-    subsampler = Subsampler(n=N * N, coarseJ=coarseJ, delta=delta)
+    subsampler = Subsampler(n=N * N, coarseJ=coarseJ, delta=delta, rng=np.random.default_rng(0))
     pcm_op = PhotocurrentMapOp(J=J, subsampler=subsampler, device=device)
 
     y_subsampled_tensor = pcm_op(im_tensor)
@@ -256,9 +257,11 @@ def denoiser_fn(x: GrayscaleImage2D) -> GrayscaleImage2D:
 def run_pnp_admm(
     pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D
 ) -> GrayscaleImage2D:
-    admm_iterations = 100
+    # admm_iterations = 100
+    admm_iterations = 20
     admm_step_size = 1e5
-    cg_max_iter = 100
+    # cg_max_iter = 100
+    cg_max_iter = 20
     cg_tol = 1e-7
 
     print(
@@ -272,6 +275,7 @@ def run_pnp_admm(
         max_iter=admm_iterations,
         cg_max_iter=cg_max_iter,
         cg_tol=cg_tol,
+        prog_bar=True,
     )
 
 
@@ -330,7 +334,7 @@ def run_fista_l1(
 ) -> GrayscaleImage2D:
 
     lam = 10  # Good for Daubechies 4 wavelet transform
-    max_iter = 1000
+    max_iter = 300
     tol = 1e-5
 
     debias_max_iter = 10  # TODO: Debiasing seems to not make much difference here

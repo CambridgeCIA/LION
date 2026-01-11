@@ -9,7 +9,7 @@ import torch
 from tqdm import tqdm
 
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
-from LION.classical_algorithms.fdk import fdk
+# from LION.classical_algorithms.fdk import fdk
 from LION.CTtools.ct_geometry import Geometry
 from LION.operators import Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
