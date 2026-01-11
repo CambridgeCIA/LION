@@ -84,10 +84,10 @@ data_dir = Path("data/photocurrent_data")
 
 assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 
-data_name = "CIGS"
-# data_name = "silion"
+# data_name = "CIGS"
+# data_name = "silicon"
 # data_name = "organic"
-# data_name = "perovskite"
+data_name = "perovskite"
 data_filename = f"example_{data_name}_256x256.npy"
 
 assert (data_dir / data_filename).exists(), f"Data file not found in {data_dir}."
