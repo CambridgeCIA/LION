@@ -241,21 +241,25 @@ print(f"CIGS data shape: {cigs_raw_data.shape}")
 #     2  # keep 2^{J-2} x 2^{J-2} = 64x64 in-order measurements, or 6.25% of the total
 # )
 
+runs_pnp_admm = False
+runs_fista_l1 = True
+runs_spgl1 = True
+
 test_cases = [
-    (32, 3),  # 3.125% sampling, 1.5625% in-order (half in-order)
-    (32, 2),  # 3.125% sampling, 6.25% in-order (all in-order)
-    (16, 3),  # 6.25% sampling, 1.5625% in-order (1/4 of in-order)
-    (16, 2),  # 6.25% sampling, 6.25% in-order (all in-order)
-    (8, 3),  # 12.5% sampling, 1.5625% in-order (1/8 in-order)
-    (8, 2),  # 12.5% sampling, 6.25% in-order (half in-order)
-    (8, 1),  # 12.5% sampling, 25% in-order (all in-order)
-    (4, 3),  # 25% sampling, 1.5625% in-order (1/16 in-order)
-    (4, 2),  # 25% sampling, 6.25% in-order (1/4 in-order)
-    (4, 1),  # 25% sampling, 25% in-order (all in-order)
-    (2, 2),  # 50% sampling, 6.25% in-order (1/8 in-order)
+    # (32, 3),  # 3.125% sampling, 1.5625% in-order (half in-order)
+    # (32, 2),  # 3.125% sampling, 6.25% in-order (all in-order)
+    # (16, 3),  # 6.25% sampling, 1.5625% in-order (1/4 of in-order)
+    # (16, 2),  # 6.25% sampling, 6.25% in-order (all in-order)
+    # (8, 3),  # 12.5% sampling, 1.5625% in-order (1/8 in-order)
+    # (8, 2),  # 12.5% sampling, 6.25% in-order (half in-order)
+    # (8, 1),  # 12.5% sampling, 25% in-order (all in-order)
+    # (4, 3),  # 25% sampling, 1.5625% in-order (1/16 in-order)
+    # (4, 2),  # 25% sampling, 6.25% in-order (1/4 in-order)
+    # (4, 1),  # 25% sampling, 25% in-order (all in-order)
+    # (2, 2),  # 50% sampling, 6.25% in-order (1/8 in-order)
     (2, 1),  # 50% sampling, 25% in-order (half in-order)
-    (2, 0),  # 50% sampling, 100% in-order (all in-order)
-    (1, 0),  # 100% sampling, 100% in-order (all in-order)
+    # (2, 0),  # 50% sampling, 100% in-order (all in-order)
+    # (1, 0),  # 100% sampling, 100% in-order (all in-order)
 ]
 
 # %% [markdown]
@@ -319,20 +323,21 @@ def run_pnp_admm(
 
 
 # %%
-make_csv(csv_name="pnp_admm", log_dir=log_dir)
-for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
-    run_pcm_demo(
-        recon_method_name="PnP-ADMM",
-        recon_fn=run_pnp_admm,
-        ground_truth_image=cigs_raw_data,
-        csv_name="pnp_admm",
-        image_name="cigs",
-        J=8,  # image size is 2^J x 2^J = 256x256
-        delta_divided_by=delta_divided_by,
-        subtract_from_J=subtract_from_J,
-        log_dir=log_dir,
-        device=device,
-    )
+if runs_pnp_admm:
+    make_csv(csv_name="pnp_admm", log_dir=log_dir)
+    for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
+        run_pcm_demo(
+            recon_method_name="PnP-ADMM",
+            recon_fn=run_pnp_admm,
+            ground_truth_image=cigs_raw_data,
+            csv_name="pnp_admm",
+            image_name="cigs",
+            J=8,  # image size is 2^J x 2^J = 256x256
+            delta_divided_by=delta_divided_by,
+            subtract_from_J=subtract_from_J,
+            log_dir=log_dir,
+            device=device,
+        )
 
 
 # %% [markdown]
@@ -376,7 +381,8 @@ def run_fista_l1(
 ) -> GrayscaleImage2D:
 
     lam = 10  # Good for Daubechies 4 wavelet transform
-    max_iter = 300
+    # max_iter = 300
+    max_iter = 100
     tol = 1e-5
 
     debias_max_iter = 10  # TODO: Debiasing seems to not make much difference here
@@ -420,20 +426,21 @@ def run_fista_l1(
 
 
 # %%
-make_csv(csv_name="fista_l1", log_dir=log_dir)
-for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running FISTA-L1 experiments"):
-    run_pcm_demo(
-        recon_method_name="FISTA-L1",
-        recon_fn=run_fista_l1,
-        ground_truth_image=cigs_raw_data,
-        csv_name="fista_l1",
-        image_name="cigs",
-        J=8,  # image size is 2^J x 2^J = 256x256
-        delta_divided_by=delta_divided_by,
-        subtract_from_J=subtract_from_J,  # keep 2^{J-2} x 2^{J-2} in-order measurements
-        log_dir=log_dir,
-        device=device,
-    )
+if runs_fista_l1:
+    make_csv(csv_name="fista_l1", log_dir=log_dir)
+    for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running FISTA-L1 experiments"):
+        run_pcm_demo(
+            recon_method_name="FISTA-L1",
+            recon_fn=run_fista_l1,
+            ground_truth_image=cigs_raw_data,
+            csv_name="fista_l1",
+            image_name="cigs",
+            J=8,  # image size is 2^J x 2^J = 256x256
+            delta_divided_by=delta_divided_by,
+            subtract_from_J=subtract_from_J,  # keep 2^{J-2} x 2^{J-2} in-order measurements
+            log_dir=log_dir,
+            device=device,
+        )
 
 # %% [markdown]
 # ## Compressed sensing baseline: SPGL1 with wavelet sparsity
@@ -455,7 +462,8 @@ def run_spgl1(
 ) -> GrayscaleImage2D:
 
     lam: float = 1e-3
-    max_iter = 1000
+    # max_iter = 1000
+    max_iter = 100
     tol: float = 1e-4
     debias_max_iter = 10
     debias_support_tol = 1e-5
@@ -494,17 +502,18 @@ def run_spgl1(
 
 
 # %%
-make_csv(csv_name="spgl1", log_dir=log_dir)
-for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running SPGL1 experiments"):
-    run_pcm_demo(
-        recon_method_name="SPGL1",
-        recon_fn=run_spgl1,
-        ground_truth_image=cigs_raw_data,
-        csv_name="spgl1",
-        image_name="cigs",
-        J=8,  # image size is 2^J x 2^J = 256x256
-        delta_divided_by=delta_divided_by,  # 1/delta_divided_by sampling
-        subtract_from_J=subtract_from_J,  # keep 2^{J-2} x 2^{J-2} in-order measurements
-        log_dir=log_dir,
-        device=device,
-    )
+if runs_spgl1:
+    make_csv(csv_name="spgl1", log_dir=log_dir)
+    for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running SPGL1 experiments"):
+        run_pcm_demo(
+            recon_method_name="SPGL1",
+            recon_fn=run_spgl1,
+            ground_truth_image=cigs_raw_data,
+            csv_name="spgl1",
+            image_name="cigs",
+            J=8,  # image size is 2^J x 2^J = 256x256
+            delta_divided_by=delta_divided_by,  # 1/delta_divided_by sampling
+            subtract_from_J=subtract_from_J,  # keep 2^{J-2} x 2^{J-2} in-order measurements
+            log_dir=log_dir,
+            device=device,
+        )
