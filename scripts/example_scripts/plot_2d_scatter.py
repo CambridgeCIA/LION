@@ -10,11 +10,11 @@ def plot_metric_scatter(
     cmap="viridis",
     vmin=None,
     vmax=None,
-    s=25,
     add_colorbar=True,
     colorbar_label="val",
     xlim=(0, 1),
     ylim=(0, 1),
+    **ax_scatter_kwargs,
 ):
     x = np.asarray(sampling_ratio, float).ravel()
     y = np.asarray(in_order_ratio, float).ravel()
@@ -25,7 +25,7 @@ def plot_metric_scatter(
     else:
         fig = ax.figure
 
-    sc = ax.scatter(x, y, c=z, cmap=cmap, vmin=vmin, vmax=vmax, s=s)
+    sc = ax.scatter(x, y, c=z, cmap=cmap, vmin=vmin, vmax=vmax, **ax_scatter_kwargs)
     ax.set_xlim(*xlim)
     ax.set_ylim(*ylim)
     ax.set_xlabel("sampling_ratio")
@@ -33,7 +33,7 @@ def plot_metric_scatter(
     ax.set_aspect("equal", adjustable="box")
 
     if add_colorbar:
-        cbar = fig.colorbar(sc, ax=ax)
+        cbar = fig.colorbar(sc, ax=ax, extend="both")
         cbar.set_label(colorbar_label)
     plt.grid()
 
