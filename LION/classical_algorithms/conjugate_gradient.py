@@ -10,7 +10,9 @@ def conjugate_gradient(
     d: torch.Tensor,
     x0: torch.Tensor,
     max_iter: int,
-    tol: float,
+    eps: float = 1e-14,
+    rel_tol: float = 0.0,
+    prog_bar: Callable | None = None,
 ) -> torch.Tensor:
     """
     Conjugate gradient solver.
@@ -39,18 +41,19 @@ def conjugate_gradient(
     d = r.clone()
     rr = torch.sum(r**2)
 
-    for _ in range(max_iter):
+    iterator = prog_bar(range(max_iter), desc="CG iterations") if prog_bar else range(max_iter)
+    for _ in iterator:
         z = matmul_closure(d)
 
         dz = torch.sum(d * z)
         # Check for breakdown
-        if abs(dz) < 1e-14:
+        if abs(dz) < eps:
             break
         alpha = rr / dz
         x += alpha * d
         r -= alpha * z
 
-        if torch.norm(r) / torch.norm(d) < tol:
+        if torch.norm(r) / torch.norm(d) < rel_tol:
             break
 
         rr_next = torch.sum(r**2)

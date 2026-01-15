@@ -1,22 +1,23 @@
 """SPGL1 sparse reconstruction with torch operators."""
 
+from typing import Any
 import numpy as np
 import torch
 from scipy.sparse.linalg import LinearOperator
-from spgl1 import spgl1
+from spgl1 import spgl1, spg_bp
 
 from LION.operators.Operator import Operator
 
 
-def spgl1_torch(op: Operator, y: torch.Tensor, **spgl1_kwargs) -> torch.Tensor:
-    r"""Solve an l1 sparse reconstruction using SPGL1, wrapping torch operators.
+def spgl1_torch(op: Operator, y: torch.Tensor, **spgl1_kwargs) -> tuple[torch.Tensor, Any]:
+    r"""Solve an l1 sparse reconstruction using SPGL1 with Basis Pursuit (BP), wrapping torch operators.
 
-    This is a thin wrapper around the Python SPGL1 solver ``spgl1.spgl1`` that
+    This is a thin wrapper around the Python SPGL1 solver ``spgl1.spg_bp`` that
     uses torch operators for matrix-vector products. SPGL1 is a spectral
     projected-gradient method for constrained l1 problems; see
     [BergFriedlander2008]_ and [BergFriedlander2010]_.
 
-    This wrapper is built on top of the Python implementation ``spgl1.spgl1`` and
+    This wrapper is built on top of the Python implementation ``spgl1.spg_bp`` and
     uses the same calling convention (argument names and behaviour); see
     [SPGL1Python]_ for details.
 
@@ -28,7 +29,7 @@ def spgl1_torch(op: Operator, y: torch.Tensor, **spgl1_kwargs) -> torch.Tensor:
     y : torch.Tensor
         Measurements, shape ``(M,)``.
     spgl1_kwargs : dict
-        Extra keyword args forwarded to ``spgl1.spgl1`` (for example
+        Extra keyword args forwarded to ``spgl1.spg_bp`` (for example
         tolerances or iteration limits; see [SPGL1Python]_).
 
     Returns
@@ -75,9 +76,9 @@ def spgl1_torch(op: Operator, y: torch.Tensor, **spgl1_kwargs) -> torch.Tensor:
     )
 
     y_np = y.detach().cpu().numpy().ravel()
-    x0_np = np.zeros(n_w, dtype=np.float32)
-
-    x_np, _, _, _ = spgl1(A_linop, y_np, x0=x0_np, **spgl1_kwargs)
+    # x0_np = np.zeros(n_w, dtype=np.float32)
+    # x_np, _, _, _ = spgl1(A_linop, y_np, x0=x0_np, **spgl1_kwargs)
+    x_np, _, _, info = spg_bp(A_linop, y_np, **spgl1_kwargs)
 
     w_hat = torch.from_numpy(x_np.astype(np.float32)).to(device).view_as(w0)
-    return w_hat
+    return w_hat, info

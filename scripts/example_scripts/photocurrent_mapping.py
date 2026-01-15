@@ -29,9 +29,13 @@
 
 # %%
 from __future__ import annotations
+from calendar import c
+from operator import inv
 
-from pprint import pprint
+from cv2 import add
+import test
 import torch
+from wandb import init
 
 device = torch.device("mps" if torch.backends.mps.is_available() else "cuda:0" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
@@ -44,10 +48,12 @@ torch.set_default_device(device)
 # %%
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterable
 
 import deepinv
+import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 import numpy as np
 from jaxtyping import Float
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
@@ -61,12 +67,19 @@ from LION.operators.CompositeOp import CompositeOp
 from LION.operators.DebiasOp import debias_ls
 
 # LION imports
-from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
+from LION.operators.uniform_random_sample import uniform_random_sample
+from LION.operators.multilevel_sample import multilevel_sample
 from LION.reconstructors.PnP import PnP
+
+# from LION.utils.scale import choose_measurement_scale_factor
+
+from plot_helper import PlotHelper
 
 
 # Use tqdm with dynamic column width that adapts to the terminal width
 tqdm = partial(std_tqdm, dynamic_ncols=True)
+tqdm_no_leave = partial(std_tqdm, dynamic_ncols=True, leave=False)
 
 GrayscaleImage2D = Float[torch.Tensor, "height width"]
 Measurement1D = Float[torch.Tensor, "num_measurements"]
@@ -84,19 +97,113 @@ data_dir = Path("data/photocurrent_data")
 
 assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 
-# data_name = "CIGS"
-# data_name = "silicon"
-# data_name = "organic"
-data_name = "perovskite"
-data_filename = f"example_{data_name}_256x256.npy"
+# data_name, zoom, loc, loc1, loc2, roi = "CIGS_256x256", 2.5, "center left", 3, 4, (110, 210, 40, 40)  # (x, y, w, h)  with y increasing downwards
+# data_name, zoom, loc, loc1, loc2, roi = "silicon_256x256", 2.5, "lower right", 2, 1, (194, 1, 60, 60)  # (x, y, w, h)  with y increasing downwards
+# data_name, zoom, loc, loc1, loc2, roi = "silicon_512x512", 3, "lower right", 2, 1, (400, 5, 100, 100)  # (x, y, w, h)  with y increasing downwards
+# data_name, zoom, loc, loc1, loc2, roi = "organic_256x256", 2.5, "lower left", 2, 1, (70, 5, 50, 50)  # (x, y, w, h)  with y increasing downwards
+# data_name, zoom, loc, loc1, loc2, roi = "perovskite_256x256", 2.5, "upper left", 3, 4, (90, 190, 50, 50)  # (x, y, w, h)  with y increasing downwards
 
-assert (data_dir / data_filename).exists(), f"Data file not found in {data_dir}."
+# data_name = "example_" + data_name  # prefix with "example_"
+# is_out_of_distribution = False
+# clim = (0.0, 1.0)
+# inverses_sign = False
 
+# data_name, zoom, loc, loc1, loc2, roi = "Si_256_512x512", 2.5, "lower left", 2, 1, (160, 60, 120, 120)
+# clim = (0.0, 3e-5)
+# R_high = 1e-4
+# R_low = -5e-6
+# factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
 
-runs_pnp_admm = False
+data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_512x512", 2.5, "lower right", 2, 1, (322, 85, 100, 100)
+# data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_reconstructed_image", 2, "lower left", 2, 1, (32, 42, 50, 50)
+# data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_hadamard_measurement_vector", 2, "lower left", 2, 1, (32, 42, 50, 50)
+# data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_measurement_data", 2, "lower left", 2, 1, (32, 42, 50, 50)
+clim = (0.0, 1.5e-5)
+R_high = 2e-5
+R_low = -2e-6
+factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
+
+scale_eps = 1e-12
+is_out_of_distribution = True
+inverses_sign = True
+tests_scale_ground_truth = False
+
+data_filename = f"{data_name}.npy"
+print("Loading data file:", data_filename)
+assert (data_dir / data_filename).exists(), f"Data {data_filename} not found in {data_dir}."
+
+data_type = "image"
+# data_type = "hadamard_measurement_vector"
+# data_type = "original_measurement_data"
+print(f"The type of raw data is: {data_type}")
+
+if "256x256" in data_name:
+    J_order = 8  # J=8 => 2^8=256
+elif "512x512" in data_name:
+    J_order = 9  # J=9 => 2^9=512
+else:
+    raise ValueError(f"Unknown data_name {data_name}, cannot determine order_size.")
+# J_order = 8  # J=8 => 2^8=256
+
+noise_seed = 42
+noise_std = 0  # No noise
+# noise_std = 0.05  # standard deviation of additive homoscedastic Gaussian white noise added to measurements
+
+runs_pnp_admm = True
+pnp_admm_iters = 1
+# pnp_admm_iters = 20
+# pnp_admm_iters = 50
+# pnp_admm_iters = 100
+# pnp_admm_eta = 0.00001  # Undersampling artifacts may remain if eta is too small
+# pnp_admm_eta = 0.00005  # Could still work
+# pnp_admm_eta = 0.0001  # Could still work
+# pnp_admm_eta = 0.001
+# pnp_admm_eta = 0.005
+pnp_admm_eta = 0.01  # Generally good
+# pnp_admm_eta = 0.02
+# pnp_admm_eta = 0.03
+# pnp_admm_eta = 0.04
+# pnp_admm_eta = 0.05
+# pnp_admm_eta = 0.1
+# pnp_admm_eta = 1
+# pnp_admm_eta = 10
+# pnp_admm_eta = 20
+# pnp_admm_eta = 50
+# pnp_admm_eta = 100  # Got nan for 100% sampling?
+cg_iters = 20
+# cg_iters = 50
+cg_eps = 1e-20  # No real change compared to default, CG usually terminates quickly especially when measurements are small
+# drunet_sigma = 0.01  # noise level for DRUNet denoiser
+# drunet_sigma = 0.02  # noise level for DRUNet denoiser
+drunet_sigma = 0.05  # noise level for DRUNet denoiser
+# drunet_sigma = 0.1  # noise level for DRUNet denoiser
+
 runs_fista_l1 = False
-runs_spgl1 = True
 
+runs_spgl1 = False
+
+randomizing_scheme = "multilevel"
+# randomizing_scheme = "uniform"
+
+cmap_max = 0.8  # take only the lower 0-80% of afmhot, reduce brightness
+# cmap_max = 0.9  # take only the lower 0-90% of afmhot to avoid the white top
+# cmap_max = 1.0  # take all of afmhot
+# adds_insets = True
+adds_insets = False
+plot_helper = PlotHelper(
+    roi=roi,
+    zoom=zoom,
+    loc=loc,
+    show_rect=True,
+    cmap=ListedColormap(matplotlib.colormaps['afmhot'](np.linspace(
+        0.0,
+        cmap_max,
+        256,
+    ))),
+    clim=clim,
+    loc1=loc1,
+    loc2=loc2
+)
 
 # %% [markdown]
 # Define a general function to run the photocurrent mapping reconstruction using a reconstruction method.
@@ -110,26 +217,32 @@ runs_spgl1 = True
 
 
 # %% mystnb={"code_prompt_show": "Show utility details"} tags=["hide-cell"]
-def show_images(
+def show_images_with_inset(
     images: list[torch.Tensor],
     fig_filepath: Path,
+    plot_helper: PlotHelper,
     titles: list[str] | None = None,
     suptitle: str | None = None,
 ) -> None:
     """Plot images."""
     n_images = len(images)
     fig, axes = plt.subplots(1, n_images, squeeze=False, figsize=(n_images * 4, 4))
+
     for i in range(n_images):
-        axes[0][i].imshow(images[i].detach().cpu().squeeze(), cmap="gray", vmin=0, vmax=1)
-        axes[0][i].axis("off")
+        img_np = images[i].squeeze().cpu().numpy()
+        ax: plt.Axes = axes[0][i]
+        if adds_insets:
+            plot_helper.add_zoom_inset(ax, img_np)
+        else:
+            ax.imshow(img_np, cmap=plot_helper.cmap, clim=plot_helper.clim)
+        ax.axis("off")
         if titles:
-            axes[0][i].set_title(titles[i], fontsize=10)
+            ax.set_title(titles[i], fontsize=10)
     if suptitle:
         fig.subplots_adjust(bottom=0.18)
         fig.text(0.5, 0.02, suptitle, ha="center", va="bottom", fontsize=16)
     fig.savefig(fig_filepath, dpi=150)
     plt.close(fig)
-
 
 
 def make_csv(method_name: str, log_dir: Path | str) -> None:
@@ -138,47 +251,75 @@ def make_csv(method_name: str, log_dir: Path | str) -> None:
     csv_path = log_dir / "metrics.csv"
     with csv_path.open("w") as f:
         f.write(
-            "sampling_percentage,  in_order_measurements_percentage,  "
+            "sampling_percentage,  coarse_J,  "
             "mse_zero_filled,  psnr_zero_filled,  ssim_zero_filled,  pearson_corr_zero_filled,  "
             "mse_recon,  psnr_recon,  ssim_recon,  pearson_corr_recon\n"
         )
 
+
 # %%
 def run_pcm_demo(
-    recon_method_name: str,
-    recon_fn: Callable[[PhotocurrentMapOp, Measurement1D], GrayscaleImage2D],
+    recon_description: str,
+    recon_fn: Callable[[PhotocurrentMapOp, Measurement1D, GrayscaleImage2D], GrayscaleImage2D],
     ground_truth_image: GrayscaleImage2D,
     method_name: str,
     image_name: str,
     J: int,  # image size will be 2^J x 2^J
-    # subtract_from_J: int = 1,
     sampling_ratio: float,
-    in_order_ratio: float,
-    # delta_divided_by: int = 4,
+    coarse_J: int,
+    measurement_vector: Measurement1D | None = None,
     log_dir: Path | str = ".",
     device: torch.device | str = "cuda:0",
 ):
     zero_filled_dir = Path(log_dir) / "zero_filled"
     zero_filled_dir.mkdir(parents=True, exist_ok=True)
+    masks_dir = Path(log_dir) / "masks"
+    masks_dir.mkdir(parents=True, exist_ok=True)
+
     log_dir = Path(log_dir) / method_name
     log_dir.mkdir(parents=True, exist_ok=True)
     N = 1 << J
-    im_tensor = torch.tensor(ground_truth_image, dtype=torch.float32, device=device).unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
+    im_tensor = ground_truth_image.unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
 
-    # coarseJ = J - subtract_from_J
-    # delta = 1.0 / delta_divided_by
-
-    # sampling_percentage = delta * 100
     sampling_percentage = sampling_ratio * 100
-    # in_order_measurements_percentage = 1 / (1 << (subtract_from_J * 2)) * 100
-    in_order_measurements_percentage = in_order_ratio * sampling_percentage
-    print(f"Sampling rate:         {sampling_percentage:.2f}%")
-    print(f"In-order measurements: {in_order_measurements_percentage:.2f}%")
+    in_order_measurements_percentage = (1 << (2 * coarse_J)) / (N * N) * 100
+    print()
+    print(f"Sampling rate: {sampling_percentage}%")
+    print(f"Coarse levels to keep: {coarse_J} ({in_order_measurements_percentage}%)")
 
-    subsampler = Subsampler(n=N * N, sampling_ratio=sampling_ratio, in_order_ratio=in_order_ratio, rng=np.random.default_rng(0))
-    pcm_op = PhotocurrentMapOp(J=J, subsampler=subsampler, device=device)
+    rng = np.random.default_rng(0)
+    num_samples = int(sampling_ratio * N * N)
+    if randomizing_scheme == "multilevel":
+        sampled_indices = multilevel_sample(
+            J=J, num_samples=num_samples, coarse_J=coarse_J, alpha=1.0, rng=rng
+        )
+    elif randomizing_scheme == "uniform":
+        sampled_indices = uniform_random_sample(
+            J=J, num_samples=num_samples, coarse_J=coarse_J, rng=rng
+        )
+    else:
+        raise ValueError(f"Unknown sampling_scheme {randomizing_scheme}.")
+    pcm_op = PhotocurrentMapOp(J=J, sampled_indices=sampled_indices, device=device)
 
-    y_subsampled_tensor = pcm_op(im_tensor)
+    if measurement_vector is not None:
+        print(f"Using provided measurement vector with shape {measurement_vector.shape}.")
+        y_subsampled_tensor_noiseless = measurement_vector[sampled_indices]
+    else:
+        y_subsampled_tensor_noiseless = pcm_op(im_tensor)
+
+    y_subsampled_tensor = y_subsampled_tensor_noiseless  # No noise
+
+    # noise_rng = torch.Generator(device=device)
+    # noise_rng.manual_seed(noise_seed)
+    # homoscedastic_noise = y_subsampled_tensor_noiseless.normal_(
+    #     mean=0.0, std=noise_std, generator=noise_rng
+    # )
+    # noise = homoscedastic_noise
+    # noise = torch.zeros_like(y_subsampled_tensor_noiseless)
+    # assert torch.equal(noise, torch.zeros_like(noise)), "Noise is not zero!"
+
+    # y_subsampled_tensor = y_subsampled_tensor_noiseless + noise
+
     zero_filled_recon_tensor = (
         pcm_op.pseudo_inv(y_subsampled_tensor).unsqueeze(0).unsqueeze(0)
     )
@@ -187,6 +328,7 @@ def run_pcm_demo(
         recon_fn(
             pcm_op=pcm_op,
             pcm_measurement=y_subsampled_tensor,
+            initial_image=zero_filled_recon_tensor.squeeze(),
         )
         .unsqueeze(0)
         .unsqueeze(0)
@@ -211,31 +353,37 @@ def run_pcm_demo(
     csv_path = log_dir / "metrics.csv"
     with csv_path.open("a") as f:
         f.write(
-            f"{sampling_percentage},  {in_order_measurements_percentage},  "
+            f"{sampling_percentage},  {coarse_J},  "
             f"{mse_zero_filled},  {psnr_zero_filled},  {ssim_zero_filled},  {pearson_corr_zero_filled},  "
             f"{mse_recon},  {psnr_recon},  {ssim_recon},  {pearson_corr_recon}\n"
         )
 
-    filename = f"{image_name}_{recon_method_name}_sampling_percentage={sampling_percentage:.2f}_in_order_measurements={in_order_measurements_percentage:.2f}"
-    zero_filled_filename = f"{image_name}_sampling_percentage={sampling_percentage:.2f}_in_order_measurements={in_order_measurements_percentage:.2f}"
+    filename = f"{image_name}_{method_name}_sample_{sampling_percentage}_percent_coarse_J={coarse_J}_{randomizing_scheme}_random"
+    zero_filled_filename = f"{image_name}_sample_{sampling_percentage}_percent_coarse_J={coarse_J}_{randomizing_scheme}_random"
     recons_dir = log_dir / "recons"
     recons_dir.mkdir(parents=True, exist_ok=True)
     np.save(zero_filled_dir / f"{zero_filled_filename}.npy", zero_filled_recon_tensor.squeeze().cpu().numpy())
     np.save(recons_dir / f"{filename}.npy", recon_tensor.squeeze().cpu().numpy())
 
+    mask_of_masks_np = np.zeros(N * N, dtype=bool)
+    mask_of_masks_np[sampled_indices] = True
+    np.save(masks_dir / f"sample_{sampling_percentage}_percent_coarse_J={coarse_J}_{randomizing_scheme}_random.npy", mask_of_masks_np.reshape(N, N))
+
     images_dir = log_dir / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
-    show_images(
+
+    show_images_with_inset(
         [im_tensor, zero_filled_recon_tensor, recon_tensor],
         fig_filepath=images_dir / f"{filename}.png",
+        plot_helper=plot_helper,
         titles=[
             "Original Image",
-            f"Zero-filled Reconstruction\nPSNR: {psnr_zero_filled:.2f} dB, SSIM: {ssim_zero_filled:.4f}\nMSE: {mse_zero_filled:.4e}, Pearson Corr.: {pearson_corr_zero_filled:.4f}",
-            f"{recon_method_name} Reconstruction\nPSNR: {psnr_recon:.2f} dB, SSIM: {ssim_recon:.4f}\nMSE: {mse_recon:.4e}, Pearson Corr.: {pearson_corr_recon:.4f}",
+            f"Inverse WHT (Zero-filled)\nPSNR: {psnr_zero_filled:.2f} dB, SSIM: {ssim_zero_filled:.4f}\nMSE: {mse_zero_filled:.3e}, Pearson Corr.: {pearson_corr_zero_filled:.4f}",
+            f"{recon_description}\nPSNR: {psnr_recon:.2f} dB, SSIM: {ssim_recon:.4f}\nMSE: {mse_recon:.3e}, Pearson Corr.: {pearson_corr_recon:.4f}",
         ],
         suptitle=(
-            "PCM Reconstructions Comparison\n"
-            + f"sampling rate: {sampling_percentage:.2f}%, in-order measurements: {in_order_measurements_percentage:.2f}%"
+            f"PCM Reconstructions, J={J} ({N}x{N} image)\n"
+            + f"Sample {sampling_percentage:.2f}%, keep {coarse_J} coarse levels ({in_order_measurements_percentage}% here), the rest: {randomizing_scheme} random"
         ),
     )
 
@@ -244,46 +392,58 @@ denoiser_DRUNet = deepinv.models.DRUNet(
     pretrained="download", in_channels=1, out_channels=1, device=device
 )
 
-
-def denoiser_fn(x: GrayscaleImage2D) -> GrayscaleImage2D:
-    with torch.no_grad():
-        return (
-            denoiser_DRUNet(x.unsqueeze(0).unsqueeze(0), sigma=0.05)
-            .squeeze(0)
-            .squeeze(0)
-        )
-
-
 def run_pnp_admm(
-    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D
+    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D, initial_image: GrayscaleImage2D
 ) -> GrayscaleImage2D:
-    # admm_iterations = 100
-    admm_iterations = 20
-    admm_step_size = 1e5
-    # cg_max_iter = 100
-    cg_max_iter = 20
-    cg_tol = 1e-7
+    admm_iterations = pnp_admm_iters
+    admm_eta = pnp_admm_eta
+    cg_max_iter = cg_iters
+    _cg_eps = cg_eps
+    cg_rel_tol = 0.0
 
-    print(
-        f"Running PnP-ADMM reconstruction: {admm_iterations} iterations, cg_max_iter={cg_max_iter}..."
-    )
+    # print(
+    #     f"Running PnP-ADMM reconstruction: {admm_iterations} iterations, cg_max_iter={cg_max_iter}..."
+    # )
 
-    pnp = PnP(physics=pcm_op, prior_fn=denoiser_fn, algorithm="ADMM")
-    return pnp.admm_algorithm(
+    a = max(R_high - R_low, scale_eps)
+
+    # pcm_measurement = (pcm_measurement - R_low) / a if is_out_of_distribution else pcm_measurement
+
+    def denoiser_fn(x: GrayscaleImage2D) -> GrayscaleImage2D:
+        with torch.no_grad():
+            model_input = (x - R_low) / a if is_out_of_distribution else x
+            model_output = (
+                denoiser_DRUNet(model_input.unsqueeze(0).unsqueeze(0), sigma=drunet_sigma)
+                .squeeze(0)
+                .squeeze(0)
+            )
+            model_output = a * model_output + R_low if is_out_of_distribution else model_output
+            return model_output
+
+    pnp = PnP(physics=pcm_op, prior_fn=denoiser_fn, default_algorithm="ADMM")
+    recon = pnp.admm_algorithm(
         measurement=pcm_measurement,
-        eta=admm_step_size,
+        eta=admm_eta,
         max_iter=admm_iterations,
         cg_max_iter=cg_max_iter,
-        cg_tol=cg_tol,
+        cg_eps=_cg_eps,
+        cg_rel_tol=cg_rel_tol,
         prog_bar=tqdm,
+        # cg_prog_bar=tqdm,
     )
+    # recon = pnp.forward_backward_splitting(
+    #     sino=pcm_measurement,
+    # )
+
+    return recon
+    # return a * recon + R_low if is_out_of_distribution else recon
 
 
 
 
 # %%
 def run_fista_l1(
-    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D
+    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D, initial_image: GrayscaleImage2D
 ) -> GrayscaleImage2D:
 
     lam = 10  # Good for Daubechies 4 wavelet transform
@@ -291,7 +451,7 @@ def run_fista_l1(
     max_iter = 100
     tol = 1e-5
 
-    debias_max_iter = 10  # TODO: Debiasing seems to not make much difference here
+    debias_max_iter = 10
     debias_support_tol = 1e-5
     debias_tol = 1e-7
 
@@ -301,7 +461,7 @@ def run_fista_l1(
     # Composite operator A = Phi Psi^{-1}
     A_op = CompositeOp(wavelet, pcm_op, device=device)
 
-    print("Running FISTA reconstruction: " f"{max_iter} iterations, lambda={lam}...")
+    # print("Running FISTA reconstruction: " f"{max_iter} iterations, lambda={lam}...")
     w_hat = fista_l1(
         op=A_op,
         y=pcm_measurement,
@@ -314,7 +474,7 @@ def run_fista_l1(
     )
 
     # Optional debiasing
-    print(f"Running debiasing: {debias_max_iter} iterations...")
+    # print(f"Running debiasing: {debias_max_iter} iterations...")
     w_debias = debias_ls(
         op=A_op,
         y=pcm_measurement,
@@ -334,15 +494,22 @@ def run_fista_l1(
 
 # %%
 def run_spgl1(
-    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D
+    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D, initial_image: GrayscaleImage2D
 ) -> GrayscaleImage2D:
 
-    lam: float = 1e-3
     # max_iter = 1000
+    # max_iter = 200
     max_iter = 100
-    tol: float = 1e-4
+    # opt_tol = 1e-4
+    # bp_tol = 1e-6
+    # opt_tol = 1e-5
+    # bp_tol = 1e-7
+
     debias_max_iter = 10
+    # debias_max_iter = 100
     debias_support_tol = 1e-5
+    # debias_support_tol = 1e-6
+    # debias_support_tol = 1e-7
     debias_tol = 1e-7
 
     height, width = pcm_op.domain_shape
@@ -351,16 +518,26 @@ def run_spgl1(
     # Composite operator A = Phi Psi^{-1}
     A_op = CompositeOp(wavelet, pcm_op, device=device)
 
-    print("Running SPGL1 reconstruction: " f"{max_iter} iterations, lambda={lam}...")
-    w_hat = spgl1_torch(
+    # rhs_l2_norm = torch.linalg.norm(pcm_measurement).item()
+    # # relative_feasibility_tolerance = 1e-6
+    # relative_feasibility_tolerance = 1e-9
+    # absolute_feasibility_tolerance = relative_feasibility_tolerance * rhs_l2_norm
+
+    pcm_measurement = pcm_measurement * factor  # scale up
+
+    # print("Running SPGL1 reconstruction: " f"{max_iter} iterations ...")
+    w_hat, _ = spgl1_torch(
         op=A_op,
         y=pcm_measurement,
         iter_lim=max_iter,
+        # opt_tol=absolute_feasibility_tolerance,
+        # bp_tol=relative_feasibility_tolerance,
         verbosity=0,
-        opt_tol=tol,
+        # opt_tol=opt_tol,
+        # bp_tol=bp_tol,
     )
     # Optional debiasing
-    print(f"Running debiasing: {debias_max_iter} iterations...")
+    # print(f"Running debiasing: {debias_max_iter} iterations...")
     w_debias = debias_ls(
         op=A_op,
         y=pcm_measurement,
@@ -374,92 +551,153 @@ def run_spgl1(
     # Current map reconstruction
     cs_result_tensor = wavelet.inverse(w_debias)
 
+    cs_result_tensor = cs_result_tensor / factor  # scale back down
+
     return cs_result_tensor
 
 
-def make_test_cases() -> list[tuple[float, float]]:
-    # (sampling_ratio, in_order_ratio)
+def make_test_cases() -> list[tuple[float, int]]:
+    min_coarse_J = 0
+    # min_coarse_J = 5
+    # min_coarse_J = J_order - 3  # keep 1.5625% of in-order measurements at least
+    # (sampling_ratio, coarse_J)
     test_cases = []
-    for sampling_ in range(0, 9, 1):
-        for in_order_ in range(0, sampling_ + 2, 1):
-            sampling_ratio = (sampling_ + 1) / 100.0  # from 0.01 to 0.09
-            in_order_ratio_abs = (in_order_) / 100.0  # from 0.00 to sampling_ratio
-            in_order_ratio_rel = in_order_ratio_abs / sampling_ratio  # relative to sampling ratio
-            # print(f"sampling_: {sampling_}, in_order_: {in_order_} => sampling_ratio: {sampling_ratio}, in_order_ratio_abs: {in_order_ratio_abs}, in_order_ratio_rel: {in_order_ratio_rel}")
-            assert 0 < sampling_ratio <= 1.0, f"sampling_ratio must be in (0, 1], got {sampling_ratio}"
-            assert 0 <= in_order_ratio_abs <= sampling_ratio, f"in_order_ratio_abs must be in [0, sampling_ratio={sampling_ratio}], got {in_order_ratio_abs}"
-            assert 0 <= in_order_ratio_rel <= 1.0, f"in_order_ratio_rel must be in [0, 1], got {in_order_ratio_rel}"
-            test_cases.append((sampling_ratio, in_order_ratio_rel))
-    for sampling_ in range(0, 10, 1):
-        for in_order_ in range(0, sampling_ + 2, 1):
-            sampling_ratio = (sampling_ + 1) / 10.0  # from 0.1 to 1.0
-            in_order_ratio_abs = (in_order_) / 10.0  # from 0.0 to sampling_ratio
-            in_order_ratio_rel = in_order_ratio_abs / sampling_ratio  # relative to sampling ratio
-            # print(f"sampling_: {sampling_}, in_order_: {in_order_} => sampling_ratio: {sampling_ratio}, in_order_ratio_abs: {in_order_ratio_abs}, in_order_ratio_rel: {in_order_ratio_rel}")
-            assert 0 < sampling_ratio <= 1.0, f"sampling_ratio must be in (0, 1], got {sampling_ratio}"
-            assert 0 <= in_order_ratio_abs <= sampling_ratio, f"in_order_ratio_abs must be in [0, sampling_ratio={sampling_ratio}], got {in_order_ratio_abs}"
-            assert 0 <= in_order_ratio_rel <= 1.0, f"in_order_ratio_rel must be in [0, 1], got {in_order_ratio_rel}"
-            test_cases.append((sampling_ratio, in_order_ratio_rel))
+    num_pixels = 1 << (2 * J_order)  # N*N
+    # for sampling_ in range(0, 9, 1):
+    #     sampling_ratio = (sampling_ + 1) / 100.0  # from 0.01 to 0.09
+    #     num_samples = int(sampling_ratio * num_pixels)
+    #     for coarse_J in range(min_coarse_J, J_order):  # from 0 to J_order-1 (not including J_order because that is 100% sampling)
+    #         if coarse_J > 0:
+    #             prev_num_coarse_samples = 1 << (2 * (coarse_J - 1))
+    #             if prev_num_coarse_samples >= num_samples:
+    #                 continue
+    #         test_cases.append((sampling_ratio, coarse_J))
+    for sampling_ in range(1, 10, 1):
+        sampling_ratio = sampling_ / 10.0  # from 0.1 to 0.9
+        num_samples = int(sampling_ratio * num_pixels)
+        for coarse_J in range(min_coarse_J, J_order):  # from 0 to J_order-1 (not including J_order because that is 100% sampling)
+            if coarse_J > 0:
+                prev_num_coarse_samples = 1 << (2 * (coarse_J - 1))
+                if prev_num_coarse_samples >= num_samples:
+                    continue
+            test_cases.append((sampling_ratio, coarse_J))
+    test_cases.append((1.0, J_order))  # 100% sampling
 
-    # test_cases = [(0.5, 0.5)]  # 50% sampling, half of which are in-order
-
+    # sampling_ratios = [0.1]
+    sampling_ratios = [0.2]
+    # # sampling_ratios = [0.25]
+    # sampling_ratios = [0.5]
+    # # sampling_ratios = [0.7]
+    # # coarse_Js = [5]  # keep 2^{coarse_J} x 2^{coarse_J} in-order measurements
+    # # coarse_Js = [7]  # keep 2^{coarse_J} x 2^{coarse_J} in-order measurements
+    coarse_Js = list(range(0, J_order))
+    test_cases = []
+    test_cases += [
+        (sampling_ratio, coarse_J)
+        for sampling_ratio in sampling_ratios
+        for coarse_J in coarse_Js
+    ]
     # test_cases = [
-    #     # (32, 3),  # 3.125% sampling, 1.5625% in-order (half in-order)
-    #     # (32, 2),  # 3.125% sampling, 6.25% in-order (all in-order)
-    #     # (16, 3),  # 6.25% sampling, 1.5625% in-order (1/4 of in-order)
-    #     # (16, 2),  # 6.25% sampling, 6.25% in-order (all in-order)
-    #     # (8, 3),  # 12.5% sampling, 1.5625% in-order (1/8 in-order)
-    #     # (8, 2),  # 12.5% sampling, 6.25% in-order (half in-order)
-    #     # (8, 1),  # 12.5% sampling, 25% in-order (all in-order)
-    #     # (4, 3),  # 25% sampling, 1.5625% in-order (1/16 in-order)
-    #     # (4, 2),  # 25% sampling, 6.25% in-order (1/4 in-order)
-    #     # (4, 1),  # 25% sampling, 25% in-order (all in-order)
-    #     # (2, 2),  # 50% sampling, 6.25% in-order (1/8 in-order)
-    #     # (2, 1),  # 50% sampling, 25% in-order (half in-order)
-    #     # (2, 0.5),  # 50% sampling, half of which are in-order
-    #     (0.5, 0.5),  # 50% sampling, half of which are in-order
-    #     # (2, 0),  # 50% sampling, 100% in-order (all in-order)
-    #     # (1, 0),  # 100% sampling, 100% in-order (all in-order)
+    # #     (0.3, 3),
+    #     # (0.2, 2),
+    #     # (0.2, 6),
+    #     # (0.2, 7),
+    #     # (0.5, 6),
+    #     # (0.8, 6),
+    #     # (1.0, 7),
+    #     (0.1, 8),
     # ]
+
+    # test_cases = test_cases[80:]
+
+    test_cases.reverse()
+
     return test_cases
 
 
 def run_experiments():
-
-
-    # %% [markdown]
-    # ## Experiment
-
-    # %% [markdown]
-    # Load the data.
-    #
-    # The array `cigs_raw_data` is a single 2D image representing the current map
-    # of the CIGS device. This will be used as the ground truth image for all
-    # reconstruction methods.
-
-    # %%
-    raw_data: GrayscaleImage2D = np.load(data_dir / data_filename)
+    raw_data: GrayscaleImage2D | Measurement1D = np.load(data_dir / data_filename)
     print(f"Raw data shape: {raw_data.shape}")
 
-    # %% [markdown]
-    # In the examples below:
-    #
-    # - `J = 8` so the image size is $2^J \times 2^J = 256 \times 256$.
-    # - `delta_divided_by = 4` corresponds to a sampling rate
-    #   $\delta = 1 / 4 = 0.25$, that is, 25% of the total measurements.
-    # - `subtract_from_J = 2` keeps a central $2^{J-2} \times 2^{J-2} = 64 \times 64$
-    #   block of in-order measurements, corresponding to 6.25% of the total;
-    #   the remaining samples are taken in a compressed sensing fashion.
+    if data_type == "image":
+        ground_truth_image: GrayscaleImage2D = torch.tensor(raw_data, dtype=torch.float32, device=device)
+        if inverses_sign:
+            ground_truth_image = -ground_truth_image
+        J_data = int(np.log2(ground_truth_image.shape[0]))
+        assert J_data == J_order, f"Data J ({J_data}) does not match expected J_order ({J_order})."
+        print(f"Ground truth image shape: {ground_truth_image.shape}")
+        measurement_vector = None
+    elif data_type == "hadamard_measurement_vector":
+        # Reconstruct the image from the Hadamard measurement vector
+        J_data = int(np.log2(raw_data.shape[0]) / 2)
+        assert J_data == J_order, f"Data J ({J_data}) does not match expected J_order ({J_order})."
+        measurement_vector = torch.tensor(raw_data, dtype=torch.float32, device=device)
+        if inverses_sign:
+            measurement_vector = -measurement_vector
 
-    # %%
-    # J = 8  # image size is 2^J x 2^J = 256x256
-    # delta_divided_by = 4  # 25% sampling
-    # subtract_from_J = (
-    #     2  # keep 2^{J-2} x 2^{J-2} = 64x64 in-order measurements, or 6.25% of the total
-    # )
+        index_of_max = torch.argmax(measurement_vector).item()
+        index_of_min = torch.argmin(measurement_vector).item()
+        print(f"Max value in measurement vector: {measurement_vector[index_of_max].item()} at index {index_of_max}")
+        print(f"Min value in measurement vector: {measurement_vector[index_of_min].item()} at index {index_of_min}")
+        exit()
+
+        pcm_op_full = PhotocurrentMapOp(J=J_order, device=device)
+        with torch.no_grad():
+            ground_truth_image = pcm_op_full.pseudo_inv(measurement_vector)
+        print(f"Reconstructed ground truth image shape from Hadamard measurement vector: {ground_truth_image.shape}")
+
+    elif data_type == "original_measurement_data":
+        # Make a 1D array with num_lines//2 elements,
+        # where each element is the sum of the measured current multiplied by the pattern index sign.
+        num_measurements = raw_data.shape[0]
+        assert num_measurements % 2 == 0, "Number of measurements should be even."
+
+        if inverses_sign:
+            raw_data[:, 1] = -raw_data[:, 1]
+
+        index_of_max_raw = np.argmax(raw_data[:, 1])
+        index_of_min_raw = np.argmin(raw_data[:, 1])
+        min_raw_value = raw_data[index_of_min_raw, 1]
+        max_raw_value = raw_data[index_of_max_raw, 1]
+        print(f"Max value in original measurement data: {max_raw_value} at index {index_of_max_raw}")
+        print(f"Min value in original measurement data: {min_raw_value} at index {index_of_min_raw}")
+        # exit()
+
+        sign_vector = np.round(np.sign(raw_data[:, 0]))
+        sign_vector[:2] = [1.0, -1.0]  # Ensure the first two patterns are +0 and -0
+
+        measurement_vector = torch.tensor((raw_data[:, 1] * sign_vector).reshape(-1, 2).sum(axis=1), dtype=torch.float32, device=device)
+
+        # index_of_max = torch.argmax(measurement_vector).item()
+        # index_of_min = torch.argmin(measurement_vector).item()
+        # min_value = measurement_vector[index_of_min].item()
+        # max_value = measurement_vector[index_of_max].item()
+        # print(f"Max value in measurement vector: {max_value} at index {index_of_max}")
+        # print(f"Min value in measurement vector: {min_value} at index {index_of_min}")
+        # exit()
+
+        pcm_op_full = PhotocurrentMapOp(J=J_order, device=device)
+        with torch.no_grad():
+            ground_truth_image = pcm_op_full.pseudo_inv(measurement_vector)
+        print(f"Reconstructed ground truth image shape from original measurement data: {ground_truth_image.shape}")
+
+    if tests_scale_ground_truth:
+        gt_min, gt_max = ground_truth_image.min().item(), ground_truth_image.max().item()
+        ground_truth_image = (ground_truth_image - gt_min) / (gt_max - gt_min)
+        print(f"Normalized ground truth image to [0, 1]. Min: {ground_truth_image.min().item()}, Max: {ground_truth_image.max().item()}")
+        measurement_vector = None
 
     test_cases = make_test_cases()
-    # pprint(test_cases)
+    # print(f"Total number of test cases: {len(test_cases)}")
+    # print(test_cases)
+    # for sampling_ratio, coarse_J in test_cases:
+    #     sampling_percentage = sampling_ratio * 100
+    #     coarse_percentage = (1<<(2*coarse_J))/(1<<(2*J_order))*100
+    #     print(f"Sampling: {sampling_percentage}%, coarse_J: {coarse_J} ({coarse_percentage}%)")
+    #     assert sampling_percentage >= coarse_percentage, (
+    #         "Sampling percentage must be larger than or equal to coarse percentage. "
+    #         f"Got sampling {sampling_percentage}% and coarse {coarse_percentage}%."
+    #     )
     # return
 
     # ### Set a directory to save logs and results
@@ -468,11 +706,11 @@ def run_experiments():
     # time, which makes it easier to keep track of different experiments.
 
     current_datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_dir = Path("pcm_demo_output") / f"{current_datetime_str}_{data_name}"
+    log_dir = Path("pcm_demo_output") / f"{current_datetime_str}_{data_name}_{randomizing_scheme}_noise_{noise_std}"
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # %% [markdown]
-    # ## First experiment: PnP-ADMM on CIGS data
+    # ## First experiment: PnP-ADMM
     #
     # In this section the PCM PnP-ADMM algorithm is tested on the CIGS data.
 
@@ -493,18 +731,19 @@ def run_experiments():
 
     # %%
     if runs_pnp_admm:
-        make_csv(method_name="pnp_admm", log_dir=log_dir)
+        method_name = f"pnp_admm_iters={pnp_admm_iters}_eta={pnp_admm_eta}_cg_iters={cg_iters}_drunet_sigma={drunet_sigma}"
+        make_csv(method_name=method_name, log_dir=log_dir)
         # for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
-        for sampling_ratio, in_order_ratio in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
+        for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
             run_pcm_demo(
-                recon_method_name="PnP-ADMM",
+                recon_description=f"PnP-ADMM ({pnp_admm_iters} iters, η={pnp_admm_eta}, cg_iters={cg_iters}, σ={drunet_sigma})",
                 recon_fn=run_pnp_admm,
-                ground_truth_image=raw_data,
-                method_name="pnp_admm",
+                ground_truth_image=ground_truth_image,
+                method_name=method_name,
                 image_name="cigs",
-                J=8,  # image size is 2^J x 2^J = 256x256
+                J=J_order,  # image size is 2^J x 2^J
                 sampling_ratio=sampling_ratio,
-                in_order_ratio=in_order_ratio,
+                coarse_J=coarse_J,
                 log_dir=log_dir,
                 device=device,
             )
@@ -547,16 +786,16 @@ def run_experiments():
     # %%
     if runs_fista_l1:
         make_csv(method_name="fista_l1", log_dir=log_dir)
-        for sampling_ratio, in_order_ratio in tqdm(test_cases, desc="Running FISTA-L1 experiments"):
+        for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running FISTA-L1 experiments"):
             run_pcm_demo(
-                recon_method_name="FISTA-L1",
+                recon_description="FISTA-L1",
                 recon_fn=run_fista_l1,
-                ground_truth_image=raw_data,
+                ground_truth_image=ground_truth_image,
                 method_name="fista_l1",
                 image_name="cigs",
-                J=8,  # image size is 2^J x 2^J = 256x256
+                J=J_order,  # image size is 2^J x 2^J
                 sampling_ratio=sampling_ratio,
-                in_order_ratio=in_order_ratio,
+                coarse_J=coarse_J,
                 log_dir=log_dir,
                 device=device,
             )
@@ -576,17 +815,18 @@ def run_experiments():
 
     # %%
     if runs_spgl1:
-        make_csv(method_name="spgl1", log_dir=log_dir)
-        for sampling_ratio, in_order_ratio in tqdm(test_cases, desc="Running SPGL1 experiments"):
+        method_name = f"spgl1_factor={factor}"
+        make_csv(method_name=method_name, log_dir=log_dir)
+        for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running SPGL1 experiments"):
             run_pcm_demo(
-                recon_method_name="SPGL1",
+                recon_description="SPGL1",
                 recon_fn=run_spgl1,
-                ground_truth_image=raw_data,
-                method_name="spgl1",
+                ground_truth_image=ground_truth_image,
+                method_name=method_name,
                 image_name="cigs",
-                J=8,  # image size is 2^J x 2^J = 256x256
+                J=J_order,  # image size is 2^J x 2^J
                 sampling_ratio=sampling_ratio,
-                in_order_ratio=in_order_ratio,
+                coarse_J=coarse_J,
                 log_dir=log_dir,
                 device=device,
             )

@@ -1,15 +1,16 @@
 """Tests for the photocurrent mapping operator."""
 
 import torch
-from LION.operators import PhotocurrentMapOp, Subsampler
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
+from LION.operators.multilevel_sample import multilevel_sample
 from tests.helper import dotproduct_adjointness_test
 
 
 def test_pcm_autograd_op_forward_and_backward():
     J = 4  # 16x16 images
     N = 1 << J
-    subsampler = Subsampler(n=N * N, delta=0.25, coarseJ=J - 1)
-    operator = PhotocurrentMapOp(J=J, subsampler=subsampler)
+    sampled_indices = multilevel_sample(J=J, num_samples=int(0.25 * N * N), coarse_J=J - 1, alpha=1.0)
+    operator = PhotocurrentMapOp(J=J, sampled_indices=sampled_indices)
 
     torch.manual_seed(0)
     input_tensor = torch.randn(*operator.domain_shape, requires_grad=True)
@@ -32,8 +33,8 @@ def test_pcm_op_adjointness():
     """Test photocurrent mapping operator adjoint property."""
     J = 4  # 16x16 images
     N = 1 << J
-    subsampler = Subsampler(n=N * N, delta=0.25, coarseJ=J - 1)
-    operator = PhotocurrentMapOp(J=J, subsampler=subsampler)
+    sampled_indices = multilevel_sample(J=J, num_samples=int(0.25 * N * N), coarse_J=J - 1, alpha=1.0)
+    operator = PhotocurrentMapOp(J=J, sampled_indices=sampled_indices)
 
     # Check the default operator shapes
     assert operator.domain_shape == (16, 16)
