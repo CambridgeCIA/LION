@@ -108,12 +108,12 @@ assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 # clim = (0.0, 1.0)
 # inverses_sign = False
 
-# This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
-data_name, zoom, loc, loc1, loc2, roi = "Si_256_512x512", 2.5, "lower left", 2, 1, (160, 60, 120, 120)
-clim = (0.0, 3e-5)
-R_high = 1e-4
-R_low = -5e-6
-factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
+# # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
+# data_name, zoom, loc, loc1, loc2, roi = "Si_256_512x512", 2.5, "lower left", 2, 1, (160, 60, 120, 120)
+# clim = (0.0, 3e-5)
+# R_high = 1e-4
+# R_low = -5e-6
+# factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
 
 # # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
 # data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_512x512", 2.5, "lower right", 2, 1, (322, 85, 100, 100)
@@ -122,14 +122,32 @@ factor = 1e5  # to scale up the photocurrent values for better numerical stabili
 # R_low = -2e-6
 # factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
 
+# if "256x256" in data_name:
+#     J_order = 8  # J=8 => 2^8=256
+# elif "512x512" in data_name:
+#     J_order = 9  # J=9 => 2^9=512
+# else:
+#     raise ValueError(f"Unknown data_name {data_name}, cannot determine order_size.")
+
+# # This is the same data as Si_256_512x512 but provided as measurement data and only up to 256x256 resolution
+data_name, zoom, loc, loc1, loc2, roi = "Si_256_measurement_data", 2, "lower left", 2, 1, (80, 30, 60, 60)
+# data_name, zoom, loc, loc1, loc2, roi = "Si_256_hadamard_measurement_vector", 2, "lower left", 2, 1, (80, 30, 60, 60)
+# data_name, zoom, loc, loc1, loc2, roi = "Si_256_reconstructed_image", 2, "lower left", 2, 1, (80, 30, 60, 60)
+clim = (0.0, 1e-6)
+R_high = 1e-6
+R_low = -1e-6
+factor = 1e7  # to scale up the photocurrent values for better numerical stability in SPGL1
+
 # # This is the same data as Si_2_256_512x512 but provided as measurement data and only up to 256x256 resolution
-# data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_reconstructed_image", 2, "lower left", 2, 1, (32, 42, 50, 50)
-# data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_hadamard_measurement_vector", 2, "lower left", 2, 1, (32, 42, 50, 50)
 # data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_measurement_data", 2, "lower left", 2, 1, (32, 42, 50, 50)
+# data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_hadamard_measurement_vector", 2, "lower left", 2, 1, (32, 42, 50, 50)
+# data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_reconstructed_image", 2, "lower left", 2, 1, (32, 42, 50, 50)
 # clim = (0.0, 4e-7)
 # R_high = 1e-6
 # R_low = -1e-6
 # factor = 1e7  # to scale up the photocurrent values for better numerical stability in SPGL1
+
+J_order = 8  # 2^8 x 2^8 = 256 x 256
 
 scale_eps = 1e-12
 is_out_of_distribution = True
@@ -140,17 +158,11 @@ data_filename = f"{data_name}.npy"
 print("Loading data file:", data_filename)
 assert (data_dir / data_filename).exists(), f"Data {data_filename} not found in {data_dir}."
 
-data_type = "image"
+data_type = "original_measurement_data"
 # data_type = "hadamard_measurement_vector"
-# data_type = "original_measurement_data"
+# data_type = "image"
 print(f"The type of raw data is: {data_type}")
 
-if "256x256" in data_name:
-    J_order = 8  # J=8 => 2^8=256
-elif "512x512" in data_name:
-    J_order = 9  # J=9 => 2^9=512
-else:
-    raise ValueError(f"Unknown data_name {data_name}, cannot determine order_size.")
 
 noise_seed = 42
 noise_std = 0  # No noise
@@ -607,11 +619,12 @@ def make_test_cases() -> list[tuple[float, int]]:
     # test_cases = [
     # #     (0.3, 3),
     #     # (0.2, 2),
-    #     # (0.2, 6),
-    #     (0.2, 8),
+    #     (0.2, 6),
+    #     # (0.2, 8),
     #     # (0.2, 7),
-    #     # (0.5, 6),
+    #     (0.5, 6),
     #     # (0.8, 6),
+    #     # (1.0, 6),
     #     # (1.0, 7),
     #     # (0.1, 8),
     # ]
