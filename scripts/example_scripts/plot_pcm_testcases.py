@@ -110,7 +110,8 @@ def plot_all_pcm_testcases():
     test_names = [
         # ("20260114_175241_CIGS_256x256_multilevel_pnp_eta_0.01_and_spgl1_all", 8, True, (20, 40), (0.5, 1.0)),
         # ("20260114_183643_silicon_512x512_multilevel_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.5, 0.9)),
-        ("20260115_105359_Si_2_256_512x512_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.2, 0.8)),
+        # ("20260115_105359_Si_2_256_512x512_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.2, 0.8)),
+        ("20260115_204000_Si_256_512x512_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.2, 0.8))
     ]
     eta = 0.01
     admm_iters = 50
