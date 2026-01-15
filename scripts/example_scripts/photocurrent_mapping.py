@@ -97,31 +97,39 @@ data_dir = Path("data/photocurrent_data")
 
 assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 
+# # These images are provided with pixels in range [0, 1]
 # data_name, zoom, loc, loc1, loc2, roi = "CIGS_256x256", 2.5, "center left", 3, 4, (110, 210, 40, 40)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "silicon_256x256", 2.5, "lower right", 2, 1, (194, 1, 60, 60)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "silicon_512x512", 3, "lower right", 2, 1, (400, 5, 100, 100)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "organic_256x256", 2.5, "lower left", 2, 1, (70, 5, 50, 50)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "perovskite_256x256", 2.5, "upper left", 3, 4, (90, 190, 50, 50)  # (x, y, w, h)  with y increasing downwards
-
 # data_name = "example_" + data_name  # prefix with "example_"
 # is_out_of_distribution = False
 # clim = (0.0, 1.0)
 # inverses_sign = False
 
-# data_name, zoom, loc, loc1, loc2, roi = "Si_256_512x512", 2.5, "lower left", 2, 1, (160, 60, 120, 120)
-# clim = (0.0, 3e-5)
-# R_high = 1e-4
-# R_low = -5e-6
+# This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
+data_name, zoom, loc, loc1, loc2, roi = "Si_256_512x512", 2.5, "lower left", 2, 1, (160, 60, 120, 120)
+clim = (0.0, 3e-5)
+R_high = 1e-4
+R_low = -5e-6
+factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
+
+# # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
+# data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_512x512", 2.5, "lower right", 2, 1, (322, 85, 100, 100)
+# clim = (0.0, 1.5e-5)
+# R_high = 2e-5
+# R_low = -2e-6
 # factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
 
-data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_512x512", 2.5, "lower right", 2, 1, (322, 85, 100, 100)
+# # This is the same data as Si_2_256_512x512 but provided as measurement data and only up to 256x256 resolution
 # data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_reconstructed_image", 2, "lower left", 2, 1, (32, 42, 50, 50)
 # data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_hadamard_measurement_vector", 2, "lower left", 2, 1, (32, 42, 50, 50)
 # data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_measurement_data", 2, "lower left", 2, 1, (32, 42, 50, 50)
-clim = (0.0, 1.5e-5)
-R_high = 2e-5
-R_low = -2e-6
-factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
+# clim = (0.0, 4e-7)
+# R_high = 1e-6
+# R_low = -1e-6
+# factor = 1e7  # to scale up the photocurrent values for better numerical stability in SPGL1
 
 scale_eps = 1e-12
 is_out_of_distribution = True
@@ -150,9 +158,9 @@ noise_std = 0  # No noise
 # noise_std = 0.05  # standard deviation of additive homoscedastic Gaussian white noise added to measurements
 
 runs_pnp_admm = True
-pnp_admm_iters = 1
+# pnp_admm_iters = 1
 # pnp_admm_iters = 20
-# pnp_admm_iters = 50
+pnp_admm_iters = 50
 # pnp_admm_iters = 100
 # pnp_admm_eta = 0.00001  # Undersampling artifacts may remain if eta is too small
 # pnp_admm_eta = 0.00005  # Could still work
@@ -180,7 +188,7 @@ drunet_sigma = 0.05  # noise level for DRUNet denoiser
 
 runs_fista_l1 = False
 
-runs_spgl1 = False
+runs_spgl1 = True
 
 randomizing_scheme = "multilevel"
 # randomizing_scheme = "uniform"
@@ -583,20 +591,20 @@ def make_test_cases() -> list[tuple[float, int]]:
             test_cases.append((sampling_ratio, coarse_J))
     test_cases.append((1.0, J_order))  # 100% sampling
 
-    # sampling_ratios = [0.1]
-    sampling_ratios = [0.2]
-    # # sampling_ratios = [0.25]
-    # sampling_ratios = [0.5]
-    # # sampling_ratios = [0.7]
-    # # coarse_Js = [5]  # keep 2^{coarse_J} x 2^{coarse_J} in-order measurements
-    # # coarse_Js = [7]  # keep 2^{coarse_J} x 2^{coarse_J} in-order measurements
-    coarse_Js = list(range(0, J_order))
-    test_cases = []
-    test_cases += [
-        (sampling_ratio, coarse_J)
-        for sampling_ratio in sampling_ratios
-        for coarse_J in coarse_Js
-    ]
+    # # sampling_ratios = [0.1]
+    # sampling_ratios = [0.2]
+    # # # sampling_ratios = [0.25]
+    # # sampling_ratios = [0.5]
+    # # # sampling_ratios = [0.7]
+    # # # coarse_Js = [5]  # keep 2^{coarse_J} x 2^{coarse_J} in-order measurements
+    # # # coarse_Js = [7]  # keep 2^{coarse_J} x 2^{coarse_J} in-order measurements
+    # coarse_Js = list(range(0, J_order))
+    # test_cases = []
+    # test_cases += [
+    #     (sampling_ratio, coarse_J)
+    #     for sampling_ratio in sampling_ratios
+    #     for coarse_J in coarse_Js
+    # ]
     # test_cases = [
     # #     (0.3, 3),
     #     # (0.2, 2),
