@@ -9,12 +9,16 @@ def get_random_indices_up_to_last_coarse_level(
     num_coarse_samples: int,
     rng: np.random.Generator | None = None,
 ) -> np.ndarray:
+    assert num_coarse_samples > num_samples, (
+        "num_coarse_samples must be greater than num_samples to use this function. "
+        f"Got num_coarse_samples={num_coarse_samples}, num_samples={num_samples}."
+    )
     assert coarse_J > 0, (
         "coarse_J must be positive if num_coarse_samples > num_samples. "
         f"Got coarse_J={coarse_J}"
     )
     num_full_coarse_samples = 1 << (2 * (coarse_J - 1))
-    if num_full_coarse_samples < num_samples:
+    if num_full_coarse_samples >= num_samples:
         raise ValueError(
             f"Number of full coarse samples must be less than num_samples. "
             f"Got num_full_coarse_samples={num_full_coarse_samples}, num_samples={num_samples}. "

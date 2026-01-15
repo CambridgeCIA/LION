@@ -151,7 +151,6 @@ elif "512x512" in data_name:
     J_order = 9  # J=9 => 2^9=512
 else:
     raise ValueError(f"Unknown data_name {data_name}, cannot determine order_size.")
-# J_order = 8  # J=8 => 2^8=256
 
 noise_seed = 42
 noise_std = 0  # No noise
@@ -196,8 +195,8 @@ randomizing_scheme = "multilevel"
 cmap_max = 0.8  # take only the lower 0-80% of afmhot, reduce brightness
 # cmap_max = 0.9  # take only the lower 0-90% of afmhot to avoid the white top
 # cmap_max = 1.0  # take all of afmhot
-# adds_insets = True
-adds_insets = False
+adds_insets = True
+# adds_insets = False
 plot_helper = PlotHelper(
     roi=roi,
     zoom=zoom,
@@ -609,11 +608,12 @@ def make_test_cases() -> list[tuple[float, int]]:
     # #     (0.3, 3),
     #     # (0.2, 2),
     #     # (0.2, 6),
+    #     (0.2, 8),
     #     # (0.2, 7),
     #     # (0.5, 6),
     #     # (0.8, 6),
     #     # (1.0, 7),
-    #     (0.1, 8),
+    #     # (0.1, 8),
     # ]
 
     # test_cases = test_cases[80:]

@@ -14,7 +14,7 @@ from typing import Callable, Any
 tqdm = partial(std_tqdm, dynamic_ncols=True)
 
 
-def plot_pcm_testcase(
+def plot_testcase(
     J: int,
     uses_coarse_J: bool,
     csv_path: Path,
@@ -108,127 +108,118 @@ def plot_pcm_testcase(
 def plot_all_pcm_testcases():
     demo_output_dir = Path("pcm_demo_output")
     test_names = [
-        # "20260111_204145_CIGS",
-        # "20260111_204307_silicon",
-        # "20260111_204326_organic",
-        # "20260111_204341_perovskite",
-        # "20260112_235416_CIGS",
-        # "20260113_175847_CIGS",
-        # ("20260114_050139_CIGS_256x256_multilevel_spgl1_ok", 8, True),
-        # ("20260114_044258_CIGS_256x256_uniform_pnp_admm_eta_1_not_good", 8, True),
-        # ("20260114_051023_CIGS_256x256_multilevel_pnp_eta_1_good", 8, True)
-        # ("20260114_064001_CIGS_256x256_uniform", 8, True)
-        # ("20260114_093314_silicon_512x512_multilevel_pnp_all", 9, True),
-        # ("20260114_140813_silicon_512x512_multilevel_spgl1_all_BEST", 9, True),
-        # ("20260114_175241_CIGS_256x256_multilevel", 8, True),
-        # ("20260114_183643_silicon_512x512_multilevel_pnp_eta_0.01_admm_iters_50_all_BEST", 9, True),
-        # ("20260114_200650_perovskite_256x256_multilevel_pnp_and_spgl1_all", 8, True),
-        # ("20260114_220039_organic_256x256_multilevel_pnp_and_spgl1_all", 8, True),
-        # ("20260115_000157_silicon_256x256_multilevel_pnp_eta_0.01_and_spgl1_all", 8, True),
-        # ("20260115_082520_Si_2_256_measurement_data_multilevel_noise_0", 8, True),
-        ("20260115_105359_Si_2_256_512x512_multilevel_noise_0_pnp_and_admm_all", 9, True),
+        # ("20260114_175241_CIGS_256x256_multilevel_pnp_eta_0.01_and_spgl1_all", 8, True, (20, 40), (0.5, 1.0)),
+        # ("20260114_183643_silicon_512x512_multilevel_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.5, 0.9)),
+        ("20260115_105359_Si_2_256_512x512_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.2, 0.8)),
     ]
     eta = 0.01
-    # eta = 0.1
-    # eta = 1
-    # eta = 100
-    # admm_iters = 20
     admm_iters = 50
-    # admm_iters = 100
     cg_iters = 20
-    # cg_iters = 50
     drunet_sigma = 0.05
     spgl1_factor = 1e5
+
     # pnp_admm_csv_path = "pnp_admm/metrics.csv"
     pnp_admm_csv_path = f"pnp_admm_iters={admm_iters}_eta={eta}_cg_iters={cg_iters}_drunet_sigma={drunet_sigma}/metrics.csv"
     # pcm_demo_output/20260115_082520_Si_2_256_measurement_data_multilevel_noise_0/pnp_admm_iters=100_eta=0.01_cg_iters=50_drunet_sigma=0.05/metrics.csv
+
     # spgl1_csv_path = "spgl1/metrics.csv"
     spgl1_csv_path = f"spgl1_factor={spgl1_factor}/metrics.csv"
+
+    zero_filled_csv_path = pnp_admm_csv_path
+    # zero_filled_csv_path = spgl1_csv_path
     reverse = True
 
-    # psnr_vrange = (10.0, 40.0)
-    # psnr_vrange = (30.0, 40.0)
-    # psnr_vrange = (10.0, 50.0)
-    # psnr_vrange = (30.0, 50.0)
-    # psnr_vrange = (10.0, 30.0)
-    psnr_vrange = (20.0, 30.0)
-    # psnr_vrange = (25.0, 35.0)
-    # psnr_vrange = (10.0, 30.0)
-    # psnr_vrange = (18.0, 28.0)
-    # psnr_vrange = (20.0, 28.0)
-    # psnr_vrange = (15.0, 30.0)
-    # psnr_vrange = (16.0, 30.0)
-    # psnr_vrange = (20.0, 40.0)
-    # psnr_vrange = (35.0, 45.0)
-    # psnr_vrange = (20.0, 50.0)
-    # psnr_vrange = (20.0, 60.0)
-
-    psnr_cases = [
+    test_cases = [
         {
             "title": "Zero-filled reconstruction PSNR",
             "filename": "psnr_zero_filled",
-            "csv_path": pnp_admm_csv_path,
-            # "csv_path": spgl1_csv_path,
             "metric": "psnr_zero_filled",
             "metric_name": "PSNR",
-            "vrange": psnr_vrange,
         },
         {
             "title": "PnP-ADMM reconstruction PSNR",
             "filename": "psnr_pnp_admm",
-            "csv_path": pnp_admm_csv_path,
             "metric": "psnr_recon",
             "metric_name": "PSNR",
-            "vrange": psnr_vrange,
         },
         {
             "title": "SPGL1 reconstruction PSNR",
             "filename": "psnr_spgl1",
-            "csv_path": spgl1_csv_path,
             "metric": "psnr_recon",
             "metric_name": "PSNR",
-            "vrange": psnr_vrange,
+        },
+
+        {
+            "title": "Zero-filled reconstruction SSIM",
+            "filename": "ssim_zero_filled",
+            "metric": "ssim_zero_filled",
+            "metric_name": "SSIM",
+        },
+        {
+            "title": "PnP-ADMM reconstruction SSIM",
+            "filename": "ssim_pnp_admm",
+            "metric": "ssim_recon",
+            "metric_name": "SSIM",
+        },
+        {
+            "title": "SPGL1 reconstruction SSIM",
+            "filename": "ssim_spgl1",
+            "metric": "ssim_recon",
+            "metric_name": "SSIM",
         },
     ]
 
-    for test_name, J, uses_coarse_J in tqdm(test_names, desc="Test cases"):
+    plot_styles = {
+        "scatter_round": {
+            "plot_func": plot_metric_scatter,
+            "kwargs": {
+                "s": 140,
+                "marker": "o",  # round markers
+            },
+        },
+        "scatter_square": {
+            "plot_func": plot_metric_scatter,
+            "kwargs": {
+                "s": 140,
+                "marker": "s",  # square markers
+            },
+        },
+        "triangulation": {
+            "plot_func": plot_metric_triangulation,
+            "kwargs": {"levels": 40},
+        },
+    }
+
+    for test_name, J, uses_coarse_J, psnr_range, ssim_range in tqdm(test_names, desc="Test cases"):
         test_dir = demo_output_dir / test_name
-
-
-        plot_styles = {
-            "scatter_round": {
-                "plot_func": plot_metric_scatter,
-                "kwargs": {
-                    "s": 140,
-                    "marker": "o",  # round markers
-                },
-            },
-            "scatter_square": {
-                "plot_func": plot_metric_scatter,
-                "kwargs": {
-                    "s": 140,
-                    "marker": "s",  # square markers
-                },
-            },
-            "triangulation": {
-                "plot_func": plot_metric_triangulation,
-                "kwargs": {"levels": 40},
-            },
-        }
-
-        for case in tqdm(psnr_cases):
+        for test_case in tqdm(test_cases):
             for plot_style, plot_info in plot_styles.items():
-                plot_pcm_testcase(
+                metric_prefix = test_case["metric"].split("_")[0]
+                if metric_prefix == "psnr":
+                    test_case["vrange"] = psnr_range
+                elif metric_prefix == "ssim":
+                    test_case["vrange"] = ssim_range
+                else:
+                    raise ValueError(f"Unknown metric prefix: {metric_prefix} in metric {test_case['metric']}")
+                if "pnp_admm" in test_case["filename"]:
+                    csv_path = pnp_admm_csv_path
+                elif "spgl1" in test_case["filename"]:
+                    csv_path = spgl1_csv_path
+                elif "zero_filled" in test_case["filename"]:
+                    csv_path = zero_filled_csv_path
+                else:
+                    raise ValueError(f"Unknown method in filename: {test_case['filename']}")
+                plot_testcase(
                     J=J,
                     uses_coarse_J=uses_coarse_J,
-                    csv_path=test_dir / case["csv_path"],
-                    metric=case["metric"],
-                    metric_name=case["metric_name"],
+                    csv_path=test_dir / csv_path,
+                    metric=test_case["metric"],
+                    metric_name=test_case["metric_name"],
                     reverse=reverse,
-                    vrange=psnr_vrange,
-                    title=case["title"],
+                    vrange=test_case["vrange"],
+                    title=test_case["title"],
                     test_dir=test_dir,
-                    filename=f'{case["filename"]}_{plot_style}_uses_coarse_J_{uses_coarse_J}',
+                    filename=f'{test_case["filename"]}_{plot_style}_uses_coarse_J_{uses_coarse_J}',
                     plot_func=plot_info["plot_func"],
                     **plot_info["kwargs"],
                 )
