@@ -109,6 +109,7 @@ clim = (0.0, 1.0)
 inverses_sign = False
 # R_high, R_low = 1.0, 0.0  # default for normalized images
 is_out_of_distribution = False
+factor = 1  # no scaling for normalized images
 
 # # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
 # data_name, zoom, loc, loc1, loc2, roi = "Si_256_512x512", 2.5, "lower left", 2, 1, (160, 60, 120, 120)
@@ -174,7 +175,7 @@ noise_std = 0  # No noise
 
 num_trials = 20
 
-runs_pnp_admm = True
+runs_pnp_admm = False
 # pnp_admm_iters = 1
 # pnp_admm_iters = 20
 pnp_admm_iters = 50
@@ -206,7 +207,7 @@ drunet_sigma = 0.05  # noise level for DRUNet denoiser
 
 runs_fista_l1 = False
 
-runs_spgl1 = False
+runs_spgl1 = True
 
 randomizing_scheme = "multilevel"
 # randomizing_scheme = "uniform"
@@ -741,7 +742,7 @@ def run_experiments():
     # time, which makes it easier to keep track of different experiments.
 
     current_datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    experiment_log_dir = Path("pcm_demo_output") / f"{current_datetime_str}_{data_name}_{randomizing_scheme}_noise_{noise_std}"
+    experiment_log_dir = Path("pcm_demo_output") / f"{current_datetime_str}_{data_name}_{randomizing_scheme}_{num_trials}_trials"
     experiment_log_dir.mkdir(parents=True, exist_ok=True)
 
     for i_seed in tqdm(range(num_trials), desc="Running trials"):
