@@ -32,7 +32,7 @@ from __future__ import annotations
 from calendar import c
 from operator import inv
 
-from cv2 import add
+from cv2 import add, log
 import test
 import torch
 from wandb import init
@@ -97,20 +97,23 @@ data_dir = Path("data/photocurrent_data")
 
 assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 
-# # These images are provided with pixels in range [0, 1]
-# data_name, zoom, loc, loc1, loc2, roi = "CIGS_256x256", 2.5, "center left", 3, 4, (110, 210, 40, 40)  # (x, y, w, h)  with y increasing downwards
+# These images are provided with pixels in range [0, 1]
+data_name, zoom, loc, loc1, loc2, roi = "CIGS_256x256", 2.5, "center left", 3, 4, (110, 210, 40, 40)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "silicon_256x256", 2.5, "lower right", 2, 1, (194, 1, 60, 60)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "silicon_512x512", 3, "lower right", 2, 1, (400, 5, 100, 100)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "organic_256x256", 2.5, "lower left", 2, 1, (70, 5, 50, 50)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "perovskite_256x256", 2.5, "upper left", 3, 4, (90, 190, 50, 50)  # (x, y, w, h)  with y increasing downwards
-# data_name = "example_" + data_name  # prefix with "example_"
-# is_out_of_distribution = False
-# clim = (0.0, 1.0)
-# inverses_sign = False
+data_name = "example_" + data_name  # prefix with "example_"
+is_out_of_distribution = False
+clim = (0.0, 1.0)
+inverses_sign = False
+# R_high, R_low = 1.0, 0.0  # default for normalized images
+is_out_of_distribution = False
 
 # # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
 # data_name, zoom, loc, loc1, loc2, roi = "Si_256_512x512", 2.5, "lower left", 2, 1, (160, 60, 120, 120)
 # clim = (0.0, 3e-5)
+# inverses_sign = True
 # R_high = 1e-4
 # R_low = -5e-6
 # factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
@@ -118,61 +121,65 @@ assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 # # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
 # data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_512x512", 2.5, "lower right", 2, 1, (322, 85, 100, 100)
 # clim = (0.0, 1.5e-5)
+# inverses_sign = True
 # R_high = 2e-5
 # R_low = -2e-6
 # factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
 
-# if "256x256" in data_name:
-#     J_order = 8  # J=8 => 2^8=256
-# elif "512x512" in data_name:
-#     J_order = 9  # J=9 => 2^9=512
-# else:
-#     raise ValueError(f"Unknown data_name {data_name}, cannot determine order_size.")
+if "256x256" in data_name:
+    J_order = 8  # J=8 => 2^8=256
+elif "512x512" in data_name:
+    J_order = 9  # J=9 => 2^9=512
+else:
+    raise ValueError(f"Unknown data_name {data_name}, cannot determine order_size.")
 
-# # This is the same data as Si_256_512x512 but provided as measurement data and only up to 256x256 resolution
-data_name, zoom, loc, loc1, loc2, roi = "Si_256_measurement_data", 2, "lower left", 2, 1, (80, 30, 60, 60)
-# data_name, zoom, loc, loc1, loc2, roi = "Si_256_hadamard_measurement_vector", 2, "lower left", 2, 1, (80, 30, 60, 60)
-# data_name, zoom, loc, loc1, loc2, roi = "Si_256_reconstructed_image", 2, "lower left", 2, 1, (80, 30, 60, 60)
-clim = (0.0, 1e-6)
-R_high = 1e-6
-R_low = -1e-6
-factor = 1e7  # to scale up the photocurrent values for better numerical stability in SPGL1
+# # # This is the same data as Si_256_512x512 but provided as measurement data and only up to 256x256 resolution
+# data_name, zoom, loc, loc1, loc2, roi = "Si_256_measurement_data", 2, "lower left", 2, 1, (80, 30, 60, 60)
+# # data_name, zoom, loc, loc1, loc2, roi = "Si_256_hadamard_measurement_vector", 2, "lower left", 2, 1, (80, 30, 60, 60)
+# # data_name, zoom, loc, loc1, loc2, roi = "Si_256_reconstructed_image", 2, "lower left", 2, 1, (80, 30, 60, 60)
+# clim = (0.0, 1e-6)
+# R_high = 1e-6
+# R_low = -1e-6
+# factor = 1e7  # to scale up the photocurrent values for better numerical stability in SPGL1
+# J_order = 8  # 2^8 x 2^8 = 256 x 256
 
-# # This is the same data as Si_2_256_512x512 but provided as measurement data and only up to 256x256 resolution
+# # # This is the same data as Si_2_256_512x512 but provided as measurement data and only up to 256x256 resolution
 # data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_measurement_data", 2, "lower left", 2, 1, (32, 42, 50, 50)
-# data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_hadamard_measurement_vector", 2, "lower left", 2, 1, (32, 42, 50, 50)
-# data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_reconstructed_image", 2, "lower left", 2, 1, (32, 42, 50, 50)
+# # data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_hadamard_measurement_vector", 2, "lower left", 2, 1, (32, 42, 50, 50)
+# # data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_reconstructed_image", 2, "lower left", 2, 1, (32, 42, 50, 50)
 # clim = (0.0, 4e-7)
 # R_high = 1e-6
 # R_low = -1e-6
 # factor = 1e7  # to scale up the photocurrent values for better numerical stability in SPGL1
-
-J_order = 8  # 2^8 x 2^8 = 256 x 256
+# J_order = 8  # 2^8 x 2^8 = 256 x 256
 
 scale_eps = 1e-12
-is_out_of_distribution = True
-inverses_sign = True
+# is_out_of_distribution = True
+# inverses_sign = True
+
 tests_scale_ground_truth = False
 
 data_filename = f"{data_name}.npy"
 print("Loading data file:", data_filename)
 assert (data_dir / data_filename).exists(), f"Data {data_filename} not found in {data_dir}."
 
-data_type = "original_measurement_data"
+# data_type = "original_measurement_data"
 # data_type = "hadamard_measurement_vector"
-# data_type = "image"
+data_type = "image"
 print(f"The type of raw data is: {data_type}")
-
 
 noise_seed = 42
 noise_std = 0  # No noise
 # noise_std = 0.05  # standard deviation of additive homoscedastic Gaussian white noise added to measurements
+
+num_trials = 20
 
 runs_pnp_admm = True
 # pnp_admm_iters = 1
 # pnp_admm_iters = 20
 pnp_admm_iters = 50
 # pnp_admm_iters = 100
+# pnp_admm_iters = 150
 # pnp_admm_eta = 0.00001  # Undersampling artifacts may remain if eta is too small
 # pnp_admm_eta = 0.00005  # Could still work
 # pnp_admm_eta = 0.0001  # Could still work
@@ -199,7 +206,7 @@ drunet_sigma = 0.05  # noise level for DRUNet denoiser
 
 runs_fista_l1 = False
 
-runs_spgl1 = True
+runs_spgl1 = False
 
 randomizing_scheme = "multilevel"
 # randomizing_scheme = "uniform"
@@ -242,6 +249,7 @@ def show_images_with_inset(
     plot_helper: PlotHelper,
     titles: list[str] | None = None,
     suptitle: str | None = None,
+    adds_insets: bool = True,
 ) -> None:
     """Plot images."""
     n_images = len(images)
@@ -289,6 +297,7 @@ def run_pcm_demo(
     measurement_vector: Measurement1D | None = None,
     log_dir: Path | str = ".",
     device: torch.device | str = "cuda:0",
+    seed: int = 0,
 ):
     zero_filled_dir = Path(log_dir) / "zero_filled"
     zero_filled_dir.mkdir(parents=True, exist_ok=True)
@@ -306,7 +315,7 @@ def run_pcm_demo(
     print(f"Sampling rate: {sampling_percentage}%")
     print(f"Coarse levels to keep: {coarse_J} ({in_order_measurements_percentage}%)")
 
-    rng = np.random.default_rng(0)
+    rng = np.random.default_rng(seed)
     num_samples = int(sampling_ratio * N * N)
     if randomizing_scheme == "multilevel":
         sampled_indices = multilevel_sample(
@@ -404,6 +413,7 @@ def run_pcm_demo(
             f"PCM Reconstructions, J={J} ({N}x{N} image)\n"
             + f"Sample {sampling_percentage:.2f}%, keep {coarse_J} coarse levels ({in_order_measurements_percentage}% here), the rest: {randomizing_scheme} random"
         ),
+        adds_insets=adds_insets,
     )
 
 # %%
@@ -424,7 +434,8 @@ def run_pnp_admm(
     #     f"Running PnP-ADMM reconstruction: {admm_iterations} iterations, cg_max_iter={cg_max_iter}..."
     # )
 
-    a = max(R_high - R_low, scale_eps)
+    if is_out_of_distribution:
+        a = max(R_high - R_low, scale_eps)
 
     # pcm_measurement = (pcm_measurement - R_low) / a if is_out_of_distribution else pcm_measurement
 
@@ -593,13 +604,14 @@ def make_test_cases() -> list[tuple[float, int]]:
     #         test_cases.append((sampling_ratio, coarse_J))
     for sampling_ in range(1, 10, 1):
         sampling_ratio = sampling_ / 10.0  # from 0.1 to 0.9
+        test_cases.append((sampling_ratio, J_order - 2))  # keep the first J-2 coarse levels, i.e. 6.25% in-order measurements
         num_samples = int(sampling_ratio * num_pixels)
-        for coarse_J in range(min_coarse_J, J_order):  # from 0 to J_order-1 (not including J_order because that is 100% sampling)
-            if coarse_J > 0:
-                prev_num_coarse_samples = 1 << (2 * (coarse_J - 1))
-                if prev_num_coarse_samples >= num_samples:
-                    continue
-            test_cases.append((sampling_ratio, coarse_J))
+        # for coarse_J in range(min_coarse_J, J_order):  # from 0 to J_order-1 (not including J_order because that is 100% sampling)
+        #     if coarse_J > 0:
+        #         prev_num_coarse_samples = 1 << (2 * (coarse_J - 1))
+        #         if prev_num_coarse_samples >= num_samples:
+        #             continue
+        #     test_cases.append((sampling_ratio, coarse_J))
     test_cases.append((1.0, J_order))  # 100% sampling
 
     # # sampling_ratios = [0.1]
@@ -622,7 +634,7 @@ def make_test_cases() -> list[tuple[float, int]]:
     #     (0.2, 6),
     #     # (0.2, 8),
     #     # (0.2, 7),
-    #     (0.5, 6),
+    #     # (0.5, 6),
     #     # (0.8, 6),
     #     # (1.0, 6),
     #     # (1.0, 7),
@@ -639,6 +651,7 @@ def make_test_cases() -> list[tuple[float, int]]:
 def run_experiments():
     raw_data: GrayscaleImage2D | Measurement1D = np.load(data_dir / data_filename)
     print(f"Raw data shape: {raw_data.shape}")
+    print(f"J_order: {J_order}")
 
     if data_type == "image":
         ground_truth_image: GrayscaleImage2D = torch.tensor(raw_data, dtype=torch.float32, device=device)
@@ -698,6 +711,7 @@ def run_experiments():
         # exit()
 
         pcm_op_full = PhotocurrentMapOp(J=J_order, device=device)
+        print(f"pcm_op_full domain shape: {pcm_op_full.domain_shape}, range shape: {pcm_op_full.range_shape}")
         with torch.no_grad():
             ground_truth_image = pcm_op_full.pseudo_inv(measurement_vector)
         print(f"Reconstructed ground truth image shape from original measurement data: {ground_truth_image.shape}")
@@ -727,130 +741,137 @@ def run_experiments():
     # time, which makes it easier to keep track of different experiments.
 
     current_datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_dir = Path("pcm_demo_output") / f"{current_datetime_str}_{data_name}_{randomizing_scheme}_noise_{noise_std}"
-    log_dir.mkdir(parents=True, exist_ok=True)
+    experiment_log_dir = Path("pcm_demo_output") / f"{current_datetime_str}_{data_name}_{randomizing_scheme}_noise_{noise_std}"
+    experiment_log_dir.mkdir(parents=True, exist_ok=True)
 
-    # %% [markdown]
-    # ## First experiment: PnP-ADMM
-    #
-    # In this section the PCM PnP-ADMM algorithm is tested on the CIGS data.
+    for i_seed in range(num_trials):
+        log_dir = experiment_log_dir / f"trial_{i_seed}"
+        log_dir.mkdir(parents=True, exist_ok=True)
 
-    # %% [markdown]
-    # Define the prior function using a pre-trained DRUNet denoiser and the
-    # corresponding Plug-and-Play ADMM solver.
-    #
-    # DRUNet is a deep convolutional denoiser proposed by:
-    #
-    # > Kai Zhang, Yawei Li, Wangmeng Zuo, Lei Zhang, Luc Van Gool, and
-    # > Radu Timofte, "Plug-and-Play Image Restoration with Deep Denoiser Prior,"
-    # > IEEE Transactions on Pattern Analysis and Machine Intelligence, 44(10),
-    # > 6360–6376, 2022.
-    #
-    # In the PnP-ADMM framework, the proximal step of a regulariser is replaced by
-    # an off-the-shelf denoiser. Here DRUNet acts as a powerful learned prior for
-    # the PCM inverse problem, while the data fidelity term is handled by ADMM.
+        # %% [markdown]
+        # ## First experiment: PnP-ADMM
+        #
+        # In this section the PCM PnP-ADMM algorithm is tested on the CIGS data.
 
-    # %%
-    if runs_pnp_admm:
-        method_name = f"pnp_admm_iters={pnp_admm_iters}_eta={pnp_admm_eta}_cg_iters={cg_iters}_drunet_sigma={drunet_sigma}"
-        make_csv(method_name=method_name, log_dir=log_dir)
-        # for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
-        for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
-            run_pcm_demo(
-                recon_description=f"PnP-ADMM ({pnp_admm_iters} iters, η={pnp_admm_eta}, cg_iters={cg_iters}, σ={drunet_sigma})",
-                recon_fn=run_pnp_admm,
-                ground_truth_image=ground_truth_image,
-                method_name=method_name,
-                image_name="cigs",
-                J=J_order,  # image size is 2^J x 2^J
-                sampling_ratio=sampling_ratio,
-                coarse_J=coarse_J,
-                log_dir=log_dir,
-                device=device,
-            )
+        # %% [markdown]
+        # Define the prior function using a pre-trained DRUNet denoiser and the
+        # corresponding Plug-and-Play ADMM solver.
+        #
+        # DRUNet is a deep convolutional denoiser proposed by:
+        #
+        # > Kai Zhang, Yawei Li, Wangmeng Zuo, Lei Zhang, Luc Van Gool, and
+        # > Radu Timofte, "Plug-and-Play Image Restoration with Deep Denoiser Prior,"
+        # > IEEE Transactions on Pattern Analysis and Machine Intelligence, 44(10),
+        # > 6360–6376, 2022.
+        #
+        # In the PnP-ADMM framework, the proximal step of a regulariser is replaced by
+        # an off-the-shelf denoiser. Here DRUNet acts as a powerful learned prior for
+        # the PCM inverse problem, while the data fidelity term is handled by ADMM.
 
-
-    # %% [markdown]
-    # The code above runs the PnP-ADMM reconstruction and compares it to the
-    # zero-filled pseudo-inverse.
-    #
-    # Although PnP-ADMM substantially improves PSNR and SSIM, it can smooth out
-    # fine-scale structures. In the context of defect detection, these small
-    # features can be crucial, so high PSNR and SSIM alone are not sufficient to
-    # guarantee that the reconstruction is fit for purpose.
-    #
-    # In the next sections, two compressed sensing baselines with a wavelet
-    # sparsity prior are explored and compared to the PnP-ADMM result.
+        # %%
+        if runs_pnp_admm:
+            method_name = f"pnp_admm_iters={pnp_admm_iters}_eta={pnp_admm_eta}_cg_iters={cg_iters}_drunet_sigma={drunet_sigma}"
+            make_csv(method_name=method_name, log_dir=log_dir)
+            # for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
+            for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
+                run_pcm_demo(
+                    recon_description=f"PnP-ADMM ({pnp_admm_iters} iters, η={pnp_admm_eta}, cg_iters={cg_iters}, σ={drunet_sigma})",
+                    recon_fn=run_pnp_admm,
+                    ground_truth_image=ground_truth_image,
+                    method_name=method_name,
+                    image_name=data_name,
+                    J=J_order,  # image size is 2^J x 2^J
+                    sampling_ratio=sampling_ratio,
+                    coarse_J=coarse_J,
+                    log_dir=log_dir,
+                    device=device,
+                    seed=i_seed,
+                )
 
 
-    # %% [markdown]
-    # ## Compressed sensing baseline: FISTA with wavelet sparsity
-    #
-    # This section applies FISTA with an $\ell_1$-penalty on wavelet coefficients
-    # as a classical compressed sensing baseline.
-    #
-    # Let $\Phi$ denote the PCM forward operator and $\Psi$ a 2D wavelet
-    # transform with inverse $\Psi^{-1}$. The composite operator
-    # $A = \Phi \Psi^{-1}$ acts on wavelet coefficients $w$.
-    # FISTA approximately solves the standard $\ell_1$-regularised problem
-    #
-    # $$
-    # \min_w \frac{1}{2} \lVert A w - y \rVert_2^2
-    #     + \lambda \lVert w \rVert_1,
-    # $$
-    #
-    # and the final current map is obtained as $x = \Psi^{-1} w$.
-    #
-    # An optional debiasing step is included at the end to reduce the bias induced
-    # by the $\ell_1$ penalty on the active support.
+        # %% [markdown]
+        # The code above runs the PnP-ADMM reconstruction and compares it to the
+        # zero-filled pseudo-inverse.
+        #
+        # Although PnP-ADMM substantially improves PSNR and SSIM, it can smooth out
+        # fine-scale structures. In the context of defect detection, these small
+        # features can be crucial, so high PSNR and SSIM alone are not sufficient to
+        # guarantee that the reconstruction is fit for purpose.
+        #
+        # In the next sections, two compressed sensing baselines with a wavelet
+        # sparsity prior are explored and compared to the PnP-ADMM result.
 
-    # %%
-    if runs_fista_l1:
-        make_csv(method_name="fista_l1", log_dir=log_dir)
-        for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running FISTA-L1 experiments"):
-            run_pcm_demo(
-                recon_description="FISTA-L1",
-                recon_fn=run_fista_l1,
-                ground_truth_image=ground_truth_image,
-                method_name="fista_l1",
-                image_name="cigs",
-                J=J_order,  # image size is 2^J x 2^J
-                sampling_ratio=sampling_ratio,
-                coarse_J=coarse_J,
-                log_dir=log_dir,
-                device=device,
-            )
 
-    # %% [markdown]
-    # ## Compressed sensing baseline: SPGL1 with wavelet sparsity
-    #
-    # This section applies the SPGL1 algorithm as a second compressed sensing
-    # baseline, again using a wavelet sparsity prior in the same setting
-    # $A = \Phi \Psi^{-1}$.
-    #
-    # SPGL1 is a spectral projected gradient method that efficiently solves
-    # large-scale $\ell_1$-regularised problems and basis pursuit denoising
-    # formulations. In this example it is run with default parameters suitable
-    # for the PCM problem size, followed by the same optional debiasing step
-    # used for FISTA.
+        # %% [markdown]
+        # ## Compressed sensing baseline: FISTA with wavelet sparsity
+        #
+        # This section applies FISTA with an $\ell_1$-penalty on wavelet coefficients
+        # as a classical compressed sensing baseline.
+        #
+        # Let $\Phi$ denote the PCM forward operator and $\Psi$ a 2D wavelet
+        # transform with inverse $\Psi^{-1}$. The composite operator
+        # $A = \Phi \Psi^{-1}$ acts on wavelet coefficients $w$.
+        # FISTA approximately solves the standard $\ell_1$-regularised problem
+        #
+        # $$
+        # \min_w \frac{1}{2} \lVert A w - y \rVert_2^2
+        #     + \lambda \lVert w \rVert_1,
+        # $$
+        #
+        # and the final current map is obtained as $x = \Psi^{-1} w$.
+        #
+        # An optional debiasing step is included at the end to reduce the bias induced
+        # by the $\ell_1$ penalty on the active support.
 
-    # %%
-    if runs_spgl1:
-        method_name = f"spgl1_factor={factor}"
-        make_csv(method_name=method_name, log_dir=log_dir)
-        for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running SPGL1 experiments"):
-            run_pcm_demo(
-                recon_description="SPGL1",
-                recon_fn=run_spgl1,
-                ground_truth_image=ground_truth_image,
-                method_name=method_name,
-                image_name="cigs",
-                J=J_order,  # image size is 2^J x 2^J
-                sampling_ratio=sampling_ratio,
-                coarse_J=coarse_J,
-                log_dir=log_dir,
-                device=device,
-            )
+        # %%
+        if runs_fista_l1:
+            make_csv(method_name="fista_l1", log_dir=log_dir)
+            for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running FISTA-L1 experiments"):
+                run_pcm_demo(
+                    recon_description="FISTA-L1",
+                    recon_fn=run_fista_l1,
+                    ground_truth_image=ground_truth_image,
+                    method_name="fista_l1",
+                    image_name=data_name,
+                    J=J_order,  # image size is 2^J x 2^J
+                    sampling_ratio=sampling_ratio,
+                    coarse_J=coarse_J,
+                    log_dir=log_dir,
+                    device=device,
+                    seed=i_seed,
+                )
+
+        # %% [markdown]
+        # ## Compressed sensing baseline: SPGL1 with wavelet sparsity
+        #
+        # This section applies the SPGL1 algorithm as a second compressed sensing
+        # baseline, again using a wavelet sparsity prior in the same setting
+        # $A = \Phi \Psi^{-1}$.
+        #
+        # SPGL1 is a spectral projected gradient method that efficiently solves
+        # large-scale $\ell_1$-regularised problems and basis pursuit denoising
+        # formulations. In this example it is run with default parameters suitable
+        # for the PCM problem size, followed by the same optional debiasing step
+        # used for FISTA.
+
+        # %%
+        if runs_spgl1:
+            method_name = f"spgl1_factor={factor}"
+            make_csv(method_name=method_name, log_dir=log_dir)
+            for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running SPGL1 experiments"):
+                run_pcm_demo(
+                    recon_description="SPGL1",
+                    recon_fn=run_spgl1,
+                    ground_truth_image=ground_truth_image,
+                    method_name=method_name,
+                    image_name=data_name,
+                    J=J_order,  # image size is 2^J x 2^J
+                    sampling_ratio=sampling_ratio,
+                    coarse_J=coarse_J,
+                    log_dir=log_dir,
+                    device=device,
+                    seed=i_seed,
+                )
 
 if __name__ == "__main__":
     run_experiments()
