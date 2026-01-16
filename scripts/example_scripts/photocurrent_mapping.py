@@ -111,21 +111,21 @@ assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 # is_out_of_distribution = False
 # factor = 1  # no scaling for normalized images
 
-# # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
-# data_name, zoom, loc, loc1, loc2, roi = "Si_256_512x512", 2.5, "lower left", 2, 1, (160, 60, 120, 120)
-# clim = (0.0, 3e-5)
-# inverses_sign = True
-# R_high = 1e-4
-# R_low = -5e-6
-# factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
-
 # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
-data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_512x512", 2.5, "lower right", 2, 1, (322, 85, 100, 100)
-clim = (0.0, 1.5e-5)
+data_name, zoom, loc, loc1, loc2, roi = "Si_256_512x512", 2.5, "lower left", 2, 1, (160, 60, 120, 120)
+clim = (0.0, 3e-5)
 inverses_sign = True
-R_high = 2e-5
-R_low = -2e-6
+R_high = 1e-4
+R_low = -5e-6
 factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
+
+# # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
+# data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_512x512", 2.5, "lower right", 2, 1, (322, 85, 100, 100)
+# clim = (0.0, 1.5e-5)
+# inverses_sign = True
+# R_high = 2e-5
+# R_low = -2e-6
+# factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
 
 if "256x256" in data_name:
     J_order = 8  # J=8 => 2^8=256
