@@ -111,13 +111,15 @@ def plot_all_pcm_testcases():
         # ("20260114_175241_CIGS_256x256_multilevel_pnp_eta_0.01_and_spgl1_all", 8, True, (20, 40), (0.5, 1.0)),
         # ("20260114_183643_silicon_512x512_multilevel_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.5, 0.9)),
         # ("20260115_105359_Si_2_256_512x512_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.2, 0.8)),
-        ("20260115_204000_Si_256_512x512_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.2, 0.8))
+        # ("20260115_204000_Si_256_512x512_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.2, 0.8)),
+        ("20260115_225211_Si_256_measurement_data_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all", 8, True, (20, 30), (0.2, 0.8)),
     ]
     eta = 0.01
     admm_iters = 50
     cg_iters = 20
     drunet_sigma = 0.05
-    spgl1_factor = 1e5
+    # spgl1_factor = 1e5
+    spgl1_factor = 1e7
 
     # pnp_admm_csv_path = "pnp_admm/metrics.csv"
     pnp_admm_csv_path = f"pnp_admm_iters={admm_iters}_eta={eta}_cg_iters={cg_iters}_drunet_sigma={drunet_sigma}/metrics.csv"
