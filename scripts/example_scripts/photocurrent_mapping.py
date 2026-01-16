@@ -744,7 +744,7 @@ def run_experiments():
     experiment_log_dir = Path("pcm_demo_output") / f"{current_datetime_str}_{data_name}_{randomizing_scheme}_noise_{noise_std}"
     experiment_log_dir.mkdir(parents=True, exist_ok=True)
 
-    for i_seed in range(num_trials):
+    for i_seed in tqdm(range(num_trials), desc="Running trials"):
         log_dir = experiment_log_dir / f"trial_{i_seed}"
         log_dir.mkdir(parents=True, exist_ok=True)
 
