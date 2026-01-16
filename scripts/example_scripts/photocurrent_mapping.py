@@ -174,6 +174,7 @@ noise_std = 0  # No noise
 # noise_std = 0.05  # standard deviation of additive homoscedastic Gaussian white noise added to measurements
 
 num_trials = 20
+num_trials_skip = 6
 
 runs_pnp_admm = True
 # pnp_admm_iters = 1
@@ -745,7 +746,8 @@ def run_experiments():
     experiment_log_dir = Path("pcm_demo_output") / f"{current_datetime_str}_{data_name}_{randomizing_scheme}_{num_trials}_trials"
     experiment_log_dir.mkdir(parents=True, exist_ok=True)
 
-    for i_seed in tqdm(range(num_trials), desc="Running trials"):
+    for i_seed in tqdm(range(num_trials_skip, num_trials), desc="Running trials"):
+        print(f"\n=== Trial {i_seed} ===")
         log_dir = experiment_log_dir / f"trial_{i_seed}"
         log_dir.mkdir(parents=True, exist_ok=True)
 
