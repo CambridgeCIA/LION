@@ -98,9 +98,9 @@ data_dir = Path("data/photocurrent_data")
 assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 
 # These images are provided with pixels in range [0, 1]
-# data_name, zoom, loc, loc1, loc2, roi = "CIGS_256x256", 2.5, "center left", 3, 4, (110, 210, 40, 40)  # (x, y, w, h)  with y increasing downwards
+data_name, zoom, loc, loc1, loc2, roi = "CIGS_256x256", 2.5, "center left", 3, 4, (110, 210, 40, 40)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "silicon_256x256", 2.5, "lower right", 2, 1, (194, 1, 60, 60)  # (x, y, w, h)  with y increasing downwards
-data_name, zoom, loc, loc1, loc2, roi = "silicon_512x512", 3, "lower right", 2, 1, (400, 5, 100, 100)  # (x, y, w, h)  with y increasing downwards
+# data_name, zoom, loc, loc1, loc2, roi = "silicon_512x512", 3, "lower right", 2, 1, (400, 5, 100, 100)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "organic_256x256", 2.5, "lower left", 2, 1, (70, 5, 50, 50)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "perovskite_256x256", 2.5, "upper left", 3, 4, (90, 190, 50, 50)  # (x, y, w, h)  with y increasing downwards
 data_name = "example_" + data_name  # prefix with "example_"
@@ -210,8 +210,8 @@ runs_fista_l1 = False
 
 runs_spgl1 = True
 
-randomizing_scheme = "multilevel"
-# randomizing_scheme = "uniform"
+# randomizing_scheme = "multilevel"
+randomizing_scheme = "uniform"
 
 cmap_max = 0.8  # take only the lower 0-80% of afmhot, reduce brightness
 # cmap_max = 0.9  # take only the lower 0-90% of afmhot to avoid the white top
