@@ -100,14 +100,14 @@ def summarise_trials_by_sampling_and_coarse_J(
 
 # Example usage
 if __name__ == "__main__":
-    # experiment_name = "20260116_053534_example_CIGS_256x256_multilevel_20_trials_pnp"
-    experiment_name = "20260116_063843_example_CIGS_256x256_multilevel_20_trials_spgl1"
+    experiment_name = "20260116_053534_example_CIGS_256x256_multilevel_20_trials_pnp"
+    # experiment_name = "20260116_063843_example_CIGS_256x256_multilevel_20_trials_spgl1"
     # experiment_name = "20260116_170524_Si_2_256_512x512_multilevel_20_trials_pnp_and_spgl1"
     experiment_dir = Path("pcm_demo_output") / experiment_name
     assert experiment_dir.is_dir(), f"Experiment directory not found: {experiment_dir}"
-    # method_name = "pnp_admm_iters=50_eta=0.01_cg_iters=20_drunet_sigma=0.05"
-    method_name = "spgl1_factor=1"
-    num_trials = 20
+    method_name = "pnp_admm_iters=50_eta=0.01_cg_iters=20_drunet_sigma=0.05"
+    # method_name = "spgl1_factor=1"
+    num_trials = 10
 
     summary = summarise_trials_by_sampling_and_coarse_J(
         experiment_dir=experiment_dir,
