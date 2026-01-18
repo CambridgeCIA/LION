@@ -90,6 +90,107 @@ def boxplot_from_metrics_csvs(
         plt.close(fig)
 
 
+
+
+def boxplot_recon_and_zero_filled_from_metrics_csvs(
+    csv_paths: Sequence[str | Path],
+    *,
+    metric_prefix: str = "psnr",
+    sampling_rates: Sequence[int] = (20, 50, 80),
+    sampling_col: str = "sampling_percentage",
+    round_sampling: bool = True,
+    title: str | None = None,
+    out_path: str | Path | None = None,
+) -> None:
+    """Box plot for both <metric>_recon and <metric>_zero_filled from many metrics.csv files."""
+    rates = [int(r) for r in sampling_rates]
+    recon_col = f"{metric_prefix}_recon"
+    zf_col = f"{metric_prefix}_zero_filled"
+
+    recon_by_rate = {r: [] for r in rates}
+    zf_by_rate = {r: [] for r in rates}
+
+    for p in map(Path, csv_paths):
+        df = pd.read_csv(p, skipinitialspace=True)
+        df.columns = [str(c).strip() for c in df.columns]
+
+        for col in (sampling_col, recon_col, zf_col):
+            if col not in df.columns:
+                raise ValueError(f"Missing '{col}' in {p}")
+
+        tmp = df[[sampling_col, recon_col, zf_col]].copy()
+        tmp[sampling_col] = pd.to_numeric(tmp[sampling_col], errors="coerce")
+        tmp[recon_col] = pd.to_numeric(tmp[recon_col], errors="coerce")
+        tmp[zf_col] = pd.to_numeric(tmp[zf_col], errors="coerce")
+        tmp = tmp.dropna()
+
+        if round_sampling:
+            tmp[sampling_col] = tmp[sampling_col].round().astype(int)
+        else:
+            tmp[sampling_col] = tmp[sampling_col].astype(int)
+
+        per_rate_recon = tmp.groupby(sampling_col, as_index=True)[recon_col].mean()
+        per_rate_zf = tmp.groupby(sampling_col, as_index=True)[zf_col].mean()
+
+        for r in rates:
+            if r not in per_rate_recon.index or r not in per_rate_zf.index:
+                raise ValueError(f"Sampling rate {r}% not found in {p}")
+            recon_by_rate[r].append(float(per_rate_recon.loc[r]))
+            zf_by_rate[r].append(float(per_rate_zf.loc[r]))
+
+    recon_data = [np.asarray(recon_by_rate[r], dtype=float) for r in rates]
+    zf_data = [np.asarray(zf_by_rate[r], dtype=float) for r in rates]
+
+    fig, ax = plt.subplots(figsize=(8.5, 4.5), dpi=160)
+
+    base_pos = np.arange(len(rates), dtype=float)
+    width = 0.32
+    offset = 0.18
+
+    bp_zf = ax.boxplot(
+        zf_data,
+        positions=base_pos - offset,
+        widths=width,
+        patch_artist=True,
+        showfliers=True,
+        manage_ticks=False,
+    )
+    bp_recon = ax.boxplot(
+        recon_data,
+        positions=base_pos + offset,
+        widths=width,
+        patch_artist=True,
+        showfliers=True,
+        manage_ticks=False,
+    )
+
+    # Simple colouring
+    for b in bp_zf["boxes"]:
+        b.set_facecolor("#BDBDBD")
+    for b in bp_recon["boxes"]:
+        b.set_facecolor("#8ECae6")
+
+    ax.set_xticks(base_pos)
+    ax.set_xticklabels([f"{r}%" for r in rates])
+    ax.set_xlabel("sampling rate")
+    ax.set_ylabel(metric_prefix)
+    if title is not None:
+        ax.set_title(title)
+
+    ax.grid(True, linestyle="--", alpha=0.4)
+    ax.legend([bp_zf["boxes"][0], bp_recon["boxes"][0]], ["Zero-filled", "Recon"], loc="upper right", frameon=True)
+
+    fig.tight_layout()
+
+    if out_path is None:
+        plt.show()
+    else:
+        out_path = Path(out_path)
+        fig.savefig(out_path)
+        plt.close(fig)
+
+
+
 if __name__ == "__main__":
     experiment_name = "20260116_053534_example_CIGS_256x256_multilevel_20_trials_pnp"
     # experiment_name = "20260116_063843_example_CIGS_256x256_multilevel_20_trials_spgl1"
@@ -102,10 +203,17 @@ if __name__ == "__main__":
     csvs = sorted(experiment_dir.glob(f"trial_*/{method_name}/metrics.csv"))[10:]
     print(f"Found {len(csvs)} metrics CSVs for method={method_name!r}"
           f" under {experiment_dir}")
-    boxplot_path = "psnr_boxplot.png"
-    boxplot_from_metrics_csvs(
+    boxplot_path = experiment_dir / "psnr_boxplot.png"
+    # boxplot_from_metrics_csvs(
+    #     csvs,
+    #     metric_col="psnr_recon",
+    #     sampling_rates=(20, 50, 80),
+    #     title="PSNR",
+    #     out_path=boxplot_path,
+    # )
+    boxplot_recon_and_zero_filled_from_metrics_csvs(
         csvs,
-        metric_col="psnr_recon",
+        metric_prefix="psnr",
         sampling_rates=(20, 50, 80),
         title="PSNR",
         out_path=boxplot_path,

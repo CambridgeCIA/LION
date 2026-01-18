@@ -210,8 +210,8 @@ runs_fista_l1 = False
 
 runs_spgl1 = True
 
-# randomizing_scheme = "multilevel"
-randomizing_scheme = "uniform"
+randomizing_scheme = "multilevel"
+# randomizing_scheme = "uniform"
 
 cmap_max = 0.8  # take only the lower 0-80% of afmhot, reduce brightness
 # cmap_max = 0.9  # take only the lower 0-90% of afmhot to avoid the white top
