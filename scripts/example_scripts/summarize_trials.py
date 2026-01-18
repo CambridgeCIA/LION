@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 import pandas as pd
-
+from functools import partial
+from tqdm import tqdm as std_tqdm
+# Use tqdm with dynamic column width that adapts to the terminal width
+tqdm = partial(std_tqdm, dynamic_ncols=True)
 
 def summarise_trials_by_sampling_and_coarse_J(
     experiment_dir: Path,
@@ -100,21 +103,25 @@ def summarise_trials_by_sampling_and_coarse_J(
 
 # Example usage
 if __name__ == "__main__":
-    experiment_name = "20260116_053534_example_CIGS_256x256_multilevel_20_trials_pnp"
+    # experiment_name = "20260116_053534_example_CIGS_256x256_multilevel_20_trials_pnp"
     # experiment_name = "20260116_063843_example_CIGS_256x256_multilevel_20_trials_spgl1"
-    # experiment_name = "20260116_170524_Si_2_256_512x512_multilevel_20_trials_pnp_and_spgl1"
+    experiment_name = "20260116_170524_Si_2_256_512x512_multilevel_20_trials_pnp_and_spgl1"
     experiment_dir = Path("pcm_demo_output") / experiment_name
     assert experiment_dir.is_dir(), f"Experiment directory not found: {experiment_dir}"
-    method_name = "pnp_admm_iters=50_eta=0.01_cg_iters=20_drunet_sigma=0.05"
-    # method_name = "spgl1_factor=1"
+    # factor = 1
+    factor = 1e5
+    methods = [
+        "pnp_admm_iters=50_eta=0.01_cg_iters=20_drunet_sigma=0.05",
+        f"spgl1_factor={factor}",
+    ]
     num_trials = 10
 
-    summary = summarise_trials_by_sampling_and_coarse_J(
-        experiment_dir=experiment_dir,
-        method_name=method_name,
-        num_trials=num_trials,
-        metrics_filename="metrics.csv",
-        sampling_round_ndigits=0,  # nearest integer
-        out_csv=experiment_dir / f"summary_{method_name}.csv",
-    )
-    print(summary.head())
+    for method_name in tqdm(methods):
+        summary = summarise_trials_by_sampling_and_coarse_J(
+            experiment_dir=experiment_dir,
+            method_name=method_name,
+            num_trials=num_trials,
+            metrics_filename="metrics.csv",
+            sampling_round_ndigits=0,  # nearest integer
+            out_csv=experiment_dir / f"summary_{method_name}.csv",
+        )

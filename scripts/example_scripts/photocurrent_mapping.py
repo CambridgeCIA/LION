@@ -98,9 +98,9 @@ data_dir = Path("data/photocurrent_data")
 assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 
 # These images are provided with pixels in range [0, 1]
-data_name, zoom, loc, loc1, loc2, roi = "CIGS_256x256", 2.5, "center left", 3, 4, (110, 210, 40, 40)  # (x, y, w, h)  with y increasing downwards
+# data_name, zoom, loc, loc1, loc2, roi = "CIGS_256x256", 2.5, "center left", 3, 4, (110, 210, 40, 40)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "silicon_256x256", 2.5, "lower right", 2, 1, (194, 1, 60, 60)  # (x, y, w, h)  with y increasing downwards
-# data_name, zoom, loc, loc1, loc2, roi = "silicon_512x512", 3, "lower right", 2, 1, (400, 5, 100, 100)  # (x, y, w, h)  with y increasing downwards
+data_name, zoom, loc, loc1, loc2, roi = "silicon_512x512", 3, "lower right", 2, 1, (400, 5, 100, 100)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "organic_256x256", 2.5, "lower left", 2, 1, (70, 5, 50, 50)  # (x, y, w, h)  with y increasing downwards
 # data_name, zoom, loc, loc1, loc2, roi = "perovskite_256x256", 2.5, "upper left", 3, 4, (90, 190, 50, 50)  # (x, y, w, h)  with y increasing downwards
 data_name = "example_" + data_name  # prefix with "example_"
@@ -174,7 +174,7 @@ noise_std = 0  # No noise
 # noise_std = 0.05  # standard deviation of additive homoscedastic Gaussian white noise added to measurements
 
 num_trials = 10
-num_trials_skip = 0
+num_trials_skip = 1
 
 runs_pnp_admm = True
 # pnp_admm_iters = 1
@@ -604,8 +604,9 @@ def make_test_cases() -> list[tuple[float, int]]:
     #             if prev_num_coarse_samples >= num_samples:
     #                 continue
     #         test_cases.append((sampling_ratio, coarse_J))
-    for sampling_ in range(1, 10, 1):
-        sampling_ratio = sampling_ / 10.0  # from 0.1 to 0.9
+    for sampling_ratio in [0.2, 0.5, 0.8]:
+    # for sampling_ in range(1, 10, 1):
+        # sampling_ratio = sampling_ / 10.0  # from 0.1 to 0.9
         test_cases.append((sampling_ratio, J_order - 2))  # keep the first J-2 coarse levels, i.e. 6.25% in-order measurements
         num_samples = int(sampling_ratio * num_pixels)
         # for coarse_J in range(min_coarse_J, J_order):  # from 0 to J_order-1 (not including J_order because that is 100% sampling)
@@ -614,7 +615,7 @@ def make_test_cases() -> list[tuple[float, int]]:
         #         if prev_num_coarse_samples >= num_samples:
         #             continue
         #     test_cases.append((sampling_ratio, coarse_J))
-    test_cases.append((1.0, J_order))  # 100% sampling
+    # test_cases.append((1.0, J_order))  # 100% sampling
 
     # # sampling_ratios = [0.1]
     # sampling_ratios = [0.2]
