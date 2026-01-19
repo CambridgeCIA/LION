@@ -173,8 +173,8 @@ noise_seed = 42
 noise_std = 0  # No noise
 # noise_std = 0.05  # standard deviation of additive homoscedastic Gaussian white noise added to measurements
 
-num_trials = 10
-num_trials_skip = 1
+num_trials = 1
+num_trials_skip = 0
 
 runs_pnp_admm = True
 # pnp_admm_iters = 1
