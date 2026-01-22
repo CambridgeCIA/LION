@@ -29,15 +29,16 @@
 
 # %%
 from __future__ import annotations
-from calendar import c
-from operator import inv
 
-from cv2 import add, log
-import test
 import torch
-from wandb import init
 
-device = torch.device("mps" if torch.backends.mps.is_available() else "cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device(
+    "mps"
+    if torch.backends.mps.is_available()
+    else "cuda:0"
+    if torch.cuda.is_available()
+    else "cpu"
+)
 torch.set_default_device(device)
 
 # %% [markdown]
@@ -47,35 +48,33 @@ torch.set_default_device(device)
 
 # %%
 from datetime import datetime
+from functools import partial
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable
 
 import deepinv
 import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
 import numpy as np
 from jaxtyping import Float
+from matplotlib.colors import ListedColormap
+
+# from LION.utils.scale import choose_measurement_scale_factor
+from plot_helper import PlotHelper
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
-from functools import partial
 from tqdm import tqdm as std_tqdm
 
 from LION.classical_algorithms.fista import fista_l1
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
-from LION.operators.Wavelet2D import Wavelet2D
 from LION.operators.CompositeOp import CompositeOp
 from LION.operators.DebiasOp import debias_ls
+from LION.operators.multilevel_sample import multilevel_sample
 
 # LION imports
 from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
 from LION.operators.uniform_random_sample import uniform_random_sample
-from LION.operators.multilevel_sample import multilevel_sample
+from LION.operators.Wavelet2D import Wavelet2D
 from LION.reconstructors.PnP import PnP
-
-# from LION.utils.scale import choose_measurement_scale_factor
-
-from plot_helper import PlotHelper
-
 
 # Use tqdm with dynamic column width that adapts to the terminal width
 tqdm = partial(std_tqdm, dynamic_ncols=True)
@@ -92,15 +91,32 @@ Measurement1D = Float[torch.Tensor, "num_measurements"]
 # experiments.
 
 # %%
-data_dir = Path("data/photocurrent_data")
+data_dir = Path("../pdo/data/photocurrent_data")
 # data_dir = Path("your/path/to/photocurrent_data")
 
 assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 
+root_output_dir = Path("../pdo")
+root_output_dir.mkdir(parents=True, exist_ok=True)
+
 # # These images are provided with pixels in range [0, 1]
-# # data_name, zoom, loc, loc1, loc2, roi = "CIGS_256x256", 2.5, "center left", 3, 4, (110, 210, 40, 40)  # (x, y, w, h)  with y increasing downwards
+# data_name, zoom, loc, loc1, loc2, roi = (
+#     "CIGS_256x256",
+#     2.5,
+#     "center left",
+#     3,
+#     4,
+#     (110, 210, 40, 40),
+# )  # (x, y, w, h)  with y increasing downwards
 # # data_name, zoom, loc, loc1, loc2, roi = "silicon_256x256", 2.5, "lower right", 2, 1, (194, 1, 60, 60)  # (x, y, w, h)  with y increasing downwards
-# data_name, zoom, loc, loc1, loc2, roi = "silicon_512x512", 3, "lower right", 2, 1, (400, 5, 100, 100)  # (x, y, w, h)  with y increasing downwards
+# # data_name, zoom, loc, loc1, loc2, roi = (
+# #     "silicon_512x512",
+# #     3,
+# #     "lower right",
+# #     2,
+# #     1,
+# #     (400, 5, 100, 100),
+# # )  # (x, y, w, h)  with y increasing downwards
 # # data_name, zoom, loc, loc1, loc2, roi = "organic_256x256", 2.5, "lower left", 2, 1, (70, 5, 50, 50)  # (x, y, w, h)  with y increasing downwards
 # # data_name, zoom, loc, loc1, loc2, roi = "perovskite_256x256", 2.5, "upper left", 3, 4, (90, 190, 50, 50)  # (x, y, w, h)  with y increasing downwards
 # data_name = "example_" + data_name  # prefix with "example_"
@@ -120,12 +136,21 @@ assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 # factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
 
 # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
-data_name, zoom, loc, loc1, loc2, roi = "Si_2_256_512x512", 2.5, "lower right", 2, 1, (322, 85, 100, 100)
+data_name, zoom, loc, loc1, loc2, roi = (
+    "Si_2_256_512x512",
+    2.5,
+    "lower right",
+    2,
+    1,
+    (322, 85, 100, 100),
+)
 clim = (0.0, 1.5e-5)
 inverses_sign = True
 R_high = 2e-5
 R_low = -2e-6
-factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
+factor = (
+    1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
+)
 
 if "256x256" in data_name:
     J_order = 8  # J=8 => 2^8=256
@@ -162,7 +187,9 @@ tests_scale_ground_truth = False
 
 data_filename = f"{data_name}.npy"
 print("Loading data file:", data_filename)
-assert (data_dir / data_filename).exists(), f"Data {data_filename} not found in {data_dir}."
+assert (
+    data_dir / data_filename
+).exists(), f"Data {data_filename} not found in {data_dir}."
 
 # data_type = "original_measurement_data"
 # data_type = "hadamard_measurement_vector"
@@ -177,9 +204,11 @@ num_trials = 1
 num_trials_skip = 0
 
 runs_pnp_admm = True
-pnp_admm_iters = 1
+# denoiser_name = "drunet"
+denoiser_name = "gs_drunet"
+# pnp_admm_iters = 1
 # pnp_admm_iters = 20
-# pnp_admm_iters = 50
+pnp_admm_iters = 50
 # pnp_admm_iters = 100
 # pnp_admm_iters = 150
 # pnp_admm_eta = 0.00001  # Undersampling artifacts may remain if eta is too small
@@ -208,7 +237,7 @@ drunet_sigma = 0.05  # noise level for DRUNet denoiser
 
 runs_fista_l1 = False
 
-runs_spgl1 = False
+runs_spgl1 = True
 
 # randomizing_scheme = "multilevel"
 randomizing_scheme = "uniform"
@@ -223,14 +252,12 @@ plot_helper = PlotHelper(
     zoom=zoom,
     loc=loc,
     show_rect=True,
-    cmap=ListedColormap(matplotlib.colormaps['afmhot'](np.linspace(
-        0.0,
-        cmap_max,
-        256,
-    ))),
+    cmap=ListedColormap(
+        matplotlib.colormaps["afmhot"](np.linspace(0.0, cmap_max, 256))
+    ),
     clim=clim,
     loc1=loc1,
-    loc2=loc2
+    loc2=loc2,
 )
 
 # %% [markdown]
@@ -289,7 +316,9 @@ def make_csv(method_name: str, log_dir: Path | str) -> None:
 # %%
 def run_pcm_demo(
     recon_description: str,
-    recon_fn: Callable[[PhotocurrentMapOp, Measurement1D, GrayscaleImage2D], GrayscaleImage2D],
+    recon_fn: Callable[
+        [PhotocurrentMapOp, Measurement1D, GrayscaleImage2D], GrayscaleImage2D
+    ],
     ground_truth_image: GrayscaleImage2D,
     method_name: str,
     image_name: str,
@@ -332,7 +361,9 @@ def run_pcm_demo(
     pcm_op = PhotocurrentMapOp(J=J, sampled_indices=sampled_indices, device=device)
 
     if measurement_vector is not None:
-        print(f"Using provided measurement vector with shape {measurement_vector.shape}.")
+        print(
+            f"Using provided measurement vector with shape {measurement_vector.shape}."
+        )
         y_subsampled_tensor_noiseless = measurement_vector[sampled_indices]
     else:
         y_subsampled_tensor_noiseless = pcm_op(im_tensor)
@@ -377,8 +408,12 @@ def run_pcm_demo(
     mse_zero_filled = torch.mean((zero_filled_recon_tensor - im_tensor) ** 2).item()
     mse_recon = torch.mean((recon_tensor - im_tensor) ** 2).item()
 
-    pearson_corr_zero_filled = torch.corrcoef(torch.stack([zero_filled_recon_tensor.flatten(), im_tensor.flatten()]))[0,1].item()
-    pearson_corr_recon = torch.corrcoef(torch.stack([recon_tensor.flatten(), im_tensor.flatten()]))[0,1].item()
+    pearson_corr_zero_filled = torch.corrcoef(
+        torch.stack([zero_filled_recon_tensor.flatten(), im_tensor.flatten()])
+    )[0, 1].item()
+    pearson_corr_recon = torch.corrcoef(
+        torch.stack([recon_tensor.flatten(), im_tensor.flatten()])
+    )[0, 1].item()
 
     csv_path = log_dir / "metrics.csv"
     with csv_path.open("a") as f:
@@ -392,12 +427,19 @@ def run_pcm_demo(
     zero_filled_filename = f"{image_name}_sample_{sampling_percentage}_percent_coarse_J={coarse_J}_{randomizing_scheme}_random"
     recons_dir = log_dir / "recons"
     recons_dir.mkdir(parents=True, exist_ok=True)
-    np.save(zero_filled_dir / f"{zero_filled_filename}.npy", zero_filled_recon_tensor.squeeze().cpu().numpy())
+    np.save(
+        zero_filled_dir / f"{zero_filled_filename}.npy",
+        zero_filled_recon_tensor.squeeze().cpu().numpy(),
+    )
     np.save(recons_dir / f"{filename}.npy", recon_tensor.squeeze().cpu().numpy())
 
     mask_of_masks_np = np.zeros(N * N, dtype=bool)
     mask_of_masks_np[sampled_indices] = True
-    np.save(masks_dir / f"sample_{sampling_percentage}_percent_coarse_J={coarse_J}_{randomizing_scheme}_random.npy", mask_of_masks_np.reshape(N, N))
+    np.save(
+        masks_dir
+        / f"sample_{sampling_percentage}_percent_coarse_J={coarse_J}_{randomizing_scheme}_random.npy",
+        mask_of_masks_np.reshape(N, N),
+    )
 
     images_dir = log_dir / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
@@ -418,13 +460,24 @@ def run_pcm_demo(
         adds_insets=adds_insets,
     )
 
+
 # %%
-denoiser_DRUNet = deepinv.models.DRUNet(
-    pretrained="download", in_channels=1, out_channels=1, device=device
-)
+if denoiser_name == "drunet":
+    denoiser = deepinv.models.DRUNet(
+        pretrained="download", in_channels=1, out_channels=1, device=device
+    )
+elif denoiser_name == "gs_drunet":
+    denoiser = deepinv.models.GSDRUNet(
+        pretrained="download", in_channels=1, out_channels=1, device=device
+    )
+else:
+    raise ValueError(f"Unknown denoiser_name {denoiser_name}.")
+
 
 def run_pnp_admm(
-    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D, initial_image: GrayscaleImage2D
+    pcm_op: PhotocurrentMapOp,
+    pcm_measurement: Measurement1D,
+    initial_image: GrayscaleImage2D,
 ) -> GrayscaleImage2D:
     admm_iterations = pnp_admm_iters
     admm_eta = pnp_admm_eta
@@ -445,11 +498,13 @@ def run_pnp_admm(
         with torch.no_grad():
             model_input = (x - R_low) / a if is_out_of_distribution else x
             model_output = (
-                denoiser_DRUNet(model_input.unsqueeze(0).unsqueeze(0), sigma=drunet_sigma)
+                denoiser(model_input.unsqueeze(0).unsqueeze(0), sigma=drunet_sigma)
                 .squeeze(0)
                 .squeeze(0)
             )
-            model_output = a * model_output + R_low if is_out_of_distribution else model_output
+            model_output = (
+                a * model_output + R_low if is_out_of_distribution else model_output
+            )
             return model_output
 
     pnp = PnP(physics=pcm_op, prior_fn=denoiser_fn, default_algorithm="ADMM")
@@ -471,11 +526,11 @@ def run_pnp_admm(
     # return a * recon + R_low if is_out_of_distribution else recon
 
 
-
-
 # %%
 def run_fista_l1(
-    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D, initial_image: GrayscaleImage2D
+    pcm_op: PhotocurrentMapOp,
+    pcm_measurement: Measurement1D,
+    initial_image: GrayscaleImage2D,
 ) -> GrayscaleImage2D:
 
     lam = 10  # Good for Daubechies 4 wavelet transform
@@ -523,10 +578,11 @@ def run_fista_l1(
     return cs_result_tensor
 
 
-
 # %%
 def run_spgl1(
-    pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D, initial_image: GrayscaleImage2D
+    pcm_op: PhotocurrentMapOp,
+    pcm_measurement: Measurement1D,
+    initial_image: GrayscaleImage2D,
 ) -> GrayscaleImage2D:
 
     # max_iter = 1000
@@ -605,9 +661,11 @@ def make_test_cases() -> list[tuple[float, int]]:
     #                 continue
     #         test_cases.append((sampling_ratio, coarse_J))
     for sampling_ratio in [0.2, 0.5, 0.8]:
-    # for sampling_ in range(1, 10, 1):
+        # for sampling_ in range(1, 10, 1):
         # sampling_ratio = sampling_ / 10.0  # from 0.1 to 0.9
-        test_cases.append((sampling_ratio, J_order - 2))  # keep the first J-2 coarse levels, i.e. 6.25% in-order measurements
+        test_cases.append(
+            (sampling_ratio, J_order - 2)
+        )  # keep the first J-2 coarse levels, i.e. 6.25% in-order measurements
         num_samples = int(sampling_ratio * num_pixels)
         # for coarse_J in range(min_coarse_J, J_order):  # from 0 to J_order-1 (not including J_order because that is 100% sampling)
         #     if coarse_J > 0:
@@ -657,31 +715,43 @@ def run_experiments():
     print(f"J_order: {J_order}")
 
     if data_type == "image":
-        ground_truth_image: GrayscaleImage2D = torch.tensor(raw_data, dtype=torch.float32, device=device)
+        ground_truth_image: GrayscaleImage2D = torch.tensor(
+            raw_data, dtype=torch.float32, device=device
+        )
         if inverses_sign:
             ground_truth_image = -ground_truth_image
         J_data = int(np.log2(ground_truth_image.shape[0]))
-        assert J_data == J_order, f"Data J ({J_data}) does not match expected J_order ({J_order})."
+        assert (
+            J_data == J_order
+        ), f"Data J ({J_data}) does not match expected J_order ({J_order})."
         print(f"Ground truth image shape: {ground_truth_image.shape}")
         measurement_vector = None
     elif data_type == "hadamard_measurement_vector":
         # Reconstruct the image from the Hadamard measurement vector
         J_data = int(np.log2(raw_data.shape[0]) / 2)
-        assert J_data == J_order, f"Data J ({J_data}) does not match expected J_order ({J_order})."
+        assert (
+            J_data == J_order
+        ), f"Data J ({J_data}) does not match expected J_order ({J_order})."
         measurement_vector = torch.tensor(raw_data, dtype=torch.float32, device=device)
         if inverses_sign:
             measurement_vector = -measurement_vector
 
         index_of_max = torch.argmax(measurement_vector).item()
         index_of_min = torch.argmin(measurement_vector).item()
-        print(f"Max value in measurement vector: {measurement_vector[index_of_max].item()} at index {index_of_max}")
-        print(f"Min value in measurement vector: {measurement_vector[index_of_min].item()} at index {index_of_min}")
+        print(
+            f"Max value in measurement vector: {measurement_vector[index_of_max].item()} at index {index_of_max}"
+        )
+        print(
+            f"Min value in measurement vector: {measurement_vector[index_of_min].item()} at index {index_of_min}"
+        )
         exit()
 
         pcm_op_full = PhotocurrentMapOp(J=J_order, device=device)
         with torch.no_grad():
             ground_truth_image = pcm_op_full.pseudo_inv(measurement_vector)
-        print(f"Reconstructed ground truth image shape from Hadamard measurement vector: {ground_truth_image.shape}")
+        print(
+            f"Reconstructed ground truth image shape from Hadamard measurement vector: {ground_truth_image.shape}"
+        )
 
     elif data_type == "original_measurement_data":
         # Make a 1D array with num_lines//2 elements,
@@ -696,14 +766,22 @@ def run_experiments():
         index_of_min_raw = np.argmin(raw_data[:, 1])
         min_raw_value = raw_data[index_of_min_raw, 1]
         max_raw_value = raw_data[index_of_max_raw, 1]
-        print(f"Max value in original measurement data: {max_raw_value} at index {index_of_max_raw}")
-        print(f"Min value in original measurement data: {min_raw_value} at index {index_of_min_raw}")
+        print(
+            f"Max value in original measurement data: {max_raw_value} at index {index_of_max_raw}"
+        )
+        print(
+            f"Min value in original measurement data: {min_raw_value} at index {index_of_min_raw}"
+        )
         # exit()
 
         sign_vector = np.round(np.sign(raw_data[:, 0]))
         sign_vector[:2] = [1.0, -1.0]  # Ensure the first two patterns are +0 and -0
 
-        measurement_vector = torch.tensor((raw_data[:, 1] * sign_vector).reshape(-1, 2).sum(axis=1), dtype=torch.float32, device=device)
+        measurement_vector = torch.tensor(
+            (raw_data[:, 1] * sign_vector).reshape(-1, 2).sum(axis=1),
+            dtype=torch.float32,
+            device=device,
+        )
 
         # index_of_max = torch.argmax(measurement_vector).item()
         # index_of_min = torch.argmin(measurement_vector).item()
@@ -714,15 +792,24 @@ def run_experiments():
         # exit()
 
         pcm_op_full = PhotocurrentMapOp(J=J_order, device=device)
-        print(f"pcm_op_full domain shape: {pcm_op_full.domain_shape}, range shape: {pcm_op_full.range_shape}")
+        print(
+            f"pcm_op_full domain shape: {pcm_op_full.domain_shape}, range shape: {pcm_op_full.range_shape}"
+        )
         with torch.no_grad():
             ground_truth_image = pcm_op_full.pseudo_inv(measurement_vector)
-        print(f"Reconstructed ground truth image shape from original measurement data: {ground_truth_image.shape}")
+        print(
+            f"Reconstructed ground truth image shape from original measurement data: {ground_truth_image.shape}"
+        )
 
     if tests_scale_ground_truth:
-        gt_min, gt_max = ground_truth_image.min().item(), ground_truth_image.max().item()
+        gt_min, gt_max = (
+            ground_truth_image.min().item(),
+            ground_truth_image.max().item(),
+        )
         ground_truth_image = (ground_truth_image - gt_min) / (gt_max - gt_min)
-        print(f"Normalized ground truth image to [0, 1]. Min: {ground_truth_image.min().item()}, Max: {ground_truth_image.max().item()}")
+        print(
+            f"Normalized ground truth image to [0, 1]. Min: {ground_truth_image.min().item()}, Max: {ground_truth_image.max().item()}"
+        )
         measurement_vector = None
 
     test_cases = make_test_cases()
@@ -744,7 +831,10 @@ def run_experiments():
     # time, which makes it easier to keep track of different experiments.
 
     current_datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    experiment_log_dir = Path("pcm_demo_output") / f"{current_datetime_str}_{data_name}_{randomizing_scheme}_{num_trials}_trials"
+    experiment_log_dir = (
+        root_output_dir
+        / f"{current_datetime_str}_{data_name}_{randomizing_scheme}_{num_trials}_trials"
+    )
     experiment_log_dir.mkdir(parents=True, exist_ok=True)
 
     for i_seed in tqdm(range(num_trials_skip, num_trials), desc="Running trials"):
@@ -774,10 +864,12 @@ def run_experiments():
 
         # %%
         if runs_pnp_admm:
-            method_name = f"pnp_admm_iters={pnp_admm_iters}_eta={pnp_admm_eta}_cg_iters={cg_iters}_drunet_sigma={drunet_sigma}"
+            method_name = f"pnp_admm_{denoiser_name}_iters={pnp_admm_iters}_eta={pnp_admm_eta}_cg_iters={cg_iters}_drunet_sigma={drunet_sigma}"
             make_csv(method_name=method_name, log_dir=log_dir)
             # for delta_divided_by, subtract_from_J in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
-            for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running PnP-ADMM experiments"):
+            for sampling_ratio, coarse_J in tqdm(
+                test_cases, desc="Running PnP-ADMM experiments"
+            ):
                 run_pcm_demo(
                     recon_description=f"PnP-ADMM ({pnp_admm_iters} iters, η={pnp_admm_eta}, cg_iters={cg_iters}, σ={drunet_sigma})",
                     recon_fn=run_pnp_admm,
@@ -792,7 +884,6 @@ def run_experiments():
                     seed=i_seed,
                 )
 
-
         # %% [markdown]
         # The code above runs the PnP-ADMM reconstruction and compares it to the
         # zero-filled pseudo-inverse.
@@ -804,7 +895,6 @@ def run_experiments():
         #
         # In the next sections, two compressed sensing baselines with a wavelet
         # sparsity prior are explored and compared to the PnP-ADMM result.
-
 
         # %% [markdown]
         # ## Compressed sensing baseline: FISTA with wavelet sparsity
@@ -830,7 +920,9 @@ def run_experiments():
         # %%
         if runs_fista_l1:
             make_csv(method_name="fista_l1", log_dir=log_dir)
-            for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running FISTA-L1 experiments"):
+            for sampling_ratio, coarse_J in tqdm(
+                test_cases, desc="Running FISTA-L1 experiments"
+            ):
                 run_pcm_demo(
                     recon_description="FISTA-L1",
                     recon_fn=run_fista_l1,
@@ -862,7 +954,9 @@ def run_experiments():
         if runs_spgl1:
             method_name = f"spgl1_factor={factor}"
             make_csv(method_name=method_name, log_dir=log_dir)
-            for sampling_ratio, coarse_J in tqdm(test_cases, desc="Running SPGL1 experiments"):
+            for sampling_ratio, coarse_J in tqdm(
+                test_cases, desc="Running SPGL1 experiments"
+            ):
                 run_pcm_demo(
                     recon_description="SPGL1",
                     recon_fn=run_spgl1,
@@ -876,6 +970,7 @@ def run_experiments():
                     device=device,
                     seed=i_seed,
                 )
+
 
 if __name__ == "__main__":
     run_experiments()
