@@ -1,3 +1,4 @@
+#Written by Dana Pantoja-Campa
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
