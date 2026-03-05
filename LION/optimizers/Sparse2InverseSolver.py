@@ -38,7 +38,6 @@ class Sparse2InverseSolver(LIONsolver):
 
         self.model.geometry = self.geometry  
         self.model._make_operator()
-        self.A_full = self.model.A
         self.sino_split_count = self.solver_params.sino_split_count
         self.recon_fn = self.solver_params.recon_fn
         self.split_combinations = self.two_two_strategy(self.sino_split_count)
@@ -139,9 +138,7 @@ class Sparse2InverseSolver(LIONsolver):
             for b in range(batch_size):
                 projected_sino = projector(output_recon[b:b+1])
                 target_sino = torch.cat([sinos[b:b+1, :, self.subgroup_indices[i], :] for i in remaining_splits],dim=2)  
-                batch_loss += ((projected_sino - target_sino) ** 2).sum()
-                total_pixels += projected_sino.numel()
-        batch_loss /= total_pixels
+                batch_loss += self.loss_fn(projected_sino, target_sino)
         return batch_loss
 
 
