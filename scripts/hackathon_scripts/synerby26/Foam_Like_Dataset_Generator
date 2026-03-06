@@ -1,0 +1,28 @@
+import os
+import numpy as np
+import foam_ct_phantom
+
+#Activate foam_env
+OUTPUT_DIR = './Dataset_Hackathon/'  
+NUM_SAMPLES = 30                     
+PIXSIZE = 0.004                      
+
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+
+    phantom_file = 'phantom_hackathon.h5'
+if not os.path.exists(phantom_file):
+    foam_ct_phantom.FoamPhantom.generate(phantom_file, seed=42, n_bubbles=2000, n_crystals=5000, radius=0.1, height=1.0)
+
+phantom = foam_ct_phantom.FoamPhantom(phantom_file)
+angles = np.linspace(0, np.pi, 720, endpoint=False) 
+for i in range(NUM_SAMPLES):
+    current_cz = 0.2 + (i * 0.02) 
+    
+    gt_filename = os.path.join(OUTPUT_DIR, f'gt_{i:04d}.h5')
+    sino_filename = os.path.join(OUTPUT_DIR, f'sino_{i:04d}.h5')
+    
+    geom_vol = foam_ct_phantom.VolumeGeometry(512, 512, 1, float(PIXSIZE), 0.0, 0.0, float(current_cz))
+    phantom.generate_volume(gt_filename, geom_vol)
+    geom_proj = foam_ct_phantom.ParallelGeometry(1, 900, angles, float(PIXSIZE), 0.0, 0.0, float(current_cz))
+    phantom.generate_projections(sino_filename, geom_proj)
