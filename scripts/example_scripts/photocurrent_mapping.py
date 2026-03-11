@@ -1,25 +1,17 @@
 # %% [markdown]
-# # Plug-and-play ADMM for Photocurrent Mapping image reconstruction
+# # Image reconstruction for Photocurrent Mapping
 #
-# This notebook demonstrates Plug-and-Play (PnP) ADMM image reconstruction for
+# This notebook demonstrates image reconstruction for
 # Photocurrent Mapping (PCM) data.
 #
-# Starting from a high-resolution current map of a CIGS solar cell, subsampled
-# PCM measurements are simulated using the `PhotocurrentMapOp` operator. Several
-# reconstruction methods are then compared:
-#
-# - Zero-filled pseudo-inverse reconstruction.
-# - Two compressed sensing baselines with a wavelet sparsity prior:
-#   FISTA with an $\ell_1$ penalty and SPGL1.
-# - PnP-ADMM with a pre-trained DRUNet denoiser as prior.
-#
-# The goal is not to optimise performance, but to illustrate how
-# classical sparse reconstruction methods and PnP can be combined with the LION
-# operators for PCM.
-
 
 # %% [markdown]
 # ## Setup
+
+# %%
+from __future__ import annotations
+
+import torch
 
 # %% [markdown]
 # ### Device configuration
@@ -28,16 +20,10 @@
 # the desired GPU index can be specified here.
 
 # %%
-from __future__ import annotations
-
-import torch
-
 device = torch.device(
     "mps"
     if torch.backends.mps.is_available()
-    else "cuda:0"
-    if torch.cuda.is_available()
-    else "cpu"
+    else "cuda" if torch.cuda.is_available() else "cpu"
 )
 torch.set_default_device(device)
 
