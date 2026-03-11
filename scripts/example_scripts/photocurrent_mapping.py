@@ -23,16 +23,14 @@ import torch
 device = torch.device(
     "mps"
     if torch.backends.mps.is_available()
-    else "cuda"
-    if torch.cuda.is_available()
-    else "cpu"
+    else "cuda" if torch.cuda.is_available() else "cpu"
 )
 torch.set_default_device(device)
 
 # %% [markdown]
 # ### Imports
 #
-# Import the required libraries, including LION operators and reconstruction algorithms for PCM.
+# Import the required libraries, LION operators, and reconstruction algorithms.
 
 # %%
 from datetime import datetime
@@ -46,23 +44,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 from jaxtyping import Float
 from matplotlib.colors import ListedColormap
-
-# from LION.utils.scale import choose_measurement_scale_factor
-from plot_helper import PlotHelper
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from tqdm import tqdm as std_tqdm
 
+# LION imports
 from LION.classical_algorithms.fista import fista_l1
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
 from LION.operators.CompositeOp import CompositeOp
 from LION.operators.DebiasOp import debias_ls
-from LION.operators.multilevel_sample import multilevel_sample
-
-# LION imports
 from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
-from LION.operators.uniform_random_sample import uniform_random_sample
 from LION.operators.Wavelet2D import Wavelet2D
 from LION.reconstructors.PnP import PnP
+from LION.utils.pcm_sampling import multilevel_sample, uniform_random_sample
+from LION.utils.plot_helper import PlotHelper
 
 # Use tqdm with dynamic column width that adapts to the terminal width
 tqdm = partial(std_tqdm, dynamic_ncols=True)
@@ -73,10 +67,6 @@ Measurement1D = Float[torch.Tensor, "num_measurements"]
 
 # %% [markdown]
 # ### Define the data file paths
-#
-# The example uses a single $256 \times 256$ current map of a CIGS solar cell
-# stored as a NumPy array. This image will serve as the ground truth in the
-# experiments.
 
 # %%
 data_dir = Path("../pdo/data/photocurrent_data")
@@ -87,6 +77,10 @@ assert data_dir.exists(), f"Data directory {data_dir} does not exist."
 root_output_dir = Path("../pdo")
 root_output_dir.mkdir(parents=True, exist_ok=True)
 
+# %% [markdown]
+# ### Various configurations
+
+# %%
 # # These images are provided with pixels in range [0, 1]
 # data_name, zoom, loc, loc1, loc2, roi = (
 #     "CIGS_256x256",
@@ -191,9 +185,23 @@ noise_std = 0  # No noise
 num_trials = 1
 num_trials_skip = 0
 
+
 runs_pnp_admm = True
-# denoiser_name = "drunet"
-denoiser_name = "gs_drunet"
+if runs_pnp_admm:
+    # denoiser_name = "drunet"
+    denoiser_name = "gs_drunet"
+    if denoiser_name == "drunet":
+        denoiser = deepinv.models.DRUNet(
+            pretrained="download", in_channels=1, out_channels=1, device=device
+        )
+    elif denoiser_name == "gs_drunet":
+        denoiser = deepinv.models.GSDRUNet(
+            pretrained="download", in_channels=1, out_channels=1, device=device
+        )
+    else:
+        raise ValueError(f"Unknown denoiser_name {denoiser_name}.")
+else:
+    denoiser = None
 # pnp_admm_iters = 1
 # pnp_admm_iters = 20
 pnp_admm_iters = 50
@@ -249,14 +257,7 @@ plot_helper = PlotHelper(
 )
 
 # %% [markdown]
-# Define a general function to run the photocurrent mapping reconstruction using a reconstruction method.
-#
-# The helper function `run_pcm_demo`:
-#
-# - Builds the PCM operator and simulates subsampled measurements.
-# - Computes the zero-filled pseudo-inverse reconstruction.
-# - Runs a chosen reconstruction method given by `recon_fn`.
-# - Reports PSNR and SSIM for both reconstructions, displays and saves the images.
+# Run experiments
 
 
 # %% mystnb={"code_prompt_show": "Show utility details"} tags=["hide-cell"]
@@ -447,19 +448,6 @@ def run_pcm_demo(
         ),
         adds_insets=adds_insets,
     )
-
-
-# %%
-if denoiser_name == "drunet":
-    denoiser = deepinv.models.DRUNet(
-        pretrained="download", in_channels=1, out_channels=1, device=device
-    )
-elif denoiser_name == "gs_drunet":
-    denoiser = deepinv.models.GSDRUNet(
-        pretrained="download", in_channels=1, out_channels=1, device=device
-    )
-else:
-    raise ValueError(f"Unknown denoiser_name {denoiser_name}.")
 
 
 def run_pnp_admm(
