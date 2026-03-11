@@ -9,7 +9,9 @@ from tests.helper import dotproduct_adjointness_test
 def test_pcm_autograd_op_forward_and_backward():
     J = 4  # 16x16 images
     N = 1 << J
-    sampled_indices = multilevel_sample(J=J, num_samples=int(0.25 * N * N), coarse_J=J - 1, alpha=1.0)
+    sampled_indices = multilevel_sample(
+        J=J, num_samples=int(0.25 * N * N), coarse_J=J - 1, alpha=1.0
+    )
     operator = PhotocurrentMapOp(J=J, sampled_indices=sampled_indices)
 
     torch.manual_seed(0)
@@ -33,7 +35,9 @@ def test_pcm_op_adjointness():
     """Test photocurrent mapping operator adjoint property."""
     J = 4  # 16x16 images
     N = 1 << J
-    sampled_indices = multilevel_sample(J=J, num_samples=int(0.25 * N * N), coarse_J=J - 1, alpha=1.0)
+    sampled_indices = multilevel_sample(
+        J=J, num_samples=int(0.25 * N * N), coarse_J=J - 1, alpha=1.0
+    )
     operator = PhotocurrentMapOp(J=J, sampled_indices=sampled_indices)
 
     # Check the default operator shapes

@@ -41,7 +41,9 @@ def conjugate_gradient(
     d = r.clone()
     rr = torch.sum(r**2)
 
-    iterator = prog_bar(range(max_iter), desc="CG iterations") if prog_bar else range(max_iter)
+    iterator = (
+        prog_bar(range(max_iter), desc="CG iterations") if prog_bar else range(max_iter)
+    )
     for _ in iterator:
         z = matmul_closure(d)
 

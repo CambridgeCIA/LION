@@ -22,8 +22,9 @@ class RawPCM:
     current_a :
         Measured currents in amperes (same length as `order_signed`).
     """
+
     order_signed: np.ndarray  # shape (M,), int
-    current_a: np.ndarray     # shape (M,), float
+    current_a: np.ndarray  # shape (M,), float
 
 
 def read_pcm_txt(txt_path: Path) -> RawPCM:
@@ -57,6 +58,7 @@ def read_pcm_txt(txt_path: Path) -> RawPCM:
         order_signed=np.asarray(order_vals, dtype=np.int64),
         current_a=np.asarray(current_vals, dtype=np.float64),
     )
+
 
 def pair_pos_neg_to_differences(
     raw: RawPCM,
@@ -148,10 +150,10 @@ def fwht_axis(a: np.ndarray, axis: int) -> np.ndarray:
     while h < n:
         out_reshaped = out.reshape(*out.shape[:-1], n // (2 * h), 2 * h)
         first = out_reshaped[..., :, :h]
-        second = out_reshaped[..., :, h:2 * h]
+        second = out_reshaped[..., :, h : 2 * h]
 
         out_reshaped[..., :, :h] = first + second
-        out_reshaped[..., :, h:2 * h] = first - second
+        out_reshaped[..., :, h : 2 * h] = first - second
 
         out = out_reshaped.reshape(*out.shape[:-1], n)
         h *= 2
@@ -198,14 +200,18 @@ def reconstruct_map_from_differences(
     """
     expected = n * n
     if diffs.size != expected:
-        raise ValueError(f"Expected {expected} Hadamard orders for {n}x{n}, got {diffs.size}")
+        raise ValueError(
+            f"Expected {expected} Hadamard orders for {n}x{n}, got {diffs.size}"
+        )
 
     coeffs = diffs.copy()
 
     if ordering is not None:
         ordering = np.asarray(ordering, dtype=np.int64)
         if ordering.shape != (expected,):
-            raise ValueError(f"ordering must have shape ({expected},), got {ordering.shape}")
+            raise ValueError(
+                f"ordering must have shape ({expected},), got {ordering.shape}"
+            )
         if np.unique(ordering).size != expected:
             raise ValueError("ordering must be a permutation of 0..n*n-1")
 
@@ -284,7 +290,9 @@ def compare_and_plot(
     corr = float(np.corrcoef(recon.ravel(), ref.ravel())[0, 1])
 
     print(f"{title}")
-    print(f"  recon: min={recon.min():.6g}, max={recon.max():.6g}, mean={recon.mean():.6g}")
+    print(
+        f"  recon: min={recon.min():.6g}, max={recon.max():.6g}, mean={recon.mean():.6g}"
+    )
     print(f"  ref  : min={ref.min():.6g}, max={ref.max():.6g}, mean={ref.mean():.6g}")
     print(f"  RMSE={rmse:.6g}, corr={corr:.6g}")
 
@@ -327,7 +335,9 @@ def run_one_dataset(
     compare_and_plot(recon, ref, title=txt_path.stem)
 
 
-def load_and_plot_map_image(example_pcm_data_dir: Path, map_image_file_name: str) -> None:
+def load_and_plot_map_image(
+    example_pcm_data_dir: Path, map_image_file_name: str
+) -> None:
     print(f"Loading map image from {map_image_file_name}...")
     name = map_image_file_name.split(".")[0]
     map_image_file = example_pcm_data_dir / map_image_file_name
@@ -384,9 +394,13 @@ if __name__ == "__main__":
     # We have 2^order_row * 2^order_col * 2 measurements (positive and negative patterns).
     order_row = 8
     order_col = 8
-    num_measurements_expected = (2 ** order_row) * (2 ** order_col) * 2
-    print(f"Expecting {num_measurements_expected} measurements for {2**order_row}x{2**order_col} map.")
-    with (example_pcm_data_dir / measurement_file_name).open("r", encoding="utf-8", errors="ignore") as f:
+    num_measurements_expected = (2**order_row) * (2**order_col) * 2
+    print(
+        f"Expecting {num_measurements_expected} measurements for {2**order_row}x{2**order_col} map."
+    )
+    with (example_pcm_data_dir / measurement_file_name).open(
+        "r", encoding="utf-8", errors="ignore"
+    ) as f:
         lines = f.readlines()
 
         # The content of the measurement file looks like this:
@@ -409,11 +423,17 @@ if __name__ == "__main__":
             f"Should be a multiple of {num_measurements_expected}, but got {num_lines}"
         )
         num_blocks = num_lines // num_measurements_expected
-        print(f"File contains {num_lines} lines, which is {num_blocks} blocks of {num_measurements_expected} measurements each.")
+        print(
+            f"File contains {num_lines} lines, which is {num_blocks} blocks of {num_measurements_expected} measurements each."
+        )
         for block_index in range(num_blocks):
             line_block_start = block_index * num_measurements_expected
-            print(f"Processing block {block_index} with lines {line_block_start} to {line_block_start + num_measurements_expected - 1}...")
-            block = lines[line_block_start:line_block_start + num_measurements_expected]
+            print(
+                f"Processing block {block_index} with lines {line_block_start} to {line_block_start + num_measurements_expected - 1}..."
+            )
+            block = lines[
+                line_block_start : line_block_start + num_measurements_expected
+            ]
 
             # Each line in the block contains 2 numbers: pattern index and measured current
             # Let's save them as a float np.array with shape (num_measurements_expected, 2)
@@ -423,7 +443,9 @@ if __name__ == "__main__":
                 f"expected ({num_measurements_expected}, 2)"
             )
             # The first row should contain index 0
-            assert out[0, 0] == 0.0, f"First pattern index in block is not 0, got {out[0, 0]}"
+            assert (
+                out[0, 0] == 0.0
+            ), f"First pattern index in block is not 0, got {out[0, 0]}"
             # Every consecutive pair of rows should have opposite indices
             # and the same absolute value, with the pair's absolute index increasing by 1 each time.
             # The order of the two rows in the pair may vary.
@@ -498,4 +520,3 @@ if __name__ == "__main__":
     #     positive_sign=+1,
     #     ordering=None,
     # )
-

@@ -153,7 +153,9 @@ def debias_ls(
 
     v = w[support].clone()
 
-    iterator = prog_bar(range(max_iter), desc="Debiasing LS") if prog_bar else range(max_iter)
+    iterator = (
+        prog_bar(range(max_iter), desc="Debiasing LS") if prog_bar else range(max_iter)
+    )
     for _ in iterator:
         r = op_s(v) - y
         grad = op_s.adjoint(r)

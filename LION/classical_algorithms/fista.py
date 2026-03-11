@@ -114,7 +114,9 @@ def fista_l1(
     z = w.clone()
     t = 1.0
 
-    iterator = prog_bar(range(max_iter), desc="FISTA l1") if prog_bar else range(max_iter)
+    iterator = (
+        prog_bar(range(max_iter), desc="FISTA l1") if prog_bar else range(max_iter)
+    )
     for k in iterator:
         Az: torch.Tensor = op(z)
         grad = op.adjoint(Az - y)  # gradient of data term, shape (n,)

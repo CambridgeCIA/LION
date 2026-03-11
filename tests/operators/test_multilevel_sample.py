@@ -12,7 +12,9 @@ def test_basic_properties() -> None:
     num_samples = 32
     rng = np.random.default_rng(123)
 
-    idx = multilevel_sample(J=J, num_samples=num_samples, coarse_J=0, alpha=1.0, rng=rng)
+    idx = multilevel_sample(
+        J=J, num_samples=num_samples, coarse_J=0, alpha=1.0, rng=rng
+    )
 
     assert isinstance(idx, np.ndarray)
     assert idx.shape == (num_samples,)
@@ -27,11 +29,15 @@ def test_basic_properties() -> None:
 def test_coarse_block_is_fully_included() -> None:
     J = 5
     coarse_J = 2
-    keep = 4**coarse_J  # first 2^coarse_J-by-2^coarse_J indices in coarse-to-fine ordering
+    keep = (
+        4**coarse_J
+    )  # first 2^coarse_J-by-2^coarse_J indices in coarse-to-fine ordering
     num_samples = keep + 20
 
     rng = np.random.default_rng(0)
-    idx = multilevel_sample(J=J, num_samples=num_samples, coarse_J=coarse_J, alpha=1.0, rng=rng)
+    idx = multilevel_sample(
+        J=J, num_samples=num_samples, coarse_J=coarse_J, alpha=1.0, rng=rng
+    )
 
     assert np.isin(np.arange(keep), idx).all()
 
@@ -43,7 +49,9 @@ def test_num_samples_equal_keep_returns_exact_coarse_block() -> None:
     num_samples = keep
 
     rng = np.random.default_rng(0)
-    idx = multilevel_sample(J=J, num_samples=num_samples, coarse_J=coarse_J, alpha=1.0, rng=rng)
+    idx = multilevel_sample(
+        J=J, num_samples=num_samples, coarse_J=coarse_J, alpha=1.0, rng=rng
+    )
 
     assert np.array_equal(np.sort(idx), np.arange(keep, dtype=int))
 
@@ -55,7 +63,9 @@ def test_coarse_J_equal_J_can_return_all_indices() -> None:
     num_samples = N
 
     rng = np.random.default_rng(0)
-    idx = multilevel_sample(J=J, num_samples=num_samples, coarse_J=coarse_J, alpha=2.0, rng=rng)
+    idx = multilevel_sample(
+        J=J, num_samples=num_samples, coarse_J=coarse_J, alpha=2.0, rng=rng
+    )
 
     assert np.array_equal(np.sort(idx), np.arange(N, dtype=int))
 
@@ -73,8 +83,20 @@ def test_deterministic_given_same_seed() -> None:
     J = 6
     num_samples = 200
 
-    idx1 = multilevel_sample(J=J, num_samples=num_samples, coarse_J=2, alpha=1.0, rng=np.random.default_rng(42))
-    idx2 = multilevel_sample(J=J, num_samples=num_samples, coarse_J=2, alpha=1.0, rng=np.random.default_rng(42))
+    idx1 = multilevel_sample(
+        J=J,
+        num_samples=num_samples,
+        coarse_J=2,
+        alpha=1.0,
+        rng=np.random.default_rng(42),
+    )
+    idx2 = multilevel_sample(
+        J=J,
+        num_samples=num_samples,
+        coarse_J=2,
+        alpha=1.0,
+        rng=np.random.default_rng(42),
+    )
 
     assert np.array_equal(idx1, idx2)
 

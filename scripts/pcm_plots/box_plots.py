@@ -94,8 +94,6 @@ def boxplot_from_metrics_csvs(
         plt.close(fig)
 
 
-
-
 def boxplot_recon_and_zero_filled_from_metrics_csvs(
     csv_paths: Sequence[str | Path],
     *,
@@ -183,7 +181,12 @@ def boxplot_recon_and_zero_filled_from_metrics_csvs(
         ax.set_title(title)
 
     ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend([bp_zf["boxes"][0], bp_recon["boxes"][0]], ["Zero-filled", "Recon"], loc="upper right", frameon=True)
+    ax.legend(
+        [bp_zf["boxes"][0], bp_recon["boxes"][0]],
+        ["Zero-filled", "Recon"],
+        loc="upper right",
+        frameon=True,
+    )
 
     fig.tight_layout()
 
@@ -193,8 +196,6 @@ def boxplot_recon_and_zero_filled_from_metrics_csvs(
         out_path = Path(out_path)
         fig.savefig(out_path)
         plt.close(fig)
-
-
 
 
 def combined_boxplot_spgl1_pnp(
@@ -217,7 +218,9 @@ def combined_boxplot_spgl1_pnp(
     from each CSV, and the distribution across trials becomes the box.
     """
     if len(spgl1_csvs) != len(pnp_csvs):
-        raise ValueError(f"SPGL1 and PnP CSV counts differ! {len(spgl1_csvs)} vs {len(pnp_csvs)}")
+        raise ValueError(
+            f"SPGL1 and PnP CSV counts differ! {len(spgl1_csvs)} vs {len(pnp_csvs)}"
+        )
 
     if len(spgl1_csvs) == 0:
         raise ValueError("No CSVs provided!")
@@ -226,7 +229,9 @@ def combined_boxplot_spgl1_pnp(
     zf_col = f"{metric_prefix}_zero_filled"
     recon_col = f"{metric_prefix}_recon"
 
-    def collect(csv_paths: Sequence[str | Path], metric_col: str, coarse_J: int) -> dict[int, np.ndarray]:
+    def collect(
+        csv_paths: Sequence[str | Path], metric_col: str, coarse_J: int
+    ) -> dict[int, np.ndarray]:
         values_by_rate = {r: [] for r in rates}
         for p in map(Path, csv_paths):
             df = pd.read_csv(p, skipinitialspace=True)
@@ -264,31 +269,52 @@ def combined_boxplot_spgl1_pnp(
         if zf_spgl[r].shape != zf_pnp[r].shape:
             raise ValueError(f"Zero-filled trial count mismatch at {r}%")
         if not np.allclose(zf_spgl[r], zf_pnp[r], rtol=0.0, atol=1e-10):
-            trial_indices_where_differ = np.where(~np.isclose(zf_spgl[r], zf_pnp[r], rtol=0.0, atol=1e-10))[0]
-            values_differ = [(zf_spgl[r][i], zf_pnp[r][i]) for i in trial_indices_where_differ]
-            raise ValueError(f"Zero-filled values differ between SPGL1 and PnP at {r}% for trials {trial_indices_where_differ}. Values: {values_differ}")
+            trial_indices_where_differ = np.where(
+                ~np.isclose(zf_spgl[r], zf_pnp[r], rtol=0.0, atol=1e-10)
+            )[0]
+            values_differ = [
+                (zf_spgl[r][i], zf_pnp[r][i]) for i in trial_indices_where_differ
+            ]
+            raise ValueError(
+                f"Zero-filled values differ between SPGL1 and PnP at {r}% for trials {trial_indices_where_differ}. Values: {values_differ}"
+            )
 
     zf = zf_spgl
     spgl = collect(spgl1_csvs, recon_col, coarse_J)
     pnp = collect(pnp_csvs, recon_col, coarse_J)
-
 
     for r in rates:
         print()
         print(f"Collected {len(zf[r])} trials for rate {r} with coarse_J={coarse_J}")
         print(f"Sampling rate {r}%:")
         if metric_prefix == "psnr":
-            print(f"{metric_prefix} mean: ZF mean={zf[r].mean():.2f}, SPGL1 mean={spgl[r].mean():.2f}, PnP mean={pnp[r].mean():.2f}")
-            print(f"{metric_prefix} std:  ZF std={zf[r].std():.2f},   SPGL1 std={spgl[r].std():.2f},   PnP std={pnp[r].std():.2f}")
+            print(
+                f"{metric_prefix} mean: ZF mean={zf[r].mean():.2f}, SPGL1 mean={spgl[r].mean():.2f}, PnP mean={pnp[r].mean():.2f}"
+            )
+            print(
+                f"{metric_prefix} std:  ZF std={zf[r].std():.2f},   SPGL1 std={spgl[r].std():.2f},   PnP std={pnp[r].std():.2f}"
+            )
         elif metric_prefix == "mse":
-            print(f"{metric_prefix} mean: ZF mean={zf[r].mean():.2e}, SPGL1 mean={spgl[r].mean():.2e}, PnP mean={pnp[r].mean():.2e}")
-            print(f"{metric_prefix} std:  ZF std={zf[r].std():.2e},   SPGL1 std={spgl[r].std():.2e},   PnP std={pnp[r].std():.2e}")
+            print(
+                f"{metric_prefix} mean: ZF mean={zf[r].mean():.2e}, SPGL1 mean={spgl[r].mean():.2e}, PnP mean={pnp[r].mean():.2e}"
+            )
+            print(
+                f"{metric_prefix} std:  ZF std={zf[r].std():.2e},   SPGL1 std={spgl[r].std():.2e},   PnP std={pnp[r].std():.2e}"
+            )
         elif metric_prefix == "ssim":
-            print(f"{metric_prefix} mean: ZF mean={zf[r].mean():.4f}, SPGL1 mean={spgl[r].mean():.4f}, PnP mean={pnp[r].mean():.4f}")
-            print(f"{metric_prefix} std:  ZF std={zf[r].std():.4f},   SPGL1 std={spgl[r].std():.4f},   PnP std={pnp[r].std():.4f}")
+            print(
+                f"{metric_prefix} mean: ZF mean={zf[r].mean():.4f}, SPGL1 mean={spgl[r].mean():.4f}, PnP mean={pnp[r].mean():.4f}"
+            )
+            print(
+                f"{metric_prefix} std:  ZF std={zf[r].std():.4f},   SPGL1 std={spgl[r].std():.4f},   PnP std={pnp[r].std():.4f}"
+            )
         else:
-            print(f"{metric_prefix} mean: ZF mean={zf[r].mean()}, SPGL1 mean={spgl[r].mean()}, PnP mean={pnp[r].mean()}")
-            print(f"{metric_prefix} std:  ZF std={zf[r].std()},   SPGL1 std={spgl[r].std()},   PnP std={pnp[r].std()}")
+            print(
+                f"{metric_prefix} mean: ZF mean={zf[r].mean()}, SPGL1 mean={spgl[r].mean()}, PnP mean={pnp[r].mean()}"
+            )
+            print(
+                f"{metric_prefix} std:  ZF std={zf[r].std()},   SPGL1 std={spgl[r].std()},   PnP std={pnp[r].std()}"
+            )
         print()
 
     zf_data = [zf[r] for r in rates]
@@ -368,7 +394,6 @@ def combined_boxplot_spgl1_pnp(
         plt.close(fig)
 
 
-
 if __name__ == "__main__":
     # randomization_scheme = "multilevel"
     randomization_scheme = "uniform"
@@ -420,18 +445,26 @@ if __name__ == "__main__":
     pnp_csvs = pnp_csvs[:num_trials]
 
     spgl1_experiment_dir = all_output_dir / spgl1_experiment_name
-    spgl1_csvs = sorted(spgl1_experiment_dir.glob(f"trial_*/{spgl1_method_name}/metrics.csv"))
+    spgl1_csvs = sorted(
+        spgl1_experiment_dir.glob(f"trial_*/{spgl1_method_name}/metrics.csv")
+    )
     spgl1_csvs = spgl1_csvs[:num_trials]
 
     output_dir = all_output_dir / "combined_boxplots"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-
-    print(f"Found {len(pnp_csvs)} metrics CSVs for method={pnp_method_name!r}"
-          f" under {pnp_experiment_dir}")
-    print(f"Found {len(spgl1_csvs)} metrics CSVs for method={spgl1_method_name!r}"
-          f" under {spgl1_experiment_dir}")
-    boxplot_path = output_dir / f"{data_name}_{randomization_scheme}_coarse_J_{coarse_J}_{metric_name}_boxplot_{num_trials}_trials_{spgl1_experiment_name}.png"
+    print(
+        f"Found {len(pnp_csvs)} metrics CSVs for method={pnp_method_name!r}"
+        f" under {pnp_experiment_dir}"
+    )
+    print(
+        f"Found {len(spgl1_csvs)} metrics CSVs for method={spgl1_method_name!r}"
+        f" under {spgl1_experiment_dir}"
+    )
+    boxplot_path = (
+        output_dir
+        / f"{data_name}_{randomization_scheme}_coarse_J_{coarse_J}_{metric_name}_boxplot_{num_trials}_trials_{spgl1_experiment_name}.png"
+    )
 
     # boxplot_from_metrics_csvs(
     #     csvs,

@@ -6,7 +6,6 @@ import numpy as np
 
 
 class PlotHelper:
-
     def __init__(
         self,
         roi: tuple[int, int, int, int] = None,

@@ -27,7 +27,9 @@ def test_fista_l1() -> None:
     wavelet = Wavelet2D((H, W), wavelet_name="db4", device=device)
 
     # Photocurrent mapping operator Phi
-    sampled_indices = multilevel_sample(J=J, num_samples=int(delta * H * W), coarse_J=coarseJ, alpha=1.0)
+    sampled_indices = multilevel_sample(
+        J=J, num_samples=int(delta * H * W), coarse_J=coarseJ, alpha=1.0
+    )
     phi = PhotocurrentMapOp(J=J, sampled_indices=sampled_indices, device=device)
 
     # Composite operator A = Phi Psi^{-1}
@@ -68,7 +70,9 @@ def test_fista_l1_cuda() -> None:
     wavelet = Wavelet2D((H, W), wavelet_name="db4", device=device)
 
     # Photocurrent mapping operator Phi
-    sampled_indices = multilevel_sample(J=J, num_samples=int(delta * H * W), coarse_J=coarseJ, alpha=1.0)
+    sampled_indices = multilevel_sample(
+        J=J, num_samples=int(delta * H * W), coarse_J=coarseJ, alpha=1.0
+    )
     phi = PhotocurrentMapOp(J=J, sampled_indices=sampled_indices, device=device)
 
     # Composite operator A = Phi Psi^{-1}

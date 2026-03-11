@@ -4,8 +4,10 @@ from pathlib import Path
 import pandas as pd
 from functools import partial
 from tqdm import tqdm as std_tqdm
+
 # Use tqdm with dynamic column width that adapts to the terminal width
 tqdm = partial(std_tqdm, dynamic_ncols=True)
+
 
 def summarise_trials_by_sampling_and_coarse_J(
     experiment_dir: Path,
@@ -67,19 +69,25 @@ def summarise_trials_by_sampling_and_coarse_J(
         dfs.append(df)
 
     if not dfs:
-        msg = f"No metrics CSVs found for method={method_name!r} under {experiment_dir}."
+        msg = (
+            f"No metrics CSVs found for method={method_name!r} under {experiment_dir}."
+        )
         if missing:
             msg += f" Example missing path: {missing[0]}"
         raise FileNotFoundError(msg)
 
     all_df = pd.concat(dfs, ignore_index=True)
 
-    all_df["sampling_percentage"] = pd.to_numeric(all_df["sampling_percentage"], errors="coerce")
+    all_df["sampling_percentage"] = pd.to_numeric(
+        all_df["sampling_percentage"], errors="coerce"
+    )
     all_df["coarse_J"] = pd.to_numeric(all_df["coarse_J"], errors="coerce")
 
     all_df = all_df.dropna(subset=["sampling_percentage", "coarse_J"]).copy()
 
-    all_df["sampling_percentage"] = all_df["sampling_percentage"].round(sampling_round_ndigits).astype(int)
+    all_df["sampling_percentage"] = (
+        all_df["sampling_percentage"].round(sampling_round_ndigits).astype(int)
+    )
     all_df["coarse_J"] = all_df["coarse_J"].round(0).astype(int)
 
     group_cols = ["sampling_percentage", "coarse_J"]
@@ -92,7 +100,9 @@ def summarise_trials_by_sampling_and_coarse_J(
     n_df = grouped.size().rename("n")
 
     summary = pd.concat([mean_df, std_df, n_df], axis=1).reset_index()
-    summary = summary.sort_values(group_cols, ascending=True, kind="stable").reset_index(drop=True)
+    summary = summary.sort_values(
+        group_cols, ascending=True, kind="stable"
+    ).reset_index(drop=True)
 
     if out_csv is not None:
         out_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -105,7 +115,9 @@ def summarise_trials_by_sampling_and_coarse_J(
 if __name__ == "__main__":
     # experiment_name = "20260116_053534_example_CIGS_256x256_multilevel_20_trials_pnp"
     # experiment_name = "20260116_063843_example_CIGS_256x256_multilevel_20_trials_spgl1"
-    experiment_name = "20260116_170524_Si_2_256_512x512_multilevel_20_trials_pnp_and_spgl1"
+    experiment_name = (
+        "20260116_170524_Si_2_256_512x512_multilevel_20_trials_pnp_and_spgl1"
+    )
     experiment_dir = Path("pcm_demo_output") / experiment_name
     assert experiment_dir.is_dir(), f"Experiment directory not found: {experiment_dir}"
     # factor = 1

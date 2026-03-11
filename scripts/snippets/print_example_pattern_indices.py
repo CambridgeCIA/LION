@@ -36,8 +36,10 @@ def print_example_pattern_indices() -> None:
         + random_indices_3
     )
 
-    assert np.array_equal(indices, expected_indices), \
-        "The selected indices do not match the expected pattern."
+    assert np.array_equal(
+        indices, expected_indices
+    ), "The selected indices do not match the expected pattern."
+
 
 if __name__ == "__main__":
     print_example_pattern_indices()

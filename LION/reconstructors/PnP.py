@@ -8,8 +8,8 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
 # from LION.classical_algorithms.fdk import fdk
+from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
 from LION.CTtools.ct_geometry import Geometry
 from LION.operators.Operator import Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
@@ -50,10 +50,15 @@ class PnP(LIONReconstructor):
         if default_algorithm == "HQS":
             # Half Quadratic Splitting, as from the paper "Plug-and-Play Image Restoration with Deep Denoiser Prior"
             self.default_algorithm = "HQS"  # Half Quadratic Splitting
-        elif default_algorithm == "FBS" or default_algorithm == "ForwardBackwardSplitting":
+        elif (
+            default_algorithm == "FBS"
+            or default_algorithm == "ForwardBackwardSplitting"
+        ):
             self.default_algorithm = "FBS"  # Forward-Backward Splitting
         elif default_algorithm == "ADMM":
-            self.default_algorithm = "ADMM"  # Alternating Direction Method of Multipliers
+            self.default_algorithm = (
+                "ADMM"  # Alternating Direction Method of Multipliers
+            )
         else:
             raise ValueError(f"Unknown algorithm: {default_algorithm}")
 
@@ -207,11 +212,17 @@ class PnP(LIONReconstructor):
 
         # AT_y = self.op.adjoint(measurement)
         AT_y = self.op.adjoint(measurement) / measurement_size
-        iterator = prog_bar(range(max_iter), desc="ADMM iterations") if prog_bar else range(max_iter)
+        iterator = (
+            prog_bar(range(max_iter), desc="ADMM iterations")
+            if prog_bar
+            else range(max_iter)
+        )
         for _ in iterator:
             d = AT_y + eta * (v - u)
             x = conjugate_gradient(
-                matmul_closure, d, x,
+                matmul_closure,
+                d,
+                x,
                 max_iter=cg_max_iter,
                 eps=cg_eps,
                 rel_tol=cg_rel_tol,

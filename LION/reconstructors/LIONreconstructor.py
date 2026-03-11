@@ -5,9 +5,10 @@ from abc import ABC, ABCMeta, abstractmethod
 import torch
 
 # Import CT utils
-from LION.CTtools.ct_geometry import Geometry
-# from LION.CTtools.ct_utils import make_operator
+# from LION.CTtools.ct_utils import
+
 # from LION.models.LIONmodel import to_autograd
+from LION.CTtools.ct_geometry import Geometry
 from LION.operators.Operator import Operator
 
 # Base class for a Reconstructor in the LION framework.

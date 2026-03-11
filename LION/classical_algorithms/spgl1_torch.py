@@ -9,7 +9,9 @@ from spgl1 import spgl1, spg_bp
 from LION.operators.Operator import Operator
 
 
-def spgl1_torch(op: Operator, y: torch.Tensor, **spgl1_kwargs) -> tuple[torch.Tensor, Any]:
+def spgl1_torch(
+    op: Operator, y: torch.Tensor, **spgl1_kwargs
+) -> tuple[torch.Tensor, Any]:
     r"""Solve an l1 sparse reconstruction using SPGL1 with Basis Pursuit (BP), wrapping torch operators.
 
     This is a thin wrapper around the Python SPGL1 solver ``spgl1.spg_bp`` that

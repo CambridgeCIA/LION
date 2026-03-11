@@ -17,7 +17,9 @@ def uniform_random_sample(
     assert (
         0 < num_samples <= num_pixels
     ), f"Number of samples must be in (0, {num_pixels}], got {num_samples}"
-    assert coarse_J <= J, f"coarse_J must be less than or equal to J, got coarse_J={coarse_J}, J={J}"
+    assert (
+        coarse_J <= J
+    ), f"coarse_J must be less than or equal to J, got coarse_J={coarse_J}, J={J}"
     num_coarse_samples = 1 << (2 * coarse_J)
 
     if num_coarse_samples > num_samples:
@@ -33,9 +35,17 @@ def uniform_random_sample(
     if num_random_samples > 0:
         if rng is None:
             rng = np.random.default_rng()
-        random_tail_indices = rng.choice(num_pixels - num_coarse_samples, size=num_random_samples, replace=False) + num_coarse_samples
+        random_tail_indices = (
+            rng.choice(
+                num_pixels - num_coarse_samples, size=num_random_samples, replace=False
+            )
+            + num_coarse_samples
+        )
         sampled_pattern_indices = np.concatenate(
-            [np.arange(num_coarse_samples, dtype=np.int64), random_tail_indices.astype(np.int64)]
+            [
+                np.arange(num_coarse_samples, dtype=np.int64),
+                random_tail_indices.astype(np.int64),
+            ]
         )
     else:
         sampled_pattern_indices = np.arange(num_coarse_samples, dtype=np.int64)

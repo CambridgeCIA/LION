@@ -8,7 +8,9 @@ def plot_drift():
     # data_name = "Si_2_256"
     data_name = "Si_256"
     file_path = data_dir / f"{data_name}_measurement_data.npy"
-    data = np.load(file_path)  # shape (N, 2): first column is index of Hadamard pattern, second column is measured current in Amperes
+    data = np.load(
+        file_path
+    )  # shape (N, 2): first column is index of Hadamard pattern, second column is measured current in Amperes
     # Add every two consecutive measurements
     summed_data = data[::2, 1] + data[1::2, 1]  # shape (N/2,)
     num_measurements = summed_data.shape[0]
@@ -23,6 +25,7 @@ def plot_drift():
     plt.tight_layout()
     # plt.show()
     plt.savefig(data_dir / f"{data_name}_drift_plot.png")
+
 
 if __name__ == "__main__":
     plot_drift()

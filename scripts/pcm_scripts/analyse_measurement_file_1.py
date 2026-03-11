@@ -13,7 +13,9 @@ if __name__ == "__main__":
         "256x256 +390+330.txt"
     )
     # measurement_file_name = "TEST 512x512.txt"
-    with (measurement_file_dir / measurement_file_name).open("r", encoding="utf-8", errors="ignore") as f:
+    with (measurement_file_dir / measurement_file_name).open(
+        "r", encoding="utf-8", errors="ignore"
+    ) as f:
 
         measurements: list[tuple[int, float]] = []
         indices: list[int] = []

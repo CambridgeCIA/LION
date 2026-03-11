@@ -41,13 +41,19 @@ def plot_testcase(
         yrange_expanded = (-0.5, J + 0.5)
     else:  # use in_order_measurements_percentage
         if "in_order_measurements_percentage" not in df.columns:
-            assert "coarse_J" in df.columns, "DataFrame must contain either 'in_order_measurements_percentage' or 'coarse_J' column."
+            assert (
+                "coarse_J" in df.columns
+            ), "DataFrame must contain either 'in_order_measurements_percentage' or 'coarse_J' column."
             coarse_J = df["coarse_J"].to_numpy()
             num_pixels = 1 << (2 * J)
             in_order_measurements = 1 << (2 * coarse_J)
-            in_order_measurements_percentage = (in_order_measurements / num_pixels) * 100
+            in_order_measurements_percentage = (
+                in_order_measurements / num_pixels
+            ) * 100
             # Take the minimum between in_order_measurements_percentage and sampling_percentage
-            in_order_measurements_percentage = np.minimum(in_order_measurements_percentage, x)
+            in_order_measurements_percentage = np.minimum(
+                in_order_measurements_percentage, x
+            )
             df["in_order_measurements_percentage"] = in_order_measurements_percentage
         y = df["in_order_measurements_percentage"].to_numpy()
         y = np.minimum(y, x)  # ensure y <= x
@@ -85,14 +91,16 @@ def plot_testcase(
     ax: plt.Axes = ax  # type hint for IDEs
 
     if uses_coarse_J:
-        ax.set_aspect('auto', adjustable='box')
+        ax.set_aspect("auto", adjustable="box")
     else:
-        ax.set_aspect('equal', adjustable='box')
+        ax.set_aspect("equal", adjustable="box")
         ax.plot(
             [0, 100],
             # [0, 100],
             yrange,
-            linestyle="--", linewidth=1)
+            linestyle="--",
+            linewidth=1,
+        )
 
     ax.set_xlabel("Sampling percentage")
     ax.set_ylabel(ylabel)
@@ -112,7 +120,13 @@ def plot_all_pcm_testcases():
         # ("20260114_183643_silicon_512x512_multilevel_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.5, 0.9)),
         # ("20260115_105359_Si_2_256_512x512_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.2, 0.8)),
         # ("20260115_204000_Si_256_512x512_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all", 9, True, (20, 30), (0.2, 0.8)),
-        ("20260115_225211_Si_256_measurement_data_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all", 8, True, (20, 30), (0.2, 0.8)),
+        (
+            "20260115_225211_Si_256_measurement_data_multilevel_noise_0_pnp_eta_0.01_and_spgl1_all",
+            8,
+            True,
+            (20, 30),
+            (0.2, 0.8),
+        ),
     ]
     eta = 0.01
     admm_iters = 50
@@ -151,7 +165,6 @@ def plot_all_pcm_testcases():
             "metric": "psnr_recon",
             "metric_name": "PSNR",
         },
-
         {
             "title": "Zero-filled reconstruction SSIM",
             "filename": "ssim_zero_filled",
@@ -193,7 +206,9 @@ def plot_all_pcm_testcases():
         },
     }
 
-    for test_name, J, uses_coarse_J, psnr_range, ssim_range in tqdm(test_names, desc="Test cases"):
+    for test_name, J, uses_coarse_J, psnr_range, ssim_range in tqdm(
+        test_names, desc="Test cases"
+    ):
         test_dir = demo_output_dir / test_name
         for test_case in tqdm(test_cases):
             for plot_style, plot_info in plot_styles.items():
@@ -203,7 +218,9 @@ def plot_all_pcm_testcases():
                 elif metric_prefix == "ssim":
                     test_case["vrange"] = ssim_range
                 else:
-                    raise ValueError(f"Unknown metric prefix: {metric_prefix} in metric {test_case['metric']}")
+                    raise ValueError(
+                        f"Unknown metric prefix: {metric_prefix} in metric {test_case['metric']}"
+                    )
                 if "pnp_admm" in test_case["filename"]:
                     csv_path = pnp_admm_csv_path
                 elif "spgl1" in test_case["filename"]:
@@ -211,7 +228,9 @@ def plot_all_pcm_testcases():
                 elif "zero_filled" in test_case["filename"]:
                     csv_path = zero_filled_csv_path
                 else:
-                    raise ValueError(f"Unknown method in filename: {test_case['filename']}")
+                    raise ValueError(
+                        f"Unknown method in filename: {test_case['filename']}"
+                    )
                 plot_testcase(
                     J=J,
                     uses_coarse_J=uses_coarse_J,

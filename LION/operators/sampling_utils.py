@@ -25,7 +25,10 @@ def get_random_indices_up_to_last_coarse_level(
             f"Consider reducing coarse_J (currently coarse_J={coarse_J} with J={J} and {num_samples} samples). "
         )
     remaining_coarse_indices_pool_size = num_coarse_samples - num_full_coarse_samples
-    remaining_coarse_indices_pool = np.arange(remaining_coarse_indices_pool_size, dtype=np.int64) + num_full_coarse_samples
+    remaining_coarse_indices_pool = (
+        np.arange(remaining_coarse_indices_pool_size, dtype=np.int64)
+        + num_full_coarse_samples
+    )
     num_remaining_coarse_samples = num_samples - num_full_coarse_samples
     if rng is None:
         rng = np.random.default_rng()
@@ -35,6 +38,9 @@ def get_random_indices_up_to_last_coarse_level(
         replace=False,
     )
     sampled_pattern_indices = np.concatenate(
-        [np.arange(num_full_coarse_samples, dtype=np.int64), selected_remaining_coarse_indices.astype(np.int64)]
+        [
+            np.arange(num_full_coarse_samples, dtype=np.int64),
+            selected_remaining_coarse_indices.astype(np.int64),
+        ]
     )
     return sampled_pattern_indices

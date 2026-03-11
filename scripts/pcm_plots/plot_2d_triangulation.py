@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.tri as mtri
 
+
 def plot_metric_triangulation(
     sampling_ratio,
     in_order_ratio,
@@ -22,7 +23,9 @@ def plot_metric_triangulation(
     z = np.asarray(val, dtype=float).ravel()
 
     if not (x.shape == y.shape == z.shape):
-        raise ValueError("sampling_ratio, in_order_ratio, and val must have the same shape after ravel().")
+        raise ValueError(
+            "sampling_ratio, in_order_ratio, and val must have the same shape after ravel()."
+        )
 
     # if np.any(y > x + 1e-12):
     #     raise ValueError("Constraint violated: in_order_ratio must be <= sampling_ratio elementwise.")
@@ -52,7 +55,7 @@ def plot_metric_triangulation(
         z,
         levels=level_bounds,
         cmap=cmap,
-        extend="both",   # show out-of-range values as extensions on the colourbar
+        extend="both",  # show out-of-range values as extensions on the colourbar
     )
 
     ax.set_xlim(*xlim)

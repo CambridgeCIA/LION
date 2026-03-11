@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def plot_metric_binned(
     sampling_ratio,
     in_order_ratio,
@@ -37,7 +38,9 @@ def plot_metric_binned(
     Xc, Yc = np.meshgrid(xc, yc, indexing="ij")
     mean[(Yc > Xc)] = np.nan
 
-    m = ax.pcolormesh(xedges, yedges, mean.T, cmap=cmap, vmin=vmin, vmax=vmax, shading="auto")
+    m = ax.pcolormesh(
+        xedges, yedges, mean.T, cmap=cmap, vmin=vmin, vmax=vmax, shading="auto"
+    )
     ax.set_xlim(*xlim)
     ax.set_ylim(*ylim)
     ax.set_xlabel("sampling_ratio")

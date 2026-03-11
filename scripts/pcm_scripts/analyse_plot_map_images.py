@@ -6,7 +6,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def load_and_plot_map_image(example_pcm_data_dir: Path, map_image_file_name: str) -> None:
+def load_and_plot_map_image(
+    example_pcm_data_dir: Path, map_image_file_name: str
+) -> None:
     name = map_image_file_name.split(".")[0]
     map_image_file = example_pcm_data_dir / map_image_file_name
     print(f"Loading map image from {map_image_file} ...")

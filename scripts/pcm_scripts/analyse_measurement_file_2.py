@@ -13,7 +13,9 @@ if __name__ == "__main__":
     #     "256x256 +390+330.txt"
     # )
     measurement_file_name = "TEST 512x512.txt"
-    with (measurement_file_dir / measurement_file_name).open("r", encoding="utf-8", errors="ignore") as f:
+    with (measurement_file_dir / measurement_file_name).open(
+        "r", encoding="utf-8", errors="ignore"
+    ) as f:
         lines = f.readlines()
 
         # The content of the measurement file looks like this:
@@ -63,7 +65,9 @@ if __name__ == "__main__":
         block_length = len(out) // 2 - cur_start
         blocks.append((cur_start, cur_start_absolute_index, block_length))
         block_lengths[block_length] = block_lengths.get(block_length, 0) + 1
-        print(f"Found {len(blocks)} blocks of pattern index pairs with increasing absolute indices.")
+        print(
+            f"Found {len(blocks)} blocks of pattern index pairs with increasing absolute indices."
+        )
         print("Block lengths and their counts:")
         for length, count in sorted(block_lengths.items()):
             print(f"  Length {length}: {count} blocks")
