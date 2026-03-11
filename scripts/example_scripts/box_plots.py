@@ -202,6 +202,7 @@ def combined_boxplot_spgl1_pnp(
     pnp_csvs: Sequence[str | Path],
     *,
     metric_prefix: str = "psnr",
+    coarse_J: int = 7,
     sampling_rates: Sequence[int] = (20, 50, 80),
     sampling_col: str = "sampling_percentage",
     round_sampling: bool = True,
@@ -225,10 +226,11 @@ def combined_boxplot_spgl1_pnp(
     zf_col = f"{metric_prefix}_zero_filled"
     recon_col = f"{metric_prefix}_recon"
 
-    def collect(csv_paths: Sequence[str | Path], metric_col: str) -> dict[int, np.ndarray]:
+    def collect(csv_paths: Sequence[str | Path], metric_col: str, coarse_J: int) -> dict[int, np.ndarray]:
         values_by_rate = {r: [] for r in rates}
         for p in map(Path, csv_paths):
             df = pd.read_csv(p, skipinitialspace=True)
+            df = df[df["coarse_J"] == coarse_J]  # filter to the specified coarse_J
             df.columns = [str(c).strip() for c in df.columns]
 
             for col in (sampling_col, metric_col):
@@ -255,8 +257,8 @@ def combined_boxplot_spgl1_pnp(
         return {r: np.asarray(values_by_rate[r], dtype=float) for r in rates}
 
     # Collect distributions
-    zf_spgl = collect(spgl1_csvs, zf_col)
-    zf_pnp = collect(pnp_csvs, zf_col)
+    zf_spgl = collect(spgl1_csvs, zf_col, coarse_J)
+    zf_pnp = collect(pnp_csvs, zf_col, coarse_J)
 
     for r in rates:
         if zf_spgl[r].shape != zf_pnp[r].shape:
@@ -267,8 +269,27 @@ def combined_boxplot_spgl1_pnp(
             raise ValueError(f"Zero-filled values differ between SPGL1 and PnP at {r}% for trials {trial_indices_where_differ}. Values: {values_differ}")
 
     zf = zf_spgl
-    spgl = collect(spgl1_csvs, recon_col)
-    pnp = collect(pnp_csvs, recon_col)
+    spgl = collect(spgl1_csvs, recon_col, coarse_J)
+    pnp = collect(pnp_csvs, recon_col, coarse_J)
+
+
+    for r in rates:
+        print()
+        print(f"Collected {len(zf[r])} trials for rate {r} with coarse_J={coarse_J}")
+        print(f"Sampling rate {r}%:")
+        if metric_prefix == "psnr":
+            print(f"{metric_prefix} mean: ZF mean={zf[r].mean():.2f}, SPGL1 mean={spgl[r].mean():.2f}, PnP mean={pnp[r].mean():.2f}")
+            print(f"{metric_prefix} std:  ZF std={zf[r].std():.2f},   SPGL1 std={spgl[r].std():.2f},   PnP std={pnp[r].std():.2f}")
+        elif metric_prefix == "mse":
+            print(f"{metric_prefix} mean: ZF mean={zf[r].mean():.2e}, SPGL1 mean={spgl[r].mean():.2e}, PnP mean={pnp[r].mean():.2e}")
+            print(f"{metric_prefix} std:  ZF std={zf[r].std():.2e},   SPGL1 std={spgl[r].std():.2e},   PnP std={pnp[r].std():.2e}")
+        elif metric_prefix == "ssim":
+            print(f"{metric_prefix} mean: ZF mean={zf[r].mean():.4f}, SPGL1 mean={spgl[r].mean():.4f}, PnP mean={pnp[r].mean():.4f}")
+            print(f"{metric_prefix} std:  ZF std={zf[r].std():.4f},   SPGL1 std={spgl[r].std():.4f},   PnP std={pnp[r].std():.4f}")
+        else:
+            print(f"{metric_prefix} mean: ZF mean={zf[r].mean()}, SPGL1 mean={spgl[r].mean()}, PnP mean={pnp[r].mean()}")
+            print(f"{metric_prefix} std:  ZF std={zf[r].std()},   SPGL1 std={spgl[r].std()},   PnP std={pnp[r].std()}")
+        print()
 
     zf_data = [zf[r] for r in rates]
     spgl_data = [spgl[r] for r in rates]
@@ -349,44 +370,68 @@ def combined_boxplot_spgl1_pnp(
 
 
 if __name__ == "__main__":
-    randomization_scheme = "multilevel"
-    # randomization_scheme = "uniform"
+    # randomization_scheme = "multilevel"
+    randomization_scheme = "uniform"
+
+    # coarse_J = 6
+    coarse_J = 7
+    # coarse_J = 8
+
+    # metric_name = "mse"
+    metric_name = "psnr"
 
     # data_name = "example_CIGS_256x256"
-    # pnp_experiment_name = f"20260116_053534_{data_name}_{randomization_scheme}_20_trials_pnp"
-    # spgl1_experiment_name = f"20260116_063843_{data_name}_{randomization_scheme}_20_trials_spgl1"
-
     data_name = "example_silicon_512x512"
-    pnp_experiment_name = f"20260118_055332_{data_name}_{randomization_scheme}_10_trials_pnp_and_spgl1"
-    spgl1_experiment_name = f"20260118_055332_{data_name}_{randomization_scheme}_10_trials_pnp_and_spgl1"
+    # pnp_experiment_name = f"20260116_053534_{data_name}_{randomization_scheme}_20_trials_pnp"
+    # pnp_experiment_name = "20260117_075402_example_CIGS_256x256_uniform_10_trials_pnp_and_spgl1"
+    # pnp_experiment_name = "20260118_034512_example_silicon_512x512_uniform_10_trials_pnp_and_spgl1"
+    # pnp_experiment_name = "20260216_132602_example_CIGS_256x256_uniform_20_trials_spgl1"
+    pnp_experiment_name = "20260216_142503_example_silicon_512x512_uniform_20_trials"
 
-    data_name = "Si_2_256_512x512"
-    pnp_experiment_name =   f"20260116_170524_{data_name}_{randomization_scheme}_20_trials_pnp_and_spgl1"
-    spgl1_experiment_name = f"20260116_170524_{data_name}_{randomization_scheme}_20_trials_pnp_and_spgl1"
+    # spgl1_experiment_name = f"20260116_063843_{data_name}_{randomization_scheme}_20_trials_spgl1"
+    # spgl1_experiment_name = "20260117_075402_example_CIGS_256x256_uniform_10_trials_pnp_and_spgl1"
+    # spgl1_experiment_name = "20260118_034512_example_silicon_512x512_uniform_10_trials_pnp_and_spgl1"
+    # spgl1_experiment_name = "20260216_132602_example_CIGS_256x256_uniform_20_trials_spgl1"
+    spgl1_experiment_name = "20260216_142503_example_silicon_512x512_uniform_20_trials"
+
+    # data_name = "example_silicon_512x512"
+    # pnp_experiment_name = f"20260118_055332_{data_name}_{randomization_scheme}_10_trials_pnp_and_spgl1"
+    # spgl1_experiment_name = f"20260118_055332_{data_name}_{randomization_scheme}_10_trials_pnp_and_spgl1"
+
+    # data_name = "Si_2_256_512x512"
+    # pnp_experiment_name =   f"20260116_170524_{data_name}_{randomization_scheme}_20_trials_pnp_and_spgl1"
+    # spgl1_experiment_name = f"20260116_170524_{data_name}_{randomization_scheme}_20_trials_pnp_and_spgl1"
 
     pnp_method_name = "pnp_admm_iters=50_eta=0.01_cg_iters=20_drunet_sigma=0.05"
-    # factor = 1
-    factor = 100000.0
+    factor = 1
+    # factor = 100000.0
     spgl1_method_name = f"spgl1_factor={factor}"
 
-    all_output_dir = Path("pcm_demo_output")
+    # TODO: Remove this
+    pnp_method_name = spgl1_method_name
+
+    # all_output_dir = Path("pcm_demo_output")
+    all_output_dir = Path("../pdo")
+
+    num_trials = 10  # use only first x trials
 
     pnp_experiment_dir = all_output_dir / pnp_experiment_name
     pnp_csvs = sorted(pnp_experiment_dir.glob(f"trial_*/{pnp_method_name}/metrics.csv"))
-    pnp_csvs = pnp_csvs[:10]  # use only first 10 trials
+    pnp_csvs = pnp_csvs[:num_trials]
 
     spgl1_experiment_dir = all_output_dir / spgl1_experiment_name
     spgl1_csvs = sorted(spgl1_experiment_dir.glob(f"trial_*/{spgl1_method_name}/metrics.csv"))
-    spgl1_csvs = spgl1_csvs[:10]  # use only first 10 trials
+    spgl1_csvs = spgl1_csvs[:num_trials]
 
     output_dir = all_output_dir / "combined_boxplots"
     output_dir.mkdir(parents=True, exist_ok=True)
+
 
     print(f"Found {len(pnp_csvs)} metrics CSVs for method={pnp_method_name!r}"
           f" under {pnp_experiment_dir}")
     print(f"Found {len(spgl1_csvs)} metrics CSVs for method={spgl1_method_name!r}"
           f" under {spgl1_experiment_dir}")
-    boxplot_path = output_dir / f"{data_name}_{randomization_scheme}_boxplot.png"
+    boxplot_path = output_dir / f"{data_name}_{randomization_scheme}_coarse_J_{coarse_J}_{metric_name}_boxplot_{num_trials}_trials_{spgl1_experiment_name}.png"
 
     # boxplot_from_metrics_csvs(
     #     csvs,
@@ -405,10 +450,11 @@ if __name__ == "__main__":
     combined_boxplot_spgl1_pnp(
         spgl1_csvs=spgl1_csvs,
         pnp_csvs=pnp_csvs,
-        metric_prefix="psnr",
+        metric_prefix=metric_name,
         sampling_rates=(20, 50, 80),
+        coarse_J=coarse_J,
         figsize=(8.0, 5.5),
-        vrange=(27, 44),
+        # vrange=(27, 44),
         title="PSNR Comparison",
         out_path=boxplot_path,
     )
