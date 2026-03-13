@@ -28,7 +28,9 @@ device = torch.device("cuda:1")
 torch.cuda.set_device(device)
 
 # Define your data paths
-savefolder = pathlib.Path("/store/LION/ea692/LION/LION/trained_models/Sparse2Inverse/Train/SparseAngleLowDoseCTRecon")
+savefolder = pathlib.Path(
+    "/store/LION/ea692/LION/LION/trained_models/Sparse2Inverse/Train/SparseAngleLowDoseCTRecon"
+)
 # Creates the folders if they does not exist
 savefolder.mkdir(parents=True, exist_ok=True)
 final_result_fname = "S2I.pt"
@@ -37,7 +39,7 @@ checkpoint_fname = "S2I_check_*.pt"
 # Define experiment
 experiment = ct_experiments.SparseAngleLowDoseCTRecon()
 train_dataset = experiment.get_training_dataset()
-#30 sinograms for the experiment
+# 30 sinograms for the experiment
 indices = torch.arange(30)
 train_dataset = data_utils.Subset(train_dataset, indices)
 
@@ -52,7 +54,7 @@ model = UNet()
 optimizer = Adam(model.parameters(), lr=1e-4)
 loss_fn = nn.MSELoss()
 
-#Sparse2InverseSolver.
+# Sparse2InverseSolver.
 s2i_params = Sparse2InverseSolver.default_parameters()
 # Sparse to inverse requires certain user specifications.
 s2i_params.sino_split_count = 4
@@ -79,7 +81,9 @@ solver.save_final_results(final_result_fname, savefolder)
 solver.clean_checkpoints()
 
 # Test using the training data
-savefolder = pathlib.Path("/home/ea692/LION/LION/trained_models/Sparse2Inverse/Test/SparseAngleLowDoseCTRecon/SparseVSNoise/30sin2000ep/64Angles_Haarpsi_and_SSIM")
+savefolder = pathlib.Path(
+    "/home/ea692/LION/LION/trained_models/Sparse2Inverse/Test/SparseAngleLowDoseCTRecon/SparseVSNoise/30sin2000ep/64Angles_Haarpsi_and_SSIM"
+)
 savefolder.mkdir(parents=True, exist_ok=True)
 
 model.eval()
@@ -87,7 +91,7 @@ solver_params = Sparse2InverseSolver.default_parameters()
 solver_params.sino_split_count = 4
 solver_params.recon_fn = fdk
 optimizer = Adam(model.parameters())
-#Not used directly, the solver defines its own loss.
+# Not used directly, the solver defines its own loss.
 loss_fn = nn.MSELoss()
 
 solver_sparse = Sparse2InverseSolver(
@@ -100,22 +104,24 @@ solver_sparse = Sparse2InverseSolver(
     device=device,
 )
 
-#Normalization in order to ensure a fair comparison of structural and perceptual image quality.
-def normalize_01(x,y):
-    x = (x - y.min())/ (y.max() - y.min())
-    x[x>1]=1
-    x[x<0]=0
+# Normalization in order to ensure a fair comparison of structural and perceptual image quality.
+def normalize_01(x, y):
+    x = (x - y.min()) / (y.max() - y.min())
+    x[x > 1] = 1
+    x[x < 0] = 0
     return x
 
-#SSIM metric
+
+# SSIM metric
 def my_ssim(x, y):
     x = x.detach().squeeze().cpu()
     y = y.detach().squeeze().cpu()
-    
-    target_n = normalize_01(y,y)
-    sparse_n = normalize_01(x,y)
+
+    target_n = normalize_01(y, y)
+    sparse_n = normalize_01(x, y)
     return ssim(target_n, sparse_n, data_range=1)
-    
+
+
 model.eval()
 solver.set_testing(dataloader, my_ssim)
 solver.test()
