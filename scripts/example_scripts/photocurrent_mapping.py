@@ -300,7 +300,7 @@ def make_csv(method_name: str, log_dir: Path | str) -> None:
 
 
 # %%
-def normalize(tensor: torch.Tensor) -> torch.Tensor:
+def minmax_normalize(tensor: torch.Tensor) -> torch.Tensor:
     """Normalize the tensor to [0, 1] range."""
     min_val, max_val = tensor.min().item(), tensor.max().item()
     return (tensor - min_val) / (max_val - min_val)
@@ -744,7 +744,7 @@ def prepare_data() -> tuple[GrayscaleImage2D, Measurement1D | None]:
         )
 
     if tests_scale_ground_truth:
-        ground_truth_image = normalize(ground_truth_image)
+        ground_truth_image = minmax_normalize(ground_truth_image)
         print(
             f"Normalized ground truth image to [0, 1]. Min: {ground_truth_image.min().item()}, Max: {ground_truth_image.max().item()}"
         )
