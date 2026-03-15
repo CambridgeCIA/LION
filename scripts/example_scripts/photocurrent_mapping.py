@@ -40,7 +40,6 @@ from typing import Callable
 
 import deepinv
 import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 from jaxtyping import Float
 from matplotlib.colors import ListedColormap
@@ -48,7 +47,6 @@ from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMe
 from tqdm import tqdm as std_tqdm
 
 # LION imports
-from LION.classical_algorithms.fista import fista_l1
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
 from LION.operators.CompositeOp import CompositeOp
 from LION.operators.DebiasOp import debias_ls
@@ -56,7 +54,7 @@ from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
 from LION.operators.Wavelet2D import Wavelet2D
 from LION.reconstructors.PnP import PnP
 from LION.utils.pcm_sampling import multilevel_sample, uniform_random_sample
-from LION.utils.plot_helper import PlotHelper
+from LION.utils.plot_helper import PlotHelper, show_images_with_inset
 
 # Use tqdm with dynamic column width that adapts to the terminal width
 tqdm = partial(std_tqdm, dynamic_ncols=True)
@@ -130,9 +128,8 @@ clim = (0.0, 1.5e-5)
 inverses_sign = True
 R_high = 2e-5
 R_low = -2e-6
-factor = (
-    1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
-)
+# scale the photocurrent values for better numerical stability in SPGL1
+factor = 1e5
 
 if "256x256" in data_name:
     J_order = 8  # J=8 => 2^8=256
@@ -178,28 +175,35 @@ assert (
 data_type = "image"
 print(f"The type of raw data is: {data_type}")
 
+# %%
 noise_seed = 42
 noise_std = 0  # No noise
 # noise_std = 0.05  # standard deviation of additive homoscedastic Gaussian white noise added to measurements
 
+# %%
 num_trials = 1
 num_trials_skip = 0
 
 
+# %%
 runs_pnp_admm = True
 if runs_pnp_admm:
     # denoiser_name = "drunet"
     denoiser_name = "gs_drunet"
     if denoiser_name == "drunet":
-        denoiser = deepinv.models.DRUNet(
-            pretrained="download", in_channels=1, out_channels=1, device=device
-        )
+        with torch.device("cpu"):
+            denoiser = deepinv.models.DRUNet(
+                pretrained="download", in_channels=1, out_channels=1, device=device
+            )
     elif denoiser_name == "gs_drunet":
-        denoiser = deepinv.models.GSDRUNet(
-            pretrained="download", in_channels=1, out_channels=1, device=device
-        )
+        with torch.device("cpu"):
+            denoiser = deepinv.models.GSDRUNet(
+                pretrained="download", in_channels=1, out_channels=1, device=device
+            )
     else:
         raise ValueError(f"Unknown denoiser_name {denoiser_name}.")
+    denoiser = denoiser.to(device=device)
+    denoiser.eval()
 else:
     denoiser = None
 # pnp_admm_iters = 1
@@ -235,6 +239,7 @@ runs_fista_l1 = False
 
 runs_spgl1 = True
 
+# %%
 # randomizing_scheme = "multilevel"
 randomizing_scheme = "uniform"
 
@@ -261,36 +266,8 @@ plot_helper = PlotHelper(
 
 
 # %% mystnb={"code_prompt_show": "Show utility details"} tags=["hide-cell"]
-def show_images_with_inset(
-    images: list[torch.Tensor],
-    fig_filepath: Path,
-    plot_helper: PlotHelper,
-    titles: list[str] | None = None,
-    suptitle: str | None = None,
-    adds_insets: bool = True,
-) -> None:
-    """Plot images."""
-    n_images = len(images)
-    fig, axes = plt.subplots(1, n_images, squeeze=False, figsize=(n_images * 4, 4))
-
-    for i in range(n_images):
-        img_np = images[i].squeeze().cpu().numpy()
-        ax: plt.Axes = axes[0][i]
-        if adds_insets:
-            plot_helper.add_zoom_inset(ax, img_np)
-        else:
-            ax.imshow(img_np, cmap=plot_helper.cmap, clim=plot_helper.clim)
-        ax.axis("off")
-        if titles:
-            ax.set_title(titles[i], fontsize=10)
-    if suptitle:
-        fig.subplots_adjust(bottom=0.18)
-        fig.text(0.5, 0.02, suptitle, ha="center", va="bottom", fontsize=16)
-    fig.savefig(fig_filepath, dpi=150)
-    plt.close(fig)
-
-
 def make_csv(method_name: str, log_dir: Path | str) -> None:
+    """Create a CSV file to log the metrics."""
     log_dir = Path(log_dir) / method_name
     log_dir.mkdir(parents=True, exist_ok=True)
     csv_path = log_dir / "metrics.csv"
@@ -318,7 +295,8 @@ def run_pcm_demo(
     log_dir: Path | str = ".",
     device: torch.device | str = "cuda:0",
     seed: int = 0,
-):
+) -> None:
+    """Run a PCM reconstruction demo with sampling ratio and coarse level."""
     zero_filled_dir = Path(log_dir) / "zero_filled"
     zero_filled_dir.mkdir(parents=True, exist_ok=True)
     masks_dir = Path(log_dir) / "masks"
@@ -358,17 +336,6 @@ def run_pcm_demo(
         y_subsampled_tensor_noiseless = pcm_op(im_tensor)
 
     y_subsampled_tensor = y_subsampled_tensor_noiseless  # No noise
-
-    # noise_rng = torch.Generator(device=device)
-    # noise_rng.manual_seed(noise_seed)
-    # homoscedastic_noise = y_subsampled_tensor_noiseless.normal_(
-    #     mean=0.0, std=noise_std, generator=noise_rng
-    # )
-    # noise = homoscedastic_noise
-    # noise = torch.zeros_like(y_subsampled_tensor_noiseless)
-    # assert torch.equal(noise, torch.zeros_like(noise)), "Noise is not zero!"
-
-    # y_subsampled_tensor = y_subsampled_tensor_noiseless + noise
 
     zero_filled_recon_tensor = (
         pcm_op.pseudo_inv(y_subsampled_tensor).unsqueeze(0).unsqueeze(0)
@@ -450,11 +417,13 @@ def run_pcm_demo(
     )
 
 
+# %%
 def run_pnp_admm(
     pcm_op: PhotocurrentMapOp,
     pcm_measurement: Measurement1D,
     initial_image: GrayscaleImage2D,
 ) -> GrayscaleImage2D:
+    """Reconstruct PCM using PnP-ADMM."""
     admm_iterations = pnp_admm_iters
     admm_eta = pnp_admm_eta
     cg_max_iter = cg_iters
@@ -494,62 +463,8 @@ def run_pnp_admm(
         prog_bar=tqdm,
         # cg_prog_bar=tqdm,
     )
-    # recon = pnp.forward_backward_splitting(
-    #     sino=pcm_measurement,
-    # )
-
     return recon
     # return a * recon + R_low if is_out_of_distribution else recon
-
-
-# %%
-def run_fista_l1(
-    pcm_op: PhotocurrentMapOp,
-    pcm_measurement: Measurement1D,
-    initial_image: GrayscaleImage2D,
-) -> GrayscaleImage2D:
-
-    lam = 10  # Good for Daubechies 4 wavelet transform
-    # max_iter = 300
-    max_iter = 100
-    tol = 1e-5
-
-    debias_max_iter = 10
-    debias_support_tol = 1e-5
-    debias_tol = 1e-7
-
-    height, width = pcm_op.domain_shape
-    # Wavelet transform Psi
-    wavelet = Wavelet2D((height, width), wavelet_name="db4", device=device)
-    # Composite operator A = Phi Psi^{-1}
-    A_op = CompositeOp(wavelet, pcm_op, device=device)
-
-    # print("Running FISTA reconstruction: " f"{max_iter} iterations, lambda={lam}...")
-    w_hat = fista_l1(
-        op=A_op,
-        y=pcm_measurement,
-        lam=lam,
-        max_iter=max_iter,
-        tol=tol,
-        L=None,
-        verbose=False,
-        prog_bar=tqdm,
-    )
-
-    # Optional debiasing
-    # print(f"Running debiasing: {debias_max_iter} iterations...")
-    w_debias = debias_ls(
-        op=A_op,
-        y=pcm_measurement,
-        w=w_hat,
-        support_tol=debias_support_tol,
-        max_iter=debias_max_iter,
-        tol=debias_tol,
-        prog_bar=tqdm,
-    )
-
-    # Current map reconstruction
-    cs_result_tensor = wavelet.inverse(w_debias)
 
     return cs_result_tensor
 
@@ -560,7 +475,7 @@ def run_spgl1(
     pcm_measurement: Measurement1D,
     initial_image: GrayscaleImage2D,
 ) -> GrayscaleImage2D:
-
+    """Reconstruct PCM using SPGL1."""
     # max_iter = 1000
     # max_iter = 200
     max_iter = 100
@@ -620,7 +535,9 @@ def run_spgl1(
     return cs_result_tensor
 
 
+# %%
 def make_test_cases() -> list[tuple[float, int]]:
+    """Generate test cases with different sampling ratios and coarse levels."""
     min_coarse_J = 0
     # min_coarse_J = 5
     # min_coarse_J = J_order - 3  # keep 1.5625% of in-order measurements at least
@@ -685,7 +602,9 @@ def make_test_cases() -> list[tuple[float, int]]:
     return test_cases
 
 
+# %%
 def run_experiments():
+    """Run PCM reconstruction experiments and save results."""
     raw_data: GrayscaleImage2D | Measurement1D = np.load(data_dir / data_filename)
     print(f"Raw data shape: {raw_data.shape}")
     print(f"J_order: {J_order}")
@@ -748,7 +667,6 @@ def run_experiments():
         print(
             f"Min value in original measurement data: {min_raw_value} at index {index_of_min_raw}"
         )
-        # exit()
 
         sign_vector = np.round(np.sign(raw_data[:, 0]))
         sign_vector[:2] = [1.0, -1.0]  # Ensure the first two patterns are +0 and -0
@@ -758,14 +676,6 @@ def run_experiments():
             dtype=torch.float32,
             device=device,
         )
-
-        # index_of_max = torch.argmax(measurement_vector).item()
-        # index_of_min = torch.argmin(measurement_vector).item()
-        # min_value = measurement_vector[index_of_min].item()
-        # max_value = measurement_vector[index_of_max].item()
-        # print(f"Max value in measurement vector: {max_value} at index {index_of_max}")
-        # print(f"Min value in measurement vector: {min_value} at index {index_of_min}")
-        # exit()
 
         pcm_op_full = PhotocurrentMapOp(J=J_order, device=device)
         print(
@@ -789,23 +699,11 @@ def run_experiments():
         measurement_vector = None
 
     test_cases = make_test_cases()
-    # print(f"Total number of test cases: {len(test_cases)}")
-    # print(test_cases)
-    # for sampling_ratio, coarse_J in test_cases:
-    #     sampling_percentage = sampling_ratio * 100
-    #     coarse_percentage = (1<<(2*coarse_J))/(1<<(2*J_order))*100
-    #     print(f"Sampling: {sampling_percentage}%, coarse_J: {coarse_J} ({coarse_percentage}%)")
-    #     assert sampling_percentage >= coarse_percentage, (
-    #         "Sampling percentage must be larger than or equal to coarse percentage. "
-    #         f"Got sampling {sampling_percentage}% and coarse {coarse_percentage}%."
-    #     )
-    # return
 
     # ### Set a directory to save logs and results
     #
     # Each run is stored in a separate subdirectory named with the current date and
     # time, which makes it easier to keep track of different experiments.
-
     current_datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     experiment_log_dir = (
         root_output_dir
@@ -818,12 +716,10 @@ def run_experiments():
         log_dir = experiment_log_dir / f"trial_{i_seed}"
         log_dir.mkdir(parents=True, exist_ok=True)
 
-        # %% [markdown]
         # ## First experiment: PnP-ADMM
         #
         # In this section the PCM PnP-ADMM algorithm is tested on the CIGS data.
 
-        # %% [markdown]
         # Define the prior function using a pre-trained DRUNet denoiser and the
         # corresponding Plug-and-Play ADMM solver.
         #
@@ -838,7 +734,6 @@ def run_experiments():
         # an off-the-shelf denoiser. Here DRUNet acts as a powerful learned prior for
         # the PCM inverse problem, while the data fidelity term is handled by ADMM.
 
-        # %%
         if runs_pnp_admm:
             method_name = f"pnp_admm_{denoiser_name}_iters={pnp_admm_iters}_eta={pnp_admm_eta}_cg_iters={cg_iters}_drunet_sigma={drunet_sigma}"
             make_csv(method_name=method_name, log_dir=log_dir)
@@ -860,73 +755,29 @@ def run_experiments():
                     seed=i_seed,
                 )
 
-        # %% [markdown]
         # The code above runs the PnP-ADMM reconstruction and compares it to the
         # zero-filled pseudo-inverse.
         #
-        # Although PnP-ADMM substantially improves PSNR and SSIM, it can smooth out
-        # fine-scale structures. In the context of defect detection, these small
-        # features can be crucial, so high PSNR and SSIM alone are not sufficient to
-        # guarantee that the reconstruction is fit for purpose.
         #
-        # In the next sections, two compressed sensing baselines with a wavelet
-        # sparsity prior are explored and compared to the PnP-ADMM result.
+        #
 
-        # %% [markdown]
-        # ## Compressed sensing baseline: FISTA with wavelet sparsity
+        # ## Compressed sensing baseline: SPGL1 with wavelet sparsity
         #
-        # This section applies FISTA with an $\ell_1$-penalty on wavelet coefficients
-        # as a classical compressed sensing baseline.
+        # This section applies the SPGL1 algorithm as a compressed sensing
+        # baseline, using a wavelet sparsity prior.
         #
         # Let $\Phi$ denote the PCM forward operator and $\Psi$ a 2D wavelet
         # transform with inverse $\Psi^{-1}$. The composite operator
         # $A = \Phi \Psi^{-1}$ acts on wavelet coefficients $w$.
-        # FISTA approximately solves the standard $\ell_1$-regularised problem
-        #
-        # $$
-        # \min_w \frac{1}{2} \lVert A w - y \rVert_2^2
-        #     + \lambda \lVert w \rVert_1,
-        # $$
-        #
-        # and the final current map is obtained as $x = \Psi^{-1} w$.
-        #
-        # An optional debiasing step is included at the end to reduce the bias induced
-        # by the $\ell_1$ penalty on the active support.
-
-        # %%
-        if runs_fista_l1:
-            make_csv(method_name="fista_l1", log_dir=log_dir)
-            for sampling_ratio, coarse_J in tqdm(
-                test_cases, desc="Running FISTA-L1 experiments"
-            ):
-                run_pcm_demo(
-                    recon_description="FISTA-L1",
-                    recon_fn=run_fista_l1,
-                    ground_truth_image=ground_truth_image,
-                    method_name="fista_l1",
-                    image_name=data_name,
-                    J=J_order,  # image size is 2^J x 2^J
-                    sampling_ratio=sampling_ratio,
-                    coarse_J=coarse_J,
-                    log_dir=log_dir,
-                    device=device,
-                    seed=i_seed,
-                )
-
-        # %% [markdown]
-        # ## Compressed sensing baseline: SPGL1 with wavelet sparsity
-        #
-        # This section applies the SPGL1 algorithm as a second compressed sensing
-        # baseline, again using a wavelet sparsity prior in the same setting
-        # $A = \Phi \Psi^{-1}$.
         #
         # SPGL1 is a spectral projected gradient method that efficiently solves
         # large-scale $\ell_1$-regularised problems and basis pursuit denoising
         # formulations. In this example it is run with default parameters suitable
-        # for the PCM problem size, followed by the same optional debiasing step
-        # used for FISTA.
+        # for the PCM problem size.
+        #
+        # An optional debiasing step is included at the end to reduce the bias induced
+        # by the $\ell_1$ penalty on the active support.
 
-        # %%
         if runs_spgl1:
             method_name = f"spgl1_factor={factor}"
             make_csv(method_name=method_name, log_dir=log_dir)
@@ -948,5 +799,6 @@ def run_experiments():
                 )
 
 
+# %%
 if __name__ == "__main__":
     run_experiments()

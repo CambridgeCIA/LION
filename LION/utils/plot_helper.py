@@ -1,23 +1,33 @@
+"""Helper functions for plotting images."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap
 from matplotlib.patches import Rectangle
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
-import numpy as np
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset, zoomed_inset_axes
 
 
 class PlotHelper:
+    """Helper class for plotting images."""
+
     def __init__(
         self,
-        roi: tuple[int, int, int, int] = None,
-        zoom: float = None,
-        loc: str = None,
-        show_rect: bool = None,
-        rect_kwargs: dict = None,
-        connector_kwargs: dict = None,
-        cmap: str | ListedColormap = None,
-        clim: tuple[float, float] = None,
-        loc1: int = 2,
-        loc2: int = 1,
+        roi: tuple[int, int, int, int],
+        zoom: float,
+        loc: str,
+        show_rect: bool,
+        cmap: str | ListedColormap,
+        clim: tuple[float, float],
+        loc1: int,
+        loc2: int,
+        connector_kwargs: dict | None = None,
+        rect_kwargs: dict | None = None,
     ):
         """
         Initialize the PlotHelper with zoom inset parameters.
@@ -42,9 +52,9 @@ class PlotHelper:
         self.loc = loc
         self.show_rect = show_rect
         if rect_kwargs is None:
-            rect_kwargs = dict(edgecolor="red", linewidth=1.5, facecolor="none")
+            rect_kwargs = {"edgecolor": "red", "linewidth": 1.5, "facecolor": "none"}
         if connector_kwargs is None:
-            connector_kwargs = dict(fc="none", ec="red", lw=1.2)
+            connector_kwargs = {"fc": "none", "ec": "red", "lw": 1.2}
         self.rect_kwargs = rect_kwargs
         self.connector_kwargs = connector_kwargs
         self.cmap = cmap
@@ -90,3 +100,32 @@ class PlotHelper:
         mark_inset(ax, axins, loc1=self.loc1, loc2=self.loc2, **self.connector_kwargs)
 
         return axins
+
+
+def show_images_with_inset(
+    images: list[torch.Tensor],
+    fig_filepath: Path,
+    plot_helper: PlotHelper,
+    titles: list[str] | None = None,
+    suptitle: str | None = None,
+    adds_insets: bool = True,
+) -> None:
+    """Plot images."""
+    n_images = len(images)
+    fig, axes = plt.subplots(1, n_images, squeeze=False, figsize=(n_images * 4, 4))
+
+    for i in range(n_images):
+        img_np = images[i].squeeze().cpu().numpy()
+        ax: plt.Axes = axes[0][i]
+        if adds_insets:
+            plot_helper.add_zoom_inset(ax, img_np)
+        else:
+            ax.imshow(img_np, cmap=plot_helper.cmap, clim=plot_helper.clim)
+        ax.axis("off")
+        if titles:
+            ax.set_title(titles[i], fontsize=10)
+    if suptitle:
+        fig.subplots_adjust(bottom=0.18)
+        fig.text(0.5, 0.02, suptitle, ha="center", va="bottom", fontsize=16)
+    fig.savefig(fig_filepath, dpi=150)
+    plt.close(fig)
