@@ -11,21 +11,21 @@
 # %%
 from __future__ import annotations
 
-import torch
+from dataclasses import dataclass
 
 # %% [markdown]
 # ### Device configuration
 #
 # Set the default device to a GPU if available. If multiple GPUs are present,
 # the desired GPU index can be specified here.
-
 # %%
+import torch
+
 device = torch.device(
     "mps"
     if torch.backends.mps.is_available()
     else "cuda" if torch.cuda.is_available() else "cpu"
 )
-torch.set_default_device(device)
 
 # %% [markdown]
 # ### Imports
@@ -65,6 +65,29 @@ Measurement1D = Float[torch.Tensor, "num_measurements"]
 
 # %% [markdown]
 # ### Define the data file paths
+
+
+# %%
+@dataclass(init=False)
+class PCMExperiment:
+    """Class to run PCM reconstruction experiments."""
+
+
+# %%
+@dataclass(init=False)
+class SPGL1Experiment:
+    """Class to run SPGL1 reconstruction experiments."""
+
+    run_spgl1: Callable
+
+
+# %%
+@dataclass(init=False)
+class PnPADMMExperiment:
+    """Class to run PnP-ADMM reconstruction experiments."""
+
+    run_pnp_admm: Callable
+
 
 # %%
 data_dir = Path("../pdo/data/photocurrent_data")
@@ -184,7 +207,6 @@ noise_std = 0  # No noise
 num_trials = 1
 num_trials_skip = 0
 
-
 # %%
 runs_pnp_admm = True
 if runs_pnp_admm:
@@ -206,9 +228,9 @@ if runs_pnp_admm:
     denoiser.eval()
 else:
     denoiser = None
-# pnp_admm_iters = 1
+pnp_admm_iters = 1
 # pnp_admm_iters = 20
-pnp_admm_iters = 50
+# pnp_admm_iters = 50
 # pnp_admm_iters = 100
 # pnp_admm_iters = 150
 # pnp_admm_eta = 0.00001  # Undersampling artifacts may remain if eta is too small
@@ -235,14 +257,12 @@ cg_eps = 1e-20  # No real change compared to default, CG usually terminates quic
 drunet_sigma = 0.05  # noise level for DRUNet denoiser
 # drunet_sigma = 0.1  # noise level for DRUNet denoiser
 
-runs_fista_l1 = False
-
 runs_spgl1 = True
 
-# %%
 # randomizing_scheme = "multilevel"
 randomizing_scheme = "uniform"
 
+# %% mystnb={"code_prompt_show": "Show plot helper"} tags=["hide-cell"]
 cmap_max = 0.8  # take only the lower 0-80% of afmhot, reduce brightness
 # cmap_max = 0.9  # take only the lower 0-90% of afmhot to avoid the white top
 # cmap_max = 1.0  # take all of afmhot
@@ -265,7 +285,7 @@ plot_helper = PlotHelper(
 # Run experiments
 
 
-# %% mystnb={"code_prompt_show": "Show utility details"} tags=["hide-cell"]
+# %% mystnb={"code_prompt_show": "Show make_csv"} tags=["hide-cell"]
 def make_csv(method_name: str, log_dir: Path | str) -> None:
     """Create a CSV file to log the metrics."""
     log_dir = Path(log_dir) / method_name
@@ -277,6 +297,13 @@ def make_csv(method_name: str, log_dir: Path | str) -> None:
             "mse_zero_filled,  psnr_zero_filled,  ssim_zero_filled,  pearson_corr_zero_filled,  "
             "mse_recon,  psnr_recon,  ssim_recon,  pearson_corr_recon\n"
         )
+
+
+# %%
+def normalize(tensor: torch.Tensor) -> torch.Tensor:
+    """Normalize the tensor to [0, 1] range."""
+    min_val, max_val = tensor.min().item(), tensor.max().item()
+    return (tensor - min_val) / (max_val - min_val)
 
 
 # %%
@@ -350,7 +377,29 @@ def run_pcm_demo(
         .unsqueeze(0)
         .unsqueeze(0)
     )
+    #     compute_metrics_and_log()
 
+    # # %%
+    # def compute_metrics_and_log(
+    #     im_tensor: GrayscaleImage2D,
+    #     zero_filled_recon_tensor: GrayscaleImage2D,
+    #     recon_tensor: GrayscaleImage2D,
+    #     sampling_percentage: float,
+    #     coarse_J: int,
+    #     randomizing_scheme: str,
+    #     image_name: str,
+    #     method_name: str,
+    #     log_dir: Path,
+    #     plot_helper: PlotHelper,
+    #     J: int,
+    #     N: int,
+    #     recons_dir: Path,
+    #     zero_filled_dir: Path,
+    #     masks_dir: Path,
+    #     recon_description: str,
+    #     in_order_measurements_percentage: float,
+    # ) -> None:
+    #     """Compute metrics, log and save reconstructions and masks."""
     data_range = (im_tensor.max() - im_tensor.min()).item()
     psnr = PeakSignalNoiseRatio(data_range=data_range).to(device)
     ssim = StructuralSimilarityIndexMeasure(data_range=data_range).to(device)
@@ -414,11 +463,13 @@ def run_pcm_demo(
             + f"Sample {sampling_percentage:.2f}%, keep {coarse_J} coarse levels ({in_order_measurements_percentage}% here), the rest: {randomizing_scheme} random"
         ),
         adds_insets=adds_insets,
+        saves_fig=True,
     )
 
 
 # %%
 def run_pnp_admm(
+    self: PnPADMMExperiment,
     pcm_op: PhotocurrentMapOp,
     pcm_measurement: Measurement1D,
     initial_image: GrayscaleImage2D,
@@ -466,11 +517,13 @@ def run_pnp_admm(
     return recon
     # return a * recon + R_low if is_out_of_distribution else recon
 
-    return cs_result_tensor
+
+PnPADMMExperiment.run_pnp_admm = run_pnp_admm
 
 
 # %%
 def run_spgl1(
+    self: SPGL1Experiment,
     pcm_op: PhotocurrentMapOp,
     pcm_measurement: Measurement1D,
     initial_image: GrayscaleImage2D,
@@ -535,6 +588,9 @@ def run_spgl1(
     return cs_result_tensor
 
 
+SPGL1Experiment.run_spgl1 = run_spgl1
+
+
 # %%
 def make_test_cases() -> list[tuple[float, int]]:
     """Generate test cases with different sampling ratios and coarse levels."""
@@ -553,7 +609,8 @@ def make_test_cases() -> list[tuple[float, int]]:
     #             if prev_num_coarse_samples >= num_samples:
     #                 continue
     #         test_cases.append((sampling_ratio, coarse_J))
-    for sampling_ratio in [0.2, 0.5, 0.8]:
+    # for sampling_ratio in [0.2, 0.5, 0.8]:
+    for sampling_ratio in [0.2]:
         # for sampling_ in range(1, 10, 1):
         # sampling_ratio = sampling_ / 10.0  # from 0.1 to 0.9
         test_cases.append(
@@ -603,9 +660,10 @@ def make_test_cases() -> list[tuple[float, int]]:
 
 
 # %%
-def run_experiments():
-    """Run PCM reconstruction experiments and save results."""
+def prepare_data() -> tuple[GrayscaleImage2D, Measurement1D | None]:
+    """Load data and prepare ground truth and measurement tensors."""
     raw_data: GrayscaleImage2D | Measurement1D = np.load(data_dir / data_filename)
+    print(f"Type of image data: {data_type}, dtype: {raw_data.dtype}")
     print(f"Raw data shape: {raw_data.shape}")
     print(f"J_order: {J_order}")
 
@@ -639,8 +697,6 @@ def run_experiments():
         print(
             f"Min value in measurement vector: {measurement_vector[index_of_min].item()} at index {index_of_min}"
         )
-        exit()
-
         pcm_op_full = PhotocurrentMapOp(J=J_order, device=device)
         with torch.no_grad():
             ground_truth_image = pcm_op_full.pseudo_inv(measurement_vector)
@@ -688,15 +744,18 @@ def run_experiments():
         )
 
     if tests_scale_ground_truth:
-        gt_min, gt_max = (
-            ground_truth_image.min().item(),
-            ground_truth_image.max().item(),
-        )
-        ground_truth_image = (ground_truth_image - gt_min) / (gt_max - gt_min)
+        ground_truth_image = normalize(ground_truth_image)
         print(
             f"Normalized ground truth image to [0, 1]. Min: {ground_truth_image.min().item()}, Max: {ground_truth_image.max().item()}"
         )
         measurement_vector = None
+    return ground_truth_image, measurement_vector
+
+
+# %%
+def run_experiments():
+    """Run PCM reconstruction experiments and save results."""
+    ground_truth_image, measurement = prepare_data()
 
     test_cases = make_test_cases()
 
@@ -710,6 +769,9 @@ def run_experiments():
         / f"{current_datetime_str}_{data_name}_{randomizing_scheme}_{num_trials}_trials"
     )
     experiment_log_dir.mkdir(parents=True, exist_ok=True)
+
+    pnp_admm_ex = PnPADMMExperiment()
+    spgl1_ex = SPGL1Experiment()
 
     for i_seed in tqdm(range(num_trials_skip, num_trials), desc="Running trials"):
         print(f"\n=== Trial {i_seed} ===")
@@ -743,7 +805,7 @@ def run_experiments():
             ):
                 run_pcm_demo(
                     recon_description=f"PnP-ADMM ({pnp_admm_iters} iters, η={pnp_admm_eta}, cg_iters={cg_iters}, σ={drunet_sigma})",
-                    recon_fn=run_pnp_admm,
+                    recon_fn=pnp_admm_ex.run_pnp_admm,
                     ground_truth_image=ground_truth_image,
                     method_name=method_name,
                     image_name=data_name,
@@ -757,9 +819,6 @@ def run_experiments():
 
         # The code above runs the PnP-ADMM reconstruction and compares it to the
         # zero-filled pseudo-inverse.
-        #
-        #
-        #
 
         # ## Compressed sensing baseline: SPGL1 with wavelet sparsity
         #
@@ -786,7 +845,7 @@ def run_experiments():
             ):
                 run_pcm_demo(
                     recon_description="SPGL1",
-                    recon_fn=run_spgl1,
+                    recon_fn=spgl1_ex.run_spgl1,
                     ground_truth_image=ground_truth_image,
                     method_name=method_name,
                     image_name=data_name,

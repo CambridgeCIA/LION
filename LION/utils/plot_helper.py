@@ -109,6 +109,7 @@ def show_images_with_inset(
     titles: list[str] | None = None,
     suptitle: str | None = None,
     adds_insets: bool = True,
+    saves_fig: bool = False,
 ) -> None:
     """Plot images."""
     n_images = len(images)
@@ -127,5 +128,6 @@ def show_images_with_inset(
     if suptitle:
         fig.subplots_adjust(bottom=0.18)
         fig.text(0.5, 0.02, suptitle, ha="center", va="bottom", fontsize=16)
-    fig.savefig(fig_filepath, dpi=150)
+    if saves_fig:
+        fig.savefig(fig_filepath, dpi=150)
     plt.close(fig)
