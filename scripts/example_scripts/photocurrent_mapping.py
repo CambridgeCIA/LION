@@ -755,7 +755,7 @@ def prepare_data() -> tuple[GrayscaleImage2D, Measurement1D | None]:
 # %%
 def run_experiments():
     """Run PCM reconstruction experiments and save results."""
-    ground_truth_image, measurement = prepare_data()
+    ground_truth_image, measurement_vector = prepare_data()
 
     test_cases = make_test_cases()
 
@@ -812,6 +812,7 @@ def run_experiments():
                     J=J_order,  # image size is 2^J x 2^J
                     sampling_ratio=sampling_ratio,
                     coarse_J=coarse_J,
+                    measurement_vector=measurement_vector,
                     log_dir=log_dir,
                     device=device,
                     seed=i_seed,
@@ -852,6 +853,7 @@ def run_experiments():
                     J=J_order,  # image size is 2^J x 2^J
                     sampling_ratio=sampling_ratio,
                     coarse_J=coarse_J,
+                    measurement_vector=measurement_vector,
                     log_dir=log_dir,
                     device=device,
                     seed=i_seed,
