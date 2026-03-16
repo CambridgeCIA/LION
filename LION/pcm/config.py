@@ -1,3 +1,5 @@
+"""Configuration dataclasses and preset definitions for the PCM experiment."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
