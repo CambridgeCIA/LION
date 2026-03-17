@@ -56,11 +56,11 @@ dependencies = [
     "spgl1",  # SPGL1 solver, for baseline photocurrent mapping reconstruction method
     "spyrit",  # Fast Walsh-Hadamard Transform
     "tifffile",
-    "torch",
     "torchdiffeq",
     "torchmetrics",
     "torchvision",
     "tqdm",
+    "tyro",
     "wandb",
     "LION[codestyle]",
 ]

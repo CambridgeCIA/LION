@@ -8,83 +8,74 @@ from typing import Literal
 
 DataType = Literal["image", "hadamard_measurement_vector", "original_measurement_data"]
 RandomisingScheme = Literal["uniform", "multilevel"]
+SupportedDenoiser = Literal["drunet", "gs_drunet"]
 
 
 @dataclass(frozen=True)
 class PlotConfig:
-    """Plotting parameters for the PCM visualisations.
-
-    Parameters
-    ----------
-    zoom : float
-        Zoom factor used for the inset.
-    loc : str
-        Inset location string passed to the plotting helper.
-    loc1 : int
-        Connector location on the main axes.
-    loc2 : int
-        Connector location on the inset axes.
-    roi : tuple[int, int, int, int]
-        Region of interest as ``(x, y, width, height)``.
-    clim : tuple[float, float]
-        Colour limits for the plotted images.
-    cmap_max : float, default=0.8
-        Maximum fraction of the ``afmhot`` colormap to use.
-    adds_insets : bool, default=True
-        Whether to draw inset zooms.
-    show_rect : bool, default=True
-        Whether to draw the ROI rectangle.
-    """
+    """Plotting parameters for the PCM visualisations."""
 
     zoom: float
+    """Zoom factor used for the inset."""
+
     loc: str
+    """Inset location string passed to the plotting helper."""
+
     loc1: int
+    """Connector location on the main axes."""
+
     loc2: int
+    """Connector location on the inset axes."""
+
     roi: tuple[int, int, int, int]
+    """Region of interest as ``(x, y, width, height)``."""
+
     clim: tuple[float, float]
+    """Colour limits for the plotted images."""
+
     cmap_max: float = 0.8
+    """Maximum fraction of the ``afmhot`` colormap to use."""
+
     adds_insets: bool = True
+    """Whether to draw inset zooms."""
+
     show_rect: bool = True
+    """Whether to draw the ROI rectangle."""
 
 
 @dataclass(frozen=True)
 class DataConfig:
-    """Input data configuration.
-
-    Parameters
-    ----------
-    data_dir : Path
-        Directory containing the ``.npy`` PCM data files.
-    data_name : str
-        Stem of the input file.
-    data_type : {"image", "hadamard_measurement_vector", "original_measurement_data"}
-        Kind of raw input stored in the file.
-    j_order : int
-        Walsh-Hadamard order ``J`` such that the image size is ``2**J``.
-    inverse_sign : bool
-        Whether to multiply the loaded data by ``-1``.
-    tests_scale_ground_truth : bool, default=False
-        Whether to min-max normalise the reconstructed ground truth image.
-    is_out_of_distribution : bool, default=False
-        Whether the denoiser input/output should be affine-rescaled.
-    r_high : float | None, default=None
-        Upper end of the expected range for out-of-distribution rescaling.
-    r_low : float | None, default=None
-        Lower end of the expected range for out-of-distribution rescaling.
-    scale_eps : float, default=1e-12
-        Small constant for safe range scaling.
-    """
+    """Input data configuration."""
 
     data_dir: Path
+    """Directory containing the ``.npy`` PCM data files."""
+
     data_name: str
+    """Stem of the input file."""
+
     data_type: DataType
+    """Kind of raw input stored in the file."""
+
     j_order: int
+    """Walsh-Hadamard order ``J`` such that the image size is ``2**J``."""
+
     inverse_sign: bool
+    """Whether to multiply the loaded data by ``-1``."""
+
     tests_scale_ground_truth: bool = False
+    """Whether to min-max normalise the reconstructed ground truth image."""
+
     is_out_of_distribution: bool = False
+    """Whether the denoiser input/output should be affine-rescaled."""
+
     r_high: float | None = None
+    """Upper end of the expected range for out-of-distribution rescaling."""
+
     r_low: float | None = None
+    """Lower end of the expected range for out-of-distribution rescaling."""
+
     scale_eps: float = 1e-12
+    """Small constant for safe range scaling."""
 
     @property
     def data_filename(self) -> str:
@@ -97,11 +88,24 @@ class RuntimeConfig:
     """Runtime and output configuration."""
 
     root_output_dir: Path
-    device: str = "auto"
+    """Path to the directory where experiment outputs will be written.
+    A subdirectory will be created for each trial."""
+
+    device: Literal["cpu", "cuda", "mps", "auto"] = "auto"
+    """Device to use for computation."""
+
     noise_seed: int = 42
+    """Seed for the random number generator used in noise generation."""
+
     noise_std: float = 0.0
+    """Standard deviation of the noise added to the data."""
+
     num_trials: int = 1
+    """Number of trials to run. Trials are indexed from 0 to num_trials-1"""
+
     num_trials_skip: int = 0
+    """Number of first trials to skip.
+    E.g. set to num_trials_skip to 1 to skip trial 0 and start from trial 1."""
 
 
 @dataclass(frozen=True)
@@ -109,7 +113,7 @@ class PnPConfig:
     """Configuration for PnP-ADMM reconstruction."""
 
     enabled: bool = True
-    denoiser_name: str = "gs_drunet"
+    denoiser_name: SupportedDenoiser = "gs_drunet"
     iters: int = 1
     eta: float = 0.01
     cg_iters: int = 20
@@ -205,12 +209,7 @@ DEFAULT_OUTPUT_DIR = Path("../pdo")
 _CURRENT_PRESET = ExperimentConfig(
     name="si_2_256_512x512_image",
     runtime=RuntimeConfig(
-        root_output_dir=DEFAULT_OUTPUT_DIR,
-        device="auto",
-        noise_seed=42,
-        noise_std=0.0,
-        num_trials=1,
-        num_trials_skip=0,
+        root_output_dir=DEFAULT_OUTPUT_DIR, noise_seed=42, num_trials=1
     ),
     data=DataConfig(
         data_dir=DEFAULT_DATA_DIR,
@@ -365,8 +364,8 @@ def get_preset(name: str) -> ExperimentConfig:
     """
     try:
         return PRESETS[name]
-    except KeyError as exc:
+    except KeyError as error:
         available = ", ".join(sorted(PRESETS))
         raise KeyError(
             f"Unknown preset '{name}'. Available presets: {available}"
-        ) from exc
+        ) from error
