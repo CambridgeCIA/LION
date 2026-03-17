@@ -15,7 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from LION.pcm.config import PRESETS, get_preset
+from LION.pcm.config import PRESETS, get_preset_config
 from LION.pcm.experiment import override_device, run_experiment
 
 
@@ -61,7 +61,7 @@ def main() -> None:
             print(preset_name)
         return
 
-    config = get_preset(args.preset)
+    config = get_preset_config(args.preset)
     config = override_device(config, args.device)
     output_dir = run_experiment(config)
     print(f"Results written to: {output_dir}")

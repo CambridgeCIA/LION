@@ -349,7 +349,7 @@ PRESETS: dict[str, ExperimentConfig] = {
 }
 
 
-def get_preset(name: str) -> ExperimentConfig:
+def get_preset_config(name: str) -> ExperimentConfig:
     """Return a named preset.
 
     Parameters
@@ -369,3 +369,19 @@ def get_preset(name: str) -> ExperimentConfig:
         raise KeyError(
             f"Unknown preset '{name}'. Available presets: {available}"
         ) from error
+
+
+@dataclass
+class PresetArgs:
+    """Command-line arguments for selecting a preset."""
+
+    preset: (
+        Literal[
+            "si_2_256_512x512_image",
+            "si_256_512x512_image",
+            "si_256_measurement_data",
+            "si_2_256_measurement_data",
+            "cigs_example_256x256",
+        ]
+        | None
+    ) = None
