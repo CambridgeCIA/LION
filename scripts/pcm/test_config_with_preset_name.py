@@ -6,12 +6,28 @@ import tyro
 
 from LION.pcm.config import PRESETS, ExperimentConfig
 
+# PRESET_HELP = (
+#     "╭─ preset support ──────────────────────────────────────────────────────────────╮\n"
+#     "│ --preset {"
+#     + ", ".join(PRESETS)
+#     + "}                                         │\n"
+#     "│     Use a saved ExperimentConfig as the base configuration.                   │\n"
+#     "│     Without --preset, every field marked '(required)' below must be passed.   │\n"
+#     "│     Any explicitly passed flag overrides the preset value.                    │\n"
+#     "╰───────────────────────────────────────────────────────────────────────────────╯"
+# )
+
+
+RED_BOLD_FONT = "\033[1;31m"
+RESET_FONT = "\033[0m"
+
+
 PRESET_HELP = (
-    "Preset support\n"
-    "--preset {" + ", ".join(PRESETS) + "}\n"
-    "    Use a saved ExperimentConfig as the base configuration.\n"
-    "    Without --preset, every field marked '(required)' below must be passed.\n"
-    "    Any explicitly passed flag overrides the preset value."
+    f"{RED_BOLD_FONT}Preset support{RESET_FONT}\n"
+    "│ --preset \033[1m{" + ", ".join(PRESETS) + "}\033[0m\n"
+    "│         \033[36mUse a saved ExperimentConfig as the base configuration.\033[0m\n"
+    "│         \033[36mWithout --preset, every field marked '(required)' below must be passed.\033[0m\n"
+    "│         \033[36mAny explicitly passed flag overrides the preset value.\033[0m"
 )
 
 

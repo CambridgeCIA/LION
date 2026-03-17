@@ -51,6 +51,7 @@ dependencies = [
     "ptwt",  # Wavelet transforms for PyTorch, for photocurrent mapping reconstruction baseline
     "PyWavelets",  # Wavelet transforms for Numpy
     "pytorch-wavelets",  # Wavelet transforms for PyTorch (TODO: switch to ptwt)
+    "rich",
     "scikit-image",
     "scipy",
     "spgl1",  # SPGL1 solver, for baseline photocurrent mapping reconstruction method
