@@ -13,34 +13,39 @@ SupportedDenoiser = Literal["drunet", "gs_drunet"]
 
 @dataclass(frozen=True)
 class PlotConfig:
-    """Plotting parameters for the PCM visualisations."""
+    """Plotting parameters for the PCM visualisations.
+
+    Attributes
+    ----------
+    zoom: float
+        Zoom factor for the inset axes.
+    loc: str
+        Location of the inset axes, passed to the plotting helper.
+    loc1: int
+        Connector location on the main axes, passed to the plotting helper.
+    loc2: int
+        Connector location on the inset axes, passed to the plotting helper.
+    roi: tuple[int, int, int, int]
+        Region of interest for the inset zoom, as (x, y, width, height).
+    clim: tuple[float, float]
+        Colour limits for the plotted images.
+    cmap_max: float
+        Maximum fraction of the ``afmhot`` colormap to use.
+    adds_insets: bool
+        Whether to draw inset zooms.
+    show_rect: bool
+        Whether to draw the ROI rectangle on the main axes.
+    """
 
     zoom: float
-    """Zoom factor used for the inset."""
-
     loc: str
-    """Inset location string passed to the plotting helper."""
-
     loc1: int
-    """Connector location on the main axes."""
-
     loc2: int
-    """Connector location on the inset axes."""
-
     roi: tuple[int, int, int, int]
-    """Region of interest as ``(x, y, width, height)``."""
-
     clim: tuple[float, float]
-    """Colour limits for the plotted images."""
-
     cmap_max: float = 0.8
-    """Maximum fraction of the ``afmhot`` colormap to use."""
-
     adds_insets: bool = True
-    """Whether to draw inset zooms."""
-
     show_rect: bool = True
-    """Whether to draw the ROI rectangle."""
 
 
 @dataclass(frozen=True)
@@ -110,7 +115,13 @@ class RuntimeConfig:
 
 @dataclass(frozen=True)
 class PnPConfig:
-    """Configuration for PnP-ADMM reconstruction."""
+    """Configuration for PnP-ADMM reconstruction.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether to run the PnP-ADMM reconstruction.
+    """
 
     enabled: bool = True
     denoiser_name: SupportedDenoiser = "gs_drunet"
