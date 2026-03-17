@@ -3,68 +3,61 @@
 from __future__ import annotations
 
 from dataclasses import fields, is_dataclass
-from pathlib import Path
-from typing import Any, get_type_hints
+from typing import Any, TypeVar, cast
 
 from LION.utils.parameter import LIONParameter
 
+DataClass = TypeVar("DataClass")
 
-def lion_to_dataclass(cls: type, param: LIONParameter | dict[str, Any]) -> object:
+
+def lion_parameter_to_dataclass(
+    lion_parameter: LIONParameter, data_cls: type[DataClass]
+) -> DataClass:
     """
-    Convert a LIONParameter or dict into an instance of ``cls``.
+    Convert a ``LIONParameter`` into an instance of ``data_cls``.
 
     Motivation:
     ``LIONParameter`` is a convenient way to store and pass around parameters
     without needing to define a custom dataclass for each experiment.
     On the other hand, custom dataclasses have several advantages:
-    - type checking and IDE support
-    - default values and optional fields
+    - type hints, type checking, and IDE support
+    - clearer default values, required/optional fields, and nested structure
     - better error messages for missing or extra fields
-    - type hints
-    - clearer defaults and nested structure
 
     This function is intended for devs who define their experiment parameters
     as a dataclass, but want an interface that also accepts ``LIONParameter``
     which users might be more used to using.
 
-    Supported:
-    - plain scalar fields
-    - nested dataclasses
-    - pathlib.Path
+    This function is intended to be minimal and assumes that
+    - all necessary dataclass fields are present in the ``LIONParameter``
+    - all copied values already have the correct runtime types
+    For more customized checks and conversions, it is recommended to define a
+    ``from_lion_parameter`` method in the dataclass and use that instead.
 
     Behavior:
-    - extra fields in ``param`` are ignored
+    - extra fields in ``lion_parameter`` are ignored
     - missing fields use the dataclass defaults
-    - missing required fields raise when ``cls(...)`` is called
+    - missing required fields raise errors when ``data_cls(...)`` is called
+
+    Parameters
+    ----------
+    lion_parameter : LIONParameter
+        The LIONParameter instance to convert.
+    data_cls : type[DataClass]
+        The dataclass type to convert to.
+
+    Returns
+    -------
+    DataClass
+        An instance of ``data_cls`` with values from ``lion_parameter``.
     """
-    if not is_dataclass(cls):
-        raise TypeError(f"{cls!r} is not a dataclass type.")
+    if not isinstance(data_cls, type) or not is_dataclass(data_cls):
+        raise TypeError(f"{data_cls!r} is not a dataclass type.")
 
-    data = vars(param) if isinstance(param, LIONParameter) else param
-    type_hints = get_type_hints(cls)
+    lion_parameter_data: dict[str, Any] = vars(lion_parameter)
+    dataclass_kwargs: dict[str, Any] = {}
+    for field in fields(data_cls):
+        if field.name in lion_parameter_data:
+            dataclass_kwargs[field.name] = lion_parameter_data[field.name]
 
-    kwargs: dict[str, Any] = {}
-    for field in fields(cls):
-        if field.name not in data:
-            continue
-
-        value = data[field.name]
-        field_type = type_hints.get(field.name, field.type)
-        kwargs[field.name] = _convert_value(field_type, value)
-
-    return cls(**kwargs)
-
-
-def _convert_value(field_type: type, value: Any) -> None | Path | object:
-    """Convert one field value."""
-    if value is None:
-        return None
-
-    if field_type is Path:
-        return Path(value)
-
-    if isinstance(field_type, type) and is_dataclass(field_type):
-        if isinstance(value, (LIONParameter, dict)):
-            return lion_to_dataclass(field_type, value)
-
-    return value
+    return cast(DataClass, data_cls(**dataclass_kwargs))
