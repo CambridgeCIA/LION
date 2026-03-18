@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Literal
+
+import tyro
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
 
 DataType = Literal["image", "hadamard_measurement_vector", "original_measurement_data"]
 RandomisingScheme = Literal["uniform", "multilevel"]
@@ -398,17 +404,95 @@ def get_preset_config(name: str) -> ExperimentConfig:
         ) from error
 
 
-@dataclass
-class PresetArgs:
-    """Command-line arguments for selecting a preset."""
+def show_preset_help() -> None:
+    """Show help message about using presets and exit."""
+    preset_names = "\n".join(f"  - {name}" for name in sorted(PRESETS))
 
-    preset: (
-        Literal[
-            "si_2_256_512x512_image",
-            "si_256_512x512_image",
-            "si_256_measurement_data",
-            "si_2_256_measurement_data",
-            "cigs_example_256x256",
-        ]
-        | None
-    ) = None
+    body = Text()
+    body.append("--preset [PRESET_NAME]\n", style="bold cyan")
+    body.append(
+        (
+            "      Use a saved ExperimentConfig as the base configuration.\n"
+            "      Without --preset, every field marked '(required)' below must be passed.\n"
+            "      Any explicitly passed flag overrides the preset value.\n\n"
+        ),
+        style="cyan",
+    )
+    body.append("Available preset names:\n", style="bold")
+    body.append(preset_names)
+
+    console = Console()
+    console.print(
+        Panel(
+            body,
+            title="[bold red]NOTE: Preset support[/bold red]",
+            border_style="red",
+        )
+    )
+
+
+def pop_preset_arg(argv: list[str]) -> tuple[str | None, list[str]]:
+    """Pop the --preset argument from argv, if present, and return the preset name and remaining args."""
+    preset_name: str | None = None
+    remaining: list[str] = []
+
+    i = 0
+    while i < len(argv):
+        token = argv[i]
+
+        if token == "--preset":
+            if i + 1 >= len(argv):
+                raise SystemExit("Error: --preset requires a value.")
+            if preset_name is not None:
+                raise SystemExit("Error: --preset was passed more than once.")
+            preset_name = argv[i + 1]
+            i += 2
+            continue
+
+        if token.startswith("--preset="):
+            if preset_name is not None:
+                raise SystemExit("Error: --preset was passed more than once.")
+            preset_name = token.split("=", 1)[1]
+            i += 1
+            continue
+
+        remaining.append(token)
+        i += 1
+
+    if preset_name is not None and preset_name not in PRESETS:
+        valid = ", ".join(sorted(PRESETS))
+        raise SystemExit(
+            f"Error: invalid preset {preset_name!r}. Valid presets are: {valid}."
+        )
+
+    return preset_name, remaining
+
+
+def parse_experiment_config(argv: list[str] | None = None) -> ExperimentConfig:
+    """Parse command-line arguments into a custom dataclass instance."""
+    if argv is None:
+        argv = sys.argv[1:]
+
+    if "-h" in argv or "--help" in argv:
+        show_preset_help()
+
+    preset_name, remaining = pop_preset_arg(argv)
+
+    preset_help_reminder = (
+        "    NOTE: Preset support is available through `--preset`! See details at the top.\n"
+        "    If you want to use a preset as the base configuration, pass `--preset PRESET_NAME`.\n"
+        "    Without --preset, every field marked '(required)' below must be passed.\n"
+    )
+
+    base_description = (ExperimentConfig.__doc__ or "").strip()
+    description = f"{base_description}\n\n{preset_help_reminder}"
+
+    if preset_name is None:
+        return tyro.cli(ExperimentConfig, args=remaining, description=description)
+
+    return tyro.cli(
+        ExperimentConfig,
+        args=remaining,
+        default=PRESETS[preset_name],
+        description=description,
+    )
