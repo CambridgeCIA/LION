@@ -13,7 +13,6 @@ from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
 from LION.pcm.config import ExperimentConfig
 from LION.pcm.data import prepare_data
 from LION.pcm.denoiser import build_denoiser
-from LION.pcm.plotting import build_plot_helper
 from LION.pcm.reconstruct import (
     ReconFn,
     make_pnp_admm_reconstructor,
@@ -21,7 +20,6 @@ from LION.pcm.reconstruct import (
 )
 from LION.pcm.types import GrayscaleImage2D, Measurement1D
 from LION.utils.pcm_sampling import multilevel_sample, uniform_random_sample
-from LION.utils.plot_helper import show_images_with_inset
 
 tqdm = partial(std_tqdm, dynamic_ncols=True)
 
@@ -209,7 +207,7 @@ def run_pcm_demo(
     recons_dir = method_dir / "recons"
     recons_dir.mkdir(parents=True, exist_ok=True)
 
-    plot_helper = build_plot_helper(config.plot)
+    plot_helper = config.plot
 
     j_order = config.data.j_order
     n = 1 << j_order
@@ -314,10 +312,9 @@ def run_pcm_demo(
         mask_of_masks_np.reshape(n, n),
     )
 
-    show_images_with_inset(
+    plot_helper.show_images_with_inset(
         [im_tensor, zero_filled_recon_tensor, recon_tensor],
         fig_filepath=images_dir / f"{filename}.png",
-        plot_helper=plot_helper,
         titles=[
             "Original Image",
             (
@@ -336,7 +333,6 @@ def run_pcm_demo(
             f"Sample {sampling_percentage:.2f}%, keep {coarse_j} coarse levels "
             f"({in_order_measurements_percentage}% here), the rest: {config.sampling.randomising_scheme} random"
         ),
-        adds_insets=config.plot.adds_insets,
         saves_fig=True,
     )
 

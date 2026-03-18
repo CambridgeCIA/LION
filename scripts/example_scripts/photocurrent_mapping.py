@@ -24,7 +24,9 @@ import torch
 device = torch.device(
     "mps"
     if torch.backends.mps.is_available()
-    else "cuda" if torch.cuda.is_available() else "cpu"
+    else "cuda"
+    if torch.cuda.is_available()
+    else "cpu"
 )
 
 # %% [markdown]
@@ -39,10 +41,8 @@ from pathlib import Path
 from typing import Callable
 
 import deepinv
-import matplotlib
 import numpy as np
 from jaxtyping import Float
-from matplotlib.colors import ListedColormap
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from tqdm import tqdm as std_tqdm
 
@@ -54,7 +54,7 @@ from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
 from LION.operators.Wavelet2D import Wavelet2D
 from LION.reconstructors.PnP import PnP
 from LION.utils.pcm_sampling import multilevel_sample, uniform_random_sample
-from LION.utils.plot_helper import PlotHelper, show_images_with_inset
+from LION.utils.plot_helper import PlotHelper
 
 # Use tqdm with dynamic column width that adapts to the terminal width
 tqdm = partial(std_tqdm, dynamic_ncols=True)
@@ -273,9 +273,7 @@ plot_helper = PlotHelper(
     zoom=zoom,
     loc=loc,
     show_rect=True,
-    cmap=ListedColormap(
-        matplotlib.colormaps["afmhot"](np.linspace(0.0, cmap_max, 256))
-    ),
+    cmap_max=cmap_max,
     clim=clim,
     loc1=loc1,
     loc2=loc2,
@@ -449,10 +447,9 @@ def run_pcm_demo(
     images_dir = log_dir / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
 
-    show_images_with_inset(
+    plot_helper.show_images_with_inset(
         [im_tensor, zero_filled_recon_tensor, recon_tensor],
         fig_filepath=images_dir / f"{filename}.png",
-        plot_helper=plot_helper,
         titles=[
             "Original Image",
             f"Inverse WHT (Zero-filled)\nPSNR: {psnr_zero_filled:.2f} dB, SSIM: {ssim_zero_filled:.4f}\nMSE: {mse_zero_filled:.3e}, Pearson Corr.: {pearson_corr_zero_filled:.4f}",

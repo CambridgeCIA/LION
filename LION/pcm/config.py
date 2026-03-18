@@ -12,46 +12,11 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
+from LION.utils.plot_helper import PlotHelper
+
 DataType = Literal["image", "hadamard_measurement_vector", "original_measurement_data"]
 RandomisingScheme = Literal["uniform", "multilevel"]
 SupportedDenoiser = Literal["drunet", "gs_drunet"]
-
-
-@dataclass(frozen=True)
-class PlotConfig:
-    """Plotting parameters for the PCM visualisations.
-
-    Attributes
-    ----------
-    zoom: float
-        Zoom factor for the inset axes.
-    loc: str
-        Location of the inset axes, passed to the plotting helper.
-    loc1: int
-        Connector location on the main axes, passed to the plotting helper.
-    loc2: int
-        Connector location on the inset axes, passed to the plotting helper.
-    roi: tuple[int, int, int, int]
-        Region of interest for the inset zoom, as (x, y, width, height).
-    clim: tuple[float, float]
-        Colour limits for the plotted images.
-    cmap_max: float
-        Maximum fraction of the ``afmhot`` colormap to use.
-    adds_insets: bool
-        Whether to draw inset zooms.
-    show_rect: bool
-        Whether to draw the ROI rectangle on the main axes.
-    """
-
-    zoom: float
-    loc: str
-    loc1: int
-    loc2: int
-    roi: tuple[int, int, int, int]
-    clim: tuple[float, float]
-    cmap_max: float = 0.8
-    adds_insets: bool = True
-    show_rect: bool = True
 
 
 @dataclass(frozen=True)
@@ -229,7 +194,7 @@ class ExperimentConfig:
     name: str
     runtime: RuntimeConfig
     data: DataConfig
-    plot: PlotConfig
+    plot: PlotHelper
     pnp: PnPConfig = field(default_factory=PnPConfig)
     spgl1: SPGL1Config = field(default_factory=SPGL1Config)
     sampling: SamplingConfig = field(default_factory=SamplingConfig)
@@ -256,7 +221,7 @@ _CURRENT_PRESET = ExperimentConfig(
         r_low=-2e-6,
         scale_eps=1e-12,
     ),
-    plot=PlotConfig(
+    plot=PlotHelper(
         zoom=2.5,
         loc="lower right",
         loc1=2,
