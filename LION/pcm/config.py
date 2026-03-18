@@ -382,28 +382,6 @@ PRESETS: dict[str, ExperimentConfig] = {
 }
 
 
-def get_preset_config(name: str) -> ExperimentConfig:
-    """Return a named preset.
-
-    Parameters
-    ----------
-    name : str
-        Preset name.
-
-    Returns
-    -------
-    ExperimentConfig
-        Requested experiment configuration.
-    """
-    try:
-        return PRESETS[name]
-    except KeyError as error:
-        available = ", ".join(sorted(PRESETS))
-        raise KeyError(
-            f"Unknown preset '{name}'. Available presets: {available}"
-        ) from error
-
-
 def show_preset_help() -> None:
     """Show help message about using presets and exit."""
     preset_names = "\n".join(f"  - {name}" for name in sorted(PRESETS))

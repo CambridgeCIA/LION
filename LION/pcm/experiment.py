@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import datetime
 from functools import partial
 from pathlib import Path
@@ -13,10 +12,10 @@ from tqdm import tqdm as std_tqdm
 from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
 from LION.pcm.config import ExperimentConfig
 from LION.pcm.data import prepare_data
+from LION.pcm.denoiser import build_denoiser
 from LION.pcm.plotting import build_plot_helper
 from LION.pcm.reconstruct import (
     ReconFn,
-    build_denoiser,
     make_pnp_admm_reconstructor,
     make_spgl1_reconstructor,
 )
@@ -157,41 +156,6 @@ def sample_indices(
     raise ValueError(f"Unknown sampling scheme '{randomising_scheme}'.")
 
 
-def maybe_add_noise(
-    measurement: Measurement1D,
-    noise_std: float,
-    seed: int,
-) -> Measurement1D:
-    """Add optional homoscedastic Gaussian noise to a measurement vector.
-
-    Parameters
-    ----------
-    measurement : Measurement1D
-        Clean measurement vector.
-    noise_std : float
-        Standard deviation of the additive Gaussian noise.
-    seed : int
-        Random seed.
-
-    Returns
-    -------
-    Measurement1D
-        Noisy measurement vector.
-    """
-    if noise_std <= 0.0:
-        return measurement
-
-    generator = torch.Generator(device=measurement.device.type)
-    generator.manual_seed(seed)
-    noise = torch.randn(
-        measurement.shape,
-        generator=generator,
-        device=measurement.device,
-        dtype=measurement.dtype,
-    )
-    return measurement + noise_std * noise
-
-
 def run_pcm_demo(
     *,
     config: ExperimentConfig,
@@ -276,11 +240,8 @@ def run_pcm_demo(
     else:
         y_subsampled_tensor_noiseless = pcm_op(im_tensor)
 
-    y_subsampled_tensor = maybe_add_noise(
-        measurement=y_subsampled_tensor_noiseless,
-        noise_std=config.runtime.noise_std,
-        seed=config.runtime.noise_seed + seed,
-    )
+    # TODO: Implement noise model
+    y_subsampled_tensor = y_subsampled_tensor_noiseless
 
     zero_filled_recon_tensor = (
         pcm_op.pseudo_inv(y_subsampled_tensor).unsqueeze(0).unsqueeze(0)
@@ -472,25 +433,3 @@ def run_experiment(config: ExperimentConfig) -> Path:
                 )
 
     return experiment_log_dir
-
-
-def override_device(
-    config: ExperimentConfig, device_name: str | None
-) -> ExperimentConfig:
-    """Return a copy of ``config`` with an optional device override.
-
-    Parameters
-    ----------
-    config : ExperimentConfig
-        Original configuration.
-    device_name : str | None
-        Override for the runtime device.
-
-    Returns
-    -------
-    ExperimentConfig
-        Possibly modified configuration.
-    """
-    if device_name is None:
-        return config
-    return replace(config, runtime=replace(config.runtime, device=device_name))
