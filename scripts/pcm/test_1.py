@@ -16,15 +16,13 @@ def show_preset_help() -> None:
     preset_names = "\n".join(f"  - {name}" for name in sorted(PRESETS))
 
     body = Text()
+    body.append("--preset [PRESET_NAME]\n", style="bold cyan")
     body.append(
-        "Use a saved ExperimentConfig as the base configuration.\n", style="cyan"
-    )
-    body.append(
-        "Without --preset, every field marked '(required)' below must be passed.\n",
-        style="cyan",
-    )
-    body.append(
-        "Any explicitly passed flag overrides the preset value.\n\n",
+        (
+            "      Use a saved ExperimentConfig as the base configuration.\n"
+            "      Without --preset, every field marked '(required)' below must be passed.\n"
+            "      Any explicitly passed flag overrides the preset value.\n\n"
+        ),
         style="cyan",
     )
     body.append("Available preset names:\n", style="bold")
@@ -33,7 +31,7 @@ def show_preset_help() -> None:
     console.print(
         Panel(
             body,
-            title="[bold red]Preset support[/bold red]",
+            title="[bold red]NOTE: Preset support[/bold red]",
             border_style="red",
         )
     )
@@ -75,6 +73,13 @@ def pop_preset_arg(argv: list[str]) -> tuple[str | None, list[str]]:
     return preset_name, remaining
 
 
+PRESET_HELP = (
+    "    NOTE: Preset support is available through `--preset`! See details at the top.\n"
+    "    If you want to use a preset as the base configuration, pass `--preset PRESET_NAME`.\n"
+    "    Without --preset, every field marked '(required)' below must be passed.\n"
+)
+
+
 def parse_experiment_config(argv: list[str] | None = None) -> ExperimentConfig:
     if argv is None:
         argv = sys.argv[1:]
@@ -84,13 +89,17 @@ def parse_experiment_config(argv: list[str] | None = None) -> ExperimentConfig:
 
     preset_name, remaining = pop_preset_arg(argv)
 
+    base_description = (ExperimentConfig.__doc__ or "").strip()
+    description = f"{base_description}\n\n{PRESET_HELP}"
+
     if preset_name is None:
-        return tyro.cli(ExperimentConfig, args=remaining)
+        return tyro.cli(ExperimentConfig, args=remaining, description=description)
 
     return tyro.cli(
         ExperimentConfig,
         args=remaining,
         default=PRESETS[preset_name],
+        description=description,
     )
 
 

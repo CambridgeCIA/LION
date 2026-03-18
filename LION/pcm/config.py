@@ -50,37 +50,42 @@ class PlotConfig:
 
 @dataclass(frozen=True)
 class DataConfig:
-    """Input data configuration."""
+    """Input data configuration.
+
+    Attributes
+    ----------
+    data_dir: Path
+        Directory containing the ``.npy`` PCM data files.
+    data_name: str
+        Stem of the input file.
+    data_type: DataType
+        Kind of raw input stored in the file.
+    j_order: int
+        Walsh-Hadamard order ``J`` such that the image size is ``2**J``.
+    inverse_sign: bool
+        Whether to multiply the loaded data by ``-1``.
+    tests_scale_ground_truth: bool
+        Whether to min-max normalise the reconstructed ground truth image.
+    is_out_of_distribution: bool
+        Whether the denoiser input/output should be affine-rescaled.
+    r_high: float | None
+        Upper end of the expected range for out-of-distribution rescaling.
+    r_low: float | None
+        Lower end of the expected range for out-of-distribution rescaling.
+    scale_eps: float
+        Small constant for safe range scaling.
+    """
 
     data_dir: Path
-    """Directory containing the ``.npy`` PCM data files."""
-
     data_name: str
-    """Stem of the input file."""
-
     data_type: DataType
-    """Kind of raw input stored in the file."""
-
     j_order: int
-    """Walsh-Hadamard order ``J`` such that the image size is ``2**J``."""
-
     inverse_sign: bool
-    """Whether to multiply the loaded data by ``-1``."""
-
     tests_scale_ground_truth: bool = False
-    """Whether to min-max normalise the reconstructed ground truth image."""
-
     is_out_of_distribution: bool = False
-    """Whether the denoiser input/output should be affine-rescaled."""
-
     r_high: float | None = None
-    """Upper end of the expected range for out-of-distribution rescaling."""
-
     r_low: float | None = None
-    """Lower end of the expected range for out-of-distribution rescaling."""
-
     scale_eps: float = 1e-12
-    """Small constant for safe range scaling."""
 
     @property
     def data_filename(self) -> str:
@@ -90,27 +95,32 @@ class DataConfig:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """Runtime and output configuration."""
+    """Runtime and output configuration.
+
+    Attributes
+    ----------
+    root_output_dir: Path
+        Path to the directory where experiment outputs will be written.
+        A subdirectory will be created for each trial.
+    device: Literal["cpu", "cuda", "mps", "auto"]
+        Device to use for computation.
+    noise_seed: int
+        Seed for the random number generator used in noise generation.
+    noise_std: float
+        Standard deviation of the noise added to the data.
+    num_trials: int
+        Number of trials to run. Trials are indexed from 0 to num_trials-1.
+    num_trials_skip: int
+        Number of first trials to skip.
+        E.g. set to num_trials_skip to 1 to skip trial 0 and start from trial 1.
+    """
 
     root_output_dir: Path
-    """Path to the directory where experiment outputs will be written.
-    A subdirectory will be created for each trial."""
-
     device: Literal["cpu", "cuda", "mps", "auto"] = "auto"
-    """Device to use for computation."""
-
     noise_seed: int = 42
-    """Seed for the random number generator used in noise generation."""
-
     noise_std: float = 0.0
-    """Standard deviation of the noise added to the data."""
-
     num_trials: int = 1
-    """Number of trials to run. Trials are indexed from 0 to num_trials-1"""
-
     num_trials_skip: int = 0
-    """Number of first trials to skip.
-    E.g. set to num_trials_skip to 1 to skip trial 0 and start from trial 1."""
 
 
 @dataclass(frozen=True)
@@ -169,7 +179,13 @@ class PnPConfig:
 
 @dataclass(frozen=True)
 class SPGL1Config:
-    """Configuration for SPGL1 reconstruction."""
+    """Configuration for SPGL1 reconstruction.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether to run the SPGL1 reconstruction.
+    """
 
     enabled: bool = True
     factor: float = 1.0
