@@ -15,13 +15,14 @@ Many things are bound to fail and many more are bound to change. If you want to 
 
 Install:
 
-```
+```bash
 git clone https://github.com/CambridgeCIA/LION.git
 cd LION
 git submodule update --init --recursive            # Legacy: for MSD_pytorch_
 conda env create --file=env_base.yml --name=lion   # You can change 'lion' to a different env name
 conda activate lion
-pip install .
+pip install .                                      # NOTE: change to `pip install -e ".[dev]"` if
+                                                   # you want to contribute to development, see below
 ```
 
 If you would like to contribute to the development of LION, you can replace the last line of the above set of commands by

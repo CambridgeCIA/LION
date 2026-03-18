@@ -145,7 +145,7 @@ model.eval()
 
 from LION.reconstructors.PnP import PnP
 
-reconstructor = PnP(experiment.geometry, model, algorithm="FBS")
+reconstructor = PnP(experiment.geometry, model, default_algorithm="FBS")
 
 for i, (sino, target) in enumerate(lidc_dataloader):
     for noise_level in [0.001, 0.0001, 0.0000]:

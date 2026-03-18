@@ -1,5 +1,5 @@
 import torch
-from LION.operators import Wavelet2D
+from LION.operators.Wavelet2D import Wavelet2D
 from tests.helper import dotproduct_adjointness_test
 
 

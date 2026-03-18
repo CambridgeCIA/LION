@@ -1,5 +1,8 @@
 """FISTA algorithm for l1-regularized problems."""
 
+from __future__ import annotations
+
+from typing import Callable
 import math
 
 import torch
@@ -41,7 +44,7 @@ def fista_l1(
     tol: float = 1e-4,
     L: float | None = None,
     verbose: bool = False,
-    progress_bar: bool = False,
+    prog_bar: Callable | None = None,
 ) -> torch.Tensor:
     r"""Solve :math:`\min_w \tfrac12\lVert A w - y\rVert_2^2 + \lambda \lVert w\rVert_1`
     by FISTA.
@@ -111,9 +114,9 @@ def fista_l1(
     z = w.clone()
     t = 1.0
 
-    iterator = range(max_iter)
-    if progress_bar:
-        iterator = tqdm(iterator, desc="FISTA l1")
+    iterator = (
+        prog_bar(range(max_iter), desc="FISTA l1") if prog_bar else range(max_iter)
+    )
     for k in iterator:
         Az: torch.Tensor = op(z)
         grad = op.adjoint(Az - y)  # gradient of data term, shape (n,)
