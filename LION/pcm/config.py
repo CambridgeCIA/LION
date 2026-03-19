@@ -176,6 +176,7 @@ class SPGL1Config:
     )
 
 
+# TODO: Put physics config in `Experiment` class
 @dataclass(frozen=True)
 class SamplingConfig:
     """Sampling and test-case configuration."""
@@ -191,13 +192,37 @@ class SamplingConfig:
 class ExperimentConfig:
     """Top-level configuration for one PCM experiment run."""
 
+    @dataclass(frozen=True)
+    class Data:
+        """Input data configuration."""
+
+        data_dir: Path
+        data_name: str
+        data_type: DataType
+        j_order: int
+        inverse_sign: bool
+        tests_scale_ground_truth: bool = False
+        is_out_of_distribution: bool = False
+        r_high: float | None = None
+        r_low: float | None = None
+        scale_eps: float = 1e-12
+
+        @property
+        def data_filename(self) -> str:
+            """Return the filename associated with the configured data stem."""
+            return f"{self.data_name}.npy"
+
     name: str
     runtime: RuntimeConfig
-    data: DataConfig
+    data: Data
     plot: PlotHelper
     pnp: PnPConfig = field(default_factory=PnPConfig)
     spgl1: SPGL1Config = field(default_factory=SPGL1Config)
     sampling: SamplingConfig = field(default_factory=SamplingConfig)
+
+
+# Backward-compatible alias for external modules importing DataConfig.
+DataConfig = ExperimentConfig.Data
 
 
 DEFAULT_DATA_DIR = Path("../pdo/data/photocurrent_data")
@@ -209,7 +234,7 @@ _CURRENT_PRESET = ExperimentConfig(
     runtime=RuntimeConfig(
         root_output_dir=DEFAULT_OUTPUT_DIR, noise_seed=42, num_trials=1
     ),
-    data=DataConfig(
+    data=ExperimentConfig.Data(
         data_dir=DEFAULT_DATA_DIR,
         data_name="Si_2_256_512x512",
         data_type="image",

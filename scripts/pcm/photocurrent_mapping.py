@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from LION.pcm.config import parse_experiment_config
-from LION.pcm.experiment import run_experiment
+from LION.pcm.run_experiment import run_experiment
 
 
 def main() -> None:
