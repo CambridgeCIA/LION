@@ -7,18 +7,15 @@
 # =============================================================================
 
 
-import numpy as np
-import os
-
-#%% This demo covers the way you can load pre-defined CT experiment parameters.
+# %% This demo covers the way you can load pre-defined CT experiment parameters.
 # It is commont to see "low dose CT" or "limited anlge CT", but these descriptors are not deterministic enough, and many papers in the literature use different
 # geometries and definitions. LION provides a set of experiments inbuilt and easy to use, and allows users to submit new ones.
 # This demo shows how to define and use such experiments.
 
-#%% 1: load experiment class
+# %% 1: load experiment class
 import LION.experiments.ct_experiments as ct_experiments
 
-#%% 2: Loading an experiment
+# %% 2: Loading an experiment
 
 # There are several Experiments defined for you to use. You can load/define them as:
 experiment = ct_experiments.clinicalCTRecon()
@@ -26,7 +23,7 @@ experiment = ct_experiments.clinicalCTRecon()
 experiment_parameters = ct_experiments.clinicalCTRecon.default_parameters()
 experiment = ct_experiments.clinicalCTRecon(experiment_params=experiment_parameters)
 # however this is HIGHLY DISCOURAGED. The purpose of the experiment class is to have reliable and repeatable experiments.
-# Please create a new Experiment if you want to change their parameters.
+# Please create a new Experiment if you want to change their parameters (keep reading to see an example).
 
 # you can also change the data loader. By default, Experiments use the LIDC-IDRI data loader.
 experiment = ct_experiments.clinicalCTRecon(dataset="LIDC-IDRI")
@@ -34,7 +31,7 @@ experiment = ct_experiments.clinicalCTRecon(dataset="2DeteCT")
 
 # you can print the experiment parameters
 print(experiment)
-#%% 3: Experiment types
+# %% 3: Experiment types
 # Currently, this is an exhaustive list of all experiments inplemented:
 
 # Standard fan beam CT, properly sampeld and with not too much poisson noise:
@@ -48,7 +45,7 @@ experiment = ct_experiments.LimitedAngleCTRecon()
 # Sparse view (angle) tomography. Noise levels as clinical ct, but 50 angles over the full circle
 experiment = ct_experiments.SparseAngleCTRecon()
 
-#%% 4: How to use the Experiments output
+# %% 4: How to use the Experiments output
 
 # The return object, "experiment" is generally used to generate your data loaders and to pass CT geometry
 # #information to the operators.
@@ -74,20 +71,19 @@ training_dataset = experiment.get_training_dataset()
 validation_dataset = experiment.get_validation_dataset()
 testing_dataset = experiment.get_testing_dataset()
 
-#%% 5 Creating a new experiment
+# %% 5 Creating a new experiment
 
 # if you have a new experiment, you should share it with the community by adding it to the LION/experiments/ct_experiments.py file
 # for reproducibility purposes. Make a PR!
 # However, if you are testing/playing with options, you may want to create it in your own file. This is easy.
 
 # Import abstract class
+import LION.CTtools.ct_geometry as ctgeo
+from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 from LION.experiments.ct_experiments import Experiment
 
 # Import other classes you will need (these are imported in LION/experiments/ct_experiments.py)
 from LION.utils.parameter import LIONParameter
-import LION.CTtools.ct_geometry as ctgeo
-import LION.CTtools.ct_utils as ct
-from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 
 
 # Create a class inheriting from Experiment, and make an initialization.
@@ -122,3 +118,39 @@ class TestExperiment(Experiment):
 
 # Now you have a class, you can just call it
 experiment = TestExperiment()
+
+
+# TODO: Is it really a good idea to encourage users to always write a new experiment class
+#       like lines 91 to 120 above,
+#       instead of passing custom parameters in their own script for a new experiment like below?
+#       Wouldn't this make people feel like they need to learn how to develop LION,
+#       make a subclass, override methods, etc., just to do a simple experiment?
+#       (If they make mistakes constructing an object and passing custom parameters,
+#       it seems even more likely they would make mistakes creating a new class).
+#       Should we encourage users to not do simple throw-away experiments using LION
+#       even during exploration phase?
+
+geo_2 = ctgeo.Geometry.default_parameters()
+# Can be shorter if `max_num_slices_per_patient` can be passed to the constructor
+data_loader_params_2 = LIDC_IDRI.default_parameters(geo=geo_2, task="reconstruction")
+data_loader_params_2.max_num_slices_per_patient = 5
+experiment_2 = Experiment(  # Assuming Experiment can be initialized directly
+    experiment_params=LIONParameter(
+        name="Clinical dose experiment",
+        geo=geo_2,  # can be shorter if `geo` is inferred from `data_loader_params`
+        noise_params=LIONParameter(I0=10000, sigma=5, cross_talk=0.05),
+        data_loader_params=data_loader_params_2,
+    )
+)
+
+
+# More ideal:
+experiment_3 = Experiment(  # Assuming Experiment can be initialized directly
+    experiment_params=LIONParameter(  # Assuming `geo` is inferred from `data_loader_params`
+        name="Clinical dose experiment",
+        noise_params=LIONParameter(I0=10000, sigma=5, cross_talk=0.05),
+        data_loader_params=LIDC_IDRI.default_parameters(
+            geo_2, "reconstruction", max_num_slices_per_patient=5
+        ),
+    )
+)

@@ -6,43 +6,41 @@
 # =============================================================================
 
 
-#%% This is a base class for LION models.
+# %% This is a base class for LION models.
 #
 # All classes must derive from this one.
 # It definest a bunch of auxiliary functions
 #
 
-#%% Imports
+# %% Imports
 
 # You will want to import LIONParameter, as all models must save and use Parameters.
-from enum import Enum
-from typing import Optional
-from LION.utils.parameter import LIONParameter
+# Some other imports
+import warnings
 
-# We will need utilities
-import LION.utils.utils as ai_utils
-from LION.utils.normaliser import Normalisation
+# imports related to class
+from abc import ABC, ABCMeta, abstractmethod
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+from typing import Optional
+
+# some numerical standard imports, e.g.
+import numpy as np
+
+# (optinal) If your model uses the operator (e.g. the CT operator), you may want to load it here. E.g. for tomosipo:
+import torch
+import torch.nn as nn
+from tomosipo.torch_support import to_autograd
 
 # (optional) Given this is a tomography library, it is likely that you will want to load geometries of the tomogprahic problem you are solving, e.g. a ct_geometry
 import LION.CTtools.ct_geometry as ct
 import LION.CTtools.ct_utils as ct_utils
 
-# (optinal) If your model uses the operator (e.g. the CT operator), you may want to load it here. E.g. for tomosipo:
-import tomosipo as ts
-from tomosipo.torch_support import to_autograd
-
-# some numerical standard imports, e.g.
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-# imports related to class
-from abc import ABC, abstractmethod, ABCMeta
-
-# Some other imports
-import warnings
-from pathlib import Path
+# We will need utilities
+import LION.utils.utils as ai_utils
+from LION.utils.normaliser import Normalisation
+from LION.utils.parameter import LIONParameter
 
 
 class ModelInputType(int, Enum):
@@ -52,6 +50,7 @@ class ModelInputType(int, Enum):
 
 
 # Class for Model parameters that should be true for all models
+@dataclass
 class LIONModelParameter(LIONParameter):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -116,7 +115,7 @@ class LIONmodel(nn.Module, ABC):
         if self.get_input_type() == ModelInputType.SINOGRAM:
             warnings.warn(
                 """Normalization will not be carried out on this model,
-                as it takes inputs in the measurement domain. 
+                as it takes inputs in the measurement domain.
                 As such inputs cannot be normalized in the image domain before being passed to the model.
                 In such a case, normalization should be implemented within the model itself"""
             )
@@ -142,7 +141,6 @@ class LIONmodel(nn.Module, ABC):
     @staticmethod
     def cite(cite_format="MLA"):
         print("cite not implemented for selected method")
-        pass
 
     #     if cite_format == "MLA":
     #         print("Adler, Jonas, and Ozan Öktem.")
@@ -265,7 +263,6 @@ class LIONmodel(nn.Module, ABC):
         This is like save, but saves a checkpoint of the model.
         Its essentailly a wrapper of save() with mandatory values
         """
-
         assert isinstance(optimizer, torch.optim.Optimizer)
         self.save(
             fname,
