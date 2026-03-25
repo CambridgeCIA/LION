@@ -5,23 +5,21 @@
 # Author  : Emilien Valat
 # Modifications: Michelle Limbach, Ander Biguri
 # =============================================================================
+from __future__ import annotations
 
-
-from typing import List, Dict
+import json
+import math
 import pathlib
 import random
-import math
+from typing import Dict, List, Literal
 
-import torch
 import numpy as np
-import json
+import torch
 from torch.utils.data import Dataset
-import matplotlib.pyplot as plt
 
-
-from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
 import LION.CTtools.ct_utils as ct
 from LION.utils.parameter import LIONParameter
+from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
 
 
 def format_index(index: int) -> str:
@@ -66,41 +64,57 @@ def create_consensus_annotation(
 
 
 class LIDC_IDRI(Dataset):
+
     def __init__(
         self,
-        mode,
-        geometry_parameters: ct.Geometry = None,
-        parameters: LIONParameter = None,
+        mode: Literal["train", "validation", "test"],
+        geometry_parameters: ct.Geometry | None = None,
+        parameters: LIONParameter | None = None,
     ):
         """
         Initializes LIDC-IDRI dataset.
 
-        Parameters:
-            - device (torch.device): Selects the device to use for the data loader.
-            - task (str): Defines pipeline on how to use data. Distinguish between "joint", "end_to_end", "segmentation", "reconstruction" and "diagnostic".
-                          Dataset will return, for each task:
-                          "segmentation"    -> (image, segmentation_label)
-                          "reconstruction"  -> (sinogram, image_label)
-                          "diagnostic"      -> (segmented_nodule, diagnostic_label)
-                          "joint"           -> ?????
-                          "end_to_end"      -> ?????
+        Parameters
+        ----------
+        mode : Literal["train", "validation", "test"]
+            Mode (aka. split) of the dataset. This overrides `parameters.mode`.
+        geometry_parameters : ct.Geometry, optional
+            Geometry parameters, required if task is "reconstruction", by default None
+        parameters : LIONParameter, optional
+            `LIONParameter` with the following fields:
+
+            - device (torch.device):
+                Device to use for the data loader.
+
+            - task (str): Pipeline on how to use data. Distinguish between "joint", "end_to_end", "segmentation", "reconstruction" and "diagnostic".
+                Dataset will return, for each task:
+                "segmentation"    -> (image, segmentation_label)
+                "reconstruction"  -> (sinogram, image_label)
+                "diagnostic"      -> (segmented_nodule, diagnostic_label)
+                "joint"           -> ?????
+                "end_to_end"      -> ?????
+
             - training_proportion (float): Defines training % of total data.
+
             - mode (str): Defines "train", "validation" or "test" mode.
-            - Task (str): Defines what task is the Dataset being used for. "segmentation" (default) returns (gt_image,segmentation) pairs while "reconstruction" returns (sinogram, gt_image) pairs
+
             - annotation (str): Defines what annotation mode to use. Distinguish between "random" and "consensus". Default "consensus"
+
             - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. Default is -1, which takes all slices we have of each patient and pcg_slices_nodule gets ignored.
+
             - pcg_slices_nodule (float): Defines percentage of slices with nodule in dataset. 0 meaning "no nodules at all" and 1 meaning "just take slices that contain annotated nodules". Only used if max_num_slices_per_patient != -1. Default is 0.5.
+
             - clevel (float): Defines consensus level if annotation=consensus. Value between 0-1. Default is 0.5.
+
             - geometry: Geometry() type, if sinograms are requied (e.g. fo "reconstruction")
 
         """
-
         # Input parsing
         assert mode in [
             "train",
             "validation",
             "test",
-        ], f'Wrong mode argument, must be in ["train", "validation", "test"]'
+        ], 'Wrong mode argument, must be in ["train", "validation", "test"]'
 
         if parameters is None:
             parameters = LIDC_IDRI.default_parameters(geometry=geometry_parameters)
@@ -250,8 +264,8 @@ class LIDC_IDRI(Dataset):
         }
 
         ##% Divide dataset in training/validation/testing
-        self.training_proportion = self.params.training_proportion
-        self.validation_proportion = self.params.validation_proportion
+        # self.training_proportion = self.params.training_proportion
+        # self.validation_proportion = self.params.validation_proportion
         self.params.mode = mode
         # Commpute number if images for each
         self.n_patients_training = math.floor(
@@ -316,6 +330,14 @@ class LIDC_IDRI(Dataset):
 
         print(f"Patient lists ready for {self.params.mode} dataset")
 
+    @property
+    def training_proportion(self):
+        return self.params.training_proportion
+
+    @property
+    def validation_proportion(self):
+        return self.params.validation_proportion
+
     @staticmethod
     def default_parameters(geometry=None, task="reconstruction"):
         param = LIONParameter()
@@ -352,16 +374,18 @@ class LIDC_IDRI(Dataset):
         """
         Returns a dictionary that contains patient_id's as keys and list of slices to load as values for each patient.
 
-        Parameters:
+        Parameters
+        ----------
             - patient_list (List): List that contains patient_id of all patients.
             - non_nodule_slices_dict (Dict): Dict that contains all slices without nodule of each patient_id.
             - nodule_slices_dict (Dict): Dict that contains all slices with nodule of each patient_id.
             - num_slices_per_patient (int): Defines maximum number of slices we want per patient. If num_slices_per_patient=-1 take all slices we have of each patient.
             - pcg_slices_nodule (float): Defines amount of slices that should contain a nodule. Value between 0-1.
-        Returns:
+
+        Returns
+        -------
             - patient_id_to_slices_to_load_dict which contains patient_id as key and list of slices to load as values
         """
-
         patient_id_to_slices_to_load_dict = (
             {}
         )  # Empty dict which should contain patient id as key and slice ids as array of values
@@ -417,9 +441,12 @@ class LIDC_IDRI(Dataset):
         """
         Returns a dictionary that contains patient_id's as keys and start index of each patient in self.slice_index_to_patient_id_list as value.
 
-        Parameters:
+        Parameters
+        ----------
             - patient_with_slices_to_load (Dict): Dict that defines which slices to load per patient.
-        Returns:
+
+        Returns
+        -------
             - patient_id_to_first_index_dict (Dict): Defines start index of each patient in self.slice_index_to_patient_id_list. Needed for mapping of global index to slice index.
         """
         patient_id_to_first_index_dict = {}
@@ -440,9 +467,12 @@ class LIDC_IDRI(Dataset):
         """
         Returns a list that contains "number of slices" times each patient id.
 
-        Parameters:
+        Parameters
+        ----------
             - patient_with_slices_to_load (Dict): Dict that defines which slices to load per patient.
-        Returns:
+
+        Returns
+        -------
             - slice_index_to_patient_id_list (List): Contains number of slices times each patient id. Needed for mapping of global index to slice index.
         """
         slice_index_to_patient_id_list = []

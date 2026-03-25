@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 import torch
 from spyrit.core.torch import fwht, ifwht
@@ -10,6 +12,7 @@ from LION.operators.Operator import Operator
 
 
 def normal_to_dyadic_permutation(J: int) -> np.ndarray:
+    """Compute the permutation mapping normal order to dyadic order for WHT."""
     nbits = 2 * J
     n = 1 << nbits  # total length = 2^(2J)
     # ---- dyadic-by-scales permutation (dtype-safe bit ops) ----
@@ -28,29 +31,6 @@ def normal_to_dyadic_permutation(J: int) -> np.ndarray:
     return permutation
 
 
-class Subsampler:
-    def __init__(
-        self, n: int, delta: float, coarseJ: int, rng: np.random.Generator | None = None
-    ) -> None:
-        if rng is None:
-            rng = np.random.default_rng()
-        # ---- random undersampling with coarseJ fully kept ----
-        m_total = int(np.ceil(delta * n))
-        m1 = min(1 << (2 * coarseJ), m_total)
-        m2 = m_total - m1
-        if m2 > 0:
-            idx_tail = rng.choice(n - m1, size=m2, replace=False) + m1
-            self._subsampled_indices = np.concatenate(
-                [np.arange(m1, dtype=np.int64), idx_tail.astype(np.int64)]
-            )
-        else:
-            self._subsampled_indices = np.arange(m1, dtype=np.int64)
-
-    @property
-    def subsampled_indices(self) -> np.ndarray:
-        return self._subsampled_indices
-
-
 class PhotocurrentMapOp(Operator):
     """Photocurrent mapping operator using subsampled WHT and dyadic permutation.
 
@@ -58,18 +38,18 @@ class PhotocurrentMapOp(Operator):
     ----------
     J : int
         The exponent such that the image size is (2^J, 2^J).
-    subsampler : Subsampler
-        The subsampler defining the measurement indices.
+    sampled_indices : Sequence[int] | np.ndarray | None, optional
+        The indices of the measurements to be taken, in coarse-to-fine (dyadic) order.
     wht_dim : int, optional
         The dimension along which to apply the WHT. Default is -1 (last dimension).
-    device : str or torch.device
+    device : str or torch.device | None, optional
         Device where tensors are placed.
     """
 
     def __init__(
         self,
         J: int,
-        subsampler: Subsampler,
+        sampled_indices: Sequence[int] | np.ndarray | None = None,
         wht_dim: int = -1,
         device: torch.device | str | None = None,
     ):
@@ -79,13 +59,16 @@ class PhotocurrentMapOp(Operator):
         self.num_pixels = self.N * self.N
         self.wht_dim = wht_dim
 
+        if sampled_indices is None:
+            sampled_indices = np.arange(self.num_pixels, dtype=np.int64)
+
         # TODO: Add batch size
         self._image_shape = (self.N, self.N)
-        self._data_shape = (subsampler.subsampled_indices.shape[0],)
+        self._data_shape = (len(sampled_indices),)
 
         self.normal_to_dyadic_perm = normal_to_dyadic_permutation(J=J)
         self.meas_indices_standard = torch.tensor(
-            self.normal_to_dyadic_perm[subsampler.subsampled_indices],
+            self.normal_to_dyadic_perm[sampled_indices],
             dtype=torch.long,
             device=self.device,
         )

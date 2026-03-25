@@ -5,10 +5,11 @@ from abc import ABC, ABCMeta, abstractmethod
 import torch
 
 # Import CT utils
+# from LION.CTtools.ct_utils import
+
+# from LION.models.LIONmodel import to_autograd
 from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
-from LION.models.LIONmodel import to_autograd
-from LION.operators import Operator
+from LION.operators.Operator import Operator
 
 # Base class for a Reconstructor in the LION framework.
 # This assumes a trained model
@@ -38,7 +39,7 @@ class LIONReconstructor(ABC):
             raise ValueError(
                 "Input operator is neither of class LION.operators.operator.Operator nor LION.CTtools.ct_geometry.Geometry"
             )
-        self.op_autograd = to_autograd(self.op)
+        # self.op_autograd = to_autograd(self.op)
 
     def reconstruct(self, sino: torch.Tensor, **kwargs):
         """

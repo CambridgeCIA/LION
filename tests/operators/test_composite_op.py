@@ -1,5 +1,8 @@
 import torch
-from LION.operators import CompositeOp, PhotocurrentMapOp, Subsampler, Wavelet2D
+from LION.operators.CompositeOp import CompositeOp
+from LION.operators.Wavelet2D import Wavelet2D
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
+from LION.operators.multilevel_sample import multilevel_sample
 from tests.helper import dotproduct_adjointness_test
 
 
@@ -15,8 +18,10 @@ def test_composite_op_adjointness():
     wavelet = Wavelet2D((H, W), wavelet_name="db4")
 
     # Photocurrent mapping operator Phi
-    subsampler = Subsampler(n=H * W, coarseJ=coarseJ, delta=delta)
-    phi = PhotocurrentMapOp(J=J, subsampler=subsampler)
+    sampled_indices = multilevel_sample(
+        J=J, num_samples=int(delta * H * W), coarse_J=coarseJ, alpha=1.0
+    )
+    phi = PhotocurrentMapOp(J=J, sampled_indices=sampled_indices)
 
     # Composite operator A = Phi Psi^{-1}
     operator = CompositeOp(wavelet, phi, device=torch.get_default_device())

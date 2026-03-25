@@ -5,20 +5,20 @@
 # Author  : Emilien Valat, Ander Biguri
 # =============================================================================
 
-from pathlib import Path
 
-import matplotlib.pyplot as plt
+import warnings
+
+import numpy as np
 import pandas as pd
 import torch
-import numpy as np
 from torch.utils.data import Dataset
-import warnings
-from LION.utils.paths import DETECT_PROCESSED_DATASET_PATH
-from LION.utils.parameter import LIONParameter
+from ts_algorithms import fdk, nag_ls
+
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.CTtools.ct_utils import make_operator
-from ts_algorithms import fdk, nag_ls
+from LION.utils.parameter import LIONParameter
+from LION.utils.paths import DETECT_PROCESSED_DATASET_PATH
 
 
 class deteCT(Dataset):
@@ -70,7 +70,7 @@ class deteCT(Dataset):
         self.path_to_scan_data = self.path_to_dataset.joinpath("scan_settings.json")
         ### Defining the path to the data record
         self.path_to_data_record = self.path_to_dataset.joinpath(
-            f"default_data_records.csv"
+            "default_data_records.csv"
         )
 
         ### Defining the data record
@@ -82,7 +82,7 @@ class deteCT(Dataset):
             - the number of slices actually sampled
             - the first slice of the sample to which a given slice belongs
             - the last slice of the sample to which a given slice belongs
-            - the mix 
+            - the mix
             - the detector it was sampled with
         """
         # Defining the input and target mode
@@ -119,13 +119,13 @@ class deteCT(Dataset):
             "sino2seg",
             "joint",
             "groundtruth",
-        ], f'Wrong task argument, must be in ["sino2sino", "sino2recon", "recon2recon", "recon2seg", "sino2seg", "joint"]'
+        ], 'Wrong task argument, must be in ["sino2sino", "sino2recon", "recon2recon", "recon2seg", "sino2seg", "joint"]'
 
         assert mode in [
             "train",
             "validation",
             "test",
-        ], f'Wrong mode argument, must be in ["train", "validation", "test"]'
+        ], 'Wrong mode argument, must be in ["train", "validation", "test"]'
         # Defining the training mode
         self.mode = mode
         """
@@ -269,7 +269,7 @@ class deteCT(Dataset):
                 f"dsd and dso must be the same as the default geometry: DSO = {default_geo.dso}, DSD = {default_geo.dsd}"
             )
         if geometry.detector_shape[0] != default_geo.detector_shape[0]:
-            raise ValueError(f"detector_shape[0] must be 1")
+            raise ValueError("detector_shape[0] must be 1")
         if geometry.detector_shape[1] != default_geo.detector_shape[1]:
             warnings.warn(
                 f"Raw data detector_shape[1] must be 956, it is {geometry.detector_shape[1]}. Interpolation will be used, but note that you are not using exactly the raw data"
@@ -330,7 +330,7 @@ class deteCT(Dataset):
         )
 
     def add_sinogram_noise(self, sinogram, I0, cross_talk=0.05):
-        """
+        r"""
         Add noise to a measured sinogram.
         The reason this data loader has a bestpoke function for this is that the noise is that the
         noise simulator in LION.ct_tools.ct_utils assumes noiseles sinograms in X-ray absobtion.
