@@ -1,7 +1,7 @@
 """Helper/Utilities for test functions."""
 
 import torch
-from LION.operators import Operator
+from LION.operators.Operator import Operator
 
 
 def dotproduct_adjointness_test(

@@ -9,9 +9,6 @@ import torch
 from tqdm import tqdm
 
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
-from LION.classical_algorithms.fdk import fdk
-from LION.CTtools.ct_geometry import Geometry
-from LION.operators import Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
 
@@ -19,7 +16,7 @@ from LION.utils.math import power_method
 class PnP(LIONReconstructor):
     def __init__(
         self,
-        physics: Geometry | Operator,
+        physics,
         prior_fn: Callable[[torch.Tensor], torch.Tensor],
         algorithm: Literal["ADMM", "HQS", "FBS"] = "ADMM",
     ):
@@ -111,6 +108,8 @@ class PnP(LIONReconstructor):
         :param max_iter: Maximum number of iterations.
         :return: Reconstructed image tensor.
         """
+        from LION.classical_algorithms.fdk import fdk
+
         if noise_level is not None:
             print("Warning: ignoring value of mu, estimating from noise_level")
             sigma = noise_level
@@ -192,10 +191,16 @@ class PnP(LIONReconstructor):
         v = torch.zeros(self.op.domain_shape, device=measurement.device)
         u = torch.zeros(self.op.domain_shape, device=measurement.device)
 
-        def matmul_closure(x: torch.Tensor) -> torch.Tensor:
-            return self.op.adjoint(self.op(x)) + eta * x
+        # Normalize data fidelity term by number of measurements so that eta has consistent meaning
+        # regardless of measurement size
+        measurement_size = measurement.numel()
 
-        AT_y = self.op.adjoint(measurement)
+        def matmul_closure(x: torch.Tensor) -> torch.Tensor:
+            # return self.op.adjoint(self.op(x)) + eta * x
+            return self.op.adjoint(self.op(x)) / measurement_size + eta * x
+
+        # AT_y = self.op.adjoint(measurement)
+        AT_y = self.op.adjoint(measurement) / measurement_size
         iterator = range(max_iter)
         if prog_bar:
             iterator = tqdm(iterator, desc="ADMM iterations")

@@ -112,7 +112,9 @@ filterwarnings = [
 ]
 addopts = "-n auto --dist loadfile --maxprocesses=8"
 markers = [
-    "cuda : Tests only to be run when cuda device is available"  # Add argument `-m "not cuda"` to the `pytest` command line to skip tests with this marker
+    "cuda : Tests only to be run when cuda device is available",  # Add argument `-m "not cuda"` to the `pytest` command line to skip tests with this marker
+    "tomosipo : Tests only to be run when tomosipo is available",  # Add argument `-m "not tomosipo"` to the `pytest` command line to skip tests with this marker
+    # We can exclude multiple markers. E.g.  use `-m "not (cuda or tomosipo)"` or `-m "not cuda and not tomosipo"` to skip tests with either marker
 ]
 
 # MyPy section

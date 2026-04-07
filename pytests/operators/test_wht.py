@@ -1,7 +1,7 @@
 import torch
 from LION.operators.Operator import Operator
+from pytests.helper import dotproduct_adjointness_test
 from spyrit.core.torch import fwht, ifwht
-from tests.helper import dotproduct_adjointness_test
 
 
 def test_wht_adjointness():

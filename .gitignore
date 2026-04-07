@@ -16,3 +16,4 @@ example.py
 /slurm
 
 wandb
+.DS_Store

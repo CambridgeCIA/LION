@@ -2,8 +2,10 @@
 
 import pytest
 import torch
-from LION.classical_algorithms import fista_l1
-from LION.operators import CompositeOp, PhotocurrentMapOp, Subsampler, Wavelet2D
+from LION.classical_algorithms.fista import fista_l1
+from LION.operators.CompositeOp import CompositeOp
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
+from LION.operators.Wavelet2D import Wavelet2D
 
 
 def test_fista_l1() -> None:
