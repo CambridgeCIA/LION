@@ -2,7 +2,7 @@
 
 import pytest
 import torch
-from LION.classical_algorithms import fista_l1
+from LION.classical_algorithms.fista import fista_l1
 from LION.operators import CompositeOp, PhotocurrentMapOp, Subsampler, Wavelet2D
 
 

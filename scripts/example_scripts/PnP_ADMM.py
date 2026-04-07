@@ -20,7 +20,7 @@ from skimage.metrics import structural_similarity
 from tqdm import tqdm
 
 # LION imports
-from LION.classical_algorithms import fdk
+from LION.classical_algorithms.fdk import fdk
 from LION.experiments import ct_experiments
 from LION.reconstructors import PnP
 

@@ -49,7 +49,7 @@ import numpy as np
 from jaxtyping import Float
 from torchmetrics import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
-from LION.classical_algorithms import fista_l1
+from LION.classical_algorithms.fista import fista_l1
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
 from LION.operators import CompositeOp, Wavelet2D
 from LION.operators.DebiasOp import debias_ls
