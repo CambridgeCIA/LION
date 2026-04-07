@@ -49,13 +49,13 @@ import numpy as np
 from jaxtyping import Float
 from torchmetrics import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
+# LION imports
 from LION.classical_algorithms.fista import fista_l1
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
-from LION.operators import CompositeOp, Wavelet2D
+from LION.operators.CompositeOp import CompositeOp
 from LION.operators.DebiasOp import debias_ls
-
-# LION imports
 from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
+from LION.operators.Wavelet2D import Wavelet2D
 from LION.reconstructors.PnP import PnP
 
 GrayscaleImage2D = Float[torch.Tensor, "height width"]

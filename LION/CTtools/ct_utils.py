@@ -15,7 +15,7 @@ import torch
 
 # AItomotools imports
 from LION.CTtools.ct_geometry import Geometry
-from LION.operators import CTProjectionOp
+from LION.operators.CTProjectionOp import CTProjectionOp
 
 
 def from_HU_to_normal(img):

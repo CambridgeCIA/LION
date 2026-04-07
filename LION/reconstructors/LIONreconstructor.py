@@ -8,7 +8,7 @@ import torch
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
 from LION.models.LIONmodel import to_autograd
-from LION.operators import Operator
+from LION.operators.Operator import Operator
 
 # Base class for a Reconstructor in the LION framework.
 # This assumes a trained model

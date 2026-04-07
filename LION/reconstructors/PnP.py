@@ -11,7 +11,7 @@ from tqdm import tqdm
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
 from LION.classical_algorithms.fdk import fdk
 from LION.CTtools.ct_geometry import Geometry
-from LION.operators import Operator
+from LION.operators.Operator import Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
 

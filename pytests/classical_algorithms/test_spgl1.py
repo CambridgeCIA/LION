@@ -2,7 +2,9 @@
 
 import torch
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
-from LION.operators import CompositeOp, PhotocurrentMapOp, Subsampler, Wavelet2D
+from LION.operators.CompositeOp import CompositeOp
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
+from LION.operators.Wavelet2D import Wavelet2D
 
 
 def test_spgl1() -> None:
