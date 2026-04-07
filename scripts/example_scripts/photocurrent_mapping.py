@@ -30,7 +30,11 @@
 # %%
 import torch
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device(
+    "mps"
+    if torch.backends.mps.is_available()
+    else "cuda" if torch.cuda.is_available() else "cpu"
+)
 torch.set_default_device(device)
 
 # %% [markdown]
@@ -47,7 +51,7 @@ import deepinv
 import matplotlib.pyplot as plt
 import numpy as np
 from jaxtyping import Float
-from torchmetrics import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
+from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
 # LION imports
 from LION.classical_algorithms.fista import fista_l1
@@ -69,7 +73,7 @@ Measurement1D = Float[torch.Tensor, "num_measurements"]
 # experiments.
 
 # %%
-data_dir = Path("/home/t/Documents/GIT/LION/data/photocurrent_data")
+data_dir = Path("data/photocurrent_data")
 # data_dir = Path("your/path/to/photocurrent_data")
 
 assert data_dir.exists(), f"Data directory {data_dir} does not exist."
@@ -134,10 +138,10 @@ def run_pcm_demo(
     subtract_from_J: int = 1,
     delta_divided_by: int = 4,
     log_dir: Path | str = ".",
-    device: torch.device | str = "cuda:0",
+    device: torch.device | str | None = None,
 ):
     N = 1 << J
-    im_tensor = torch.tensor(ground_truth_image).unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
+    im_tensor = ground_truth_image.clone().unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
 
     coarseJ = J - subtract_from_J
     delta = 1.0 / delta_divided_by
@@ -165,8 +169,8 @@ def run_pcm_demo(
     )
 
     data_range = (im_tensor.max() - im_tensor.min()).item()
-    psnr = PeakSignalNoiseRatio(data_range=data_range).to(device)
-    ssim = StructuralSimilarityIndexMeasure(data_range=data_range).to(device)
+    psnr = PeakSignalNoiseRatio(data_range=data_range).to(device=device)
+    ssim = StructuralSimilarityIndexMeasure(data_range=data_range).to(device=device)
 
     psnr_zero_filled = psnr(zero_filled_recon_tensor, im_tensor)
     psnr_recon = psnr(recon_tensor, im_tensor)
@@ -198,7 +202,9 @@ def run_pcm_demo(
 # reconstruction methods.
 
 # %%
-cigs_raw_data: GrayscaleImage2D = np.load(data_dir / cigs_filename)
+cigs_raw_data: GrayscaleImage2D = torch.tensor(
+    np.load(data_dir / cigs_filename), dtype=torch.float32
+)
 print(f"CIGS data shape: {cigs_raw_data.shape}")
 
 # %% [markdown]
@@ -256,9 +262,9 @@ def denoiser_fn(x: GrayscaleImage2D) -> GrayscaleImage2D:
 def run_pnp_admm(
     pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D
 ) -> GrayscaleImage2D:
-    admm_iterations = 100
-    admm_step_size = 1e5
-    cg_max_iter = 100
+    admm_iterations = 50
+    admm_eta = 0.01
+    cg_max_iter = 20
     cg_tol = 1e-7
 
     print(
@@ -268,7 +274,7 @@ def run_pnp_admm(
     pnp = PnP(physics=pcm_op, prior_fn=denoiser_fn, algorithm="ADMM")
     return pnp.admm_algorithm(
         measurement=pcm_measurement,
-        eta=admm_step_size,
+        eta=admm_eta,
         max_iter=admm_iterations,
         cg_max_iter=cg_max_iter,
         cg_tol=cg_tol,
@@ -295,8 +301,8 @@ run_pcm_demo(
 #
 # Although PnP-ADMM substantially improves PSNR and SSIM, it can smooth out
 # fine-scale structures. In the context of defect detection, these small
-# features can be crucial, so high PSNR and SSIM alone are not sufficient to
-# guarantee that the reconstruction is fit for purpose.
+# features can be crucial, so high PSNR and SSIM alone are not always
+# sufficient to guarantee that the reconstruction is fit for purpose.
 #
 # In the next sections, two compressed sensing baselines with a wavelet
 # sparsity prior are explored and compared to the PnP-ADMM result.
@@ -330,7 +336,7 @@ def run_fista_l1(
 ) -> GrayscaleImage2D:
 
     lam = 10  # Good for Daubechies 4 wavelet transform
-    max_iter = 1000
+    max_iter = 500
     tol = 1e-5
 
     debias_max_iter = 10  # TODO: Debiasing seems to not make much difference here
@@ -406,7 +412,7 @@ def run_spgl1(
 ) -> GrayscaleImage2D:
 
     lam: float = 1e-3
-    max_iter = 1000
+    max_iter = 500
     tol: float = 1e-4
     debias_max_iter = 10
     debias_support_tol = 1e-5
