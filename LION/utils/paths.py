@@ -1,10 +1,18 @@
 import pathlib
+import os
 
-## File to contain paths to data created/needed by this toolbox.
-# If you don't have access to the paths and you are part of the research group, ask Ander Biguri about it.
-# Otherwise, feel free to change those to your paths.
+## The primary data path is set via the LION_DATA_PATH environment variable.
 
-LION_DATA_PATH = pathlib.Path("/store/LION/datasets/")
+_lion_data_path = os.environ.get("LION_DATA_PATH")
+if _lion_data_path is None:
+    raise RuntimeError(
+        "LION_DATA_PATH is not set. "
+        "Set it to your LION data directory, e.g. "
+        "export LION_DATA_PATH=/path/to/Data"
+    )
+
+LION_DATA_PATH = pathlib.Path(_lion_data_path).expanduser().resolve()
+
 LUNA_DATASET_PATH = LION_DATA_PATH.joinpath("raw/LUNA16")
 WALNUT_DATASET_PATH = LION_DATA_PATH.joinpath("raw/walnuts")
 LIDC_IDRI_PATH = LION_DATA_PATH.joinpath("raw/LIDC-IDRI")
