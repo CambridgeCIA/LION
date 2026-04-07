@@ -84,6 +84,8 @@ class RuntimeConfig:
     num_trials_skip: int
         Number of first trials to skip.
         E.g. set to num_trials_skip to 1 to skip trial 0 and start from trial 1.
+        Since each trial generates a random seed deterministically based on its index,
+        this is useful for resuming an experiment after a crash or interruption.
     """
 
     root_output_dir: Path
