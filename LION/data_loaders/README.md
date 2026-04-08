@@ -7,19 +7,22 @@ To install 2DeteCT, run `python ./LION/data_loaders/2DeteCT/dowload.py` and once
 
 ## LIDC-IDRI
 
-A dataset of 1100 lung 3D CT scans with segmentations and diagnostics of lung nodules. To dowload the dataset, [follow the instructions in the dataset webpage](https://wiki.cancerimagingarchive.net/pages/viewpage.action?pageId=1966254) (requires a third party software). Put this dataset in `LION_DATA_PATH/raw/LIDC-IDRI` such that it contains a folder structure as:
+A dataset of 1100 lung 3D CT scans with segmentations and diagnostics of lung nodules. These are available from the TCIA website [here](https://wiki.cancerimagingarchive.net/pages/viewpage.action?pageId=1966254). However, a convenient download functionality is provided at [LION/LION/data_loaders/LIDC_IDRI/download_LIDC_IDRI.sh](LIDC_IDRI/download_LIDC_IDRI.sh). Running this should download the full dataset to your `LION_DATA_PATH/raw/LIDC-IDRI`, and will attempt to use Java, Apptainer, Singularity then Docker to run the NBIA downloader tool.
+
+This should give a folder structure as:
 
 ```
 LION_DATA_PATH/raw/LIDC-IDRI/
 ├── LIDC-IDRI
-├── LIDC-IDRI_MetaData.csv
 ├── metadata.csv
 └── tcia-diagnosis-data-2012-04-20.xls
 ```
 
-Then, create a new conda enviroment with `conda env create -f ./LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri_environment.yml`, activate it as `conda activate lidc_idri` and run the python file `python ./LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py`. 
+Then, to process the dataset, create a new conda enviroment with `conda env create -f ./LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri_environment.yml`, activate it as `conda activate lidc_idri` and run the python file `python ./LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py`. 
 
-You can now delete `LION_DATA_PATH/raw/LIDC-IDRI` to save space if you want. 
+You can now delete `LION_DATA_PATH/raw/LIDC-IDRI` to save space if you want. Note that the download size is around 133GB, so both download and processing can take hours.
+
+More details on the downloader tool are available [here](LIDC_IDRI/README.md)
 
 ## Walnuts
 A dataset of uCT scans of walnuts. [Read more in the Nature paper](https://www.nature.com/articles/s41597-019-0235-y).
