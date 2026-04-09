@@ -7,7 +7,9 @@
 # =============================================================================
 
 import pathlib
+from pathlib import Path
 from typing import Tuple, List, Dict
+import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +19,6 @@ import json
 
 import importlib.util
 import sys
-import os
 
 
 spec = importlib.util.spec_from_file_location(
@@ -27,7 +28,18 @@ foo = importlib.util.module_from_spec(spec)
 sys.modules["aipaths"] = foo
 spec.loader.exec_module(foo)
 
-from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH, LIDC_IDRI_PATH
+# from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH, LIDC_IDRI_PATH
+# from ...utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH, LIDC_IDRI_PATH
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+from utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH, LIDC_IDRI_PATH
+
+
+def configure_pylidc(path_to_raw_dataset: pathlib.Path) -> None:
+    config_path = pathlib.Path.home().joinpath(".pylidcrc")
+    dicom_path = path_to_raw_dataset.joinpath("LIDC-IDRI").resolve()
+    with open(config_path, "w") as config_file:
+        config_file.write(f"[dicom]\npath = {dicom_path}\n")
+    print(f"Set pylidc DICOM path to {dicom_path} in {config_path}")
 
 
 def format_index(index: int) -> str:
@@ -105,6 +117,22 @@ def process_volume(scan: pl.Scan, path_to_processed_volume_folder: pathlib.Path)
         np.save(path_to_slice, volume[:, :, slice_index])
 
 
+def load_json(path: pathlib.Path, default):
+    if path.is_file():
+        with open(path, "r") as in_file:
+            return json.load(in_file)
+    return default
+
+
+def write_json(path: pathlib.Path, data) -> None:
+    with open(path, "w") as out_file:
+        json.dump(data, out_file, indent=4)
+
+
+def remove_error_for_patient(error_list: List, patient_id: str) -> List:
+    return [error for error in error_list if error[0] != patient_id]
+
+
 def compute_slice_thickness(path_to_processed_dataset: pathlib.Path):
     file_name = "patient_id_to_slice_thickness.json"
     patient_dict_to_slice_thickness = {}
@@ -128,44 +156,66 @@ def compute_slice_thickness(path_to_processed_dataset: pathlib.Path):
 def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
     path_to_processed_dataset.mkdir(exist_ok=True, parents=True)
 
-    patients_masks = {}
+    path_to_patients_masks_dict = path_to_processed_dataset.joinpath(
+        "patients_masks.json"
+    )
+    path_to_error_list = path_to_processed_dataset.joinpath("error_list.json")
+    patients_masks = load_json(path_to_patients_masks_dict, {})
+    error_list = load_json(path_to_error_list, [])
 
-    # for patient_index in range(1, 1012):
-    for patient_index in [197]:
+    for patient_index in range(1, 1012):
+        # for patient_index in [197]:
         formatted_index = format_index(patient_index)
         formatted_index = f"LIDC-IDRI-{formatted_index}"
         path_to_processed_volume_folder = path_to_processed_dataset.joinpath(
             formatted_index
         )
-        path_to_processed_volume_folder.mkdir(exist_ok=True, parents=True)
-        print(f"Processing patient with PID {formatted_index}")
-        scan: pl.Scan = (
-            pl.query(pl.Scan).filter(pl.Scan.patient_id == formatted_index).first()
-        )  # type:ignore
-        if type(scan) == type(None):
-            print(f"Current patient {formatted_index} has no scan")
-        else:
-            if len(list(path_to_processed_volume_folder.glob("*"))) == 0 or True:
+        tmp_processed_volume_folder = path_to_processed_dataset.joinpath(
+            f"{formatted_index}.tmp"
+        )
+
+        if path_to_processed_volume_folder.is_dir():
+            print(f"\t Patient {formatted_index} already sampled, passing...")
+            continue
+
+        try:
+            print(f"Processing patient with PID {formatted_index}")
+            scan: pl.Scan = (
+                pl.query(pl.Scan).filter(pl.Scan.patient_id == formatted_index).first()
+            )  # type:ignore
+            if type(scan) == type(None):
+                print(f"Current patient {formatted_index} has no scan")
+                patients_masks[formatted_index] = {}
+                error_list = remove_error_for_patient(error_list, formatted_index)
+                write_json(path_to_patients_masks_dict, patients_masks)
+                write_json(path_to_error_list, error_list)
+            else:
+                if tmp_processed_volume_folder.exists():
+                    shutil.rmtree(tmp_processed_volume_folder)
+                tmp_processed_volume_folder.mkdir(exist_ok=True, parents=True)
 
                 ### Pre-process the volume
-                process_volume(scan, path_to_processed_volume_folder)
+                process_volume(scan, tmp_processed_volume_folder)
                 ### Pre-process the masks
                 patients_masks[formatted_index] = process_patient_mask(
-                    scan, path_to_processed_volume_folder
+                    scan, tmp_processed_volume_folder
                 )
+                error_list = remove_error_for_patient(error_list, formatted_index)
+                write_json(path_to_patients_masks_dict, patients_masks)
+                write_json(path_to_error_list, error_list)
+                tmp_processed_volume_folder.rename(path_to_processed_volume_folder)
+        except Exception as e:
+            print(
+                f"An error occurred while processing patient {formatted_index}, skipping..."
+            )
+            if tmp_processed_volume_folder.exists():
+                shutil.rmtree(tmp_processed_volume_folder)
+            error_list = remove_error_for_patient(error_list, formatted_index)
+            error_list.append([formatted_index, str(e)])
+            write_json(path_to_error_list, error_list)
+            write_json(path_to_patients_masks_dict, patients_masks)
 
-            else:
-                print(f"\t Patient already sampled, passing...")
-
-    path_to_patients_masks_dict = path_to_processed_dataset.joinpath(
-        "patients_masks.json"
-    )
-    if path_to_patients_masks_dict.is_file():
-        print(f"Patients masks file already written, passing...")
-    else:
-        with open(path_to_patients_masks_dict, "w") as out_f:
-            json.dump(patients_masks, out_f, indent=4)
-    exit()
+    # exit()
 
 
 def compute_diagnosis_file(
@@ -265,6 +315,7 @@ def compute_patient_with_nodule_subtetly(
 if __name__ == "__main__":
 
     path_to_raw_dataset = pathlib.Path(LIDC_IDRI_PATH)
+    configure_pylidc(path_to_raw_dataset)
     path_to_diagnosis_file = path_to_raw_dataset.joinpath(
         "tcia-diagnosis-data-2012-04-20.xls"
     )

@@ -21,8 +21,11 @@ cd LION
 git submodule update --init --recursive            # Legacy: for MSD_pytorch_
 conda env create --file=env_base.yml --name=lion   # You can change 'lion' to a different env name
 conda activate lion
+python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install .
 ```
+
+To change CUDA version, update the `python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128` line as well as the ` cuda-version=12.8` specified in `env_base.yml`.
 
 If you would like to contribute to the development of LION, you can replace the last line of the above set of commands by
 
@@ -39,13 +42,13 @@ pre-commit install --hook-type pre-commit --hook-type post-merge
 
 ## Datasets
 
-Currently there are several DataSets supported by LION. LION automatically knows where these are, but currently it only works for people working on the servers of CMS at University of Cambridge. To make it work in somewhere else, you just want to change [LION/utils/paths.py](LION/utils/paths.py) line 7 `LION_DATA_PATH = pathlib.Path("/store/LION/datasets/")` to the actual location in your system. We are working on figuring out how to make LION flexible at install.
+Several DataSets are currently supported by LION. To point the package to the correct storage location use `export LION_DATA_PATH=/path/to/Datasets`. For convenience, this can be added to your `.bashrc` or similar file.
 
-NOTE: If you are part of CIA at DAMTP, you already have access to these datasets and you don't need to follow any instruction to dowload them.
+NOTE: If you are part of CIA at DAMTP, you already have access to these datasets and you don't need to follow any instruction to dowload them. They should be accessible using `export LION_DATA_PATH=/store/LION/datasets`
 
 The supported Datasets are `2DeteCT`, `LIDC-IDRI`,
 
-[Read more about them here](LION/data_loaders/README.md)
+[Read more about the Datasets and how to download them here](LION/data_loaders/README.md)
 
 ## Models/Methods
 

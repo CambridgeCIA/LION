@@ -30,8 +30,11 @@ def my_ssim(x, y):
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 
+script_dir = pathlib.Path(__file__).parent
+project_dir = script_dir.parent.parent
+results_dir = project_dir / "results"
 # Define your data paths
-savefolder = pathlib.Path("/store/DAMTP/ab2860/trained_models/test_debbuging/")
+savefolder = results_dir / "LPD_example"
 # Creates the folder if it does not exist
 savefolder.mkdir(parents=True, exist_ok=True)
 final_result_fname = "LPD.pt"
