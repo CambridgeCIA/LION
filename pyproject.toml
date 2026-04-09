@@ -36,32 +36,32 @@ dependencies = [
     # The main dependency is tomosipo which in turns depends on astra-toolbox.
 
     # The followings are currently set to prefer newer versions (make sure they don't conflict with the ones above)
-    "deepinv",  # pretrained DRUNet
-    "h5py",
-    "imageio",
-    "kornia",  # LION/optimizers/GaussianDenoiserSolver.py
-    "lightning",
-    "matplotlib",
-    "numpy",
-    "opencv-python",
-    "pandas",
-    "pillow",
-    "pydicom",
-    "pylidc",
+    # "deepinv",  # pretrained DRUNet
+    # "h5py",
+    # "imageio",
+    # "kornia",  # LION/optimizers/GaussianDenoiserSolver.py
+    # "lightning",
+    # "matplotlib",
+    # "numpy",
+    # "opencv-python",
+    # "pandas",
+    # "pillow",
     "ptwt",  # Wavelet transforms for PyTorch, for photocurrent mapping reconstruction baseline
-    "PyWavelets",  # Wavelet transforms for Numpy
+    # "pydicom",
+    "pylidc",
+    # "PyWavelets",  # Wavelet transforms for Numpy
     "pytorch-wavelets",  # Wavelet transforms for PyTorch (TODO: switch to ptwt)
-    "scikit-image",
-    "scipy",
-    "spgl1",  # SPGL1 solver, for baseline photocurrent mapping reconstruction method
+    # "scikit-image",
+    # "scipy",
+    # "spgl1",  # SPGL1 solver, for baseline photocurrent mapping reconstruction method
     "spyrit",  # Fast Walsh-Hadamard Transform
-    "tifffile",
-    "torch",
-    "torchdiffeq",
-    "torchmetrics",
-    "torchvision",
-    "tqdm",
-    "wandb",
+    # "tifffile",
+    # "torch",
+    # "torchdiffeq",
+    # "torchmetrics",
+    # "torchvision",
+    # "tqdm",
+    # "wandb",
     "LION[codestyle]",
 ]
 

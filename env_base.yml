@@ -1,8 +1,33 @@
 channels:
-  - astra-toolbox
   - conda-forge
 dependencies:
-  - astra-toolbox>=2.3  # official `astra-toolbox` channel doesn't ship any `aarch64` build 
+  - astra-toolbox>=2.3  # official `astra-toolbox` channel doesn't ship any `aarch64` build
     # and `conda-forge` only ships astra-toolbox up to 2.3
-  - pip<=25.2  # pip 25.3 drops support for setup.py install which is used to install tomosipo and ts_algorithms from source 
+  - pip<=25.2  # pip 25.3 drops support for setup.py install which is used to install tomosipo and ts_algorithms from source
   - python=3.12
+  - deepinv
+  - h5py
+  - imageio
+  - kornia
+  - lightning
+  - matplotlib
+  - numpy
+  - opencv
+  - pandas
+  - pillow
+  # - ptwt
+  - pydicom
+  # - pylidc
+  - pytorch
+  # - pytorch-wavelets
+  - pywavelets
+  - scikit-image
+  - scipy
+  - spgl1
+  # - spyrit
+  - tifffile
+  - torchdiffeq
+  - torchmetrics
+  - torchvision
+  - tqdm
+  - wandb
