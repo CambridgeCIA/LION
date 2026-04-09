@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Download the LIDC-IDRI dataset using the NBIA Data Retriever command-line interface.
+# Primary download logic and was hand-written with Singularity support, before robustness improvements were added using Codex & GPT 5.4.
 set -Eeuo pipefail
 
 NBIA_DEB_URL="${NBIA_DEB_URL:-https://github.com/CBIIT/NBIA-TCIA/releases/download/DR-4_4_3-TCIA-20240916-1/nbia-data-retriever_4.4.3-1_amd64.deb}"
