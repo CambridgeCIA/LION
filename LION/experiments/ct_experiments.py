@@ -35,8 +35,8 @@ class Experiment(ABC):
         self.geometry = self.experiment_params.geometry
         self.dataset = dataset
         if hasattr(self.param, "noise_params"):
-            self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, cross_talk=self.param.noise_params.cross_talk: ct.sinogram_add_noise(
-                sino, I0=I0, sigma=sigma, cross_talk=cross_talk
+            self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, sigma_blur=self.param.noise_params.sigma_blur: ct.sinogram_add_noise(
+                sino, I0=I0, sigma=sigma, sigma_blur=sigma_blur
             )
 
     @staticmethod
@@ -158,7 +158,7 @@ class LimitedAngleCTRecon(Experiment):
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
-        param.noise_params.cross_talk = 0.05
+        param.noise_params.sigma_blur = 0.3015
         param.data_loader_params = Experiment.get_dataset_parameters(
             dataset, geometry=param.geometry
         )
