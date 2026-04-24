@@ -102,15 +102,15 @@ root_output_dir.mkdir(parents=True, exist_ok=True)
 # ### Various configurations
 
 # %%
-# # These images are provided with pixels in range [0, 1]
-# data_name, zoom, loc, loc1, loc2, roi = (
-#     "CIGS_256x256",
-#     2.5,
-#     "center left",
-#     3,
-#     4,
-#     (110, 210, 40, 40),
-# )  # (x, y, w, h)  with y increasing downwards
+# These images are provided with pixels in range [0, 1]
+data_name, zoom, loc, loc1, loc2, roi = (
+    "CIGS_256x256",
+    2.5,
+    "center left",
+    3,
+    4,
+    (110, 210, 40, 40),
+)  # (x, y, w, h)  with y increasing downwards
 # # data_name, zoom, loc, loc1, loc2, roi = "silicon_256x256", 2.5, "lower right", 2, 1, (194, 1, 60, 60)  # (x, y, w, h)  with y increasing downwards
 # # data_name, zoom, loc, loc1, loc2, roi = (
 # #     "silicon_512x512",
@@ -122,13 +122,13 @@ root_output_dir.mkdir(parents=True, exist_ok=True)
 # # )  # (x, y, w, h)  with y increasing downwards
 # # data_name, zoom, loc, loc1, loc2, roi = "organic_256x256", 2.5, "lower left", 2, 1, (70, 5, 50, 50)  # (x, y, w, h)  with y increasing downwards
 # # data_name, zoom, loc, loc1, loc2, roi = "perovskite_256x256", 2.5, "upper left", 3, 4, (90, 190, 50, 50)  # (x, y, w, h)  with y increasing downwards
-# data_name = "example_" + data_name  # prefix with "example_"
-# is_out_of_distribution = False
-# clim = (0.0, 1.0)
-# inverses_sign = False
-# # R_high, R_low = 1.0, 0.0  # default for normalized images
-# is_out_of_distribution = False
-# factor = 1  # no scaling for normalized images
+data_name = "example_" + data_name  # prefix with "example_"
+is_out_of_distribution = False
+clim = (0.0, 1.0)
+inverses_sign = False
+R_high, R_low = 1.0, 0.0  # default for normalized images
+is_out_of_distribution = False
+factor = 1  # no scaling for normalized images
 
 # # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
 # data_name, zoom, loc, loc1, loc2, roi = "Si_256_512x512", 2.5, "lower left", 2, 1, (160, 60, 120, 120)
@@ -138,21 +138,21 @@ root_output_dir.mkdir(parents=True, exist_ok=True)
 # R_low = -5e-6
 # factor = 1e5  # to scale up the photocurrent values for better numerical stability in SPGL1
 
-# This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
-data_name, zoom, loc, loc1, loc2, roi = (
-    "Si_2_256_512x512",
-    2.5,
-    "lower right",
-    2,
-    1,
-    (322, 85, 100, 100),
-)
-clim = (0.0, 1.5e-5)
-inverses_sign = True
-R_high = 2e-5
-R_low = -2e-6
-# scale the photocurrent values for better numerical stability in SPGL1
-factor = 1e5
+# # This sample was provided in image form at 512x512 resolution but the pixels are real measured current values
+# data_name, zoom, loc, loc1, loc2, roi = (
+#     "Si_2_256_512x512",
+#     2.5,
+#     "lower right",
+#     2,
+#     1,
+#     (322, 85, 100, 100),
+# )
+# clim = (0.0, 1.5e-5)
+# inverses_sign = True
+# R_high = 2e-5
+# R_low = -2e-6
+# # scale the photocurrent values for better numerical stability in SPGL1
+# factor = 1e5
 
 if "256x256" in data_name:
     J_order = 8  # J=8 => 2^8=256
@@ -181,9 +181,9 @@ else:
 # factor = 1e7  # to scale up the photocurrent values for better numerical stability in SPGL1
 # J_order = 8  # 2^8 x 2^8 = 256 x 256
 
-scale_eps = 1e-12
-is_out_of_distribution = True
-inverses_sign = True
+# scale_eps = 1e-12
+# is_out_of_distribution = True
+# inverses_sign = True
 
 tests_scale_ground_truth = False
 
@@ -210,8 +210,8 @@ num_trials_skip = 0
 # %%
 runs_pnp_admm = True
 if runs_pnp_admm:
-    # denoiser_name = "drunet"
-    denoiser_name = "gs_drunet"
+    denoiser_name = "drunet"
+    # denoiser_name = "gs_drunet"
     if denoiser_name == "drunet":
         with torch.device("cpu"):
             denoiser = deepinv.models.DRUNet(
@@ -228,9 +228,9 @@ if runs_pnp_admm:
     denoiser.eval()
 else:
     denoiser = None
-pnp_admm_iters = 1
+# pnp_admm_iters = 1
 # pnp_admm_iters = 20
-# pnp_admm_iters = 50
+pnp_admm_iters = 50
 # pnp_admm_iters = 100
 # pnp_admm_iters = 150
 # pnp_admm_eta = 0.00001  # Undersampling artifacts may remain if eta is too small
@@ -259,8 +259,8 @@ drunet_sigma = 0.05  # noise level for DRUNet denoiser
 
 runs_spgl1 = True
 
-# randomizing_scheme = "multilevel"
-randomizing_scheme = "uniform"
+randomizing_scheme = "multilevel"
+# randomizing_scheme = "uniform"
 
 # %% mystnb={"code_prompt_show": "Show plot helper"} tags=["hide-cell"]
 cmap_max = 0.8  # take only the lower 0-80% of afmhot, reduce brightness
@@ -459,7 +459,6 @@ def run_pcm_demo(
             f"PCM Reconstructions, J={J} ({N}x{N} image)\n"
             + f"Sample {sampling_percentage:.2f}%, keep {coarse_J} coarse levels ({in_order_measurements_percentage}% here), the rest: {randomizing_scheme} random"
         ),
-        adds_insets=adds_insets,
         saves_fig=True,
     )
 
