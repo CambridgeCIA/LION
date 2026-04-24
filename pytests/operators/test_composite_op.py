@@ -1,9 +1,9 @@
 import torch
 from LION.operators.CompositeOp import CompositeOp
-from LION.operators.Wavelet2D import Wavelet2D
-from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
 from LION.operators.multilevel_sample import multilevel_sample
-from tests.helper import dotproduct_adjointness_test
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
+from LION.operators.Wavelet2D import Wavelet2D
+from pytests.helper import dotproduct_adjointness_test
 
 
 def test_composite_op_adjointness():

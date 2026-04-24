@@ -1,9 +1,10 @@
 """Tests for the photocurrent mapping operator."""
 
 import torch
-from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
+
 from LION.operators.multilevel_sample import multilevel_sample
-from tests.helper import dotproduct_adjointness_test
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
+from pytests.helper import dotproduct_adjointness_test
 
 
 def test_pcm_autograd_op_forward_and_backward():

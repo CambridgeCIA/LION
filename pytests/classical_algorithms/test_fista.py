@@ -4,9 +4,9 @@ import pytest
 import torch
 from LION.classical_algorithms.fista import fista_l1
 from LION.operators.CompositeOp import CompositeOp
+from LION.operators.multilevel_sample import multilevel_sample
 from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
 from LION.operators.Wavelet2D import Wavelet2D
-from LION.operators.multilevel_sample import multilevel_sample
 
 
 def test_fista_l1() -> None:

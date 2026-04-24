@@ -1,15 +1,12 @@
 """Tests for computing the operator norm of operators."""
 
+import pytest
 import torch
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
-from LION.operators import (
-    Operator,
-    PhotocurrentMapOp,
-    Subsampler,
-    WalshHadamard2D,
-    Wavelet2D,
-)
+from LION.operators.Operator import Operator
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
+from LION.operators.WalshHadamard2D import WalshHadamard2D
+from LION.operators.Wavelet2D import Wavelet2D
+from LION.pcm.experiment import sample_indices
 from LION.utils.math import power_method
 
 
@@ -55,8 +52,11 @@ def test_matrix_op_operator_norm_torch():
     torch.testing.assert_close(op_norm_computed, op_norm_expected, atol=1e-6, rtol=1e-6)
 
 
+@pytest.mark.tomosipo  # Add argument `-m "not tomosipo"` to the `pytest` command line to skip this test
 def test_ct_operator_norm_torch():
     """Test with CT operator using default geometry."""
+    from LION.CTtools.ct_geometry import Geometry
+    from LION.CTtools.ct_utils import make_operator
 
     geometry = Geometry.default_parameters()
     ct_op = make_operator(geometry)
@@ -69,13 +69,16 @@ def test_ct_operator_norm_torch():
 
 def test_pcm_operator_norm_torch():
     """Test with photocurrent mapping operator with undersampling."""
-
     J = 4
     N = 1 << J  # 16x16 image
-    delta = 1.0 / 4  # subsampling factor, keep only 1/4 of measurements
-    coarseJ = J - 1
-    subsampler = Subsampler(n=N * N, delta=delta, coarseJ=coarseJ)
-    pcm_op = PhotocurrentMapOp(J=J, subsampler=subsampler)
+    sampled_indices = sample_indices(
+        j_order=J,
+        sampling_ratio=0.25,  # keep only 1/4 of measurements
+        coarse_j=J - 1,
+        randomising_scheme="uniform",
+        seed=0,
+    )
+    pcm_op = PhotocurrentMapOp(J=J, sampled_indices=sampled_indices)
 
     pcm_op_norm = power_method(pcm_op)
     pcm_op_norm_true = float(N)
@@ -86,10 +89,14 @@ def test_pcm_operator_norm_torch():
 
     J = 4
     N = 1 << J  # 16x16 image
-    delta = 1.0 / 16  # subsampling factor, keep only 1/16 of measurements
-    coarseJ = J - 1
-    subsampler = Subsampler(n=N * N, delta=delta, coarseJ=coarseJ)
-    pcm_op = PhotocurrentMapOp(J=J, subsampler=subsampler)
+    sampled_indices = sample_indices(
+        j_order=J,
+        sampling_ratio=1.0 / 16,  # keep only 1/16 of measurements
+        coarse_j=J - 2,
+        randomising_scheme="uniform",
+        seed=0,
+    )
+    pcm_op = PhotocurrentMapOp(J=J, sampled_indices=sampled_indices)
 
     pcm_op_norm = power_method(pcm_op)
     pcm_op_norm_true = float(N)
@@ -101,7 +108,6 @@ def test_pcm_operator_norm_torch():
 
 def test_wht_operator_norm_torch():
     """Test with Walsh-Hadamard Transform operator."""
-
     J = 4
     N = 1 << J  # 16x16 image
     wht_op = WalshHadamard2D(height=N, width=N)
@@ -123,7 +129,6 @@ def test_wht_operator_norm_torch():
 
 def test_wavelet_operator_norm_torch():
     """Test with Daubechies 4 wavelet transform operator."""
-
     image_shape = (16, 16)
     wavelet_op = Wavelet2D(image_shape, wavelet_name="db4")
 

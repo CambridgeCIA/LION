@@ -1,6 +1,6 @@
 import torch
 from LION.operators.Wavelet2D import Wavelet2D
-from tests.helper import dotproduct_adjointness_test
+from pytests.helper import dotproduct_adjointness_test
 
 
 def test_wavelet_db4_adjointness():

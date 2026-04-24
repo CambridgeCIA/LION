@@ -103,7 +103,7 @@ dev = ["LION[tests, docs, ci]"]
 
 # PyTest section
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["pytests"]
 filterwarnings = [
     "error",
     "ignore:Anomaly Detection has been enabled:UserWarning",                   # torch.autograd

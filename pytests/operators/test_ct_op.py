@@ -2,14 +2,16 @@
 
 import pytest
 import torch
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
-from tests.helper import dotproduct_adjointness_test
-from tomosipo.torch_support import to_autograd
+from pytests.helper import dotproduct_adjointness_test
 
 
+@pytest.mark.tomosipo  # Add argument `-m "not tomosipo"` to the `pytest` command line to skip this test
 def test_ct_autograd_op_forward_and_backward():
     """Check that to_autograd wraps the CT operator correctly and supports backprop."""
+    from LION.CTtools.ct_geometry import Geometry
+    from LION.CTtools.ct_utils import make_operator
+    from tomosipo.torch_support import to_autograd
+
     geometry = Geometry.default_parameters()
     operator = make_operator(geometry=geometry)
     autograd_operator = to_autograd(operator)
@@ -31,9 +33,13 @@ def test_ct_autograd_op_forward_and_backward():
     assert torch.isfinite(input_tensor.grad).all()
 
 
+@pytest.mark.tomosipo  # Add argument `-m "not tomosipo"` to the `pytest` command line to skip this test
 def test_ct_autograd_op_matches_original_operator():
     """Check that the autograd wrapper produces the same output as the original operator."""
     import numpy as np
+    from LION.CTtools.ct_geometry import Geometry
+    from LION.CTtools.ct_utils import make_operator
+    from tomosipo.torch_support import to_autograd
 
     geometry = Geometry.default_parameters()
     operator = make_operator(geometry=geometry)
@@ -49,8 +55,12 @@ def test_ct_autograd_op_matches_original_operator():
     np.testing.assert_allclose(output_autograd, output_np, rtol=1e-5, atol=1e-5)
 
 
+@pytest.mark.tomosipo  # Add argument `-m "not tomosipo"` to the `pytest` command line to skip this test
 def test_original_op_does_not_propagate_grad():
     """Check that the original operator output does not require gradients and backward fails."""
+    from LION.CTtools.ct_geometry import Geometry
+    from LION.CTtools.ct_utils import make_operator
+
     geometry = Geometry.default_parameters()
     operator = make_operator(geometry=geometry)
 
@@ -70,8 +80,12 @@ def test_original_op_does_not_propagate_grad():
         output_tensor.mean().backward()
 
 
+@pytest.mark.tomosipo  # Add argument `-m "not tomosipo"` to the `pytest` command line to skip this test
 def test_ct_op_adjointness():
     """Test CT operator adjoint property."""
+    from LION.CTtools.ct_geometry import Geometry
+    from LION.CTtools.ct_utils import make_operator
+
     geometry = Geometry.default_parameters()
     operator = make_operator(geometry=geometry)
 
@@ -93,7 +107,11 @@ def test_ct_op_adjointness():
     )
 
 
+@pytest.mark.tomosipo  # Add argument `-m "not tomosipo"` to the `pytest` command line to skip this test
 def test_ct_op_backward_compatibility_with_tomosipo():
+    from LION.CTtools.ct_geometry import Geometry
+    from LION.CTtools.ct_utils import make_operator
+
     geometry = Geometry.default_parameters()
     operator = make_operator(geometry=geometry)
 
