@@ -136,13 +136,13 @@ class Experiment(ABC):
         """
         super().__init__()  # Initialize parent classes.
         if experiment_params is None:
-            # Expect users to provide correct parameters as defined in `CTReconParameter`.
-            # Should fail otherwise. Good for early bug detection
-            # (compared to failing only when parameters are actually used).
             self.param: CTReconParameter = cast(
                 CTReconParameter, self.default_parameters(dataset=dataset)
             )
         else:
+            # Expect users to provide correct parameters as defined in `CTReconParameter`.
+            # Should fail otherwise. Good for early bug detection
+            # (compared to failing only when parameters are actually used).
             self.param = cast(CTReconParameter, experiment_params)
         if datafolder is not None:
             self.param.data_loader_params.folder = datafolder

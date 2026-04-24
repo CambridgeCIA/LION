@@ -13,37 +13,38 @@
 
 # You will want to import LIONParameter, as all models must save and use Parameters.
 from __future__ import annotations
+
+import pathlib
+
+# general imports
+import warnings
+
+# imports related to class organization
+from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum
 from typing import Callable, Optional
-
-from tqdm import tqdm
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
-from LION.classical_algorithms.fdk import fdk
-from LION.exceptions.exceptions import LIONSolverException, NoDataException
-from LION.utils.parameter import LIONParameter
-
-# Lionmodels
-from LION.models.LIONmodel import LIONmodel, ModelInputType
-
-# Some utils
-from LION.utils.utils import custom_format_warning
 
 # some numerical standard imports, e.g.
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
 from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
-# imports related to class organization
-from abc import ABC, abstractmethod, ABCMeta
+from LION.classical_algorithms.fdk import fdk
+from LION.CTtools.ct_geometry import Geometry
+from LION.CTtools.ct_utils import make_operator
+from LION.exceptions.exceptions import LIONSolverException, NoDataException
 
-# general imports
-import warnings
-import pathlib
+# Lionmodels
+from LION.models.LIONmodel import LIONmodel, ModelInputType
 
 # Imports for models that use grandients of themselves inside:
 from LION.models.PnP.gradient_step_denoiser import GSD
+from LION.utils.parameter import LIONParameter
+
+# Some utils
+from LION.utils.utils import custom_format_warning
 
 
 # TODO: finish this
@@ -179,7 +180,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             save_folder (str | pathlib.Path): _description_
             final_result_fname (str): _description_
 
-        Raises:
+        Raises
+        ------
             ValueError: _description_
         """
         if isinstance(save_folder, str):
@@ -224,7 +226,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             error (bool, optional): _description_. Defaults to True.
             autofill (bool, optional): _description_. Defaults to True.
 
-        Returns:
+        Returns
+        -------
             _type_: _description_
         """
         return_code = 0
@@ -432,7 +435,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         This function checks if the solver is complete, i.e. if all the necessary parameters are set to start traning.
         """
-
         return_code = 0
 
         # Set if we need to complain
@@ -700,12 +702,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if self.do_load_checkpoint:
             print("Loading checkpoint...")
             self.current_epoch = self.load_checkpoint()
-            self.train_loss = np.append(self.train_loss, np.zeros((n_epochs)))
+            self.train_loss = np.append(self.train_loss, np.zeros(n_epochs))
         else:
             self.train_loss = np.zeros(n_epochs)
 
         if self.check_validation_ready() == 0:
-            self.validation_loss = np.zeros((n_epochs))
+            self.validation_loss = np.zeros(n_epochs)
         if self.validation_loader is None:
             self.validation_loss = None
 
@@ -786,4 +788,3 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         This function should perform a single step of the optimization and return the loss
         """
-        pass

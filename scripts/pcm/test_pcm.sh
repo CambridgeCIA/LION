@@ -1,0 +1,12 @@
+python -m scripts.pcm.photocurrent_mapping \
+    --preset cigs_example_256x256  \
+    --runtime.num-trials 1 --runtime.num-trials-skip 0 \
+    --sampling.randomising-scheme 'uniform' \
+    --sampling.sampling-ratios 0.2 \
+    --pnp.denoiser-name 'gs_drunet' \
+    --pnp.iters 1 \
+    --spgl1.no-enabled \
+    --plot.roi 150 140 40 40 --plot.loc 'upper left' --plot.loc1 3 --plot.loc2 4 \
+    --data.data-dir '../pdo/data/photocurrent_data' \
+    --runtime.root-output-dir '../pdo' \
+    --runtime.device mps
