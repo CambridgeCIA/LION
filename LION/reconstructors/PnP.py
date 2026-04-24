@@ -8,10 +8,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-# from LION.classical_algorithms.fdk import fdk
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
-from LION.CTtools.ct_geometry import Geometry
-from LION.operators.Operator import Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
 
@@ -19,7 +16,7 @@ from LION.utils.math import power_method
 class PnP(LIONReconstructor):
     def __init__(
         self,
-        physics: Geometry | Operator,
+        physics,
         prior_fn: Callable[[torch.Tensor], torch.Tensor],
         default_algorithm: Literal["ADMM", "HQS", "FBS"] = "ADMM",
     ):
@@ -116,6 +113,8 @@ class PnP(LIONReconstructor):
         :param max_iter: Maximum number of iterations.
         :return: Reconstructed image tensor.
         """
+        from LION.classical_algorithms.fdk import fdk
+
         if noise_level is not None:
             print("Warning: ignoring value of mu, estimating from noise_level")
             sigma = noise_level

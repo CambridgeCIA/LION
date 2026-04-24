@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Callable
 import math
+from typing import Callable
 
 import torch
-from tqdm import tqdm
 
-from LION.operators import Operator
+from LION.operators.Operator import Operator
 from LION.utils.math import power_method
 
 
