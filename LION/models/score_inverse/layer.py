@@ -103,18 +103,29 @@ class SelfAttn(nn.Module):
         self.w_v = Conv1x1(ch, ch, init_scale=0.1)
         self.w_h = Conv1x1(ch, ch, init_scale=init_scale)
     
-    def forward(self, x):
+    def forward(self, x, use_einsum=True):
         B, C, H, W = x.shape
-        h = self.norm(x)
-        q = self.w_q(h)
-        k = self.w_k(h)
-        v = self.w_v(h)
+        N = H * W
         
-        w = torch.einsum('bchw,bcHW->bhwHW', q, k) / math.sqrt(C)
-        w = w.view(B, H, W, H * W)
-        w = F.softmax(w, dim=-1)
-        w = w.view(B, H, W, H, W)
-        h = torch.einsum('bhwHW,bcHW->bchw', w, v)
+        h = self.norm(x)
+        if use_einsum:
+            q = self.w_q(h)
+            k = self.w_k(h)
+            v = self.w_v(h)
+            w = torch.einsum('bchw,bcHW->bhwHW', q, k) / math.sqrt(C)
+            w = w.view(B, H, W, N)
+            w = F.softmax(w, dim=-1)
+            w = w.view(B, H, W, H, W)
+            h = torch.einsum('bhwHW,bcHW->bchw', w, v)
+        else:
+            q_t = self.w_q(h).reshape(B, C, N).transpose(1, 2).contiguous()  # (B, N, C)
+            k = self.w_k(h).reshape(B, C, N).contiguous()  # (B, C, N)
+            v_t = self.w_v(h).reshape(B, C, N).transpose(1, 2).contiguous()  # (B, N, C)
+            w = torch.bmm(q_t, k) / math.sqrt(C)  # (B, N, N)
+            w = F.softmax(w, dim=-1)  # (B, N, N)
+            h_t = torch.bmm(w, v_t)  # (B, N, C)
+            h = h_t.transpose(1, 2).contiguous().reshape(B, C, H, W)  # (B, C, H, W)
+        
         h = self.w_h(h)
         if not self.skip_rescale:
             return x + h

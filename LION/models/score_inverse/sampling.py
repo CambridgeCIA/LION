@@ -16,6 +16,7 @@ References
 
 from abc import ABC, abstractmethod
 import torch
+from torch.linalg import vector_norm
 from .sde import SimpleForwardSDE, SimpleReverseSDE, VESDE
 import math
 
@@ -116,14 +117,14 @@ class LangevinDynamics(Corrector):
         for _ in range(self.M):
             z = torch.randn_like(x)
             g = self.score_fn(x, t)
-            z_norm = z.norm(dim=tuple(range(1, len(x.shape))), keepdim=True)
+            z_norm = vector_norm(z, dim=tuple(range(1, len(x.shape))), keepdim=True)
             z_norm_mean = z_norm.mean() # Appendix G in [Song2021] suggests using the mean across the minibatch.
-            g_norm = g.norm(dim=tuple(range(1, len(x.shape))), keepdim=True)
+            g_norm = vector_norm(g, dim=tuple(range(1, len(x.shape))), keepdim=True)
             eps = 2 * (self.snr * z_norm_mean / g_norm) ** 2
             x = x + eps * g + torch.sqrt(2 * eps) * z
         return x
 
-def pc_sampler(x: torch.Tensor, predictor: Predictor, corrector: Corrector):
+def pc_sampler(x: torch.Tensor, predictor: Predictor, corrector: Corrector, verbose=False, verbose_freq=10):
     """
     Predictor-corrector sampler for solving the reverse-time SDE. Algorithm 1 in [Song2021].
 
@@ -131,11 +132,14 @@ def pc_sampler(x: torch.Tensor, predictor: Predictor, corrector: Corrector):
         x: torch.Tensor of shape (batch_size, ...) representing the initial solution at time 1.
         predictor (Predictor): the predictor for estimating the solution of the reverse-time SDE at the next time step.
         corrector (Corrector): the corrector for correcting the marginal distribution of the estimated samples.
-
+        verbose (bool): whether to print verbose output.
+        verbose_freq (int): the frequency of verbose output.
     Returns:
         torch.Tensor of shape (batch_size, ...) representing the final solution at time 0.
     """
     for i in range(predictor.N):
+        if verbose and i % verbose_freq == 0:
+            print(f"Step {i}/{predictor.N}")
         t = torch.tensor(1.0 - i / predictor.N, device=x.device).expand(x.shape[0])
         x, x_mean = predictor.step(x, t)
         x = corrector.correct(x, t - 1 / predictor.N)

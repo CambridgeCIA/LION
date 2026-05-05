@@ -14,6 +14,7 @@ References
    Generative Models." ICLR. https://openreview.net/forum?id=vaRCHVj0uGI
 """
 
+from typing import Optional
 import torch
 import torch.nn as nn
 from .sde import SimpleForwardSDE
@@ -35,18 +36,19 @@ class SMLoss(nn.Module):
         self.eps = eps
 
 
-    def forward(self, x0: torch.Tensor):
+    def forward(self, x0: torch.Tensor, generator: Optional[torch.Generator] = None):
         """
         Compute the loss for training the score-based model.
 
         Args:
             x0: torch.Tensor of shape (batch_size, ...). A batch of data samples.
+            generator: Optional torch.Generator for deterministic randomness.
 
         Returns:
             torch.Tensor: the computed loss.
         """
-        t = torch.rand(x0.shape[0], device=x0.device) * (1. - self.eps) + self.eps
-        z = torch.randn_like(x0)
+        t = torch.rand(x0.shape[0], device=x0.device, generator=generator) * (1. - self.eps) + self.eps
+        z = torch.randn_like(x0, generator=generator)
         alpha_t, beta_t = self.sde.transition_dist(x0, t)
         xt = alpha_t * x0 + beta_t * z
         score_pred = self.score_fn(xt, t)
