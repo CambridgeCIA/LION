@@ -84,7 +84,7 @@ class SimpleForwardSDE(SDE):
         return self.f(t).view(-1, *[1] * (len(x.shape) - 1)) * x
     
     def diffusion_coeff(self, x, t):
-        return self.g(t).view(-1, *[1] * (len(x.shape) - 1))
+        return self.g(t).view(-1, *[1] * (len(x.shape) - 1)).to(x.device)
 
     @property
     @abstractmethod
@@ -143,8 +143,8 @@ class SimpleForwardSDE(SDE):
             x: torch.Tensor of shape (batch_size, ...).
             t: torch.Tensor of shape (batch_size,).
         """
-        alpha_t = self.alpha(t).view(-1, *[1] * (len(x.shape) - 1))
-        beta_t = self.beta(t).view(-1, *[1] * (len(x.shape) - 1))
+        alpha_t = self.alpha(t).view(-1, *[1] * (len(x.shape) - 1)).to(x.device)
+        beta_t = self.beta(t).view(-1, *[1] * (len(x.shape) - 1)).to(x.device)
         return alpha_t, beta_t
 
     def sample_transition(self, x: torch.Tensor, t: torch.Tensor):
@@ -202,18 +202,18 @@ class VESDE(SimpleForwardSDE):
         self.sigma_min = sigma_min
         self.sigma_max = sigma_max
 
-    def f(self, t: torch.Tensor, **kwargs):
+    def f(self, t: torch.Tensor):
         return torch.zeros_like(t)
 
-    def g(self, t: torch.Tensor, **kwargs):
+    def g(self, t: torch.Tensor):
         return self.sigma_min * (self.sigma_max / self.sigma_min)**t * math.sqrt(2 * (np.log(self.sigma_max) - np.log(self.sigma_min)))
     
     @property
-    def noise_std(self, **kwargs):
+    def noise_std(self):
         return self.sigma_max
     
-    def alpha(self, t: torch.Tensor, **kwargs):
+    def alpha(self, t: torch.Tensor):
         return torch.ones_like(t)
     
-    def beta(self, t: torch.Tensor, **kwargs):
+    def beta(self, t: torch.Tensor):
         return self.sigma_min * (self.sigma_max / self.sigma_min)**t

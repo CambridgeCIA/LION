@@ -72,8 +72,9 @@ class ReverseDiffusionVE(Predictor):
     def step(self, x: torch.Tensor, t: torch.Tensor):
         dt = 1.0 / self.N
         sigma = self.sde.beta(t)
-        sigma_next = self.sde.beta(torch.clamp(t - dt, min=0))
+        sigma_next = self.sde.beta(torch.clamp(t - dt, min=0.0))
         var_diff = (sigma**2 - sigma_next**2).view(-1, *([1] * (len(x.shape) - 1)))
+        var_diff = torch.clamp(var_diff, min=0.0) # to prevent numerical issues
         x_mean = x + var_diff * self.score_fn(x, t)
         x_next = x_mean + torch.sqrt(var_diff) * torch.randn_like(x)
         return x_next, x_mean
@@ -83,17 +84,15 @@ class Corrector(ABC):
     """
     A score-based MCMC that corrects the marginal distribution of the estimated samples. [Song2021]
     """
-    def __init__(self, score_fn: callable, M: int, snr: float):
+    def __init__(self, score_fn: callable, M: int):
         """
         Args:
             score_fn (callable): a function that takes in x and t and outputs the score function.
             M (int): number of MCMC steps.
-            eps (float): the step size for the MCMC.
         """
         super().__init__()
         self.score_fn = score_fn
         self.M = M
-        self.snr = snr
 
     @abstractmethod
     def correct(self, x: torch.Tensor, t: torch.Tensor):
@@ -113,6 +112,16 @@ class LangevinDynamics(Corrector):
     """
     Langevin dynamics corrector for VESDE. Algorithm 4 in [Song2021].
     """
+    def __init__(self, score_fn: callable, M: int, snr: float):
+        """
+        Args:
+            score_fn (callable): a function that takes in x and t and outputs the score function.
+            M (int): number of MCMC steps.
+            snr (float): parameter that controls the step size of Langevin dynamics. See Appendix G in [Song2021] for details.
+        """
+        super().__init__(score_fn, M)
+        self.snr = snr
+        
     def correct(self, x: torch.Tensor, t: torch.Tensor):
         for _ in range(self.M):
             z = torch.randn_like(x)
@@ -120,11 +129,12 @@ class LangevinDynamics(Corrector):
             z_norm = vector_norm(z, dim=tuple(range(1, len(x.shape))), keepdim=True)
             z_norm_mean = z_norm.mean() # Appendix G in [Song2021] suggests using the mean across the minibatch.
             g_norm = vector_norm(g, dim=tuple(range(1, len(x.shape))), keepdim=True)
+            g_norm = torch.clamp(g_norm, min=1e-10) # to prevent division by zero
             eps = 2 * (self.snr * z_norm_mean / g_norm) ** 2
             x = x + eps * g + torch.sqrt(2 * eps) * z
         return x
 
-def pc_sampler(x: torch.Tensor, predictor: Predictor, corrector: Corrector, verbose=False, verbose_freq=10):
+def pc_sampler(x: torch.Tensor, predictor: Predictor, corrector: Corrector, hijack=None, verbose=False, verbose_freq=10):
     """
     Predictor-corrector sampler for solving the reverse-time SDE. Algorithm 1 in [Song2021].
 
@@ -132,6 +142,7 @@ def pc_sampler(x: torch.Tensor, predictor: Predictor, corrector: Corrector, verb
         x: torch.Tensor of shape (batch_size, ...) representing the initial solution at time 1.
         predictor (Predictor): the predictor for estimating the solution of the reverse-time SDE at the next time step.
         corrector (Corrector): the corrector for correcting the marginal distribution of the estimated samples.
+        hijack (callable, optional): a function that takes in x and t and outputs the hijacked solution at time t before application of predictor.
         verbose (bool): whether to print verbose output.
         verbose_freq (int): the frequency of verbose output.
     Returns:
@@ -141,6 +152,8 @@ def pc_sampler(x: torch.Tensor, predictor: Predictor, corrector: Corrector, verb
         if verbose and i % verbose_freq == 0:
             print(f"Step {i}/{predictor.N}")
         t = torch.tensor(1.0 - i / predictor.N, device=x.device).expand(x.shape[0])
+        if hijack is not None:
+            x = hijack(x, t)
         x, x_mean = predictor.step(x, t)
         x = corrector.correct(x, t - 1 / predictor.N)
     return x_mean
