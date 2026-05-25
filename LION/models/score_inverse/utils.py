@@ -25,9 +25,17 @@ def load_checkpoint_eval(path, model, ema, device):
     Returns:
         dict: The checkpoint dictionary containing the loaded state.
     """
-    ckpt = torch.load(path)
+    ckpt = torch.load(path, map_location=device)
     model.load_state_dict(ckpt['model_state_dict'])
     ema.load_state_dict(ckpt['ema_state_dict'])
     ema.apply_shadow()
     model.to(device)
     return ckpt
+
+def batch_apply(fn):
+    """
+    Apply a function to each element in a batch.
+    """
+    def batched_fn(x, *args, **kwargs):
+        return torch.stack([fn(x_i, *args, **kwargs) for x_i in x.unbind(0)], dim=0)
+    return batched_fn
