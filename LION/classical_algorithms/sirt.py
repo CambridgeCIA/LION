@@ -33,7 +33,7 @@ def sirt(
     for i in range(B):
         sub_recon = ts_sirt(
             op,
-            sino,
+            sino[i],
             num_iterations,
             min_constraint,
             max_constraint,

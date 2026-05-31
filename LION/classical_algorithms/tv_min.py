@@ -30,7 +30,7 @@ def tv_min(
     recon = sino.new_zeros(B, *op.domain_shape)
     for i in range(B):
         sub_recon = ts_tv_min(
-            op, sino, lam, num_iterations, L, non_negativity, progress_bar, callbacks
+            op, sino[i], lam, num_iterations, L, non_negativity, progress_bar, callbacks
         )
         recon[i] = sub_recon
     return recon
