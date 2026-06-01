@@ -461,8 +461,17 @@ class LIDC_IDRI(Dataset):
         return slice_index_to_patient_id_list
 
     def get_reconstruction_tensor(self, file_path: pathlib.Path) -> torch.Tensor:
-        tensor = torch.from_numpy(np.load(file_path)).unsqueeze(0).to(self.device)
-        return tensor
+        loaded_tensor = torch.from_numpy(np.load(file_path)).cpu()
+        if self.params.geometry.image_scaling != 1.0:
+            loaded_tensor = torch.nn.functional.interpolate(
+                loaded_tensor.unsqueeze(0).unsqueeze(0).float(),
+                size=tuple(self.params.geometry.image_shape[1:]),
+                mode="bilinear",
+                align_corners=False,
+            ).squeeze(0)
+        else:
+            loaded_tensor = loaded_tensor.unsqueeze(0)
+        return loaded_tensor.to(self.device)
 
     def set_sinogram_transform(self, sinogram_transform):
         self.sinogram_transform = sinogram_transform
@@ -524,6 +533,16 @@ class LIDC_IDRI(Dataset):
 
         except KeyError:
             mask = torch.zeros((512, 512), dtype=torch.bool)
+
+        if self.params.geometry.image_scaling != 1.0:
+            mask = resize(
+                mask,
+                (
+                    self.params.geometry.image_shape[1],
+                    self.params.geometry.image_shape[2],
+                ),
+                order=0,
+            ).astype(bool)
         # byte inversion
         background = ~mask
         return torch.stack((background, mask))

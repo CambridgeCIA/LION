@@ -20,13 +20,21 @@ from LION.data_loaders.deteCT import deteCT
 
 
 class Experiment(ABC):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+    def __init__(
+        self,
+        experiment_params=None,
+        dataset="LIDC-IDRI",
+        datafolder=None,
+        image_scaling=1.0,
+    ):
 
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
         self.experiment_params = experiment_params
         if experiment_params is None:
-            self.experiment_params = self.default_parameters(dataset=dataset)
+            self.experiment_params = self.default_parameters(
+                dataset=dataset, image_scaling=image_scaling
+            )
         else:
             self.experiment_params = experiment_params
         self.param = self.experiment_params
@@ -98,15 +106,21 @@ class Experiment(ABC):
 
 
 class ExtremeLowDoseCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
-        super().__init__(experiment_params, dataset, datafolder)
+    def __init__(
+        self,
+        experiment_params=None,
+        dataset="LIDC-IDRI",
+        datafolder=None,
+        image_scaling=1.0,
+    ):
+        super().__init__(experiment_params, dataset, datafolder, image_scaling)
 
     @staticmethod
-    def default_parameters(dataset="LIDC-IDRI"):
+    def default_parameters(dataset="LIDC-IDRI", image_scaling=1.0):
         param = LIONParameter()
         param.name = "Extremely low dose full angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.default_parameters()
+        param.geometry = ctgeo.Geometry.default_parameters(image_scaling=image_scaling)
         # Parameters for the noise in the sinogram.
         # Default, 10% of clinical dose.
         param.noise_params = LIONParameter()
@@ -120,16 +134,23 @@ class ExtremeLowDoseCTRecon(Experiment):
 
 
 class LowDoseCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+    def __init__(
+        self,
+        experiment_params=None,
+        dataset="LIDC-IDRI",
+        datafolder=None,
+        image_scaling=1.0,
+    ):
 
-        super().__init__(experiment_params, dataset, datafolder)
+        super().__init__(experiment_params, dataset, datafolder, image_scaling)
 
     @staticmethod
-    def default_parameters(dataset="LIDC-IDRI"):
+    def default_parameters(dataset="LIDC-IDRI", image_scaling=1.0):
         param = LIONParameter()
         param.name = "Low dose full angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.default_parameters()
+        param.geometry = ctgeo.Geometry.default_parameters(image_scaling=image_scaling)
+        print("LDCTRecon", param.geometry)
         # Parameters for the noise in the sinogram.
         # Default, 10% of clinical dose.
         param.noise_params = LIONParameter()
@@ -144,15 +165,23 @@ class LowDoseCTRecon(Experiment):
 
 
 class LimitedAngleCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
-        super().__init__(experiment_params, dataset, datafolder)
+    def __init__(
+        self,
+        experiment_params=None,
+        dataset="LIDC-IDRI",
+        datafolder=None,
+        image_scaling=1.0,
+    ):
+        super().__init__(experiment_params, dataset, datafolder, image_scaling)
 
     @staticmethod
-    def default_parameters(dataset="LIDC-IDRI"):
+    def default_parameters(dataset="LIDC-IDRI", image_scaling=1.0):
         param = LIONParameter()
         param.name = "Clinical dose limited angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_angle_parameters()
+        param.geometry = ctgeo.Geometry.sparse_angle_parameters(
+            image_scaling=image_scaling
+        )
         # Parameters for the noise in the sinogram.
         # Default, 50% of clinical dose.
         param.noise_params = LIONParameter()
@@ -167,15 +196,23 @@ class LimitedAngleCTRecon(Experiment):
 
 
 class LimitedAngleLowDoseCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
-        super().__init__(experiment_params, dataset, datafolder)
+    def __init__(
+        self,
+        experiment_params=None,
+        dataset="LIDC-IDRI",
+        datafolder=None,
+        image_scaling=1.0,
+    ):
+        super().__init__(experiment_params, dataset, datafolder, image_scaling)
 
     @staticmethod
-    def default_parameters(dataset="LIDC-IDRI"):
+    def default_parameters(dataset="LIDC-IDRI", image_scaling=1.0):
         param = LIONParameter()
         param.name = "Clinical dose limited angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_angle_parameters()
+        param.geometry = ctgeo.Geometry.sparse_angle_parameters(
+            image_scaling=image_scaling
+        )
         # Parameters for the noise in the sinogram.
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 3500
@@ -194,15 +231,23 @@ class LimitedAngleLowDoseCTRecon(Experiment):
 
 
 class LimitedAngleExtremeLowDoseCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
-        super().__init__(experiment_params, dataset, datafolder)
+    def __init__(
+        self,
+        experiment_params=None,
+        dataset="LIDC-IDRI",
+        datafolder=None,
+        image_scaling=1.0,
+    ):
+        super().__init__(experiment_params, dataset, datafolder, image_scaling)
 
     @staticmethod
-    def default_parameters(dataset="LIDC-IDRI"):
+    def default_parameters(dataset="LIDC-IDRI", image_scaling=1.0):
         param = LIONParameter()
         param.name = "Clinical dose limited angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_angle_parameters()
+        param.geometry = ctgeo.Geometry.sparse_angle_parameters(
+            image_scaling=image_scaling
+        )
         # Parameters for the noise in the sinogram.
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 1000
@@ -221,15 +266,23 @@ class LimitedAngleExtremeLowDoseCTRecon(Experiment):
 
 
 class SparseAngleCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
-        super().__init__(experiment_params, dataset, datafolder)
+    def __init__(
+        self,
+        experiment_params=None,
+        dataset="LIDC-IDRI",
+        datafolder=None,
+        image_scaling=1.0,
+    ):
+        super().__init__(experiment_params, dataset, datafolder, image_scaling)
 
     @staticmethod
-    def default_parameters(dataset="LIDC-IDRI"):
+    def default_parameters(dataset="LIDC-IDRI", image_scaling=1.0):
         param = LIONParameter()
         param.name = "Clinical dose sparse angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_view_parameters()
+        param.geometry = ctgeo.Geometry.sparse_view_parameters(
+            image_scaling=image_scaling
+        )
         # Parameters for the noise in the sinogram.
         # Default, 50% of clinical dose.
         param.noise_params = LIONParameter()
@@ -245,15 +298,23 @@ class SparseAngleCTRecon(Experiment):
 
 
 class SparseAngleLowDoseCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
-        super().__init__(experiment_params, dataset, datafolder)
+    def __init__(
+        self,
+        experiment_params=None,
+        dataset="LIDC-IDRI",
+        datafolder=None,
+        image_scaling=1.0,
+    ):
+        super().__init__(experiment_params, dataset, datafolder, image_scaling)
 
     @staticmethod
-    def default_parameters(dataset="LIDC-IDRI"):
+    def default_parameters(dataset="LIDC-IDRI", image_scaling=1.0):
         param = LIONParameter()
         param.name = "Clinical dose sparse angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_view_parameters()
+        param.geometry = ctgeo.Geometry.sparse_view_parameters(
+            image_scaling=image_scaling
+        )
         # Parameters for the noise in the sinogram.
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 3500
@@ -272,15 +333,23 @@ class SparseAngleLowDoseCTRecon(Experiment):
 
 
 class SparseAngleExtremeLowDoseCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
-        super().__init__(experiment_params, dataset, datafolder)
+    def __init__(
+        self,
+        experiment_params=None,
+        dataset="LIDC-IDRI",
+        datafolder=None,
+        image_scaling=1.0,
+    ):
+        super().__init__(experiment_params, dataset, datafolder, image_scaling)
 
     @staticmethod
-    def default_parameters(dataset="LIDC-IDRI"):
+    def default_parameters(dataset="LIDC-IDRI", image_scaling=1.0):
         param = LIONParameter()
         param.name = "Clinical dose sparse angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_view_parameters()
+        param.geometry = ctgeo.Geometry.sparse_view_parameters(
+            image_scaling=image_scaling
+        )
         # Parameters for the noise in the sinogram.
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 1000
@@ -299,15 +368,21 @@ class SparseAngleExtremeLowDoseCTRecon(Experiment):
 
 
 class clinicalCTRecon(Experiment):
-    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
-        super().__init__(experiment_params, dataset, datafolder)
+    def __init__(
+        self,
+        experiment_params=None,
+        dataset="LIDC-IDRI",
+        datafolder=None,
+        image_scaling=1.0,
+    ):
+        super().__init__(experiment_params, dataset, datafolder, image_scaling)
 
     @staticmethod
-    def default_parameters(dataset="LIDC-IDRI"):
+    def default_parameters(dataset="LIDC-IDRI", image_scaling=1.0):
         param = LIONParameter()
         param.name = "Clinical dose full angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.default_parameters()
+        param.geometry = ctgeo.Geometry.default_parameters(image_scaling=image_scaling)
         # Parameters for the noise in the sinogram.
         # Default, 50% of clinical dose.
         param.noise_params = LIONParameter()
