@@ -1,5 +1,5 @@
 """
-This module implements the Fourier Slice Theorem-based Radon transform for sparse-view CT reconstruction, which is not mentioned in [Song2022] but is present in the codebase of it (in `score_inverse_problems/cs.py` and its dependencies). This implementation is adapted from the original codebase of [Song2022] and corrected for consistency with LION's CT geometry.
+This module implements the Fourier Slice Theorem-based Radon transform for sparse-view CT reconstruction, which is not mentioned in [Song2022] but is present in the codebase of it (in `score_inverse_problems/cs.py` and its dependencies). This implementation is adapted from the original codebase of [Song2022] and corrected for consistency with LION's parallel-beam CT geometry.
 
 Author: Tianzhen Peng
 
@@ -12,7 +12,9 @@ References
 
 import math
 import torch
-import torch.fft
+import torch.fft as fft
+from LION.CTtools.ct_geometry import Geometry
+import numpy as np
 
 def expand_diameter(diameter: int, K: float):
     """
@@ -31,21 +33,23 @@ def expand_diameter(diameter: int, K: float):
     return expanded_diameter
 
 
-def kspace_coords(expanded_diameter: int, n_angles: int):
+def kspace_coords(expanded_diameter: int, angles: torch.Tensor):
     """
     Generate 2D coordinates that map the 1D Fourier transformed sinograms to their k-space locations, according to the Fourier Slice Theorem. Rounded to the nearest integer.
 
     Args:
         expanded_diameter: int. The diameter of the expanded k-space grid. Must be even.
-        n_angles: int. The number of projection angles.
+        angles: torch.Tensor of shape (n_angles,). The projection angles. Must be in the range [0, pi).
 
     Returns:
         kx (torch.Tensor of shape (n_angles, expanded_diameter)): The horizontal indices.
         ky (torch.Tensor of shape (n_angles, expanded_diameter)): The vertical indices.
     """
-    r = torch.arange(expanded_diameter, dtype=torch.float64) - expanded_diameter // 2
-    a = torch.arange(n_angles, dtype=torch.float64) * (math.pi / n_angles)
-    r_grid, a_grid = torch.meshgrid(r, a, indexing='xy')
+    assert expanded_diameter % 2 == 0, "Expanded diameter must be even."
+    assert angles.min() >= 0 and angles.max() < math.pi, "Angles must be in the range [0, pi)."
+    r = torch.arange(expanded_diameter, dtype=torch.float64, device=angles.device) - expanded_diameter // 2
+    angles = angles.to(r.dtype)
+    r_grid, a_grid = torch.meshgrid(r, angles, indexing='xy')
     
     x = torch.round(r_grid * torch.cos(a_grid)) % expanded_diameter
     y = torch.round(r_grid * torch.sin(a_grid)) % expanded_diameter
@@ -83,52 +87,59 @@ def resize(input_tensor: torch.Tensor, oshape: tuple):
     return output
 
 
-class FSTRadon(torch.nn.Module):
+class FSTRadon():
     """
-    Fourier Slice Theorem Radon transform.
+    Fourier Slice Theorem Radon transform. Accepts parallel-beam geometry, but image_size and detector_size are ignored and treated as equal to image_shape and detector_shape, respectively. Also, image_pos has to be at the origin.
     """
-    def __init__(self, size: int, n_angles: int, expansion: int = 6, device: str = 'cuda'):
+    def __init__(self, geo: Geometry, expansion: float = 6, device: str = 'cuda' if torch.cuda.is_available() else 'cpu'):
         """
+        Initialize the FST Radon transform module. 
+        
         Args:
-            size: int. The spatial resolution of the square image (e.g. 512).
-            n_angles: int. The number of sparse-view projection angles.
-            expansion: int. The expansion factor for k-space.
+            geo: Geometry. The geometry object containing the image and projection parameters. The angles in the geometry must be in the range [0, pi) and the number of detectors must be at least sqrt(2) times the max of image size.
+            expansion: float. The expansion factor for k-space.
             device: str. The target device to cache the grids and masks on.
+        
+        Attributes:
+            geo: Geometry. The geometry object containing the image and projection parameters.
+            shape: tuple. The spatial image size (height, width).
+            device: torch.device. The target device for computation.
+            n_detectors: int. The number of detectors in the sinogram.
+            expanded_diameter: int. The diameter of the expanded k-space grid.
         """
-        super().__init__()
-        self.size = size
-        self.n_angles = n_angles
-        self.expansion = expansion
+        assert geo.mode == "parallel", "FSTRadon currently only supports parallel-beam geometry."
+        assert geo.image_pos is None or np.allclose(geo.image_pos[-2:], 0.0), "FSTRadon currently only supports images centered at the origin."
+        self.geo = geo
+        self.shape = geo.image_shape[-2:]
         self.device = torch.device(device)
         
         # Expanded k-space diameter
-        self.diameter = int(math.ceil(math.sqrt(2) * size))
-        self.expanded_diameter = expand_diameter(self.diameter, expansion)
+        self.n_detectors = geo.detector_shape[-1]
+        assert self.n_detectors >= max(self.shape) * math.sqrt(2), "The number of detectors must be at least sqrt(2) times the max of image size."
+        self.expanded_diameter = expand_diameter(self.n_detectors, expansion)
         
         # Precompute true coordinate grids and place on device during buffer registration
-        kx, ky = kspace_coords(self.expanded_diameter, n_angles)
-        self.register_buffer('kx', kx.to(self.device))
-        self.register_buffer('ky', ky.to(self.device))
+        kx, ky = kspace_coords(self.expanded_diameter, torch.from_numpy(geo.angles))
+        self.kx = kx.to(self.device)
+        self.ky = ky.to(self.device)
         
         # Mask for the k-space locations corresponding to the radial lines of the Fourier transformed sinogram. This corresponds to $Lambda$ in Chapter 3.1 of [Song2022].
-        mask = torch.zeros((self.expanded_diameter, self.expanded_diameter), device=self.device)
-        mask[self.ky, self.kx] = 1.0
-        self.register_buffer('mask', mask.unsqueeze(0).unsqueeze(0))
+        self.mask = torch.zeros((self.expanded_diameter, self.expanded_diameter), device=self.device)
+        self.mask[self.ky, self.kx] = 1.0
 
     def image_to_kspace(self, image: torch.Tensor):
         """
         Map a spatial image to a 2D Cartesian k-space grid. This corresponds to $T$ in Chapter 3.1 of [Song2022].
 
         Args:
-            image: torch.Tensor of shape (batch_size, channels, size, size). The spatial image.
+            image: torch.Tensor of shape (batch_size, channels, shape[0], shape[1]). The spatial image.
 
         Returns:
             torch.Tensor of shape (batch_size, channels, expanded_diameter, expanded_diameter): The 2D Fourier representation.
         """
-        image_pad = resize(image, (self.diameter, self.diameter))
-        image_resized = resize(image_pad, (self.expanded_diameter, self.expanded_diameter))
-        image_shifted = torch.fft.ifftshift(image_resized, dim=(-2, -1))
-        return torch.fft.fft2(image_shifted, dim=(-2, -1))
+        image_padded = resize(image, (self.n_detectors, self.n_detectors))
+        image_expanded = resize(image_padded, (self.expanded_diameter, self.expanded_diameter))
+        return fft.fft2(fft.ifftshift(image_expanded, dim=(-2, -1)), dim=(-2, -1))
 
     def kspace_to_image(self, kspace: torch.Tensor):
         """
@@ -138,11 +149,11 @@ class FSTRadon(torch.nn.Module):
             kspace: torch.Tensor of shape (batch_size, channels, expanded_diameter, expanded_diameter). The 2D Fourier representation.
 
         Returns:
-            torch.Tensor of shape (batch_size, channels, size, size): The reconstructed spatial image.
+            torch.Tensor of shape (batch_size, channels, shape[0], shape[1]): The reconstructed spatial image.
         """
-        image = torch.fft.fftshift(torch.fft.ifft2(kspace, dim=(-2, -1)), dim=(-2, -1))
-        image_resized = resize(image, (self.diameter, self.diameter))
-        return resize(image_resized.real, (self.size, self.size))
+        image_expanded = fft.fftshift(fft.ifft2(kspace, dim=(-2, -1)), dim=(-2, -1))
+        image_padded = resize(image_expanded, (self.n_detectors, self.n_detectors))
+        return resize(image_padded.real, self.shape)
 
     def sino_to_kspace(self, sino: torch.Tensor):
         """
@@ -154,31 +165,24 @@ class FSTRadon(torch.nn.Module):
         Returns:
             torch.Tensor of shape (batch_size, channels, expanded_diameter, expanded_diameter): The planted 2D Cartesian k-space grid.
         """
-        sino_resized = resize(sino, (self.n_angles, self.expanded_diameter))
-        
-        # Core plant operator utilizing vectorized indexing
-        sino_shifted = torch.fft.ifftshift(sino_resized, dim=-1)
-        slices = torch.fft.fft(sino_shifted, dim=-1)
-        slices = torch.fft.fftshift(slices, dim=-1)
+        sino_expanded = resize(sino, (sino.shape[-2], self.expanded_diameter))
+        sino_ft = fft.fftshift(fft.fft(fft.ifftshift(sino_expanded, dim=-1), dim=-1), dim=-1)
         
         kspace_shape = list(sino.shape[:-2]) + [self.expanded_diameter, self.expanded_diameter]
         kspace = torch.zeros(kspace_shape, dtype=torch.complex64, device=sino.device)
-        kspace[..., self.ky, self.kx] = slices
+        kspace[..., self.ky, self.kx] = sino_ft
         return kspace
 
-    def kspace_to_sino(self, kspace: torch.Tensor, n_detectors: int):
+    def kspace_to_sino(self, kspace: torch.Tensor):
         """
         Extract 1D radial slices from 2D k-space and convert them to a spatial sinogram. This is the inverse of ``sino_to_kspace``.
 
         Args:
             kspace: torch.Tensor of shape (batch_size, channels, expanded_diameter, expanded_diameter). The Cartesian k-space grid.
-            n_detectors: int. The target spatial detector width.
 
         Returns:
             torch.Tensor of shape (batch_size, channels, n_angles, n_detectors): The reconstructed spatial parallel sinogram.
         """
-        slices = kspace[..., self.ky, self.kx]
-        slices_shifted = torch.fft.ifftshift(slices, dim=-1)
-        sino_shifted = torch.fft.ifft(slices_shifted, dim=-1)
-        sino_resized = torch.fft.fftshift(sino_shifted, dim=-1).real
-        return resize(sino_resized, (self.n_angles, n_detectors))
+        sino_ft = kspace[..., self.ky, self.kx]
+        sino_expanded = fft.fftshift(fft.ifft(fft.ifftshift(sino_ft, dim=-1), dim=-1), dim=-1).real
+        return resize(sino_expanded, (sino_expanded.shape[-2], self.n_detectors))
