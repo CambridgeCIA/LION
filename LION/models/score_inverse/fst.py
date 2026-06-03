@@ -70,9 +70,6 @@ def resize(input_tensor: torch.Tensor, oshape: tuple):
     in_h, in_w = input_tensor.shape[-2:]
     out_h, out_w = oshape[0], oshape[1]
     
-    if in_h == out_h and in_w == out_w:
-        return input_tensor
-        
     ishift_h = max(in_h // 2 - out_h // 2, 0)
     ishift_w = max(in_w // 2 - out_w // 2, 0)
     
@@ -82,8 +79,9 @@ def resize(input_tensor: torch.Tensor, oshape: tuple):
     copy_h = min(in_h - ishift_h, out_h - oshift_h)
     copy_w = min(in_w - ishift_w, out_w - oshift_w)
     
-    output = torch.zeros(list(input_tensor.shape[:-2]) + [out_h, out_w], dtype=input_tensor.dtype, device=input_tensor.device)
-    output[..., oshift_h:oshift_h+copy_h, oshift_w:oshift_w+copy_w] = input_tensor[..., ishift_h:ishift_h+copy_h, ishift_w:ishift_w+copy_w]
+    output_shape = list(input_tensor.shape[:-2]) + [out_h, out_w]
+    output = torch.zeros(output_shape, dtype=input_tensor.dtype, device=input_tensor.device)
+    output[..., oshift_h:oshift_h + copy_h, oshift_w:oshift_w + copy_w] = input_tensor[..., ishift_h:ishift_h + copy_h, ishift_w:ishift_w + copy_w]
     return output
 
 
@@ -91,7 +89,7 @@ class FSTRadon():
     """
     Fourier Slice Theorem Radon transform. Accepts parallel-beam geometry, but image_size and detector_size are ignored and treated as equal to image_shape and detector_shape, respectively. Also, image_pos has to be at the origin.
     """
-    def __init__(self, geo: Geometry, expansion: float = 6, device: str = 'cuda' if torch.cuda.is_available() else 'cpu'):
+    def __init__(self, geo: Geometry, expansion: float = 6, device: str = 'cuda' if torch.cuda.is_available() else 'cpu', pad_to_power_of_two: bool = False):
         """
         Initialize the FST Radon transform module. 
         
@@ -99,6 +97,7 @@ class FSTRadon():
             geo: Geometry. The geometry object containing the image and projection parameters. The angles in the geometry must be in the range [0, pi) and the number of detectors must be at least sqrt(2) times the max of image size.
             expansion: float. The expansion factor for k-space.
             device: str. The target device to cache the grids and masks on.
+            pad_to_power_of_two: bool. Whether to round-up the expanded diameter to the nearest power of 2.
         
         Attributes:
             geo: Geometry. The geometry object containing the image and projection parameters.
@@ -117,6 +116,8 @@ class FSTRadon():
         self.n_detectors = geo.detector_shape[-1]
         assert self.n_detectors >= max(self.shape) * math.sqrt(2), "The number of detectors must be at least sqrt(2) times the max of image size."
         self.expanded_diameter = expand_diameter(self.n_detectors, expansion)
+        if pad_to_power_of_two:
+            self.expanded_diameter = 2 ** math.ceil(math.log2(self.expanded_diameter))
         
         # Precompute true coordinate grids and place on device during buffer registration
         kx, ky = kspace_coords(self.expanded_diameter, torch.from_numpy(geo.angles))
