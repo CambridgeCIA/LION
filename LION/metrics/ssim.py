@@ -31,6 +31,7 @@ class SSIM(nn.Module):
         reduce=str | None,
         batched=True,
         channel_axis: int | None = 1,
+        data_range: float | None = None,
     ) -> torch.Tensor:
         if x.shape != target.shape:
             raise ShapeMismatchException(
@@ -43,10 +44,11 @@ class SSIM(nn.Module):
             # if it's not, then that's your fault not mine, you told me it was batched
             vals = torch.empty((x.shape[0]))
             for i in range(x.shape[0]):
+                dr = data_range if data_range is not None else (target_[i].max() - target_[i].min())
                 vals[i] = skim_ssim(
                     x_[i],
                     target_[i],
-                    data_range=target_[i].max() - target_[i].min(),
+                    data_range=dr,
                     channel_axis=channel_axis,
                 )
 
@@ -59,11 +61,12 @@ class SSIM(nn.Module):
                     f"expected one of 'mean' or None for parameter 'reduce', got {reduce}"
                 )
         else:
+            dr = data_range if data_range is not None else (target_.max() - target_.min())
             return torch.tensor(
                 skim_ssim(
-                    x,
-                    target,
-                    data_range=target_.max() - target_.min(),
+                    x_,
+                    target_,
+                    data_range=dr,
                     channel_axis=channel_axis,
                 )
             )

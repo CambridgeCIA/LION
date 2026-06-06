@@ -24,7 +24,7 @@ class PSNR(nn.Module):
     """
 
     def forward(
-        self, x: torch.Tensor, target: torch.Tensor, reduce=str | None, batched=True
+        self, x: torch.Tensor, target: torch.Tensor, reduce=str | None, batched=True, data_range: float | None = None
     ) -> torch.Tensor:
         if x.shape != target.shape:
             raise ShapeMismatchException(
@@ -35,8 +35,9 @@ class PSNR(nn.Module):
         if batched:
             vals = torch.empty(x.shape[0])
             for i in range(x.shape[0]):
+                dr = data_range if data_range is not None else (target_[i].max() - target_[i].min())
                 vals[i] = skim_psnr(
-                    target_[i], x_[i], data_range=target_[i].max() - target_[i].min()
+                    target_[i], x_[i], data_range=dr
                 )
 
             if reduce is None:
@@ -48,6 +49,7 @@ class PSNR(nn.Module):
                     f"expected one of 'mean' or None for parameter 'reduce', got {reduce}"
                 )
         else:
+            dr = data_range if data_range is not None else (target_.max() - target_.min())
             return torch.tensor(
-                skim_psnr(x, target, data_range=target_.max() - target_.min())
+                skim_psnr(x_, target_, data_range=dr)
             )

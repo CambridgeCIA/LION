@@ -11,7 +11,7 @@ class HAARPsi(nn.Module):
 
         Please note that this implementation requires images scaled to [0,1], while the original implementation expects images with image values in [0,255].
 
-        Last update: 28.05.2024
+        Last update: 06.06.2026
 
         Parameters:
             Mandatory:
@@ -44,6 +44,7 @@ class HAARPsi(nn.Module):
         self.preprocess_with_subsampling = preprocess_with_subsampling
         self.C = C
         self.a = a
+        super().__init__()
 
     def forward(self, ref: torch.Tensor, deg: torch.Tensor):
         assert ref.shape == deg.shape, "The images must have the same dimensions"
