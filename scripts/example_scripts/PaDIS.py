@@ -14,6 +14,7 @@ import torch.utils.data as data_utils
 
 # Lion imports
 from LION.models.iterative_unrolled.LPD import LPD
+from LION.models.diffusion.PaDISDenoiser import PaDISDenoiser
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
 from LION.optimizers.SupervisedSolver import SupervisedSolver
