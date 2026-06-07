@@ -13,7 +13,15 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 import numpy as np
-from op import upfirdn2d
+
+try:
+    from op import upfirdn2d
+except ModuleNotFoundError:
+
+    def upfirdn2d(*args, **kwargs):
+        raise ModuleNotFoundError(
+            "StyleGAN upfirdn2d op is required for FIR resampling paths."
+        )
 
 
 # Function ported from StyleGAN2

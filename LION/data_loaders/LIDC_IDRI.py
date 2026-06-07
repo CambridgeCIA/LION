@@ -81,6 +81,7 @@ class LIDC_IDRI(Dataset):
                           Dataset will return, for each task:
                           "segmentation"    -> (image, segmentation_label)
                           "reconstruction"  -> (sinogram, image_label)
+                          "image_prior"     -> (image, image)
                           "diagnostic"      -> (segmented_nodule, diagnostic_label)
                           "joint"           -> ?????
                           "end_to_end"      -> ?????
@@ -112,10 +113,11 @@ class LIDC_IDRI(Dataset):
             "end_to_end",
             "segmentation",
             "reconstruction",
+            "image_prior",
             "diagnostic",
-        ], f'task argument {task} not in ["joint", "end_to_end", "segmentation", "reconstruction", "diagnostic"]'
+        ], f'task argument {task} not in ["joint", "end_to_end", "segmentation", "reconstruction", "image_prior", "diagnostic"]'
 
-        if task not in ["segmentation", "reconstruction", "end_to_end"]:
+        if task not in ["segmentation", "reconstruction", "image_prior", "end_to_end"]:
             raise NotImplementedError(f"task {task} not implemented yet")
 
         if (
@@ -130,8 +132,10 @@ class LIDC_IDRI(Dataset):
         self.image_transform = None
         self.device = self.params.device
 
-        if task in ["reconstruction"]:
-            self.image_transform = ct.from_HU_to_mu
+        if task in ["reconstruction", "image_prior"]:
+            self.image_transform = (
+                ct.from_HU_to_normal if task == "image_prior" else ct.from_HU_to_mu
+            )
         if task in ["segmentation"]:
             self.image_transform = ct.from_HU_to_normal
 
@@ -337,7 +341,11 @@ class LIDC_IDRI(Dataset):
         # segmentation specific
         param.clevel = 0.5
         param.annotation = "consensus"
-        param.device = torch.cuda.current_device()
+        param.device = (
+            torch.device("cuda", torch.cuda.current_device())
+            if torch.cuda.is_available()
+            else torch.device("cpu")
+        )
         param.geometry = geometry
         return param
 
@@ -471,6 +479,8 @@ class LIDC_IDRI(Dataset):
             ).squeeze(0)
         else:
             loaded_tensor = loaded_tensor.unsqueeze(0)
+        # Keep scaled LIDC data memory-efficient: resize on CPU first, then transfer
+        # only the final tensor to the dataset device.
         return loaded_tensor.to(self.device)
 
     def set_sinogram_transform(self, sinogram_transform):
@@ -577,6 +587,7 @@ class LIDC_IDRI(Dataset):
             "end_to_end",
             "segmentation",
             "reconstruction",
+            "image_prior",
         ]:
             reconstruction_tensor = self.get_reconstruction_tensor(file_path)
             if self.image_transform is not None:
@@ -592,6 +603,9 @@ class LIDC_IDRI(Dataset):
             if self.sinogram_transform is not None:
                 sinogram = self.sinogram_transform(sinogram)
             return sinogram, reconstruction_tensor
+
+        elif self.params.task == "image_prior":
+            return reconstruction_tensor, reconstruction_tensor
 
         elif self.params.task == "diagnostic":
             return self.patients_diagnosis_dictionary[patient_id]
