@@ -214,6 +214,9 @@ class PaDISSolver(LIONsolver):
         base_batch_size = getattr(self.solver_params, "base_patch_batch_size", None)
         if base_batch_size is not None:
             wanted = int(base_batch_size) * batch_mul
+            sample_batch = getattr(self.train_loader, "sample_batch", None)
+            if sample_batch is not None:
+                return sample_batch(wanted), 1, data_iter
             while True:
                 try:
                     _, target = next(data_iter)

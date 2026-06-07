@@ -2,6 +2,11 @@
 
 import argparse
 from datetime import datetime
+import getpass
+import hashlib
+import json
+import math
+import os
 import pathlib
 import re
 import uuid
@@ -9,6 +14,7 @@ import uuid
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from LION.CTtools.ct_geometry import Geometry
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
@@ -16,6 +22,54 @@ from LION.losses.PaDIS import PaDISDenoisingLoss
 from LION.models.diffusion import NCSNpp
 from LION.optimizers import PaDISSolver
 from LION.utils.paths import LION_EXPERIMENTS_PATH
+
+
+class CachedImagePriorBatchLoader(DataLoader):
+    """Small batch loader for cached PaDIS image-prior tensors."""
+
+    def __init__(self, images, batch_size, shuffle, name):
+        if images.ndim != 4:
+            raise ValueError(
+                f"Expected cached images shaped [N, C, H, W], got {images.shape}."
+            )
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive.")
+        self.images = images.contiguous()
+        self.batch_size = int(batch_size)
+        self.shuffle = bool(shuffle)
+        self.name = name
+        self._order = None
+        self._cursor = 0
+
+    def __len__(self):
+        return math.ceil(self.images.shape[0] / self.batch_size)
+
+    def _new_order(self):
+        n_images = self.images.shape[0]
+        if self.shuffle:
+            return torch.randperm(n_images)
+        return torch.arange(n_images)
+
+    def sample_batch(self, batch_size):
+        indices = []
+        remaining = int(batch_size)
+        while remaining > 0:
+            if self._order is None or self._cursor >= self.images.shape[0]:
+                self._order = self._new_order()
+                self._cursor = 0
+            available = self.images.shape[0] - self._cursor
+            take = min(remaining, available)
+            indices.append(self._order[self._cursor : self._cursor + take])
+            self._cursor += take
+            remaining -= take
+        return self.images.index_select(0, torch.cat(indices))
+
+    def __iter__(self):
+        order = self._new_order()
+        for start in range(0, self.images.shape[0], self.batch_size):
+            indices = order[start : start + self.batch_size]
+            batch = self.images.index_select(0, indices)
+            yield batch, batch
 
 
 def make_run_folder(save_root, run_name, prefix):
@@ -99,6 +153,108 @@ def data_loader_kwargs(args, device, batch_size):
     return kwargs
 
 
+def default_cache_folder():
+    ramdisk_root = pathlib.Path("/ramdisks")
+    if ramdisk_root.is_dir():
+        return ramdisk_root / getpass.getuser() / "lion_lidc_cache"
+    return pathlib.Path("/tmp") / getpass.getuser() / "lion_lidc_cache"
+
+
+def normalized_slices_to_load(dataset):
+    return {
+        str(patient_id): [int(slice_index) for slice_index in slice_indices]
+        for patient_id, slice_indices in dataset.slices_to_load.items()
+    }
+
+
+def dataset_cache_metadata(dataset, mode):
+    params = dataset.params
+    geometry = params.geometry
+    return {
+        "dataset": "LIDC-IDRI",
+        "mode": mode,
+        "task": params.task,
+        "folder": str(pathlib.Path(params.folder).resolve()),
+        "image_shape": [int(value) for value in geometry.image_shape],
+        "image_scaling": float(geometry.image_scaling),
+        "training_proportion": float(params.training_proportion),
+        "validation_proportion": float(params.validation_proportion),
+        "max_num_slices_per_patient": int(params.max_num_slices_per_patient),
+        "pcg_slices_nodule": float(params.pcg_slices_nodule),
+        "annotation": params.annotation,
+        "clevel": float(params.clevel),
+        "slices_to_load": normalized_slices_to_load(dataset),
+    }
+
+
+def cache_path_for_dataset(dataset, mode, cache_folder):
+    metadata = dataset_cache_metadata(dataset, mode)
+    digest = hashlib.sha256(
+        json.dumps(metadata, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:16]
+    _, height, width = metadata["image_shape"]
+    filename = f"lidc_image_prior_{mode}_{height}x{width}_{digest}.pt"
+    return cache_folder / filename, metadata
+
+
+def materialize_image_prior_dataset(dataset, mode, cache_folder, rebuild_cache):
+    cache_path, metadata = cache_path_for_dataset(dataset, mode, cache_folder)
+    cache_folder.mkdir(parents=True, exist_ok=True)
+    if cache_path.is_file() and not rebuild_cache:
+        print(f"Loading {mode} image-prior cache from {cache_path}")
+        cached = torch.load(cache_path, map_location="cpu")
+        images = cached["images"] if isinstance(cached, dict) else cached
+        return images.float().contiguous()
+
+    if len(dataset) == 0:
+        raise ValueError(f"Cannot cache empty {mode} dataset.")
+
+    print(f"Building {mode} image-prior cache at {cache_path}")
+    _, first_target = dataset[0]
+    first_target = first_target.float().cpu()
+    images = torch.empty(
+        (len(dataset), *first_target.shape),
+        dtype=torch.float32,
+    )
+    images[0].copy_(first_target)
+    for index in tqdm(range(1, len(dataset)), desc=f"Caching {mode} LIDC"):
+        _, target = dataset[index]
+        images[index].copy_(target.float().cpu())
+
+    payload = {"metadata": metadata, "images": images.contiguous()}
+    tmp_path = cache_path.with_suffix(cache_path.suffix + f".tmp.{os.getpid()}")
+    torch.save(payload, tmp_path)
+    tmp_path.replace(cache_path)
+    print(
+        f"Cached {mode} images: shape={tuple(images.shape)}, "
+        f"size={images.numel() * images.element_size() / 1024**3:.2f} GiB"
+    )
+    return images
+
+
+def build_cached_loaders(args, train_dataset, validation_dataset, train_batch_size):
+    cache_folder = args.cache_folder or default_cache_folder()
+    train_images = materialize_image_prior_dataset(
+        train_dataset, "train", cache_folder, args.rebuild_cache
+    )
+    validation_images = materialize_image_prior_dataset(
+        validation_dataset, "validation", cache_folder, args.rebuild_cache
+    )
+    train_loader = CachedImagePriorBatchLoader(
+        train_images,
+        batch_size=train_batch_size,
+        shuffle=True,
+        name="train",
+    )
+    validation_loader = CachedImagePriorBatchLoader(
+        validation_images,
+        batch_size=args.batch_size,
+        shuffle=False,
+        name="validation",
+    )
+    return train_loader, validation_loader
+
+
 def log_wandb_outputs(wandb_run, run_folder):
     if wandb_run is None:
         return
@@ -141,6 +297,23 @@ def build_arg_parser():
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--prefetch-factor", type=int, default=2)
+    parser.add_argument(
+        "--cache-dataset",
+        choices=("none", "ramdisk"),
+        default="none",
+        help="Cache image-prior tensors and use a no-worker batch loader.",
+    )
+    parser.add_argument(
+        "--cache-folder",
+        type=pathlib.Path,
+        default=None,
+        help="Folder for cached tensors. Defaults to /ramdisks/$USER/lion_lidc_cache when available.",
+    )
+    parser.add_argument(
+        "--rebuild-cache",
+        action="store_true",
+        help="Rebuild cached image-prior tensors even if matching cache files exist.",
+    )
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--no-ema", action="store_true")
     parser.add_argument("--wandb-project", type=str, default=None)
@@ -174,16 +347,21 @@ def main():
     validation_dataset = LIDC_IDRI(
         "validation", parameters=data_params, geometry_parameters=geometry
     )
-    train_loader = DataLoader(
-        train_dataset,
-        shuffle=True,
-        **data_loader_kwargs(args, device, train_loader_batch_size),
-    )
-    validation_loader = DataLoader(
-        validation_dataset,
-        shuffle=False,
-        **data_loader_kwargs(args, device, args.batch_size),
-    )
+    if args.cache_dataset == "ramdisk":
+        train_loader, validation_loader = build_cached_loaders(
+            args, train_dataset, validation_dataset, train_loader_batch_size
+        )
+    else:
+        train_loader = DataLoader(
+            train_dataset,
+            shuffle=True,
+            **data_loader_kwargs(args, device, train_loader_batch_size),
+        )
+        validation_loader = DataLoader(
+            validation_dataset,
+            shuffle=False,
+            **data_loader_kwargs(args, device, args.batch_size),
+        )
 
     model_params = NCSNpp.default_parameters("padis-paper-ct-256")
     model = NCSNpp(model_params, geometry)

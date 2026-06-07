@@ -108,6 +108,8 @@ options=(
         --batch-size 128
         --num-workers 16
         --prefetch-factor 4
+        --cache-dataset ramdisk
+        --cache-folder "/ramdisks/$USER/lion_lidc_cache"
 )
 
 #! Work directory (i.e. where the job will run):
