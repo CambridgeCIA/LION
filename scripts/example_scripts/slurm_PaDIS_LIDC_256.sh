@@ -2,6 +2,7 @@
 #!
 #! Example SLURM job script for Wilkes3 (AMD EPYC 7763, ConnectX-6, A100)
 #!
+# set -euo pipefail
 
 #!#############################################################
 #!#### Modify the options in this section as appropriate ######
@@ -54,37 +55,63 @@ module load rhel8/default-amp              # REQUIRED - loads the basic environm
 
 #! Insert additional module load commands after this line if needed:
 
-if command -v mamba >/dev/null 2>&1; then
-        eval "$(mamba shell hook --shell bash)"
-        mamba activate lion
-elif command -v conda >/dev/null 2>&1; then
-        eval "$(conda shell.bash hook)"
-        conda activate lion
+MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-/home/tjh200/miniforge3}"
+export MAMBA_ROOT_PREFIX
+export PATH="$MAMBA_ROOT_PREFIX/bin:$PATH"
+
+if [ -x "$MAMBA_ROOT_PREFIX/bin/mamba" ]; then
+        eval "$("$MAMBA_ROOT_PREFIX/bin/mamba" shell hook --shell bash)"
+        mamba activate "$MAMBA_ROOT_PREFIX/envs/lion" || {
+                echo "Could not activate the conda/mamba environment at $MAMBA_ROOT_PREFIX/envs/lion."
+                exit 1
+        }
+        echo "Activated lion environment using mamba."
+elif [ -f "$MAMBA_ROOT_PREFIX/etc/profile.d/conda.sh" ]; then
+        . "$MAMBA_ROOT_PREFIX/etc/profile.d/conda.sh"
+        conda activate "$MAMBA_ROOT_PREFIX/envs/lion" || {
+                echo "Could not activate the conda environment at $MAMBA_ROOT_PREFIX/envs/lion."
+                exit 1
+        }
+        echo "Activated lion environment using conda."
 else
-        echo "Could not find mamba or conda to activate the lion environment."
+        echo "Could not find mamba/conda under $MAMBA_ROOT_PREFIX."
         exit 1
 fi
+
+python - <<'PY'
+try:
+    import matplotlib
+except ImportError:
+    raise SystemExit(
+        "The active 'lion' environment is missing matplotlib. "
+        "Install/update it before resubmitting, for example: "
+        "conda env update -f env.yml --prune"
+    )
+PY
 
 #! Full path to application executable:
 application="python"
 
 #! Run options for the application:
-options="scripts/example_scripts/PaDIS_LIDC_256.py \
-    --run-name padis_lidc_256_reproduction_CSD3 \
-    --wandb-entity tjh200-university-of-cambridge \
-    --wandb-project PaDIS-Reproduction \
-    --wandb-name padis_lidc_256_reproduction_CSD3 \
-    --wandb-mode online \
-    --device cuda \
-    --target-patches 200000000 \
-    --validation-interval-patches 50000 \
-    --checkpoint-interval-patches 250000 \
-    --log-interval-patches 1000 \
-    --batch-size 128 \
-    --num-workers 32"
+options=(
+        "$SLURM_SUBMIT_DIR/scripts/example_scripts/PaDIS_LIDC_256.py"
+        --run-name padis_lidc_256_reproduction_CSD3
+        --wandb-entity tjh200-university-of-cambridge
+        --wandb-project PaDIS-Reproduction
+        --wandb-name padis_lidc_256_reproduction_CSD3
+        --wandb-mode online
+        --device cuda
+        --target-patches 200000000
+        --validation-interval-patches 50000
+        --checkpoint-interval-patches 250000
+        --log-interval-patches 1000
+        --batch-size 128
+        --num-workers 16
+        --prefetch-factor 4
+)
 
 #! Work directory (i.e. where the job will run):
-workdir="$(cd "$(dirname "$0")/../.." && pwd)"
+workdir="$SLURM_SUBMIT_DIR"
 
 #! Are you using OpenMP (NB this is unrelated to OpenMPI)? If so increase this
 #! safe value to no more than 128:
@@ -95,7 +122,7 @@ np=$[${numnodes}*${mpi_tasks_per_node}]
 
 #! Choose this for a pure shared-memory OpenMP parallel program on a single node:
 #! (OMP_NUM_THREADS threads will be created):
-CMD="$application $options"
+CMD=("$application" "${options[@]}")
 
 #! Choose this for a MPI code using OpenMPI:
 #CMD="mpirun -npernode $mpi_tasks_per_node -np $np $application $options"
@@ -105,7 +132,7 @@ CMD="$application $options"
 ### You should not have to change anything below this line ####
 ###############################################################
 
-cd $workdir
+cd "$workdir"
 echo -e "Changed directory to `pwd`.\n"
 
 JOBID=$SLURM_JOB_ID
@@ -118,13 +145,15 @@ echo "Current directory: `pwd`"
 if [ "$SLURM_JOB_NODELIST" ]; then
         #! Create a machine file:
         export NODEFILE=`generate_pbs_nodefile`
-        cat $NODEFILE | uniq > machine.file.$JOBID
+        cat "$NODEFILE" | uniq > "$workdir/machine.file.$JOBID"
         echo -e "\nNodes allocated:\n================"
-        echo `cat machine.file.$JOBID | sed -e 's/\..*$//g'`
+        sed -e 's/\..*$//g' "$workdir/machine.file.$JOBID"
 fi
 
 echo -e "\nnumtasks=$numtasks, numnodes=$numnodes, mpi_tasks_per_node=$mpi_tasks_per_node (OMP_NUM_THREADS=$OMP_NUM_THREADS)"
 
-echo -e "\nExecuting command:\n==================\n$CMD\n"
+echo -e "\nExecuting command:\n=================="
+printf '%q ' "${CMD[@]}"
+printf '\n\n'
 
-eval $CMD
+"${CMD[@]}"
