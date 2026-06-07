@@ -3,7 +3,7 @@
 # License : BSD-3
 #
 # Author  : Ander Biguri
-# Modifications: -
+# Modifications: Tianzhen Peng
 # =============================================================================
 
 from __future__ import annotations
@@ -66,8 +66,9 @@ def sinogram_add_noise(
         sino = _sinogram_add_noise(proj, I0, sigma, cross_talk, flat_field, dark_field)
     else:
         with torch.no_grad():
+            proj_input = proj.detach() if torch.is_tensor(proj) else proj
             sino = _sinogram_add_noise(
-                proj.detach(), I0, sigma, cross_talk, flat_field, dark_field
+                proj_input, I0, sigma, cross_talk, flat_field, dark_field
             )
     return sino
 
@@ -82,16 +83,13 @@ def _sinogram_add_noise(
     - Detector crosstalk in % of the signal of adjacent pixels.
     - Add a flat_field to add even more realistic noise (computed at non-corrected flat fields)
     """
-    dev = torch.cuda.current_device()
     if torch.is_tensor(proj):
         istorch = True
-        dev = proj.get_device()
-        if dev == -1:
-            dev = torch.device("cpu")
+        dev = proj.device
     elif isinstance(proj, np.ndarray):
-        # all good
         istorch = False
-        proj = torch.from_numpy(proj).cuda(dev)
+        dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        proj = torch.from_numpy(proj).to(dev)
     else:
         raise ValueError("numpy or torch tensor expected")
     if dark_field is None:
@@ -119,9 +117,15 @@ def _sinogram_add_noise(
     conv = torch.nn.Conv2d(1, 1, 3, bias=False, padding="same")
     with torch.no_grad():
         conv.weight = torch.nn.Parameter(kernel)
-    conv = conv.to(dev)
+    conv = conv.to(device=dev, dtype=Im.dtype)
 
-    Im = conv(Im.unsqueeze(0))[0]
+    # Dynamically reshape to (N, 1, H, W) to support any arbitrary leading dimensions
+    orig_shape = Im.shape
+    H, W = orig_shape[-2], orig_shape[-1]
+    Im_flat = Im.view(-1, 1, H, W)
+    Im_conv = conv(Im_flat)
+    Im = Im_conv.view(orig_shape)
+    
     # Electronic noise:
     Im = Im + sigma * torch.randn(Im.shape, device=dev)
 
