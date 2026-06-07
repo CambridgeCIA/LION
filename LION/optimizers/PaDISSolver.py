@@ -399,6 +399,13 @@ class PaDISSolver(LIONsolver):
                 self.checkpoint_save_folder.joinpath(ema_fname).with_suffix(".ema.pt"),
             )
 
+    def save_validation(self, epoch):
+        raw_state = self._apply_ema_weights()
+        try:
+            super().save_validation(epoch)
+        finally:
+            self._restore_raw_weights(raw_state)
+
     def save_final_results(self, final_result_fname=None, save_folder=None, epoch=None):
         raw_state = self._apply_ema_weights()
         try:

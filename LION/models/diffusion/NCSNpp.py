@@ -131,15 +131,15 @@ class NCSNpp(LIONmodel):
         dropout = params.dropout
         resamp_with_conv = params.resamp_with_conv
         num_resolutions = len(channel_mult)
-        model_input_size = int(
-            getattr(params, "largest_patch_size", geometry.image_shape[1])
+        attention_reference_resolution = getattr(
+            params, "attention_reference_resolution", None
         )
-        patch_sizes = getattr(params, "patch_sizes", [model_input_size])
-        self.attention_at_level = [
-            any(
-                (int(patch_size) // (2**i)) in attn_resolutions
-                for patch_size in patch_sizes
+        if attention_reference_resolution is None:
+            attention_reference_resolution = int(geometry.image_shape[1]) + 2 * int(
+                getattr(params, "pad_width", 0)
             )
+        self.attention_at_level = [
+            (int(attention_reference_resolution) // (2**i)) in attn_resolutions
             for i in range(num_resolutions)
         ]
 

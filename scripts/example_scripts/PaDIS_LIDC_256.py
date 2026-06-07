@@ -1,8 +1,12 @@
 """Train a PaDIS paper-style patch prior on LIDC-IDRI at 256x256."""
 
 import argparse
+from datetime import datetime
 import pathlib
+import re
+import uuid
 
+import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import DataLoader
 
@@ -14,6 +18,36 @@ from LION.optimizers import PaDISSolver
 from LION.utils.paths import LION_EXPERIMENTS_PATH
 
 
+def make_run_folder(save_root, run_name, prefix):
+    if run_name is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_name = f"{prefix}_{timestamp}_{uuid.uuid4().hex[:8]}"
+    else:
+        run_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", run_name.strip()).strip("._")
+        if not run_name:
+            raise ValueError("--run-name must contain at least one valid character.")
+
+    run_folder = save_root / run_name
+    run_folder.mkdir(parents=True, exist_ok=True)
+    return run_folder
+
+
+def save_loss_plots(solver, save_folder):
+    plt.figure()
+    train_loss = (
+        solver.train_loss[1:] if len(solver.train_loss) > 1 else solver.train_loss
+    )
+    plt.semilogy(train_loss)
+    plt.savefig(save_folder / "loss.png")
+    plt.close()
+
+    if solver.validation_loss is not None and len(solver.validation_loss) > 0:
+        plt.figure()
+        plt.semilogy(solver.validation_loss)
+        plt.savefig(save_folder / "validation_loss.png")
+        plt.close()
+
+
 def build_arg_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
@@ -22,6 +56,7 @@ def build_arg_parser():
         type=pathlib.Path,
         default=LION_EXPERIMENTS_PATH.joinpath("PaDIS", "LIDC_256"),
     )
+    parser.add_argument("--run-name", type=str, default=None)
     parser.add_argument("--target-patches", type=int, default=200_000_000)
     parser.add_argument("--validation-interval-patches", type=int, default=1_000_000)
     parser.add_argument("--checkpoint-interval-patches", type=int, default=5_000_000)
@@ -69,6 +104,8 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=2e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
     solver_params.use_ema = not args.no_ema
+    run_folder = make_run_folder(args.save_folder, args.run_name, "padis_lidc_256")
+    print(f"Saving PaDIS run to {run_folder}")
     solver = PaDISSolver(
         model,
         optimizer,
@@ -76,10 +113,9 @@ def main():
         geometry=geometry,
         solver_params=solver_params,
         device=device,
-        save_folder=args.save_folder,
+        save_folder=run_folder,
     )
-    args.save_folder.mkdir(parents=True, exist_ok=True)
-    solver.set_saving(args.save_folder, "padis_lidc_256")
+    solver.set_saving(run_folder, "padis_lidc_256")
     solver.set_checkpointing(
         "padis_lidc_256_checkpoint_*.pt",
         checkpoint_freq=10**12,
@@ -92,6 +128,9 @@ def main():
         validation_interval_patches=args.validation_interval_patches,
         checkpoint_interval_patches=args.checkpoint_interval_patches,
     )
+    solver.clean_checkpoints()
+    solver.save_final_results()
+    save_loss_plots(solver, run_folder)
 
 
 if __name__ == "__main__":

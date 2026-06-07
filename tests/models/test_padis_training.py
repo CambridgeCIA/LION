@@ -46,8 +46,8 @@ def test_padis_paper_model_parameter_counts():
     # The paper reports ~60M weights for patch-based PaDIS models. The ~110M
     # variant is the separate whole-image baseline with a wider fourth layer.
     expected_counts = {
-        "padis-paper-ct-256": (0.5, 62_133_633),
-        "padis-paper-ct-512": (1.0, 63_452_033),
+        "padis-paper-ct-256": (0.5, 60_483_713),
+        "padis-paper-ct-512": (1.0, 60_483_713),
     }
     for mode, (image_scaling, expected_count) in expected_counts.items():
         geometry = Geometry.default_parameters(image_scaling=image_scaling)
@@ -210,6 +210,36 @@ def test_ema_weight_swap_restores_raw_weights():
     assert torch.allclose(first_param, raw + 1)
     solver._restore_raw_weights(raw_state)
     assert torch.allclose(first_param, raw)
+
+
+def test_save_validation_writes_ema_weights_and_restores_raw_model(tmp_path):
+    model, geometry = _tiny_padis_model()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    solver = PaDISSolver(
+        model,
+        optimizer,
+        PaDISDenoisingLoss(),
+        geometry=geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+    )
+    solver.validation_fname = "padis_min_val.pt"
+    solver.validation_save_folder = tmp_path
+    solver.validation_fn = solver.loss_fn
+    solver.validation_loss = [0.25]
+
+    first_name, first_param = next(iter(model.named_parameters()))
+    raw = first_param.detach().clone()
+    solver.ema_state[first_name] = raw + 1
+
+    solver.save_validation(0)
+
+    assert torch.allclose(first_param, raw)
+    data = torch.load(
+        tmp_path / "padis_min_val.pt", map_location="cpu", weights_only=False
+    )
+    assert torch.allclose(data["model_state_dict"][first_name], raw + 1)
 
 
 def test_first_ema_update_copies_model_like_padis_rampup():

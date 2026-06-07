@@ -23,7 +23,7 @@
 """
 
 import torch
-import LION.LION.models.diffusion.NCSNpp_helpers.sde_lib as sde_lib
+import LION.models.diffusion.NCSNpp_helpers.sde_lib as sde_lib
 import numpy as np
 
 
