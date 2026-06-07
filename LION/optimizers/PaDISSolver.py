@@ -284,6 +284,7 @@ class PaDISSolver(LIONsolver):
         *,
         validation_interval_patches: int | None = None,
         checkpoint_interval_patches: int | None = None,
+        log_fn: Callable[[dict[str, object], int], None] | None = None,
     ) -> None:
         """Train until ``seen_patches`` reaches ``target_patches``.
 
@@ -339,6 +340,17 @@ class PaDISSolver(LIONsolver):
                 loss_value = self._optimizer_step(target, patch_size)
                 self.train_loss = np.append(self.train_loss, loss_value)
                 progress.update(min(self.seen_patches, target_patches) - previous_seen)
+                if log_fn is not None:
+                    log_fn(
+                        {
+                            "train/loss": loss_value,
+                            "train/patch_size": patch_size,
+                            "train/seen_patches": self.seen_patches,
+                            "train/step": len(self.train_loss),
+                            "optimizer/lr": self.optimizer.param_groups[0]["lr"],
+                        },
+                        self.seen_patches,
+                    )
 
                 if next_validation is not None and self.seen_patches >= next_validation:
                     validation_loss = self.validate()
@@ -354,6 +366,15 @@ class PaDISSolver(LIONsolver):
                         self.validation_loss
                     ):
                         self.save_validation(len(self.validation_loss) - 1)
+                    if log_fn is not None:
+                        log_fn(
+                            {
+                                "validation/loss": validation_loss,
+                                "validation/index": len(self.validation_loss),
+                                "validation/seen_patches": self.seen_patches,
+                            },
+                            self.seen_patches,
+                        )
                     next_validation += int(validation_interval_patches)
 
                 if next_checkpoint is not None and self.seen_patches >= next_checkpoint:

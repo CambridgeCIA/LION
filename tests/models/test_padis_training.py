@@ -175,10 +175,18 @@ def test_padis_solver_trains_to_patch_budget_across_loader_restarts():
     validation_loader = DataLoader(TensorDataset(images[:1], images[:1]), batch_size=1)
     solver.set_training(train_loader)
     solver.set_validation(validation_loader, validation_freq=10**12)
-    solver.train_for_patches(3, validation_interval_patches=2)
+    logs = []
+    solver.train_for_patches(
+        3,
+        validation_interval_patches=2,
+        log_fn=lambda metrics, step: logs.append((metrics, step)),
+    )
     assert solver.seen_patches == 3
     assert len(solver.train_loss) == 3
     assert len(solver.validation_loss) == 1
+    assert sum("train/loss" in metrics for metrics, _ in logs) == 3
+    assert sum("validation/loss" in metrics for metrics, _ in logs) == 1
+    assert all(step > 0 for _, step in logs)
 
 
 def test_padis_solver_uses_paper_relative_batch_multipliers():
