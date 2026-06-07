@@ -16,8 +16,7 @@ from LION.models.LIONmodel import LIONmodel
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.utils.parameter import LIONParameter
 from LION.losses.PaDIS import (
-    build_position_grid,
-    sample_patch_pair,
+    sample_image_patch_with_position_channels,
     sample_patch_size,
     validate_patch_schedule,
     zero_pad_images,
@@ -110,22 +109,15 @@ class PaDISSolver(LIONsolver):
         self, images: torch.Tensor, patch_size: int | None = None
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
         padded = zero_pad_images(images, int(self.solver_params.pad_width))
-        positions = None
-        if self.solver_params.use_position_channels:
-            positions = build_position_grid(
-                padded.shape[0],
-                padded.shape[2],
-                padded.shape[3],
-                device=padded.device,
-                dtype=padded.dtype,
-            )
         if patch_size is None:
             patch_size = sample_patch_size(
                 self.solver_params.patch_sizes,
                 self.solver_params.patch_probabilities,
                 device=padded.device,
             )
-        if positions is None:
+        if self.solver_params.use_position_channels:
+            return sample_image_patch_with_position_channels(padded, patch_size)
+        else:
             _, _, height, width = padded.shape
             top = torch.randint(
                 0, height - patch_size + 1, (1,), device=padded.device
@@ -134,7 +126,6 @@ class PaDISSolver(LIONsolver):
                 0, width - patch_size + 1, (1,), device=padded.device
             ).item()
             return padded[:, :, top : top + patch_size, left : left + patch_size], None
-        return sample_patch_pair(padded, positions, patch_size)
 
     def mini_batch_step(
         self, sino_batch, target_batch, patch_size: int | None = None
@@ -220,6 +211,34 @@ class PaDISSolver(LIONsolver):
         batch_mul = int(
             self.solver_params.patch_batch_multipliers.get(int(patch_size), 1)
         )
+        base_batch_size = getattr(self.solver_params, "base_patch_batch_size", None)
+        if base_batch_size is not None:
+            wanted = int(base_batch_size) * batch_mul
+            while True:
+                try:
+                    _, target = next(data_iter)
+                except StopIteration:
+                    if not restart_on_stop:
+                        return None, 0, data_iter
+                    data_iter = iter(self.train_loader)
+                    continue
+                if target.shape[0] >= wanted:
+                    return target[:wanted], 1, data_iter
+                targets = [target]
+                consumed = 1
+                while sum(batch.shape[0] for batch in targets) < wanted:
+                    try:
+                        _, target = next(data_iter)
+                    except StopIteration:
+                        if not restart_on_stop:
+                            break
+                        data_iter = iter(self.train_loader)
+                        continue
+                    targets.append(target)
+                    consumed += 1
+                target = torch.cat(targets, dim=0)
+                return target[:wanted], consumed, data_iter
+
         targets = []
         consumed = 0
         while consumed < batch_mul:

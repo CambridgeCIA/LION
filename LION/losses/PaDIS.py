@@ -77,6 +77,30 @@ def sample_patch_pair(
     return image_patch, position_patch
 
 
+def sample_image_patch_with_position_channels(
+    images: torch.Tensor,
+    patch_size: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    batch_size, _, height, width = images.shape
+    if patch_size > height or patch_size > width:
+        raise ValueError("patch_size cannot exceed padded image dimensions.")
+    top = torch.randint(0, height - patch_size + 1, (batch_size,), device=images.device)
+    left = torch.randint(0, width - patch_size + 1, (batch_size,), device=images.device)
+    rows = top[:, None] + torch.arange(patch_size, device=images.device)[None, :]
+    cols = left[:, None] + torch.arange(patch_size, device=images.device)[None, :]
+    batch = torch.arange(batch_size, device=images.device)[:, None, None]
+    image_patch = images.permute(1, 0, 2, 3)[
+        :, batch, rows[:, :, None], cols[:, None, :]
+    ].permute(1, 0, 2, 3)
+
+    x_pos = (cols.to(images.dtype) / (width - 1) - 0.5) * 2.0
+    y_pos = (rows.to(images.dtype) / (height - 1) - 0.5) * 2.0
+    x_pos = x_pos[:, None, None, :].expand(-1, 1, patch_size, -1)
+    y_pos = y_pos[:, None, :, None].expand(-1, 1, -1, patch_size)
+    position_patch = torch.cat((x_pos, y_pos), dim=1)
+    return image_patch, position_patch
+
+
 def score_from_denoiser(
     noisy_image_patch: torch.Tensor, denoised_patch: torch.Tensor, sigma: torch.Tensor
 ) -> torch.Tensor:

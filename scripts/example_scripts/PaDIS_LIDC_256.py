@@ -87,9 +87,9 @@ def wandb_log_fn(wandb_run):
     return log_fn
 
 
-def data_loader_kwargs(args, device):
+def data_loader_kwargs(args, device, batch_size):
     kwargs = {
-        "batch_size": args.batch_size,
+        "batch_size": batch_size,
         "num_workers": args.num_workers,
         "pin_memory": device.type == "cuda",
     }
@@ -162,6 +162,11 @@ def main():
     data_params.device = torch.device("cpu")
     if args.data_folder is not None:
         data_params.folder = args.data_folder
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    solver_params.use_ema = not args.no_ema
+    solver_params.base_patch_batch_size = args.batch_size
+    max_batch_multiplier = max(solver_params.patch_batch_multipliers.values())
+    train_loader_batch_size = args.batch_size * max_batch_multiplier
 
     train_dataset = LIDC_IDRI(
         "train", parameters=data_params, geometry_parameters=geometry
@@ -172,12 +177,12 @@ def main():
     train_loader = DataLoader(
         train_dataset,
         shuffle=True,
-        **data_loader_kwargs(args, device),
+        **data_loader_kwargs(args, device, train_loader_batch_size),
     )
     validation_loader = DataLoader(
         validation_dataset,
         shuffle=False,
-        **data_loader_kwargs(args, device),
+        **data_loader_kwargs(args, device, args.batch_size),
     )
 
     model_params = NCSNpp.default_parameters("padis-paper-ct-256")
@@ -186,8 +191,6 @@ def main():
         sigma_min=model_params.sigma_min, sigma_max=model_params.sigma_max
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=2e-4)
-    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
-    solver_params.use_ema = not args.no_ema
     run_folder = make_run_folder(args.save_folder, args.run_name, "padis_lidc_256")
     print(f"Saving PaDIS run to {run_folder}")
     wandb_run = init_wandb(args, run_folder, "padis-paper-ct-256")
