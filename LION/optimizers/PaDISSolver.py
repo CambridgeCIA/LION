@@ -162,11 +162,28 @@ class PaDISSolver(LIONsolver):
             )
         beta = 0.5 ** (float(batch_patch_count) / max(half_life, 1e-8))
         with torch.no_grad():
+            grouped_ema: dict[tuple[torch.device, torch.dtype], list[torch.Tensor]] = {}
+            grouped_params: dict[
+                tuple[torch.device, torch.dtype], list[torch.Tensor]
+            ] = {}
             for name, param in self.model.named_parameters():
                 if name in self.ema_state:
-                    self.ema_state[name].mul_(beta).add_(
-                        param.detach(), alpha=1.0 - beta
+                    ema = self.ema_state[name]
+                    key = (ema.device, ema.dtype)
+                    grouped_ema.setdefault(key, []).append(ema)
+                    grouped_params.setdefault(key, []).append(param.detach())
+            try:
+                for key, ema_tensors in grouped_ema.items():
+                    torch._foreach_mul_(ema_tensors, beta)
+                    torch._foreach_add_(
+                        ema_tensors, grouped_params[key], alpha=1.0 - beta
                     )
+            except RuntimeError:
+                for name, param in self.model.named_parameters():
+                    if name in self.ema_state:
+                        self.ema_state[name].mul_(beta).add_(
+                            param.detach(), alpha=1.0 - beta
+                        )
 
     def _apply_ema_weights(self) -> dict[str, torch.Tensor] | None:
         if self.ema_state is None:
