@@ -87,6 +87,18 @@ def wandb_log_fn(wandb_run):
     return log_fn
 
 
+def data_loader_kwargs(args, device):
+    kwargs = {
+        "batch_size": args.batch_size,
+        "num_workers": args.num_workers,
+        "pin_memory": device.type == "cuda",
+    }
+    if args.num_workers > 0:
+        kwargs["persistent_workers"] = True
+        kwargs["prefetch_factor"] = args.prefetch_factor
+    return kwargs
+
+
 def log_wandb_outputs(wandb_run, run_folder):
     if wandb_run is None:
         return
@@ -125,8 +137,10 @@ def build_arg_parser():
     parser.add_argument("--target-patches", type=int, default=200_000_000)
     parser.add_argument("--validation-interval-patches", type=int, default=1_000_000)
     parser.add_argument("--checkpoint-interval-patches", type=int, default=5_000_000)
+    parser.add_argument("--log-interval-patches", type=int, default=1_000)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--num-workers", type=int, default=4)
+    parser.add_argument("--prefetch-factor", type=int, default=2)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--no-ema", action="store_true")
     parser.add_argument("--wandb-project", type=str, default=None)
@@ -157,15 +171,13 @@ def main():
     )
     train_loader = DataLoader(
         train_dataset,
-        batch_size=args.batch_size,
         shuffle=True,
-        num_workers=args.num_workers,
+        **data_loader_kwargs(args, device),
     )
     validation_loader = DataLoader(
         validation_dataset,
-        batch_size=args.batch_size,
         shuffle=False,
-        num_workers=args.num_workers,
+        **data_loader_kwargs(args, device),
     )
 
     model_params = NCSNpp.default_parameters("padis-paper-ct-256")
@@ -201,6 +213,7 @@ def main():
             args.target_patches,
             validation_interval_patches=args.validation_interval_patches,
             checkpoint_interval_patches=args.checkpoint_interval_patches,
+            log_interval_patches=args.log_interval_patches,
             log_fn=wandb_log_fn(wandb_run),
         )
         solver.clean_checkpoints()

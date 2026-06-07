@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 import pathlib
+import time
 
 import numpy as np
 import torch
@@ -144,9 +145,10 @@ class PaDISSolver(LIONsolver):
         clean_patch, position_patch = self._sample_training_patch(
             clean_images, patch_size
         )
-        clean_patch = clean_patch.to(self.device)
+        non_blocking = self.device.type == "cuda"
+        clean_patch = clean_patch.to(self.device, non_blocking=non_blocking)
         if position_patch is not None:
-            position_patch = position_patch.to(self.device)
+            position_patch = position_patch.to(self.device, non_blocking=non_blocking)
         return self.loss_fn(self.model, clean_patch, position_patch)
 
     def _check_data_range(self, images: torch.Tensor) -> None:
@@ -284,6 +286,7 @@ class PaDISSolver(LIONsolver):
         *,
         validation_interval_patches: int | None = None,
         checkpoint_interval_patches: int | None = None,
+        log_interval_patches: int | None = None,
         log_fn: Callable[[dict[str, object], int], None] | None = None,
     ) -> None:
         """Train until ``seen_patches`` reaches ``target_patches``.
@@ -298,6 +301,8 @@ class PaDISSolver(LIONsolver):
             raise ValueError("validation_interval_patches must be positive.")
         if checkpoint_interval_patches is not None and checkpoint_interval_patches <= 0:
             raise ValueError("checkpoint_interval_patches must be positive.")
+        if log_interval_patches is not None and log_interval_patches <= 0:
+            raise ValueError("log_interval_patches must be positive.")
         self.check_training_ready(verbose=False)
         if self.do_load_checkpoint:
             print("Loading checkpoint...")
@@ -310,7 +315,7 @@ class PaDISSolver(LIONsolver):
             self.validation_loss = np.zeros(0)
         else:
             self.validation_loss = None
-        self.train_loss = np.zeros(0)
+        self.train_loss = []
         self.model.train()
 
         data_iter = iter(self.train_loader)
@@ -324,6 +329,18 @@ class PaDISSolver(LIONsolver):
             if checkpoint_interval_patches is not None
             else None
         )
+        next_log = (
+            self.seen_patches + int(log_interval_patches)
+            if log_interval_patches is not None
+            else None
+        )
+        timing_acc = {
+            "data_wait_s": 0.0,
+            "train_step_s": 0.0,
+            "total_step_s": 0.0,
+            "patches": 0,
+            "steps": 0,
+        }
         checkpoint_index = int(self.current_epoch)
         progress = tqdm(
             total=target_patches, initial=min(self.seen_patches, target_patches)
@@ -332,15 +349,39 @@ class PaDISSolver(LIONsolver):
             while self.seen_patches < target_patches:
                 previous_seen = self.seen_patches
                 patch_size = self._choose_patch_size()
+                data_start = time.perf_counter()
                 target, _, data_iter = self._collect_training_targets(
                     data_iter, patch_size, restart_on_stop=True
                 )
+                data_wait_s = time.perf_counter() - data_start
                 if target is None:
                     raise ValueError("Training dataloader produced no targets.")
+                if self.device.type == "cuda":
+                    torch.cuda.synchronize(self.device)
+                train_start = time.perf_counter()
                 loss_value = self._optimizer_step(target, patch_size)
-                self.train_loss = np.append(self.train_loss, loss_value)
+                if self.device.type == "cuda":
+                    torch.cuda.synchronize(self.device)
+                train_step_s = time.perf_counter() - train_start
+                step_patches = self.seen_patches - previous_seen
+                total_step_s = data_wait_s + train_step_s
+                timing_acc["data_wait_s"] += data_wait_s
+                timing_acc["train_step_s"] += train_step_s
+                timing_acc["total_step_s"] += total_step_s
+                timing_acc["patches"] += step_patches
+                timing_acc["steps"] += 1
+                self.train_loss.append(loss_value)
                 progress.update(min(self.seen_patches, target_patches) - previous_seen)
+                should_log = False
                 if log_fn is not None:
+                    if next_log is None:
+                        should_log = True
+                    elif next_log is not None and self.seen_patches >= next_log:
+                        should_log = True
+                if should_log:
+                    total_s = max(float(timing_acc["total_step_s"]), 1e-12)
+                    steps = max(int(timing_acc["steps"]), 1)
+                    patches = max(int(timing_acc["patches"]), 1)
                     log_fn(
                         {
                             "train/loss": loss_value,
@@ -348,9 +389,37 @@ class PaDISSolver(LIONsolver):
                             "train/seen_patches": self.seen_patches,
                             "train/step": len(self.train_loss),
                             "optimizer/lr": self.optimizer.param_groups[0]["lr"],
+                            "timing/data_wait_s_per_step": timing_acc["data_wait_s"]
+                            / steps,
+                            "timing/train_step_s_per_step": timing_acc["train_step_s"]
+                            / steps,
+                            "timing/total_s_per_step": timing_acc["total_step_s"]
+                            / steps,
+                            "timing/data_wait_fraction": timing_acc["data_wait_s"]
+                            / total_s,
+                            "timing/train_step_fraction": timing_acc["train_step_s"]
+                            / total_s,
+                            "timing/patches_per_second": patches / total_s,
+                            "timing/steps_per_second": steps / total_s,
                         },
                         self.seen_patches,
                     )
+                    if self.verbose:
+                        print(
+                            f"Patches {self.seen_patches} - loss {loss_value:.4g} - "
+                            f"data wait {timing_acc['data_wait_s'] / steps:.3f}s/step - "
+                            f"train {timing_acc['train_step_s'] / steps:.3f}s/step - "
+                            f"{patches / total_s:.1f} patches/s"
+                        )
+                    timing_acc = {
+                        "data_wait_s": 0.0,
+                        "train_step_s": 0.0,
+                        "total_step_s": 0.0,
+                        "patches": 0,
+                        "steps": 0,
+                    }
+                    if next_log is not None:
+                        next_log += int(log_interval_patches)
 
                 if next_validation is not None and self.seen_patches >= next_validation:
                     validation_loss = self.validate()
@@ -398,9 +467,12 @@ class PaDISSolver(LIONsolver):
                     target = target.float()
                     self._check_data_range(target)
                     clean_patch, position_patch = self._sample_training_patch(target)
-                    clean_patch = clean_patch.to(self.device)
+                    non_blocking = self.device.type == "cuda"
+                    clean_patch = clean_patch.to(self.device, non_blocking=non_blocking)
                     if position_patch is not None:
-                        position_patch = position_patch.to(self.device)
+                        position_patch = position_patch.to(
+                            self.device, non_blocking=non_blocking
+                        )
                     loss = self.loss_fn(self.model, clean_patch, position_patch)
                     validation_loss = np.append(validation_loss, loss.cpu().item())
         finally:
