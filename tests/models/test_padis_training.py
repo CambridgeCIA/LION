@@ -399,6 +399,62 @@ def test_load_checkpoint_falls_back_to_full_final_state(tmp_path):
     assert resumed_solver.seen_patches == 7
 
 
+def test_load_checkpoint_loads_periodic_checkpoint_without_reconstructing_model(
+    tmp_path,
+):
+    model, geometry = _tiny_padis_model()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    solver = PaDISSolver(
+        model,
+        optimizer,
+        PaDISDenoisingLoss(),
+        geometry=geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+        save_folder=tmp_path,
+    )
+    solver.set_checkpointing(
+        "padis_checkpoint_*.pt",
+        checkpoint_freq=10**12,
+        load_checkpoint_if_exists=True,
+        save_folder=tmp_path,
+    )
+    first_name, first_param = next(iter(model.named_parameters()))
+    raw = first_param.detach().clone()
+    with torch.no_grad():
+        first_param.add_(2)
+    solver.ema_state[first_name] = raw + 3
+    solver.seen_patches = 11
+    solver.save_checkpoint(0)
+
+    resumed_model, resumed_geometry = _tiny_padis_model()
+    resumed_optimizer = torch.optim.Adam(resumed_model.parameters(), lr=1e-4)
+    resumed_solver = PaDISSolver(
+        resumed_model,
+        resumed_optimizer,
+        PaDISDenoisingLoss(),
+        geometry=resumed_geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+        save_folder=tmp_path,
+    )
+    resumed_solver.set_checkpointing(
+        "padis_checkpoint_*.pt",
+        checkpoint_freq=10**12,
+        load_checkpoint_if_exists=True,
+        save_folder=tmp_path,
+    )
+
+    epoch = resumed_solver.load_checkpoint()
+    resumed_first_param = dict(resumed_model.named_parameters())[first_name]
+
+    assert epoch == 1
+    assert torch.allclose(resumed_first_param, raw + 2)
+    assert torch.allclose(resumed_solver.ema_state[first_name], raw + 3)
+    assert resumed_solver.seen_patches == 11
+
+
 def test_first_ema_update_copies_model_like_padis_rampup():
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)

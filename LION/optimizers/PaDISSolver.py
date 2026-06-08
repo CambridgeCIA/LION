@@ -636,6 +636,17 @@ class PaDISSolver(LIONsolver):
             }
             self.seen_patches = int(data.get("seen_patches", 0))
 
+    def _load_periodic_checkpoint(self, checkpoint_path: pathlib.Path) -> int:
+        data = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
+        self.model.load_state_dict(data["model_state_dict"])
+        self.optimizer.load_state_dict(data["optimizer_state_dict"])
+        self.current_epoch = int(data.get("epoch", 0))
+        self.train_loss = data.get("loss", self.train_loss)
+        self.model.train()
+        if self.verbose:
+            print(f"Loaded PaDIS checkpoint from {checkpoint_path}")
+        return self.current_epoch
+
     def _load_full_training_state(self, path: pathlib.Path) -> int | None:
         full_path = self._full_state_base_path(path).with_suffix(".pt")
         if not full_path.is_file():
@@ -673,7 +684,7 @@ class PaDISSolver(LIONsolver):
             return self.current_epoch
         checkpoints = sorted(self.checkpoint_save_folder.glob(self.checkpoint_fname))
         if checkpoints:
-            epoch = super().load_checkpoint()
+            epoch = self._load_periodic_checkpoint(checkpoints[-1])
             self._load_ema_sidecar()
             return epoch
 

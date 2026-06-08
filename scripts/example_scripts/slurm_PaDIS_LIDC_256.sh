@@ -137,8 +137,8 @@ options=(
         --wandb-name "$RUN_NAME"
         --wandb-mode online
         --device cuda
-        --target-patches 200000000
-        --validation-interval-patches 50000
+        --target-patches 40000000
+        --validation-interval-patches 10000
         --checkpoint-interval-patches 250000
         --log-interval-patches 1000
         --batch-size 128
