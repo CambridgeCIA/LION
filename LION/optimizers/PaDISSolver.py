@@ -319,6 +319,28 @@ class PaDISSolver(LIONsolver):
         progress.close()
         return epoch_loss / max(step_count, 1)
 
+    def _existing_min_validation_loss(self) -> float | None:
+        if self.validation_fname is None or self.validation_save_folder is None:
+            return None
+        validation_path = self.validation_save_folder.joinpath(self.validation_fname)
+        if not validation_path.with_suffix(".pt").is_file():
+            return None
+        data = torch.load(
+            validation_path.with_suffix(".pt"),
+            map_location=self.device,
+            weights_only=False,
+        )
+        loss = data.get("loss")
+        if loss is None:
+            return None
+        if isinstance(loss, np.ndarray):
+            if len(loss) == 0:
+                return None
+            loss = loss[-1]
+        if isinstance(loss, torch.Tensor):
+            loss = loss.detach().cpu().item()
+        return float(loss)
+
     def train_for_patches(
         self,
         target_patches: int,
@@ -351,7 +373,16 @@ class PaDISSolver(LIONsolver):
 
         has_validation = self.check_validation_ready(verbose=False) == 0
         if has_validation:
-            self.validation_loss = np.zeros(0)
+            existing_min_validation_loss = self._existing_min_validation_loss()
+            if existing_min_validation_loss is None:
+                self.validation_loss = np.zeros(0)
+            else:
+                self.validation_loss = np.array([existing_min_validation_loss])
+                if self.verbose:
+                    print(
+                        "Loaded existing minimum validation loss: "
+                        f"{existing_min_validation_loss}"
+                    )
         else:
             self.validation_loss = None
         self.train_loss = []
@@ -531,12 +562,52 @@ class PaDISSolver(LIONsolver):
                 self.checkpoint_save_folder.joinpath(ema_fname).with_suffix(".ema.pt"),
             )
 
+    @staticmethod
+    def _full_state_base_path(path: pathlib.Path) -> pathlib.Path:
+        return path.with_name(f"{path.stem}_full")
+
+    def _save_full_training_state(
+        self,
+        path: pathlib.Path,
+        *,
+        epoch: int | None = None,
+        kind: str,
+        validation_loss: float | None = None,
+    ) -> None:
+        if epoch is None:
+            epoch = self.current_epoch
+        full_base_path = self._full_state_base_path(path)
+        self.model.save_checkpoint(
+            full_base_path,
+            epoch,
+            self.train_loss,
+            self.optimizer,
+            self.metadata,
+            dataset=self.dataset_param,
+        )
+        full_pt_path = full_base_path.with_suffix(".pt")
+        data = torch.load(full_pt_path, map_location=self.device, weights_only=False)
+        data["full_save_kind"] = kind
+        data["seen_patches"] = self.seen_patches
+        if validation_loss is not None:
+            data["validation_loss"] = float(validation_loss)
+        if self.ema_state is not None:
+            data["ema_state_dict"] = {
+                name: tensor.detach().cpu() for name, tensor in self.ema_state.items()
+            }
+        torch.save(data, full_pt_path)
+
     def save_validation(self, epoch):
         raw_state = self._apply_ema_weights()
         try:
             super().save_validation(epoch)
         finally:
             self._restore_raw_weights(raw_state)
+        self._save_full_training_state(
+            self.validation_save_folder.joinpath(self.validation_fname),
+            kind="validation",
+            validation_loss=float(self.validation_loss[epoch]),
+        )
 
     def save_final_results(self, final_result_fname=None, save_folder=None, epoch=None):
         raw_state = self._apply_ema_weights()
@@ -544,18 +615,76 @@ class PaDISSolver(LIONsolver):
             super().save_final_results(final_result_fname, save_folder, epoch)
         finally:
             self._restore_raw_weights(raw_state)
+        self._save_full_training_state(
+            self.save_folder.joinpath(self.final_result_fname),
+            epoch=epoch,
+            kind="final",
+        )
 
-    def load_checkpoint(self):
-        epoch = super().load_checkpoint()
+    def _load_ema_sidecar(self) -> None:
         if self.checkpoint_save_folder is None or self.checkpoint_fname is None:
-            return epoch
+            return
         ema_pattern = self.checkpoint_fname.replace(".pt", ".ema.pt")
         ema_files = sorted(self.checkpoint_save_folder.glob(ema_pattern))
         if ema_files:
-            data = torch.load(ema_files[-1], map_location=self.device)
+            data = torch.load(
+                ema_files[-1], map_location=self.device, weights_only=False
+            )
             self.ema_state = {
                 name: tensor.to(self.device)
                 for name, tensor in data["ema_state_dict"].items()
             }
             self.seen_patches = int(data.get("seen_patches", 0))
+
+    def _load_full_training_state(self, path: pathlib.Path) -> int | None:
+        full_path = self._full_state_base_path(path).with_suffix(".pt")
+        if not full_path.is_file():
+            return None
+        data = torch.load(full_path, map_location=self.device, weights_only=False)
+        self.model.load_state_dict(data["model_state_dict"])
+        self.optimizer.load_state_dict(data["optimizer_state_dict"])
+        self.current_epoch = int(data.get("epoch", 0))
+        self.train_loss = data.get("loss", self.train_loss)
+        if "ema_state_dict" in data:
+            self.ema_state = {
+                name: tensor.to(self.device)
+                for name, tensor in data["ema_state_dict"].items()
+            }
+        self.seen_patches = int(data.get("seen_patches", self.seen_patches))
+        self.model.train()
+        if self.verbose:
+            print(
+                f"Loaded PaDIS full {data.get('full_save_kind', 'training')} state "
+                f"from {full_path}"
+            )
+        return self.current_epoch
+
+    def _full_training_state_fallbacks(self) -> list[pathlib.Path]:
+        paths = []
+        if self.save_folder is not None and self.final_result_fname is not None:
+            paths.append(self.save_folder.joinpath(self.final_result_fname))
+        validation_save_folder = getattr(self, "validation_save_folder", None)
+        if validation_save_folder is not None and self.validation_fname is not None:
+            paths.append(validation_save_folder.joinpath(self.validation_fname))
+        return paths
+
+    def load_checkpoint(self):
+        if self.checkpoint_save_folder is None or self.checkpoint_fname is None:
+            return self.current_epoch
+        checkpoints = sorted(self.checkpoint_save_folder.glob(self.checkpoint_fname))
+        if checkpoints:
+            epoch = super().load_checkpoint()
+            self._load_ema_sidecar()
+            return epoch
+
+        for path in self._full_training_state_fallbacks():
+            epoch = self._load_full_training_state(path)
+            if epoch is not None:
+                return epoch
+
+        print(
+            f"checkpoint {self.checkpoint_save_folder.joinpath(self.checkpoint_fname)} "
+            "not found, failed to load."
+        )
+        epoch = self.current_epoch
         return epoch

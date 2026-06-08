@@ -111,6 +111,49 @@ def serializable_config(args, run_folder, preset):
     return config
 
 
+def wandb_id_file(run_folder):
+    return run_folder / "wandb_run.json"
+
+
+def extract_wandb_id(path):
+    match = re.search(r"(?:offline-run|run)-\d+_\d+-([A-Za-z0-9]+)$", path.name)
+    return match.group(1) if match is not None else None
+
+
+def discover_wandb_id(run_folder):
+    metadata_path = wandb_id_file(run_folder)
+    if metadata_path.is_file():
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+        if metadata.get("id"):
+            return metadata["id"]
+
+    wandb_folder = run_folder / "wandb"
+    latest_run = wandb_folder / "latest-run"
+    if latest_run.exists():
+        run_id = extract_wandb_id(latest_run.resolve())
+        if run_id is not None:
+            return run_id
+
+    run_dirs = [
+        path
+        for path in wandb_folder.glob("*")
+        if path.is_dir() and extract_wandb_id(path) is not None
+    ]
+    if run_dirs:
+        newest = max(run_dirs, key=lambda path: path.stat().st_mtime)
+        return extract_wandb_id(newest)
+
+    return None
+
+
+def save_wandb_id(run_folder, wandb_run):
+    if wandb_run is None:
+        return
+    with open(wandb_id_file(run_folder), "w") as f:
+        json.dump({"id": wandb_run.id, "name": wandb_run.name}, f, indent=2)
+
+
 def init_wandb(args, run_folder, preset):
     if args.no_wandb or args.wandb_project is None:
         return None
@@ -121,14 +164,29 @@ def init_wandb(args, run_folder, preset):
             "WandB logging was requested, but wandb is not installed."
         ) from exc
 
-    return wandb.init(
-        project=args.wandb_project,
-        entity=args.wandb_entity,
-        name=args.wandb_name or run_folder.name,
-        dir=str(run_folder),
-        config=serializable_config(args, run_folder, preset),
-        mode=args.wandb_mode,
-    )
+    run_id = args.wandb_id or discover_wandb_id(run_folder)
+    init_kwargs = {
+        "project": args.wandb_project,
+        "entity": args.wandb_entity,
+        "name": args.wandb_name or run_folder.name,
+        "dir": str(run_folder),
+        "config": serializable_config(args, run_folder, preset),
+        "mode": args.wandb_mode,
+    }
+    if run_id is not None:
+        init_kwargs["id"] = run_id
+        init_kwargs["resume"] = "allow"
+        print(f"Resuming WandB run id {run_id}")
+
+    wandb_run = wandb.init(**init_kwargs)
+    save_wandb_id(run_folder, wandb_run)
+    return wandb_run
+
+
+def min_validation_loss(solver):
+    if solver.validation_loss is None or len(solver.validation_loss) == 0:
+        return None
+    return float(min(solver.validation_loss))
 
 
 def wandb_log_fn(wandb_run):
@@ -319,6 +377,7 @@ def build_arg_parser():
     parser.add_argument("--wandb-project", type=str, default=None)
     parser.add_argument("--wandb-entity", type=str, default=None)
     parser.add_argument("--wandb-name", type=str, default=None)
+    parser.add_argument("--wandb-id", type=str, default=None)
     parser.add_argument(
         "--wandb-mode", choices=("online", "offline", "disabled"), default="online"
     )
@@ -400,6 +459,9 @@ def main():
         solver.clean_checkpoints()
         solver.save_final_results()
         save_loss_plots(solver, run_folder)
+        if wandb_run is not None:
+            wandb_run.summary["min_validation_loss"] = min_validation_loss(solver)
+            wandb_run.summary["seen_patches"] = solver.seen_patches
         log_wandb_outputs(wandb_run, run_folder)
     finally:
         if wandb_run is not None:

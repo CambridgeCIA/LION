@@ -248,6 +248,155 @@ def test_save_validation_writes_ema_weights_and_restores_raw_model(tmp_path):
         tmp_path / "padis_min_val.pt", map_location="cpu", weights_only=False
     )
     assert torch.allclose(data["model_state_dict"][first_name], raw + 1)
+    full_data = torch.load(
+        tmp_path / "padis_min_val_full.pt", map_location="cpu", weights_only=False
+    )
+    assert torch.allclose(full_data["model_state_dict"][first_name], raw)
+    assert torch.allclose(full_data["ema_state_dict"][first_name], raw + 1)
+    assert full_data["full_save_kind"] == "validation"
+    assert full_data["validation_loss"] == 0.25
+
+
+def test_train_for_patches_preserves_existing_min_validation_on_resume(tmp_path):
+    model, geometry = _tiny_padis_model()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    solver_params.patch_sizes = [16]
+    solver_params.patch_probabilities = [1.0]
+    solver_params.patch_batch_multipliers = {16: 1}
+    solver_params.lr_rampup_kimg = None
+    solver = PaDISSolver(
+        model,
+        optimizer,
+        PaDISDenoisingLoss(),
+        geometry=geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+        save_folder=tmp_path,
+    )
+    images = torch.rand(2, 1, 256, 256)
+    validation_loader = DataLoader(TensorDataset(images[:1], images[:1]), batch_size=1)
+    solver.set_validation(
+        validation_loader,
+        validation_freq=10**12,
+        validation_fname="padis_min_val.pt",
+        save_folder=tmp_path,
+    )
+    solver.validation_loss = [0.1]
+    solver.save_validation(0)
+
+    resumed_model, resumed_geometry = _tiny_padis_model()
+    resumed_optimizer = torch.optim.Adam(resumed_model.parameters(), lr=1e-4)
+    resumed_solver = PaDISSolver(
+        resumed_model,
+        resumed_optimizer,
+        PaDISDenoisingLoss(),
+        geometry=resumed_geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+        save_folder=tmp_path,
+    )
+    train_loader = DataLoader(TensorDataset(images, images), batch_size=1)
+    resumed_solver.set_training(train_loader)
+    resumed_solver.set_validation(
+        validation_loader,
+        validation_freq=10**12,
+        validation_fname="padis_min_val.pt",
+        save_folder=tmp_path,
+    )
+    resumed_solver.validate = lambda: 0.2
+
+    resumed_solver.train_for_patches(1, validation_interval_patches=1)
+
+    assert resumed_solver.validation_loss[0] == 0.1
+    assert resumed_solver.validation_loss[1] == 0.2
+    data = torch.load(
+        tmp_path / "padis_min_val.pt", map_location="cpu", weights_only=False
+    )
+    assert data["loss"] == 0.1
+
+
+def test_save_final_results_writes_resumable_full_state(tmp_path):
+    model, geometry = _tiny_padis_model()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    solver = PaDISSolver(
+        model,
+        optimizer,
+        PaDISDenoisingLoss(),
+        geometry=geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+        save_folder=tmp_path,
+    )
+    solver.set_saving(tmp_path, "padis_final")
+    first_name, first_param = next(iter(model.named_parameters()))
+    raw = first_param.detach().clone()
+    solver.ema_state[first_name] = raw + 1
+    solver.seen_patches = 5
+    solver.train_loss = [1.0, 0.5]
+
+    solver.save_final_results()
+
+    lightweight = torch.load(
+        tmp_path / "padis_final.pt", map_location="cpu", weights_only=False
+    )
+    full_data = torch.load(
+        tmp_path / "padis_final_full.pt", map_location="cpu", weights_only=False
+    )
+    assert torch.allclose(lightweight["model_state_dict"][first_name], raw + 1)
+    assert torch.allclose(full_data["model_state_dict"][first_name], raw)
+    assert torch.allclose(full_data["ema_state_dict"][first_name], raw + 1)
+    assert full_data["seen_patches"] == 5
+    assert full_data["full_save_kind"] == "final"
+    assert "optimizer_state_dict" in full_data
+
+
+def test_load_checkpoint_falls_back_to_full_final_state(tmp_path):
+    model, geometry = _tiny_padis_model()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    solver = PaDISSolver(
+        model,
+        optimizer,
+        PaDISDenoisingLoss(),
+        geometry=geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+        save_folder=tmp_path,
+    )
+    solver.set_saving(tmp_path, "padis_final")
+    first_name, first_param = next(iter(model.named_parameters()))
+    raw = first_param.detach().clone()
+    solver.ema_state[first_name] = raw + 1
+    solver.seen_patches = 7
+    solver.save_final_results()
+
+    resumed_model, resumed_geometry = _tiny_padis_model()
+    resumed_optimizer = torch.optim.Adam(resumed_model.parameters(), lr=1e-4)
+    resumed_solver = PaDISSolver(
+        resumed_model,
+        resumed_optimizer,
+        PaDISDenoisingLoss(),
+        geometry=resumed_geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+        save_folder=tmp_path,
+    )
+    resumed_solver.set_saving(tmp_path, "padis_final")
+    resumed_solver.set_checkpointing(
+        "missing_checkpoint_*.pt",
+        checkpoint_freq=10**12,
+        load_checkpoint_if_exists=True,
+        save_folder=tmp_path,
+    )
+
+    resumed_solver.load_checkpoint()
+    resumed_first_param = dict(resumed_model.named_parameters())[first_name]
+
+    assert torch.allclose(resumed_first_param, raw)
+    assert torch.allclose(resumed_solver.ema_state[first_name], raw + 1)
+    assert resumed_solver.seen_patches == 7
 
 
 def test_first_ema_update_copies_model_like_padis_rampup():
