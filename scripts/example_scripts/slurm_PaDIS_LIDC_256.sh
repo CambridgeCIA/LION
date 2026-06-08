@@ -12,8 +12,8 @@
 #! Name of the job:
 #SBATCH -J PaDIS_LIDC_256
 #! Which project should be charged (NB Wilkes2 projects end in '-GPU'):
-#SBATCH -A MPHIL-DIS-SL2-GPU
-##SBATCH -A FERGUSSON-SL3-GPU
+##SBATCH -A MPHIL-DIS-SL2-GPU
+#SBATCH -A FERGUSSON-SL3-GPU
 #! How many whole nodes should be allocated?
 #SBATCH --nodes=1
 #! How many (MPI) tasks will there be in total?
@@ -24,7 +24,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=32
 #! How much wallclock time will be required?
-#SBATCH --time=0:10:00
+#SBATCH --time=12:00:00
 #! What types of email messages do you wish to receive?
 #SBATCH --mail-type=NONE
 #! Uncomment this to prevent the job from being requeued (e.g. if
@@ -92,13 +92,49 @@ PY
 #! Full path to application executable:
 application="python"
 
+#! Resume settings. Edit these directly, or override them at submission time.
+RUN_NAME="${PADIS_RUN_NAME:-padis_lidc_256_reproduction_CSD3}"
+#! Optional: paste the WandB run id here, e.g. WANDB_ID="abc123xyz".
+WANDB_ID="a6hr0vvo"
+if [ -n "${PADIS_SAVE_FOLDER:-}" ]; then
+        SAVE_FOLDER="$PADIS_SAVE_FOLDER"
+elif [ -n "${LION_EXPERIMENTS_PATH:-}" ]; then
+        SAVE_FOLDER="$LION_EXPERIMENTS_PATH/PaDIS/LIDC_256"
+elif [ -n "${LION_DATA_PATH:-}" ]; then
+        SAVE_FOLDER="$LION_DATA_PATH/experiments/PaDIS/LIDC_256"
+else
+        echo "Set LION_DATA_PATH, LION_EXPERIMENTS_PATH, or PADIS_SAVE_FOLDER so the previous PaDIS run can be found."
+        exit 1
+fi
+RUN_FOLDER="$SAVE_FOLDER/$RUN_NAME"
+
+if [ ! -d "$RUN_FOLDER" ]; then
+        echo "Cannot resume: run folder does not exist: $RUN_FOLDER"
+        echo "Set PADIS_SAVE_FOLDER and/or PADIS_RUN_NAME to the existing run."
+        exit 1
+fi
+
+shopt -s nullglob
+resume_files=(
+        "$RUN_FOLDER"/padis_lidc_256_checkpoint_*.pt
+        "$RUN_FOLDER"/padis_lidc_256_full.pt
+        "$RUN_FOLDER"/padis_lidc_256_min_val_full.pt
+)
+shopt -u nullglob
+if [ "${#resume_files[@]}" -eq 0 ]; then
+        echo "Cannot resume: no PaDIS checkpoint or full training state found in $RUN_FOLDER"
+        echo "Expected one of: padis_lidc_256_checkpoint_*.pt, padis_lidc_256_full.pt, padis_lidc_256_min_val_full.pt"
+        exit 1
+fi
+
 #! Run options for the application:
 options=(
         "$SLURM_SUBMIT_DIR/scripts/example_scripts/PaDIS_LIDC_256.py"
-        --run-name padis_lidc_256_reproduction_CSD3
+        --save-folder "$SAVE_FOLDER"
+        --run-name "$RUN_NAME"
         --wandb-entity tjh200-university-of-cambridge
         --wandb-project PaDIS-Reproduction
-        --wandb-name padis_lidc_256_reproduction_CSD3
+        --wandb-name "$RUN_NAME"
         --wandb-mode online
         --device cuda
         --target-patches 200000000
@@ -111,6 +147,10 @@ options=(
         --cache-dataset ramdisk
         --cache-folder "/ramdisks/$USER/lion_lidc_cache"
 )
+
+if [ -n "$WANDB_ID" ]; then
+        options+=(--wandb-id "$WANDB_ID")
+fi
 
 #! Work directory (i.e. where the job will run):
 workdir="$SLURM_SUBMIT_DIR"
