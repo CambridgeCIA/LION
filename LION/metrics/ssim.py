@@ -28,7 +28,7 @@ class SSIM(nn.Module):
         self,
         x: torch.Tensor,
         target: torch.Tensor,
-        reduce=str | None,
+        reduce: str | None = None,
         batched=True,
         channel_axis: int | None = 1,
         data_range: float | None = None,
@@ -37,20 +37,39 @@ class SSIM(nn.Module):
             raise ShapeMismatchException(
                 f"x (shape {x.shape}) and target (shape {target.shape}) tensors must match to compare with SSIM"
             )
-        x_ = x.detach().cpu().numpy().squeeze()
-        target_ = target.detach().cpu().numpy().squeeze()
+            
         if batched:
-            # shape either B, C, W, H, ... or B, W, H, ...
-            # if it's not, then that's your fault not mine, you told me it was batched
+            x_ = x.detach().cpu().numpy()
+            target_ = target.detach().cpu().numpy()
             vals = torch.empty((x.shape[0]))
             for i in range(x.shape[0]):
-                dr = data_range if data_range is not None else (target_[i].max() - target_[i].min())
-                vals[i] = skim_ssim(
-                    x_[i],
-                    target_[i],
+                xi = x_[i].squeeze()
+                ti = target_[i].squeeze()
+                
+                if xi.shape != x_[i].shape and channel_axis is not None:
+                    import warnings
+                    warnings.warn(
+                        f"SSIM warning: Squeezing changed batch element shape from {x_[i].shape} to {xi.shape} "
+                        f"while channel_axis was {channel_axis}. The channel_axis might be handled unpredictably. "
+                        f"It is highly recommended to perform squeezing (for non-batch dimensions only) yourself "
+                        f"before applying SSIM, and pass channel_axis=None.",
+                        UserWarning,
+                        stacklevel=2
+                    )
+                
+                curr_channel_axis = channel_axis
+                if len(xi.shape) == 2:
+                    curr_channel_axis = None
+                elif curr_channel_axis is not None and curr_channel_axis >= 0:
+                    curr_channel_axis -= 1
+                    
+                dr = data_range if data_range is not None else (ti.max() - ti.min())
+                vals[i] = float(skim_ssim(
+                    xi,
+                    ti,
                     data_range=dr,
-                    channel_axis=channel_axis,
-                )
+                    channel_axis=curr_channel_axis,
+                ))
 
             if reduce is None:
                 return vals
@@ -61,12 +80,30 @@ class SSIM(nn.Module):
                     f"expected one of 'mean' or None for parameter 'reduce', got {reduce}"
                 )
         else:
+            x_ = x.detach().cpu().numpy().squeeze()
+            target_ = target.detach().cpu().numpy().squeeze()
+            
+            if x_.shape != tuple(x.shape) and channel_axis is not None:
+                import warnings
+                warnings.warn(
+                    f"SSIM warning: Squeezing changed shape from {x.shape} to {x_.shape} "
+                    f"while channel_axis was {channel_axis}. The channel_axis might be handled unpredictably. "
+                    f"It is highly recommended to perform squeezing yourself before applying SSIM, "
+                    f"and pass channel_axis=None.",
+                    UserWarning,
+                    stacklevel=2
+                )
+                
+            curr_channel_axis = channel_axis
+            if len(x_.shape) == 2:
+                curr_channel_axis = None
+                
             dr = data_range if data_range is not None else (target_.max() - target_.min())
             return torch.tensor(
                 skim_ssim(
                     x_,
                     target_,
                     data_range=dr,
-                    channel_axis=channel_axis,
+                    channel_axis=curr_channel_axis,
                 )
             )

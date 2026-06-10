@@ -30,14 +30,17 @@ class PSNR(nn.Module):
             raise ShapeMismatchException(
                 f"x (shape {x.shape}) and target (shape {target.shape}) tensors must match to compare with SSIM"
             )
-        x_ = x.detach().cpu().numpy().squeeze()
-        target_ = target.detach().cpu().numpy().squeeze()
+        
         if batched:
+            x_ = x.detach().cpu().numpy()
+            target_ = target.detach().cpu().numpy()
             vals = torch.empty(x.shape[0])
             for i in range(x.shape[0]):
-                dr = data_range if data_range is not None else (target_[i].max() - target_[i].min())
+                xi = x_[i].squeeze()
+                ti = target_[i].squeeze()
+                dr = data_range if data_range is not None else (ti.max() - ti.min())
                 vals[i] = skim_psnr(
-                    target_[i], x_[i], data_range=dr
+                    ti, xi, data_range=dr
                 )
 
             if reduce is None:
@@ -49,6 +52,8 @@ class PSNR(nn.Module):
                     f"expected one of 'mean' or None for parameter 'reduce', got {reduce}"
                 )
         else:
+            x_ = x.detach().cpu().numpy().squeeze()
+            target_ = target.detach().cpu().numpy().squeeze()
             dr = data_range if data_range is not None else (target_.max() - target_.min())
             return torch.tensor(
                 skim_psnr(x_, target_, data_range=dr)
