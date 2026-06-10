@@ -182,18 +182,36 @@ def tweedie_denoise(x: torch.Tensor, t: torch.Tensor, sde: SimpleForwardSDE, sco
 
 def pc_sampler_new(x: torch.Tensor, predictor: Predictor, corrector: Corrector, hijack=None, denoise=True, verbose=False, verbose_freq=10):
     """
-    A new version of predictor-corrector sampler for solving the reverse-time SDE consistent with `score_inverse_problems/cs.py`. The main differences are ...
+    A new version of predictor-corrector sampler for solving the reverse-time SDE,
+    consistent with the ``projection_sampler`` in ``score_inverse_problems/cs.py``.
+
+    The key differences from :func:`pc_sampler` are:
+
+    * The per-step update order is ``hijack → correct → hijack → predict`` instead
+      of ``hijack → predict → correct``.  Applying hijack before the corrector
+      ensures the corrector operates on a measurement-consistent iterate.
+    * After the final predictor step, an optional Tweedie denoising step is applied
+      (see :func:`tweedie_denoise`), followed by a final hijack to re-impose
+      data consistency on the denoised estimate.
 
     Args:
-        x: torch.Tensor of shape (batch_size, ...) representing the initial solution at time 1.
-        predictor (Predictor): the predictor for estimating the solution of the reverse-time SDE at the next time step.
-        corrector (Corrector): the corrector for correcting the marginal distribution of the estimated samples.
-        hijack (callable, optional): a function that takes in x and t and outputs the hijacked solution at time t before application of predictor.
-        denoise (bool): whether to apply tweedie denoising after the final step.
-        verbose (bool): whether to print verbose output.
-        verbose_freq (int): the frequency of verbose output.
+        x: torch.Tensor of shape (batch_size, ...) representing the initial noisy
+            sample drawn from the prior at time ``t = 1``.
+        predictor (Predictor): the predictor for estimating the solution of the
+            reverse-time SDE at the next time step.
+        corrector (Corrector): the corrector for correcting the marginal distribution
+            of the estimated samples.
+        hijack (callable, optional): a function ``hijack(x, t) -> x`` that enforces
+            data consistency at time ``t``.  If ``None``, no hijacking is applied.
+        denoise (bool): whether to apply Tweedie denoising after the final predictor
+            step.  Defaults to ``True``.
+        verbose (bool): whether to print progress messages.  Defaults to ``False``.
+        verbose_freq (int): print a progress message every this many steps.
+            Defaults to ``10``.
+
     Returns:
-        torch.Tensor of shape (batch_size, ...) representing the final solution at time 0.
+        torch.Tensor of shape (batch_size, ...) representing the final sample at
+        time ``t ≈ 0`` (or the Tweedie-denoised estimate if ``denoise=True``).
     """
     dt = (1.0 - predictor.eps) / predictor.N
     timesteps = 1.0 - torch.arange(predictor.N, device=x.device) * dt
@@ -212,7 +230,9 @@ def pc_sampler_new(x: torch.Tensor, predictor: Predictor, corrector: Corrector, 
         x = tweedie_denoise(x, t, predictor.sde, predictor.score_fn)
         if hijack is not None:
             x = hijack(x, torch.zeros_like(t))
-    return x
+        return x
+    else:
+        return x_mean
 
 def get_score_conditional(score_fn: callable, sde: SimpleForwardSDE, y: torch.Tensor, op: callable, op_adj: callable, rate=1.0):
     """
@@ -239,7 +259,29 @@ def get_score_conditional(score_fn: callable, sde: SimpleForwardSDE, y: torch.Te
 
     return score_conditional
 
-def get_hijack(sde: SimpleForwardSDE, full_op: callable, full_op_inv: callable, y: torch.Tensor, mask: torch.Tensor, lb=1.0, clean_hijack=False):
+def get_hijack(sde: SimpleForwardSDE, full_op: callable, full_op_inv: callable, y: torch.Tensor, mask: torch.Tensor, lb=1.0, clean_hijack=False, clamp_factor=None, data_range=(0.0, 1.0)):
+    """
+    Return a hijack function for data consistency, implementing equation (9) in [Song2022], consistent with the ``inpaint_update_fn`` in ``score_inverse_problems/cs.py``.
+
+    .. math::
+
+        x_{\\text{hijacked}} = T^{-1}\\!\\left[\\lambda \\Lambda \\odot y_t
+        + (1 - \\lambda \\Lambda) \\odot T(x_t)\\right]
+
+    Args:
+        sde (SimpleForwardSDE): the forward SDE used to compute the transition distribution ``(α_t, β_t)``.
+        full_op (callable): the invertible forward operator ``T`` in [Song2022], mapping image-space tensors of shape ``(batch_size, ...)`` to the measurement domain.
+        full_op_inv (callable): the exact inverse ``T^{-1}`` of ``full_op``.
+        y (torch.Tensor): the clean observed data in the measurement domain, of shape ``(batch_size, ...)``.  Used to form the noisy measurement ``y_t`` at each time step.
+        mask (torch.Tensor): the binary mask ``Λ`` in [Song2022] selecting the observed frequency components.  Broadcast-compatible with the output of ``full_op``.
+        lb (float): hijack weight ``λ`` in [Song2022]. ``lb=1.0`` gives the strongest correction. Defaults to ``1.0``.
+        clean_hijack (bool): if ``True``, use ``y_t = α_t · y`` (no noise injection) instead of the SDE-consistent noisy measurement.  Should be ``False`` to remain consistent with [Song2022].  Defaults to ``False``.
+        clamp_factor (float or None): if not ``None``, clamp the hijacked iterate to ``[data_range[0] - clamp_factor · β_t, data_range[1] + clamp_factor · β_t]`` to prevent overflow. Defaults to ``None``.
+        data_range (tuple[float, float]): the expected range ``(min, max)`` of clean image values.  Active only when ``clamp_factor`` is not ``None``. Defaults to ``(0.0, 1.0)``.
+
+    Returns:
+        callable: a function ``hijack(x, t) -> x_hijacked`` that enforces measurement consistency at time step ``t``.
+    """
     def hijack(x, t):
         alpha_t, beta_t = sde.transition_dist(y, t)
         if clean_hijack:
@@ -248,5 +290,47 @@ def get_hijack(sde: SimpleForwardSDE, full_op: callable, full_op_inv: callable, 
             y_t = alpha_t * y + beta_t * full_op(torch.randn_like(x))
         Tx = full_op(x)
         x_hijacked = full_op_inv(lb * mask * y_t + (1.0 - lb * mask) * Tx)
+        
+        if clamp_factor is not None:
+            x_hijacked = torch.clamp(x_hijacked, data_range[0] - clamp_factor * beta_t, data_range[1] + clamp_factor * beta_t)
+        return x_hijacked
+    return hijack
+
+def get_hijack_new(sde: SimpleForwardSDE, op: callable, pseudo_inv: callable, y: torch.Tensor, lb=1.0, clean_hijack=False, clamp_factor=None, data_range=(0.0, 1.0)):
+    """
+    Return a hijack function for data consistency using a pseudo-inverse operator, generalising equation (9) in [Song2022] to settings where an invertible operator ``T`` is not available.
+
+    Unlike :func:`get_hijack`, this variant does not require an invertible operator ``T``.  Instead it asks for a pseudo-inverse ``A†`` of the forward operator ``A``:
+
+    .. math::
+
+        x_{\\text{hijacked}} = x_t - \\lambda \\cdot A^\\dagger\\!(A(x_t) - y_t)
+
+    When ``A†`` is a right inverse (``A · A† = I``), this is algebraically equivalent to :func:`get_hijack`.  In practice, approximate right-inverses such as SIRT preconditioned adjoint (see :class:`~LION.models.score_inverse.sirt_adj.SIRTAdj`) work well empirically even though they are not exact right-inverses.
+
+    Args:
+        sde (SimpleForwardSDE): the forward SDE used to compute the transition distribution ``(α_t, β_t)``.
+        op (callable): the forward operator ``A`` mapping image-space tensors of shape ``(batch_size, ...)`` to sinogram-space tensors.
+        pseudo_inv (callable): an approximate right-inverse ``A†`` of ``op``,mapping sinogram-space tensors back to image space.
+        y (torch.Tensor): the clean observed sinogram of shape ``(batch_size, ...)``. Used to form the noisy measurement ``y_t`` at each time step.
+        lb (float): hijack weight ``λ``. ``lb=1.0`` gives the strongest correction. Defaults to ``1.0``.
+        clean_hijack (bool): if ``True``, use ``y_t = α_t · y`` (no noise injection) instead of the SDE-consistent noisy measurement.  Should be ``False`` to remain consistent with [Song2022].  Defaults to ``False``.
+        clamp_factor (float or None): if not ``None``, clamp the hijacked iterate to ``[data_range[0] - clamp_factor · β_t, data_range[1] + clamp_factor · β_t]`` to prevent overflow. Defaults to ``None``.
+        data_range (tuple[float, float]): the expected range ``(min, max)`` of clean image values.  Active only when ``clamp_factor`` is not ``None``. Defaults to ``(0.0, 1.0)``.
+
+    Returns:
+        callable: a function ``hijack(x, t) -> x_hijacked`` that enforces
+        approximate measurement consistency at time step ``t``.
+    """
+    def hijack(x, t):
+        alpha_t, beta_t = sde.transition_dist(y, t)
+        if clean_hijack:
+            y_t = alpha_t * y
+        else:
+            y_t = alpha_t * y + beta_t * op(torch.randn_like(x))
+        x_hijacked = x - lb * pseudo_inv(op(x) - y_t)
+        
+        if clamp_factor is not None:
+            x_hijacked = torch.clamp(x_hijacked, data_range[0] - clamp_factor * beta_t, data_range[1] + clamp_factor * beta_t)
         return x_hijacked
     return hijack
