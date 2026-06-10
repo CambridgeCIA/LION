@@ -85,7 +85,7 @@ def resize(input_tensor: torch.Tensor, oshape: tuple):
     return output
 
 
-class FSTRadon():
+class FSTRadon:
     """
     Fourier Slice Theorem Radon transform. Accepts parallel-beam geometry, but image_size and detector_size are ignored and treated as equal to image_shape and detector_shape, respectively. Also, image_pos has to be at the origin.
     """
@@ -133,7 +133,7 @@ class FSTRadon():
         Map a spatial image to a 2D Cartesian k-space grid. This corresponds to $T$ in Chapter 3.1 of [Song2022].
 
         Args:
-            image: torch.Tensor of shape (batch_size, channels, shape[0], shape[1]). The spatial image.
+            image: torch.Tensor of shape (batch_size, channels, height, width). The spatial image.
 
         Returns:
             torch.Tensor of shape (batch_size, channels, expanded_diameter, expanded_diameter): The 2D Fourier representation.
@@ -150,7 +150,7 @@ class FSTRadon():
             kspace: torch.Tensor of shape (batch_size, channels, expanded_diameter, expanded_diameter). The 2D Fourier representation.
 
         Returns:
-            torch.Tensor of shape (batch_size, channels, shape[0], shape[1]): The reconstructed spatial image.
+            torch.Tensor of shape (batch_size, channels, height, width): The reconstructed spatial image.
         """
         image_expanded = fft.fftshift(fft.ifft2(kspace, dim=(-2, -1)), dim=(-2, -1))
         image_padded = resize(image_expanded, (self.n_detectors, self.n_detectors))

@@ -239,10 +239,13 @@ def get_score_conditional(score_fn: callable, sde: SimpleForwardSDE, y: torch.Te
 
     return score_conditional
 
-def get_hijack(sde: SimpleForwardSDE, full_op: callable, full_op_inv: callable, y: torch.Tensor, mask: torch.Tensor, lb=1.0):
+def get_hijack(sde: SimpleForwardSDE, full_op: callable, full_op_inv: callable, y: torch.Tensor, mask: torch.Tensor, lb=1.0, clean_hijack=False):
     def hijack(x, t):
         alpha_t, beta_t = sde.transition_dist(y, t)
-        y_t = alpha_t * y + beta_t * full_op(torch.randn_like(x))
+        if clean_hijack:
+            y_t = alpha_t * y
+        else:
+            y_t = alpha_t * y + beta_t * full_op(torch.randn_like(x))
         Tx = full_op(x)
         x_hijacked = full_op_inv(lb * mask * y_t + (1.0 - lb * mask) * Tx)
         return x_hijacked
