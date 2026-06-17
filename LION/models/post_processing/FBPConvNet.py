@@ -2,14 +2,14 @@
 # License : BSD-3
 #
 # Author  : Ander Biguri
-# Modifications: -
+# Modifications: Emilia Zabrzanska (2026): fix LIONmodel namespace references
 # =============================================================================
 
 
 from typing import Optional
 import torch
 import torch.nn as nn
-from LION.models.LIONmodel import LIONModelParameter, LIONmodel
+from LION.models.LIONmodel import LIONModelParameter, LIONmodel, ModelInputType
 import LION.CTtools.ct_geometry as ct
 from LION.classical_algorithms.fdk import fdk
 
@@ -91,11 +91,11 @@ class Up(nn.Module):
         return self.block(x)
 
 
-class FBPConvNet(LIONmodel.LIONmodel):
+class FBPConvNet(LIONmodel):
     def __init__(
         self,
         geometry_parameters: ct.Geometry,
-        model_parameters: Optional[LIONmodel.LIONModelParameter] = None,
+        model_parameters: Optional[LIONModelParameter] = None,
     ):
 
         assert (
@@ -203,7 +203,7 @@ class FBPConvNet(LIONmodel.LIONmodel):
         params.up_4_channels = [128, 64, 64]
         params.last_block = [64, 1, 1]
         params.activation = "ReLU"
-        params.model_input_type = LIONmodel.ModelInputType.SINOGRAM
+        params.model_input_type = ModelInputType.SINOGRAM
         return params
 
     @staticmethod
@@ -213,7 +213,7 @@ class FBPConvNet(LIONmodel.LIONmodel):
             print(
                 '"Deep convolutional neural network for inverse problems in imaging."'
             )
-            print("\x1B[3mIEEE Transactions on Image Processing \x1B[0m")
+            print("\x1b[3mIEEE Transactions on Image Processing \x1b[0m")
             print(" 26.9 (2017): 4509-4522.")
         elif cite_format == "bib":
             string = """
