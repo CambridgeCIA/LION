@@ -89,6 +89,35 @@ def test_padis_dps_alias_maps_to_dps_langevin():
     assert reconstructor.algorithm == "dps_langevin"
 
 
+def test_padis_paper_ct_sampling_preset():
+    model = ZeroPatchModel()
+    params = PaDIS.paper_ct_parameters(model)
+    assert params.num_steps == 100
+    assert params.inner_steps == 10
+    assert params.sigma_min == 0.003
+    assert params.sigma_max == 10.0
+    assert params.initial_reconstruction == "fdk"
+    assert params.clip_initial is True
+
+
+def test_padis_data_consistency_scale_schedule():
+    model = ZeroPatchModel()
+    params = PaDIS.default_parameters(model)
+    params.data_consistency_scale = 4.0
+    params.data_consistency_scale_schedule = "edm"
+    params.data_consistency_scale_power = 1.0
+    params.sigma_data = 0.5
+    reconstructor = PaDIS(IdentityOp(), model, params)
+    high_sigma = reconstructor._scheduled_data_consistency_scale(
+        params, torch.tensor(10.0), torch.device("cpu")
+    )
+    low_sigma = reconstructor._scheduled_data_consistency_scale(
+        params, torch.tensor(0.003), torch.device("cpu")
+    )
+    assert high_sigma < low_sigma
+    assert low_sigma <= params.data_consistency_scale
+
+
 def test_padis_langevin_reconstructor_smoke():
     torch.manual_seed(0)
     model = ZeroPatchModel()
@@ -124,9 +153,10 @@ def test_padis_data_gradient_normalization_uses_measurement_operator_norm():
     reconstructor = PaDIS(ScaledIdentityOp(5.0), model, params)
 
     gradient = torch.full((1, 1, 12, 12), 30.0)
-    scaled, normalizer = reconstructor._normalise_data_gradient(gradient, params)
+    scaled, normalizer, scale = reconstructor._normalise_data_gradient(gradient, params)
 
     assert normalizer == 15.0
+    assert scale == 1.0
     assert torch.allclose(scaled, torch.full_like(gradient, 2.0))
 
 
@@ -138,7 +168,8 @@ def test_padis_data_gradient_normalization_can_be_disabled():
     reconstructor = PaDIS(ScaledIdentityOp(5.0), model, params)
 
     gradient = torch.full((1, 1, 12, 12), 30.0)
-    scaled, normalizer = reconstructor._normalise_data_gradient(gradient, params)
+    scaled, normalizer, scale = reconstructor._normalise_data_gradient(gradient, params)
 
     assert normalizer == 1.0
+    assert scale == 1.0
     assert torch.equal(scaled, gradient)

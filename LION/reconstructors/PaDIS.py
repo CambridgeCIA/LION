@@ -60,9 +60,11 @@ class PaDIS(LIONReconstructor):
         params.pad_width = int(getattr(model_params, "pad_width", 24))
         params.patch_size = int(getattr(model_params, "largest_patch_size", 56))
         params.sigma_data = 0.5
-        params.initial_reconstruction = "noise"
+        params.initial_reconstruction = "fdk"
         params.clip_initial = True
         params.clip_output = True
+        params.clip_denoised = False
+        params.clip_state = False
         params.patch_batch_size = None
         params.langevin_ddnm = False
         params.langevin_noise_scale = 1.0
@@ -70,6 +72,9 @@ class PaDIS(LIONReconstructor):
         params.measurement_offset = 0.0
         params.data_consistency_normalization = "operator_norm"
         params.data_consistency_scale = 1.0
+        params.data_consistency_scale_schedule = "constant"
+        params.data_consistency_scale_power = 1.0
+        params.data_consistency_scale_floor = 0.0
         params.operator_norm_iterations = 20
         params.operator_norm_tolerance = 1e-4
         params.operator_norm = None
@@ -77,6 +82,24 @@ class PaDIS(LIONReconstructor):
         params.disable_langevin_noise = False
         params.disable_prior_score = False
         params.trace_interval = 0
+        return params
+
+    @staticmethod
+    def paper_ct_parameters(model: NCSNpp | None = None) -> LIONParameter:
+        """Return the CT reconstruction sampling budget used in the PaDIS paper.
+
+        The public PaDIS CT script performs 100 outer DPS steps with 10 inner
+        Langevin updates, i.e. 1000 neural function evaluations, and initializes
+        the DPS state from the clipped FDK/FBP inverse estimate.
+        """
+        params = PaDIS.default_parameters(model)
+        params.num_steps = 100
+        params.inner_steps = 10
+        params.sigma_min = 0.003
+        params.sigma_max = 10.0
+        params.zeta = 0.3
+        params.initial_reconstruction = "fdk"
+        params.clip_initial = True
         return params
 
     def reconstruct_sample(
@@ -319,6 +342,30 @@ class PaDIS(LIONReconstructor):
             return x
         return F.pad(x, (pad, pad, pad, pad), mode="constant", value=0.0)
 
+    def _clip_model_range(self, x: torch.Tensor, params) -> torch.Tensor:
+        if bool(getattr(params, "clip_denoised", False)):
+            x = x.clamp(0.0, 1.0)
+            pad = int(params.pad_width)
+            if pad > 0:
+                x = x.clone()
+                x[:, :, :pad, :] = 0.0
+                x[:, :, -pad:, :] = 0.0
+                x[:, :, :, :pad] = 0.0
+                x[:, :, :, -pad:] = 0.0
+        return x
+
+    def _clip_state_range(self, x: torch.Tensor, params) -> torch.Tensor:
+        if bool(getattr(params, "clip_state", False)):
+            x = x.clamp(0.0, 1.0)
+            pad = int(params.pad_width)
+            if pad > 0:
+                x = x.clone()
+                x[:, :, :pad, :] = 0.0
+                x[:, :, -pad:, :] = 0.0
+                x[:, :, :, :pad] = 0.0
+                x[:, :, :, -pad:] = 0.0
+        return x
+
     def _to_measurement_image(self, x: torch.Tensor, params) -> torch.Tensor:
         return float(params.measurement_scale) * x + float(params.measurement_offset)
 
@@ -384,11 +431,40 @@ class PaDIS(LIONReconstructor):
         self,
         gradient: torch.Tensor,
         params,
-    ) -> tuple[torch.Tensor, float]:
+        sigma: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, float, float]:
         normalizer = self._data_consistency_normalizer(params, gradient.device)
         scaled = gradient / normalizer
-        scaled = float(getattr(params, "data_consistency_scale", 1.0)) * scaled
-        return scaled, normalizer
+        scale = self._scheduled_data_consistency_scale(params, sigma, gradient.device)
+        scaled = scale * scaled
+        return scaled, normalizer, scale
+
+    def _scheduled_data_consistency_scale(
+        self,
+        params,
+        sigma: torch.Tensor | None,
+        device: torch.device,
+    ) -> float:
+        base = float(getattr(params, "data_consistency_scale", 1.0))
+        schedule = getattr(params, "data_consistency_scale_schedule", "constant")
+        if sigma is None or schedule in (None, "constant"):
+            return base
+
+        sigma_value = max(float(sigma.detach().cpu()), 1e-12)
+        power = float(getattr(params, "data_consistency_scale_power", 1.0))
+        floor = float(getattr(params, "data_consistency_scale_floor", 0.0))
+        if schedule == "edm":
+            sigma_data = float(getattr(params, "sigma_data", 0.5))
+            factor = sigma_data**2 / (sigma_value**2 + sigma_data**2)
+        elif schedule == "inverse_sigma":
+            sigma_min = max(float(getattr(params, "sigma_min", 1e-12)), 1e-12)
+            factor = min(1.0, sigma_min / sigma_value)
+        else:
+            raise ValueError(
+                "data_consistency_scale_schedule must be 'constant', 'edm', or 'inverse_sigma'."
+            )
+        factor = max(float(factor) ** power, floor)
+        return base * factor
 
     def _measurement_gradient(
         self,
@@ -401,7 +477,7 @@ class PaDIS(LIONReconstructor):
         residual = measurement - predicted.to(dtype=measurement.dtype)
         norm = torch.linalg.norm(residual)
         grad = torch.autograd.grad(outputs=norm, inputs=x)[0]
-        grad, _normalizer = self._normalise_data_gradient(grad, params)
+        grad, _normalizer, _scale = self._normalise_data_gradient(grad, params)
         return grad
 
     def _append_trace(
@@ -419,6 +495,7 @@ class PaDIS(LIONReconstructor):
         gradient: torch.Tensor | None = None,
         raw_gradient: torch.Tensor | None = None,
         data_normalizer: float | None = None,
+        data_scale: float | None = None,
     ) -> None:
         interval = int(getattr(params, "trace_interval", 0))
         if interval <= 0:
@@ -450,6 +527,8 @@ class PaDIS(LIONReconstructor):
             )
         if data_normalizer is not None:
             item["data_consistency_normalizer"] = float(data_normalizer)
+        if data_scale is not None:
+            item["data_consistency_scale"] = float(data_scale)
         self.last_trace.append(item)
 
     def _sample_noise(
@@ -487,6 +566,7 @@ class PaDIS(LIONReconstructor):
             for inner_index in range(int(params.inner_steps)):
                 layout = self._patch_layout(tuple(x_init.shape[-2:]), params, x.device)
                 denoised = self._denoise_patches(x, t_cur.reshape(1), layout, params)
+                denoised = self._clip_model_range(denoised, params)
                 score = (denoised - x) / t_cur.square()
                 predicted = self._forward_project(
                     self._crop(denoised, params).squeeze(0)
@@ -494,8 +574,8 @@ class PaDIS(LIONReconstructor):
                 residual = measurement - predicted.to(dtype=measurement.dtype)
                 norm = torch.linalg.norm(residual)
                 raw_norm_grad = torch.autograd.grad(outputs=norm, inputs=x)[0]
-                norm_grad, data_normalizer = self._normalise_data_gradient(
-                    raw_norm_grad, params
+                norm_grad, data_normalizer, data_scale = self._normalise_data_gradient(
+                    raw_norm_grad, params, t_cur
                 )
                 self._append_trace(
                     params,
@@ -510,6 +590,7 @@ class PaDIS(LIONReconstructor):
                     gradient=norm_grad,
                     raw_gradient=raw_norm_grad,
                     data_normalizer=data_normalizer,
+                    data_scale=data_scale,
                 )
                 z = self._sample_noise(x, generator)
                 with torch.no_grad():
@@ -531,6 +612,7 @@ class PaDIS(LIONReconstructor):
                         x_next = x_next + score_step + noise_step
                     else:
                         x_next = x_next + score_step
+                    x_next = self._clip_state_range(x_next, params)
                 x = x_next.detach().requires_grad_(True)
 
         reconstruction = self._crop(x.detach(), params).squeeze(0)
@@ -567,6 +649,7 @@ class PaDIS(LIONReconstructor):
                     denoised = self._denoise_patches(
                         x, t_cur.reshape(1), layout, params
                     )
+                    denoised = self._clip_model_range(denoised, params)
                     if bool(params.langevin_ddnm):
                         denoised_crop = self._crop(denoised, params).squeeze(0)
                         backprojected = self._initial_reconstruction(
@@ -595,11 +678,10 @@ class PaDIS(LIONReconstructor):
                         data_normalizer = self._data_consistency_normalizer(
                             params, raw_correction.device
                         )
-                        correction = (
-                            float(getattr(params, "data_consistency_scale", 1.0))
-                            * raw_correction
-                            / data_normalizer
+                        data_scale = self._scheduled_data_consistency_scale(
+                            params, t_cur, raw_correction.device
                         )
+                        correction = data_scale * raw_correction / data_normalizer
                         self._append_trace(
                             params,
                             algorithm="langevin",
@@ -613,6 +695,7 @@ class PaDIS(LIONReconstructor):
                             gradient=correction,
                             raw_gradient=raw_correction,
                             data_normalizer=data_normalizer,
+                            data_scale=data_scale,
                         )
                         pad = int(params.pad_width)
                         if not bool(params.disable_data_consistency):
@@ -636,6 +719,7 @@ class PaDIS(LIONReconstructor):
                         x = x + score_step + noise_step
                     else:
                         x = x + score_step
+                    x = self._clip_state_range(x, params)
 
         reconstruction = self._crop(x, params).squeeze(0)
         if bool(params.clip_output):

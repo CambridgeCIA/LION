@@ -445,7 +445,10 @@ def set_run_seed(seed: int) -> None:
 
 
 def build_sampler_params(args, model, *, from_experiment: bool) -> LIONParameter:
-    sampler_params = PaDIS.default_parameters(model)
+    if args.paper_ct_sampling:
+        sampler_params = PaDIS.paper_ct_parameters(model)
+    else:
+        sampler_params = PaDIS.default_parameters(model)
     sampler_params.num_steps = args.num_steps
     sampler_params.inner_steps = args.inner_steps
     sampler_params.sigma_min = args.sigma_min
@@ -453,15 +456,31 @@ def build_sampler_params(args, model, *, from_experiment: bool) -> LIONParameter
     sampler_params.rho = args.rho
     sampler_params.zeta = args.zeta
     sampler_params.initial_reconstruction = args.initial_reconstruction
+    if args.paper_ct_sampling:
+        paper_params = PaDIS.paper_ct_parameters(model)
+        sampler_params.num_steps = paper_params.num_steps
+        sampler_params.inner_steps = paper_params.inner_steps
+        sampler_params.sigma_min = paper_params.sigma_min
+        sampler_params.sigma_max = paper_params.sigma_max
+        sampler_params.zeta = paper_params.zeta
+        sampler_params.initial_reconstruction = paper_params.initial_reconstruction
+        sampler_params.clip_initial = paper_params.clip_initial
     sampler_params.patch_batch_size = args.patch_batch_size
     sampler_params.langevin_noise_scale = args.langevin_noise_scale
     sampler_params.clip_initial = not args.no_clip_initial
     sampler_params.clip_output = not args.no_clip_output
+    sampler_params.clip_denoised = args.clip_denoised
+    sampler_params.clip_state = args.clip_state
     sampler_params.disable_data_consistency = args.disable_data_consistency
     sampler_params.disable_langevin_noise = args.disable_langevin_noise
     sampler_params.disable_prior_score = args.disable_prior_score
     sampler_params.data_consistency_normalization = args.data_consistency_normalization
     sampler_params.data_consistency_scale = args.data_consistency_scale
+    sampler_params.data_consistency_scale_schedule = (
+        args.data_consistency_scale_schedule
+    )
+    sampler_params.data_consistency_scale_power = args.data_consistency_scale_power
+    sampler_params.data_consistency_scale_floor = args.data_consistency_scale_floor
     sampler_params.operator_norm = args.operator_norm
     sampler_params.operator_norm_iterations = args.operator_norm_iterations
     sampler_params.operator_norm_tolerance = args.operator_norm_tolerance
@@ -736,6 +755,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-samples", type=int, default=8)
     parser.add_argument("--start-index", type=int, default=0)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--paper-ct-sampling",
+        action="store_true",
+        help="Use the PaDIS paper/public-CT-script sampling budget: FDK init, 100 outer steps, 10 inner steps, sigma_max=10.",
+    )
     parser.add_argument("--num-steps", type=int, default=18)
     parser.add_argument("--inner-steps", type=int, default=10)
     parser.add_argument("--sigma-min", type=float, default=0.005)
@@ -745,8 +769,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--initial-reconstruction",
         choices=("noise", "fdk", "inverse"),
-        default="noise",
-        help="'noise' follows the paper pseudocode; 'fdk' matches the public PaDIS CT script variant.",
+        default="fdk",
+        help="'fdk' matches the public PaDIS CT script variant; 'noise' starts from pure diffusion noise.",
     )
     parser.add_argument("--patch-size", type=int, default=None)
     parser.add_argument("--pad-width", type=int, default=None)
@@ -772,6 +796,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--prog-bar", action="store_true")
     parser.add_argument("--no-clip-initial", action="store_true")
     parser.add_argument("--no-clip-output", action="store_true")
+    parser.add_argument(
+        "--clip-denoised",
+        action="store_true",
+        help="Clamp each clean denoised patch-assembled estimate to the model data range before score/data updates.",
+    )
+    parser.add_argument(
+        "--clip-state",
+        action="store_true",
+        help="Clamp the noisy sampler state to the model data range after each update. Intended as an ablation.",
+    )
     parser.add_argument("--disable-data-consistency", action="store_true")
     parser.add_argument("--disable-langevin-noise", action="store_true")
     parser.add_argument("--disable-prior-score", action="store_true")
@@ -786,6 +820,24 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=float,
         default=1.0,
         help="Extra multiplier after data-consistency normalisation.",
+    )
+    parser.add_argument(
+        "--data-consistency-scale-schedule",
+        choices=("constant", "edm", "inverse_sigma"),
+        default="constant",
+        help="Sigma-dependent multiplier for data consistency. 'edm' uses sigma_data^2/(sigma^2+sigma_data^2); 'inverse_sigma' uses sigma_min/sigma.",
+    )
+    parser.add_argument(
+        "--data-consistency-scale-power",
+        type=float,
+        default=1.0,
+        help="Power applied to the selected sigma-dependent data-consistency factor.",
+    )
+    parser.add_argument(
+        "--data-consistency-scale-floor",
+        type=float,
+        default=0.0,
+        help="Minimum schedule factor before multiplying by --data-consistency-scale.",
     )
     parser.add_argument(
         "--operator-norm",
