@@ -121,6 +121,7 @@ class PaDISDenoisingLoss(nn.Module):
         P_std: float = 1.2,
         sigma_data: float = 0.5,
         reduction: str = "batch_mean_sum",
+        augment_pipe: nn.Module | None = None,
     ) -> None:
         super().__init__()
         if sigma_min <= 0 or sigma_max <= sigma_min:
@@ -136,6 +137,7 @@ class PaDISDenoisingLoss(nn.Module):
         self.P_std = float(P_std)
         self.sigma_data = float(sigma_data)
         self.reduction = reduction
+        self.augment_pipe = augment_pipe
 
     def sample_sigma(self, batch_size: int, device: torch.device) -> torch.Tensor:
         if self.sigma_distribution == "edm_lognormal":
@@ -153,14 +155,19 @@ class PaDISDenoisingLoss(nn.Module):
         model: nn.Module,
         clean_patch: torch.Tensor,
         position_patch: torch.Tensor | None = None,
+        augment_pipe: nn.Module | None = None,
     ) -> torch.Tensor:
-        sigma = self.sample_sigma(clean_patch.shape[0], clean_patch.device)
-        sigma_view = sigma.reshape(
-            clean_patch.shape[0], *([1] * (clean_patch.ndim - 1))
+        pipe = self.augment_pipe if augment_pipe is None else augment_pipe
+        target_patch, augment_labels = (
+            pipe(clean_patch) if pipe is not None else (clean_patch, None)
         )
-        noisy_patch = clean_patch + sigma_view * torch.randn_like(clean_patch)
+        sigma = self.sample_sigma(target_patch.shape[0], target_patch.device)
+        sigma_view = sigma.reshape(
+            target_patch.shape[0], *([1] * (target_patch.ndim - 1))
+        )
+        noisy_patch = target_patch + sigma_view * torch.randn_like(target_patch)
         sigma_data = torch.as_tensor(
-            self.sigma_data, device=clean_patch.device, dtype=clean_patch.dtype
+            self.sigma_data, device=target_patch.device, dtype=target_patch.dtype
         )
         c_skip = sigma_data.square() / (sigma_view.square() + sigma_data.square())
         c_out = (
@@ -172,12 +179,15 @@ class PaDISDenoisingLoss(nn.Module):
             model_input = torch.cat((c_in * noisy_patch, position_patch), dim=1)
         else:
             model_input = c_in * noisy_patch
-        model_output = model(model_input, c_noise)
+        if augment_labels is None:
+            model_output = model(model_input, c_noise)
+        else:
+            model_output = model(model_input, c_noise, augment_labels=augment_labels)
         denoised = c_skip * noisy_patch + c_out * model_output
         weight = (sigma_view.square() + sigma_data.square()) / (
             sigma_view * sigma_data
         ).square()
-        loss = weight * (denoised - clean_patch).square()
+        loss = weight * (denoised - target_patch).square()
         if self.reduction == "batch_mean_sum":
             return loss.flatten(1).sum(dim=1).mean()
         return torch.mean(loss)

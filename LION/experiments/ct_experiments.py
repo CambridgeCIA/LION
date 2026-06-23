@@ -106,8 +106,28 @@ class Experiment(ABC):
             raise NotImplementedError(f"Dataset {dataset} not implemented")
 
 
-class PaDISFanBeamCTRecon(Experiment):
-    """Noise-free 180-view fan-beam experiment in LION's LIDC geometry."""
+def _padis_lidc_fanbeam_parameters(
+    *, dataset: str, image_scaling: float, view_count: int
+) -> LIONParameter:
+    if dataset != "LIDC-IDRI":
+        raise NotImplementedError(f"Dataset {dataset} not implemented")
+    param = LIONParameter()
+    param.name = f"PaDIS noise-free {view_count}-view LIDC fan-beam CT experiment"
+    param.geometry = ctgeo.Geometry.default_parameters(image_scaling=image_scaling)
+    param.geometry.angles = np.linspace(0, 2 * np.pi, view_count, endpoint=False)
+    param.view_count = view_count
+    # PaDIS forward-projects its [0, 1] model-domain CT images directly.
+    param.measurement_source = "normal"
+    param.data_loader_params = LIDC_IDRI.default_parameters(
+        geometry=param.geometry, task="image_prior"
+    )
+    return param
+
+
+class _PaDISFanBeamCTReconBase(Experiment):
+    """Noise-free fan-beam PaDIS experiment in LION's LIDC geometry."""
+
+    view_count: int
 
     def __init__(
         self,
@@ -118,20 +138,29 @@ class PaDISFanBeamCTRecon(Experiment):
     ):
         super().__init__(experiment_params, dataset, datafolder, image_scaling)
 
-    @staticmethod
-    def default_parameters(dataset="LIDC-IDRI", image_scaling=1.0):
-        if dataset != "LIDC-IDRI":
-            raise NotImplementedError(f"Dataset {dataset} not implemented")
-        param = LIONParameter()
-        param.name = "PaDIS noise-free 180-view LIDC fan-beam CT experiment"
-        param.geometry = ctgeo.Geometry.default_parameters(image_scaling=image_scaling)
-        param.geometry.angles = np.linspace(0, 2 * np.pi, 180, endpoint=False)
-        # PaDIS forward-projects its [0, 1] model-domain CT images directly.
-        param.measurement_source = "normal"
-        param.data_loader_params = LIDC_IDRI.default_parameters(
-            geometry=param.geometry, task="image_prior"
+    @classmethod
+    def default_parameters(cls, dataset="LIDC-IDRI", image_scaling=1.0):
+        return _padis_lidc_fanbeam_parameters(
+            dataset=dataset,
+            image_scaling=image_scaling,
+            view_count=cls.view_count,
         )
-        return param
+
+
+class PaDISFanBeam8CTRecon(_PaDISFanBeamCTReconBase):
+    view_count = 8
+
+
+class PaDISFanBeam20CTRecon(_PaDISFanBeamCTReconBase):
+    view_count = 20
+
+
+class PaDISFanBeam60CTRecon(_PaDISFanBeamCTReconBase):
+    view_count = 60
+
+
+class PaDISFanBeam180CTRecon(_PaDISFanBeamCTReconBase):
+    view_count = 180
 
 
 class ExtremeLowDoseCTRecon(Experiment):
@@ -253,7 +282,7 @@ class LimitedAngleLowDoseCTRecon(Experiment):
             param.data_loader_params = LIDC_IDRI.default_parameters(
                 geometry=param.geometry, task="reconstruction"
             )
-            param.data_loader_params.max_num_slices_per_patient = 5
+            param.data_loader_params.max_num_slices_per_patient = 4
         else:
             raise NotImplementedError(f"Dataset {dataset} not implemented")
         return param
@@ -288,7 +317,7 @@ class LimitedAngleExtremeLowDoseCTRecon(Experiment):
             param.data_loader_params = LIDC_IDRI.default_parameters(
                 geometry=param.geometry, task="reconstruction"
             )
-            param.data_loader_params.max_num_slices_per_patient = 5
+            param.data_loader_params.max_num_slices_per_patient = 4
         else:
             raise NotImplementedError(f"Dataset {dataset} not implemented")
         return param
@@ -355,7 +384,7 @@ class SparseAngleLowDoseCTRecon(Experiment):
             param.data_loader_params = LIDC_IDRI.default_parameters(
                 geometry=param.geometry, task="reconstruction"
             )
-            param.data_loader_params.max_num_slices_per_patient = 5
+            param.data_loader_params.max_num_slices_per_patient = 4
         else:
             raise NotImplementedError(f"Dataset {dataset} not implemented")
         return param
@@ -390,7 +419,7 @@ class SparseAngleExtremeLowDoseCTRecon(Experiment):
             param.data_loader_params = LIDC_IDRI.default_parameters(
                 geometry=param.geometry, task="reconstruction"
             )
-            param.data_loader_params.max_num_slices_per_patient = 5
+            param.data_loader_params.max_num_slices_per_patient = 4
         else:
             raise NotImplementedError(f"Dataset {dataset} not implemented")
         return param

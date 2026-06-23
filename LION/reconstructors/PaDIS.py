@@ -35,14 +35,19 @@ class PaDIS(LIONReconstructor):
 
     def __init__(
         self,
-        physics: Geometry | Operator,
+        physics: Geometry | Operator | None,
         model: NCSNpp,
         parameters: LIONParameter | None = None,
-        algorithm: Literal["dps_langevin", "dps", "langevin"] = "dps_langevin",
+        algorithm: Literal["dps_langevin", "dps", "langevin", "pc"] = "dps_langevin",
     ) -> None:
-        super().__init__(physics)
-        if algorithm not in ("dps_langevin", "dps", "langevin"):
-            raise ValueError("algorithm must be 'dps_langevin' or 'langevin'.")
+        if physics is None:
+            self.geometry = None
+            self.op = None
+            self.op_autograd = None
+        else:
+            super().__init__(physics)
+        if algorithm not in ("dps_langevin", "dps", "langevin", "pc"):
+            raise ValueError("algorithm must be 'dps_langevin', 'langevin', or 'pc'.")
         self.model = model
         self.parameters = parameters or self.default_parameters(model)
         self.algorithm = self._canonical_algorithm(algorithm)
@@ -57,6 +62,7 @@ class PaDIS(LIONReconstructor):
         params.sigma_max = 0.05
         params.rho = 7.0
         params.zeta = 0.3
+        params.generation_epsilon = 1.0
         params.prior_mode = getattr(model_params, "prior_mode", "patch")
         params.pad_width = int(getattr(model_params, "pad_width", 24))
         params.patch_size = int(getattr(model_params, "largest_patch_size", 56))
@@ -68,10 +74,11 @@ class PaDIS(LIONReconstructor):
         params.clip_state = False
         params.patch_batch_size = None
         params.langevin_ddnm = False
+        params.pc_snr = 0.16
         params.langevin_noise_scale = 1.0
         params.measurement_scale = 1.0
         params.measurement_offset = 0.0
-        params.data_consistency_normalization = "operator_norm"
+        params.data_consistency_normalization = "none"
         params.data_consistency_scale = 1.0
         params.data_consistency_scale_schedule = "constant"
         params.data_consistency_scale_power = 1.0
@@ -107,7 +114,7 @@ class PaDIS(LIONReconstructor):
         self,
         sino: torch.Tensor,
         *,
-        algorithm: Literal["dps_langevin", "dps", "langevin"] | None = None,
+        algorithm: Literal["dps_langevin", "dps", "langevin", "pc"] | None = None,
         prog_bar: bool = False,
         generator: torch.Generator | None = None,
         **kwargs,
@@ -134,9 +141,118 @@ class PaDIS(LIONReconstructor):
                 return self._langevin(
                     sino, params, prog_bar=prog_bar, generator=generator
                 )
+            if algorithm == "pc":
+                return self._predictor_corrector(
+                    sino, params, prog_bar=prog_bar, generator=generator
+                )
             raise ValueError(f"Unknown PaDIS algorithm: {algorithm}")
         finally:
             self._active_params = previous_params
+
+    def generate_samples(
+        self,
+        *,
+        num_samples: int = 1,
+        image_shape: tuple[int, int, int] | None = None,
+        prog_bar: bool = False,
+        generator: torch.Generator | None = None,
+        **kwargs,
+    ) -> torch.Tensor:
+        """Sample images from the PaDIS prior without measurement conditioning."""
+        if num_samples <= 0:
+            raise ValueError("num_samples must be positive.")
+        params = self._merged_parameters(kwargs)
+        if image_shape is None:
+            geometry = getattr(self.model, "geometry", None)
+            if geometry is None:
+                raise ValueError(
+                    "image_shape is required when the model has no geometry."
+                )
+            image_shape = tuple(int(value) for value in geometry.image_shape)
+        if len(image_shape) != 3:
+            raise ValueError("image_shape must be (channels, height, width).")
+
+        channels, height, width = (int(value) for value in image_shape)
+        if channels <= 0 or height <= 0 or width <= 0:
+            raise ValueError("image_shape values must be positive.")
+
+        device = next(self.model.parameters()).device
+        dtype = next(self.model.parameters()).dtype
+        samples = []
+        iterator = range(num_samples)
+        if prog_bar:
+            iterator = tqdm(iterator, desc="PaDIS generation", total=num_samples)
+
+        previous_params = (
+            self._active_params if hasattr(self, "_active_params") else None
+        )
+        self._active_params = params
+        try:
+            for _ in iterator:
+                sample = self._generate_one_sample(
+                    params,
+                    channels=channels,
+                    height=height,
+                    width=width,
+                    device=device,
+                    dtype=dtype,
+                    generator=generator,
+                )
+                samples.append(sample)
+        finally:
+            self._active_params = previous_params
+        return torch.stack(samples, dim=0)
+
+    def generate_naive_patch_samples(
+        self,
+        *,
+        num_samples: int = 1,
+        image_shape: tuple[int, int, int] | None = None,
+        prog_bar: bool = False,
+        generator: torch.Generator | None = None,
+        **kwargs,
+    ) -> torch.Tensor:
+        """Sample patches independently and stitch one partition into each image."""
+        if num_samples <= 0:
+            raise ValueError("num_samples must be positive.")
+        params = self._merged_parameters(kwargs)
+        if image_shape is None:
+            geometry = getattr(self.model, "geometry", None)
+            if geometry is None:
+                raise ValueError(
+                    "image_shape is required when the model has no geometry."
+                )
+            image_shape = tuple(int(value) for value in geometry.image_shape)
+        if len(image_shape) != 3:
+            raise ValueError("image_shape must be (channels, height, width).")
+
+        channels, height, width = (int(value) for value in image_shape)
+        device = next(self.model.parameters()).device
+        dtype = next(self.model.parameters()).dtype
+        samples = []
+        iterator = range(num_samples)
+        if prog_bar:
+            iterator = tqdm(
+                iterator, desc="PaDIS naive patch generation", total=num_samples
+            )
+
+        previous_params = getattr(self, "_active_params", None)
+        self._active_params = params
+        try:
+            for _ in iterator:
+                sample = self._generate_one_naive_patch_sample(
+                    params,
+                    channels=channels,
+                    height=height,
+                    width=width,
+                    device=device,
+                    dtype=dtype,
+                    generator=generator,
+                )
+                samples.append(sample)
+        finally:
+            self._active_params = previous_params
+        return torch.stack(samples, dim=0)
 
     def _merged_parameters(self, overrides: dict) -> LIONParameter:
         params = LIONParameter()
@@ -152,6 +268,8 @@ class PaDIS(LIONReconstructor):
     def _canonical_algorithm(algorithm: str) -> str:
         if algorithm == "dps":
             return "dps_langevin"
+        if algorithm == "predictor_corrector":
+            return "pc"
         return algorithm
 
     def _initial_reconstruction(
@@ -460,7 +578,7 @@ class PaDIS(LIONReconstructor):
         return cache[cache_key]
 
     def _data_consistency_normalizer(self, params, device: torch.device) -> float:
-        method = getattr(params, "data_consistency_normalization", "operator_norm")
+        method = getattr(params, "data_consistency_normalization", "none")
         if method in (None, "none", False):
             return 1.0
         if method != "operator_norm":
@@ -589,6 +707,122 @@ class PaDIS(LIONReconstructor):
             return torch.randn_like(x)
         return torch.randn(x.shape, dtype=x.dtype, device=x.device, generator=generator)
 
+    def _generate_one_sample(
+        self,
+        params,
+        *,
+        channels: int,
+        height: int,
+        width: int,
+        device: torch.device,
+        dtype: torch.dtype,
+        generator: torch.Generator | None,
+    ) -> torch.Tensor:
+        central = torch.zeros((1, channels, height, width), device=device, dtype=dtype)
+        x = float(params.sigma_max) * self._sample_noise(
+            self._pad(central, params), generator
+        )
+        t_steps = self._noise_schedule(params, x.device)
+        epsilon = float(getattr(params, "generation_epsilon", 1.0))
+
+        with torch.no_grad():
+            for step_index, t_cur in enumerate(t_steps[:-1]):
+                alpha = epsilon * t_cur.square()
+                for _ in range(int(params.inner_steps)):
+                    denoised = self._denoise_prior(
+                        x, t_cur.reshape(1), params, (height, width)
+                    )
+                    denoised = self._clip_model_range(denoised, params)
+                    score = (denoised - x) / t_cur.square()
+                    if not bool(params.disable_prior_score):
+                        x = x + alpha / 2 * score
+                    if step_index < int(params.num_steps) - 1 and not bool(
+                        params.disable_langevin_noise
+                    ):
+                        z = self._sample_noise(x, generator)
+                        x = (
+                            x
+                            + float(params.langevin_noise_scale) * torch.sqrt(alpha) * z
+                        )
+                    x = self._clip_state_range(x, params)
+
+        sample = self._crop(x, params).squeeze(0)
+        if bool(params.clip_output):
+            sample = sample.clamp(0.0, 1.0)
+        return sample
+
+    def _generate_one_naive_patch_sample(
+        self,
+        params,
+        *,
+        channels: int,
+        height: int,
+        width: int,
+        device: torch.device,
+        dtype: torch.dtype,
+        generator: torch.Generator | None,
+    ) -> torch.Tensor:
+        layout = self._patch_layout((height, width), params, device)
+        patch_size = int(params.patch_size)
+        pad = int(params.pad_width)
+        padded = torch.zeros(
+            (1, channels, height + 2 * pad, width + 2 * pad),
+            device=device,
+            dtype=dtype,
+        )
+        positions = (
+            self._position_grid(padded)
+            if int(getattr(self.model.model_parameters, "input_position_channels", 2))
+            > 0
+            else None
+        )
+        position_batch = None
+        if positions is not None:
+            position_batch = torch.cat(
+                [
+                    positions[:, :, top:bottom, left:right]
+                    for top, bottom, left, right in layout.indices
+                ],
+                dim=0,
+            )
+        x = float(params.sigma_max) * self._sample_noise(
+            torch.zeros(
+                (len(layout.indices), channels, patch_size, patch_size),
+                device=device,
+                dtype=dtype,
+            ),
+            generator,
+        )
+        t_steps = self._noise_schedule(params, x.device)
+        epsilon = float(getattr(params, "generation_epsilon", 1.0))
+
+        with torch.no_grad():
+            for step_index, t_cur in enumerate(t_steps[:-1]):
+                alpha = epsilon * t_cur.square()
+                for _ in range(int(params.inner_steps)):
+                    denoised = self._edm_denoise_batch(
+                        x, position_batch, t_cur.reshape(1), params
+                    )
+                    score = (denoised - x) / t_cur.square()
+                    if not bool(params.disable_prior_score):
+                        x = x + alpha / 2 * score
+                    if step_index < int(params.num_steps) - 1 and not bool(
+                        params.disable_langevin_noise
+                    ):
+                        z = self._sample_noise(x, generator)
+                        x = (
+                            x
+                            + float(params.langevin_noise_scale) * torch.sqrt(alpha) * z
+                        )
+
+        output = torch.zeros_like(padded)
+        for index, (top, bottom, left, right) in enumerate(layout.indices):
+            output[:, :, top:bottom, left:right] = x[index : index + 1]
+        sample = self._crop(output, params).squeeze(0)
+        if bool(params.clip_output):
+            sample = sample.clamp(0.0, 1.0)
+        return sample
+
     def _dps_langevin(
         self,
         measurement: torch.Tensor,
@@ -662,6 +896,159 @@ class PaDIS(LIONReconstructor):
                 x = self._clip_state_range(x, params)
 
         reconstruction = self._crop(x.detach(), params).squeeze(0)
+        if bool(params.clip_output):
+            reconstruction = reconstruction.clamp(0.0, 1.0)
+        return reconstruction
+
+    def _apply_adjoint_correction(
+        self,
+        x: torch.Tensor,
+        residual: torch.Tensor,
+        step_size: torch.Tensor,
+        params,
+        sigma: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, float, float]:
+        raw_correction = self._adjoint_project(residual).unsqueeze(0)
+        data_normalizer = self._data_consistency_normalizer(
+            params, raw_correction.device
+        )
+        data_scale = self._scheduled_data_consistency_scale(
+            params, sigma, raw_correction.device
+        )
+        correction = data_scale * raw_correction / data_normalizer
+        if bool(params.disable_data_consistency):
+            return x, correction, raw_correction, data_normalizer, data_scale
+
+        pad = int(params.pad_width)
+        if pad == 0:
+            x = x + step_size * correction
+        else:
+            x = x.clone()
+            x[:, :, pad:-pad, pad:-pad] += step_size * correction
+        return x, correction, raw_correction, data_normalizer, data_scale
+
+    def _predictor_corrector(
+        self,
+        measurement: torch.Tensor,
+        params,
+        *,
+        prog_bar: bool,
+        generator: torch.Generator | None,
+    ) -> torch.Tensor:
+        x_init = self._initial_reconstruction(measurement, params).unsqueeze(0)
+        x = float(params.sigma_max) * self._sample_noise(
+            self._pad(x_init, params), generator
+        )
+        t_steps = self._noise_schedule(params, x.device)
+        iterator = zip(t_steps[:-1], t_steps[1:])
+        if prog_bar:
+            iterator = tqdm(
+                list(iterator),
+                desc="PaDIS predictor-corrector",
+                total=max(int(params.num_steps) - 1, 0),
+            )
+
+        with torch.no_grad():
+            for step_index, (t_cur, t_next) in enumerate(iterator):
+                if step_index == int(params.num_steps) - 1:
+                    break
+
+                denoised = self._denoise_prior(
+                    x, t_cur.reshape(1), params, tuple(x_init.shape[-2:])
+                )
+                denoised = self._clip_model_range(denoised, params)
+                score = (denoised - x) / t_cur.square()
+                predictor_delta = t_cur.square() - t_next.square()
+                if not bool(params.disable_prior_score):
+                    x = x + predictor_delta * score
+                if not bool(params.disable_langevin_noise):
+                    z = self._sample_noise(x, generator)
+                    x = x + torch.sqrt(predictor_delta.clamp_min(0.0)) * z
+
+                residual = measurement - self._forward_project(
+                    self._crop(x, params).squeeze(0).to(torch.float32)
+                ).to(dtype=measurement.dtype)
+                residual_norm = torch.linalg.norm(residual).clamp_min(1e-12)
+                step_size = float(params.zeta) / residual_norm
+                (
+                    x,
+                    correction,
+                    raw_correction,
+                    data_normalizer,
+                    data_scale,
+                ) = self._apply_adjoint_correction(
+                    x, residual, step_size, params, t_cur
+                )
+                self._append_trace(
+                    params,
+                    algorithm="pc_predictor",
+                    step_index=step_index,
+                    inner_index=0,
+                    sigma=t_cur,
+                    x=x,
+                    denoised=denoised,
+                    score=score,
+                    residual=residual,
+                    gradient=correction,
+                    raw_gradient=raw_correction,
+                    data_normalizer=data_normalizer,
+                    data_scale=data_scale,
+                )
+
+                if step_index < int(params.num_steps) - 1:
+                    z = self._sample_noise(x, generator)
+                    denoised = self._denoise_prior(
+                        x, t_cur.reshape(1), params, tuple(x_init.shape[-2:])
+                    )
+                    denoised = self._clip_model_range(denoised, params)
+                    score = (denoised - x) / t_next.square().clamp_min(1e-12)
+                    eps = (
+                        2.0
+                        * float(params.pc_snr)
+                        * torch.linalg.norm(z)
+                        / torch.linalg.norm(score).clamp_min(1e-12)
+                    )
+                    if not bool(params.disable_prior_score):
+                        x = x + eps * score
+                    if not bool(params.disable_langevin_noise):
+                        x = x + torch.sqrt(2.0 * eps) * z
+
+                    residual = measurement - self._forward_project(
+                        self._crop(x, params).squeeze(0).to(torch.float32)
+                    ).to(dtype=measurement.dtype)
+                    residual_norm = torch.linalg.norm(residual).clamp_min(1e-12)
+                    step_size = (
+                        float(params.zeta)
+                        / residual_norm
+                        * min(40.0, float(t_cur.item()) * 200.0)
+                    )
+                    (
+                        x,
+                        correction,
+                        raw_correction,
+                        data_normalizer,
+                        data_scale,
+                    ) = self._apply_adjoint_correction(
+                        x, residual, step_size, params, t_cur
+                    )
+                    self._append_trace(
+                        params,
+                        algorithm="pc_corrector",
+                        step_index=step_index,
+                        inner_index=1,
+                        sigma=t_cur,
+                        x=x,
+                        denoised=denoised,
+                        score=score,
+                        residual=residual,
+                        gradient=correction,
+                        raw_gradient=raw_correction,
+                        data_normalizer=data_normalizer,
+                        data_scale=data_scale,
+                    )
+                x = self._clip_state_range(x, params)
+
+        reconstruction = self._crop(x, params).squeeze(0)
         if bool(params.clip_output):
             reconstruction = reconstruction.clamp(0.0, 1.0)
         return reconstruction

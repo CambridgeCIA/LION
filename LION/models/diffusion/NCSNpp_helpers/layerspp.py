@@ -68,16 +68,24 @@ class Combine(nn.Module):
 class AttnBlockpp(nn.Module):
     """Channel-wise self-attention block. Modified from DDPM."""
 
-    def __init__(self, channels, skip_rescale=False, init_scale=0.0):
+    def __init__(
+        self,
+        channels,
+        skip_rescale=False,
+        init_scale=0.0,
+        qkv_init_scale=0.1,
+        force_fp32_attention=False,
+    ):
         super().__init__()
         self.GroupNorm_0 = nn.GroupNorm(
             num_groups=min(channels // 4, 32), num_channels=channels, eps=1e-6
         )
-        self.NIN_0 = NIN(channels, channels)
-        self.NIN_1 = NIN(channels, channels)
-        self.NIN_2 = NIN(channels, channels)
+        self.NIN_0 = NIN(channels, channels, init_scale=qkv_init_scale)
+        self.NIN_1 = NIN(channels, channels, init_scale=qkv_init_scale)
+        self.NIN_2 = NIN(channels, channels, init_scale=qkv_init_scale)
         self.NIN_3 = NIN(channels, channels, init_scale=init_scale)
         self.skip_rescale = skip_rescale
+        self.force_fp32_attention = force_fp32_attention
 
     def forward(self, x):
         B, C, H, W = x.shape
@@ -86,11 +94,23 @@ class AttnBlockpp(nn.Module):
         k = self.NIN_1(h)
         v = self.NIN_2(h)
 
-        w = torch.einsum("bchw,bcij->bhwij", q, k) * (int(C) ** (-0.5))
-        w = torch.reshape(w, (B, H, W, H * W))
-        w = F.softmax(w, dim=-1)
-        w = torch.reshape(w, (B, H, W, H, W))
-        h = torch.einsum("bhwij,bcij->bchw", w, v)
+        if self.force_fp32_attention:
+            q = q.reshape(B, C, H * W)
+            k = k.reshape(B, C, H * W)
+            v = v.reshape(B, C, H * W)
+            w = torch.einsum(
+                "bcq,bck->bqk",
+                q.to(torch.float32),
+                (k / np.sqrt(C)).to(torch.float32),
+            )
+            w = F.softmax(w, dim=-1).to(v.dtype)
+            h = torch.einsum("bqk,bck->bcq", w, v).reshape(B, C, H, W)
+        else:
+            w = torch.einsum("bchw,bcij->bhwij", q, k) * (int(C) ** (-0.5))
+            w = torch.reshape(w, (B, H, W, H * W))
+            w = F.softmax(w, dim=-1)
+            w = torch.reshape(w, (B, H, W, H, W))
+            h = torch.einsum("bhwij,bcij->bchw", w, v)
         h = self.NIN_3(h)
         if not self.skip_rescale:
             return x + h
@@ -203,6 +223,7 @@ class ResnetBlockDDPMpp(nn.Module):
         dropout=0.1,
         skip_rescale=False,
         init_scale=0.0,
+        temb_activation=True,
     ):
         super().__init__()
         out_ch = out_ch if out_ch else in_ch
@@ -229,12 +250,14 @@ class ResnetBlockDDPMpp(nn.Module):
         self.act = act
         self.out_ch = out_ch
         self.conv_shortcut = conv_shortcut
+        self.temb_activation = temb_activation
 
     def forward(self, x, temb=None):
         h = self.act(self.GroupNorm_0(x))
         h = self.Conv_0(h)
         if temb is not None:
-            h += self.Dense_0(self.act(temb))[:, :, None, None]
+            temb_in = self.act(temb) if self.temb_activation else temb
+            h += self.Dense_0(temb_in)[:, :, None, None]
         h = self.act(self.GroupNorm_1(h))
         h = self.Dropout_0(h)
         h = self.Conv_1(h)
@@ -263,6 +286,7 @@ class ResnetBlockBigGANpp(nn.Module):
         fir_kernel=(1, 3, 3, 1),
         skip_rescale=True,
         init_scale=0.0,
+        temb_activation=True,
     ):
         super().__init__()
 
@@ -293,6 +317,7 @@ class ResnetBlockBigGANpp(nn.Module):
         self.act = act
         self.in_ch = in_ch
         self.out_ch = out_ch
+        self.temb_activation = temb_activation
 
     def forward(self, x, temb=None):
         h = self.act(self.GroupNorm_0(x))
@@ -315,7 +340,8 @@ class ResnetBlockBigGANpp(nn.Module):
         h = self.Conv_0(h)
         # Add bias to each feature map conditioned on the time embedding
         if temb is not None:
-            h += self.Dense_0(self.act(temb))[:, :, None, None]
+            temb_in = self.act(temb) if self.temb_activation else temb
+            h += self.Dense_0(temb_in)[:, :, None, None]
         h = self.act(self.GroupNorm_1(h))
         h = self.Dropout_0(h)
         h = self.Conv_1(h)

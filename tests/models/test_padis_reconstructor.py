@@ -132,6 +132,12 @@ def test_padis_paper_ct_sampling_preset():
     assert params.clip_initial is True
 
 
+def test_padis_default_sampling_uses_unscaled_data_step_like_original_repo():
+    model = ZeroPatchModel()
+    params = PaDIS.default_parameters(model)
+    assert params.data_consistency_normalization == "none"
+
+
 def test_padis_data_consistency_scale_schedule():
     model = ZeroPatchModel()
     params = PaDIS.default_parameters(model)
@@ -156,6 +162,18 @@ def test_padis_langevin_reconstructor_smoke():
     reconstructor = PaDIS(
         IdentityOp(), model, _sampler_params(model), algorithm="langevin"
     )
+    measurement = torch.rand(1, 8, 8)
+    recon = reconstructor.reconstruct_sample(measurement)
+    assert recon.shape == measurement.shape
+    assert torch.isfinite(recon).all()
+
+
+def test_padis_predictor_corrector_reconstructor_smoke():
+    torch.manual_seed(0)
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.num_steps = 2
+    reconstructor = PaDIS(IdentityOp(), model, params, algorithm="pc")
     measurement = torch.rand(1, 8, 8)
     recon = reconstructor.reconstruct_sample(measurement)
     assert recon.shape == measurement.shape

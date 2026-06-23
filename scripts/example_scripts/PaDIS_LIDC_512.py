@@ -183,7 +183,7 @@ def build_arg_parser():
     parser.add_argument(
         "--max-slices-per-patient",
         type=int,
-        default=5,
+        default=4,
         help="Maximum slices per patient for subset training. Use -1, or --full-lidc, for every available slice.",
     )
     parser.add_argument(

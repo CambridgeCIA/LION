@@ -96,7 +96,7 @@ class NCSNpp(LIONmodel):
         model_params.progressive = "none"
         model_params.progressive_input = "none"
         model_params.progressive_combine = "sum"
-        model_params.init_scale = 1e-5
+        model_params.init_scale = 1e-10
         model_params.fourier_scale = 16
         model_params.scale_by_sigma = False
         model_params.centered = True
@@ -111,6 +111,9 @@ class NCSNpp(LIONmodel):
         model_params.sigma_min = 0.002
         model_params.sigma_max = 40
         model_params.num_scales = 1000
+        model_params.network_backend = "score_sde_pytorch"
+        model_params.padis_embedding_compat = True
+        model_params.padis_attention_compat = True
         model_params.input_position_channels = int(
             getattr(model_params, "input_position_channels", 2)
         )
@@ -202,8 +205,13 @@ class NCSNpp(LIONmodel):
             modules[-1].weight.data = default_initializer()(modules[-1].weight.shape)
             nn.init.zeros_(modules[-1].bias)
 
+        padis_attention_compat = bool(getattr(params, "padis_attention_compat", False))
         AttnBlock = functools.partial(
-            layerspp.AttnBlockpp, init_scale=init_scale, skip_rescale=skip_rescale
+            layerspp.AttnBlockpp,
+            init_scale=init_scale,
+            skip_rescale=skip_rescale,
+            qkv_init_scale=0.2 if padis_attention_compat else 0.1,
+            force_fp32_attention=padis_attention_compat,
         )
 
         Upsample = functools.partial(
@@ -246,6 +254,9 @@ class NCSNpp(LIONmodel):
                 init_scale=init_scale,
                 skip_rescale=skip_rescale,
                 temb_dim=emb_channels,
+                temb_activation=not bool(
+                    getattr(params, "padis_embedding_compat", False)
+                ),
             )
 
         elif resblock_type == "biggan":
@@ -258,6 +269,9 @@ class NCSNpp(LIONmodel):
                 init_scale=init_scale,
                 skip_rescale=skip_rescale,
                 temb_dim=emb_channels,
+                temb_activation=not bool(
+                    getattr(params, "padis_embedding_compat", False)
+                ),
             )
 
         else:
@@ -426,6 +440,8 @@ class NCSNpp(LIONmodel):
             m_idx += 1
             temb = modules[m_idx](self.act(temb))
             m_idx += 1
+            if bool(getattr(params, "padis_embedding_compat", False)):
+                temb = self.act(temb)
         else:
             temb = None
 

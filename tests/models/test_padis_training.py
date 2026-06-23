@@ -32,6 +32,10 @@ def test_padis_paper_256_defaults():
     assert params.input_position_channels == 2
     assert params.centered is True
     assert params.noise_label_type == "identity"
+    assert params.network_backend == "score_sde_pytorch"
+    assert params.padis_embedding_compat is True
+    assert params.padis_attention_compat is True
+    assert params.init_scale == 1e-10
 
 
 def test_padis_paper_512_defaults():

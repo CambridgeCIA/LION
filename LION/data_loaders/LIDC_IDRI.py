@@ -89,7 +89,7 @@ class LIDC_IDRI(Dataset):
             - mode (str): Defines "train", "validation" or "test" mode.
             - Task (str): Defines what task is the Dataset being used for. "segmentation" (default) returns (gt_image,segmentation) pairs while "reconstruction" returns (sinogram, gt_image) pairs
             - annotation (str): Defines what annotation mode to use. Distinguish between "random" and "consensus". Default "consensus"
-            - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. Default is -1, which takes all slices we have of each patient and pcg_slices_nodule gets ignored.
+            - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. Default is 4. Use -1 to take all slices and ignore pcg_slices_nodule.
             - pcg_slices_nodule (float): Defines percentage of slices with nodule in dataset. 0 meaning "no nodules at all" and 1 meaning "just take slices that contain annotated nodules". Only used if max_num_slices_per_patient != -1. Default is 0.5.
             - clevel (float): Defines consensus level if annotation=consensus. Value between 0-1. Default is 0.5.
             - geometry: Geometry() type, if sinograms are requied (e.g. fo "reconstruction")
@@ -330,7 +330,7 @@ class LIDC_IDRI(Dataset):
         param.testing_proportion = (
             1 - param.training_proportion - param.validation_proportion
         )  # not used, but for metadata
-        param.max_num_slices_per_patient = 5
+        param.max_num_slices_per_patient = 4
         param.pcg_slices_nodule = 0.5
         param.task = task
         param.folder = LIDC_IDRI_PROCESSED_DATASET_PATH

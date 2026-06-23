@@ -36,7 +36,10 @@ DEFAULT_CHECKPOINT = pathlib.Path(
 )
 
 LIDC_EXPERIMENTS = {
-    "PaDISFanBeamCTRecon": ct_experiments.PaDISFanBeamCTRecon,
+    "PaDISFanBeam8CTRecon": ct_experiments.PaDISFanBeam8CTRecon,
+    "PaDISFanBeam20CTRecon": ct_experiments.PaDISFanBeam20CTRecon,
+    "PaDISFanBeam60CTRecon": ct_experiments.PaDISFanBeam60CTRecon,
+    "PaDISFanBeam180CTRecon": ct_experiments.PaDISFanBeam180CTRecon,
     "clinicalCTRecon": ct_experiments.clinicalCTRecon,
     "LowDoseCTRecon": ct_experiments.LowDoseCTRecon,
     "ExtremeLowDoseCTRecon": ct_experiments.ExtremeLowDoseCTRecon,
@@ -103,7 +106,12 @@ def resolve_checkpoint_path(path: pathlib.Path) -> pathlib.Path:
     raise FileNotFoundError(f"Checkpoint not found. Tried:\n  {tried}")
 
 
-def load_model(checkpoint_path: pathlib.Path, device: torch.device, use_ema: bool):
+def load_model(
+    checkpoint_path: pathlib.Path,
+    device: torch.device,
+    use_ema: bool,
+    disable_position_channels: bool,
+):
     json_path = checkpoint_path.with_suffix(".json")
     if json_path.is_file():
         options = LIONParameter()
@@ -120,6 +128,9 @@ def load_model(checkpoint_path: pathlib.Path, device: torch.device, use_ema: boo
         )
         model_params = NCSNpp.default_parameters("padis-paper-ct-256")
         geometry = Geometry.default_parameters(image_scaling=0.5)
+
+    if disable_position_channels:
+        model_params.input_position_channels = 0
 
     model = NCSNpp(model_params, geometry).to(device)
     checkpoint = torch_load(checkpoint_path, map_location=device)
@@ -481,6 +492,7 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.initial_reconstruction = paper_params.initial_reconstruction
         sampler_params.clip_initial = paper_params.clip_initial
     sampler_params.patch_batch_size = args.patch_batch_size
+    sampler_params.langevin_ddnm = args.langevin_ddnm
     sampler_params.langevin_noise_scale = args.langevin_noise_scale
     sampler_params.clip_initial = not args.no_clip_initial
     sampler_params.clip_output = not args.no_clip_output
@@ -768,7 +780,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument(
-        "--algorithm", choices=("dps_langevin", "langevin"), default="dps_langevin"
+        "--algorithm",
+        choices=("dps_langevin", "langevin", "pc"),
+        default="dps_langevin",
     )
     parser.add_argument(
         "--prior-mode",
@@ -809,6 +823,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--patch-size", type=int, default=None)
     parser.add_argument("--pad-width", type=int, default=None)
     parser.add_argument("--patch-batch-size", type=int, default=None)
+    parser.add_argument(
+        "--langevin-ddnm",
+        action="store_true",
+        help="Use VE-DDNM correction inside the Langevin sampler.",
+    )
     parser.add_argument("--langevin-noise-scale", type=float, default=1.0)
     parser.add_argument("--data-range", type=float, default=1.0)
     parser.add_argument(
@@ -826,6 +845,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--body-bbox-padding", type=int, default=8)
     parser.add_argument("--error-vmax", type=float, default=0.10)
     parser.add_argument("--raw-weights", action="store_true")
+    parser.add_argument(
+        "--no-position-channels",
+        action="store_true",
+        help="Construct the PaDIS prior without x/y position inputs. The checkpoint must use the same architecture.",
+    )
     parser.add_argument("--save-previews", action="store_true")
     parser.add_argument("--prog-bar", action="store_true")
     parser.add_argument("--no-clip-initial", action="store_true")
@@ -846,8 +870,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--data-consistency-normalization",
         choices=("operator_norm", "none"),
-        default="operator_norm",
-        help="Scale data-consistency updates by the composed measurement operator norm.",
+        default="none",
+        help="Optionally scale data-consistency updates by the composed measurement operator norm.",
     )
     parser.add_argument(
         "--data-consistency-scale",
@@ -909,7 +933,10 @@ def main() -> None:
 
     checkpoint_path = resolve_checkpoint_path(args.checkpoint)
     model, model_params, geometry = load_model(
-        checkpoint_path, device, use_ema=not args.raw_weights
+        checkpoint_path,
+        device,
+        use_ema=not args.raw_weights,
+        disable_position_channels=args.no_position_channels,
     )
     if args.experiment == "none":
         dataset = build_dataset(args, geometry)
