@@ -42,12 +42,24 @@ def test_padis_paper_512_defaults():
     assert params.sigma_max == 40
 
 
+def test_padis_paper_whole_image_defaults():
+    params = NCSNpp.default_parameters("padis-paper-whole-ct-256")
+    assert params.channel_mult == [1, 2, 2, 4]
+    assert params.patch_sizes == [256]
+    assert params.patch_probabilities == [1.0]
+    assert params.pad_width == 0
+    assert params.largest_patch_size == 256
+    assert params.prior_mode == "whole_image"
+    assert params.input_position_channels == 2
+
+
 def test_padis_paper_model_parameter_counts():
     # The paper reports ~60M weights for patch-based PaDIS models. The ~110M
     # variant is the separate whole-image baseline with a wider fourth layer.
     expected_counts = {
         "padis-paper-ct-256": (0.5, 60_483_713),
         "padis-paper-ct-512": (1.0, 60_483_713),
+        "padis-paper-whole-ct-256": (0.5, 114_643_585),
     }
     for mode, (image_scaling, expected_count) in expected_counts.items():
         geometry = Geometry.default_parameters(image_scaling=image_scaling)
@@ -197,6 +209,32 @@ def test_padis_solver_uses_paper_relative_batch_multipliers():
     assert params.enforce_data_range is True
     params = PaDISSolver.default_parameters("padis-paper-ct-512")
     assert params.patch_batch_multipliers == {16: 4, 32: 2, 64: 1}
+    params = PaDISSolver.default_parameters("padis-paper-whole-ct-256")
+    assert params.prior_mode == "whole_image"
+    assert params.patch_batch_multipliers == {256: 1}
+    assert params.default_batch_size == 8
+
+
+def test_whole_image_solver_minibatch_uses_full_image():
+    model, geometry = _tiny_padis_model("padis-paper-whole-ct-256")
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-whole-ct-256")
+    solver_params.lr_rampup_kimg = None
+    solver = PaDISSolver(
+        model,
+        optimizer,
+        PaDISDenoisingLoss(),
+        geometry=geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+    )
+    target = torch.rand(1, 1, 256, 256)
+    clean, positions = solver._sample_training_patch(target, patch_size=256)
+    assert clean.shape == target.shape
+    assert positions.shape == (1, 2, 256, 256)
+    loss = solver.mini_batch_step(torch.empty(1, 1, 1, 1), target)
+    loss.backward()
+    assert torch.isfinite(loss)
 
 
 def test_ema_weight_swap_restores_raw_weights():

@@ -176,6 +176,23 @@ def build_arg_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
     parser.add_argument(
+        "--full-lidc",
+        action="store_true",
+        help="Use every available slice from each selected LIDC-IDRI patient. Ignores --pcg-slices-nodule.",
+    )
+    parser.add_argument(
+        "--max-slices-per-patient",
+        type=int,
+        default=5,
+        help="Maximum slices per patient for subset training. Use -1, or --full-lidc, for every available slice.",
+    )
+    parser.add_argument(
+        "--pcg-slices-nodule",
+        type=float,
+        default=0.5,
+        help="Fraction of selected subset slices containing nodules. Ignored when using all slices.",
+    )
+    parser.add_argument(
         "--save-folder",
         type=pathlib.Path,
         default=LION_EXPERIMENTS_PATH.joinpath("PaDIS", "LIDC_512"),
@@ -201,6 +218,10 @@ def build_arg_parser():
 
 def main():
     args = build_arg_parser().parse_args()
+    if args.max_slices_per_patient == 0 or args.max_slices_per_patient < -1:
+        raise ValueError("--max-slices-per-patient must be positive or -1.")
+    if not 0.0 <= args.pcg_slices_nodule <= 1.0:
+        raise ValueError("--pcg-slices-nodule must be in [0, 1].")
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
 
     geometry = Geometry.default_parameters(image_scaling=1.0)
@@ -208,6 +229,12 @@ def main():
     data_params.device = torch.device("cpu")
     if args.data_folder is not None:
         data_params.folder = args.data_folder
+    data_params.max_num_slices_per_patient = (
+        -1 if args.full_lidc else int(args.max_slices_per_patient)
+    )
+    data_params.pcg_slices_nodule = float(args.pcg_slices_nodule)
+    if data_params.max_num_slices_per_patient == -1:
+        print("Using all available LIDC-IDRI slices; pcg_slices_nodule is ignored.")
 
     train_dataset = LIDC_IDRI(
         "train", parameters=data_params, geometry_parameters=geometry

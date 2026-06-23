@@ -57,6 +57,7 @@ class PaDIS(LIONReconstructor):
         params.sigma_max = 0.05
         params.rho = 7.0
         params.zeta = 0.3
+        params.prior_mode = getattr(model_params, "prior_mode", "patch")
         params.pad_width = int(getattr(model_params, "pad_width", 24))
         params.patch_size = int(getattr(model_params, "largest_patch_size", 56))
         params.sigma_data = 0.5
@@ -261,13 +262,21 @@ class PaDIS(LIONReconstructor):
 
         image_patches = []
         position_patches = []
-        positions = self._position_grid(x)
+        positions = (
+            self._position_grid(x)
+            if int(getattr(self.model.model_parameters, "input_position_channels", 2))
+            > 0
+            else None
+        )
         for top, bottom, left, right in layout.indices:
             image_patches.append(x[:, :, top:bottom, left:right])
-            position_patches.append(positions[:, :, top:bottom, left:right])
+            if positions is not None:
+                position_patches.append(positions[:, :, top:bottom, left:right])
 
         image_batch = torch.cat(image_patches, dim=0)
-        position_batch = torch.cat(position_patches, dim=0)
+        position_batch = (
+            torch.cat(position_patches, dim=0) if positions is not None else None
+        )
         denoised_batch = self._edm_denoise_batch(
             image_batch, position_batch, sigma, params
         )
@@ -290,10 +299,45 @@ class PaDIS(LIONReconstructor):
         ]
         return zero_border
 
+    def _denoise_whole_image(
+        self,
+        x: torch.Tensor,
+        sigma: torch.Tensor,
+        params,
+    ) -> torch.Tensor:
+        if x.dim() != 4 or x.shape[0] != 1:
+            raise ValueError("Whole-image denoising expects a single image batch.")
+        if int(params.pad_width) != 0:
+            raise ValueError(
+                "Whole-image diffusion reconstruction expects pad_width=0."
+            )
+        positions = (
+            self._position_grid(x)
+            if int(getattr(self.model.model_parameters, "input_position_channels", 2))
+            > 0
+            else None
+        )
+        return self._edm_denoise_batch(x, positions, sigma, params)
+
+    def _denoise_prior(
+        self,
+        x: torch.Tensor,
+        sigma: torch.Tensor,
+        params,
+        image_shape: tuple[int, int],
+    ) -> torch.Tensor:
+        prior_mode = getattr(params, "prior_mode", "patch")
+        if prior_mode == "whole_image":
+            return self._denoise_whole_image(x, sigma, params)
+        if prior_mode != "patch":
+            raise ValueError("prior_mode must be 'patch' or 'whole_image'.")
+        layout = self._patch_layout(image_shape, params, x.device)
+        return self._denoise_patches(x, sigma, layout, params)
+
     def _edm_denoise_batch(
         self,
         image_batch: torch.Tensor,
-        position_batch: torch.Tensor,
+        position_batch: torch.Tensor | None,
         sigma: torch.Tensor,
         params,
     ) -> torch.Tensor:
@@ -309,7 +353,9 @@ class PaDIS(LIONReconstructor):
         for start in range(0, batch_size, patch_batch_size):
             stop = min(start + patch_batch_size, batch_size)
             image = image_batch[start:stop]
-            position = position_batch[start:stop]
+            position = (
+                position_batch[start:stop] if position_batch is not None else None
+            )
             sigma_vec = sigma.expand(image.shape[0]).to(
                 device=image.device, dtype=image.dtype
             )
@@ -325,7 +371,10 @@ class PaDIS(LIONReconstructor):
             )
             c_in = 1 / (sigma_data.square() + sigma_view.square()).sqrt()
             c_noise = sigma_vec.log() / 4
-            model_input = torch.cat((c_in * image, position), dim=1)
+            if position is not None:
+                model_input = torch.cat((c_in * image, position), dim=1)
+            else:
+                model_input = c_in * image
             model_output = self.model(model_input, c_noise)
             outputs.append(c_skip * image + c_out * model_output)
         return torch.cat(outputs, dim=0)
@@ -564,8 +613,9 @@ class PaDIS(LIONReconstructor):
         for step_index, (t_cur, _t_next) in enumerate(iterator):
             alpha = 0.5 * t_cur.square()
             for inner_index in range(int(params.inner_steps)):
-                layout = self._patch_layout(tuple(x_init.shape[-2:]), params, x.device)
-                denoised = self._denoise_patches(x, t_cur.reshape(1), layout, params)
+                denoised = self._denoise_prior(
+                    x, t_cur.reshape(1), params, tuple(x_init.shape[-2:])
+                )
                 denoised = self._clip_model_range(denoised, params)
                 score = (denoised - x) / t_cur.square()
                 predicted = self._forward_project(
@@ -593,27 +643,23 @@ class PaDIS(LIONReconstructor):
                     data_scale=data_scale,
                 )
                 z = self._sample_noise(x, generator)
-                with torch.no_grad():
-                    if bool(params.disable_data_consistency):
-                        x_next = x
-                    else:
-                        x_next = x - float(params.zeta) * norm_grad
-                    score_step = (
-                        0 if bool(params.disable_prior_score) else alpha / 2 * score
+                if bool(params.disable_data_consistency):
+                    x = x
+                else:
+                    x = x - float(params.zeta) * norm_grad
+                score_step = (
+                    0 if bool(params.disable_prior_score) else alpha / 2 * score
+                )
+                if step_index < int(params.num_steps) - 1:
+                    noise_step = (
+                        0
+                        if bool(params.disable_langevin_noise)
+                        else float(params.langevin_noise_scale) * torch.sqrt(alpha) * z
                     )
-                    if step_index < int(params.num_steps) - 1:
-                        noise_step = (
-                            0
-                            if bool(params.disable_langevin_noise)
-                            else float(params.langevin_noise_scale)
-                            * torch.sqrt(alpha)
-                            * z
-                        )
-                        x_next = x_next + score_step + noise_step
-                    else:
-                        x_next = x_next + score_step
-                    x_next = self._clip_state_range(x_next, params)
-                x = x_next.detach().requires_grad_(True)
+                    x = x + score_step + noise_step
+                else:
+                    x = x + score_step
+                x = self._clip_state_range(x, params)
 
         reconstruction = self._crop(x.detach(), params).squeeze(0)
         if bool(params.clip_output):
@@ -643,11 +689,8 @@ class PaDIS(LIONReconstructor):
             for step_index, (t_cur, _t_next) in enumerate(iterator):
                 alpha = t_cur.square()
                 for inner_index in range(int(params.inner_steps)):
-                    layout = self._patch_layout(
-                        tuple(x_init.shape[-2:]), params, x.device
-                    )
-                    denoised = self._denoise_patches(
-                        x, t_cur.reshape(1), layout, params
+                    denoised = self._denoise_prior(
+                        x, t_cur.reshape(1), params, tuple(x_init.shape[-2:])
                     )
                     denoised = self._clip_model_range(denoised, params)
                     if bool(params.langevin_ddnm):

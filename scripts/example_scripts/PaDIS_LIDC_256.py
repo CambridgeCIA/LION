@@ -1,4 +1,4 @@
-"""Train a PaDIS paper-style patch prior on LIDC-IDRI at 256x256."""
+"""Train PaDIS paper-style patch or whole-image diffusion priors on LIDC-IDRI."""
 
 import argparse
 from datetime import datetime
@@ -341,7 +341,30 @@ def log_wandb_outputs(wandb_run, run_folder):
 
 def build_arg_parser():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--prior-mode",
+        choices=("patch", "whole-image"),
+        default="patch",
+        help="Train the PaDIS patch prior or the paper's whole-image diffusion baseline.",
+    )
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
+    parser.add_argument(
+        "--full-lidc",
+        action="store_true",
+        help="Use every available slice from each selected LIDC-IDRI patient. Ignores --pcg-slices-nodule.",
+    )
+    parser.add_argument(
+        "--max-slices-per-patient",
+        type=int,
+        default=5,
+        help="Maximum slices per patient for subset training. Use -1, or --full-lidc, for every available slice.",
+    )
+    parser.add_argument(
+        "--pcg-slices-nodule",
+        type=float,
+        default=0.5,
+        help="Fraction of selected subset slices containing nodules. Ignored when using all slices.",
+    )
     parser.add_argument(
         "--save-folder",
         type=pathlib.Path,
@@ -352,7 +375,12 @@ def build_arg_parser():
     parser.add_argument("--validation-interval-patches", type=int, default=1_000_000)
     parser.add_argument("--checkpoint-interval-patches", type=int, default=5_000_000)
     parser.add_argument("--log-interval-patches", type=int, default=1_000)
-    parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="Base batch size. Defaults to 128 for patch PaDIS and 8 for whole-image training.",
+    )
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--prefetch-factor", type=int, default=2)
     parser.add_argument(
@@ -387,6 +415,10 @@ def build_arg_parser():
 
 def main():
     args = build_arg_parser().parse_args()
+    if args.max_slices_per_patient == 0 or args.max_slices_per_patient < -1:
+        raise ValueError("--max-slices-per-patient must be positive or -1.")
+    if not 0.0 <= args.pcg_slices_nodule <= 1.0:
+        raise ValueError("--pcg-slices-nodule must be in [0, 1].")
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
 
     geometry = Geometry.default_parameters(image_scaling=0.5)
@@ -394,7 +426,20 @@ def main():
     data_params.device = torch.device("cpu")
     if args.data_folder is not None:
         data_params.folder = args.data_folder
-    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    data_params.max_num_slices_per_patient = (
+        -1 if args.full_lidc else int(args.max_slices_per_patient)
+    )
+    data_params.pcg_slices_nodule = float(args.pcg_slices_nodule)
+    if data_params.max_num_slices_per_patient == -1:
+        print("Using all available LIDC-IDRI slices; pcg_slices_nodule is ignored.")
+    preset = (
+        "padis-paper-whole-ct-256"
+        if args.prior_mode == "whole-image"
+        else "padis-paper-ct-256"
+    )
+    if args.batch_size is None:
+        args.batch_size = 8 if args.prior_mode == "whole-image" else 128
+    solver_params = PaDISSolver.default_parameters(preset)
     solver_params.use_ema = not args.no_ema
     solver_params.base_patch_batch_size = args.batch_size
     max_batch_multiplier = max(solver_params.patch_batch_multipliers.values())
@@ -422,15 +467,18 @@ def main():
             **data_loader_kwargs(args, device, args.batch_size),
         )
 
-    model_params = NCSNpp.default_parameters("padis-paper-ct-256")
+    model_params = NCSNpp.default_parameters(preset)
     model = NCSNpp(model_params, geometry)
     loss_fn = PaDISDenoisingLoss(
         sigma_min=model_params.sigma_min, sigma_max=model_params.sigma_max
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=2e-4)
-    run_folder = make_run_folder(args.save_folder, args.run_name, "padis_lidc_256")
-    print(f"Saving PaDIS run to {run_folder}")
-    wandb_run = init_wandb(args, run_folder, "padis-paper-ct-256")
+    run_prefix = (
+        "whole_image_lidc_256" if args.prior_mode == "whole-image" else "padis_lidc_256"
+    )
+    run_folder = make_run_folder(args.save_folder, args.run_name, run_prefix)
+    print(f"Saving {args.prior_mode} diffusion run to {run_folder}")
+    wandb_run = init_wandb(args, run_folder, preset)
     solver = PaDISSolver(
         model,
         optimizer,
@@ -440,9 +488,9 @@ def main():
         device=device,
         save_folder=run_folder,
     )
-    solver.set_saving(run_folder, "padis_lidc_256")
+    solver.set_saving(run_folder, run_prefix)
     solver.set_checkpointing(
-        "padis_lidc_256_checkpoint_*.pt",
+        f"{run_prefix}_checkpoint_*.pt",
         checkpoint_freq=10**12,
         load_checkpoint_if_exists=True,
     )

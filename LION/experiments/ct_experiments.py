@@ -42,6 +42,7 @@ class Experiment(ABC):
             self.param.data_loader_params.folder = datafolder
         self.geometry = self.experiment_params.geometry
         self.dataset = dataset
+        self.sino_fun = None
         if hasattr(self.param, "noise_params"):
             self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, cross_talk=self.param.noise_params.cross_talk: ct.sinogram_add_noise(
                 sino, I0=I0, sigma=sigma, cross_talk=cross_talk
@@ -103,6 +104,34 @@ class Experiment(ABC):
             return deteCT.default_parameters()
         else:
             raise NotImplementedError(f"Dataset {dataset} not implemented")
+
+
+class PaDISFanBeamCTRecon(Experiment):
+    """Noise-free 180-view fan-beam experiment in LION's LIDC geometry."""
+
+    def __init__(
+        self,
+        experiment_params=None,
+        dataset="LIDC-IDRI",
+        datafolder=None,
+        image_scaling=1.0,
+    ):
+        super().__init__(experiment_params, dataset, datafolder, image_scaling)
+
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI", image_scaling=1.0):
+        if dataset != "LIDC-IDRI":
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        param = LIONParameter()
+        param.name = "PaDIS noise-free 180-view LIDC fan-beam CT experiment"
+        param.geometry = ctgeo.Geometry.default_parameters(image_scaling=image_scaling)
+        param.geometry.angles = np.linspace(0, 2 * np.pi, 180, endpoint=False)
+        # PaDIS forward-projects its [0, 1] model-domain CT images directly.
+        param.measurement_source = "normal"
+        param.data_loader_params = LIDC_IDRI.default_parameters(
+            geometry=param.geometry, task="image_prior"
+        )
+        return param
 
 
 class ExtremeLowDoseCTRecon(Experiment):

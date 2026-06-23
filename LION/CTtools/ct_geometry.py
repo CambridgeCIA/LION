@@ -188,6 +188,34 @@ class Geometry(LIONParameter):
         )
 
     @staticmethod
+    def padis_fan_beam_parameters(image_scaling=1.0):
+        """Return the 180-view fan-beam geometry used by PaDIS."""
+        native_image_shape = [1, 512, 512]
+        native_image_size = [40.0 / 512.0, 40.0, 40.0]
+        image_shape = np.array(
+            [
+                native_image_shape[0],
+                native_image_shape[1] * image_scaling,
+                native_image_shape[2] * image_scaling,
+            ],
+            dtype=int,
+        )
+        voxel_size = 40.0 / image_shape[1]
+        return Geometry(
+            native_image_shape=native_image_shape,
+            native_image_size=native_image_size,
+            image_scaling=image_scaling,
+            image_shape=image_shape,
+            image_size=[voxel_size, 40.0, 40.0],
+            detector_shape=[1, 512],
+            detector_size=[voxel_size, 80.0],
+            dso=40.0,
+            dsd=80.0,
+            mode="fan",
+            angles=np.linspace(0, np.pi, 180, endpoint=False),
+        )
+
+    @staticmethod
     def parallel_default_parameters(image_shape=None, image_scaling=1.0):
         if image_shape is None:
             native_image_shape = [1, 512, 512]

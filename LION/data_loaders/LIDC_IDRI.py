@@ -310,6 +310,7 @@ class LIDC_IDRI(Dataset):
             self.patient_index_to_nodule_slices_index_dict,
             self.num_slices_per_patient,
             self.pcg_slices_nodule,
+            self.patient_index_to_slices_index_dict,
         )
         self.slice_index_to_patient_id_list = self.get_slice_index_to_patient_id_list(
             self.slices_to_load
@@ -356,6 +357,7 @@ class LIDC_IDRI(Dataset):
         nodule_slices_dict: Dict,
         num_slices_per_patient: int,
         pcg_slices_nodule: float,
+        all_slices_dict: Dict | None = None,
     ):
         """
         Returns a dictionary that contains patient_id's as keys and list of slices to load as values for each patient.
@@ -375,7 +377,20 @@ class LIDC_IDRI(Dataset):
         )  # Empty dict which should contain patient id as key and slice ids as array of values
 
         if num_slices_per_patient == -1:
-            num_slices_per_patient = 1000
+            source_slices_dict = all_slices_dict
+            if source_slices_dict is None:
+                source_slices_dict = {
+                    patient_id: sorted(
+                        set(non_nodule_slices_dict[patient_id]).union(
+                            nodule_slices_dict[patient_id]
+                        )
+                    )
+                    for patient_id in patient_list
+                }
+            return {
+                patient_id: list(source_slices_dict[patient_id])
+                for patient_id in patient_list
+            }
 
         for patient_id in patient_list:  # Loop over every patient
             number_of_slices = min(

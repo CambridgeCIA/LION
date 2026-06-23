@@ -36,6 +36,7 @@ DEFAULT_CHECKPOINT = pathlib.Path(
 )
 
 LIDC_EXPERIMENTS = {
+    "PaDISFanBeamCTRecon": ct_experiments.PaDISFanBeamCTRecon,
     "clinicalCTRecon": ct_experiments.clinicalCTRecon,
     "LowDoseCTRecon": ct_experiments.LowDoseCTRecon,
     "ExtremeLowDoseCTRecon": ct_experiments.ExtremeLowDoseCTRecon,
@@ -171,12 +172,25 @@ def mu_to_lidc_normal(image: torch.Tensor) -> torch.Tensor:
     )
 
 
-def make_measurement(args, dataset, index, reconstructor, device, *, from_experiment):
+def make_measurement(
+    args,
+    dataset,
+    index,
+    reconstructor,
+    device,
+    *,
+    from_experiment,
+    experiment_measurement_source,
+):
     sample = dataset[index]
     if from_experiment:
-        sinogram, target = sample
-        sinogram = sinogram.float().to(device)
-        target = mu_to_lidc_normal(target.float().to(device))
+        if experiment_measurement_source == "normal":
+            target = sample[1].float().to(device)
+            sinogram = reconstructor.op(target)
+        else:
+            sinogram, target = sample
+            sinogram = sinogram.float().to(device)
+            target = mu_to_lidc_normal(target.float().to(device))
         return sinogram, target
 
     if args.measurement_source == "normal":
@@ -391,6 +405,7 @@ def save_preview(
     *,
     body_mask,
     error_vmax: float,
+    recon_label: str,
 ) -> None:
     import matplotlib
 
@@ -405,7 +420,7 @@ def save_preview(
     axes[0, 1].imshow(fdk_recon.detach().cpu().squeeze(), **image_kwargs)
     axes[0, 1].set_title("FDK")
     axes[0, 2].imshow(recon.detach().cpu().squeeze(), **image_kwargs)
-    axes[0, 2].set_title("PaDIS")
+    axes[0, 2].set_title(recon_label)
     axes[0, 3].imshow(target.detach().cpu().squeeze(), **image_kwargs)
     axes[0, 3].set_title("Target")
     axes[1, 0].imshow(body_mask.detach().cpu().squeeze(), cmap="gray")
@@ -423,14 +438,14 @@ def save_preview(
         vmin=0,
         vmax=error_vmax,
     )
-    axes[1, 2].set_title("|PaDIS error|")
+    axes[1, 2].set_title(f"|{recon_label} error|")
     axes[1, 3].imshow(
         (recon - fdk_recon).detach().cpu().squeeze(),
         cmap="coolwarm",
         vmin=-error_vmax,
         vmax=error_vmax,
     )
-    axes[1, 3].set_title("PaDIS - FDK")
+    axes[1, 3].set_title(f"{recon_label} - FDK")
     for ax in axes.ravel():
         ax.set_axis_off()
     fig.tight_layout()
@@ -444,7 +459,7 @@ def set_run_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
-def build_sampler_params(args, model, *, from_experiment: bool) -> LIONParameter:
+def build_sampler_params(args, model, *, measurement_source: str) -> LIONParameter:
     if args.paper_ct_sampling:
         sampler_params = PaDIS.paper_ct_parameters(model)
     else:
@@ -485,7 +500,11 @@ def build_sampler_params(args, model, *, from_experiment: bool) -> LIONParameter
     sampler_params.operator_norm_iterations = args.operator_norm_iterations
     sampler_params.operator_norm_tolerance = args.operator_norm_tolerance
     sampler_params.trace_interval = args.trace_interval
-    if from_experiment or args.measurement_source == "reconstruction":
+    if args.prior_mode != "auto":
+        sampler_params.prior_mode = (
+            "whole_image" if args.prior_mode == "whole-image" else "patch"
+        )
+    if measurement_source == "reconstruction":
         sampler_params.measurement_scale = LIDC_NORMAL_TO_MU_SCALE
         sampler_params.measurement_offset = LIDC_NORMAL_TO_MU_OFFSET
     if args.patch_size is not None:
@@ -519,6 +538,7 @@ def run_reconstruction_variant(
     output_folder: pathlib.Path,
     device: torch.device,
     from_experiment: bool,
+    experiment_measurement_source: str,
 ) -> dict:
     set_run_seed(args.seed)
     sampler_params = clone_parameters(base_params)
@@ -532,7 +552,12 @@ def run_reconstruction_variant(
         algorithm=args.algorithm,
     )
     output_folder.mkdir(parents=True, exist_ok=True)
-    print(f"Saving PaDIS {variant_name} reconstructions to {output_folder}")
+    recon_label = (
+        "Whole-image diffusion"
+        if getattr(sampler_params, "prior_mode", "patch") == "whole_image"
+        else "PaDIS"
+    )
+    print(f"Saving {recon_label} {variant_name} reconstructions to {output_folder}")
 
     stop = min(len(dataset), args.start_index + args.max_samples)
     metrics = []
@@ -552,6 +577,7 @@ def run_reconstruction_variant(
             reconstructor,
             device,
             from_experiment=from_experiment,
+            experiment_measurement_source=experiment_measurement_source,
         )
         recon = reconstructor.reconstruct_sample(
             sinogram,
@@ -624,6 +650,7 @@ def run_reconstruction_variant(
                 target,
                 body_mask=body_mask,
                 error_vmax=float(args.error_vmax),
+                recon_label=recon_label,
             )
 
     payload = {
@@ -633,11 +660,12 @@ def run_reconstruction_variant(
         "algorithm": args.algorithm,
         "ablation": variant_name,
         "ablation_overrides": variant_overrides,
-        "measurement_source": args.measurement_source,
+        "measurement_source": experiment_measurement_source,
         "checkpoint_image_scaling": float(getattr(geometry, "image_scaling", 1.0)),
         "reconstruction_geometry": str(reconstruction_geometry),
         "measurement_scale": float(sampler_params.measurement_scale),
         "measurement_offset": float(sampler_params.measurement_offset),
+        "prior_mode": getattr(sampler_params, "prior_mode", "patch"),
         "model_patch_size": int(getattr(model_params, "largest_patch_size", -1)),
         "sampler": {
             key: value
@@ -741,6 +769,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument(
         "--algorithm", choices=("dps_langevin", "langevin"), default="dps_langevin"
+    )
+    parser.add_argument(
+        "--prior-mode",
+        choices=("auto", "patch", "whole-image"),
+        default="auto",
+        help="Use checkpoint prior mode, or override with patch PaDIS / whole-image diffusion.",
     )
     parser.add_argument(
         "--measurement-source",
@@ -882,11 +916,15 @@ def main() -> None:
         reconstruction_geometry = geometry
         experiment = None
         from_experiment = False
+        experiment_measurement_source = args.measurement_source
     else:
         dataset, reconstruction_geometry, experiment = build_experiment_dataset(
             args, geometry
         )
         from_experiment = True
+        experiment_measurement_source = getattr(
+            experiment.param, "measurement_source", "reconstruction"
+        )
         if args.noise != "none":
             print(
                 "--noise is ignored when --experiment is set; using experiment noise."
@@ -896,7 +934,9 @@ def main() -> None:
             f"--start-index {args.start_index} is outside the {args.split} dataset of length {len(dataset)}."
         )
 
-    sampler_params = build_sampler_params(args, model, from_experiment=from_experiment)
+    sampler_params = build_sampler_params(
+        args, model, measurement_source=experiment_measurement_source
+    )
     if args.run_ablations:
         if (
             args.disable_data_consistency
@@ -936,6 +976,7 @@ def main() -> None:
                 output_folder=variant_folder,
                 device=device,
                 from_experiment=from_experiment,
+                experiment_measurement_source=experiment_measurement_source,
             )
         )
 

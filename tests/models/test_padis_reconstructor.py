@@ -59,6 +59,15 @@ class ZeroPatchModel(nn.Module):
         )
 
 
+class ZeroWholeImageModel(ZeroPatchModel):
+    def __init__(self):
+        super().__init__()
+        self.model_parameters.pad_width = 0
+        self.model_parameters.largest_patch_size = 8
+        self.model_parameters.prior_mode = "whole_image"
+        self.model_parameters.input_position_channels = 2
+
+
 def _sampler_params(model):
     params = PaDIS.default_parameters(model)
     params.num_steps = 1
@@ -71,11 +80,34 @@ def _sampler_params(model):
     return params
 
 
+def _whole_image_sampler_params(model):
+    params = _sampler_params(model)
+    params.prior_mode = "whole_image"
+    params.patch_size = 8
+    params.pad_width = 0
+    return params
+
+
 def test_padis_dps_langevin_reconstructor_smoke():
     torch.manual_seed(0)
     model = ZeroPatchModel()
     reconstructor = PaDIS(
         IdentityOp(), model, _sampler_params(model), algorithm="dps_langevin"
+    )
+    measurement = torch.rand(1, 8, 8)
+    recon = reconstructor.reconstruct_sample(measurement)
+    assert recon.shape == measurement.shape
+    assert torch.isfinite(recon).all()
+
+
+def test_whole_image_diffusion_reconstructor_smoke():
+    torch.manual_seed(0)
+    model = ZeroWholeImageModel()
+    reconstructor = PaDIS(
+        IdentityOp(),
+        model,
+        _whole_image_sampler_params(model),
+        algorithm="dps_langevin",
     )
     measurement = torch.rand(1, 8, 8)
     recon = reconstructor.reconstruct_sample(measurement)

@@ -76,6 +76,17 @@ class NCSNpp(LIONmodel):
             model_params.pad_width = 64
             model_params.patch_sizes = [16, 32, 64]
             model_params.patch_probabilities = [0.2, 0.3, 0.5]
+        elif mode in ("padis-paper-whole-ct-256", "whole-image-ct-256"):
+            model_params.embedding_type = "positional"
+            model_params.channel_mult_noise = 1
+            model_params.model_channels = 128
+            model_params.channel_mult = [1, 2, 2, 4]
+            model_params.dropout = 0.05
+            model_params.largest_patch_size = 256
+            model_params.pad_width = 0
+            model_params.patch_sizes = [256]
+            model_params.patch_probabilities = [1.0]
+            model_params.prior_mode = "whole_image"
         else:
             raise ValueError(f"Mode {mode} not recognized.")
 
@@ -100,7 +111,9 @@ class NCSNpp(LIONmodel):
         model_params.sigma_min = 0.002
         model_params.sigma_max = 40
         model_params.num_scales = 1000
-        model_params.input_position_channels = 2
+        model_params.input_position_channels = int(
+            getattr(model_params, "input_position_channels", 2)
+        )
         model_params.model_input_type = ModelInputType.IMAGE
 
         return model_params

@@ -16,6 +16,7 @@ from LION.models.LIONmodel import LIONmodel
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.utils.parameter import LIONParameter
 from LION.losses.PaDIS import (
+    build_position_grid,
     sample_image_patch_with_position_channels,
     sample_patch_size,
     validate_patch_schedule,
@@ -47,6 +48,10 @@ class PaDISSolver(LIONsolver):
             solver_params=solver_params,
             save_folder=save_folder,
         )
+        if not hasattr(self.solver_params, "prior_mode"):
+            self.solver_params.prior_mode = "patch"
+        if not hasattr(self.solver_params, "use_position_channels"):
+            self.solver_params.use_position_channels = True
         validate_patch_schedule(
             self.solver_params.patch_sizes, self.solver_params.patch_probabilities
         )
@@ -61,8 +66,13 @@ class PaDISSolver(LIONsolver):
         if not hasattr(self, "checkpoint_freq"):
             self.checkpoint_freq = 10**12
         self.metadata = LIONParameter()
-        self.metadata.method = "PaDIS paper patch denoising"
+        self.metadata.method = (
+            "PaDIS paper whole-image denoising"
+            if self.solver_params.prior_mode == "whole_image"
+            else "PaDIS paper patch denoising"
+        )
         self.metadata.paper_preset = self.solver_params.paper_preset
+        self.metadata.prior_mode = self.solver_params.prior_mode
         self.metadata.patch_sizes = self.solver_params.patch_sizes
         self.metadata.patch_probabilities = self.solver_params.patch_probabilities
         self.metadata.pad_width = self.solver_params.pad_width
@@ -82,6 +92,7 @@ class PaDISSolver(LIONsolver):
         params.paper_preset = mode
         params.sigma_min = 0.002
         params.sigma_max = 40.0
+        params.prior_mode = "patch"
         params.use_position_channels = True
         params.use_ema = True
         params.ema_half_life_patches = 500_000
@@ -101,6 +112,14 @@ class PaDISSolver(LIONsolver):
             params.patch_batch_multipliers = {16: 4, 32: 2, 64: 1}
             params.pad_width = 64
             params.largest_patch_size = 64
+        elif mode in ("padis-paper-whole-ct-256", "whole-image-ct-256"):
+            params.prior_mode = "whole_image"
+            params.patch_sizes = [256]
+            params.patch_probabilities = [1.0]
+            params.patch_batch_multipliers = {256: 1}
+            params.pad_width = 0
+            params.largest_patch_size = 256
+            params.default_batch_size = 8
         else:
             raise ValueError(f"Mode {mode} not recognized.")
         return params
@@ -108,6 +127,20 @@ class PaDISSolver(LIONsolver):
     def _sample_training_patch(
         self, images: torch.Tensor, patch_size: int | None = None
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        if self.solver_params.prior_mode == "whole_image":
+            if int(self.solver_params.pad_width) != 0:
+                raise ValueError("Whole-image PaDIS training expects pad_width=0.")
+            if self.solver_params.use_position_channels:
+                positions = build_position_grid(
+                    images.shape[0],
+                    images.shape[-2],
+                    images.shape[-1],
+                    device=images.device,
+                    dtype=images.dtype,
+                )
+                return images, positions
+            return images, None
+
         padded = zero_pad_images(images, int(self.solver_params.pad_width))
         if patch_size is None:
             patch_size = sample_patch_size(
@@ -456,6 +489,7 @@ class PaDISSolver(LIONsolver):
                         {
                             "train/loss": loss_value,
                             "train/patch_size": patch_size,
+                            "train/prior_mode": self.solver_params.prior_mode,
                             "train/seen_patches": self.seen_patches,
                             "train/step": len(self.train_loss),
                             "optimizer/lr": self.optimizer.param_groups[0]["lr"],
