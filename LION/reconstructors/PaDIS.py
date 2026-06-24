@@ -62,6 +62,8 @@ class PaDIS(LIONReconstructor):
         params.sigma_max = 0.05
         params.rho = 7.0
         params.zeta = 0.3
+        params.sampling_epsilon = 1.0
+        params.dps_epsilon = 0.5
         params.generation_epsilon = 1.0
         params.prior_mode = getattr(model_params, "prior_mode", "patch")
         params.pad_width = int(getattr(model_params, "pad_width", 24))
@@ -78,6 +80,8 @@ class PaDIS(LIONReconstructor):
         params.langevin_noise_scale = 1.0
         params.measurement_scale = 1.0
         params.measurement_offset = 0.0
+        params.data_consistency_gradient = "norm"
+        params.adjoint_data_step_schedule = "public_repo"
         params.data_consistency_normalization = "none"
         params.data_consistency_scale = 1.0
         params.data_consistency_scale_schedule = "constant"
@@ -89,25 +93,58 @@ class PaDIS(LIONReconstructor):
         params.disable_data_consistency = False
         params.disable_langevin_noise = False
         params.disable_prior_score = False
+        params.naive_patch_fixed_layout = True
+        params.naive_patch_output = "sampler_state"
         params.trace_interval = 0
         return params
 
     @staticmethod
-    def paper_ct_parameters(model: NCSNpp | None = None) -> LIONParameter:
-        """Return the CT reconstruction sampling budget used in the PaDIS paper.
+    def paper_ct_parameters(
+        model: NCSNpp | None = None, *, views: int = 20
+    ) -> LIONParameter:
+        """Return the strict CT reconstruction sampler described in the paper."""
+        params = PaDIS.default_parameters(model)
+        params.num_steps = 100
+        params.inner_steps = 10
+        if int(views) == 20:
+            params.sigma_min = 0.002
+        elif int(views) == 8:
+            params.sigma_min = 0.003
+        else:
+            raise ValueError("PaDIS paper CT sampler only specifies 20 or 8 views.")
+        params.sigma_max = 10.0
+        params.zeta = 0.3
+        params.sampling_epsilon = 1.0
+        params.dps_epsilon = 1.0
+        params.data_consistency_gradient = "paper_squared_residual"
+        params.data_consistency_normalization = "none"
+        params.data_consistency_scale = 1.0
+        params.data_consistency_scale_schedule = "constant"
+        params.adjoint_data_step_schedule = "paper"
+        params.initial_reconstruction = "noise"
+        params.clip_initial = False
+        params.clip_output = False
+        params.clip_denoised = False
+        params.clip_state = False
+        params.langevin_noise_scale = 1.0
+        return params
 
-        The public PaDIS CT script performs 100 outer DPS steps with 10 inner
-        Langevin updates, i.e. 1000 neural function evaluations, and initializes
-        the DPS state from the clipped FDK/FBP inverse estimate.
-        """
+    @staticmethod
+    def padis_repo_ct_parameters(model: NCSNpp | None = None) -> LIONParameter:
+        """Return the public PaDIS CT-script sampler settings for compatibility."""
         params = PaDIS.default_parameters(model)
         params.num_steps = 100
         params.inner_steps = 10
         params.sigma_min = 0.003
         params.sigma_max = 10.0
         params.zeta = 0.3
+        params.dps_epsilon = 0.5
+        params.sampling_epsilon = 1.0
+        params.data_consistency_gradient = "norm"
+        params.adjoint_data_step_schedule = "public_repo"
         params.initial_reconstruction = "fdk"
         params.clip_initial = True
+        params.clip_output = True
         return params
 
     def reconstruct_sample(
@@ -262,7 +299,50 @@ class PaDIS(LIONReconstructor):
         for key, value in overrides.items():
             if value is not None:
                 setattr(params, key, value)
+        self._validate_sampler_parameters(params)
         return params
+
+    @staticmethod
+    def _validate_sampler_parameters(params) -> None:
+        prior_mode = getattr(params, "prior_mode", "patch")
+        if prior_mode not in ("patch", "whole_image"):
+            raise ValueError("prior_mode must be 'patch' or 'whole_image'.")
+        if int(params.num_steps) < 1:
+            raise ValueError("num_steps must be positive.")
+        if int(params.inner_steps) < 1:
+            raise ValueError("inner_steps must be positive.")
+        if float(params.sigma_min) <= 0 or float(params.sigma_max) <= 0:
+            raise ValueError("sigma_min and sigma_max must be positive.")
+        if float(params.sigma_max) < float(params.sigma_min):
+            raise ValueError("sigma_max must be greater than or equal to sigma_min.")
+        if float(getattr(params, "sampling_epsilon", 1.0)) <= 0:
+            raise ValueError("sampling_epsilon must be positive.")
+        if float(getattr(params, "dps_epsilon", 1.0)) <= 0:
+            raise ValueError("dps_epsilon must be positive.")
+        if float(getattr(params, "generation_epsilon", 1.0)) <= 0:
+            raise ValueError("generation_epsilon must be positive.")
+        if getattr(params, "data_consistency_gradient", "norm") not in (
+            "norm",
+            "paper_squared_residual",
+        ):
+            raise ValueError(
+                "data_consistency_gradient must be 'norm' or "
+                "'paper_squared_residual'."
+            )
+        if getattr(params, "adjoint_data_step_schedule", "public_repo") not in (
+            "paper",
+            "public_repo",
+        ):
+            raise ValueError(
+                "adjoint_data_step_schedule must be 'paper' or 'public_repo'."
+            )
+        if getattr(params, "naive_patch_output", "sampler_state") not in (
+            "sampler_state",
+            "denoised",
+        ):
+            raise ValueError(
+                "naive_patch_output must be 'sampler_state' or 'denoised'."
+            )
 
     @staticmethod
     def _canonical_algorithm(algorithm: str) -> str:
@@ -324,17 +404,25 @@ class PaDIS(LIONReconstructor):
         return torch.cat([t_steps.to(torch.float32), torch.zeros(1, device=device)])
 
     def _patch_layout(
-        self, image_shape: tuple[int, int], params, device: torch.device
+        self,
+        image_shape: tuple[int, int],
+        params,
+        device: torch.device,
+        generator: torch.Generator | None = None,
+        *,
+        fixed_offset: bool = False,
     ) -> _PatchLayout:
         height, width = image_shape
         patch_size = int(params.patch_size)
         pad = int(params.pad_width)
         if patch_size <= 0:
             raise ValueError("patch_size must be positive.")
+        if pad < 0:
+            raise ValueError("pad_width must be non-negative.")
         n_rows = height // patch_size + 1
         n_cols = width // patch_size + 1
-        row_offset = self._random_offset(pad, device)
-        col_offset = self._random_offset(pad, device)
+        row_offset = self._random_offset(pad, device, generator, fixed_offset)
+        col_offset = self._random_offset(pad, device, generator, fixed_offset)
         row_spaced = torch.arange(n_rows, device=device, dtype=torch.int64) * patch_size
         col_spaced = torch.arange(n_cols, device=device, dtype=torch.int64) * patch_size
         indices = []
@@ -353,10 +441,17 @@ class PaDIS(LIONReconstructor):
         return _PatchLayout(indices, height, width)
 
     @staticmethod
-    def _random_offset(pad: int, device: torch.device) -> int:
-        if pad <= 0:
+    def _random_offset(
+        pad: int,
+        device: torch.device,
+        generator: torch.Generator | None = None,
+        fixed_offset: bool = False,
+    ) -> int:
+        if pad <= 0 or fixed_offset:
             return 0
-        return int(torch.randint(0, pad, (1,), device=device).item())
+        return int(
+            torch.randint(0, pad, (1,), device=device, generator=generator).item()
+        )
 
     def _position_grid(self, x: torch.Tensor) -> torch.Tensor:
         batch_size, _, height, width = x.shape
@@ -437,19 +532,60 @@ class PaDIS(LIONReconstructor):
         )
         return self._edm_denoise_batch(x, positions, sigma, params)
 
+    def _validate_prior_configuration(
+        self, params, image_shape: tuple[int, int]
+    ) -> None:
+        height, width = image_shape
+        prior_mode = getattr(params, "prior_mode", "patch")
+        patch_size = int(params.patch_size)
+        pad_width = int(params.pad_width)
+        if patch_size <= 0:
+            raise ValueError("patch_size must be positive.")
+        if pad_width < 0:
+            raise ValueError("pad_width must be non-negative.")
+        if prior_mode == "whole_image":
+            if pad_width != 0:
+                raise ValueError(
+                    "Whole-image diffusion reconstruction expects pad_width=0."
+                )
+            if patch_size != height or patch_size != width:
+                raise ValueError(
+                    "Whole-image diffusion reconstruction expects patch_size to "
+                    "match the image height and width."
+                )
+            model_prior_mode = getattr(
+                getattr(self.model, "model_parameters", None),
+                "prior_mode",
+                "patch",
+            )
+            if model_prior_mode != "whole_image":
+                raise ValueError(
+                    "Whole-image reconstruction requires a whole-image model preset."
+                )
+        elif prior_mode == "patch":
+            if (
+                patch_size > height + 2 * pad_width
+                or patch_size > width + 2 * pad_width
+            ):
+                raise ValueError("patch_size cannot exceed padded image dimensions.")
+        else:
+            raise ValueError("prior_mode must be 'patch' or 'whole_image'.")
+
     def _denoise_prior(
         self,
         x: torch.Tensor,
         sigma: torch.Tensor,
         params,
         image_shape: tuple[int, int],
+        generator: torch.Generator | None = None,
     ) -> torch.Tensor:
+        self._validate_prior_configuration(params, image_shape)
         prior_mode = getattr(params, "prior_mode", "patch")
         if prior_mode == "whole_image":
             return self._denoise_whole_image(x, sigma, params)
         if prior_mode != "patch":
             raise ValueError("prior_mode must be 'patch' or 'whole_image'.")
-        layout = self._patch_layout(image_shape, params, x.device)
+        layout = self._patch_layout(image_shape, params, x.device, generator)
         return self._denoise_patches(x, sigma, layout, params)
 
     def _edm_denoise_batch(
@@ -640,12 +776,44 @@ class PaDIS(LIONReconstructor):
         x0hat: torch.Tensor,
         params,
     ) -> torch.Tensor:
+        grad, *_ = self._dps_data_gradient(measurement, x, x0hat, params, sigma=None)
+        return grad
+
+    def _dps_data_gradient(
+        self,
+        measurement: torch.Tensor,
+        x: torch.Tensor,
+        x0hat: torch.Tensor,
+        params,
+        sigma: torch.Tensor | None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, float, float, float]:
         predicted = self._forward_project(self._crop(x0hat, params).squeeze(0))
         residual = measurement - predicted.to(dtype=measurement.dtype)
-        norm = torch.linalg.norm(residual)
-        grad = torch.autograd.grad(outputs=norm, inputs=x)[0]
-        grad, _normalizer, _scale = self._normalise_data_gradient(grad, params)
-        return grad
+        residual_norm = torch.linalg.norm(residual).clamp_min(1e-12)
+        gradient_mode = getattr(params, "data_consistency_gradient", "norm")
+        if gradient_mode == "paper_squared_residual":
+            objective = residual.square().sum()
+            step_size = float(params.zeta) / float(residual_norm.detach().cpu())
+        elif gradient_mode == "norm":
+            objective = residual_norm
+            step_size = float(params.zeta)
+        else:
+            raise ValueError(
+                "data_consistency_gradient must be 'norm' or "
+                "'paper_squared_residual'."
+            )
+        raw_gradient = torch.autograd.grad(outputs=objective, inputs=x)[0]
+        gradient, data_normalizer, data_scale = self._normalise_data_gradient(
+            raw_gradient, params, sigma
+        )
+        return (
+            gradient,
+            raw_gradient,
+            residual,
+            data_normalizer,
+            data_scale,
+            step_size,
+        )
 
     def _append_trace(
         self,
@@ -730,7 +898,7 @@ class PaDIS(LIONReconstructor):
                 alpha = epsilon * t_cur.square()
                 for _ in range(int(params.inner_steps)):
                     denoised = self._denoise_prior(
-                        x, t_cur.reshape(1), params, (height, width)
+                        x, t_cur.reshape(1), params, (height, width), generator
                     )
                     denoised = self._clip_model_range(denoised, params)
                     score = (denoised - x) / t_cur.square()
@@ -762,7 +930,14 @@ class PaDIS(LIONReconstructor):
         dtype: torch.dtype,
         generator: torch.Generator | None,
     ) -> torch.Tensor:
-        layout = self._patch_layout((height, width), params, device)
+        self._validate_prior_configuration(params, (height, width))
+        layout = self._patch_layout(
+            (height, width),
+            params,
+            device,
+            generator,
+            fixed_offset=bool(getattr(params, "naive_patch_fixed_layout", True)),
+        )
         patch_size = int(params.patch_size)
         pad = int(params.pad_width)
         padded = torch.zeros(
@@ -795,6 +970,7 @@ class PaDIS(LIONReconstructor):
         )
         t_steps = self._noise_schedule(params, x.device)
         epsilon = float(getattr(params, "generation_epsilon", 1.0))
+        final_denoised = None
 
         with torch.no_grad():
             for step_index, t_cur in enumerate(t_steps[:-1]):
@@ -803,6 +979,7 @@ class PaDIS(LIONReconstructor):
                     denoised = self._edm_denoise_batch(
                         x, position_batch, t_cur.reshape(1), params
                     )
+                    final_denoised = denoised
                     score = (denoised - x) / t_cur.square()
                     if not bool(params.disable_prior_score):
                         x = x + alpha / 2 * score
@@ -815,9 +992,15 @@ class PaDIS(LIONReconstructor):
                             + float(params.langevin_noise_scale) * torch.sqrt(alpha) * z
                         )
 
+        patches = x
+        if getattr(params, "naive_patch_output", "sampler_state") == "denoised":
+            if final_denoised is None:
+                raise RuntimeError("No denoised patches were produced.")
+            patches = final_denoised
+
         output = torch.zeros_like(padded)
         for index, (top, bottom, left, right) in enumerate(layout.indices):
-            output[:, :, top:bottom, left:right] = x[index : index + 1]
+            output[:, :, top:bottom, left:right] = patches[index : index + 1]
         sample = self._crop(output, params).squeeze(0)
         if bool(params.clip_output):
             sample = sample.clamp(0.0, 1.0)
@@ -845,21 +1028,26 @@ class PaDIS(LIONReconstructor):
             )
 
         for step_index, (t_cur, _t_next) in enumerate(iterator):
-            alpha = 0.5 * t_cur.square()
+            alpha = float(getattr(params, "dps_epsilon", 1.0)) * t_cur.square()
             for inner_index in range(int(params.inner_steps)):
                 denoised = self._denoise_prior(
-                    x, t_cur.reshape(1), params, tuple(x_init.shape[-2:])
+                    x,
+                    t_cur.reshape(1),
+                    params,
+                    tuple(x_init.shape[-2:]),
+                    generator,
                 )
                 denoised = self._clip_model_range(denoised, params)
                 score = (denoised - x) / t_cur.square()
-                predicted = self._forward_project(
-                    self._crop(denoised, params).squeeze(0)
-                )
-                residual = measurement - predicted.to(dtype=measurement.dtype)
-                norm = torch.linalg.norm(residual)
-                raw_norm_grad = torch.autograd.grad(outputs=norm, inputs=x)[0]
-                norm_grad, data_normalizer, data_scale = self._normalise_data_gradient(
-                    raw_norm_grad, params, t_cur
+                (
+                    data_gradient,
+                    raw_data_gradient,
+                    residual,
+                    data_normalizer,
+                    data_scale,
+                    data_step_size,
+                ) = self._dps_data_gradient(
+                    measurement, x, denoised, params, sigma=t_cur
                 )
                 self._append_trace(
                     params,
@@ -871,8 +1059,8 @@ class PaDIS(LIONReconstructor):
                     denoised=denoised,
                     score=score,
                     residual=residual,
-                    gradient=norm_grad,
-                    raw_gradient=raw_norm_grad,
+                    gradient=data_gradient,
+                    raw_gradient=raw_data_gradient,
                     data_normalizer=data_normalizer,
                     data_scale=data_scale,
                 )
@@ -880,7 +1068,7 @@ class PaDIS(LIONReconstructor):
                 if bool(params.disable_data_consistency):
                     x = x
                 else:
-                    x = x - float(params.zeta) * norm_grad
+                    x = x - data_step_size * data_gradient
                 score_step = (
                     0 if bool(params.disable_prior_score) else alpha / 2 * score
                 )
@@ -893,7 +1081,7 @@ class PaDIS(LIONReconstructor):
                     x = x + score_step + noise_step
                 else:
                     x = x + score_step
-                x = self._clip_state_range(x, params)
+                x = self._clip_state_range(x, params).detach().requires_grad_(True)
 
         reconstruction = self._crop(x.detach(), params).squeeze(0)
         if bool(params.clip_output):
@@ -927,6 +1115,25 @@ class PaDIS(LIONReconstructor):
             x[:, :, pad:-pad, pad:-pad] += step_size * correction
         return x, correction, raw_correction, data_normalizer, data_scale
 
+    def _adjoint_data_step_size(
+        self,
+        residual: torch.Tensor,
+        sigma: torch.Tensor,
+        params,
+        *,
+        public_repo_multiplier: bool,
+    ) -> torch.Tensor:
+        residual_norm = torch.linalg.norm(residual).clamp_min(1e-12)
+        step_size = float(params.zeta) / residual_norm
+        schedule = getattr(params, "adjoint_data_step_schedule", "public_repo")
+        if schedule == "paper":
+            return step_size
+        if schedule == "public_repo":
+            if public_repo_multiplier:
+                step_size = step_size * min(40.0, float(sigma.item()) * 200.0)
+            return step_size
+        raise ValueError("adjoint_data_step_schedule must be 'paper' or 'public_repo'.")
+
     def _predictor_corrector(
         self,
         measurement: torch.Tensor,
@@ -954,7 +1161,11 @@ class PaDIS(LIONReconstructor):
                     break
 
                 denoised = self._denoise_prior(
-                    x, t_cur.reshape(1), params, tuple(x_init.shape[-2:])
+                    x,
+                    t_cur.reshape(1),
+                    params,
+                    tuple(x_init.shape[-2:]),
+                    generator,
                 )
                 denoised = self._clip_model_range(denoised, params)
                 score = (denoised - x) / t_cur.square()
@@ -968,8 +1179,9 @@ class PaDIS(LIONReconstructor):
                 residual = measurement - self._forward_project(
                     self._crop(x, params).squeeze(0).to(torch.float32)
                 ).to(dtype=measurement.dtype)
-                residual_norm = torch.linalg.norm(residual).clamp_min(1e-12)
-                step_size = float(params.zeta) / residual_norm
+                step_size = self._adjoint_data_step_size(
+                    residual, t_cur, params, public_repo_multiplier=False
+                )
                 (
                     x,
                     correction,
@@ -998,7 +1210,11 @@ class PaDIS(LIONReconstructor):
                 if step_index < int(params.num_steps) - 1:
                     z = self._sample_noise(x, generator)
                     denoised = self._denoise_prior(
-                        x, t_cur.reshape(1), params, tuple(x_init.shape[-2:])
+                        x,
+                        t_cur.reshape(1),
+                        params,
+                        tuple(x_init.shape[-2:]),
+                        generator,
                     )
                     denoised = self._clip_model_range(denoised, params)
                     score = (denoised - x) / t_next.square().clamp_min(1e-12)
@@ -1016,11 +1232,8 @@ class PaDIS(LIONReconstructor):
                     residual = measurement - self._forward_project(
                         self._crop(x, params).squeeze(0).to(torch.float32)
                     ).to(dtype=measurement.dtype)
-                    residual_norm = torch.linalg.norm(residual).clamp_min(1e-12)
-                    step_size = (
-                        float(params.zeta)
-                        / residual_norm
-                        * min(40.0, float(t_cur.item()) * 200.0)
+                    step_size = self._adjoint_data_step_size(
+                        residual, t_cur, params, public_repo_multiplier=True
                     )
                     (
                         x,
@@ -1074,10 +1287,14 @@ class PaDIS(LIONReconstructor):
 
         with torch.no_grad():
             for step_index, (t_cur, _t_next) in enumerate(iterator):
-                alpha = t_cur.square()
+                alpha = float(getattr(params, "sampling_epsilon", 1.0)) * t_cur.square()
                 for inner_index in range(int(params.inner_steps)):
                     denoised = self._denoise_prior(
-                        x, t_cur.reshape(1), params, tuple(x_init.shape[-2:])
+                        x,
+                        t_cur.reshape(1),
+                        params,
+                        tuple(x_init.shape[-2:]),
+                        generator,
                     )
                     denoised = self._clip_model_range(denoised, params)
                     if bool(params.langevin_ddnm):
@@ -1098,11 +1315,8 @@ class PaDIS(LIONReconstructor):
                         residual = measurement - self._forward_project(
                             self._crop(x, params).squeeze(0).to(torch.float32)
                         ).to(dtype=measurement.dtype)
-                        residual_norm = torch.linalg.norm(residual).clamp_min(1e-12)
-                        step_size = (
-                            float(params.zeta)
-                            / residual_norm
-                            * min(40.0, float(t_cur.item()) * 200.0)
+                        step_size = self._adjoint_data_step_size(
+                            residual, t_cur, params, public_repo_multiplier=True
                         )
                         raw_correction = self._adjoint_project(residual).unsqueeze(0)
                         data_normalizer = self._data_consistency_normalizer(

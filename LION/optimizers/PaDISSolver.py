@@ -17,11 +17,58 @@ from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.utils.parameter import LIONParameter
 from LION.losses.PaDIS import (
     build_position_grid,
+    sample_image_patch,
     sample_image_patch_with_position_channels,
     sample_patch_size,
     validate_patch_schedule,
     zero_pad_images,
 )
+
+
+_PATCH_ABLATION_PRESETS = {
+    "padis-paper-ct-p8": {
+        "patch_sizes": [8],
+        "patch_probabilities": [1.0],
+        "patch_batch_multipliers": {8: 1},
+        "pad_width": 8,
+        "largest_patch_size": 8,
+    },
+    "padis-paper-ct-p16": {
+        "patch_sizes": [8, 16],
+        "patch_probabilities": [0.3, 0.7],
+        "patch_batch_multipliers": {8: 2, 16: 1},
+        "pad_width": 16,
+        "largest_patch_size": 16,
+    },
+    "padis-paper-ct-p32": {
+        "patch_sizes": [8, 16, 32],
+        "patch_probabilities": [0.2, 0.3, 0.5],
+        "patch_batch_multipliers": {8: 4, 16: 2, 32: 1},
+        "pad_width": 32,
+        "largest_patch_size": 32,
+    },
+    "padis-paper-ct-p56": {
+        "patch_sizes": [16, 32, 56],
+        "patch_probabilities": [0.2, 0.3, 0.5],
+        "patch_batch_multipliers": {16: 4, 32: 2, 56: 1},
+        "pad_width": 24,
+        "largest_patch_size": 56,
+    },
+    "padis-paper-ct-p96": {
+        "patch_sizes": [32, 64, 96],
+        "patch_probabilities": [0.2, 0.3, 0.5],
+        "patch_batch_multipliers": {32: 4, 64: 2, 96: 1},
+        "pad_width": 32,
+        "largest_patch_size": 96,
+    },
+}
+
+
+def _split_position_suffix(mode: str) -> tuple[str, bool]:
+    suffix = "-no-position"
+    if mode.endswith(suffix):
+        return mode[: -len(suffix)], True
+    return mode, False
 
 
 class PaDISSolver(LIONsolver):
@@ -52,9 +99,12 @@ class PaDISSolver(LIONsolver):
             self.solver_params.prior_mode = "patch"
         if not hasattr(self.solver_params, "use_position_channels"):
             self.solver_params.use_position_channels = True
+        if not hasattr(self.solver_params, "sigma_distribution"):
+            self.solver_params.sigma_distribution = "edm_lognormal_truncated"
         validate_patch_schedule(
             self.solver_params.patch_sizes, self.solver_params.patch_probabilities
         )
+        self._validate_solver_configuration()
         self.ema_state: dict[str, torch.Tensor] | None = None
         self.seen_patches = 0
         if self.solver_params.use_ema:
@@ -78,6 +128,8 @@ class PaDISSolver(LIONsolver):
         self.metadata.pad_width = self.solver_params.pad_width
         self.metadata.sigma_min = self.solver_params.sigma_min
         self.metadata.sigma_max = self.solver_params.sigma_max
+        self.metadata.sigma_distribution = self.solver_params.sigma_distribution
+        self.metadata.use_position_channels = self.solver_params.use_position_channels
         self.metadata.ema_half_life_patches = self.solver_params.ema_half_life_patches
         self.metadata.ema_rampup_ratio = self.solver_params.ema_rampup_ratio
         self.metadata.lr_rampup_kimg = self.solver_params.lr_rampup_kimg
@@ -88,10 +140,12 @@ class PaDISSolver(LIONsolver):
 
     @staticmethod
     def default_parameters(mode: str = "padis-paper-ct-256") -> SolverParams:
+        base_mode, no_position = _split_position_suffix(mode)
         params = SolverParams()
         params.paper_preset = mode
         params.sigma_min = 0.002
         params.sigma_max = 40.0
+        params.sigma_distribution = "edm_lognormal_truncated"
         params.prior_mode = "patch"
         params.use_position_channels = True
         params.use_ema = True
@@ -100,19 +154,19 @@ class PaDISSolver(LIONsolver):
         params.lr_rampup_kimg = 10_000
         params.enforce_data_range = True
         params.input_mode = "image"
-        if mode == "padis-paper-ct-256":
+        if base_mode == "padis-paper-ct-256":
             params.patch_sizes = [16, 32, 56]
             params.patch_probabilities = [0.2, 0.3, 0.5]
             params.patch_batch_multipliers = {16: 4, 32: 2, 56: 1}
             params.pad_width = 24
             params.largest_patch_size = 56
-        elif mode == "padis-paper-ct-512":
+        elif base_mode == "padis-paper-ct-512":
             params.patch_sizes = [16, 32, 64]
             params.patch_probabilities = [0.2, 0.3, 0.5]
             params.patch_batch_multipliers = {16: 4, 32: 2, 64: 1}
             params.pad_width = 64
             params.largest_patch_size = 64
-        elif mode in ("padis-paper-whole-ct-256", "whole-image-ct-256"):
+        elif base_mode in ("padis-paper-whole-ct-256", "whole-image-ct-256"):
             params.prior_mode = "whole_image"
             params.patch_sizes = [256]
             params.patch_probabilities = [1.0]
@@ -120,9 +174,66 @@ class PaDISSolver(LIONsolver):
             params.pad_width = 0
             params.largest_patch_size = 256
             params.default_batch_size = 8
+        elif base_mode in _PATCH_ABLATION_PRESETS:
+            for key, value in _PATCH_ABLATION_PRESETS[base_mode].items():
+                if isinstance(value, (dict, list)):
+                    value = value.copy()
+                setattr(params, key, value)
         else:
             raise ValueError(f"Mode {mode} not recognized.")
+        if no_position:
+            params.use_position_channels = False
         return params
+
+    def _validate_solver_configuration(self) -> None:
+        model_params = getattr(self.model, "model_parameters", None)
+        expected_position_channels = (
+            2 if bool(self.solver_params.use_position_channels) else 0
+        )
+        model_position_channels = getattr(
+            model_params, "input_position_channels", expected_position_channels
+        )
+        if int(model_position_channels) != expected_position_channels:
+            raise ValueError(
+                "Model input_position_channels must match "
+                "solver_params.use_position_channels."
+            )
+
+        largest_patch_size = int(self.solver_params.largest_patch_size)
+        max_training_patch_size = max(
+            int(size) for size in self.solver_params.patch_sizes
+        )
+        if largest_patch_size < max_training_patch_size:
+            raise ValueError("largest_patch_size must be at least max(patch_sizes).")
+        model_largest_patch_size = int(
+            getattr(model_params, "largest_patch_size", largest_patch_size)
+        )
+        if model_largest_patch_size < max_training_patch_size:
+            raise ValueError(
+                "Model largest_patch_size must support every solver patch size."
+            )
+
+        model_prior_mode = getattr(model_params, "prior_mode", "patch")
+        if self.solver_params.prior_mode == "whole_image":
+            if int(self.solver_params.pad_width) != 0:
+                raise ValueError("Whole-image PaDIS training expects pad_width=0.")
+            if len(self.solver_params.patch_sizes) != 1:
+                raise ValueError("Whole-image PaDIS training expects one patch size.")
+            if int(self.solver_params.patch_sizes[0]) != largest_patch_size:
+                raise ValueError(
+                    "Whole-image PaDIS training patch size must equal largest_patch_size."
+                )
+            if model_prior_mode != "whole_image":
+                raise ValueError(
+                    "Whole-image solver parameters require a whole-image model preset."
+                )
+        elif self.solver_params.prior_mode == "patch":
+            if model_prior_mode == "whole_image":
+                raise ValueError(
+                    "Patch solver parameters require a patch PaDIS model preset."
+                )
+        else:
+            raise ValueError("prior_mode must be 'patch' or 'whole_image'.")
 
     def _sample_training_patch(
         self, images: torch.Tensor, patch_size: int | None = None
@@ -150,15 +261,7 @@ class PaDISSolver(LIONsolver):
             )
         if self.solver_params.use_position_channels:
             return sample_image_patch_with_position_channels(padded, patch_size)
-        else:
-            _, _, height, width = padded.shape
-            top = torch.randint(
-                0, height - patch_size + 1, (1,), device=padded.device
-            ).item()
-            left = torch.randint(
-                0, width - patch_size + 1, (1,), device=padded.device
-            ).item()
-            return padded[:, :, top : top + patch_size, left : left + patch_size], None
+        return sample_image_patch(padded, patch_size), None
 
     def mini_batch_step(
         self, sino_batch, target_batch, patch_size: int | None = None

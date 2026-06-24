@@ -205,6 +205,11 @@ def build_arg_parser():
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--no-ema", action="store_true")
+    parser.add_argument(
+        "--no-position-channels",
+        action="store_true",
+        help="Train the PaDIS ablation model without x/y position channels.",
+    )
     parser.add_argument("--wandb-project", type=str, default=None)
     parser.add_argument("--wandb-entity", type=str, default=None)
     parser.add_argument("--wandb-name", type=str, default=None)
@@ -255,17 +260,22 @@ def main():
         num_workers=args.num_workers,
     )
 
-    model_params = NCSNpp.default_parameters("padis-paper-ct-512")
+    preset = "padis-paper-ct-512"
+    if args.no_position_channels:
+        preset = f"{preset}-no-position"
+    model_params = NCSNpp.default_parameters(preset)
     model = NCSNpp(model_params, geometry)
+    solver_params = PaDISSolver.default_parameters(preset)
+    solver_params.use_ema = not args.no_ema
     loss_fn = PaDISDenoisingLoss(
-        sigma_min=model_params.sigma_min, sigma_max=model_params.sigma_max
+        sigma_min=model_params.sigma_min,
+        sigma_max=model_params.sigma_max,
+        sigma_distribution=solver_params.sigma_distribution,
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=2e-4)
-    solver_params = PaDISSolver.default_parameters("padis-paper-ct-512")
-    solver_params.use_ema = not args.no_ema
     run_folder = make_run_folder(args.save_folder, args.run_name, "padis_lidc_512")
     print(f"Saving PaDIS run to {run_folder}")
-    wandb_run = init_wandb(args, run_folder, "padis-paper-ct-512")
+    wandb_run = init_wandb(args, run_folder, preset)
     solver = PaDISSolver(
         model,
         optimizer,

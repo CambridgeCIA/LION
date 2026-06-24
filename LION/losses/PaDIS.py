@@ -101,6 +101,23 @@ def sample_image_patch_with_position_channels(
     return image_patch, position_patch
 
 
+def sample_image_patch(
+    images: torch.Tensor,
+    patch_size: int,
+) -> torch.Tensor:
+    batch_size, _, height, width = images.shape
+    if patch_size > height or patch_size > width:
+        raise ValueError("patch_size cannot exceed padded image dimensions.")
+    top = torch.randint(0, height - patch_size + 1, (batch_size,), device=images.device)
+    left = torch.randint(0, width - patch_size + 1, (batch_size,), device=images.device)
+    rows = top[:, None] + torch.arange(patch_size, device=images.device)[None, :]
+    cols = left[:, None] + torch.arange(patch_size, device=images.device)[None, :]
+    batch = torch.arange(batch_size, device=images.device)[:, None, None]
+    return images.permute(1, 0, 2, 3)[
+        :, batch, rows[:, :, None], cols[:, None, :]
+    ].permute(1, 0, 2, 3)
+
+
 def score_from_denoiser(
     noisy_image_patch: torch.Tensor, denoised_patch: torch.Tensor, sigma: torch.Tensor
 ) -> torch.Tensor:
@@ -116,7 +133,7 @@ class PaDISDenoisingLoss(nn.Module):
         self,
         sigma_min: float = 0.002,
         sigma_max: float = 40.0,
-        sigma_distribution: str = "edm_lognormal",
+        sigma_distribution: str = "edm_lognormal_truncated",
         P_mean: float = -1.2,
         P_std: float = 1.2,
         sigma_data: float = 0.5,
@@ -126,8 +143,17 @@ class PaDISDenoisingLoss(nn.Module):
         super().__init__()
         if sigma_min <= 0 or sigma_max <= sigma_min:
             raise ValueError("Require 0 < sigma_min < sigma_max.")
-        if sigma_distribution not in ("edm_lognormal", "log_uniform"):
-            raise ValueError("sigma_distribution must be edm_lognormal or log_uniform.")
+        if sigma_distribution == "bounded_edm_lognormal":
+            sigma_distribution = "edm_lognormal_truncated"
+        if sigma_distribution not in (
+            "edm_lognormal",
+            "edm_lognormal_truncated",
+            "log_uniform",
+        ):
+            raise ValueError(
+                "sigma_distribution must be edm_lognormal, "
+                "edm_lognormal_truncated, or log_uniform."
+            )
         if reduction not in ("batch_mean_sum", "mean"):
             raise ValueError("reduction must be batch_mean_sum or mean.")
         self.sigma_min = float(sigma_min)
@@ -140,15 +166,36 @@ class PaDISDenoisingLoss(nn.Module):
         self.augment_pipe = augment_pipe
 
     def sample_sigma(self, batch_size: int, device: torch.device) -> torch.Tensor:
-        if self.sigma_distribution == "edm_lognormal":
-            rnd_normal = torch.randn(batch_size, device=device)
-            return torch.exp(rnd_normal * self.P_std + self.P_mean)
+        if self.sigma_distribution in ("edm_lognormal", "edm_lognormal_truncated"):
+            sigma = self._sample_edm_lognormal(batch_size, device)
+            if self.sigma_distribution == "edm_lognormal":
+                return sigma
+            return self._truncate_sigma(sigma, device)
         log_min = torch.log(torch.tensor(self.sigma_min, device=device))
         log_max = torch.log(torch.tensor(self.sigma_max, device=device))
         log_sigma = log_min + torch.rand(batch_size, device=device) * (
             log_max - log_min
         )
         return torch.exp(log_sigma)
+
+    def _sample_edm_lognormal(
+        self, batch_size: int, device: torch.device
+    ) -> torch.Tensor:
+        rnd_normal = torch.randn(batch_size, device=device)
+        return torch.exp(rnd_normal * self.P_std + self.P_mean)
+
+    def _truncate_sigma(
+        self, sigma: torch.Tensor, device: torch.device
+    ) -> torch.Tensor:
+        invalid = (sigma < self.sigma_min) | (sigma > self.sigma_max)
+        attempts = 0
+        while bool(invalid.any().item()) and attempts < 16:
+            sigma[invalid] = self._sample_edm_lognormal(
+                int(invalid.sum().item()), device
+            )
+            invalid = (sigma < self.sigma_min) | (sigma > self.sigma_max)
+            attempts += 1
+        return sigma.clamp(self.sigma_min, self.sigma_max)
 
     def forward(
         self,

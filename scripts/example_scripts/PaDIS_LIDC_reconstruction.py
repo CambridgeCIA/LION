@@ -472,7 +472,9 @@ def set_run_seed(seed: int) -> None:
 
 def build_sampler_params(args, model, *, measurement_source: str) -> LIONParameter:
     if args.paper_ct_sampling:
-        sampler_params = PaDIS.paper_ct_parameters(model)
+        sampler_params = PaDIS.paper_ct_parameters(model, views=args.paper_ct_views)
+    elif args.public_padis_ct_sampling:
+        sampler_params = PaDIS.padis_repo_ct_parameters(model)
     else:
         sampler_params = PaDIS.default_parameters(model)
     sampler_params.num_steps = args.num_steps
@@ -483,7 +485,7 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
     sampler_params.zeta = args.zeta
     sampler_params.initial_reconstruction = args.initial_reconstruction
     if args.paper_ct_sampling:
-        paper_params = PaDIS.paper_ct_parameters(model)
+        paper_params = PaDIS.paper_ct_parameters(model, views=args.paper_ct_views)
         sampler_params.num_steps = paper_params.num_steps
         sampler_params.inner_steps = paper_params.inner_steps
         sampler_params.sigma_min = paper_params.sigma_min
@@ -491,11 +493,42 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.zeta = paper_params.zeta
         sampler_params.initial_reconstruction = paper_params.initial_reconstruction
         sampler_params.clip_initial = paper_params.clip_initial
+        sampler_params.clip_output = paper_params.clip_output
+        sampler_params.dps_epsilon = paper_params.dps_epsilon
+        sampler_params.sampling_epsilon = paper_params.sampling_epsilon
+        sampler_params.data_consistency_gradient = (
+            paper_params.data_consistency_gradient
+        )
+    elif args.public_padis_ct_sampling:
+        public_params = PaDIS.padis_repo_ct_parameters(model)
+        sampler_params.num_steps = public_params.num_steps
+        sampler_params.inner_steps = public_params.inner_steps
+        sampler_params.sigma_min = public_params.sigma_min
+        sampler_params.sigma_max = public_params.sigma_max
+        sampler_params.zeta = public_params.zeta
+        sampler_params.initial_reconstruction = public_params.initial_reconstruction
+        sampler_params.clip_initial = public_params.clip_initial
+        sampler_params.clip_output = public_params.clip_output
+        sampler_params.dps_epsilon = public_params.dps_epsilon
+        sampler_params.sampling_epsilon = public_params.sampling_epsilon
+        sampler_params.data_consistency_gradient = (
+            public_params.data_consistency_gradient
+        )
     sampler_params.patch_batch_size = args.patch_batch_size
     sampler_params.langevin_ddnm = args.langevin_ddnm
     sampler_params.langevin_noise_scale = args.langevin_noise_scale
-    sampler_params.clip_initial = not args.no_clip_initial
-    sampler_params.clip_output = not args.no_clip_output
+    if args.clip_initial is not None:
+        sampler_params.clip_initial = args.clip_initial
+    if args.clip_output is not None:
+        sampler_params.clip_output = args.clip_output
+    if args.dps_epsilon is not None:
+        sampler_params.dps_epsilon = args.dps_epsilon
+    if args.sampling_epsilon is not None:
+        sampler_params.sampling_epsilon = args.sampling_epsilon
+    if args.data_consistency_gradient is not None:
+        sampler_params.data_consistency_gradient = args.data_consistency_gradient
+    if args.adjoint_data_step_schedule is not None:
+        sampler_params.adjoint_data_step_schedule = args.adjoint_data_step_schedule
     sampler_params.clip_denoised = args.clip_denoised
     sampler_params.clip_state = args.clip_state
     sampler_params.disable_data_consistency = args.disable_data_consistency
@@ -806,7 +839,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--paper-ct-sampling",
         action="store_true",
-        help="Use the PaDIS paper/public-CT-script sampling budget: FDK init, 100 outer steps, 10 inner steps, sigma_max=10.",
+        help="Use the strict PaDIS paper CT sampler: noise init, 100 outer steps, 10 inner steps, sigma_max=10.",
+    )
+    parser.add_argument(
+        "--public-padis-ct-sampling",
+        action="store_true",
+        help="Use the public PaDIS CT-script compatibility sampler: FDK init and norm-gradient DPS.",
+    )
+    parser.add_argument(
+        "--paper-ct-views",
+        type=int,
+        choices=(8, 20),
+        default=20,
+        help="Select the PaDIS paper CT sigma_min for --paper-ct-sampling.",
     )
     parser.add_argument("--num-steps", type=int, default=18)
     parser.add_argument("--inner-steps", type=int, default=10)
@@ -819,6 +864,20 @@ def build_arg_parser() -> argparse.ArgumentParser:
         choices=("noise", "fdk", "inverse"),
         default="fdk",
         help="'fdk' matches the public PaDIS CT script variant; 'noise' starts from pure diffusion noise.",
+    )
+    parser.add_argument("--dps-epsilon", type=float, default=None)
+    parser.add_argument("--sampling-epsilon", type=float, default=None)
+    parser.add_argument(
+        "--data-consistency-gradient",
+        choices=("norm", "paper_squared_residual"),
+        default=None,
+        help="DPS measurement gradient. The paper uses paper_squared_residual; the public repo uses norm.",
+    )
+    parser.add_argument(
+        "--adjoint-data-step-schedule",
+        choices=("paper", "public_repo"),
+        default=None,
+        help="Adjoint data-step schedule for Langevin/PC samplers.",
     )
     parser.add_argument("--patch-size", type=int, default=None)
     parser.add_argument("--pad-width", type=int, default=None)
@@ -852,8 +911,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--save-previews", action="store_true")
     parser.add_argument("--prog-bar", action="store_true")
-    parser.add_argument("--no-clip-initial", action="store_true")
-    parser.add_argument("--no-clip-output", action="store_true")
+    parser.set_defaults(clip_initial=None, clip_output=None)
+    parser.add_argument("--clip-initial", dest="clip_initial", action="store_true")
+    parser.add_argument("--no-clip-initial", dest="clip_initial", action="store_false")
+    parser.add_argument("--clip-output", dest="clip_output", action="store_true")
+    parser.add_argument("--no-clip-output", dest="clip_output", action="store_false")
     parser.add_argument(
         "--clip-denoised",
         action="store_true",
@@ -883,7 +945,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--data-consistency-scale-schedule",
         choices=("constant", "edm", "inverse_sigma"),
         default="constant",
-        help="Sigma-dependent multiplier for data consistency. 'edm' uses sigma_data^2/(sigma^2+sigma_data^2); 'inverse_sigma' uses sigma_min/sigma.",
+        help=(
+            "Sigma-dependent multiplier for data consistency. 'edm' uses "
+            "sigma_data^2/(sigma^2+sigma_data^2); 'inverse_sigma' uses "
+            "sigma_min/sigma."
+        ),
     )
     parser.add_argument(
         "--data-consistency-scale-power",
@@ -908,7 +974,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--run-ablations",
         action="store_true",
-        help="Run baseline plus no_data_consistency, no_langevin_noise, and no_prior_score variants into separate folders.",
+        help=(
+            "Run baseline plus no_data_consistency, no_langevin_noise, "
+            "and no_prior_score variants into separate folders."
+        ),
     )
     parser.add_argument(
         "--trace-interval",
@@ -925,6 +994,10 @@ def main() -> None:
         raise ValueError("--max-samples must be positive.")
     if args.start_index < 0:
         raise ValueError("--start-index must be non-negative.")
+    if args.paper_ct_sampling and args.public_padis_ct_sampling:
+        raise ValueError(
+            "--paper-ct-sampling and --public-padis-ct-sampling are mutually exclusive."
+        )
 
     set_run_seed(args.seed)
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")

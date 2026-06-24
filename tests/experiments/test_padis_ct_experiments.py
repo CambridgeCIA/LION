@@ -64,6 +64,14 @@ def test_paper_fan_presets_use_requested_views_and_paper_ct_hyperparameters():
         assert arguments[arguments.index("--sigma-min") + 1] == sigma_min
         assert arguments[arguments.index("--sigma-max") + 1] == "10"
         assert arguments[arguments.index("--zeta") + 1] == "0.3"
+        assert arguments[arguments.index("--dps-epsilon") + 1] == "1"
+        assert arguments[arguments.index("--sampling-epsilon") + 1] == "1"
+        assert (
+            arguments[arguments.index("--data-consistency-gradient") + 1]
+            == "paper_squared_residual"
+        )
+        assert arguments[arguments.index("--adjoint-data-step-schedule") + 1] == "paper"
+        assert "--no-clip-output" in arguments
 
 
 def test_20_view_no_position_ablation_presets():

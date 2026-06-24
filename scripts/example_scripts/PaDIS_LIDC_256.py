@@ -347,6 +347,17 @@ def build_arg_parser():
         default="patch",
         help="Train the PaDIS patch prior or the paper's whole-image diffusion baseline.",
     )
+    parser.add_argument(
+        "--patch-size-preset",
+        choices=("8", "16", "32", "56", "96"),
+        default=None,
+        help="Use a paper patch-size ablation training schedule for patch PaDIS.",
+    )
+    parser.add_argument(
+        "--no-position-channels",
+        action="store_true",
+        help="Train the PaDIS ablation model without x/y position channels.",
+    )
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
     parser.add_argument(
         "--full-lidc",
@@ -432,11 +443,16 @@ def main():
     data_params.pcg_slices_nodule = float(args.pcg_slices_nodule)
     if data_params.max_num_slices_per_patient == -1:
         print("Using all available LIDC-IDRI slices; pcg_slices_nodule is ignored.")
-    preset = (
-        "padis-paper-whole-ct-256"
-        if args.prior_mode == "whole-image"
-        else "padis-paper-ct-256"
-    )
+    if args.prior_mode == "whole-image":
+        if args.patch_size_preset is not None:
+            raise ValueError("--patch-size-preset is only valid for patch PaDIS.")
+        preset = "padis-paper-whole-ct-256"
+    elif args.patch_size_preset is None:
+        preset = "padis-paper-ct-256"
+    else:
+        preset = f"padis-paper-ct-p{args.patch_size_preset}"
+    if args.no_position_channels:
+        preset = f"{preset}-no-position"
     if args.batch_size is None:
         args.batch_size = 8 if args.prior_mode == "whole-image" else 128
     solver_params = PaDISSolver.default_parameters(preset)
@@ -470,7 +486,9 @@ def main():
     model_params = NCSNpp.default_parameters(preset)
     model = NCSNpp(model_params, geometry)
     loss_fn = PaDISDenoisingLoss(
-        sigma_min=model_params.sigma_min, sigma_max=model_params.sigma_max
+        sigma_min=model_params.sigma_min,
+        sigma_max=model_params.sigma_max,
+        sigma_distribution=solver_params.sigma_distribution,
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=2e-4)
     run_prefix = (

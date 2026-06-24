@@ -126,16 +126,39 @@ def test_padis_paper_ct_sampling_preset():
     params = PaDIS.paper_ct_parameters(model)
     assert params.num_steps == 100
     assert params.inner_steps == 10
+    assert params.sigma_min == 0.002
+    assert params.sigma_max == 10.0
+    assert params.initial_reconstruction == "noise"
+    assert params.clip_initial is False
+    assert params.clip_output is False
+    assert params.dps_epsilon == 1.0
+    assert params.data_consistency_gradient == "paper_squared_residual"
+    assert params.adjoint_data_step_schedule == "paper"
+
+    params_8_view = PaDIS.paper_ct_parameters(model, views=8)
+    assert params_8_view.sigma_min == 0.003
+
+
+def test_padis_public_repo_ct_sampling_preset():
+    model = ZeroPatchModel()
+    params = PaDIS.padis_repo_ct_parameters(model)
+    assert params.num_steps == 100
+    assert params.inner_steps == 10
     assert params.sigma_min == 0.003
     assert params.sigma_max == 10.0
     assert params.initial_reconstruction == "fdk"
     assert params.clip_initial is True
+    assert params.clip_output is True
+    assert params.dps_epsilon == 0.5
+    assert params.data_consistency_gradient == "norm"
+    assert params.adjoint_data_step_schedule == "public_repo"
 
 
 def test_padis_default_sampling_uses_unscaled_data_step_like_original_repo():
     model = ZeroPatchModel()
     params = PaDIS.default_parameters(model)
     assert params.data_consistency_normalization == "none"
+    assert params.data_consistency_gradient == "norm"
 
 
 def test_padis_data_consistency_scale_schedule():
@@ -192,6 +215,162 @@ def test_padis_patch_denoising_zeroes_padding_border():
     assert torch.count_nonzero(denoised[:, :, -pad:]) == 0
     assert torch.count_nonzero(denoised[:, :, :, :pad]) == 0
     assert torch.count_nonzero(denoised[:, :, :, -pad:]) == 0
+
+
+def test_padis_patch_layout_uses_supplied_generator():
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.pad_width = 24
+    reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
+
+    generator_a = torch.Generator().manual_seed(123)
+    generator_b = torch.Generator().manual_seed(123)
+
+    layout_a = reconstructor._patch_layout(
+        (8, 8), params, torch.device("cpu"), generator_a
+    )
+    layout_b = reconstructor._patch_layout(
+        (8, 8), params, torch.device("cpu"), generator_b
+    )
+
+    assert layout_a.indices == layout_b.indices
+
+
+def test_padis_paper_squared_residual_gradient_matches_formula():
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.pad_width = 0
+    params.patch_size = 8
+    params.zeta = 0.3
+    params.data_consistency_gradient = "paper_squared_residual"
+    reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
+
+    x = torch.zeros(1, 1, 8, 8, requires_grad=True)
+    denoised = x
+    measurement = torch.ones(1, 8, 8)
+    (
+        gradient,
+        raw_gradient,
+        residual,
+        _,
+        _,
+        step_size,
+    ) = reconstructor._dps_data_gradient(
+        measurement, x, denoised, params, sigma=torch.tensor(0.02)
+    )
+
+    residual_norm = torch.linalg.norm(residual).detach()
+    assert torch.allclose(raw_gradient, torch.full_like(x, -2.0))
+    assert torch.allclose(gradient, raw_gradient)
+    assert step_size == params.zeta / float(residual_norm)
+
+
+def test_padis_norm_gradient_matches_public_repo_formula():
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.pad_width = 0
+    params.patch_size = 8
+    params.zeta = 0.3
+    params.data_consistency_gradient = "norm"
+    reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
+
+    x = torch.zeros(1, 1, 8, 8, requires_grad=True)
+    measurement = torch.ones(1, 8, 8)
+    (
+        gradient,
+        raw_gradient,
+        residual,
+        _,
+        _,
+        step_size,
+    ) = reconstructor._dps_data_gradient(
+        measurement, x, x, params, sigma=torch.tensor(0.02)
+    )
+
+    residual_norm = torch.linalg.norm(residual).detach()
+    expected = torch.full_like(x, -1.0 / float(residual_norm))
+    assert torch.allclose(raw_gradient, expected)
+    assert torch.allclose(gradient, raw_gradient)
+    assert step_size == params.zeta
+
+
+def test_padis_scaled_identity_paper_gradient_matches_closed_form():
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.pad_width = 0
+    params.patch_size = 8
+    params.zeta = 0.3
+    params.data_consistency_gradient = "paper_squared_residual"
+    reconstructor = PaDIS(
+        ScaledIdentityOp(2.0), model, params, algorithm="dps_langevin"
+    )
+
+    x = torch.zeros(1, 1, 8, 8, requires_grad=True)
+    measurement = torch.ones(1, 8, 8)
+    (
+        gradient,
+        raw_gradient,
+        residual,
+        _,
+        _,
+        step_size,
+    ) = reconstructor._dps_data_gradient(
+        measurement, x, x, params, sigma=torch.tensor(0.02)
+    )
+
+    residual_norm = torch.linalg.norm(residual).detach()
+    assert torch.allclose(raw_gradient, torch.full_like(x, -4.0))
+    assert torch.allclose(gradient, raw_gradient)
+    assert step_size == params.zeta / float(residual_norm)
+
+
+def test_padis_adjoint_correction_matches_scaled_identity_closed_form():
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.pad_width = 0
+    params.data_consistency_normalization = "none"
+    reconstructor = PaDIS(ScaledIdentityOp(3.0), model, params, algorithm="langevin")
+
+    x = torch.zeros(1, 1, 8, 8)
+    residual = torch.ones(1, 8, 8)
+    (
+        updated,
+        correction,
+        raw_correction,
+        normalizer,
+        data_scale,
+    ) = reconstructor._apply_adjoint_correction(
+        x, residual, torch.tensor(0.5), params, torch.tensor(0.02)
+    )
+
+    expected_correction = torch.full_like(x, 3.0)
+    assert normalizer == 1.0
+    assert data_scale == 1.0
+    assert torch.allclose(raw_correction, expected_correction)
+    assert torch.allclose(correction, expected_correction)
+    assert torch.allclose(updated, torch.full_like(x, 1.5))
+
+
+def test_padis_adjoint_data_step_schedule_matches_paper_and_public_repo():
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.zeta = 0.3
+    reconstructor = PaDIS(IdentityOp(), model, params, algorithm="langevin")
+    residual = torch.ones(1, 8, 8)
+    sigma = torch.tensor(0.02)
+    base_step = params.zeta / torch.linalg.norm(residual)
+
+    params.adjoint_data_step_schedule = "paper"
+    paper_step = reconstructor._adjoint_data_step_size(
+        residual, sigma, params, public_repo_multiplier=True
+    )
+    assert torch.allclose(paper_step, base_step)
+
+    params.adjoint_data_step_schedule = "public_repo"
+    public_step = reconstructor._adjoint_data_step_size(
+        residual, sigma, params, public_repo_multiplier=True
+    )
+    assert torch.allclose(public_step, base_step * 4.0)
 
 
 def test_padis_data_gradient_normalization_uses_measurement_operator_norm():

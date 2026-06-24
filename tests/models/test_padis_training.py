@@ -110,11 +110,67 @@ def test_padis_loss_backpropagates():
 
 def test_padis_loss_uses_edm_lognormal_by_default():
     loss = PaDISDenoisingLoss()
-    assert loss.sigma_distribution == "edm_lognormal"
+    assert loss.sigma_distribution == "edm_lognormal_truncated"
     assert loss.P_mean == -1.2
     assert loss.P_std == 1.2
     assert loss.sigma_data == 0.5
     assert loss.reduction == "batch_mean_sum"
+
+
+def test_padis_loss_truncated_edm_lognormal_respects_sigma_bounds():
+    loss = PaDISDenoisingLoss(
+        sigma_min=0.2, sigma_max=0.4, sigma_distribution="edm_lognormal_truncated"
+    )
+    sigma = loss.sample_sigma(1024, torch.device("cpu"))
+    assert torch.all(sigma >= 0.2)
+    assert torch.all(sigma <= 0.4)
+
+
+def test_padis_no_position_defaults_disable_model_and_solver_position_channels():
+    model_params = NCSNpp.default_parameters("padis-paper-ct-256-no-position")
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256-no-position")
+    assert model_params.input_position_channels == 0
+    assert solver_params.use_position_channels is False
+
+
+def test_padis_solver_rejects_position_channel_mismatch():
+    model, geometry = _tiny_padis_model("padis-paper-ct-256-no-position")
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    try:
+        PaDISSolver(
+            model,
+            optimizer,
+            PaDISDenoisingLoss(),
+            geometry=geometry,
+            solver_params=solver_params,
+            device=torch.device("cpu"),
+        )
+    except ValueError as exc:
+        assert "input_position_channels" in str(exc)
+    else:
+        raise AssertionError("Expected position-channel mismatch to be rejected.")
+
+
+def test_padis_patch_size_ablation_defaults():
+    expected = {
+        "padis-paper-ct-p8": ([8], [1.0], 8, 8),
+        "padis-paper-ct-p16": ([8, 16], [0.3, 0.7], 16, 16),
+        "padis-paper-ct-p32": ([8, 16, 32], [0.2, 0.3, 0.5], 32, 32),
+        "padis-paper-ct-p56": ([16, 32, 56], [0.2, 0.3, 0.5], 56, 24),
+        "padis-paper-ct-p96": ([32, 64, 96], [0.2, 0.3, 0.5], 96, 32),
+    }
+    for mode, (patch_sizes, probabilities, largest, pad_width) in expected.items():
+        model_params = NCSNpp.default_parameters(mode)
+        solver_params = PaDISSolver.default_parameters(mode)
+        assert model_params.patch_sizes == patch_sizes
+        assert solver_params.patch_sizes == patch_sizes
+        assert model_params.patch_probabilities == probabilities
+        assert solver_params.patch_probabilities == probabilities
+        assert model_params.largest_patch_size == largest
+        assert solver_params.largest_patch_size == largest
+        assert model_params.pad_width == pad_width
+        assert solver_params.pad_width == pad_width
 
 
 def test_padis_loss_uses_patch_l2_norm_not_pixel_mean():

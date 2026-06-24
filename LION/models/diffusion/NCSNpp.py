@@ -49,14 +49,31 @@ def score_from_denoiser(
     return (denoised_patch - noisy_image_patch) / sigma.square()
 
 
+_PATCH_ABLATION_PRESETS = {
+    "padis-paper-ct-p8": ([8], [1.0], 8, 8),
+    "padis-paper-ct-p16": ([8, 16], [0.3, 0.7], 16, 16),
+    "padis-paper-ct-p32": ([8, 16, 32], [0.2, 0.3, 0.5], 32, 32),
+    "padis-paper-ct-p56": ([16, 32, 56], [0.2, 0.3, 0.5], 56, 24),
+    "padis-paper-ct-p96": ([32, 64, 96], [0.2, 0.3, 0.5], 96, 32),
+}
+
+
+def _split_position_suffix(mode: str) -> tuple[str, bool]:
+    suffix = "-no-position"
+    if mode.endswith(suffix):
+        return mode[: -len(suffix)], True
+    return mode, False
+
+
 class NCSNpp(LIONmodel):
     """NCSN++ model"""
 
     @staticmethod
     def default_parameters(mode="padis-paper-ct-256") -> LIONModelParameter:
         model_params = LIONModelParameter()
+        base_mode, no_position = _split_position_suffix(mode)
 
-        if mode in ("padis-paper-ct-256", "PaDIS-ddpmpp"):
+        if base_mode in ("padis-paper-ct-256", "PaDIS-ddpmpp"):
             model_params.embedding_type = "positional"
             model_params.channel_mult_noise = 1
             model_params.model_channels = 128
@@ -66,7 +83,7 @@ class NCSNpp(LIONmodel):
             model_params.pad_width = 24
             model_params.patch_sizes = [16, 32, 56]
             model_params.patch_probabilities = [0.2, 0.3, 0.5]
-        elif mode == "padis-paper-ct-512":
+        elif base_mode == "padis-paper-ct-512":
             model_params.embedding_type = "positional"
             model_params.channel_mult_noise = 1
             model_params.model_channels = 128
@@ -76,7 +93,7 @@ class NCSNpp(LIONmodel):
             model_params.pad_width = 64
             model_params.patch_sizes = [16, 32, 64]
             model_params.patch_probabilities = [0.2, 0.3, 0.5]
-        elif mode in ("padis-paper-whole-ct-256", "whole-image-ct-256"):
+        elif base_mode in ("padis-paper-whole-ct-256", "whole-image-ct-256"):
             model_params.embedding_type = "positional"
             model_params.channel_mult_noise = 1
             model_params.model_channels = 128
@@ -87,6 +104,22 @@ class NCSNpp(LIONmodel):
             model_params.patch_sizes = [256]
             model_params.patch_probabilities = [1.0]
             model_params.prior_mode = "whole_image"
+        elif base_mode in _PATCH_ABLATION_PRESETS:
+            (
+                patch_sizes,
+                patch_probabilities,
+                largest_patch_size,
+                pad_width,
+            ) = _PATCH_ABLATION_PRESETS[base_mode]
+            model_params.embedding_type = "positional"
+            model_params.channel_mult_noise = 1
+            model_params.model_channels = 128
+            model_params.channel_mult = [1, 2, 2, 2]
+            model_params.dropout = 0.05
+            model_params.largest_patch_size = largest_patch_size
+            model_params.pad_width = pad_width
+            model_params.patch_sizes = list(patch_sizes)
+            model_params.patch_probabilities = list(patch_probabilities)
         else:
             raise ValueError(f"Mode {mode} not recognized.")
 
@@ -114,8 +147,10 @@ class NCSNpp(LIONmodel):
         model_params.network_backend = "score_sde_pytorch"
         model_params.padis_embedding_compat = True
         model_params.padis_attention_compat = True
-        model_params.input_position_channels = int(
-            getattr(model_params, "input_position_channels", 2)
+        model_params.input_position_channels = (
+            0
+            if no_position
+            else int(getattr(model_params, "input_position_channels", 2))
         )
         model_params.model_input_type = ModelInputType.IMAGE
 
