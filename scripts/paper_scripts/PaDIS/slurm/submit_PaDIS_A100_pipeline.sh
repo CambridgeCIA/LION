@@ -8,8 +8,8 @@
 #   PADIS_CHECK_TIME=08:00:00
 #   PADIS_PILOT_TIME=08:00:00
 #   PADIS_REAL_TIME=24:00:00
-#   PADIS_PILOT_ARRAY_LIMIT=4
-#   PADIS_REAL_ARRAY_LIMIT=2
+#   PADIS_PILOT_ARRAY_LIMIT=14
+#   PADIS_REAL_ARRAY_LIMIT=14
 #   PADIS_RUN_ROOT=/path/to/experiments/PaDIS
 #   PADIS_WANDB_PROJECT=PaDIS-Reproduction
 
@@ -29,8 +29,8 @@ account="${PADIS_SLURM_ACCOUNT:-MPHIL-DIS-SL2-GPU}"
 check_time="${PADIS_CHECK_TIME:-08:00:00}"
 pilot_time="${PADIS_PILOT_TIME:-08:00:00}"
 real_time="${PADIS_REAL_TIME:-24:00:00}"
-pilot_limit="${PADIS_PILOT_ARRAY_LIMIT:-4}"
-real_limit="${PADIS_REAL_ARRAY_LIMIT:-2}"
+pilot_limit="${PADIS_PILOT_ARRAY_LIMIT:-14}"
+real_limit="${PADIS_REAL_ARRAY_LIMIT:-14}"
 run_root="$(padis_default_run_root)"
 run_stamp="${PADIS_RUN_STAMP:-$(date +%Y%m%d_%H%M%S)}"
 

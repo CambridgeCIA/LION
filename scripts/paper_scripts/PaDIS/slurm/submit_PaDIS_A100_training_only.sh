@@ -17,7 +17,7 @@ last_task=$((task_count - 1))
 
 account="${PADIS_SLURM_ACCOUNT:-MPHIL-DIS-SL2-GPU}"
 real_time="${PADIS_REAL_TIME:-24:00:00}"
-real_limit="${PADIS_REAL_ARRAY_LIMIT:-2}"
+real_limit="${PADIS_REAL_ARRAY_LIMIT:-14}"
 run_root="$(padis_default_run_root)"
 run_stamp="${PADIS_RUN_STAMP:-$(date +%Y%m%d_%H%M%S)}"
 

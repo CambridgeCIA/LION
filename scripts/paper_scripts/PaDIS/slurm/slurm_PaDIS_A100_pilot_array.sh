@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --time=08:00:00
 #SBATCH --mail-type=NONE
-#SBATCH --array=0-13%4
+#SBATCH --array=0-13%14
 #SBATCH -p ampere
 #SBATCH -o slurm-%x-%A_%a.out
 
@@ -28,10 +28,11 @@ PADIS_RUN_ROOT="$(padis_default_run_root)"
 PADIS_RUN_STAMP="${PADIS_RUN_STAMP:-${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-$(date +%Y%m%d_%H%M%S)}}}"
 PADIS_PILOT_ROOT="${PADIS_PILOT_ROOT:-$PADIS_RUN_ROOT/pilot_runs/a100_pilots_$PADIS_RUN_STAMP}"
 PADIS_DATA_FOLDER="${PADIS_DATA_FOLDER:-}"
+PADIS_SEED="${PADIS_SEED:-33}"
 MPLCONFIGDIR="${MPLCONFIGDIR:-$PADIS_PILOT_ROOT/matplotlib}"
 WANDB_DIR="${WANDB_DIR:-$PADIS_PILOT_ROOT/wandb}"
 export LION_ROOT PADIS_RUN_ROOT PADIS_RUN_STAMP PADIS_PILOT_ROOT PADIS_DATA_FOLDER
-export MPLCONFIGDIR WANDB_DIR PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1
+export MPLCONFIGDIR WANDB_DIR PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1 PYTHONHASHSEED="$PADIS_SEED"
 
 padis_init_training_tasks
 TASK_ID="${SLURM_ARRAY_TASK_ID:-0}"
@@ -66,6 +67,7 @@ if [ "$TASK_ENGINE" = "lidc256" ]; then
                 --validation-interval-patches "$VALIDATION_INTERVAL"
                 --checkpoint-interval-patches "$CHECKPOINT_INTERVAL"
                 --log-interval-patches "$LOG_INTERVAL"
+                --seed "$PADIS_SEED"
                 --batch-size "$TASK_BATCH_SIZE"
                 --num-workers "$NUM_WORKERS"
                 --prefetch-factor "$PREFETCH_FACTOR"
@@ -95,6 +97,7 @@ elif [ "$TASK_ENGINE" = "lidc512" ]; then
                 --validation-interval-patches "$VALIDATION_INTERVAL"
                 --checkpoint-interval-patches "$CHECKPOINT_INTERVAL"
                 --log-interval-patches "$LOG_INTERVAL"
+                --seed "$PADIS_SEED"
                 --batch-size "$TASK_BATCH_SIZE"
                 --num-workers "${PADIS_512_NUM_WORKERS:-$NUM_WORKERS}"
                 --prefetch-factor "${PADIS_512_PREFETCH_FACTOR:-$PREFETCH_FACTOR}"

@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --time=24:00:00
 #SBATCH --mail-type=NONE
-#SBATCH --array=0-13%2
+#SBATCH --array=0-13%14
 #SBATCH -p ampere
 #SBATCH -o slurm-%x-%A_%a.out
 
@@ -28,10 +28,11 @@ PADIS_RUN_ROOT="$(padis_default_run_root)"
 PADIS_RUN_STAMP="${PADIS_RUN_STAMP:-${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-$(date +%Y%m%d_%H%M%S)}}}"
 PADIS_TRAIN_ROOT="${PADIS_TRAIN_ROOT:-$PADIS_RUN_ROOT/real_runs/a100_training_$PADIS_RUN_STAMP}"
 PADIS_DATA_FOLDER="${PADIS_DATA_FOLDER:-}"
+PADIS_SEED="${PADIS_SEED:-33}"
 MPLCONFIGDIR="${MPLCONFIGDIR:-$PADIS_TRAIN_ROOT/matplotlib}"
 WANDB_DIR="${WANDB_DIR:-$PADIS_TRAIN_ROOT/wandb}"
 export LION_ROOT PADIS_RUN_ROOT PADIS_RUN_STAMP PADIS_TRAIN_ROOT PADIS_DATA_FOLDER
-export MPLCONFIGDIR WANDB_DIR PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1
+export MPLCONFIGDIR WANDB_DIR PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1 PYTHONHASHSEED="$PADIS_SEED"
 
 padis_init_training_tasks
 TASK_ID="${SLURM_ARRAY_TASK_ID:-0}"
@@ -56,6 +57,7 @@ CHECKPOINT_INTERVAL="${PADIS_CHECKPOINT_INTERVAL_PATCHES:-1000000}"
 LOG_INTERVAL="${PADIS_LOG_INTERVAL_PATCHES:-128}"
 NUM_WORKERS="${PADIS_NUM_WORKERS:-16}"
 PREFETCH_FACTOR="${PADIS_PREFETCH_FACTOR:-4}"
+NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-1}"
 
 wandb_args=()
 if [ "${PADIS_NO_WANDB:-0}" = "1" ] || [ -z "${PADIS_WANDB_PROJECT:-}" ]; then
@@ -70,6 +72,9 @@ else
         if [ -n "${PADIS_WANDB_ENTITY:-}" ]; then
                 wandb_args+=(--wandb-entity "$PADIS_WANDB_ENTITY")
         fi
+        if [ "$NO_WANDB_ARTIFACT" = "1" ]; then
+                wandb_args+=(--no-wandb-artifact)
+        fi
 fi
 
 if [ "$TASK_ENGINE" = "lidc256" ]; then
@@ -81,6 +86,7 @@ if [ "$TASK_ENGINE" = "lidc256" ]; then
                 --validation-interval-patches "$VALIDATION_INTERVAL"
                 --checkpoint-interval-patches "$CHECKPOINT_INTERVAL"
                 --log-interval-patches "$LOG_INTERVAL"
+                --seed "$PADIS_SEED"
                 --batch-size "$TASK_BATCH_SIZE"
                 --num-workers "$NUM_WORKERS"
                 --prefetch-factor "$PREFETCH_FACTOR"
@@ -109,6 +115,7 @@ elif [ "$TASK_ENGINE" = "lidc512" ]; then
                 --validation-interval-patches "$VALIDATION_INTERVAL"
                 --checkpoint-interval-patches "$CHECKPOINT_INTERVAL"
                 --log-interval-patches "$LOG_INTERVAL"
+                --seed "$PADIS_SEED"
                 --batch-size "$TASK_BATCH_SIZE"
                 --num-workers "${PADIS_512_NUM_WORKERS:-$NUM_WORKERS}"
                 --prefetch-factor "${PADIS_512_PREFETCH_FACTOR:-$PREFETCH_FACTOR}"

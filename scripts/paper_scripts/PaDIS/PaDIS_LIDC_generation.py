@@ -117,7 +117,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--num-samples", type=int, default=16)
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=33)
     parser.add_argument(
         "--generation-mode",
         choices=("padis", "naive-patch"),

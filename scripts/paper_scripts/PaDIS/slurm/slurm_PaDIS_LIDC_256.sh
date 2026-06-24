@@ -55,27 +55,20 @@ module load rhel8/default-amp              # REQUIRED - loads the basic environm
 #! Insert additional module load commands after this line if needed:
 
 MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-/home/tjh200/miniforge3}"
+LION_MAMBA_ENV="${LION_MAMBA_ENV:-lion}"
 export MAMBA_ROOT_PREFIX
 export PATH="$MAMBA_ROOT_PREFIX/bin:$PATH"
 
-if [ -x "$MAMBA_ROOT_PREFIX/bin/mamba" ]; then
-        eval "$("$MAMBA_ROOT_PREFIX/bin/mamba" shell hook --shell bash)"
-        mamba activate "$MAMBA_ROOT_PREFIX/envs/lion" || {
-                echo "Could not activate the conda/mamba environment at $MAMBA_ROOT_PREFIX/envs/lion."
-                exit 1
-        }
-        echo "Activated lion environment using mamba."
-elif [ -f "$MAMBA_ROOT_PREFIX/etc/profile.d/conda.sh" ]; then
-        . "$MAMBA_ROOT_PREFIX/etc/profile.d/conda.sh"
-        conda activate "$MAMBA_ROOT_PREFIX/envs/lion" || {
-                echo "Could not activate the conda environment at $MAMBA_ROOT_PREFIX/envs/lion."
-                exit 1
-        }
-        echo "Activated lion environment using conda."
-else
-        echo "Could not find mamba/conda under $MAMBA_ROOT_PREFIX."
+if [ ! -x "$MAMBA_ROOT_PREFIX/bin/mamba" ]; then
+        echo "Could not find mamba under $MAMBA_ROOT_PREFIX."
         exit 1
 fi
+eval "$("$MAMBA_ROOT_PREFIX/bin/mamba" shell hook --shell bash)"
+mamba activate "$LION_MAMBA_ENV" || {
+        echo "Could not activate mamba environment $LION_MAMBA_ENV."
+        exit 1
+}
+echo "Activated $LION_MAMBA_ENV environment using mamba."
 
 python - <<'PY'
 try:
@@ -84,7 +77,7 @@ except ImportError:
     raise SystemExit(
         "The active 'lion' environment is missing matplotlib. "
         "Install/update it before resubmitting, for example: "
-        "conda env update -f env.yml --prune"
+        "mamba env update -n lion -f env.yml --prune"
     )
 PY
 
@@ -140,12 +133,17 @@ options=(
         --validation-interval-patches 10000
         --checkpoint-interval-patches 250000
         --log-interval-patches 128
+        --seed "${PADIS_SEED:-33}"
         --batch-size 128
         --num-workers 16
         --prefetch-factor 4
         --cache-dataset ramdisk
         --cache-folder "/ramdisks/$USER/lion_lidc_cache"
 )
+
+if [ "${PADIS_NO_WANDB_ARTIFACT:-1}" = "1" ]; then
+        options+=(--no-wandb-artifact)
+fi
 
 if [ -n "$WANDB_ID" ]; then
         options+=(--wandb-id "$WANDB_ID")
@@ -157,6 +155,7 @@ workdir="$SLURM_SUBMIT_DIR"
 #! Are you using OpenMP (NB this is unrelated to OpenMPI)? If so increase this
 #! safe value to no more than 128:
 export OMP_NUM_THREADS=1
+export PYTHONHASHSEED="${PADIS_SEED:-33}"
 
 #! Number of MPI tasks to be started by the application per node and in total (do not change):
 np=$[${numnodes}*${mpi_tasks_per_node}]

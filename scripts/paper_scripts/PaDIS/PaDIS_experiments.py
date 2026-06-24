@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict, dataclass
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -482,7 +483,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run_parser.add_argument("--start-index", type=int, default=0)
     run_parser.add_argument("--max-samples", type=int, default=1)
-    run_parser.add_argument("--seed", type=int, default=0)
+    run_parser.add_argument("--seed", type=int, default=33)
     run_parser.add_argument("--device", default="cuda")
     run_parser.add_argument("--dry-run", action="store_true")
     return parser
@@ -503,7 +504,16 @@ def command_for(args, passthrough: list[str]) -> tuple[list[str], pathlib.Path]:
     output_folder = args.output_root / preset.implementation / args.preset
     command = [sys.executable, "-u", str(engine)]
     if preset.engine.startswith("training"):
-        command.extend(("--save-folder", str(output_folder), "--device", args.device))
+        command.extend(
+            (
+                "--save-folder",
+                str(output_folder),
+                "--seed",
+                str(args.seed),
+                "--device",
+                args.device,
+            )
+        )
     else:
         command.extend(
             (
@@ -559,10 +569,13 @@ def main() -> None:
         "preset": args.preset,
         "preset_config": asdict(PRESETS[args.preset]),
         "command": command,
+        "seed": args.seed,
         "passthrough_overrides": passthrough,
     }
     with open(output_folder / "launcher_manifest.json", "w") as file:
         json.dump(manifest, file, indent=2)
+    env = os.environ.copy()
+    env.setdefault("PYTHONHASHSEED", str(args.seed))
     with open(output_folder / "run.log", "a", buffering=1) as log_file:
         process = subprocess.Popen(
             command,
@@ -570,6 +583,7 @@ def main() -> None:
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
+            env=env,
         )
         assert process.stdout is not None
         for line in process.stdout:

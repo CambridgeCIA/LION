@@ -8,6 +8,7 @@ import json
 import math
 import os
 import pathlib
+import random
 import warnings
 
 _CACHE_ROOT = pathlib.Path("/tmp") / "lion_matplotlib_cache"
@@ -17,6 +18,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(_CACHE_ROOT / "mpl"))
 os.environ.setdefault("XDG_CACHE_HOME", str(_CACHE_ROOT / "xdg"))
 
 import torch
+import numpy as np
 from tqdm import tqdm
 
 from LION.CTtools.ct_geometry import Geometry
@@ -465,9 +467,14 @@ def save_preview(
 
 
 def set_run_seed(seed: int) -> None:
+    os.environ.setdefault("PYTHONHASHSEED", str(seed))
+    random.seed(seed)
+    np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
 
 def build_sampler_params(args, model, *, measurement_source: str) -> LIONParameter:
@@ -835,7 +842,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--noise-cross-talk", type=float, default=0.05)
     parser.add_argument("--max-samples", type=int, default=8)
     parser.add_argument("--start-index", type=int, default=0)
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=33)
     parser.add_argument(
         "--paper-ct-sampling",
         action="store_true",

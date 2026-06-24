@@ -26,29 +26,20 @@ padis_setup_modules() {
 
 padis_activate_environment() {
         MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-/home/tjh200/miniforge3}"
-        LION_CONDA_ENV="${LION_CONDA_ENV:-$MAMBA_ROOT_PREFIX/envs/lion}"
+        LION_MAMBA_ENV="${LION_MAMBA_ENV:-lion}"
         export MAMBA_ROOT_PREFIX
         export PATH="$MAMBA_ROOT_PREFIX/bin:$PATH"
 
-        if [ -x "$MAMBA_ROOT_PREFIX/bin/mamba" ]; then
-                eval "$("$MAMBA_ROOT_PREFIX/bin/mamba" shell hook --shell bash)"
-                mamba activate "$LION_CONDA_ENV" || {
-                        echo "Could not activate $LION_CONDA_ENV with mamba."
-                        exit 1
-                }
-                echo "Activated $LION_CONDA_ENV using mamba."
-        elif [ -f "$MAMBA_ROOT_PREFIX/etc/profile.d/conda.sh" ]; then
-                # shellcheck source=/dev/null
-                . "$MAMBA_ROOT_PREFIX/etc/profile.d/conda.sh"
-                conda activate "$LION_CONDA_ENV" || {
-                        echo "Could not activate $LION_CONDA_ENV with conda."
-                        exit 1
-                }
-                echo "Activated $LION_CONDA_ENV using conda."
-        else
-                echo "Could not find mamba/conda under $MAMBA_ROOT_PREFIX."
+        if [ ! -x "$MAMBA_ROOT_PREFIX/bin/mamba" ]; then
+                echo "Could not find mamba under $MAMBA_ROOT_PREFIX."
                 exit 1
         fi
+        eval "$("$MAMBA_ROOT_PREFIX/bin/mamba" shell hook --shell bash)"
+        mamba activate "$LION_MAMBA_ENV" || {
+                echo "Could not activate mamba environment $LION_MAMBA_ENV."
+                exit 1
+        }
+        echo "Activated $LION_MAMBA_ENV using mamba."
 }
 
 padis_default_run_root() {

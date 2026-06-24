@@ -8,10 +8,12 @@ import json
 import math
 import os
 import pathlib
+import random
 import re
 import uuid
 
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -109,6 +111,17 @@ def serializable_config(args, run_folder, preset):
     config["run_folder"] = str(run_folder)
     config["paper_preset"] = preset
     return config
+
+
+def set_run_seed(seed: int) -> None:
+    os.environ.setdefault("PYTHONHASHSEED", str(seed))
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
 
 def wandb_id_file(run_folder):
@@ -396,6 +409,12 @@ def build_arg_parser():
         help="Stop training cleanly after this many wall-clock seconds.",
     )
     parser.add_argument(
+        "--seed",
+        type=int,
+        default=33,
+        help="Seed Python, NumPy, Torch and DataLoader-derived randomness.",
+    )
+    parser.add_argument(
         "--batch-size",
         type=int,
         default=None,
@@ -458,6 +477,7 @@ def main():
         raise ValueError("--max-slices-per-patient must be positive or -1.")
     if not 0.0 <= args.pcg_slices_nodule <= 1.0:
         raise ValueError("--pcg-slices-nodule must be in [0, 1].")
+    set_run_seed(args.seed)
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
 
     geometry = Geometry.default_parameters(image_scaling=0.5)
