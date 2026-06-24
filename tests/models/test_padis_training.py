@@ -209,6 +209,50 @@ def test_padis_solver_minibatch_and_ema():
     assert solver.ema_state is not None
 
 
+def test_padis_solver_microbatch_accumulates_full_target_count():
+    model, geometry = _tiny_padis_model()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    solver_params.patch_sizes = [16]
+    solver_params.patch_probabilities = [1.0]
+    solver_params.patch_batch_multipliers = {16: 1}
+    solver_params.microbatch_size = 1
+    solver_params.lr_rampup_kimg = None
+    solver = PaDISSolver(
+        model,
+        optimizer,
+        PaDISDenoisingLoss(),
+        geometry=geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+    )
+    target = torch.rand(2, 1, 256, 256)
+    loss = solver._optimizer_step(target, patch_size=16)
+    assert torch.isfinite(torch.tensor(loss))
+    assert solver.seen_patches == 2
+    assert any(bool(state) for state in optimizer.state.values())
+
+
+def test_padis_solver_rejects_invalid_microbatch_size():
+    model, geometry = _tiny_padis_model()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    solver_params.microbatch_size = 0
+    try:
+        PaDISSolver(
+            model,
+            optimizer,
+            PaDISDenoisingLoss(),
+            geometry=geometry,
+            solver_params=solver_params,
+            device=torch.device("cpu"),
+        )
+    except ValueError as exc:
+        assert "microbatch_size" in str(exc)
+    else:
+        raise AssertionError("Expected invalid microbatch_size to be rejected.")
+
+
 def test_padis_solver_default_checkpoint_freq_is_safe_without_checkpointing():
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)

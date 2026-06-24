@@ -392,6 +392,15 @@ def build_arg_parser():
         default=None,
         help="Base batch size. Defaults to 128 for patch PaDIS and 8 for whole-image training.",
     )
+    parser.add_argument(
+        "--microbatch-size",
+        type=int,
+        default=None,
+        help=(
+            "Optional per-step microbatch size for gradient accumulation. "
+            "Use this when the effective PaDIS batch does not fit in GPU memory."
+        ),
+    )
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--prefetch-factor", type=int, default=2)
     parser.add_argument(
@@ -458,6 +467,7 @@ def main():
     solver_params = PaDISSolver.default_parameters(preset)
     solver_params.use_ema = not args.no_ema
     solver_params.base_patch_batch_size = args.batch_size
+    solver_params.microbatch_size = args.microbatch_size
     max_batch_multiplier = max(solver_params.patch_batch_multipliers.values())
     train_loader_batch_size = args.batch_size * max_batch_multiplier
 

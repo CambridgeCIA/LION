@@ -101,6 +101,8 @@ class PaDISSolver(LIONsolver):
             self.solver_params.use_position_channels = True
         if not hasattr(self.solver_params, "sigma_distribution"):
             self.solver_params.sigma_distribution = "edm_lognormal_truncated"
+        if not hasattr(self.solver_params, "microbatch_size"):
+            self.solver_params.microbatch_size = None
         validate_patch_schedule(
             self.solver_params.patch_sizes, self.solver_params.patch_probabilities
         )
@@ -130,6 +132,7 @@ class PaDISSolver(LIONsolver):
         self.metadata.sigma_max = self.solver_params.sigma_max
         self.metadata.sigma_distribution = self.solver_params.sigma_distribution
         self.metadata.use_position_channels = self.solver_params.use_position_channels
+        self.metadata.microbatch_size = self.solver_params.microbatch_size
         self.metadata.ema_half_life_patches = self.solver_params.ema_half_life_patches
         self.metadata.ema_rampup_ratio = self.solver_params.ema_rampup_ratio
         self.metadata.lr_rampup_kimg = self.solver_params.lr_rampup_kimg
@@ -154,6 +157,7 @@ class PaDISSolver(LIONsolver):
         params.lr_rampup_kimg = 10_000
         params.enforce_data_range = True
         params.input_mode = "image"
+        params.microbatch_size = None
         if base_mode == "padis-paper-ct-256":
             params.patch_sizes = [16, 32, 56]
             params.patch_probabilities = [0.2, 0.3, 0.5]
@@ -234,6 +238,10 @@ class PaDISSolver(LIONsolver):
                 )
         else:
             raise ValueError("prior_mode must be 'patch' or 'whole_image'.")
+
+        microbatch_size = getattr(self.solver_params, "microbatch_size", None)
+        if microbatch_size is not None and int(microbatch_size) <= 0:
+            raise ValueError("microbatch_size must be positive or None.")
 
     def _sample_training_patch(
         self, images: torch.Tensor, patch_size: int | None = None
@@ -411,10 +419,29 @@ class PaDISSolver(LIONsolver):
             return None, consumed, data_iter
         return torch.cat(targets, dim=0), consumed, data_iter
 
+    def _training_microbatches(self, target: torch.Tensor):
+        microbatch_size = getattr(self.solver_params, "microbatch_size", None)
+        if microbatch_size is None:
+            yield target
+            return
+        microbatch_size = int(microbatch_size)
+        if microbatch_size >= int(target.shape[0]):
+            yield target
+            return
+        for start in range(0, int(target.shape[0]), microbatch_size):
+            yield target[start : start + microbatch_size]
+
     def _optimizer_step(self, target: torch.Tensor, patch_size: int) -> float:
         self.optimizer.zero_grad()
-        batch_loss = self.mini_batch_step(None, target, patch_size=patch_size)
-        batch_loss.backward()
+        total_images = int(target.shape[0])
+        if total_images <= 0:
+            raise ValueError("Cannot optimize an empty PaDIS target batch.")
+        total_loss = 0.0
+        for microbatch in self._training_microbatches(target):
+            batch_loss = self.mini_batch_step(None, microbatch, patch_size=patch_size)
+            weight = float(microbatch.shape[0]) / float(total_images)
+            (batch_loss * weight).backward()
+            total_loss += float(batch_loss.item()) * weight
         if self.solver_params.lr_rampup_kimg is not None:
             lr_scale = min(
                 float(self.seen_patches)
@@ -432,7 +459,7 @@ class PaDISSolver(LIONsolver):
         self.optimizer.step()
         self._update_ema(int(target.shape[0]))
         self.seen_patches += int(target.shape[0])
-        return float(batch_loss.item())
+        return total_loss
 
     def train_step(self):
         if self.train_loader is None:
