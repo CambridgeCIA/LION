@@ -19,7 +19,7 @@ import torch
 from LION.reconstructors import PaDIS
 from LION.utils.parameter import LIONParameter
 from LION.utils.paths import LION_EXPERIMENTS_PATH
-from scripts.example_scripts.PaDIS_LIDC_reconstruction import (
+from scripts.paper_scripts.PaDIS.PaDIS_LIDC_reconstruction import (
     DEFAULT_CHECKPOINT,
     load_model,
     resolve_checkpoint_path,

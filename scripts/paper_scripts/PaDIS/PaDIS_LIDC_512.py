@@ -1,12 +1,8 @@
-"""Train PaDIS paper-style patch or whole-image diffusion priors on LIDC-IDRI."""
+"""Train a PaDIS paper-style patch prior on LIDC-IDRI at native 512x512."""
 
 import argparse
 from datetime import datetime
-import getpass
-import hashlib
 import json
-import math
-import os
 import pathlib
 import re
 import uuid
@@ -14,7 +10,6 @@ import uuid
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
 from LION.CTtools.ct_geometry import Geometry
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
@@ -22,54 +17,6 @@ from LION.losses.PaDIS import PaDISDenoisingLoss
 from LION.models.diffusion import NCSNpp
 from LION.optimizers import PaDISSolver
 from LION.utils.paths import LION_EXPERIMENTS_PATH
-
-
-class CachedImagePriorBatchLoader(DataLoader):
-    """Small batch loader for cached PaDIS image-prior tensors."""
-
-    def __init__(self, images, batch_size, shuffle, name):
-        if images.ndim != 4:
-            raise ValueError(
-                f"Expected cached images shaped [N, C, H, W], got {images.shape}."
-            )
-        if batch_size <= 0:
-            raise ValueError("batch_size must be positive.")
-        self.images = images.contiguous()
-        self.batch_size = int(batch_size)
-        self.shuffle = bool(shuffle)
-        self.name = name
-        self._order = None
-        self._cursor = 0
-
-    def __len__(self):
-        return math.ceil(self.images.shape[0] / self.batch_size)
-
-    def _new_order(self):
-        n_images = self.images.shape[0]
-        if self.shuffle:
-            return torch.randperm(n_images)
-        return torch.arange(n_images)
-
-    def sample_batch(self, batch_size):
-        indices = []
-        remaining = int(batch_size)
-        while remaining > 0:
-            if self._order is None or self._cursor >= self.images.shape[0]:
-                self._order = self._new_order()
-                self._cursor = 0
-            available = self.images.shape[0] - self._cursor
-            take = min(remaining, available)
-            indices.append(self._order[self._cursor : self._cursor + take])
-            self._cursor += take
-            remaining -= take
-        return self.images.index_select(0, torch.cat(indices))
-
-    def __iter__(self):
-        order = self._new_order()
-        for start in range(0, self.images.shape[0], self.batch_size):
-            indices = order[start : start + self.batch_size]
-            batch = self.images.index_select(0, indices)
-            yield batch, batch
 
 
 def make_run_folder(save_root, run_name, prefix):
@@ -206,114 +153,13 @@ def data_loader_kwargs(args, device, batch_size):
         "pin_memory": device.type == "cuda",
     }
     if args.num_workers > 0:
-        kwargs["persistent_workers"] = True
+        if not args.no_persistent_workers:
+            kwargs["persistent_workers"] = True
         kwargs["prefetch_factor"] = args.prefetch_factor
     return kwargs
 
 
-def default_cache_folder():
-    ramdisk_root = pathlib.Path("/ramdisks")
-    if ramdisk_root.is_dir():
-        return ramdisk_root / getpass.getuser() / "lion_lidc_cache"
-    return pathlib.Path("/tmp") / getpass.getuser() / "lion_lidc_cache"
-
-
-def normalized_slices_to_load(dataset):
-    return {
-        str(patient_id): [int(slice_index) for slice_index in slice_indices]
-        for patient_id, slice_indices in dataset.slices_to_load.items()
-    }
-
-
-def dataset_cache_metadata(dataset, mode):
-    params = dataset.params
-    geometry = params.geometry
-    return {
-        "dataset": "LIDC-IDRI",
-        "mode": mode,
-        "task": params.task,
-        "folder": str(pathlib.Path(params.folder).resolve()),
-        "image_shape": [int(value) for value in geometry.image_shape],
-        "image_scaling": float(geometry.image_scaling),
-        "training_proportion": float(params.training_proportion),
-        "validation_proportion": float(params.validation_proportion),
-        "max_num_slices_per_patient": int(params.max_num_slices_per_patient),
-        "pcg_slices_nodule": float(params.pcg_slices_nodule),
-        "annotation": params.annotation,
-        "clevel": float(params.clevel),
-        "slices_to_load": normalized_slices_to_load(dataset),
-    }
-
-
-def cache_path_for_dataset(dataset, mode, cache_folder):
-    metadata = dataset_cache_metadata(dataset, mode)
-    digest = hashlib.sha256(
-        json.dumps(metadata, sort_keys=True).encode("utf-8")
-    ).hexdigest()[:16]
-    _, height, width = metadata["image_shape"]
-    filename = f"lidc_image_prior_{mode}_{height}x{width}_{digest}.pt"
-    return cache_folder / filename, metadata
-
-
-def materialize_image_prior_dataset(dataset, mode, cache_folder, rebuild_cache):
-    cache_path, metadata = cache_path_for_dataset(dataset, mode, cache_folder)
-    cache_folder.mkdir(parents=True, exist_ok=True)
-    if cache_path.is_file() and not rebuild_cache:
-        print(f"Loading {mode} image-prior cache from {cache_path}")
-        cached = torch.load(cache_path, map_location="cpu")
-        images = cached["images"] if isinstance(cached, dict) else cached
-        return images.float().contiguous()
-
-    if len(dataset) == 0:
-        raise ValueError(f"Cannot cache empty {mode} dataset.")
-
-    print(f"Building {mode} image-prior cache at {cache_path}")
-    _, first_target = dataset[0]
-    first_target = first_target.float().cpu()
-    images = torch.empty(
-        (len(dataset), *first_target.shape),
-        dtype=torch.float32,
-    )
-    images[0].copy_(first_target)
-    for index in tqdm(range(1, len(dataset)), desc=f"Caching {mode} LIDC"):
-        _, target = dataset[index]
-        images[index].copy_(target.float().cpu())
-
-    payload = {"metadata": metadata, "images": images.contiguous()}
-    tmp_path = cache_path.with_suffix(cache_path.suffix + f".tmp.{os.getpid()}")
-    torch.save(payload, tmp_path)
-    tmp_path.replace(cache_path)
-    print(
-        f"Cached {mode} images: shape={tuple(images.shape)}, "
-        f"size={images.numel() * images.element_size() / 1024**3:.2f} GiB"
-    )
-    return images
-
-
-def build_cached_loaders(args, train_dataset, validation_dataset, train_batch_size):
-    cache_folder = args.cache_folder or default_cache_folder()
-    train_images = materialize_image_prior_dataset(
-        train_dataset, "train", cache_folder, args.rebuild_cache
-    )
-    validation_images = materialize_image_prior_dataset(
-        validation_dataset, "validation", cache_folder, args.rebuild_cache
-    )
-    train_loader = CachedImagePriorBatchLoader(
-        train_images,
-        batch_size=train_batch_size,
-        shuffle=True,
-        name="train",
-    )
-    validation_loader = CachedImagePriorBatchLoader(
-        validation_images,
-        batch_size=args.batch_size,
-        shuffle=False,
-        name="validation",
-    )
-    return train_loader, validation_loader
-
-
-def log_wandb_outputs(wandb_run, run_folder):
+def log_wandb_outputs(wandb_run, run_folder, log_artifact=True):
     if wandb_run is None:
         return
     import wandb
@@ -328,6 +174,8 @@ def log_wandb_outputs(wandb_run, run_folder):
             plots[key] = wandb.Image(str(path))
     if plots:
         wandb_run.log(plots)
+    if not log_artifact:
+        return
 
     artifact = wandb.Artifact(run_folder.name, type="padis-run")
     for path in run_folder.glob("*.pt"):
@@ -341,23 +189,6 @@ def log_wandb_outputs(wandb_run, run_folder):
 
 def build_arg_parser():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--prior-mode",
-        choices=("patch", "whole-image"),
-        default="patch",
-        help="Train the PaDIS patch prior or the paper's whole-image diffusion baseline.",
-    )
-    parser.add_argument(
-        "--patch-size-preset",
-        choices=("8", "16", "32", "56", "96"),
-        default=None,
-        help="Use a paper patch-size ablation training schedule for patch PaDIS.",
-    )
-    parser.add_argument(
-        "--no-position-channels",
-        action="store_true",
-        help="Train the PaDIS ablation model without x/y position channels.",
-    )
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
     parser.add_argument(
         "--full-lidc",
@@ -379,19 +210,20 @@ def build_arg_parser():
     parser.add_argument(
         "--save-folder",
         type=pathlib.Path,
-        default=LION_EXPERIMENTS_PATH.joinpath("PaDIS", "LIDC_256"),
+        default=LION_EXPERIMENTS_PATH.joinpath("PaDIS", "LIDC_512"),
     )
     parser.add_argument("--run-name", type=str, default=None)
-    parser.add_argument("--target-patches", type=int, default=200_000_000)
+    parser.add_argument("--target-patches", type=int, default=40_000_000)
     parser.add_argument("--validation-interval-patches", type=int, default=1_000_000)
     parser.add_argument("--checkpoint-interval-patches", type=int, default=5_000_000)
-    parser.add_argument("--log-interval-patches", type=int, default=1_000)
+    parser.add_argument("--log-interval-patches", type=int, default=128)
     parser.add_argument(
-        "--batch-size",
-        type=int,
+        "--max-train-seconds",
+        type=float,
         default=None,
-        help="Base batch size. Defaults to 128 for patch PaDIS and 8 for whole-image training.",
+        help="Stop training cleanly after this many wall-clock seconds.",
     )
+    parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument(
         "--microbatch-size",
         type=int,
@@ -404,30 +236,28 @@ def build_arg_parser():
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--prefetch-factor", type=int, default=2)
     parser.add_argument(
-        "--cache-dataset",
-        choices=("none", "ramdisk"),
-        default="none",
-        help="Cache image-prior tensors and use a no-worker batch loader.",
-    )
-    parser.add_argument(
-        "--cache-folder",
-        type=pathlib.Path,
-        default=None,
-        help="Folder for cached tensors. Defaults to /ramdisks/$USER/lion_lidc_cache when available.",
-    )
-    parser.add_argument(
-        "--rebuild-cache",
+        "--no-persistent-workers",
         action="store_true",
-        help="Rebuild cached image-prior tensors even if matching cache files exist.",
+        help="Disable persistent DataLoader workers for short local pilot runs.",
     )
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--no-ema", action="store_true")
+    parser.add_argument(
+        "--no-position-channels",
+        action="store_true",
+        help="Train the PaDIS ablation model without x/y position channels.",
+    )
     parser.add_argument("--wandb-project", type=str, default=None)
     parser.add_argument("--wandb-entity", type=str, default=None)
     parser.add_argument("--wandb-name", type=str, default=None)
     parser.add_argument("--wandb-id", type=str, default=None)
     parser.add_argument(
         "--wandb-mode", choices=("online", "offline", "disabled"), default="online"
+    )
+    parser.add_argument(
+        "--no-wandb-artifact",
+        action="store_true",
+        help="Log WandB metrics/plots but do not upload saved model artifacts.",
     )
     parser.add_argument("--no-wandb", action="store_true")
     return parser
@@ -441,7 +271,7 @@ def main():
         raise ValueError("--pcg-slices-nodule must be in [0, 1].")
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
 
-    geometry = Geometry.default_parameters(image_scaling=0.5)
+    geometry = Geometry.default_parameters(image_scaling=1.0)
     data_params = LIDC_IDRI.default_parameters(geometry=geometry, task="image_prior")
     data_params.device = torch.device("cpu")
     if args.data_folder is not None:
@@ -452,24 +282,6 @@ def main():
     data_params.pcg_slices_nodule = float(args.pcg_slices_nodule)
     if data_params.max_num_slices_per_patient == -1:
         print("Using all available LIDC-IDRI slices; pcg_slices_nodule is ignored.")
-    if args.prior_mode == "whole-image":
-        if args.patch_size_preset is not None:
-            raise ValueError("--patch-size-preset is only valid for patch PaDIS.")
-        preset = "padis-paper-whole-ct-256"
-    elif args.patch_size_preset is None:
-        preset = "padis-paper-ct-256"
-    else:
-        preset = f"padis-paper-ct-p{args.patch_size_preset}"
-    if args.no_position_channels:
-        preset = f"{preset}-no-position"
-    if args.batch_size is None:
-        args.batch_size = 8 if args.prior_mode == "whole-image" else 128
-    solver_params = PaDISSolver.default_parameters(preset)
-    solver_params.use_ema = not args.no_ema
-    solver_params.base_patch_batch_size = args.batch_size
-    solver_params.microbatch_size = args.microbatch_size
-    max_batch_multiplier = max(solver_params.patch_batch_multipliers.values())
-    train_loader_batch_size = args.batch_size * max_batch_multiplier
 
     train_dataset = LIDC_IDRI(
         "train", parameters=data_params, geometry_parameters=geometry
@@ -477,35 +289,33 @@ def main():
     validation_dataset = LIDC_IDRI(
         "validation", parameters=data_params, geometry_parameters=geometry
     )
-    if args.cache_dataset == "ramdisk":
-        train_loader, validation_loader = build_cached_loaders(
-            args, train_dataset, validation_dataset, train_loader_batch_size
-        )
-    else:
-        train_loader = DataLoader(
-            train_dataset,
-            shuffle=True,
-            **data_loader_kwargs(args, device, train_loader_batch_size),
-        )
-        validation_loader = DataLoader(
-            validation_dataset,
-            shuffle=False,
-            **data_loader_kwargs(args, device, args.batch_size),
-        )
-
+    preset = "padis-paper-ct-512"
+    if args.no_position_channels:
+        preset = f"{preset}-no-position"
     model_params = NCSNpp.default_parameters(preset)
     model = NCSNpp(model_params, geometry)
+    solver_params = PaDISSolver.default_parameters(preset)
+    solver_params.use_ema = not args.no_ema
+    solver_params.base_patch_batch_size = args.batch_size
+    solver_params.microbatch_size = args.microbatch_size
+    train_loader = DataLoader(
+        train_dataset,
+        shuffle=True,
+        **data_loader_kwargs(args, device, args.batch_size),
+    )
+    validation_loader = DataLoader(
+        validation_dataset,
+        shuffle=False,
+        **data_loader_kwargs(args, device, args.batch_size),
+    )
     loss_fn = PaDISDenoisingLoss(
         sigma_min=model_params.sigma_min,
         sigma_max=model_params.sigma_max,
         sigma_distribution=solver_params.sigma_distribution,
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=2e-4)
-    run_prefix = (
-        "whole_image_lidc_256" if args.prior_mode == "whole-image" else "padis_lidc_256"
-    )
-    run_folder = make_run_folder(args.save_folder, args.run_name, run_prefix)
-    print(f"Saving {args.prior_mode} diffusion run to {run_folder}")
+    run_folder = make_run_folder(args.save_folder, args.run_name, "padis_lidc_512")
+    print(f"Saving PaDIS run to {run_folder}")
     wandb_run = init_wandb(args, run_folder, preset)
     solver = PaDISSolver(
         model,
@@ -516,9 +326,9 @@ def main():
         device=device,
         save_folder=run_folder,
     )
-    solver.set_saving(run_folder, run_prefix)
+    solver.set_saving(run_folder, "padis_lidc_512")
     solver.set_checkpointing(
-        f"{run_prefix}_checkpoint_*.pt",
+        "padis_lidc_512_checkpoint_*.pt",
         checkpoint_freq=10**12,
         load_checkpoint_if_exists=True,
     )
@@ -530,6 +340,7 @@ def main():
             validation_interval_patches=args.validation_interval_patches,
             checkpoint_interval_patches=args.checkpoint_interval_patches,
             log_interval_patches=args.log_interval_patches,
+            max_train_seconds=args.max_train_seconds,
             log_fn=wandb_log_fn(wandb_run),
         )
         solver.clean_checkpoints()
@@ -538,7 +349,9 @@ def main():
         if wandb_run is not None:
             wandb_run.summary["min_validation_loss"] = min_validation_loss(solver)
             wandb_run.summary["seen_patches"] = solver.seen_patches
-        log_wandb_outputs(wandb_run, run_folder)
+        log_wandb_outputs(
+            wandb_run, run_folder, log_artifact=not args.no_wandb_artifact
+        )
     finally:
         if wandb_run is not None:
             wandb_run.finish()

@@ -12,8 +12,7 @@
 #! Name of the job:
 #SBATCH -J PaDIS_LIDC_256
 #! Which project should be charged (NB Wilkes2 projects end in '-GPU'):
-##SBATCH -A MPHIL-DIS-SL2-GPU
-#SBATCH -A FERGUSSON-SL3-GPU
+#SBATCH -A MPHIL-DIS-SL2-GPU
 #! How many whole nodes should be allocated?
 #SBATCH --nodes=1
 #! How many (MPI) tasks will there be in total?
@@ -129,7 +128,7 @@ fi
 
 #! Run options for the application:
 options=(
-        "$SLURM_SUBMIT_DIR/scripts/example_scripts/PaDIS_LIDC_256.py"
+        "$SLURM_SUBMIT_DIR/scripts/paper_scripts/PaDIS/PaDIS_LIDC_256.py"
         --save-folder "$SAVE_FOLDER"
         --run-name "$RUN_NAME"
         --wandb-entity tjh200-university-of-cambridge
@@ -140,7 +139,7 @@ options=(
         --target-patches 40000000
         --validation-interval-patches 10000
         --checkpoint-interval-patches 250000
-        --log-interval-patches 1000
+        --log-interval-patches 128
         --batch-size 128
         --num-workers 16
         --prefetch-factor 4

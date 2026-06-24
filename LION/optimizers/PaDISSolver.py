@@ -511,6 +511,7 @@ class PaDISSolver(LIONsolver):
         validation_interval_patches: int | None = None,
         checkpoint_interval_patches: int | None = None,
         log_interval_patches: int | None = None,
+        max_train_seconds: float | None = None,
         log_fn: Callable[[dict[str, object], int], None] | None = None,
     ) -> None:
         """Train until ``seen_patches`` reaches ``target_patches``.
@@ -527,6 +528,8 @@ class PaDISSolver(LIONsolver):
             raise ValueError("checkpoint_interval_patches must be positive.")
         if log_interval_patches is not None and log_interval_patches <= 0:
             raise ValueError("log_interval_patches must be positive.")
+        if max_train_seconds is not None and max_train_seconds <= 0:
+            raise ValueError("max_train_seconds must be positive.")
         self.check_training_ready(verbose=False)
         if self.do_load_checkpoint:
             print("Loading checkpoint...")
@@ -574,6 +577,7 @@ class PaDISSolver(LIONsolver):
             "patches": 0,
             "steps": 0,
         }
+        train_start_wall = time.monotonic()
         checkpoint_index = int(self.current_epoch)
         progress = tqdm(
             total=target_patches, initial=min(self.seen_patches, target_patches)
@@ -685,6 +689,17 @@ class PaDISSolver(LIONsolver):
                     if self.checkpoint_save_folder is not None:
                         self.save_checkpoint(checkpoint_index - 1)
                     next_checkpoint += int(checkpoint_interval_patches)
+
+                if (
+                    max_train_seconds is not None
+                    and time.monotonic() - train_start_wall >= max_train_seconds
+                ):
+                    if self.verbose:
+                        print(
+                            "Reached max_train_seconds "
+                            f"({max_train_seconds:g}); stopping training cleanly."
+                        )
+                    break
         finally:
             progress.close()
 

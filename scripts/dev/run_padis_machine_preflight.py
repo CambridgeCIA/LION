@@ -32,6 +32,8 @@ DEV_ROOT = pathlib.Path(__file__).resolve().parent
 if str(DEV_ROOT) not in sys.path:
     sys.path.insert(0, str(DEV_ROOT))
 
+PADIS_SCRIPT_ROOT = LION_ROOT / "scripts" / "paper_scripts" / "PaDIS"
+
 from LION.CTtools.ct_geometry import Geometry  # noqa: E402
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI  # noqa: E402
 from LION.losses.PaDIS import PaDISDenoisingLoss  # noqa: E402
@@ -266,7 +268,7 @@ def check_environment(args: argparse.Namespace) -> dict[str, object]:
 
 
 def check_experiment_presets(args: argparse.Namespace) -> dict[str, object]:
-    script = LION_ROOT / "scripts" / "example_scripts" / "PaDIS_experiments.py"
+    script = PADIS_SCRIPT_ROOT / "PaDIS_experiments.py"
     commands = [
         [sys.executable, str(script), "list"],
         [
@@ -581,7 +583,7 @@ def check_cli_smoke(args: argparse.Namespace) -> dict[str, object]:
     run_folder = args.output_dir / "cli_smoke"
     command = [
         sys.executable,
-        str(LION_ROOT / "scripts" / "example_scripts" / "PaDIS_LIDC_256.py"),
+        str(PADIS_SCRIPT_ROOT / "PaDIS_LIDC_256.py"),
         "--device",
         args.device,
         "--patch-size-preset",

@@ -7,7 +7,7 @@ from LION.experiments.ct_experiments import (
     PaDISFanBeam60CTRecon,
     PaDISFanBeam180CTRecon,
 )
-from scripts.example_scripts.PaDIS_experiments import PRESETS, command_for
+from scripts.paper_scripts.PaDIS.PaDIS_experiments import PRESETS, command_for
 
 
 def test_padis_fan_beam_experiments_use_lidc_default_geometry():
