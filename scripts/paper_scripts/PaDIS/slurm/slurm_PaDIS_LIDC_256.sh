@@ -99,6 +99,10 @@ else
         exit 1
 fi
 RUN_FOLDER="$SAVE_FOLDER/$RUN_NAME"
+PADIS_DATA_ROOT="${LION_DATA_PATH:-/home/tjh200/rds/hpc-work/Datasets}"
+PADIS_CACHE_ROOT="${PADIS_CACHE_ROOT:-$PADIS_DATA_ROOT/processed/LIDC-IDRI-cache}"
+PADIS_256_CACHE_ARCHIVE_FOLDER="${PADIS_256_CACHE_ARCHIVE_FOLDER:-${PADIS_CACHE_ARCHIVE_FOLDER:-$PADIS_CACHE_ROOT/padis_256/archives}}"
+PADIS_256_CACHE_FOLDER="${PADIS_256_CACHE_FOLDER:-${PADIS_CACHE_FOLDER:-/ramdisks/$USER/lion_lidc_cache}}"
 
 if [ ! -d "$RUN_FOLDER" ]; then
         echo "Cannot resume: run folder does not exist: $RUN_FOLDER"
@@ -138,8 +142,13 @@ options=(
         --num-workers 16
         --prefetch-factor 4
         --cache-dataset ramdisk
-        --cache-folder "/ramdisks/$USER/lion_lidc_cache"
+        --cache-folder "$PADIS_256_CACHE_FOLDER"
+        --cache-archive-folder "$PADIS_256_CACHE_ARCHIVE_FOLDER"
 )
+
+if [ "${PADIS_REQUIRE_CACHE_HIT:-1}" = "1" ]; then
+        options+=(--require-cache-hit)
+fi
 
 if [ "${PADIS_NO_WANDB_ARTIFACT:-1}" = "1" ]; then
         options+=(--no-wandb-artifact)

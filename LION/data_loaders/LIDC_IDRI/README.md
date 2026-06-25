@@ -86,3 +86,32 @@ The preprocessing script automatically writes the `pylidc` DICOM location to `~/
 ```text
 LION_DATA_PATH/raw/LIDC-IDRI/LIDC-IDRI
 ```
+
+## Optional PaDIS Cache Preparation
+
+The PaDIS paper scripts can use reusable tensor caches derived from the processed LIDC-IDRI slices. This avoids repeatedly walking many small `slice_*.npy` files when launching PaDIS training jobs. Run this only after `pre_process_lidc_idri.py` has produced `LION_DATA_PATH/processed/LIDC-IDRI`.
+
+On the Cambridge Slurm cluster, submit the cache preparation job from the LION repository root:
+
+```bash
+cd /home/tjh200/DiS/Project/LION
+scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_prepare_full_cache.sh
+```
+
+By default this submits a CPU job on the `icelake` partition with 8 CPU cores and 128G memory. It builds zstd-compressed archives for:
+
+```text
+256-default
+256-full
+512-default
+```
+
+The full 512x512 LIDC cache is intentionally not built by this helper because it would be much larger. The PaDIS Slurm training, pilot, and profiling scripts stage these prepared archives into `/ramdisks/$USER` by default and fail fast if the matching archive has not been prepared.
+
+Default archive locations are:
+
+```text
+LION_DATA_PATH/processed/LIDC-IDRI-cache/padis_256/archives
+LION_DATA_PATH/processed/LIDC-IDRI-cache/padis_512/archives
+```
+

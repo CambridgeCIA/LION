@@ -10,6 +10,8 @@ import os
 import pathlib
 import random
 import re
+import shutil
+import subprocess
 import uuid
 
 import matplotlib.pyplot as plt
@@ -113,6 +115,24 @@ def serializable_config(args, run_folder, preset):
     return config
 
 
+def jsonable(value):
+    if isinstance(value, pathlib.Path):
+        return str(value)
+    if isinstance(value, torch.device):
+        return str(value)
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, torch.Tensor):
+        if value.numel() == 1:
+            return value.detach().cpu().item()
+        return value.detach().cpu().tolist()
+    if isinstance(value, dict):
+        return {str(key): jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [jsonable(item) for item in value]
+    return value
+
+
 def set_run_seed(seed: int) -> None:
     os.environ.setdefault("PYTHONHASHSEED", str(seed))
     random.seed(seed)
@@ -212,6 +232,32 @@ def wandb_log_fn(wandb_run):
     return log_fn
 
 
+def metrics_jsonl_log_fn(metrics_jsonl):
+    if metrics_jsonl is None:
+        return None
+    metrics_jsonl = pathlib.Path(metrics_jsonl)
+    metrics_jsonl.parent.mkdir(parents=True, exist_ok=True)
+
+    def log_fn(metrics, step):
+        payload = {"step": int(step), "metrics": jsonable(metrics)}
+        with open(metrics_jsonl, "a") as f:
+            f.write(json.dumps(payload) + "\n")
+
+    return log_fn
+
+
+def combined_log_fn(*log_fns):
+    log_fns = [log_fn for log_fn in log_fns if log_fn is not None]
+    if not log_fns:
+        return None
+
+    def log_fn(metrics, step):
+        for item in log_fns:
+            item(metrics, step)
+
+    return log_fn
+
+
 def data_loader_kwargs(args, device, batch_size):
     kwargs = {
         "batch_size": batch_size,
@@ -269,14 +315,103 @@ def cache_path_for_dataset(dataset, mode, cache_folder):
     return cache_folder / filename, metadata
 
 
-def materialize_image_prior_dataset(dataset, mode, cache_folder, rebuild_cache):
+def stage_cache_from_source(mode, cache_path, source_cache_path):
+    if not source_cache_path.is_file():
+        return False
+    print(f"Staging {mode} image-prior cache from {source_cache_path} to {cache_path}")
+    tmp_path = cache_path.with_suffix(cache_path.suffix + f".stage.{os.getpid()}")
+    shutil.copy2(source_cache_path, tmp_path)
+    tmp_path.replace(cache_path)
+    return True
+
+
+def stage_cache_from_archive(mode, cache_path, archive_path):
+    if not archive_path.is_file():
+        return False
+    zstd = shutil.which("zstd")
+    if zstd is None:
+        raise RuntimeError(
+            f"Cannot decompress {archive_path}: zstd executable was not found."
+        )
+    print(
+        f"Decompressing {mode} image-prior cache archive {archive_path} to {cache_path}"
+    )
+    tmp_path = cache_path.with_suffix(cache_path.suffix + f".stage.{os.getpid()}")
+    with tmp_path.open("wb") as output:
+        subprocess.run(
+            [zstd, "-d", "-c", str(archive_path)],
+            check=True,
+            stdout=output,
+        )
+    tmp_path.replace(cache_path)
+    return True
+
+
+def write_cache_archive(cache_path, archive_folder):
+    zstd = shutil.which("zstd")
+    if zstd is None:
+        raise RuntimeError("Cannot write compressed cache archive: zstd was not found.")
+    archive_folder.mkdir(parents=True, exist_ok=True)
+    archive_path = archive_folder / f"{cache_path.name}.zst"
+    if archive_path.is_file():
+        print(f"Compressed image-prior cache archive already exists at {archive_path}")
+        return
+    tmp_path = archive_path.with_suffix(archive_path.suffix + f".tmp.{os.getpid()}")
+    print(f"Writing compressed image-prior cache archive to {archive_path}")
+    with tmp_path.open("wb") as output:
+        subprocess.run(
+            [zstd, "-T0", "-3", "-c", str(cache_path)],
+            check=True,
+            stdout=output,
+        )
+    tmp_path.replace(archive_path)
+
+
+def materialize_image_prior_dataset(
+    dataset,
+    mode,
+    cache_folder,
+    rebuild_cache,
+    source_cache_folder=None,
+    cache_archive_folder=None,
+    write_archive=False,
+    require_cache_hit=False,
+):
     cache_path, metadata = cache_path_for_dataset(dataset, mode, cache_folder)
     cache_folder.mkdir(parents=True, exist_ok=True)
+    if (
+        not cache_path.is_file()
+        and not rebuild_cache
+        and source_cache_folder is not None
+    ):
+        source_cache_path, _ = cache_path_for_dataset(
+            dataset, mode, source_cache_folder
+        )
+        stage_cache_from_source(mode, cache_path, source_cache_path)
+    if (
+        not cache_path.is_file()
+        and not rebuild_cache
+        and cache_archive_folder is not None
+    ):
+        archive_cache_path, _ = cache_path_for_dataset(
+            dataset, mode, cache_archive_folder
+        )
+        archive_path = cache_archive_folder / f"{archive_cache_path.name}.zst"
+        stage_cache_from_archive(mode, cache_path, archive_path)
     if cache_path.is_file() and not rebuild_cache:
+        if write_archive and cache_archive_folder is not None:
+            write_cache_archive(cache_path, cache_archive_folder)
         print(f"Loading {mode} image-prior cache from {cache_path}")
         cached = torch.load(cache_path, map_location="cpu")
         images = cached["images"] if isinstance(cached, dict) else cached
         return images.float().contiguous()
+
+    if require_cache_hit and not rebuild_cache:
+        raise FileNotFoundError(
+            f"No prepared {mode} image-prior cache found for {cache_path.name}. "
+            "Run scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_prepare_full_cache.sh "
+            "or unset PADIS_REQUIRE_CACHE_HIT to allow rebuilding from raw slices."
+        )
 
     if len(dataset) == 0:
         raise ValueError(f"Cannot cache empty {mode} dataset.")
@@ -297,6 +432,8 @@ def materialize_image_prior_dataset(dataset, mode, cache_folder, rebuild_cache):
     tmp_path = cache_path.with_suffix(cache_path.suffix + f".tmp.{os.getpid()}")
     torch.save(payload, tmp_path)
     tmp_path.replace(cache_path)
+    if write_archive and cache_archive_folder is not None:
+        write_cache_archive(cache_path, cache_archive_folder)
     print(
         f"Cached {mode} images: shape={tuple(images.shape)}, "
         f"size={images.numel() * images.element_size() / 1024**3:.2f} GiB"
@@ -307,10 +444,24 @@ def materialize_image_prior_dataset(dataset, mode, cache_folder, rebuild_cache):
 def build_cached_loaders(args, train_dataset, validation_dataset, train_batch_size):
     cache_folder = args.cache_folder or default_cache_folder()
     train_images = materialize_image_prior_dataset(
-        train_dataset, "train", cache_folder, args.rebuild_cache
+        train_dataset,
+        "train",
+        cache_folder,
+        args.rebuild_cache,
+        args.cache_source_folder,
+        args.cache_archive_folder,
+        args.write_cache_archive,
+        args.require_cache_hit,
     )
     validation_images = materialize_image_prior_dataset(
-        validation_dataset, "validation", cache_folder, args.rebuild_cache
+        validation_dataset,
+        "validation",
+        cache_folder,
+        args.rebuild_cache,
+        args.cache_source_folder,
+        args.cache_archive_folder,
+        args.write_cache_archive,
+        args.require_cache_hit,
     )
     train_loader = CachedImagePriorBatchLoader(
         train_images,
@@ -449,9 +600,36 @@ def build_arg_parser():
         help="Folder for cached tensors. Defaults to /ramdisks/$USER/lion_lidc_cache when available.",
     )
     parser.add_argument(
+        "--cache-source-folder",
+        type=pathlib.Path,
+        default=None,
+        help="Optional persistent cache folder to stage matching tensor caches from before rebuilding from raw slices.",
+    )
+    parser.add_argument(
+        "--cache-archive-folder",
+        type=pathlib.Path,
+        default=None,
+        help="Optional folder containing or receiving matching .pt.zst cache archives.",
+    )
+    parser.add_argument(
+        "--write-cache-archive",
+        action="store_true",
+        help="Write zstd-compressed .pt.zst archives for caches materialized in --cache-folder.",
+    )
+    parser.add_argument(
         "--rebuild-cache",
         action="store_true",
         help="Rebuild cached image-prior tensors even if matching cache files exist.",
+    )
+    parser.add_argument(
+        "--require-cache-hit",
+        action="store_true",
+        help="Fail instead of rebuilding from raw slices when no matching cache/archive exists.",
+    )
+    parser.add_argument(
+        "--prepare-cache-only",
+        action="store_true",
+        help="Build or stage cached LIDC tensors and exit before model construction/training.",
     )
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--no-ema", action="store_true")
@@ -461,6 +639,12 @@ def build_arg_parser():
     parser.add_argument("--wandb-id", type=str, default=None)
     parser.add_argument(
         "--wandb-mode", choices=("online", "offline", "disabled"), default="online"
+    )
+    parser.add_argument(
+        "--metrics-jsonl",
+        type=pathlib.Path,
+        default=None,
+        help="Write PaDIS train_for_patches timing metrics to this JSONL file.",
     )
     parser.add_argument(
         "--no-wandb-artifact",
@@ -523,6 +707,8 @@ def main():
             args, train_dataset, validation_dataset, train_loader_batch_size
         )
     else:
+        if args.prepare_cache_only:
+            raise ValueError("--prepare-cache-only requires --cache-dataset ramdisk.")
         train_loader = DataLoader(
             train_dataset,
             shuffle=True,
@@ -533,6 +719,10 @@ def main():
             shuffle=False,
             **data_loader_kwargs(args, device, args.batch_size),
         )
+
+    if args.prepare_cache_only:
+        print("Prepared cached LIDC image-prior tensors; exiting before training.")
+        return
 
     model_params = NCSNpp.default_parameters(preset)
     model = NCSNpp(model_params, geometry)
@@ -548,6 +738,9 @@ def main():
     run_folder = make_run_folder(args.save_folder, args.run_name, run_prefix)
     print(f"Saving {args.prior_mode} diffusion run to {run_folder}")
     wandb_run = init_wandb(args, run_folder, preset)
+    train_log_fn = combined_log_fn(
+        wandb_log_fn(wandb_run), metrics_jsonl_log_fn(args.metrics_jsonl)
+    )
     solver = PaDISSolver(
         model,
         optimizer,
@@ -572,7 +765,7 @@ def main():
             checkpoint_interval_patches=args.checkpoint_interval_patches,
             log_interval_patches=args.log_interval_patches,
             max_train_seconds=args.max_train_seconds,
-            log_fn=wandb_log_fn(wandb_run),
+            log_fn=train_log_fn,
         )
         solver.clean_checkpoints()
         solver.save_final_results()

@@ -23,13 +23,17 @@ run_stamp="${PADIS_RUN_STAMP:-$(date +%Y%m%d_%H%M%S)}"
 
 mkdir -p "$run_root/debug_runs/slurm_logs" "$run_root/real_runs"
 
+export PADIS_RUN_STAMP="$run_stamp"
+export PADIS_SLURM_DIR="$SCRIPT_DIR"
+export LION_ROOT
+
 real_job="$(
         sbatch \
                 --parsable \
                 -A "$account" \
                 --time "$real_time" \
                 --array "0-${last_task}%${real_limit}" \
-                --export "ALL,PADIS_RUN_STAMP=$run_stamp" \
+                --export=ALL \
                 --output "$run_root/debug_runs/slurm_logs/%x-%A_%a.out" \
                 "$SCRIPT_DIR/slurm_PaDIS_A100_training_array.sh"
 )"

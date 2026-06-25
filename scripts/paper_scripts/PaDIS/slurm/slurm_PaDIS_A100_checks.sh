@@ -16,6 +16,22 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ ! -f "$SCRIPT_DIR/padis_a100_common.sh" ]; then
+        if [ -n "${PADIS_SLURM_DIR:-}" ] && [ -f "$PADIS_SLURM_DIR/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$PADIS_SLURM_DIR" && pwd)"
+        elif [ -n "${LION_ROOT:-}" ] && [ -f "$LION_ROOT/scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$LION_ROOT/scripts/paper_scripts/PaDIS/slurm" && pwd)"
+        elif [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "$SLURM_SUBMIT_DIR/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
+        elif [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "$SLURM_SUBMIT_DIR/scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$SLURM_SUBMIT_DIR/scripts/paper_scripts/PaDIS/slurm" && pwd)"
+        elif [ -f "$PWD/scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$PWD/scripts/paper_scripts/PaDIS/slurm" && pwd)"
+        else
+                echo "Could not locate padis_a100_common.sh. Submit via a PaDIS submit wrapper or set PADIS_SLURM_DIR." >&2
+                exit 1
+        fi
+fi
 # shellcheck source=scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh
 . "$SCRIPT_DIR/padis_a100_common.sh"
 

@@ -17,6 +17,22 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ ! -f "$SCRIPT_DIR/padis_a100_common.sh" ]; then
+        if [ -n "${PADIS_SLURM_DIR:-}" ] && [ -f "$PADIS_SLURM_DIR/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$PADIS_SLURM_DIR" && pwd)"
+        elif [ -n "${LION_ROOT:-}" ] && [ -f "$LION_ROOT/scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$LION_ROOT/scripts/paper_scripts/PaDIS/slurm" && pwd)"
+        elif [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "$SLURM_SUBMIT_DIR/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
+        elif [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "$SLURM_SUBMIT_DIR/scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$SLURM_SUBMIT_DIR/scripts/paper_scripts/PaDIS/slurm" && pwd)"
+        elif [ -f "$PWD/scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$PWD/scripts/paper_scripts/PaDIS/slurm" && pwd)"
+        else
+                echo "Could not locate padis_a100_common.sh. Submit via a PaDIS submit wrapper or set PADIS_SLURM_DIR." >&2
+                exit 1
+        fi
+fi
 # shellcheck source=scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh
 . "$SCRIPT_DIR/padis_a100_common.sh"
 
@@ -28,6 +44,10 @@ PADIS_RUN_ROOT="$(padis_default_run_root)"
 PADIS_RUN_STAMP="${PADIS_RUN_STAMP:-${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-$(date +%Y%m%d_%H%M%S)}}}"
 PADIS_PILOT_ROOT="${PADIS_PILOT_ROOT:-$PADIS_RUN_ROOT/pilot_runs/a100_pilots_$PADIS_RUN_STAMP}"
 PADIS_DATA_FOLDER="${PADIS_DATA_FOLDER:-}"
+PADIS_DATA_ROOT="${LION_DATA_PATH:-/home/tjh200/rds/hpc-work/Datasets}"
+PADIS_CACHE_ROOT="${PADIS_CACHE_ROOT:-$PADIS_DATA_ROOT/processed/LIDC-IDRI-cache}"
+PADIS_256_CACHE_ARCHIVE_FOLDER="${PADIS_256_CACHE_ARCHIVE_FOLDER:-${PADIS_CACHE_ARCHIVE_FOLDER:-$PADIS_CACHE_ROOT/padis_256/archives}}"
+PADIS_512_CACHE_ARCHIVE_FOLDER="${PADIS_512_CACHE_ARCHIVE_FOLDER:-$PADIS_CACHE_ROOT/padis_512/archives}"
 PADIS_SEED="${PADIS_SEED:-33}"
 MPLCONFIGDIR="${MPLCONFIGDIR:-$PADIS_PILOT_ROOT/matplotlib}"
 WANDB_DIR="${WANDB_DIR:-$PADIS_PILOT_ROOT/wandb}"
@@ -82,13 +102,27 @@ if [ "$TASK_ENGINE" = "lidc256" ]; then
         if [ -n "${PADIS_MICROBATCH_SIZE:-}" ]; then
                 CMD+=(--microbatch-size "$PADIS_MICROBATCH_SIZE")
         fi
-        CACHE_DATASET="${PADIS_CACHE_DATASET:-ramdisk}"
-        if [[ "$TASK_NAME" == *full ]] && [ "${PADIS_CACHE_FULL_LIDC:-0}" != "1" ]; then
+        CACHE_DATASET="${PADIS_256_CACHE_DATASET:-${PADIS_CACHE_DATASET:-ramdisk}}"
+        if [[ "$TASK_NAME" == *full ]] && [ "${PADIS_CACHE_FULL_LIDC:-1}" != "1" ]; then
                 CACHE_DATASET="none"
         fi
         if [ "$CACHE_DATASET" != "none" ]; then
-                CACHE_FOLDER="${PADIS_CACHE_FOLDER:-/ramdisks/$USER/lion_lidc_cache}"
-                CMD+=(--cache-dataset "$CACHE_DATASET" --cache-folder "$CACHE_FOLDER")
+                CACHE_FOLDER="${PADIS_256_CACHE_FOLDER:-${PADIS_CACHE_FOLDER:-/ramdisks/$USER/lion_lidc_cache}}"
+                CMD+=(
+                        --cache-dataset "$CACHE_DATASET"
+                        --cache-folder "$CACHE_FOLDER"
+                        --cache-archive-folder "$PADIS_256_CACHE_ARCHIVE_FOLDER"
+                )
+                CACHE_SOURCE_FOLDER="${PADIS_256_CACHE_SOURCE_FOLDER:-${PADIS_CACHE_SOURCE_FOLDER:-}}"
+                if [ -n "$CACHE_SOURCE_FOLDER" ]; then
+                        CMD+=(--cache-source-folder "$CACHE_SOURCE_FOLDER")
+                fi
+                if [ "${PADIS_REQUIRE_CACHE_HIT:-1}" = "1" ]; then
+                        CMD+=(--require-cache-hit)
+                fi
+                if [ "${PADIS_WRITE_CACHE_ARCHIVE:-0}" = "1" ]; then
+                        CMD+=(--write-cache-archive)
+                fi
         fi
 elif [ "$TASK_ENGINE" = "lidc512" ]; then
         CMD=(
@@ -112,6 +146,27 @@ elif [ "$TASK_ENGINE" = "lidc512" ]; then
         fi
         if [ -n "${PADIS_MICROBATCH_SIZE:-}" ]; then
                 CMD+=(--microbatch-size "$PADIS_MICROBATCH_SIZE")
+        fi
+        CACHE_DATASET="${PADIS_512_CACHE_DATASET:-${PADIS_CACHE_DATASET:-ramdisk}}"
+        if [[ " ${TASK_ARGS[*]} " == *" --full-lidc "* ]] && [ "${PADIS_CACHE_FULL_512_LIDC:-0}" != "1" ]; then
+                CACHE_DATASET="none"
+        fi
+        if [ "$CACHE_DATASET" != "none" ]; then
+                CACHE_FOLDER="${PADIS_512_CACHE_FOLDER:-/ramdisks/$USER/lion_lidc_cache_512}"
+                CMD+=(
+                        --cache-dataset "$CACHE_DATASET"
+                        --cache-folder "$CACHE_FOLDER"
+                        --cache-archive-folder "$PADIS_512_CACHE_ARCHIVE_FOLDER"
+                )
+                if [ -n "${PADIS_512_CACHE_SOURCE_FOLDER:-}" ]; then
+                        CMD+=(--cache-source-folder "$PADIS_512_CACHE_SOURCE_FOLDER")
+                fi
+                if [ "${PADIS_REQUIRE_CACHE_HIT:-1}" = "1" ]; then
+                        CMD+=(--require-cache-hit)
+                fi
+                if [ "${PADIS_WRITE_CACHE_ARCHIVE:-0}" = "1" ]; then
+                        CMD+=(--write-cache-archive)
+                fi
         fi
 else
         echo "Unknown task engine: $TASK_ENGINE"

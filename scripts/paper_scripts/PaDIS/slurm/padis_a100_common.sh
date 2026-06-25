@@ -4,7 +4,11 @@
 # sourced by the job scripts in this directory.
 
 padis_common_dir() {
-        cd "$(dirname "${BASH_SOURCE[0]}")" && pwd
+        if [ -n "${PADIS_SLURM_DIR:-}" ]; then
+                cd "$PADIS_SLURM_DIR" && pwd
+        else
+                cd "$(dirname "${BASH_SOURCE[0]}")" && pwd
+        fi
 }
 
 padis_lion_root() {
