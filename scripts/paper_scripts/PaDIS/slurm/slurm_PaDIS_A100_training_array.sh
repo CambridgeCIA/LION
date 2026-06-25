@@ -72,8 +72,10 @@ padis_print_job_header
 echo "Real training task: $TASK_ID $TASK_NAME ($TASK_ENGINE)"
 
 TARGET_PATCHES="${PADIS_TARGET_PATCHES:-40000000}"
-VALIDATION_INTERVAL="${PADIS_VALIDATION_INTERVAL_PATCHES:-1000000}"
+VALIDATION_INTERVAL="${PADIS_VALIDATION_INTERVAL_PATCHES:-200000}"
+VALIDATION_MAX_PATCHES="${PADIS_VALIDATION_MAX_PATCHES:-1000}"
 CHECKPOINT_INTERVAL="${PADIS_CHECKPOINT_INTERVAL_PATCHES:-1000000}"
+MAX_PERIODIC_CHECKPOINTS="${PADIS_MAX_PERIODIC_CHECKPOINTS:-5}"
 LOG_INTERVAL="${PADIS_LOG_INTERVAL_PATCHES:-128}"
 NUM_WORKERS="${PADIS_NUM_WORKERS:-16}"
 PREFETCH_FACTOR="${PADIS_PREFETCH_FACTOR:-4}"
@@ -104,7 +106,9 @@ if [ "$TASK_ENGINE" = "lidc256" ]; then
                 --device cuda
                 --target-patches "$TARGET_PATCHES"
                 --validation-interval-patches "$VALIDATION_INTERVAL"
+                --validation-max-patches "$VALIDATION_MAX_PATCHES"
                 --checkpoint-interval-patches "$CHECKPOINT_INTERVAL"
+                --max-periodic-checkpoints "$MAX_PERIODIC_CHECKPOINTS"
                 --log-interval-patches "$LOG_INTERVAL"
                 --seed "$PADIS_SEED"
                 --batch-size "$TASK_BATCH_SIZE"
@@ -147,7 +151,9 @@ elif [ "$TASK_ENGINE" = "lidc512" ]; then
                 --device cuda
                 --target-patches "$TARGET_PATCHES"
                 --validation-interval-patches "$VALIDATION_INTERVAL"
+                --validation-max-patches "$VALIDATION_MAX_PATCHES"
                 --checkpoint-interval-patches "$CHECKPOINT_INTERVAL"
+                --max-periodic-checkpoints "$MAX_PERIODIC_CHECKPOINTS"
                 --log-interval-patches "$LOG_INTERVAL"
                 --seed "$PADIS_SEED"
                 --batch-size "$TASK_BATCH_SIZE"

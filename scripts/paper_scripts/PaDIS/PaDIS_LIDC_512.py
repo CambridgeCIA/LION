@@ -489,8 +489,20 @@ def build_arg_parser():
     )
     parser.add_argument("--run-name", type=str, default=None)
     parser.add_argument("--target-patches", type=int, default=40_000_000)
-    parser.add_argument("--validation-interval-patches", type=int, default=1_000_000)
+    parser.add_argument("--validation-interval-patches", type=int, default=200_000)
+    parser.add_argument(
+        "--validation-max-patches",
+        type=int,
+        default=1_000,
+        help="Maximum validation patches per validation event. Use -1 for full validation.",
+    )
     parser.add_argument("--checkpoint-interval-patches", type=int, default=5_000_000)
+    parser.add_argument(
+        "--max-periodic-checkpoints",
+        type=int,
+        default=5,
+        help="Maximum periodic checkpoint states to retain. Use -1 to keep all.",
+    )
     parser.add_argument("--log-interval-patches", type=int, default=128)
     parser.add_argument(
         "--max-train-seconds",
@@ -592,6 +604,16 @@ def main():
     args = build_arg_parser().parse_args()
     if args.max_slices_per_patient == 0 or args.max_slices_per_patient < -1:
         raise ValueError("--max-slices-per-patient must be positive or -1.")
+    if args.validation_max_patches == 0 or args.validation_max_patches < -1:
+        raise ValueError("--validation-max-patches must be positive or -1.")
+    validation_max_patches = (
+        None if args.validation_max_patches == -1 else args.validation_max_patches
+    )
+    if args.max_periodic_checkpoints == 0 or args.max_periodic_checkpoints < -1:
+        raise ValueError("--max-periodic-checkpoints must be positive or -1.")
+    max_periodic_checkpoints = (
+        None if args.max_periodic_checkpoints == -1 else args.max_periodic_checkpoints
+    )
     if not 0.0 <= args.pcg_slices_nodule <= 1.0:
         raise ValueError("--pcg-slices-nodule must be in [0, 1].")
     set_run_seed(args.seed)
@@ -673,12 +695,14 @@ def main():
         checkpoint_freq=10**12,
         load_checkpoint_if_exists=True,
     )
+    solver.set_checkpoint_retention(max_periodic_checkpoints)
     solver.set_training(train_loader)
     solver.set_validation(validation_loader, validation_freq=10**12)
     try:
         solver.train_for_patches(
             args.target_patches,
             validation_interval_patches=args.validation_interval_patches,
+            validation_max_patches=validation_max_patches,
             checkpoint_interval_patches=args.checkpoint_interval_patches,
             log_interval_patches=args.log_interval_patches,
             max_train_seconds=args.max_train_seconds,

@@ -117,6 +117,8 @@ class PaDISSolver(LIONsolver):
             }
         if not hasattr(self, "checkpoint_freq"):
             self.checkpoint_freq = 10**12
+        self.last_validation_patches = 0
+        self.max_periodic_checkpoints: int | None = None
         self.metadata = LIONParameter()
         self.metadata.method = (
             "PaDIS paper whole-image denoising"
@@ -509,6 +511,7 @@ class PaDISSolver(LIONsolver):
         target_patches: int,
         *,
         validation_interval_patches: int | None = None,
+        validation_max_patches: int | None = None,
         checkpoint_interval_patches: int | None = None,
         log_interval_patches: int | None = None,
         max_train_seconds: float | None = None,
@@ -524,6 +527,8 @@ class PaDISSolver(LIONsolver):
             raise ValueError("target_patches must be positive.")
         if validation_interval_patches is not None and validation_interval_patches <= 0:
             raise ValueError("validation_interval_patches must be positive.")
+        if validation_max_patches is not None and validation_max_patches <= 0:
+            raise ValueError("validation_max_patches must be positive.")
         if checkpoint_interval_patches is not None and checkpoint_interval_patches <= 0:
             raise ValueError("checkpoint_interval_patches must be positive.")
         if log_interval_patches is not None and log_interval_patches <= 0:
@@ -660,7 +665,11 @@ class PaDISSolver(LIONsolver):
                         next_log += int(log_interval_patches)
 
                 if next_validation is not None and self.seen_patches >= next_validation:
-                    validation_loss = self.validate()
+                    validation_loss = (
+                        self.validate(max_patches=validation_max_patches)
+                        if validation_max_patches is not None
+                        else self.validate()
+                    )
                     self.validation_loss = np.append(
                         self.validation_loss, validation_loss
                     )
@@ -674,14 +683,17 @@ class PaDISSolver(LIONsolver):
                     ):
                         self.save_validation(len(self.validation_loss) - 1)
                     if log_fn is not None:
-                        log_fn(
-                            {
-                                "validation/loss": validation_loss,
-                                "validation/index": len(self.validation_loss),
-                                "validation/seen_patches": self.seen_patches,
-                            },
-                            self.seen_patches,
-                        )
+                        validation_metrics = {
+                            "validation/loss": validation_loss,
+                            "validation/index": len(self.validation_loss),
+                            "validation/seen_patches": self.seen_patches,
+                            "validation/evaluated_patches": self.last_validation_patches,
+                        }
+                        if validation_max_patches is not None:
+                            validation_metrics[
+                                "validation/max_patches"
+                            ] = validation_max_patches
+                        log_fn(validation_metrics, self.seen_patches)
                     next_validation += int(validation_interval_patches)
 
                 if next_checkpoint is not None and self.seen_patches >= next_checkpoint:
@@ -703,16 +715,25 @@ class PaDISSolver(LIONsolver):
         finally:
             progress.close()
 
-    def validate(self):
+    def validate(self, max_patches: int | None = None):
+        if max_patches is not None and max_patches <= 0:
+            raise ValueError("max_patches must be positive.")
         if self.validation_loader is None:
             return 0.0
         was_training = self.model.training
         self.model.eval()
         raw_state = self._apply_ema_weights()
-        validation_loss = np.array([])
+        validation_loss_total = 0.0
+        validation_patches = 0
         try:
             with torch.no_grad():
                 for _, target in tqdm(self.validation_loader):
+                    if max_patches is not None:
+                        remaining = int(max_patches) - validation_patches
+                        if remaining <= 0:
+                            break
+                        if target.shape[0] > remaining:
+                            target = target[:remaining]
                     target = target.float()
                     self._check_data_range(target)
                     clean_patch, position_patch = self._sample_training_patch(target)
@@ -723,12 +744,51 @@ class PaDISSolver(LIONsolver):
                             self.device, non_blocking=non_blocking
                         )
                     loss = self.loss_fn(self.model, clean_patch, position_patch)
-                    validation_loss = np.append(validation_loss, loss.cpu().item())
+                    batch_patches = int(clean_patch.shape[0])
+                    validation_loss_total += float(loss.cpu().item()) * batch_patches
+                    validation_patches += batch_patches
         finally:
+            self.last_validation_patches = validation_patches
             self._restore_raw_weights(raw_state)
             if was_training:
                 self.model.train()
-        return float(np.mean(validation_loss))
+        if validation_patches == 0:
+            return 0.0
+        return validation_loss_total / validation_patches
+
+    def set_checkpoint_retention(self, max_periodic_checkpoints: int | None) -> None:
+        if max_periodic_checkpoints is not None and max_periodic_checkpoints <= 0:
+            raise ValueError("max_periodic_checkpoints must be positive or None.")
+        self.max_periodic_checkpoints = max_periodic_checkpoints
+
+    def _periodic_checkpoint_sidecars(
+        self, checkpoint_path: pathlib.Path
+    ) -> list[pathlib.Path]:
+        return [
+            checkpoint_path.with_suffix(".pt"),
+            checkpoint_path.with_suffix(".json"),
+            checkpoint_path.with_suffix(".ema.pt"),
+        ]
+
+    def prune_periodic_checkpoints(
+        self, max_periodic_checkpoints: int | None = None
+    ) -> None:
+        if max_periodic_checkpoints is None:
+            return
+        if max_periodic_checkpoints <= 0:
+            raise ValueError("max_periodic_checkpoints must be positive or None.")
+        if self.checkpoint_save_folder is None or self.checkpoint_fname is None:
+            return
+        checkpoints = sorted(
+            path
+            for path in self.checkpoint_save_folder.glob(self.checkpoint_fname)
+            if not path.name.endswith(".ema.pt")
+        )
+        stale_checkpoints = checkpoints[:-max_periodic_checkpoints]
+        for checkpoint in stale_checkpoints:
+            for path in self._periodic_checkpoint_sidecars(checkpoint):
+                if path.exists():
+                    path.unlink()
 
     def save_checkpoint(self, epoch):
         super().save_checkpoint(epoch)
@@ -740,6 +800,7 @@ class PaDISSolver(LIONsolver):
                 {"ema_state_dict": self.ema_state, "seen_patches": self.seen_patches},
                 self.checkpoint_save_folder.joinpath(ema_fname).with_suffix(".ema.pt"),
             )
+        self.prune_periodic_checkpoints(self.max_periodic_checkpoints)
 
     @staticmethod
     def _full_state_base_path(path: pathlib.Path) -> pathlib.Path:
@@ -861,7 +922,11 @@ class PaDISSolver(LIONsolver):
     def load_checkpoint(self):
         if self.checkpoint_save_folder is None or self.checkpoint_fname is None:
             return self.current_epoch
-        checkpoints = sorted(self.checkpoint_save_folder.glob(self.checkpoint_fname))
+        checkpoints = sorted(
+            path
+            for path in self.checkpoint_save_folder.glob(self.checkpoint_fname)
+            if not path.name.endswith(".ema.pt")
+        )
         if checkpoints:
             epoch = self._load_periodic_checkpoint(checkpoints[-1])
             self._load_ema_sidecar()

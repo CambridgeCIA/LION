@@ -305,6 +305,42 @@ def test_padis_solver_trains_to_patch_budget_across_loader_restarts():
     assert all(step > 0 for _, step in logs)
 
 
+def test_padis_validation_respects_max_patches():
+    class BatchSizeLoss(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.batch_sizes = []
+
+        def forward(self, model, clean_patch, position_patch=None):
+            del model, position_patch
+            self.batch_sizes.append(clean_patch.shape[0])
+            return clean_patch.new_tensor(float(clean_patch.shape[0]))
+
+    model, geometry = _tiny_padis_model()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    solver_params.patch_sizes = [16]
+    solver_params.patch_probabilities = [1.0]
+    loss_fn = BatchSizeLoss()
+    solver = PaDISSolver(
+        model,
+        optimizer,
+        loss_fn,
+        geometry=geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+    )
+    images = torch.rand(5, 1, 256, 256)
+    validation_loader = DataLoader(TensorDataset(images, images), batch_size=2)
+    solver.set_validation(validation_loader, validation_freq=10**12)
+
+    validation_loss = solver.validate(max_patches=3)
+
+    assert loss_fn.batch_sizes == [2, 1]
+    assert solver.last_validation_patches == 3
+    assert abs(validation_loss - (5 / 3)) < 1e-6
+
+
 def test_padis_solver_uses_paper_relative_batch_multipliers():
     params = PaDISSolver.default_parameters("padis-paper-ct-256")
     assert params.patch_batch_multipliers == {16: 4, 32: 2, 56: 1}
@@ -539,6 +575,59 @@ def test_load_checkpoint_falls_back_to_full_final_state(tmp_path):
     assert torch.allclose(resumed_first_param, raw)
     assert torch.allclose(resumed_solver.ema_state[first_name], raw + 1)
     assert resumed_solver.seen_patches == 7
+
+
+def test_periodic_checkpoint_retention_keeps_latest_and_best_validation(tmp_path):
+    model, geometry = _tiny_padis_model()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    solver = PaDISSolver(
+        model,
+        optimizer,
+        PaDISDenoisingLoss(),
+        geometry=geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+        save_folder=tmp_path,
+    )
+    solver.set_checkpointing(
+        "padis_checkpoint_*.pt",
+        checkpoint_freq=10**12,
+        load_checkpoint_if_exists=True,
+        save_folder=tmp_path,
+    )
+    solver.set_checkpoint_retention(3)
+    (tmp_path / "padis_min_val.pt").write_text("best")
+    (tmp_path / "padis_min_val_full.pt").write_text("best-full")
+
+    for epoch in range(7):
+        solver.save_checkpoint(epoch)
+
+    checkpoint_names = sorted(
+        path.name
+        for path in tmp_path.glob("padis_checkpoint_*.pt")
+        if not path.name.endswith(".ema.pt")
+    )
+    ema_names = sorted(path.name for path in tmp_path.glob("padis_checkpoint_*.ema.pt"))
+    json_names = sorted(path.name for path in tmp_path.glob("padis_checkpoint_*.json"))
+
+    assert checkpoint_names == [
+        "padis_checkpoint_0005.pt",
+        "padis_checkpoint_0006.pt",
+        "padis_checkpoint_0007.pt",
+    ]
+    assert ema_names == [
+        "padis_checkpoint_0005.ema.pt",
+        "padis_checkpoint_0006.ema.pt",
+        "padis_checkpoint_0007.ema.pt",
+    ]
+    assert json_names == [
+        "padis_checkpoint_0005.json",
+        "padis_checkpoint_0006.json",
+        "padis_checkpoint_0007.json",
+    ]
+    assert (tmp_path / "padis_min_val.pt").read_text() == "best"
+    assert (tmp_path / "padis_min_val_full.pt").read_text() == "best-full"
 
 
 def test_load_checkpoint_loads_periodic_checkpoint_without_reconstructing_model(

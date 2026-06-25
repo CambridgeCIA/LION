@@ -134,8 +134,10 @@ options=(
         --wandb-mode online
         --device cuda
         --target-patches 40000000
-        --validation-interval-patches 10000
+        --validation-interval-patches "${PADIS_VALIDATION_INTERVAL_PATCHES:-200000}"
+        --validation-max-patches "${PADIS_VALIDATION_MAX_PATCHES:-1000}"
         --checkpoint-interval-patches 250000
+        --max-periodic-checkpoints "${PADIS_MAX_PERIODIC_CHECKPOINTS:-5}"
         --log-interval-patches 128
         --seed "${PADIS_SEED:-33}"
         --batch-size 128
