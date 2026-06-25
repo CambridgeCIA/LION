@@ -52,9 +52,6 @@ class Noise2InverseSolver(LIONsolver):
         ops = []
         # maintain a copy of the original angles to restore later
         angles = self.geometry.angles.copy()
-        assert (
-            len(angles) % self.sino_split_count == 0
-        ), f"Cannot construct {self.sino_split_count} sinogram splits from {len(angles)} view angles. Ensure that sino_split_count divides #view angles"
         for k in range(self.sino_split_count):
             self.geometry.angles = angles[k :: self.sino_split_count]
             sub_op = ct.make_operator(self.geometry)
