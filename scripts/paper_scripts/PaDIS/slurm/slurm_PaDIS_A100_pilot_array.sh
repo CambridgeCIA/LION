@@ -8,9 +8,9 @@
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=32
-#SBATCH --time=08:00:00
+#SBATCH --time=00:15:00
 #SBATCH --mail-type=NONE
-#SBATCH --array=0-13%14
+#SBATCH --array=0-9%10
 #SBATCH -p ampere
 #SBATCH -o slurm-%x-%A_%a.out
 
@@ -55,6 +55,7 @@ TARGET_PATCHES="${PADIS_PILOT_TARGET_PATCHES:-8192}"
 VALIDATION_INTERVAL="${PADIS_PILOT_VALIDATION_INTERVAL_PATCHES:-$TARGET_PATCHES}"
 CHECKPOINT_INTERVAL="${PADIS_PILOT_CHECKPOINT_INTERVAL_PATCHES:-$TARGET_PATCHES}"
 LOG_INTERVAL="${PADIS_PILOT_LOG_INTERVAL_PATCHES:-128}"
+MAX_TRAIN_SECONDS="${PADIS_PILOT_MAX_TRAIN_SECONDS:-840}"
 NUM_WORKERS="${PADIS_NUM_WORKERS:-16}"
 PREFETCH_FACTOR="${PADIS_PREFETCH_FACTOR:-4}"
 
@@ -67,6 +68,7 @@ if [ "$TASK_ENGINE" = "lidc256" ]; then
                 --validation-interval-patches "$VALIDATION_INTERVAL"
                 --checkpoint-interval-patches "$CHECKPOINT_INTERVAL"
                 --log-interval-patches "$LOG_INTERVAL"
+                --max-train-seconds "$MAX_TRAIN_SECONDS"
                 --seed "$PADIS_SEED"
                 --batch-size "$TASK_BATCH_SIZE"
                 --num-workers "$NUM_WORKERS"
@@ -97,6 +99,7 @@ elif [ "$TASK_ENGINE" = "lidc512" ]; then
                 --validation-interval-patches "$VALIDATION_INTERVAL"
                 --checkpoint-interval-patches "$CHECKPOINT_INTERVAL"
                 --log-interval-patches "$LOG_INTERVAL"
+                --max-train-seconds "$MAX_TRAIN_SECONDS"
                 --seed "$PADIS_SEED"
                 --batch-size "$TASK_BATCH_SIZE"
                 --num-workers "${PADIS_512_NUM_WORKERS:-$NUM_WORKERS}"

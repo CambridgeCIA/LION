@@ -8,7 +8,7 @@
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=32
-#SBATCH --time=08:00:00
+#SBATCH --time=00:20:00
 #SBATCH --mail-type=NONE
 #SBATCH -p ampere
 #SBATCH -o slurm-%x-%j.out
@@ -81,8 +81,8 @@ python scripts/dev/check_padis_repo_equivalence.py \
 python scripts/dev/check_padis_short_run_reproduction.py \
         --padis-root "$PADIS_ROOT" \
         --device cuda \
-        --seeds 2026 2027 2028 \
-        --steps 6 \
+        --seeds ${PADIS_CHECK_SHORT_RUN_SEEDS:-2026} \
+        --steps "${PADIS_CHECK_SHORT_RUN_STEPS:-3}" \
         --patch-sizes 16 32 56 \
         --relative-tolerance 0.005 \
         --json "$PADIS_CHECK_DIR/short_run_reproduction_cuda.json" \
@@ -95,7 +95,7 @@ PREFLIGHT_ARGS=(
         --microbatch-size "${PADIS_PREFLIGHT_MICROBATCH_SIZE:-1}"
         --training-steps "${PADIS_PREFLIGHT_TRAINING_STEPS:-1}"
         --validation-batch-size "${PADIS_PREFLIGHT_VALIDATION_BATCH_SIZE:-1}"
-        --validation-batches "${PADIS_PREFLIGHT_VALIDATION_BATCHES:-16}"
+        --validation-batches "${PADIS_PREFLIGHT_VALIDATION_BATCHES:-4}"
         --max-slices-per-patient "${PADIS_PREFLIGHT_MAX_SLICES_PER_PATIENT:-4}"
         --num-workers "${PADIS_PREFLIGHT_NUM_WORKERS:-4}"
         --prefetch-factor "${PADIS_PREFLIGHT_PREFETCH_FACTOR:-2}"

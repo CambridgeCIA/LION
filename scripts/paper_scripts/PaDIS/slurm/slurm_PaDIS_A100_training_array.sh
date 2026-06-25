@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --time=24:00:00
 #SBATCH --mail-type=NONE
-#SBATCH --array=0-13%14
+#SBATCH --array=0-9%10
 #SBATCH -p ampere
 #SBATCH -o slurm-%x-%A_%a.out
 

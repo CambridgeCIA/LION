@@ -75,8 +75,6 @@ padis_init_training_tasks() {
 
         PADIS_TASK_NAMES=(
                 patch_lidc_default
-                patch_lidc_quarter_default
-                patch_lidc_half_default
                 patch_lidc_full
                 patch_lidc_p8_default
                 patch_lidc_p16_default
@@ -84,16 +82,10 @@ padis_init_training_tasks() {
                 patch_lidc_p96_default
                 patch_lidc_no_pos_default
                 whole_lidc_default
-                whole_lidc_quarter_default
-                whole_lidc_half_default
                 whole_lidc_full
                 patch_lidc_512
         )
         PADIS_TASK_ENGINES=(
-                lidc256
-                lidc256
-                lidc256
-                lidc256
                 lidc256
                 lidc256
                 lidc256
@@ -113,18 +105,12 @@ padis_init_training_tasks() {
                 "$patch_batch"
                 "$patch_batch"
                 "$patch_batch"
-                "$patch_batch"
-                "$patch_batch"
-                "$whole_batch"
-                "$whole_batch"
                 "$whole_batch"
                 "$whole_batch"
                 "$native512_batch"
         )
         PADIS_TASK_ARGUMENTS=(
                 "--run-name patch_lidc_default --max-slices-per-patient 4"
-                "--run-name patch_lidc_quarter_default --max-slices-per-patient 1"
-                "--run-name patch_lidc_half_default --max-slices-per-patient 2"
                 "--run-name patch_lidc_full --full-lidc"
                 "--run-name patch_lidc_p8_default --patch-size-preset 8 --max-slices-per-patient 4"
                 "--run-name patch_lidc_p16_default --patch-size-preset 16 --max-slices-per-patient 4"
@@ -132,8 +118,6 @@ padis_init_training_tasks() {
                 "--run-name patch_lidc_p96_default --patch-size-preset 96 --max-slices-per-patient 4"
                 "--run-name patch_lidc_no_pos_default --no-position-channels --max-slices-per-patient 4"
                 "--run-name whole_lidc_default --prior-mode whole-image --max-slices-per-patient 4"
-                "--run-name whole_lidc_quarter_default --prior-mode whole-image --max-slices-per-patient 1"
-                "--run-name whole_lidc_half_default --prior-mode whole-image --max-slices-per-patient 2"
                 "--run-name whole_lidc_full --prior-mode whole-image --full-lidc"
                 "--run-name patch_lidc_512 --max-slices-per-patient 4"
         )
