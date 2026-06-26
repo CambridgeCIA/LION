@@ -42,7 +42,7 @@ padis_activate_environment
 LION_ROOT="$(padis_lion_root)"
 PADIS_RUN_ROOT="$(padis_default_run_root)"
 PADIS_RUN_STAMP="${PADIS_RUN_STAMP:-${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-$(date +%Y%m%d_%H%M%S)}}}"
-PADIS_TRAIN_ROOT="${PADIS_TRAIN_ROOT:-$PADIS_RUN_ROOT/real_runs/a100_training_$PADIS_RUN_STAMP}"
+PADIS_TRAIN_ROOT="${PADIS_TRAIN_ROOT:-$PADIS_RUN_ROOT/final_real_runs/a100_training_$PADIS_RUN_STAMP}"
 PADIS_DATA_FOLDER="${PADIS_DATA_FOLDER:-}"
 PADIS_DATA_ROOT="${LION_DATA_PATH:-/home/tjh200/rds/hpc-work/Datasets}"
 PADIS_CACHE_ROOT="${PADIS_CACHE_ROOT:-$PADIS_DATA_ROOT/processed/LIDC-IDRI-cache}"
@@ -71,33 +71,53 @@ cd "$LION_ROOT"
 padis_print_job_header
 echo "Real training task: $TASK_ID $TASK_NAME ($TASK_ENGINE)"
 
-TARGET_PATCHES="${PADIS_TARGET_PATCHES:-40000000}"
-VALIDATION_INTERVAL="${PADIS_VALIDATION_INTERVAL_PATCHES:-200000}"
-VALIDATION_MAX_PATCHES="${PADIS_VALIDATION_MAX_PATCHES:-1000}"
-CHECKPOINT_INTERVAL="${PADIS_CHECKPOINT_INTERVAL_PATCHES:-1000000}"
+TARGET_PATCHES="${PADIS_TARGET_PATCHES:-400000000}"
 MAX_PERIODIC_CHECKPOINTS="${PADIS_MAX_PERIODIC_CHECKPOINTS:-5}"
-LOG_INTERVAL="${PADIS_LOG_INTERVAL_PATCHES:-128}"
+MAX_TRAIN_SECONDS="${PADIS_MAX_TRAIN_SECONDS:-}"
 NUM_WORKERS="${PADIS_NUM_WORKERS:-16}"
 PREFETCH_FACTOR="${PADIS_PREFETCH_FACTOR:-4}"
 NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-1}"
+PADIS_WANDB_PROJECT="${PADIS_WANDB_PROJECT:-PaDIS-Reproduction}"
+PADIS_WANDB_ENTITY="${PADIS_WANDB_ENTITY:-}"
+PADIS_WANDB_MODE="${PADIS_WANDB_MODE:-online}"
+PADIS_NO_WANDB="${PADIS_NO_WANDB:-0}"
+export PADIS_WANDB_PROJECT PADIS_WANDB_ENTITY PADIS_WANDB_MODE PADIS_NO_WANDB
+
+if [[ "$TASK_NAME" == whole_lidc_* ]]; then
+        VALIDATION_INTERVAL="${PADIS_WHOLE_VALIDATION_INTERVAL_PATCHES:-${PADIS_VALIDATION_INTERVAL_PATCHES:-10000}}"
+        VALIDATION_MAX_PATCHES="${PADIS_WHOLE_VALIDATION_MAX_PATCHES:-${PADIS_VALIDATION_MAX_PATCHES:-128}}"
+        CHECKPOINT_INTERVAL="${PADIS_WHOLE_CHECKPOINT_INTERVAL_PATCHES:-${PADIS_CHECKPOINT_INTERVAL_PATCHES:-25000}}"
+        LOG_INTERVAL="${PADIS_WHOLE_LOG_INTERVAL_PATCHES:-${PADIS_LOG_INTERVAL_PATCHES:-128}}"
+else
+        VALIDATION_INTERVAL="${PADIS_VALIDATION_INTERVAL_PATCHES:-200000}"
+        VALIDATION_MAX_PATCHES="${PADIS_VALIDATION_MAX_PATCHES:-1000}"
+        CHECKPOINT_INTERVAL="${PADIS_CHECKPOINT_INTERVAL_PATCHES:-1000000}"
+        LOG_INTERVAL="${PADIS_LOG_INTERVAL_PATCHES:-128}"
+fi
 
 wandb_args=()
-if [ "${PADIS_NO_WANDB:-0}" = "1" ] || [ -z "${PADIS_WANDB_PROJECT:-}" ]; then
+if [ "$PADIS_NO_WANDB" = "1" ]; then
         wandb_args=(--no-wandb --wandb-mode disabled)
 else
-        wandb_name="${PADIS_WANDB_NAME_PREFIX:-PaDIS_A100}_${TASK_NAME}"
+        wandb_name="${PADIS_WANDB_NAME_PREFIX:-PaDIS_A100_${PADIS_RUN_STAMP}}_${TASK_NAME}"
         wandb_args=(
                 --wandb-project "$PADIS_WANDB_PROJECT"
                 --wandb-name "$wandb_name"
-                --wandb-mode "${PADIS_WANDB_MODE:-online}"
+                --wandb-mode "$PADIS_WANDB_MODE"
         )
-        if [ -n "${PADIS_WANDB_ENTITY:-}" ]; then
+        if [ -n "$PADIS_WANDB_ENTITY" ]; then
                 wandb_args+=(--wandb-entity "$PADIS_WANDB_ENTITY")
         fi
         if [ "$NO_WANDB_ARTIFACT" = "1" ]; then
                 wandb_args+=(--no-wandb-artifact)
         fi
 fi
+
+echo "Target patches: $TARGET_PATCHES"
+echo "Validation interval patches: $VALIDATION_INTERVAL (max $VALIDATION_MAX_PATCHES)"
+echo "Checkpoint interval patches: $CHECKPOINT_INTERVAL (retain $MAX_PERIODIC_CHECKPOINTS periodic checkpoints)"
+echo "Max train seconds: ${MAX_TRAIN_SECONDS:-unset}"
+echo "WandB: project=${PADIS_WANDB_PROJECT:-unset} mode=${PADIS_WANDB_MODE:-unset} disabled=${PADIS_NO_WANDB}"
 
 if [ "$TASK_ENGINE" = "lidc256" ]; then
         CMD=(
@@ -121,6 +141,9 @@ if [ "$TASK_ENGINE" = "lidc256" ]; then
         fi
         if [ -n "${PADIS_MICROBATCH_SIZE:-}" ]; then
                 CMD+=(--microbatch-size "$PADIS_MICROBATCH_SIZE")
+        fi
+        if [ -n "$MAX_TRAIN_SECONDS" ]; then
+                CMD+=(--max-train-seconds "$MAX_TRAIN_SECONDS")
         fi
         CACHE_DATASET="${PADIS_256_CACHE_DATASET:-${PADIS_CACHE_DATASET:-ramdisk}}"
         if [[ "$TASK_NAME" == *full ]] && [ "${PADIS_CACHE_FULL_LIDC:-1}" != "1" ]; then
@@ -166,6 +189,9 @@ elif [ "$TASK_ENGINE" = "lidc512" ]; then
         fi
         if [ -n "${PADIS_MICROBATCH_SIZE:-}" ]; then
                 CMD+=(--microbatch-size "$PADIS_MICROBATCH_SIZE")
+        fi
+        if [ -n "$MAX_TRAIN_SECONDS" ]; then
+                CMD+=(--max-train-seconds "$MAX_TRAIN_SECONDS")
         fi
         CACHE_DATASET="${PADIS_512_CACHE_DATASET:-${PADIS_CACHE_DATASET:-ramdisk}}"
         if [[ " ${TASK_ARGS[*]} " == *" --full-lidc "* ]] && [ "${PADIS_CACHE_FULL_512_LIDC:-0}" != "1" ]; then

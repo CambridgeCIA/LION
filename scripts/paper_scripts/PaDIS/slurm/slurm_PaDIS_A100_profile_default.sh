@@ -75,7 +75,7 @@ if [ "$TASK_ENGINE" != "lidc256" ]; then
 fi
 
 PROFILE_SECONDS="${PADIS_PROFILE_SECONDS:-600}"
-TARGET_PATCHES="${PADIS_PROFILE_TARGET_PATCHES:-40000000}"
+TARGET_PATCHES="${PADIS_PROFILE_TARGET_PATCHES:-400000000}"
 VALIDATION_INTERVAL="${PADIS_PROFILE_VALIDATION_INTERVAL_PATCHES:-$TARGET_PATCHES}"
 VALIDATION_MAX_PATCHES="${PADIS_PROFILE_VALIDATION_MAX_PATCHES:-${PADIS_VALIDATION_MAX_PATCHES:-1000}}"
 CHECKPOINT_INTERVAL="${PADIS_PROFILE_CHECKPOINT_INTERVAL_PATCHES:-$TARGET_PATCHES}"
@@ -85,6 +85,30 @@ NUM_WORKERS="${PADIS_PROFILE_NUM_WORKERS:-${PADIS_NUM_WORKERS:-16}}"
 PREFETCH_FACTOR="${PADIS_PROFILE_PREFETCH_FACTOR:-${PADIS_PREFETCH_FACTOR:-4}}"
 SAMPLE_INTERVAL="${PADIS_PROFILE_SAMPLE_INTERVAL:-1}"
 WARMUP_SECONDS="${PADIS_PROFILE_WARMUP_SECONDS:-60}"
+NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-1}"
+PADIS_WANDB_PROJECT="${PADIS_WANDB_PROJECT:-PaDIS-Reproduction}"
+PADIS_WANDB_ENTITY="${PADIS_WANDB_ENTITY:-}"
+PADIS_WANDB_MODE="${PADIS_WANDB_MODE:-online}"
+PADIS_NO_WANDB="${PADIS_NO_WANDB:-0}"
+export PADIS_WANDB_PROJECT PADIS_WANDB_ENTITY PADIS_WANDB_MODE PADIS_NO_WANDB
+
+wandb_args=()
+if [ "$PADIS_NO_WANDB" = "1" ] || [ "${PADIS_PROFILE_NO_WANDB:-0}" = "1" ]; then
+        wandb_args=(--no-wandb --wandb-mode disabled)
+else
+        wandb_name="${PADIS_PROFILE_WANDB_NAME_PREFIX:-PaDIS_A100_profile_${PADIS_RUN_STAMP}}_${TASK_NAME}"
+        wandb_args=(
+                --wandb-project "$PADIS_WANDB_PROJECT"
+                --wandb-name "$wandb_name"
+                --wandb-mode "$PADIS_WANDB_MODE"
+        )
+        if [ -n "$PADIS_WANDB_ENTITY" ]; then
+                wandb_args+=(--wandb-entity "$PADIS_WANDB_ENTITY")
+        fi
+        if [ "$NO_WANDB_ARTIFACT" = "1" ]; then
+                wandb_args+=(--no-wandb-artifact)
+        fi
+fi
 
 GPU_CSV="$PADIS_PROFILE_ROOT/nvidia_smi.csv"
 TRAIN_LOG="$PADIS_PROFILE_ROOT/train.log"
@@ -107,9 +131,8 @@ CMD=(
         --num-workers "$NUM_WORKERS"
         --prefetch-factor "$PREFETCH_FACTOR"
         --metrics-jsonl "$METRICS_JSONL"
-        --no-wandb
-        --wandb-mode disabled
 )
+CMD+=("${wandb_args[@]}")
 
 if [ -n "$PADIS_DATA_FOLDER" ]; then
         CMD+=(--data-folder "$PADIS_DATA_FOLDER")

@@ -14,10 +14,15 @@
 #   PADIS_CACHE_PREP_VARIANTS=256-default,256-full,512-default
 #   PADIS_PILOT_TIME=00:15:00
 #   PADIS_REAL_TIME=24:00:00
+#   PADIS_TASK_ARRAY=0-9
 #   PADIS_PILOT_ARRAY_LIMIT=10
 #   PADIS_REAL_ARRAY_LIMIT=10
 #   PADIS_RUN_ROOT=/path/to/experiments/PaDIS
+#   PADIS_TARGET_PATCHES=400000000
+#   PADIS_MAX_TRAIN_SECONDS_BUFFER=1800
 #   PADIS_WANDB_PROJECT=PaDIS-Reproduction
+#   PADIS_WANDB_MODE=online
+#   PADIS_WANDB_ENTITY=optional-wandb-entity
 
 set -euo pipefail
 
@@ -41,14 +46,17 @@ cache_mem="${PADIS_CACHE_MEM:-128G}"
 cache_variants="${PADIS_CACHE_PREP_VARIANTS:-256-default,256-full,512-default}"
 pilot_time="${PADIS_PILOT_TIME:-00:15:00}"
 real_time="${PADIS_REAL_TIME:-24:00:00}"
+task_array="${PADIS_TASK_ARRAY:-0-${last_task}}"
 pilot_limit="${PADIS_PILOT_ARRAY_LIMIT:-10}"
 real_limit="${PADIS_REAL_ARRAY_LIMIT:-10}"
+pilot_array="${PADIS_PILOT_ARRAY:-${task_array}%${pilot_limit}}"
+real_array="${PADIS_REAL_ARRAY:-${task_array}%${real_limit}}"
 run_root="$(padis_default_run_root)"
 run_stamp="${PADIS_RUN_STAMP:-$(date +%Y%m%d_%H%M%S)}"
 data_root="${LION_DATA_PATH:-/home/tjh200/rds/hpc-work/Datasets}"
 cache_root="${PADIS_CACHE_ROOT:-$data_root/processed/LIDC-IDRI-cache}"
 
-mkdir -p "$run_root/debug_runs/slurm_logs" "$run_root/pilot_runs" "$run_root/real_runs" "$cache_root"
+mkdir -p "$run_root/debug_runs/slurm_logs" "$run_root/pilot_runs" "$run_root/final_real_runs" "$cache_root"
 
 export PADIS_RUN_STAMP="$run_stamp"
 export PADIS_SLURM_DIR="$SCRIPT_DIR"
@@ -87,7 +95,7 @@ pilot_job="$(
                 --parsable \
                 -A "$account" \
                 --time "$pilot_time" \
-                --array "0-${last_task}%${pilot_limit}" \
+                --array "$pilot_array" \
                 --dependency "afterok:$cache_job" \
                 --export=ALL \
                 --output "$run_root/debug_runs/slurm_logs/%x-%A_%a.out" \
@@ -95,12 +103,14 @@ pilot_job="$(
 )"
 echo "Submitted pilot array: $pilot_job after $cache_job"
 
+padis_configure_real_training_defaults "$real_time" "$run_stamp"
+
 real_job="$(
         sbatch \
                 --parsable \
                 -A "$account" \
                 --time "$real_time" \
-                --array "0-${last_task}%${real_limit}" \
+                --array "$real_array" \
                 --dependency "afterok:$pilot_job" \
                 --export=ALL \
                 --output "$run_root/debug_runs/slurm_logs/%x-%A_%a.out" \
@@ -117,7 +127,7 @@ Run stamp: $run_stamp
 Cache root: $cache_root
 Debug/checks: $run_root/debug_runs/a100_checks_$run_stamp
 Pilots: $run_root/pilot_runs/a100_pilots_$run_stamp
-Real training: $run_root/real_runs/a100_training_$run_stamp
+Real training: $run_root/final_real_runs/a100_training_$run_stamp
 
 Checks: $checks_job
 Cache prep: $cache_job

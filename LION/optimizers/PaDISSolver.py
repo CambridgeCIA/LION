@@ -829,6 +829,7 @@ class PaDISSolver(LIONsolver):
         data = torch.load(full_pt_path, map_location=self.device, weights_only=False)
         data["full_save_kind"] = kind
         data["seen_patches"] = self.seen_patches
+        data["training_steps"] = len(self.train_loss)
         if validation_loss is not None:
             data["validation_loss"] = float(validation_loss)
         if self.ema_state is not None:

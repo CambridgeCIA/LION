@@ -68,6 +68,8 @@ mamba activate "$LION_MAMBA_ENV" || {
         echo "Could not activate mamba environment $LION_MAMBA_ENV."
         exit 1
 }
+CONDA_LIB="${CONDA_PREFIX:-$MAMBA_ROOT_PREFIX/envs/$LION_MAMBA_ENV}/lib"
+export LD_LIBRARY_PATH="$CONDA_LIB:${LD_LIBRARY_PATH:-}"
 echo "Activated $LION_MAMBA_ENV environment using mamba."
 
 python - <<'PY'
@@ -103,6 +105,12 @@ PADIS_DATA_ROOT="${LION_DATA_PATH:-/home/tjh200/rds/hpc-work/Datasets}"
 PADIS_CACHE_ROOT="${PADIS_CACHE_ROOT:-$PADIS_DATA_ROOT/processed/LIDC-IDRI-cache}"
 PADIS_256_CACHE_ARCHIVE_FOLDER="${PADIS_256_CACHE_ARCHIVE_FOLDER:-${PADIS_CACHE_ARCHIVE_FOLDER:-$PADIS_CACHE_ROOT/padis_256/archives}}"
 PADIS_256_CACHE_FOLDER="${PADIS_256_CACHE_FOLDER:-${PADIS_CACHE_FOLDER:-/ramdisks/$USER/lion_lidc_cache}}"
+TARGET_PATCHES="${PADIS_TARGET_PATCHES:-400000000}"
+VALIDATION_INTERVAL="${PADIS_VALIDATION_INTERVAL_PATCHES:-200000}"
+VALIDATION_MAX_PATCHES="${PADIS_VALIDATION_MAX_PATCHES:-1000}"
+CHECKPOINT_INTERVAL="${PADIS_CHECKPOINT_INTERVAL_PATCHES:-1000000}"
+MAX_PERIODIC_CHECKPOINTS="${PADIS_MAX_PERIODIC_CHECKPOINTS:-5}"
+MAX_TRAIN_SECONDS="${PADIS_MAX_TRAIN_SECONDS:-41400}"
 
 if [ ! -d "$RUN_FOLDER" ]; then
         echo "Cannot resume: run folder does not exist: $RUN_FOLDER"
@@ -133,11 +141,12 @@ options=(
         --wandb-name "$RUN_NAME"
         --wandb-mode online
         --device cuda
-        --target-patches 40000000
-        --validation-interval-patches "${PADIS_VALIDATION_INTERVAL_PATCHES:-200000}"
-        --validation-max-patches "${PADIS_VALIDATION_MAX_PATCHES:-1000}"
-        --checkpoint-interval-patches 250000
-        --max-periodic-checkpoints "${PADIS_MAX_PERIODIC_CHECKPOINTS:-5}"
+        --target-patches "$TARGET_PATCHES"
+        --validation-interval-patches "$VALIDATION_INTERVAL"
+        --validation-max-patches "$VALIDATION_MAX_PATCHES"
+        --checkpoint-interval-patches "$CHECKPOINT_INTERVAL"
+        --max-periodic-checkpoints "$MAX_PERIODIC_CHECKPOINTS"
+        --max-train-seconds "$MAX_TRAIN_SECONDS"
         --log-interval-patches 128
         --seed "${PADIS_SEED:-33}"
         --batch-size 128

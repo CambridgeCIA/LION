@@ -21,11 +21,12 @@ real_limit="${PADIS_REAL_ARRAY_LIMIT:-10}"
 run_root="$(padis_default_run_root)"
 run_stamp="${PADIS_RUN_STAMP:-$(date +%Y%m%d_%H%M%S)}"
 
-mkdir -p "$run_root/debug_runs/slurm_logs" "$run_root/real_runs"
+mkdir -p "$run_root/debug_runs/slurm_logs" "$run_root/final_real_runs"
 
 export PADIS_RUN_STAMP="$run_stamp"
 export PADIS_SLURM_DIR="$SCRIPT_DIR"
 export LION_ROOT
+padis_configure_real_training_defaults "$real_time" "$run_stamp"
 
 real_job="$(
         sbatch \
@@ -43,7 +44,7 @@ Submitted real PaDIS training array: $real_job
 
 Run root: $run_root
 Run stamp: $run_stamp
-Real training: $run_root/real_runs/a100_training_$run_stamp
+Real training: $run_root/final_real_runs/a100_training_$run_stamp
 Slurm logs: $run_root/debug_runs/slurm_logs
 
 Monitor:

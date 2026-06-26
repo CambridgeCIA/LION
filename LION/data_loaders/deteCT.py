@@ -344,7 +344,7 @@ class deteCT(Dataset):
         $$
         sino_{noisy} = sino_{measured} + corss_talk(P_{I0}),
         $$
-        where $P_{I0}$ is the noise conponent of adding Poisson noise at $I0$ counts to the input sinogram (input is assumed at $I0=\inf$).
+        where $P_{I0}$ is the noise conponent of adding Poisson noise at $I0$ counts to the input sinogram (input is assumed at $I0=\\inf$).
         This is not exactly correct, but approximately so. See Kiss et al. 2024 for more details
 
         Input:

@@ -43,6 +43,8 @@ padis_activate_environment() {
                 echo "Could not activate mamba environment $LION_MAMBA_ENV."
                 exit 1
         }
+        CONDA_LIB="${CONDA_PREFIX:-$MAMBA_ROOT_PREFIX/envs/$LION_MAMBA_ENV}/lib"
+        export LD_LIBRARY_PATH="$CONDA_LIB:${LD_LIBRARY_PATH:-}"
         echo "Activated $LION_MAMBA_ENV using mamba."
 }
 
@@ -57,6 +59,52 @@ padis_default_run_root() {
                 printf '%s\n' "$LION_DATA_PATH/experiments/PaDIS"
         else
                 printf '%s\n' "$lion_root/../Data/experiments/PaDIS"
+        fi
+}
+
+padis_time_to_seconds() {
+        local time_spec days first second third seconds
+        time_spec="$1"
+        days=0
+        if [[ "$time_spec" == *-* ]]; then
+                days="${time_spec%%-*}"
+                time_spec="${time_spec#*-}"
+        fi
+
+        IFS=: read -r first second third <<< "$time_spec"
+        if [ -n "${third:-}" ]; then
+                seconds=$((10#${first:-0} * 3600 + 10#${second:-0} * 60 + 10#${third:-0}))
+        elif [ -n "${second:-}" ]; then
+                seconds=$((10#${first:-0} * 60 + 10#${second:-0}))
+        elif [ -n "${first:-}" ]; then
+                seconds=$((10#${first:-0} * 60))
+        else
+                return 1
+        fi
+        printf '%s\n' $((10#${days:-0} * 86400 + seconds))
+}
+
+padis_configure_real_training_defaults() {
+        local real_time run_stamp real_seconds max_seconds_buffer
+        real_time="$1"
+        run_stamp="$2"
+
+        export PADIS_TARGET_PATCHES="${PADIS_TARGET_PATCHES:-400000000}"
+        export PADIS_WANDB_PROJECT="${PADIS_WANDB_PROJECT:-PaDIS-Reproduction}"
+        export PADIS_WANDB_ENTITY="${PADIS_WANDB_ENTITY:-}"
+        export PADIS_WANDB_MODE="${PADIS_WANDB_MODE:-online}"
+        export PADIS_NO_WANDB="${PADIS_NO_WANDB:-0}"
+        export PADIS_NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-1}"
+        export PADIS_WANDB_NAME_PREFIX="${PADIS_WANDB_NAME_PREFIX:-PaDIS_A100_${run_stamp}}"
+
+        if [ -z "${PADIS_MAX_TRAIN_SECONDS:-}" ]; then
+                max_seconds_buffer="${PADIS_MAX_TRAIN_SECONDS_BUFFER:-1800}"
+                real_seconds="$(padis_time_to_seconds "$real_time" || true)"
+                if [ -n "$real_seconds" ] && [ "$real_seconds" -gt "$max_seconds_buffer" ]; then
+                        export PADIS_MAX_TRAIN_SECONDS=$((real_seconds - max_seconds_buffer))
+                fi
+        else
+                export PADIS_MAX_TRAIN_SECONDS
         fi
 }
 

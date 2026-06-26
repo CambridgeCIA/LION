@@ -549,7 +549,7 @@ def build_arg_parser():
         default=LION_EXPERIMENTS_PATH.joinpath("PaDIS", "LIDC_256"),
     )
     parser.add_argument("--run-name", type=str, default=None)
-    parser.add_argument("--target-patches", type=int, default=40_000_000)
+    parser.add_argument("--target-patches", type=int, default=400_000_000)
     parser.add_argument("--validation-interval-patches", type=int, default=200_000)
     parser.add_argument(
         "--validation-max-patches",
@@ -797,6 +797,7 @@ def main():
         if wandb_run is not None:
             wandb_run.summary["min_validation_loss"] = min_validation_loss(solver)
             wandb_run.summary["seen_patches"] = solver.seen_patches
+            wandb_run.summary["training_steps"] = len(solver.train_loss)
         log_wandb_outputs(
             wandb_run, run_folder, log_artifact=not args.no_wandb_artifact
         )

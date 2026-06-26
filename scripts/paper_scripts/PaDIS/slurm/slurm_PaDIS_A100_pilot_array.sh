@@ -80,6 +80,30 @@ LOG_INTERVAL="${PADIS_PILOT_LOG_INTERVAL_PATCHES:-128}"
 MAX_TRAIN_SECONDS="${PADIS_PILOT_MAX_TRAIN_SECONDS:-840}"
 NUM_WORKERS="${PADIS_NUM_WORKERS:-16}"
 PREFETCH_FACTOR="${PADIS_PREFETCH_FACTOR:-4}"
+NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-1}"
+PADIS_WANDB_PROJECT="${PADIS_WANDB_PROJECT:-PaDIS-Reproduction}"
+PADIS_WANDB_ENTITY="${PADIS_WANDB_ENTITY:-}"
+PADIS_WANDB_MODE="${PADIS_WANDB_MODE:-online}"
+PADIS_NO_WANDB="${PADIS_NO_WANDB:-0}"
+export PADIS_WANDB_PROJECT PADIS_WANDB_ENTITY PADIS_WANDB_MODE PADIS_NO_WANDB
+
+wandb_args=()
+if [ "$PADIS_NO_WANDB" = "1" ] || [ "${PADIS_PILOT_NO_WANDB:-0}" = "1" ]; then
+        wandb_args=(--no-wandb --wandb-mode disabled)
+else
+        wandb_name="${PADIS_PILOT_WANDB_NAME_PREFIX:-PaDIS_A100_pilot_${PADIS_RUN_STAMP}}_${TASK_NAME}"
+        wandb_args=(
+                --wandb-project "$PADIS_WANDB_PROJECT"
+                --wandb-name "$wandb_name"
+                --wandb-mode "$PADIS_WANDB_MODE"
+        )
+        if [ -n "$PADIS_WANDB_ENTITY" ]; then
+                wandb_args+=(--wandb-entity "$PADIS_WANDB_ENTITY")
+        fi
+        if [ "$NO_WANDB_ARTIFACT" = "1" ]; then
+                wandb_args+=(--no-wandb-artifact)
+        fi
+fi
 
 if [ "$TASK_ENGINE" = "lidc256" ]; then
         CMD=(
@@ -97,9 +121,8 @@ if [ "$TASK_ENGINE" = "lidc256" ]; then
                 --batch-size "$TASK_BATCH_SIZE"
                 --num-workers "$NUM_WORKERS"
                 --prefetch-factor "$PREFETCH_FACTOR"
-                --no-wandb
-                --wandb-mode disabled
         )
+        CMD+=("${wandb_args[@]}")
         if [ -n "$PADIS_DATA_FOLDER" ]; then
                 CMD+=(--data-folder "$PADIS_DATA_FOLDER")
         fi
@@ -144,9 +167,8 @@ elif [ "$TASK_ENGINE" = "lidc512" ]; then
                 --batch-size "$TASK_BATCH_SIZE"
                 --num-workers "${PADIS_512_NUM_WORKERS:-$NUM_WORKERS}"
                 --prefetch-factor "${PADIS_512_PREFETCH_FACTOR:-$PREFETCH_FACTOR}"
-                --no-wandb
-                --wandb-mode disabled
         )
+        CMD+=("${wandb_args[@]}")
         if [ -n "$PADIS_DATA_FOLDER" ]; then
                 CMD+=(--data-folder "$PADIS_DATA_FOLDER")
         fi
