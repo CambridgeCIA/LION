@@ -18,6 +18,7 @@ last_task=$((task_count - 1))
 account="${PADIS_SLURM_ACCOUNT:-MPHIL-DIS-SL2-GPU}"
 real_time="${PADIS_REAL_TIME:-24:00:00}"
 real_limit="${PADIS_REAL_ARRAY_LIMIT:-10}"
+real_array="${PADIS_REAL_ARRAY:-0-${last_task}%${real_limit}}"
 run_root="$(padis_default_run_root)"
 run_stamp="${PADIS_RUN_STAMP:-$(date +%Y%m%d_%H%M%S)}"
 
@@ -33,7 +34,7 @@ real_job="$(
                 --parsable \
                 -A "$account" \
                 --time "$real_time" \
-                --array "0-${last_task}%${real_limit}" \
+                --array "$real_array" \
                 --export=ALL \
                 --output "$run_root/debug_runs/slurm_logs/%x-%A_%a.out" \
                 "$SCRIPT_DIR/slurm_PaDIS_A100_training_array.sh"
@@ -44,6 +45,7 @@ Submitted real PaDIS training array: $real_job
 
 Run root: $run_root
 Run stamp: $run_stamp
+Array: $real_array
 Real training: $run_root/final_real_runs/a100_training_$run_stamp
 Slurm logs: $run_root/debug_runs/slurm_logs
 
