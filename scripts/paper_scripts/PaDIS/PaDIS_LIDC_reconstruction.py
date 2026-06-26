@@ -19,6 +19,7 @@ os.environ.setdefault("XDG_CACHE_HOME", str(_CACHE_ROOT / "xdg"))
 
 import torch
 import numpy as np
+import PIL.Image
 from tqdm import tqdm
 
 from LION.CTtools.ct_geometry import Geometry
@@ -68,6 +69,38 @@ ABLATION_VARIANTS = {
     "no_langevin_noise": {"disable_langevin_noise": True},
     "no_prior_score": {"disable_prior_score": True},
 }
+
+
+class PNGImagePriorDataset(torch.utils.data.Dataset):
+    """Image-prior dataset backed by PaDIS-style PNG slices."""
+
+    def __init__(self, image_dir: pathlib.Path, channels: int):
+        self.image_dir = pathlib.Path(image_dir).expanduser()
+        if not self.image_dir.is_dir():
+            raise FileNotFoundError(f"PNG image directory not found: {self.image_dir}")
+        self.channels = int(channels)
+        self.files = sorted(
+            path for path in self.image_dir.iterdir() if path.suffix.lower() == ".png"
+        )
+        if not self.files:
+            raise FileNotFoundError(f"No PNG files found in {self.image_dir}")
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, index):
+        image = np.asarray(PIL.Image.open(self.files[index]), dtype=np.float32) / 255.0
+        if self.channels == 1:
+            if image.ndim == 3:
+                image = image[..., 0]
+            image = image[None, :, :]
+        elif self.channels == 3:
+            if image.ndim == 2:
+                image = np.repeat(image[..., None], 3, axis=-1)
+            image = np.transpose(image, (2, 0, 1))
+        else:
+            raise ValueError("PNGImagePriorDataset supports 1 or 3 channels.")
+        return torch.empty(0), torch.from_numpy(image.copy()).float()
 
 
 def project_root() -> pathlib.Path:
@@ -318,7 +351,12 @@ def measurement_image_to_sampler_domain(image: torch.Tensor, params) -> torch.Te
 
 def fdk_baseline(sinogram: torch.Tensor, reconstructor: PaDIS, params) -> torch.Tensor:
     with torch.no_grad():
-        reconstruction = fdk(sinogram, reconstructor.op, clip=True)
+        if reconstructor.geometry is None:
+            reconstruction = reconstructor.op.inverse(sinogram)
+            if bool(getattr(params, "clip_initial", True)):
+                reconstruction = reconstruction.clamp(0.0, 1.0)
+        else:
+            reconstruction = fdk(sinogram, reconstructor.op, clip=True)
         reconstruction = measurement_image_to_sampler_domain(reconstruction, params)
         return reconstruction.clamp(0.0, 1.0)
 
@@ -466,6 +504,89 @@ def save_preview(
     plt.close(fig)
 
 
+def save_tensor_image(
+    path: pathlib.Path,
+    tensor: torch.Tensor,
+    *,
+    transpose: bool = False,
+    vmin: float | None = None,
+    vmax: float | None = None,
+) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    image = tensor.detach().cpu().squeeze()
+    while image.ndim > 2:
+        image = image[0]
+    if transpose and image.ndim == 2:
+        image = image.T
+    path.parent.mkdir(parents=True, exist_ok=True)
+    plt.imsave(path, image.numpy(), cmap="gray", vmin=vmin, vmax=vmax)
+
+
+def save_trace_images(
+    output_folder: pathlib.Path,
+    sample_index: int,
+    snapshots: list[dict],
+) -> dict | None:
+    if not snapshots:
+        return None
+
+    trace_root = output_folder / "trace_images"
+    sample_folder = trace_root / f"sample_{sample_index:04d}"
+    sample_folder.mkdir(parents=True, exist_ok=True)
+    tensor_path = trace_root / f"sample_{sample_index:04d}.pt"
+    torch.save({"index": int(sample_index), "snapshots": snapshots}, tensor_path)
+
+    image_records = []
+    for snapshot in snapshots:
+        stem = (
+            f"step_{int(snapshot['step']):04d}_"
+            f"inner_{int(snapshot['inner']):02d}_"
+            f"{snapshot['algorithm']}"
+        )
+        denoised_path = sample_folder / f"{stem}_denoised.png"
+        projected_path = sample_folder / f"{stem}_projected.png"
+        forward_path = sample_folder / f"{stem}_forward_projected.png"
+        save_tensor_image(
+            denoised_path,
+            snapshot["denoised"],
+            vmin=0.0,
+            vmax=1.0,
+        )
+        save_tensor_image(
+            projected_path,
+            snapshot["projected"],
+            vmin=0.0,
+            vmax=1.0,
+        )
+        save_tensor_image(
+            forward_path,
+            snapshot["forward_projected"],
+            transpose=True,
+        )
+        image_records.append(
+            {
+                "step": int(snapshot["step"]),
+                "inner": int(snapshot["inner"]),
+                "algorithm": snapshot["algorithm"],
+                "sigma": float(snapshot["sigma"]),
+                "denoised_png": str(denoised_path),
+                "projected_png": str(projected_path),
+                "forward_projected_png": str(forward_path),
+            }
+        )
+
+    return {
+        "index": int(sample_index),
+        "tensor_path": str(tensor_path),
+        "folder": str(sample_folder),
+        "images": image_records,
+    }
+
+
 def set_run_seed(seed: int) -> None:
     os.environ.setdefault("PYTHONHASHSEED", str(seed))
     random.seed(seed)
@@ -490,7 +611,6 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
     sampler_params.sigma_max = args.sigma_max
     sampler_params.rho = args.rho
     sampler_params.zeta = args.zeta
-    sampler_params.initial_reconstruction = args.initial_reconstruction
     if args.paper_ct_sampling:
         paper_params = PaDIS.paper_ct_parameters(model, views=args.paper_ct_views)
         sampler_params.num_steps = paper_params.num_steps
@@ -523,6 +643,8 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.data_consistency_gradient = (
             public_params.data_consistency_gradient
         )
+    if args.initial_reconstruction is not None:
+        sampler_params.initial_reconstruction = args.initial_reconstruction
     sampler_params.patch_batch_size = args.patch_batch_size
     sampler_params.langevin_ddnm = args.langevin_ddnm
     sampler_params.langevin_noise_scale = args.langevin_noise_scale
@@ -556,6 +678,7 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
     sampler_params.operator_norm_iterations = args.operator_norm_iterations
     sampler_params.operator_norm_tolerance = args.operator_norm_tolerance
     sampler_params.trace_interval = args.trace_interval
+    sampler_params.trace_images = args.trace_images
     if args.prior_mode != "auto":
         sampler_params.prior_mode = (
             "whole_image" if args.prior_mode == "whole-image" else "patch"
@@ -622,6 +745,7 @@ def run_reconstruction_variant(
     targets = []
     sinograms = []
     traces = []
+    trace_images = []
     for index in tqdm(
         range(args.start_index, stop),
         desc=f"LIDC {args.split} {variant_name}",
@@ -696,6 +820,14 @@ def run_reconstruction_variant(
         )
         if args.trace_interval > 0:
             traces.append({"index": int(index), "trace": reconstructor.last_trace})
+        if args.trace_images:
+            trace_image_record = save_trace_images(
+                output_folder,
+                int(index),
+                reconstructor.last_trace_images,
+            )
+            if trace_image_record is not None:
+                trace_images.append(trace_image_record)
         metrics.append(item)
         if args.save_previews:
             save_preview(
@@ -740,6 +872,11 @@ def run_reconstruction_variant(
         trace_path = output_folder / "trace.json"
         with open(trace_path, "w") as f:
             json.dump(traces, f, indent=2)
+    trace_images_path = None
+    if trace_images:
+        trace_images_path = output_folder / "trace_images.json"
+        with open(trace_images_path, "w") as f:
+            json.dump(trace_images, f, indent=2)
 
     tensor_path = output_folder / "reconstructions.pt"
     torch.save(
@@ -788,12 +925,17 @@ def run_reconstruction_variant(
     print(f"Saved metrics to {metric_path}")
     if trace_path is not None:
         print(f"Saved sampler trace to {trace_path}")
+    if trace_images_path is not None:
+        print(f"Saved trace images to {trace_images_path}")
     print(f"Saved tensors to {tensor_path}")
     return {
         "name": variant_name,
         "folder": str(output_folder),
         "metrics": str(metric_path),
         "trace": str(trace_path) if trace_path is not None else None,
+        "trace_images": (
+            str(trace_images_path) if trace_images_path is not None else None
+        ),
         "tensors": str(tensor_path),
         "mean_mse": mean_mse,
         "mean_psnr": mean_psnr,
@@ -840,6 +982,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="normal",
         help="Manual dataset mode only. Ignored when --experiment is set.",
     )
+    parser.add_argument(
+        "--public-padis-image-dir",
+        type=pathlib.Path,
+        default=None,
+        help="Use PaDIS-style PNG slices as the image-prior dataset.",
+    )
     parser.add_argument("--noise", choices=("none", "low-dose"), default="none")
     parser.add_argument("--noise-i0", type=float, default=3500)
     parser.add_argument("--noise-sigma", type=float, default=5)
@@ -879,8 +1027,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--initial-reconstruction",
         choices=("noise", "fdk", "inverse"),
-        default="fdk",
-        help="'fdk' matches the public PaDIS CT script variant; 'noise' starts from pure diffusion noise.",
+        default=None,
+        help=(
+            "Override sampler initialization. Paper preset defaults to noise; "
+            "public/default presets default to FDK."
+        ),
     )
     parser.add_argument("--dps-epsilon", type=float, default=None)
     parser.add_argument("--sampling-epsilon", type=float, default=None)
@@ -1002,6 +1153,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=0,
         help="Save sampler diagnostics every N outer steps. Set 1 for every step.",
     )
+    parser.add_argument(
+        "--trace-images",
+        action="store_true",
+        help=(
+            "Save denoised, projected, and forward-projected trace snapshots. "
+            "Uses --trace-interval; defaults to every 5 outer steps when no "
+            "trace interval is set."
+        ),
+    )
     return parser
 
 
@@ -1015,6 +1175,12 @@ def main() -> None:
         raise ValueError(
             "--paper-ct-sampling and --public-padis-ct-sampling are mutually exclusive."
         )
+    if args.public_padis_image_dir is not None and args.experiment != "none":
+        raise ValueError("--public-padis-image-dir requires --experiment none.")
+    if args.trace_interval < 0:
+        raise ValueError("--trace-interval must be non-negative.")
+    if args.trace_images and args.trace_interval == 0:
+        args.trace_interval = 5
 
     set_run_seed(args.seed)
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
@@ -1028,9 +1194,16 @@ def main() -> None:
         use_ema=not args.raw_weights,
         disable_position_channels=args.no_position_channels,
     )
+    reconstruction_geometry = geometry
+
     if args.experiment == "none":
-        dataset = build_dataset(args, geometry)
-        reconstruction_geometry = geometry
+        if args.public_padis_image_dir is not None:
+            dataset = PNGImagePriorDataset(
+                args.public_padis_image_dir,
+                channels=int(geometry.image_shape[0]),
+            )
+        else:
+            dataset = build_dataset(args, geometry)
         experiment = None
         from_experiment = False
         experiment_measurement_source = args.measurement_source
@@ -1064,7 +1237,10 @@ def main() -> None:
         sampler_params.disable_data_consistency = False
         sampler_params.disable_langevin_noise = False
         sampler_params.disable_prior_score = False
-    run_name = args.experiment if args.experiment != "none" else "manual"
+    if args.experiment != "none":
+        run_name = args.experiment
+    else:
+        run_name = "manual"
     output_root = args.output_folder / run_name / args.split / args.algorithm
 
     if args.run_ablations:

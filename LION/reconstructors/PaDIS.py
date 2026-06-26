@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+import random
 from typing import Literal
 
 import torch
@@ -45,6 +46,10 @@ class PaDIS(LIONReconstructor):
             self.geometry = None
             self.op = None
             self.op_autograd = None
+        elif isinstance(physics, Operator):
+            self.geometry = None
+            self.op = physics
+            self.op_autograd = physics
         else:
             super().__init__(physics)
         if algorithm not in ("dps_langevin", "dps", "langevin", "pc"):
@@ -62,6 +67,7 @@ class PaDIS(LIONReconstructor):
         params.sigma_min = 0.005
         params.sigma_max = 0.05
         params.noise_schedule = "edm"
+        params.noise_schedule_dtype = "float32"
         params.rho = 7.0
         params.zeta = 0.3
         params.sampling_epsilon = 1.0
@@ -98,6 +104,11 @@ class PaDIS(LIONReconstructor):
         params.naive_patch_fixed_layout = True
         params.naive_patch_output = "sampler_state"
         params.trace_interval = 0
+        params.trace_images = False
+        params.patch_offset_rng = "torch"
+        params.consume_discarded_initial_noise = False
+        params.consume_unused_latents = False
+        params.consume_denoise_output_noise = False
         return params
 
     @staticmethod
@@ -141,6 +152,7 @@ class PaDIS(LIONReconstructor):
         params.sigma_min = 0.003
         params.sigma_max = 10.0
         params.noise_schedule = "edm"
+        params.noise_schedule_dtype = "float64"
         params.zeta = 0.3
         params.dps_epsilon = 0.5
         params.sampling_epsilon = 1.0
@@ -149,6 +161,10 @@ class PaDIS(LIONReconstructor):
         params.initial_reconstruction = "fdk"
         params.clip_initial = True
         params.clip_output = True
+        params.patch_offset_rng = "python"
+        params.consume_discarded_initial_noise = True
+        params.consume_unused_latents = True
+        params.consume_denoise_output_noise = True
         return params
 
     def reconstruct_sample(
@@ -171,6 +187,10 @@ class PaDIS(LIONReconstructor):
         algorithm = self._canonical_algorithm(algorithm or self.algorithm)
         self.model.eval()
         self.last_trace = []
+        self.last_trace_images = []
+        if bool(getattr(params, "consume_unused_latents", False)):
+            latent_shape = (1, *tuple(int(value) for value in self.op.domain_shape))
+            _ = self._sample_noise(sino.new_empty(latent_shape), generator)
         previous_params = getattr(self, "_active_params", None)
         self._active_params = params
         try:
@@ -321,6 +341,11 @@ class PaDIS(LIONReconstructor):
             raise ValueError("sigma_max must be greater than or equal to sigma_min.")
         if getattr(params, "noise_schedule", "edm") not in ("edm", "geometric"):
             raise ValueError("noise_schedule must be 'edm' or 'geometric'.")
+        if getattr(params, "noise_schedule_dtype", "float32") not in (
+            "float32",
+            "float64",
+        ):
+            raise ValueError("noise_schedule_dtype must be 'float32' or 'float64'.")
         if float(getattr(params, "sampling_epsilon", 1.0)) <= 0:
             raise ValueError("sampling_epsilon must be positive.")
         if float(getattr(params, "dps_epsilon", 1.0)) <= 0:
@@ -349,6 +374,8 @@ class PaDIS(LIONReconstructor):
             raise ValueError(
                 "naive_patch_output must be 'sampler_state' or 'denoised'."
             )
+        if getattr(params, "patch_offset_rng", "torch") not in ("torch", "python"):
+            raise ValueError("patch_offset_rng must be 'torch' or 'python'.")
 
     @staticmethod
     def _canonical_algorithm(algorithm: str) -> str:
@@ -387,13 +414,22 @@ class PaDIS(LIONReconstructor):
             return float(params.sigma_max) * self._sample_noise(
                 self._pad(x_init, params), generator
             )
+        if bool(getattr(params, "consume_discarded_initial_noise", False)):
+            _ = float(params.sigma_max) * self._sample_noise(x_init, generator)
         return self._pad(x_init, params)
 
     def _noise_schedule(self, params, device: torch.device) -> torch.Tensor:
         if int(params.num_steps) < 1:
             raise ValueError("num_steps must be positive.")
+        schedule_dtype = (
+            torch.float64
+            if getattr(params, "noise_schedule_dtype", "float32") == "float64"
+            else torch.float32
+        )
         if int(params.num_steps) == 1:
-            t_steps = torch.tensor([float(params.sigma_max)], device=device)
+            t_steps = torch.tensor(
+                [float(params.sigma_max)], dtype=torch.float64, device=device
+            )
         else:
             sigma_min = float(params.sigma_min)
             sigma_max = float(params.sigma_max)
@@ -420,7 +456,8 @@ class PaDIS(LIONReconstructor):
                 ) ** rho
             else:
                 raise ValueError("noise_schedule must be 'edm' or 'geometric'.")
-        return torch.cat([t_steps.to(torch.float32), torch.zeros(1, device=device)])
+        t_steps = t_steps.to(schedule_dtype)
+        return torch.cat([t_steps, torch.zeros(1, dtype=schedule_dtype, device=device)])
 
     def _patch_layout(
         self,
@@ -440,8 +477,13 @@ class PaDIS(LIONReconstructor):
             raise ValueError("pad_width must be non-negative.")
         n_rows = height // patch_size + 1
         n_cols = width // patch_size + 1
-        row_offset = self._random_offset(pad, device, generator, fixed_offset)
-        col_offset = self._random_offset(pad, device, generator, fixed_offset)
+        offset_rng = getattr(params, "patch_offset_rng", "torch")
+        row_offset = self._random_offset(
+            pad, device, generator, fixed_offset, rng_source=offset_rng
+        )
+        col_offset = self._random_offset(
+            pad, device, generator, fixed_offset, rng_source=offset_rng
+        )
         row_spaced = torch.arange(n_rows, device=device, dtype=torch.int64) * patch_size
         col_spaced = torch.arange(n_cols, device=device, dtype=torch.int64) * patch_size
         indices = []
@@ -465,9 +507,12 @@ class PaDIS(LIONReconstructor):
         device: torch.device,
         generator: torch.Generator | None = None,
         fixed_offset: bool = False,
+        rng_source: str = "torch",
     ) -> int:
         if pad <= 0 or fixed_offset:
             return 0
+        if rng_source == "python":
+            return random.randint(0, pad - 1)
         return int(
             torch.randint(0, pad, (1,), device=device, generator=generator).item()
         )
@@ -486,6 +531,7 @@ class PaDIS(LIONReconstructor):
         sigma: torch.Tensor,
         layout: _PatchLayout,
         params,
+        generator: torch.Generator | None = None,
     ) -> torch.Tensor:
         if x.dim() != 4 or x.shape[0] != 1:
             raise ValueError(
@@ -520,6 +566,8 @@ class PaDIS(LIONReconstructor):
             output[:, :, top:bottom, left:right] -= x[:, :, top:bottom, left:right]
             cursor += 1
         denoised = x + output
+        if bool(getattr(params, "consume_denoise_output_noise", False)):
+            _ = self._sample_noise(denoised, generator)
         pad = int(params.pad_width)
         if pad == 0:
             return denoised
@@ -605,7 +653,7 @@ class PaDIS(LIONReconstructor):
         if prior_mode != "patch":
             raise ValueError("prior_mode must be 'patch' or 'whole_image'.")
         layout = self._patch_layout(image_shape, params, x.device, generator)
-        return self._denoise_patches(x, sigma, layout, params)
+        return self._denoise_patches(x, sigma, layout, params, generator)
 
     def _edm_denoise_batch(
         self,
@@ -623,14 +671,20 @@ class PaDIS(LIONReconstructor):
             raise ValueError("patch_batch_size must be positive or None.")
 
         outputs = []
+        try:
+            model_dtype = next(self.model.parameters()).dtype
+        except StopIteration:
+            model_dtype = image_batch.dtype
         for start in range(0, batch_size, patch_batch_size):
             stop = min(start + patch_batch_size, batch_size)
-            image = image_batch[start:stop]
+            image = image_batch[start:stop].to(model_dtype)
             position = (
-                position_batch[start:stop] if position_batch is not None else None
+                position_batch[start:stop].to(model_dtype)
+                if position_batch is not None
+                else None
             )
             sigma_vec = sigma.expand(image.shape[0]).to(
-                device=image.device, dtype=image.dtype
+                device=image.device, dtype=model_dtype
             )
             sigma_view = sigma_vec.reshape(image.shape[0], 1, 1, 1)
             sigma_data = torch.as_tensor(
@@ -844,6 +898,7 @@ class PaDIS(LIONReconstructor):
         sigma: torch.Tensor,
         x: torch.Tensor,
         denoised: torch.Tensor,
+        projected: torch.Tensor | None = None,
         score: torch.Tensor,
         residual: torch.Tensor | None = None,
         gradient: torch.Tensor | None = None,
@@ -871,6 +926,10 @@ class PaDIS(LIONReconstructor):
             "denoised_mean": float(denoised.detach().mean().cpu()),
             "score_norm": float(torch.linalg.norm(score.detach()).cpu()),
         }
+        if projected is not None:
+            item["projected_min"] = float(projected.detach().amin().cpu())
+            item["projected_max"] = float(projected.detach().amax().cpu())
+            item["projected_mean"] = float(projected.detach().mean().cpu())
         if residual is not None:
             item["residual_norm"] = float(torch.linalg.norm(residual.detach()).cpu())
         if gradient is not None:
@@ -883,6 +942,28 @@ class PaDIS(LIONReconstructor):
             item["data_consistency_normalizer"] = float(data_normalizer)
         if data_scale is not None:
             item["data_consistency_scale"] = float(data_scale)
+        if bool(getattr(params, "trace_images", False)):
+            image_index = len(getattr(self, "last_trace_images", []))
+            item["trace_image_index"] = int(image_index)
+            if projected is None:
+                projected = x
+            denoised_crop = self._crop(denoised.detach(), params).squeeze(0)
+            projected_crop = self._crop(projected.detach(), params).squeeze(0)
+            with torch.no_grad():
+                forward_projected = self._forward_project(
+                    projected_crop.to(dtype=torch.float32)
+                )
+            self.last_trace_images.append(
+                {
+                    "algorithm": algorithm,
+                    "step": int(step_index),
+                    "inner": int(inner_index),
+                    "sigma": float(sigma.detach().cpu()),
+                    "denoised": denoised_crop.detach().cpu(),
+                    "projected": projected_crop.detach().cpu(),
+                    "forward_projected": forward_projected.detach().cpu(),
+                }
+            )
         self.last_trace.append(item)
 
     def _sample_noise(
@@ -1068,6 +1149,11 @@ class PaDIS(LIONReconstructor):
                 ) = self._dps_data_gradient(
                     measurement, x, denoised, params, sigma=t_cur
                 )
+                projected = (
+                    x
+                    if bool(params.disable_data_consistency)
+                    else x - data_step_size * data_gradient
+                )
                 self._append_trace(
                     params,
                     algorithm="dps_langevin",
@@ -1076,6 +1162,7 @@ class PaDIS(LIONReconstructor):
                     sigma=t_cur,
                     x=x,
                     denoised=denoised,
+                    projected=projected,
                     score=score,
                     residual=residual,
                     gradient=data_gradient,
@@ -1084,10 +1171,7 @@ class PaDIS(LIONReconstructor):
                     data_scale=data_scale,
                 )
                 z = self._sample_noise(x, generator)
-                if bool(params.disable_data_consistency):
-                    x = x
-                else:
-                    x = x - data_step_size * data_gradient
+                x = projected
                 score_step = (
                     0 if bool(params.disable_prior_score) else alpha / 2 * score
                 )
@@ -1218,6 +1302,7 @@ class PaDIS(LIONReconstructor):
                     sigma=t_cur,
                     x=x,
                     denoised=denoised,
+                    projected=x,
                     score=score,
                     residual=residual,
                     gradient=correction,
@@ -1271,6 +1356,7 @@ class PaDIS(LIONReconstructor):
                         sigma=t_cur,
                         x=x,
                         denoised=denoised,
+                        projected=x,
                         score=score,
                         residual=residual,
                         gradient=correction,
@@ -1329,6 +1415,17 @@ class PaDIS(LIONReconstructor):
                         )
                         x0hat = self._pad(corrected.unsqueeze(0), params)
                         score = (x0hat - x) / t_cur.square()
+                        self._append_trace(
+                            params,
+                            algorithm="langevin_ddnm",
+                            step_index=step_index,
+                            inner_index=inner_index,
+                            sigma=t_cur,
+                            x=x,
+                            denoised=denoised,
+                            projected=x0hat,
+                            score=score,
+                        )
                     else:
                         score = (denoised - x) / t_cur.square()
                         residual = measurement - self._forward_project(
@@ -1345,6 +1442,16 @@ class PaDIS(LIONReconstructor):
                             params, t_cur, raw_correction.device
                         )
                         correction = data_scale * raw_correction / data_normalizer
+                        projected = x
+                        if not bool(params.disable_data_consistency):
+                            pad = int(params.pad_width)
+                            if pad == 0:
+                                projected = x + step_size * correction
+                            else:
+                                projected = x.clone()
+                                projected[:, :, pad:-pad, pad:-pad] += (
+                                    step_size * correction
+                                )
                         self._append_trace(
                             params,
                             algorithm="langevin",
@@ -1353,6 +1460,7 @@ class PaDIS(LIONReconstructor):
                             sigma=t_cur,
                             x=x,
                             denoised=denoised,
+                            projected=projected,
                             score=score,
                             residual=residual,
                             gradient=correction,
@@ -1360,12 +1468,7 @@ class PaDIS(LIONReconstructor):
                             data_normalizer=data_normalizer,
                             data_scale=data_scale,
                         )
-                        pad = int(params.pad_width)
-                        if not bool(params.disable_data_consistency):
-                            if pad == 0:
-                                x = x + step_size * correction
-                            else:
-                                x[:, :, pad:-pad, pad:-pad] += step_size * correction
+                        x = projected
 
                     z = self._sample_noise(x, generator)
                     score_step = (
