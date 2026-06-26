@@ -63,6 +63,7 @@ def test_paper_fan_presets_use_requested_views_and_paper_ct_hyperparameters():
         assert arguments[arguments.index("--inner-steps") + 1] == "10"
         assert arguments[arguments.index("--sigma-min") + 1] == sigma_min
         assert arguments[arguments.index("--sigma-max") + 1] == "10"
+        assert arguments[arguments.index("--noise-schedule") + 1] == "geometric"
         assert arguments[arguments.index("--zeta") + 1] == "0.3"
         assert arguments[arguments.index("--dps-epsilon") + 1] == "1"
         assert arguments[arguments.index("--sampling-epsilon") + 1] == "1"

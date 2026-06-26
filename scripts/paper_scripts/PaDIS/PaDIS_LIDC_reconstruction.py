@@ -497,6 +497,7 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.inner_steps = paper_params.inner_steps
         sampler_params.sigma_min = paper_params.sigma_min
         sampler_params.sigma_max = paper_params.sigma_max
+        sampler_params.noise_schedule = paper_params.noise_schedule
         sampler_params.zeta = paper_params.zeta
         sampler_params.initial_reconstruction = paper_params.initial_reconstruction
         sampler_params.clip_initial = paper_params.clip_initial
@@ -512,6 +513,7 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.inner_steps = public_params.inner_steps
         sampler_params.sigma_min = public_params.sigma_min
         sampler_params.sigma_max = public_params.sigma_max
+        sampler_params.noise_schedule = public_params.noise_schedule
         sampler_params.zeta = public_params.zeta
         sampler_params.initial_reconstruction = public_params.initial_reconstruction
         sampler_params.clip_initial = public_params.clip_initial
@@ -532,6 +534,8 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.dps_epsilon = args.dps_epsilon
     if args.sampling_epsilon is not None:
         sampler_params.sampling_epsilon = args.sampling_epsilon
+    if args.noise_schedule is not None:
+        sampler_params.noise_schedule = args.noise_schedule
     if args.data_consistency_gradient is not None:
         sampler_params.data_consistency_gradient = args.data_consistency_gradient
     if args.adjoint_data_step_schedule is not None:
@@ -865,6 +869,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sigma-min", type=float, default=0.005)
     parser.add_argument("--sigma-max", type=float, default=0.05)
     parser.add_argument("--rho", type=float, default=7.0)
+    parser.add_argument(
+        "--noise-schedule",
+        choices=("edm", "geometric"),
+        default=None,
+        help="Sigma schedule. The paper text uses geometric; the public PaDIS script uses edm/rho.",
+    )
     parser.add_argument("--zeta", type=float, default=0.3)
     parser.add_argument(
         "--initial-reconstruction",

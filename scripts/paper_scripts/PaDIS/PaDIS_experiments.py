@@ -34,6 +34,8 @@ def _paper_ct_arguments(
         f"{sigma_min:g}",
         "--sigma-max",
         "10",
+        "--noise-schedule",
+        "geometric",
         "--zeta",
         "0.3",
         "--dps-epsilon",

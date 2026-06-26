@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from typing import Literal
 
 import torch
@@ -60,6 +61,7 @@ class PaDIS(LIONReconstructor):
         params.inner_steps = 10
         params.sigma_min = 0.005
         params.sigma_max = 0.05
+        params.noise_schedule = "edm"
         params.rho = 7.0
         params.zeta = 0.3
         params.sampling_epsilon = 1.0
@@ -113,6 +115,7 @@ class PaDIS(LIONReconstructor):
         else:
             raise ValueError("PaDIS paper CT sampler only specifies 20 or 8 views.")
         params.sigma_max = 10.0
+        params.noise_schedule = "geometric"
         params.zeta = 0.3
         params.sampling_epsilon = 1.0
         params.dps_epsilon = 1.0
@@ -137,6 +140,7 @@ class PaDIS(LIONReconstructor):
         params.inner_steps = 10
         params.sigma_min = 0.003
         params.sigma_max = 10.0
+        params.noise_schedule = "edm"
         params.zeta = 0.3
         params.dps_epsilon = 0.5
         params.sampling_epsilon = 1.0
@@ -315,6 +319,8 @@ class PaDIS(LIONReconstructor):
             raise ValueError("sigma_min and sigma_max must be positive.")
         if float(params.sigma_max) < float(params.sigma_min):
             raise ValueError("sigma_max must be greater than or equal to sigma_min.")
+        if getattr(params, "noise_schedule", "edm") not in ("edm", "geometric"):
+            raise ValueError("noise_schedule must be 'edm' or 'geometric'.")
         if float(getattr(params, "sampling_epsilon", 1.0)) <= 0:
             raise ValueError("sampling_epsilon must be positive.")
         if float(getattr(params, "dps_epsilon", 1.0)) <= 0:
@@ -389,18 +395,31 @@ class PaDIS(LIONReconstructor):
         if int(params.num_steps) == 1:
             t_steps = torch.tensor([float(params.sigma_max)], device=device)
         else:
-            step_indices = torch.arange(
-                int(params.num_steps), dtype=torch.float64, device=device
-            )
             sigma_min = float(params.sigma_min)
             sigma_max = float(params.sigma_max)
-            rho = float(params.rho)
-            t_steps = (
-                sigma_max ** (1.0 / rho)
-                + step_indices
-                / (int(params.num_steps) - 1)
-                * (sigma_min ** (1.0 / rho) - sigma_max ** (1.0 / rho))
-            ) ** rho
+            schedule = getattr(params, "noise_schedule", "edm")
+            if schedule == "geometric":
+                log_steps = torch.linspace(
+                    math.log(sigma_max),
+                    math.log(sigma_min),
+                    int(params.num_steps),
+                    dtype=torch.float64,
+                    device=device,
+                )
+                t_steps = torch.exp(log_steps)
+            elif schedule == "edm":
+                step_indices = torch.arange(
+                    int(params.num_steps), dtype=torch.float64, device=device
+                )
+                rho = float(params.rho)
+                t_steps = (
+                    sigma_max ** (1.0 / rho)
+                    + step_indices
+                    / (int(params.num_steps) - 1)
+                    * (sigma_min ** (1.0 / rho) - sigma_max ** (1.0 / rho))
+                ) ** rho
+            else:
+                raise ValueError("noise_schedule must be 'edm' or 'geometric'.")
         return torch.cat([t_steps.to(torch.float32), torch.zeros(1, device=device)])
 
     def _patch_layout(

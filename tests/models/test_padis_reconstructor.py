@@ -128,6 +128,7 @@ def test_padis_paper_ct_sampling_preset():
     assert params.inner_steps == 10
     assert params.sigma_min == 0.002
     assert params.sigma_max == 10.0
+    assert params.noise_schedule == "geometric"
     assert params.initial_reconstruction == "noise"
     assert params.clip_initial is False
     assert params.clip_output is False
@@ -146,6 +147,7 @@ def test_padis_public_repo_ct_sampling_preset():
     assert params.inner_steps == 10
     assert params.sigma_min == 0.003
     assert params.sigma_max == 10.0
+    assert params.noise_schedule == "edm"
     assert params.initial_reconstruction == "fdk"
     assert params.clip_initial is True
     assert params.clip_output is True
@@ -157,8 +159,30 @@ def test_padis_public_repo_ct_sampling_preset():
 def test_padis_default_sampling_uses_unscaled_data_step_like_original_repo():
     model = ZeroPatchModel()
     params = PaDIS.default_parameters(model)
+    assert params.noise_schedule == "edm"
     assert params.data_consistency_normalization == "none"
     assert params.data_consistency_gradient == "norm"
+
+
+def test_padis_noise_schedule_modes():
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
+
+    params.num_steps = 4
+    params.sigma_max = 8.0
+    params.sigma_min = 1.0
+    params.noise_schedule = "geometric"
+    geometric = reconstructor._noise_schedule(params, torch.device("cpu"))[:-1]
+    ratios = geometric[:-1] / geometric[1:]
+    assert torch.allclose(ratios, torch.full_like(ratios, ratios[0]))
+    assert torch.allclose(geometric[[0, -1]], torch.tensor([8.0, 1.0]))
+
+    params.noise_schedule = "edm"
+    params.rho = 1.0
+    edm = reconstructor._noise_schedule(params, torch.device("cpu"))[:-1]
+    expected = torch.linspace(8.0, 1.0, 4)
+    assert torch.allclose(edm, expected)
 
 
 def test_padis_data_consistency_scale_schedule():
