@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+from dataclasses import dataclass
 import json
 import math
 import os
@@ -57,6 +58,89 @@ LIDC_EXPERIMENTS = {
         ct_experiments.SparseAngleExtremeLowDoseCTRecon
     ),
 }
+
+
+@dataclass(frozen=True)
+class PaperCTExperiment:
+    key: str
+    views: int
+    paper_geometry: str
+    lion_experiment: str
+    paper_sampler_views: int
+    description: str
+
+
+PAPER_CT_EXPERIMENTS = {
+    "ct_8": PaperCTExperiment(
+        key="ct_8",
+        views=8,
+        paper_geometry="parallel",
+        lion_experiment="PaDISFanBeam8CTRecon",
+        paper_sampler_views=8,
+        description="8-view CT experiment from the paper.",
+    ),
+    "ct_20": PaperCTExperiment(
+        key="ct_20",
+        views=20,
+        paper_geometry="parallel",
+        lion_experiment="PaDISFanBeam20CTRecon",
+        paper_sampler_views=20,
+        description="20-view CT experiment from the paper.",
+    ),
+    "ct_60": PaperCTExperiment(
+        key="ct_60",
+        views=60,
+        paper_geometry="parallel",
+        lion_experiment="PaDISFanBeam60CTRecon",
+        paper_sampler_views=20,
+        description="60-view CT experiment from the paper extra experiments.",
+    ),
+    "ct_fanbeam_180": PaperCTExperiment(
+        key="ct_fanbeam_180",
+        views=180,
+        paper_geometry="fan",
+        lion_experiment="PaDISFanBeam180CTRecon",
+        paper_sampler_views=20,
+        description="180-view fan-beam CT experiment from the paper extra experiments.",
+    ),
+    "ct_512_60": PaperCTExperiment(
+        key="ct_512_60",
+        views=60,
+        paper_geometry="parallel",
+        lion_experiment="PaDISFanBeam60CTRecon",
+        paper_sampler_views=20,
+        description="512x512 60-view CT experiment from the paper.",
+    ),
+}
+
+EXPERIMENT_ALIASES = {
+    "8": "ct_8",
+    "20": "ct_20",
+    "60": "ct_60",
+    "180": "ct_fanbeam_180",
+    "fanbeam_180": "ct_fanbeam_180",
+    "ct_fan_180": "ct_fanbeam_180",
+    "512_60": "ct_512_60",
+    "PaDISFanBeam8CTRecon": "ct_8",
+    "PaDISFanBeam20CTRecon": "ct_20",
+    "PaDISFanBeam60CTRecon": "ct_60",
+    "PaDISFanBeam180CTRecon": "ct_fanbeam_180",
+}
+
+IMPLEMENTATION_CHOICES = ("custom", "public_repo", "paper", "lion_quality")
+GEOMETRY_CHOICES = ("lion", "padis", "padis_parallel", "padis_fanbeam")
+UNSUPPORTED_PADIS_GEOMETRY_MESSAGE = (
+    "PaDIS geometry is intentionally not implemented for LIDC-IDRI. The "
+    "processed LIDC slices used by these scripts are saved as 512x512 HU arrays "
+    "without the per-scan pixel spacing/orientation needed to resample them into "
+    "the PaDIS public-repo coordinate system. The public PaDIS CT operators use "
+    "a 40-unit image support and 80-unit detector span, while the LION LIDC CT "
+    "setup uses a 300 mm field of view with detector size 900, DSO 575 mm, and "
+    "DSD 1050 mm. Treating those as interchangeable would not be a physically "
+    "correct detector/object transformation. Use --geometry lion, or provide a "
+    "metadata-preserving dataset and a derived physical resampling model before "
+    "adding PaDIS geometry."
+)
 
 LIDC_NORMAL_TO_MU_SCALE = 2.0 * (1.52 - 0.0012)
 LIDC_NORMAL_TO_MU_OFFSET = 0.0012
@@ -195,9 +279,33 @@ def build_dataset(args, geometry):
     return LIDC_IDRI(args.split, parameters=data_params, geometry_parameters=geometry)
 
 
+def canonical_experiment_name(name: str) -> str:
+    return EXPERIMENT_ALIASES.get(name, name)
+
+
+def experiment_spec_from_args(args) -> PaperCTExperiment | None:
+    canonical = canonical_experiment_name(args.experiment)
+    return PAPER_CT_EXPERIMENTS.get(canonical)
+
+
+def experiment_class_for_geometry(
+    spec: PaperCTExperiment,
+    geometry_tag: str,
+) -> type:
+    if geometry_tag == "lion":
+        return LIDC_EXPERIMENTS[spec.lion_experiment]
+    if geometry_tag in ("padis", "padis_parallel", "padis_fanbeam"):
+        raise ValueError(UNSUPPORTED_PADIS_GEOMETRY_MESSAGE)
+    raise ValueError(f"Unknown geometry tag: {geometry_tag}")
+
+
 def build_experiment_dataset(args, checkpoint_geometry):
     image_scaling = float(getattr(checkpoint_geometry, "image_scaling", 1.0))
-    experiment_cls = LIDC_EXPERIMENTS[args.experiment]
+    spec = experiment_spec_from_args(args)
+    if spec is None:
+        experiment_cls = LIDC_EXPERIMENTS[args.experiment]
+    else:
+        experiment_cls = experiment_class_for_geometry(spec, args.geometry)
     experiment = experiment_cls(
         dataset="LIDC-IDRI",
         datafolder=args.data_folder,
@@ -853,14 +961,17 @@ def set_run_seed(seed: int) -> None:
 
 
 def build_sampler_params(args, model, *, measurement_source: str) -> LIONParameter:
-    if args.paper_ct_sampling:
-        sampler_params = PaDIS.paper_ct_parameters(model, views=args.paper_ct_views)
-    elif args.public_padis_ct_sampling:
+    paper_views = args.paper_ct_views
+    spec = experiment_spec_from_args(args)
+    if spec is not None:
+        paper_views = spec.paper_sampler_views
+
+    if args.implementation == "paper":
+        sampler_params = PaDIS.paper_ct_parameters(model, views=paper_views)
+    elif args.implementation == "public_repo":
         sampler_params = PaDIS.padis_repo_ct_parameters(model)
-    elif args.lion_quality_ct_sampling:
-        sampler_params = PaDIS.lion_quality_ct_parameters(
-            model, views=args.paper_ct_views
-        )
+    elif args.implementation == "lion_quality":
+        sampler_params = PaDIS.lion_quality_ct_parameters(model, views=paper_views)
     else:
         sampler_params = PaDIS.default_parameters(model)
     sampler_params.num_steps = args.num_steps
@@ -869,8 +980,8 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
     sampler_params.sigma_max = args.sigma_max
     sampler_params.rho = args.rho
     sampler_params.zeta = args.zeta
-    if args.paper_ct_sampling:
-        paper_params = PaDIS.paper_ct_parameters(model, views=args.paper_ct_views)
+    if args.implementation == "paper":
+        paper_params = PaDIS.paper_ct_parameters(model, views=paper_views)
         sampler_params.num_steps = paper_params.num_steps
         sampler_params.inner_steps = paper_params.inner_steps
         sampler_params.sigma_min = paper_params.sigma_min
@@ -885,13 +996,21 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.data_consistency_gradient = (
             paper_params.data_consistency_gradient
         )
-    elif args.public_padis_ct_sampling:
+        sampler_params.adjoint_data_step_schedule = (
+            paper_params.adjoint_data_step_schedule
+        )
+    elif args.implementation == "public_repo":
         public_params = PaDIS.padis_repo_ct_parameters(model)
+        if args.public_repo_sigma_schedule == "paper":
+            sigma_schedule_params = PaDIS.paper_ct_parameters(model, views=paper_views)
+        else:
+            sigma_schedule_params = public_params
         sampler_params.num_steps = public_params.num_steps
         sampler_params.inner_steps = public_params.inner_steps
-        sampler_params.sigma_min = public_params.sigma_min
-        sampler_params.sigma_max = public_params.sigma_max
-        sampler_params.noise_schedule = public_params.noise_schedule
+        sampler_params.sigma_min = sigma_schedule_params.sigma_min
+        sampler_params.sigma_max = sigma_schedule_params.sigma_max
+        sampler_params.noise_schedule = sigma_schedule_params.noise_schedule
+        sampler_params.noise_schedule_dtype = sigma_schedule_params.noise_schedule_dtype
         sampler_params.zeta = public_params.zeta
         sampler_params.initial_reconstruction = public_params.initial_reconstruction
         sampler_params.clip_initial = public_params.clip_initial
@@ -901,10 +1020,12 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.data_consistency_gradient = (
             public_params.data_consistency_gradient
         )
-    elif args.lion_quality_ct_sampling:
-        quality_params = PaDIS.lion_quality_ct_parameters(
-            model, views=args.paper_ct_views
+        sampler_params.adjoint_data_step_schedule = (
+            public_params.adjoint_data_step_schedule
         )
+        sampler_params.data_consistency_scale = public_params.data_consistency_scale
+    elif args.implementation == "lion_quality":
+        quality_params = PaDIS.lion_quality_ct_parameters(model, views=paper_views)
         sampler_params.num_steps = quality_params.num_steps
         sampler_params.inner_steps = quality_params.inner_steps
         sampler_params.sigma_min = quality_params.sigma_min
@@ -1204,6 +1325,8 @@ def run_reconstruction_variant(
         "checkpoint": str(checkpoint_path),
         "split": args.split,
         "experiment": args.experiment,
+        "implementation": args.implementation,
+        "geometry_tag": args.geometry,
         "algorithm": args.algorithm,
         "ablation": variant_name,
         "ablation_overrides": variant_overrides,
@@ -1228,6 +1351,15 @@ def run_reconstruction_variant(
     }
     if experiment is not None:
         payload["experiment_name"] = experiment.param.name
+    spec = experiment_spec_from_args(args)
+    if spec is not None:
+        payload["paper_experiment"] = {
+            "key": spec.key,
+            "views": int(spec.views),
+            "paper_geometry": spec.paper_geometry,
+            "paper_sampler_views": int(spec.paper_sampler_views),
+            "description": spec.description,
+        }
     metric_path = output_folder / "metrics.json"
     with open(metric_path, "w") as f:
         json.dump(payload, f, indent=2)
@@ -1538,6 +1670,14 @@ def enforce_quality_gates(args, summaries: list[dict]) -> None:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
+    experiment_choices = sorted(
+        {
+            "none",
+            *LIDC_EXPERIMENTS.keys(),
+            *PAPER_CT_EXPERIMENTS.keys(),
+            *EXPERIMENT_ALIASES.keys(),
+        }
+    )
     parser.add_argument("--checkpoint", type=pathlib.Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
     parser.add_argument(
@@ -1545,12 +1685,38 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         default=LION_EXPERIMENTS_PATH / "PaDIS" / "LIDC_reconstruction",
     )
-    parser.add_argument("--split", choices=("validation", "test"), default="validation")
+    parser.add_argument("--split", choices=("validation", "test"), default="test")
     parser.add_argument(
         "--experiment",
-        choices=("none", *LIDC_EXPERIMENTS.keys()),
+        choices=experiment_choices,
         default="none",
-        help="Run a standard LION LIDC CT experiment. image_scaling is read from the PaDIS checkpoint geometry.",
+        help=(
+            "Run a LION LIDC CT experiment. Paper aliases include ct_8, "
+            "ct_20, ct_60, ct_fanbeam_180, and ct_512_60. "
+            "image_scaling is read from the PaDIS checkpoint geometry."
+        ),
+    )
+    parser.add_argument(
+        "--implementation",
+        choices=IMPLEMENTATION_CHOICES,
+        default="custom",
+        help=(
+            "Sampler preset. 'paper' uses the paper-described CT schedule and "
+            "data step; 'public_repo' keeps the PaDIS README reconstruction "
+            "mechanics but uses the paper CT sigma schedule; "
+            "'lion_quality' is the LION-native quality preset; 'custom' uses "
+            "the explicit sampler flags."
+        ),
+    )
+    parser.add_argument(
+        "--geometry",
+        choices=GEOMETRY_CHOICES,
+        default="lion",
+        help=(
+            "CT geometry family for paper CT experiment aliases. Only 'lion' "
+            "is currently executable for LIDC-IDRI. PaDIS geometry tags are "
+            "accepted only to fail with a physical-correctness explanation."
+        ),
     )
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument(
@@ -1590,23 +1756,47 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--noise-i0", type=float, default=3500)
     parser.add_argument("--noise-sigma", type=float, default=5)
     parser.add_argument("--noise-cross-talk", type=float, default=0.05)
-    parser.add_argument("--max-samples", type=int, default=8)
+    parser.add_argument(
+        "--max-samples",
+        type=int,
+        default=25,
+        help="Number of test/validation slices to reconstruct. Default 25 matches the paper CT evaluation budget.",
+    )
     parser.add_argument("--start-index", type=int, default=0)
     parser.add_argument("--seed", type=int, default=33)
     parser.add_argument(
         "--paper-ct-sampling",
         action="store_true",
-        help="Use the strict PaDIS paper CT sampler: noise init, 100 outer steps, 10 inner steps, sigma_max=10.",
+        help=(
+            "Deprecated alias for --implementation paper. Use the strict "
+            "PaDIS paper CT sampler: noise init, 100 outer steps, 10 inner "
+            "steps, sigma_max=10."
+        ),
     )
     parser.add_argument(
         "--public-padis-ct-sampling",
         action="store_true",
-        help="Use the public PaDIS CT-script compatibility sampler: FDK init and norm-gradient DPS.",
+        help=(
+            "Deprecated alias for --implementation public_repo. Use the "
+            "public PaDIS CT-script compatibility sampler mechanics with the "
+            "paper CT sigma schedule."
+        ),
+    )
+    parser.add_argument(
+        "--public-repo-sigma-schedule",
+        choices=("paper", "readme"),
+        default="paper",
+        help=(
+            "Sigma schedule for --implementation public_repo. Default 'paper' "
+            "uses the paper geometric CT schedule; 'readme' uses the literal "
+            "public README/default EDM schedule for legacy comparisons."
+        ),
     )
     parser.add_argument(
         "--lion-quality-ct-sampling",
         action="store_true",
         help=(
+            "Deprecated alias for --implementation lion_quality. "
             "Use the preferred LION-native CT sampler: paper CT schedule and "
             "squared-residual objective with FDK init, Hann 0.9 filtering, "
             "and operator-norm data-consistency scaling."
@@ -1938,16 +2128,29 @@ def main() -> None:
         raise ValueError("--max-samples must be positive.")
     if args.start_index < 0:
         raise ValueError("--start-index must be non-negative.")
-    ct_sampling_modes = (
-        args.paper_ct_sampling,
-        args.public_padis_ct_sampling,
-        args.lion_quality_ct_sampling,
-    )
-    if sum(bool(mode) for mode in ct_sampling_modes) > 1:
+    legacy_implementations = []
+    if args.paper_ct_sampling:
+        legacy_implementations.append("paper")
+    if args.public_padis_ct_sampling:
+        legacy_implementations.append("public_repo")
+    if args.lion_quality_ct_sampling:
+        legacy_implementations.append("lion_quality")
+    if len(legacy_implementations) > 1:
         raise ValueError(
             "--paper-ct-sampling, --public-padis-ct-sampling, and "
             "--lion-quality-ct-sampling are mutually exclusive."
         )
+    if legacy_implementations:
+        if args.implementation != "custom":
+            raise ValueError(
+                "Use either --implementation or the deprecated --*-ct-sampling "
+                "flags, not both."
+            )
+        args.implementation = legacy_implementations[0]
+    if args.experiment != "none":
+        args.experiment = canonical_experiment_name(args.experiment)
+    if args.geometry != "lion":
+        raise ValueError(UNSUPPORTED_PADIS_GEOMETRY_MESSAGE)
     if args.trace_interval < 0:
         raise ValueError("--trace-interval must be non-negative.")
     if args.stop_after_outer_steps is not None and args.stop_after_outer_steps <= 0:
@@ -1958,6 +2161,12 @@ def main() -> None:
     set_run_seed(args.seed)
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     if args.device.startswith("cuda") and device.type == "cpu":
+        if args.experiment != "none":
+            raise RuntimeError(
+                "CUDA was requested but is not available. LION CT reconstruction "
+                "experiments use CUDA-backed tomography operators; run on a GPU "
+                "node or use a non-CT/manual configuration."
+            )
         print("CUDA was requested but is not available; using CPU.")
 
     checkpoint_path = resolve_checkpoint_path(args.checkpoint)
@@ -2018,6 +2227,14 @@ def main() -> None:
 
     sampler_params = build_sampler_params(
         args, model, measurement_source=experiment_measurement_source
+    )
+    print(
+        "PaDIS reconstruction preset: "
+        f"implementation={args.implementation}, geometry={args.geometry}, "
+        f"experiment={args.experiment}, "
+        f"schedule={sampler_params.noise_schedule}, "
+        f"sigma_min={sampler_params.sigma_min}, "
+        f"sigma_max={sampler_params.sigma_max}"
     )
     if args.run_ablations:
         if (

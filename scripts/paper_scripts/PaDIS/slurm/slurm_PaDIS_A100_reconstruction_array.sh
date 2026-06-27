@@ -1,0 +1,119 @@
+#!/bin/bash
+#!
+#! PaDIS A100 reconstruction array for trained CT priors.
+#!
+#SBATCH -J PaDIS_recon
+#SBATCH -A MPHIL-DIS-SL2-GPU
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=06:00:00
+#SBATCH --mail-type=NONE
+#SBATCH --array=0-0
+#SBATCH -p ampere
+#SBATCH -o slurm-%x-%A_%a.out
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ ! -f "$SCRIPT_DIR/padis_a100_common.sh" ]; then
+        if [ -n "${PADIS_SLURM_DIR:-}" ] && [ -f "$PADIS_SLURM_DIR/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$PADIS_SLURM_DIR" && pwd)"
+        elif [ -n "${LION_ROOT:-}" ] && [ -f "$LION_ROOT/scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$LION_ROOT/scripts/paper_scripts/PaDIS/slurm" && pwd)"
+        elif [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "$SLURM_SUBMIT_DIR/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$SLURM_SUBMIT_DIR" && pwd)"
+        elif [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "$SLURM_SUBMIT_DIR/scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$SLURM_SUBMIT_DIR/scripts/paper_scripts/PaDIS/slurm" && pwd)"
+        elif [ -f "$PWD/scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh" ]; then
+                SCRIPT_DIR="$(cd "$PWD/scripts/paper_scripts/PaDIS/slurm" && pwd)"
+        else
+                echo "Could not locate padis_a100_common.sh. Submit via a PaDIS submit wrapper or set PADIS_SLURM_DIR." >&2
+                exit 1
+        fi
+fi
+# shellcheck source=scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh
+. "$SCRIPT_DIR/padis_a100_common.sh"
+
+padis_setup_modules
+export LION_MAMBA_ENV="${LION_MAMBA_ENV:-lion-dev}"
+export LION_MAMBA_ENV_FALLBACKS="${LION_MAMBA_ENV_FALLBACKS:-padis-dev}"
+padis_activate_environment
+
+LION_ROOT="$(padis_lion_root)"
+PADIS_RUN_ROOT="$(padis_default_run_root)"
+PADIS_TRAIN_ROOT="${PADIS_TRAIN_ROOT:?PADIS_TRAIN_ROOT must point at a trained PaDIS A100 training root.}"
+PADIS_RECON_ROOT="${PADIS_RECON_ROOT:-$PADIS_RUN_ROOT/final_real_runs/a100_reconstruction_${PADIS_RUN_STAMP:-${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-manual}}}}"
+PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-all}"
+PADIS_RECON_EXPERIMENTS="${PADIS_RECON_EXPERIMENTS:-paper_matrix}"
+PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-paper,public_repo}"
+PADIS_RECON_GEOMETRIES="${PADIS_RECON_GEOMETRIES:-lion}"
+PADIS_RECON_SPLIT="${PADIS_RECON_SPLIT:-test}"
+PADIS_RECON_ALGORITHM="${PADIS_RECON_ALGORITHM:-dps_langevin}"
+PADIS_RECON_MAX_SAMPLES="${PADIS_RECON_MAX_SAMPLES:-25}"
+PADIS_RECON_START_INDEX="${PADIS_RECON_START_INDEX:-0}"
+PADIS_RECON_SEED="${PADIS_RECON_SEED:-33}"
+PADIS_RECON_DEVICE="${PADIS_RECON_DEVICE:-cuda}"
+PADIS_RECON_SAVE_PREVIEWS="${PADIS_RECON_SAVE_PREVIEWS:-1}"
+PADIS_RECON_PROG_BAR="${PADIS_RECON_PROG_BAR:-0}"
+PADIS_RECON_TRACE_INTERVAL="${PADIS_RECON_TRACE_INTERVAL:-}"
+PADIS_RECON_TRACE_IMAGES="${PADIS_RECON_TRACE_IMAGES:-0}"
+PADIS_DATA_FOLDER="${PADIS_DATA_FOLDER:-}"
+PADIS_PUBLIC_IMAGE_DIR="${PADIS_PUBLIC_IMAGE_DIR:-}"
+MPLCONFIGDIR="${MPLCONFIGDIR:-$PADIS_RECON_ROOT/matplotlib}"
+export LION_ROOT PADIS_RUN_ROOT PADIS_RECON_ROOT MPLCONFIGDIR PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1
+
+mkdir -p "$PADIS_RECON_ROOT" "$MPLCONFIGDIR"
+cd "$LION_ROOT"
+padis_print_job_header
+
+TASK_ID="${SLURM_ARRAY_TASK_ID:-0}"
+CMD=(
+        python -u scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py
+        --training-root "$PADIS_TRAIN_ROOT"
+        --output-root "$PADIS_RECON_ROOT"
+        --task-index "$TASK_ID"
+        --models "$PADIS_RECON_MODELS"
+        --experiments "$PADIS_RECON_EXPERIMENTS"
+        --implementations "$PADIS_RECON_IMPLEMENTATIONS"
+        --geometries "$PADIS_RECON_GEOMETRIES"
+        --split "$PADIS_RECON_SPLIT"
+        --algorithm "$PADIS_RECON_ALGORITHM"
+        --max-samples "$PADIS_RECON_MAX_SAMPLES"
+        --start-index "$PADIS_RECON_START_INDEX"
+        --seed "$PADIS_RECON_SEED"
+        --device "$PADIS_RECON_DEVICE"
+)
+
+if [ -n "$PADIS_DATA_FOLDER" ]; then
+        CMD+=(--data-folder "$PADIS_DATA_FOLDER")
+fi
+if [ -n "$PADIS_PUBLIC_IMAGE_DIR" ]; then
+        CMD+=(--public-padis-image-dir "$PADIS_PUBLIC_IMAGE_DIR")
+fi
+if [ "$PADIS_RECON_SAVE_PREVIEWS" = "1" ]; then
+        CMD+=(--save-previews)
+fi
+if [ "$PADIS_RECON_PROG_BAR" = "1" ]; then
+        CMD+=(--prog-bar)
+fi
+if [ -n "$PADIS_RECON_TRACE_INTERVAL" ]; then
+        CMD+=(--trace-interval "$PADIS_RECON_TRACE_INTERVAL")
+fi
+if [ "$PADIS_RECON_TRACE_IMAGES" = "1" ]; then
+        CMD+=(--trace-images)
+fi
+if [ -n "${PADIS_RECON_EXTRA_ARGS:-}" ]; then
+        read -r -a EXTRA_ARGS <<< "$PADIS_RECON_EXTRA_ARGS"
+        for item in "${EXTRA_ARGS[@]}"; do
+                CMD+=(--reconstruction-arg "$item")
+        done
+fi
+
+echo "Executing reconstruction matrix task $TASK_ID:"
+printf '%q ' "${CMD[@]}"
+printf '\n'
+"${CMD[@]}"
+
+echo "Reconstruction task $TASK_ID completed at $(date)."

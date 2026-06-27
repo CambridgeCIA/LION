@@ -7,6 +7,10 @@ from LION.experiments.ct_experiments import (
     PaDISFanBeam60CTRecon,
     PaDISFanBeam180CTRecon,
 )
+from scripts.paper_scripts.PaDIS.PaDIS_LIDC_reconstruction import (
+    build_arg_parser,
+    build_sampler_params,
+)
 from scripts.paper_scripts.PaDIS.PaDIS_experiments import PRESETS, command_for
 
 
@@ -73,6 +77,59 @@ def test_paper_fan_presets_use_requested_views_and_paper_ct_hyperparameters():
         )
         assert arguments[arguments.index("--adjoint-data-step-schedule") + 1] == "paper"
         assert "--no-clip-output" in arguments
+
+
+def test_public_repo_branch_uses_paper_sigma_schedule_with_public_mechanics():
+    expected = {
+        "ct_20": 0.002,
+        "ct_8": 0.003,
+        "ct_60": 0.002,
+        "ct_fanbeam_180": 0.002,
+        "ct_512_60": 0.002,
+    }
+    parser = build_arg_parser()
+
+    for experiment_name, sigma_min in expected.items():
+        args = parser.parse_args(
+            ["--implementation", "public_repo", "--experiment", experiment_name]
+        )
+        params = build_sampler_params(args, None, measurement_source="normal")
+
+        assert params.num_steps == 100
+        assert params.inner_steps == 10
+        assert params.sigma_min == sigma_min
+        assert params.sigma_max == 10.0
+        assert params.noise_schedule == "geometric"
+        assert params.initial_reconstruction == "fdk"
+        assert params.data_consistency_gradient == "norm"
+        assert params.adjoint_data_step_schedule == "public_repo"
+
+
+def test_public_repo_branch_can_use_literal_readme_sigma_schedule():
+    args = build_arg_parser().parse_args(
+        [
+            "--implementation",
+            "public_repo",
+            "--experiment",
+            "ct_20",
+            "--public-repo-sigma-schedule",
+            "readme",
+        ]
+    )
+    params = build_sampler_params(args, None, measurement_source="normal")
+
+    assert params.sigma_min == 0.003
+    assert params.sigma_max == 10.0
+    assert params.noise_schedule == "edm"
+    assert params.initial_reconstruction == "fdk"
+    assert params.data_consistency_gradient == "norm"
+
+
+def test_reconstruction_parser_defaults_to_paper_ct_test_count():
+    args = build_arg_parser().parse_args([])
+
+    assert args.split == "test"
+    assert args.max_samples == 25
 
 
 def test_20_view_no_position_ablation_presets():

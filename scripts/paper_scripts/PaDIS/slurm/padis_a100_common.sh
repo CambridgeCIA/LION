@@ -29,6 +29,7 @@ padis_setup_modules() {
 }
 
 padis_activate_environment() {
+        local env_candidates env_name activated
         MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-/home/tjh200/miniforge3}"
         LION_MAMBA_ENV="${LION_MAMBA_ENV:-lion}"
         export MAMBA_ROOT_PREFIX
@@ -39,10 +40,28 @@ padis_activate_environment() {
                 exit 1
         fi
         eval "$("$MAMBA_ROOT_PREFIX/bin/mamba" shell hook --shell bash)"
-        mamba activate "$LION_MAMBA_ENV" || {
-                echo "Could not activate mamba environment $LION_MAMBA_ENV."
+
+        env_candidates=("$LION_MAMBA_ENV")
+        if [ -n "${LION_MAMBA_ENV_FALLBACKS:-}" ]; then
+                read -r -a env_candidates <<< "$LION_MAMBA_ENV ${LION_MAMBA_ENV_FALLBACKS}"
+        fi
+        activated=""
+        for env_name in "${env_candidates[@]}"; do
+                if [ -z "$env_name" ]; then
+                        continue
+                fi
+                if mamba activate "$env_name"; then
+                        activated="$env_name"
+                        break
+                fi
+                echo "Could not activate mamba environment $env_name."
+        done
+        if [ -z "$activated" ]; then
+                echo "Failed to activate any requested mamba environment: ${env_candidates[*]}"
                 exit 1
-        }
+        fi
+        LION_MAMBA_ENV="$activated"
+        export LION_MAMBA_ENV
         CONDA_LIB="${CONDA_PREFIX:-$MAMBA_ROOT_PREFIX/envs/$LION_MAMBA_ENV}/lib"
         export LD_LIBRARY_PATH="$CONDA_LIB:${LD_LIBRARY_PATH:-}"
         echo "Activated $LION_MAMBA_ENV using mamba."
