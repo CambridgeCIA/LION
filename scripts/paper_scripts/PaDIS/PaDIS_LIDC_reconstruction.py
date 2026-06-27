@@ -280,6 +280,13 @@ def mean_metric(metrics: list[dict], key: str):
     return sum(values) / len(values)
 
 
+def min_metric(metrics: list[dict], key: str):
+    values = [item[key] for item in metrics if key in item]
+    if not values:
+        return None
+    return min(values)
+
+
 def masked_mse(recon: torch.Tensor, target: torch.Tensor, mask: torch.Tensor):
     mask = mask.to(device=recon.device, dtype=torch.bool)
     if not torch.any(mask):
@@ -342,6 +349,131 @@ def ssim_on_bbox_or_none(
     return ssim_or_none(crop_bbox(recon, bbox), crop_bbox(target, bbox), data_range)
 
 
+def edge_ssim_or_none(recon: torch.Tensor, target: torch.Tensor):
+    try:
+        from skimage.filters import sobel
+        from skimage.metrics import structural_similarity
+    except ImportError:
+        return None
+
+    recon_np = recon.detach().cpu().squeeze().numpy()
+    target_np = target.detach().cpu().squeeze().numpy()
+    recon_edges = sobel(recon_np)
+    target_edges = sobel(target_np)
+    data_range = float(target_edges.max() - target_edges.min())
+    if data_range == 0:
+        return 1.0 if float(np.max(np.abs(recon_edges - target_edges))) == 0 else 0.0
+    return float(
+        structural_similarity(target_edges, recon_edges, data_range=data_range)
+    )
+
+
+def add_image_similarity_metrics(
+    item: dict,
+    *,
+    prefix: str,
+    image: torch.Tensor,
+    reference: torch.Tensor,
+    data_range: float,
+) -> None:
+    key = "" if prefix == "" else f"{prefix}_"
+    abs_error = torch.abs(image - reference)
+    mse = float(torch.mean((image - reference).square()).item())
+    item[f"{key}mse"] = mse
+    item[f"{key}psnr"] = psnr_from_mse(mse, data_range)
+    item[f"{key}mae"] = float(torch.mean(abs_error).item())
+    item[f"{key}abs_error_p95"] = float(
+        torch.quantile(abs_error.flatten(), 0.95).item()
+    )
+    item[f"{key}abs_error_p99"] = float(
+        torch.quantile(abs_error.flatten(), 0.99).item()
+    )
+    item[f"{key}mean_delta"] = float((image.mean() - reference.mean()).item())
+    ssim_value = ssim_or_none(image, reference, data_range)
+    if ssim_value is not None:
+        item[f"{key}ssim"] = ssim_value
+    edge_ssim_value = edge_ssim_or_none(image, reference)
+    if edge_ssim_value is not None:
+        item[f"{key}edge_ssim"] = edge_ssim_value
+
+
+def image_tensor_from_array(array) -> torch.Tensor:
+    tensor = torch.as_tensor(array).detach().cpu().float()
+    if tensor.ndim == 2:
+        tensor = tensor.unsqueeze(0)
+    elif tensor.ndim == 3:
+        if tensor.shape[0] in (1, 3):
+            pass
+        elif tensor.shape[-1] in (1, 3):
+            tensor = tensor.permute(2, 0, 1)
+        else:
+            raise ValueError(
+                f"Cannot infer image channel axis for shape {tensor.shape}."
+            )
+    else:
+        raise ValueError(
+            f"Expected an image tensor with 2 or 3 dimensions, got {tensor.ndim}."
+        )
+    return tensor.contiguous()
+
+
+def load_reference_reconstructions(path: pathlib.Path | None):
+    if path is None:
+        return None
+    path = pathlib.Path(path).expanduser()
+    if not path.is_file():
+        raise FileNotFoundError(f"Reference reconstruction file not found: {path}")
+
+    image_suffixes = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
+    if path.suffix.lower() in image_suffixes:
+        image = np.asarray(PIL.Image.open(path), dtype=np.float32) / 255.0
+        return image_tensor_from_array(image).unsqueeze(0)
+
+    if path.suffix == ".npz":
+        payload = np.load(path)
+        for key in ("recon", "reconstructions", "images"):
+            if key in payload:
+                data = payload[key]
+                break
+        else:
+            raise KeyError(
+                f"{path} does not contain one of: recon, reconstructions, images."
+            )
+    else:
+        payload = torch_load(path, map_location="cpu")
+        if isinstance(payload, dict):
+            for key in ("reconstructions", "recon", "images"):
+                if key in payload:
+                    data = payload[key]
+                    break
+            else:
+                raise KeyError(
+                    f"{path} does not contain one of: reconstructions, recon, images."
+                )
+        else:
+            data = payload
+
+    tensor = torch.as_tensor(data).detach().cpu().float()
+    if tensor.ndim == 3:
+        tensor = tensor.unsqueeze(1)
+    elif tensor.ndim == 4:
+        if tensor.shape[1] in (1, 3):
+            pass
+        elif tensor.shape[-1] in (1, 3):
+            tensor = tensor.permute(0, 3, 1, 2)
+        else:
+            raise ValueError(
+                f"Cannot infer reference reconstruction channel axis for shape {tensor.shape}."
+            )
+    elif tensor.ndim == 5 and tensor.shape[1] == 1:
+        tensor = tensor[:, 0]
+    else:
+        raise ValueError(
+            f"Expected reference reconstructions with 3-5 dimensions, got {tensor.ndim}."
+        )
+    return tensor.contiguous()
+
+
 def measurement_image_to_sampler_domain(image: torch.Tensor, params) -> torch.Tensor:
     scale = float(params.measurement_scale)
     if scale == 0:
@@ -356,7 +488,17 @@ def fdk_baseline(sinogram: torch.Tensor, reconstructor: PaDIS, params) -> torch.
             if bool(getattr(params, "clip_initial", True)):
                 reconstruction = reconstruction.clamp(0.0, 1.0)
         else:
-            reconstruction = fdk(sinogram, reconstructor.op, clip=True)
+            reconstruction = fdk(
+                sinogram,
+                reconstructor.op,
+                clip=True,
+                padded=bool(getattr(params, "initial_fdk_padded", True)),
+                filter_type=getattr(params, "initial_fdk_filter_type", None),
+                frequency_scaling=float(
+                    getattr(params, "initial_fdk_frequency_scaling", 1.0)
+                ),
+                batch_size=int(getattr(params, "initial_fdk_batch_size", 10)),
+            )
         reconstruction = measurement_image_to_sampler_domain(reconstruction, params)
         return reconstruction.clamp(0.0, 1.0)
 
@@ -403,8 +545,17 @@ def add_reconstruction_metrics(
     data_range: float,
 ) -> None:
     key = "" if prefix == "" else f"{prefix}_"
+    abs_error = torch.abs(recon - target)
     mse = float(torch.mean((recon - target).square()).item())
+    mae = float(torch.mean(abs_error).item())
     item[f"{key}mse"] = mse
+    item[f"{key}mae"] = mae
+    item[f"{key}abs_error_p95"] = float(
+        torch.quantile(abs_error.flatten(), 0.95).item()
+    )
+    item[f"{key}abs_error_p99"] = float(
+        torch.quantile(abs_error.flatten(), 0.99).item()
+    )
     item[f"{key}psnr"] = psnr_from_mse(mse, data_range)
     item[f"{key}min"] = float(recon.detach().amin().cpu())
     item[f"{key}max"] = float(recon.detach().amax().cpu())
@@ -428,6 +579,9 @@ def add_reconstruction_metrics(
     ssim_value = ssim_or_none(recon, target, data_range)
     if ssim_value is not None:
         item[f"{key}ssim"] = ssim_value
+    edge_ssim_value = edge_ssim_or_none(recon, target)
+    if edge_ssim_value is not None:
+        item[f"{key}edge_ssim"] = edge_ssim_value
     body_ssim = ssim_on_bbox_or_none(recon, target, data_range, body_bbox)
     if body_ssim is not None:
         item[f"{key}body_bbox_ssim"] = body_ssim
@@ -454,6 +608,7 @@ def save_preview(
     recon,
     target,
     *,
+    reference=None,
     body_mask,
     error_vmax: float,
     recon_label: str,
@@ -464,7 +619,8 @@ def save_preview(
     import matplotlib.pyplot as plt
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig, axes = plt.subplots(2, 4, figsize=(13, 6.2))
+    columns = 5 if reference is not None else 4
+    fig, axes = plt.subplots(2, columns, figsize=(3.25 * columns, 6.2))
     image_kwargs = {"cmap": "gray", "vmin": 0, "vmax": 1}
     axes[0, 0].imshow(sinogram.detach().cpu().squeeze().T, cmap="gray")
     axes[0, 0].set_title("Sinogram")
@@ -474,6 +630,9 @@ def save_preview(
     axes[0, 2].set_title(recon_label)
     axes[0, 3].imshow(target.detach().cpu().squeeze(), **image_kwargs)
     axes[0, 3].set_title("Target")
+    if reference is not None:
+        axes[0, 4].imshow(reference.detach().cpu().squeeze(), **image_kwargs)
+        axes[0, 4].set_title("Public ref")
     axes[1, 0].imshow(body_mask.detach().cpu().squeeze(), cmap="gray")
     axes[1, 0].set_title("Body ROI")
     axes[1, 1].imshow(
@@ -497,11 +656,90 @@ def save_preview(
         vmax=error_vmax,
     )
     axes[1, 3].set_title(f"{recon_label} - FDK")
+    if reference is not None:
+        axes[1, 4].imshow(
+            torch.abs(recon - reference).detach().cpu().squeeze(),
+            cmap="magma",
+            vmin=0,
+            vmax=error_vmax,
+        )
+        axes[1, 4].set_title(f"|{recon_label} - ref|")
     for ax in axes.ravel():
         ax.set_axis_off()
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)
+
+
+def save_visual_comparison(
+    path: pathlib.Path,
+    fdk_recon,
+    recon,
+    target,
+    *,
+    reference=None,
+    error_vmax: float,
+    image_vmax: float,
+    recon_label: str,
+) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image_kwargs = {"cmap": "gray", "vmin": 0.0, "vmax": image_vmax}
+    error_kwargs = {"cmap": "magma", "vmin": 0.0, "vmax": error_vmax}
+    compare_image = reference if reference is not None else target
+    compare_label = "Public ref" if reference is not None else "Target"
+
+    panels = [
+        ("Target", target.detach().cpu().squeeze(), image_kwargs),
+        (compare_label, compare_image.detach().cpu().squeeze(), image_kwargs),
+        (recon_label, recon.detach().cpu().squeeze(), image_kwargs),
+        ("FDK", fdk_recon.detach().cpu().squeeze(), image_kwargs),
+        (
+            f"|{recon_label} - Target|",
+            torch.abs(recon - target).detach().cpu().squeeze(),
+            error_kwargs,
+        ),
+        (
+            f"|{recon_label} - {compare_label}|",
+            torch.abs(recon - compare_image).detach().cpu().squeeze(),
+            error_kwargs,
+        ),
+    ]
+
+    fig, axes = plt.subplots(2, 3, figsize=(12, 8), constrained_layout=True)
+    for ax, (title, image, kwargs) in zip(axes.ravel(), panels):
+        im = ax.imshow(image, **kwargs)
+        ax.set_title(title)
+        ax.set_axis_off()
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+    individual_folder = path.with_suffix("")
+    individual_folder.mkdir(parents=True, exist_ok=True)
+    individual_images = {
+        "target": (target.detach().cpu().squeeze(), image_kwargs),
+        compare_label.lower().replace(" ", "_"): (
+            compare_image.detach().cpu().squeeze(),
+            image_kwargs,
+        ),
+        "recon": (recon.detach().cpu().squeeze(), image_kwargs),
+        "fdk": (fdk_recon.detach().cpu().squeeze(), image_kwargs),
+        "abs_recon_target": (
+            torch.abs(recon - target).detach().cpu().squeeze(),
+            error_kwargs,
+        ),
+        "abs_recon_reference": (
+            torch.abs(recon - compare_image).detach().cpu().squeeze(),
+            error_kwargs,
+        ),
+    }
+    for stem, (image, kwargs) in individual_images.items():
+        plt.imsave(individual_folder / f"{stem}.png", image.numpy(), **kwargs)
 
 
 def save_tensor_image(
@@ -547,9 +785,17 @@ def save_trace_images(
             f"inner_{int(snapshot['inner']):02d}_"
             f"{snapshot['algorithm']}"
         )
+        current_path = sample_folder / f"{stem}_current.png"
         denoised_path = sample_folder / f"{stem}_denoised.png"
         projected_path = sample_folder / f"{stem}_projected.png"
+        x_next_path = sample_folder / f"{stem}_x_next.png"
         forward_path = sample_folder / f"{stem}_forward_projected.png"
+        save_tensor_image(
+            current_path,
+            snapshot["x"],
+            vmin=0.0,
+            vmax=1.0,
+        )
         save_tensor_image(
             denoised_path,
             snapshot["denoised"],
@@ -559,6 +805,12 @@ def save_trace_images(
         save_tensor_image(
             projected_path,
             snapshot["projected"],
+            vmin=0.0,
+            vmax=1.0,
+        )
+        save_tensor_image(
+            x_next_path,
+            snapshot["x_next"],
             vmin=0.0,
             vmax=1.0,
         )
@@ -573,8 +825,10 @@ def save_trace_images(
                 "inner": int(snapshot["inner"]),
                 "algorithm": snapshot["algorithm"],
                 "sigma": float(snapshot["sigma"]),
+                "current_png": str(current_path),
                 "denoised_png": str(denoised_path),
                 "projected_png": str(projected_path),
+                "x_next_png": str(x_next_path),
                 "forward_projected_png": str(forward_path),
             }
         )
@@ -603,6 +857,10 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params = PaDIS.paper_ct_parameters(model, views=args.paper_ct_views)
     elif args.public_padis_ct_sampling:
         sampler_params = PaDIS.padis_repo_ct_parameters(model)
+    elif args.lion_quality_ct_sampling:
+        sampler_params = PaDIS.lion_quality_ct_parameters(
+            model, views=args.paper_ct_views
+        )
     else:
         sampler_params = PaDIS.default_parameters(model)
     sampler_params.num_steps = args.num_steps
@@ -643,8 +901,53 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.data_consistency_gradient = (
             public_params.data_consistency_gradient
         )
+    elif args.lion_quality_ct_sampling:
+        quality_params = PaDIS.lion_quality_ct_parameters(
+            model, views=args.paper_ct_views
+        )
+        sampler_params.num_steps = quality_params.num_steps
+        sampler_params.inner_steps = quality_params.inner_steps
+        sampler_params.sigma_min = quality_params.sigma_min
+        sampler_params.sigma_max = quality_params.sigma_max
+        sampler_params.noise_schedule = quality_params.noise_schedule
+        sampler_params.zeta = quality_params.zeta
+        sampler_params.initial_reconstruction = quality_params.initial_reconstruction
+        sampler_params.initial_fdk_filter_type = quality_params.initial_fdk_filter_type
+        sampler_params.initial_fdk_frequency_scaling = (
+            quality_params.initial_fdk_frequency_scaling
+        )
+        sampler_params.initial_fdk_padded = quality_params.initial_fdk_padded
+        sampler_params.initial_fdk_batch_size = quality_params.initial_fdk_batch_size
+        sampler_params.clip_initial = quality_params.clip_initial
+        sampler_params.clip_output = quality_params.clip_output
+        sampler_params.dps_epsilon = quality_params.dps_epsilon
+        sampler_params.sampling_epsilon = quality_params.sampling_epsilon
+        sampler_params.data_consistency_gradient = (
+            quality_params.data_consistency_gradient
+        )
+        sampler_params.adjoint_data_step_schedule = (
+            quality_params.adjoint_data_step_schedule
+        )
+        sampler_params.data_consistency_normalization = (
+            quality_params.data_consistency_normalization
+        )
+        sampler_params.data_consistency_scale = quality_params.data_consistency_scale
     if args.initial_reconstruction is not None:
         sampler_params.initial_reconstruction = args.initial_reconstruction
+    if args.initial_fdk_filter_type is not None:
+        sampler_params.initial_fdk_filter_type = (
+            None
+            if args.initial_fdk_filter_type == "none"
+            else args.initial_fdk_filter_type
+        )
+    if args.initial_fdk_frequency_scaling is not None:
+        sampler_params.initial_fdk_frequency_scaling = (
+            args.initial_fdk_frequency_scaling
+        )
+    if args.initial_fdk_padded is not None:
+        sampler_params.initial_fdk_padded = args.initial_fdk_padded
+    if args.initial_fdk_batch_size is not None:
+        sampler_params.initial_fdk_batch_size = args.initial_fdk_batch_size
     sampler_params.patch_batch_size = args.patch_batch_size
     sampler_params.langevin_ddnm = args.langevin_ddnm
     sampler_params.langevin_noise_scale = args.langevin_noise_scale
@@ -667,8 +970,16 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
     sampler_params.disable_data_consistency = args.disable_data_consistency
     sampler_params.disable_langevin_noise = args.disable_langevin_noise
     sampler_params.disable_prior_score = args.disable_prior_score
-    sampler_params.data_consistency_normalization = args.data_consistency_normalization
-    sampler_params.data_consistency_scale = args.data_consistency_scale
+    if args.data_consistency_normalization is not None:
+        sampler_params.data_consistency_normalization = (
+            args.data_consistency_normalization
+        )
+    if args.data_consistency_scale is not None:
+        sampler_params.data_consistency_scale = args.data_consistency_scale
+    if args.consume_discarded_measurement_noise is not None:
+        sampler_params.consume_discarded_measurement_noise = (
+            args.consume_discarded_measurement_noise
+        )
     sampler_params.data_consistency_scale_schedule = (
         args.data_consistency_scale_schedule
     )
@@ -679,6 +990,7 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
     sampler_params.operator_norm_tolerance = args.operator_norm_tolerance
     sampler_params.trace_interval = args.trace_interval
     sampler_params.trace_images = args.trace_images
+    sampler_params.stop_after_outer_steps = args.stop_after_outer_steps
     if args.prior_mode != "auto":
         sampler_params.prior_mode = (
             "whole_image" if args.prior_mode == "whole-image" else "patch"
@@ -718,6 +1030,7 @@ def run_reconstruction_variant(
     device: torch.device,
     from_experiment: bool,
     experiment_measurement_source: str,
+    reference_reconstructions: torch.Tensor | None,
 ) -> dict:
     set_run_seed(args.seed)
     sampler_params = clone_parameters(base_params)
@@ -739,6 +1052,19 @@ def run_reconstruction_variant(
     print(f"Saving {recon_label} {variant_name} reconstructions to {output_folder}")
 
     stop = min(len(dataset), args.start_index + args.max_samples)
+    run_length = stop - args.start_index
+    if reference_reconstructions is not None:
+        if len(reference_reconstructions) not in (1, run_length):
+            raise ValueError(
+                "Reference reconstruction count must be 1 for a one-sample run "
+                f"or match the run length ({run_length}); got "
+                f"{len(reference_reconstructions)}."
+            )
+        if len(reference_reconstructions) == 1 and run_length != 1:
+            raise ValueError(
+                "A single reference reconstruction can only be used with "
+                "--max-samples 1."
+            )
     metrics = []
     reconstructions = []
     fdk_reconstructions = []
@@ -746,9 +1072,11 @@ def run_reconstruction_variant(
     sinograms = []
     traces = []
     trace_images = []
-    for index in tqdm(
-        range(args.start_index, stop),
-        desc=f"LIDC {args.split} {variant_name}",
+    for output_index, index in enumerate(
+        tqdm(
+            range(args.start_index, stop),
+            desc=f"LIDC {args.split} {variant_name}",
+        )
     ):
         sinogram, target = make_measurement(
             args,
@@ -759,6 +1087,8 @@ def run_reconstruction_variant(
             from_experiment=from_experiment,
             experiment_measurement_source=experiment_measurement_source,
         )
+        if bool(getattr(sampler_params, "consume_discarded_measurement_noise", False)):
+            _ = torch.randn_like(sinogram)
         recon = reconstructor.reconstruct_sample(
             sinogram,
             prog_bar=args.prog_bar,
@@ -769,6 +1099,16 @@ def run_reconstruction_variant(
         fdk_reconstructions.append(fdk_recon.detach().cpu())
         targets.append(target.detach().cpu())
         sinograms.append(sinogram.detach().cpu())
+        reference = None
+        if reference_reconstructions is not None:
+            reference = reference_reconstructions[
+                0 if len(reference_reconstructions) == 1 else output_index
+            ].to(device=device, dtype=target.dtype)
+            if tuple(reference.shape) != tuple(target.shape):
+                raise ValueError(
+                    f"Reference shape {tuple(reference.shape)} does not match "
+                    f"target shape {tuple(target.shape)} for sample {index}."
+                )
         body_mask = target > float(args.body_threshold)
         nonair_mask = target > float(args.nonair_threshold)
         body_bbox = mask_bbox(body_mask, pad=int(args.body_bbox_padding))
@@ -818,6 +1158,14 @@ def run_reconstruction_variant(
             body_bbox=body_bbox,
             data_range=args.data_range,
         )
+        if reference is not None:
+            add_image_similarity_metrics(
+                item,
+                prefix="public_reference",
+                image=recon,
+                reference=reference,
+                data_range=args.data_range,
+            )
         if args.trace_interval > 0:
             traces.append({"index": int(index), "trace": reconstructor.last_trace})
         if args.trace_images:
@@ -836,8 +1184,19 @@ def run_reconstruction_variant(
                 fdk_recon,
                 recon,
                 target,
+                reference=reference,
                 body_mask=body_mask,
                 error_vmax=float(args.error_vmax),
+                recon_label=recon_label,
+            )
+            save_visual_comparison(
+                output_folder / f"sample_{index:04d}_visual_compare.png",
+                fdk_recon,
+                recon,
+                target,
+                reference=reference,
+                error_vmax=float(args.error_vmax),
+                image_vmax=float(args.preview_vmax),
                 recon_label=recon_label,
             )
 
@@ -849,6 +1208,11 @@ def run_reconstruction_variant(
         "ablation": variant_name,
         "ablation_overrides": variant_overrides,
         "measurement_source": experiment_measurement_source,
+        "public_reference_reconstructions": (
+            str(args.public_reference_reconstructions)
+            if args.public_reference_reconstructions is not None
+            else None
+        ),
         "checkpoint_image_scaling": float(getattr(geometry, "image_scaling", 1.0)),
         "reconstruction_geometry": str(reconstruction_geometry),
         "measurement_scale": float(sampler_params.measurement_scale),
@@ -891,14 +1255,32 @@ def run_reconstruction_variant(
     )
 
     mean_mse = mean_metric(metrics, "mse")
+    mean_mae = mean_metric(metrics, "mae")
+    max_mae = max(item["mae"] for item in metrics)
+    mean_abs_error_p95 = mean_metric(metrics, "abs_error_p95")
+    max_abs_error_p95 = max(item["abs_error_p95"] for item in metrics)
     mean_psnr = mean_metric(metrics, "psnr")
+    min_psnr = min(item["psnr"] for item in metrics)
+    min_fdk_margin = min(item["psnr"] - item["fdk_psnr"] for item in metrics)
     mean_fdk_mse = mean_metric(metrics, "fdk_mse")
     mean_fdk_psnr = mean_metric(metrics, "fdk_psnr")
     mean_body_psnr = mean_metric(metrics, "body_psnr")
     mean_fdk_body_psnr = mean_metric(metrics, "fdk_body_psnr")
     mean_soft_tissue_psnr = mean_metric(metrics, "soft_tissue_window_psnr")
     mean_fdk_soft_tissue_psnr = mean_metric(metrics, "fdk_soft_tissue_window_psnr")
+    mean_edge_ssim = mean_metric(metrics, "edge_ssim")
+    min_edge_ssim = min_metric(metrics, "edge_ssim")
+    mean_reference_ssim = mean_metric(metrics, "public_reference_ssim")
+    min_reference_ssim = min_metric(metrics, "public_reference_ssim")
+    mean_reference_edge_ssim = mean_metric(metrics, "public_reference_edge_ssim")
+    min_reference_edge_ssim = min_metric(metrics, "public_reference_edge_ssim")
+    mean_reference_mae = mean_metric(metrics, "public_reference_mae")
+    mean_reference_abs_error_p95 = mean_metric(
+        metrics, "public_reference_abs_error_p95"
+    )
     print(f"{variant_name} mean MSE:  {mean_mse:.6g}")
+    print(f"{variant_name} mean MAE:  {mean_mae:.6g}")
+    print(f"{variant_name} mean p95 abs error: {mean_abs_error_p95:.6g}")
     print(f"{variant_name} mean PSNR: {mean_psnr:.4g} dB")
     print(f"{variant_name} FDK mean MSE:  {mean_fdk_mse:.6g}")
     print(f"{variant_name} FDK mean PSNR: {mean_fdk_psnr:.4g} dB")
@@ -918,10 +1300,32 @@ def run_reconstruction_variant(
         )
     if "ssim" in metrics[0]:
         mean_ssim = sum(item["ssim"] for item in metrics) / len(metrics)
+        min_ssim = min(item["ssim"] for item in metrics)
         print(f"{variant_name} mean SSIM: {mean_ssim:.4g}")
+    else:
+        mean_ssim = None
+        min_ssim = None
+    if mean_edge_ssim is not None:
+        print(f"{variant_name} mean edge SSIM: {mean_edge_ssim:.4g}")
     if "fdk_ssim" in metrics[0]:
         mean_fdk_ssim = sum(item["fdk_ssim"] for item in metrics) / len(metrics)
         print(f"{variant_name} FDK mean SSIM: {mean_fdk_ssim:.4g}")
+    else:
+        mean_fdk_ssim = None
+    if mean_reference_ssim is not None:
+        print(f"{variant_name} public-reference mean SSIM: {mean_reference_ssim:.4g}")
+    if mean_reference_edge_ssim is not None:
+        print(
+            f"{variant_name} public-reference mean edge SSIM: "
+            f"{mean_reference_edge_ssim:.4g}"
+        )
+    if mean_reference_mae is not None:
+        print(f"{variant_name} public-reference mean MAE: {mean_reference_mae:.6g}")
+    if mean_reference_abs_error_p95 is not None:
+        print(
+            f"{variant_name} public-reference mean p95 abs error: "
+            f"{mean_reference_abs_error_p95:.6g}"
+        )
     print(f"Saved metrics to {metric_path}")
     if trace_path is not None:
         print(f"Saved sampler trace to {trace_path}")
@@ -938,14 +1342,198 @@ def run_reconstruction_variant(
         ),
         "tensors": str(tensor_path),
         "mean_mse": mean_mse,
+        "mean_mae": mean_mae,
+        "max_mae": max_mae,
+        "mean_abs_error_p95": mean_abs_error_p95,
+        "max_abs_error_p95": max_abs_error_p95,
         "mean_psnr": mean_psnr,
+        "min_psnr": min_psnr,
+        "min_fdk_margin": min_fdk_margin,
         "mean_fdk_mse": mean_fdk_mse,
         "mean_fdk_psnr": mean_fdk_psnr,
+        "mean_ssim": mean_ssim,
+        "min_ssim": min_ssim,
+        "mean_fdk_ssim": mean_fdk_ssim,
+        "mean_edge_ssim": mean_edge_ssim,
+        "min_edge_ssim": min_edge_ssim,
+        "mean_reference_ssim": mean_reference_ssim,
+        "min_reference_ssim": min_reference_ssim,
+        "mean_reference_edge_ssim": mean_reference_edge_ssim,
+        "min_reference_edge_ssim": min_reference_edge_ssim,
+        "mean_reference_mae": mean_reference_mae,
+        "mean_reference_abs_error_p95": mean_reference_abs_error_p95,
         "mean_body_psnr": mean_body_psnr,
         "mean_fdk_body_psnr": mean_fdk_body_psnr,
         "mean_soft_tissue_window_psnr": mean_soft_tissue_psnr,
         "mean_fdk_soft_tissue_window_psnr": mean_fdk_soft_tissue_psnr,
     }
+
+
+def enforce_quality_gates(args, summaries: list[dict]) -> None:
+    failures = []
+    for summary in summaries:
+        name = summary["name"]
+        mean_psnr = summary["mean_psnr"]
+        if args.min_mean_psnr is not None and mean_psnr < args.min_mean_psnr:
+            failures.append(
+                f"{name}: mean PSNR {mean_psnr:.4g} dB < {args.min_mean_psnr:.4g} dB"
+            )
+
+        mean_mae = summary["mean_mae"]
+        if args.max_mean_mae is not None and mean_mae > args.max_mean_mae:
+            failures.append(
+                f"{name}: mean MAE {mean_mae:.4g} > {args.max_mean_mae:.4g}"
+            )
+
+        max_mae = summary["max_mae"]
+        if args.max_sample_mae is not None and max_mae > args.max_sample_mae:
+            failures.append(
+                f"{name}: maximum sample MAE {max_mae:.4g} > "
+                f"{args.max_sample_mae:.4g}"
+            )
+
+        mean_abs_error_p95 = summary["mean_abs_error_p95"]
+        if (
+            args.max_mean_abs_error_p95 is not None
+            and mean_abs_error_p95 > args.max_mean_abs_error_p95
+        ):
+            failures.append(
+                f"{name}: mean p95 abs error {mean_abs_error_p95:.4g} > "
+                f"{args.max_mean_abs_error_p95:.4g}"
+            )
+
+        max_abs_error_p95 = summary["max_abs_error_p95"]
+        if (
+            args.max_sample_abs_error_p95 is not None
+            and max_abs_error_p95 > args.max_sample_abs_error_p95
+        ):
+            failures.append(
+                f"{name}: maximum sample p95 abs error "
+                f"{max_abs_error_p95:.4g} > "
+                f"{args.max_sample_abs_error_p95:.4g}"
+            )
+
+        mean_ssim = summary.get("mean_ssim")
+        if args.min_mean_ssim is not None:
+            if mean_ssim is None:
+                failures.append(f"{name}: SSIM was not computed")
+            elif mean_ssim < args.min_mean_ssim:
+                failures.append(
+                    f"{name}: mean SSIM {mean_ssim:.4g} < {args.min_mean_ssim:.4g}"
+                )
+
+        min_ssim = summary.get("min_ssim")
+        if args.min_sample_ssim is not None:
+            if min_ssim is None:
+                failures.append(f"{name}: sample SSIM was not computed")
+            elif min_ssim < args.min_sample_ssim:
+                failures.append(
+                    f"{name}: minimum sample SSIM {min_ssim:.4g} < "
+                    f"{args.min_sample_ssim:.4g}"
+                )
+
+        mean_edge_ssim = summary.get("mean_edge_ssim")
+        if args.min_mean_edge_ssim is not None:
+            if mean_edge_ssim is None:
+                failures.append(f"{name}: edge SSIM was not computed")
+            elif mean_edge_ssim < args.min_mean_edge_ssim:
+                failures.append(
+                    f"{name}: mean edge SSIM {mean_edge_ssim:.4g} < "
+                    f"{args.min_mean_edge_ssim:.4g}"
+                )
+
+        min_edge_ssim = summary.get("min_edge_ssim")
+        if args.min_sample_edge_ssim is not None:
+            if min_edge_ssim is None:
+                failures.append(f"{name}: sample edge SSIM was not computed")
+            elif min_edge_ssim < args.min_sample_edge_ssim:
+                failures.append(
+                    f"{name}: minimum sample edge SSIM {min_edge_ssim:.4g} < "
+                    f"{args.min_sample_edge_ssim:.4g}"
+                )
+
+        mean_reference_ssim = summary.get("mean_reference_ssim")
+        if args.min_mean_reference_ssim is not None:
+            if mean_reference_ssim is None:
+                failures.append(f"{name}: public-reference SSIM was not computed")
+            elif mean_reference_ssim < args.min_mean_reference_ssim:
+                failures.append(
+                    f"{name}: public-reference mean SSIM "
+                    f"{mean_reference_ssim:.4g} < "
+                    f"{args.min_mean_reference_ssim:.4g}"
+                )
+
+        min_reference_ssim = summary.get("min_reference_ssim")
+        if args.min_sample_reference_ssim is not None:
+            if min_reference_ssim is None:
+                failures.append(
+                    f"{name}: public-reference sample SSIM was not computed"
+                )
+            elif min_reference_ssim < args.min_sample_reference_ssim:
+                failures.append(
+                    f"{name}: public-reference minimum sample SSIM "
+                    f"{min_reference_ssim:.4g} < "
+                    f"{args.min_sample_reference_ssim:.4g}"
+                )
+
+        mean_reference_edge_ssim = summary.get("mean_reference_edge_ssim")
+        if args.min_mean_reference_edge_ssim is not None:
+            if mean_reference_edge_ssim is None:
+                failures.append(f"{name}: public-reference edge SSIM was not computed")
+            elif mean_reference_edge_ssim < args.min_mean_reference_edge_ssim:
+                failures.append(
+                    f"{name}: public-reference mean edge SSIM "
+                    f"{mean_reference_edge_ssim:.4g} < "
+                    f"{args.min_mean_reference_edge_ssim:.4g}"
+                )
+
+        mean_reference_mae = summary.get("mean_reference_mae")
+        if args.max_mean_reference_mae is not None:
+            if mean_reference_mae is None:
+                failures.append(f"{name}: public-reference MAE was not computed")
+            elif mean_reference_mae > args.max_mean_reference_mae:
+                failures.append(
+                    f"{name}: public-reference mean MAE "
+                    f"{mean_reference_mae:.4g} > "
+                    f"{args.max_mean_reference_mae:.4g}"
+                )
+
+        mean_reference_abs_error_p95 = summary.get("mean_reference_abs_error_p95")
+        if args.max_mean_reference_abs_error_p95 is not None:
+            if mean_reference_abs_error_p95 is None:
+                failures.append(
+                    f"{name}: public-reference p95 abs error was not computed"
+                )
+            elif mean_reference_abs_error_p95 > args.max_mean_reference_abs_error_p95:
+                failures.append(
+                    f"{name}: public-reference mean p95 abs error "
+                    f"{mean_reference_abs_error_p95:.4g} > "
+                    f"{args.max_mean_reference_abs_error_p95:.4g}"
+                )
+
+        if args.require_better_than_fdk:
+            mean_fdk_psnr = summary["mean_fdk_psnr"]
+            if mean_psnr <= mean_fdk_psnr:
+                failures.append(
+                    f"{name}: PaDIS mean PSNR {mean_psnr:.4g} dB <= "
+                    f"FDK mean PSNR {mean_fdk_psnr:.4g} dB"
+                )
+        if args.min_sample_psnr is not None:
+            min_psnr = summary["min_psnr"]
+            if min_psnr < args.min_sample_psnr:
+                failures.append(
+                    f"{name}: minimum sample PSNR {min_psnr:.4g} dB < "
+                    f"{args.min_sample_psnr:.4g} dB"
+                )
+        if args.require_each_better_than_fdk and summary["min_fdk_margin"] <= 0:
+            failures.append(
+                f"{name}: at least one PaDIS sample did not improve over FDK "
+                f"(minimum margin {summary['min_fdk_margin']:.4g} dB)"
+            )
+
+    if failures:
+        message = "Quality gate failed:\n  " + "\n  ".join(failures)
+        raise RuntimeError(message)
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -988,6 +1576,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="Use PaDIS-style PNG slices as the image-prior dataset.",
     )
+    parser.add_argument(
+        "--public-reference-reconstructions",
+        type=pathlib.Path,
+        default=None,
+        help=(
+            "Optional public PaDIS reference reconstructions as .npz, .pt, or "
+            "a single PNG. When supplied, public-reference similarity metrics "
+            "and gates can be used."
+        ),
+    )
     parser.add_argument("--noise", choices=("none", "low-dose"), default="none")
     parser.add_argument("--noise-i0", type=float, default=3500)
     parser.add_argument("--noise-sigma", type=float, default=5)
@@ -1004,6 +1602,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--public-padis-ct-sampling",
         action="store_true",
         help="Use the public PaDIS CT-script compatibility sampler: FDK init and norm-gradient DPS.",
+    )
+    parser.add_argument(
+        "--lion-quality-ct-sampling",
+        action="store_true",
+        help=(
+            "Use the preferred LION-native CT sampler: paper CT schedule and "
+            "squared-residual objective with FDK init, Hann 0.9 filtering, "
+            "and operator-norm data-consistency scaling."
+        ),
     )
     parser.add_argument(
         "--paper-ct-views",
@@ -1033,6 +1640,32 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "public/default presets default to FDK."
         ),
     )
+    parser.add_argument(
+        "--initial-fdk-filter-type",
+        choices=("none", "ram-lak", "hann", "hamming", "cosine", "shepp-logan"),
+        default=None,
+        help="Optional FDK ramp-window filter for FDK initialization.",
+    )
+    parser.add_argument(
+        "--initial-fdk-frequency-scaling",
+        type=float,
+        default=None,
+        help="Cutoff frequency fraction for the initial FDK filter window.",
+    )
+    parser.set_defaults(initial_fdk_padded=None)
+    parser.add_argument(
+        "--initial-fdk-padded",
+        dest="initial_fdk_padded",
+        action="store_true",
+        help="Pad projections during initial FDK filtering.",
+    )
+    parser.add_argument(
+        "--no-initial-fdk-padded",
+        dest="initial_fdk_padded",
+        action="store_false",
+        help="Do not pad projections during initial FDK filtering.",
+    )
+    parser.add_argument("--initial-fdk-batch-size", type=int, default=None)
     parser.add_argument("--dps-epsilon", type=float, default=None)
     parser.add_argument("--sampling-epsilon", type=float, default=None)
     parser.add_argument(
@@ -1071,6 +1704,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--body-bbox-padding", type=int, default=8)
     parser.add_argument("--error-vmax", type=float, default=0.10)
+    parser.add_argument(
+        "--preview-vmax",
+        type=float,
+        default=0.75,
+        help="Upper display window for fixed-window preview comparison images.",
+    )
     parser.add_argument("--raw-weights", action="store_true")
     parser.add_argument(
         "--no-position-channels",
@@ -1100,14 +1739,33 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--data-consistency-normalization",
         choices=("operator_norm", "none"),
-        default="none",
+        default=None,
         help="Optionally scale data-consistency updates by the composed measurement operator norm.",
     )
     parser.add_argument(
         "--data-consistency-scale",
         type=float,
-        default=1.0,
+        default=None,
         help="Extra multiplier after data-consistency normalisation.",
+    )
+    parser.set_defaults(consume_discarded_measurement_noise=None)
+    parser.add_argument(
+        "--consume-discarded-measurement-noise",
+        dest="consume_discarded_measurement_noise",
+        action="store_true",
+        help=(
+            "Burn the public PaDIS script's zero-noise measurement RNG draw. "
+            "This preserves exact public RNG alignment."
+        ),
+    )
+    parser.add_argument(
+        "--no-consume-discarded-measurement-noise",
+        dest="consume_discarded_measurement_noise",
+        action="store_false",
+        help=(
+            "Skip the public PaDIS script's zero-noise measurement RNG draw. "
+            "This keeps the public sampler form but can improve reconstruction quality."
+        ),
     )
     parser.add_argument(
         "--data-consistency-scale-schedule",
@@ -1148,6 +1806,106 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--min-mean-psnr",
+        type=float,
+        default=None,
+        help="Fail the run if the mean reconstruction PSNR is below this value.",
+    )
+    parser.add_argument(
+        "--min-mean-ssim",
+        type=float,
+        default=None,
+        help="Fail the run if the mean reconstruction SSIM is below this value.",
+    )
+    parser.add_argument(
+        "--max-mean-mae",
+        type=float,
+        default=None,
+        help="Fail the run if mean normalized MAE to the target is above this value.",
+    )
+    parser.add_argument(
+        "--max-sample-mae",
+        type=float,
+        default=None,
+        help="Fail the run if any normalized MAE to the target is above this value.",
+    )
+    parser.add_argument(
+        "--max-mean-abs-error-p95",
+        type=float,
+        default=None,
+        help="Fail the run if mean target p95 absolute error is above this value.",
+    )
+    parser.add_argument(
+        "--max-sample-abs-error-p95",
+        type=float,
+        default=None,
+        help="Fail the run if any target p95 absolute error is above this value.",
+    )
+    parser.add_argument(
+        "--min-sample-ssim",
+        type=float,
+        default=None,
+        help="Fail the run if any individual reconstruction SSIM is below this value.",
+    )
+    parser.add_argument(
+        "--min-mean-edge-ssim",
+        type=float,
+        default=None,
+        help="Fail the run if the mean Sobel-edge SSIM to the target is below this value.",
+    )
+    parser.add_argument(
+        "--min-sample-edge-ssim",
+        type=float,
+        default=None,
+        help="Fail the run if any Sobel-edge SSIM to the target is below this value.",
+    )
+    parser.add_argument(
+        "--min-mean-reference-ssim",
+        type=float,
+        default=None,
+        help="Fail the run if mean SSIM to --public-reference-reconstructions is below this value.",
+    )
+    parser.add_argument(
+        "--min-sample-reference-ssim",
+        type=float,
+        default=None,
+        help="Fail the run if any SSIM to --public-reference-reconstructions is below this value.",
+    )
+    parser.add_argument(
+        "--min-mean-reference-edge-ssim",
+        type=float,
+        default=None,
+        help="Fail the run if mean Sobel-edge SSIM to the public reference is below this value.",
+    )
+    parser.add_argument(
+        "--max-mean-reference-mae",
+        type=float,
+        default=None,
+        help="Fail the run if mean MAE to --public-reference-reconstructions is above this value.",
+    )
+    parser.add_argument(
+        "--max-mean-reference-abs-error-p95",
+        type=float,
+        default=None,
+        help="Fail the run if mean public-reference p95 absolute error is above this value.",
+    )
+    parser.add_argument(
+        "--min-sample-psnr",
+        type=float,
+        default=None,
+        help="Fail the run if any individual reconstruction PSNR is below this value.",
+    )
+    parser.add_argument(
+        "--require-better-than-fdk",
+        action="store_true",
+        help="Fail the run if PaDIS does not improve mean PSNR over FDK.",
+    )
+    parser.add_argument(
+        "--require-each-better-than-fdk",
+        action="store_true",
+        help="Fail the run if any individual PaDIS reconstruction does not improve PSNR over FDK.",
+    )
+    parser.add_argument(
         "--trace-interval",
         type=int,
         default=0,
@@ -1162,6 +1920,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "trace interval is set."
         ),
     )
+    parser.add_argument(
+        "--stop-after-outer-steps",
+        type=int,
+        default=None,
+        help=(
+            "Debugging aid: stop after this many outer sampler steps while "
+            "preserving the full configured sigma schedule."
+        ),
+    )
     return parser
 
 
@@ -1171,14 +1938,20 @@ def main() -> None:
         raise ValueError("--max-samples must be positive.")
     if args.start_index < 0:
         raise ValueError("--start-index must be non-negative.")
-    if args.paper_ct_sampling and args.public_padis_ct_sampling:
+    ct_sampling_modes = (
+        args.paper_ct_sampling,
+        args.public_padis_ct_sampling,
+        args.lion_quality_ct_sampling,
+    )
+    if sum(bool(mode) for mode in ct_sampling_modes) > 1:
         raise ValueError(
-            "--paper-ct-sampling and --public-padis-ct-sampling are mutually exclusive."
+            "--paper-ct-sampling, --public-padis-ct-sampling, and "
+            "--lion-quality-ct-sampling are mutually exclusive."
         )
-    if args.public_padis_image_dir is not None and args.experiment != "none":
-        raise ValueError("--public-padis-image-dir requires --experiment none.")
     if args.trace_interval < 0:
         raise ValueError("--trace-interval must be non-negative.")
+    if args.stop_after_outer_steps is not None and args.stop_after_outer_steps <= 0:
+        raise ValueError("--stop-after-outer-steps must be positive when set.")
     if args.trace_images and args.trace_interval == 0:
         args.trace_interval = 5
 
@@ -1215,6 +1988,16 @@ def main() -> None:
         experiment_measurement_source = getattr(
             experiment.param, "measurement_source", "reconstruction"
         )
+        if args.public_padis_image_dir is not None:
+            if experiment_measurement_source != "normal":
+                raise ValueError(
+                    "--public-padis-image-dir with --experiment is only supported "
+                    "for image-prior/normal-domain experiments."
+                )
+            dataset = PNGImagePriorDataset(
+                args.public_padis_image_dir,
+                channels=int(reconstruction_geometry.image_shape[0]),
+            )
         if args.noise != "none":
             print(
                 "--noise is ignored when --experiment is set; using experiment noise."
@@ -1222,6 +2005,15 @@ def main() -> None:
     if args.start_index >= len(dataset):
         raise ValueError(
             f"--start-index {args.start_index} is outside the {args.split} dataset of length {len(dataset)}."
+        )
+    reference_reconstructions = load_reference_reconstructions(
+        args.public_reference_reconstructions
+    )
+    if reference_reconstructions is not None:
+        print(
+            "Loaded public reference reconstructions from "
+            f"{args.public_reference_reconstructions} with shape "
+            f"{tuple(reference_reconstructions.shape)}."
         )
 
     sampler_params = build_sampler_params(
@@ -1270,8 +2062,11 @@ def main() -> None:
                 device=device,
                 from_experiment=from_experiment,
                 experiment_measurement_source=experiment_measurement_source,
+                reference_reconstructions=reference_reconstructions,
             )
         )
+
+    enforce_quality_gates(args, summaries)
 
     if args.run_ablations:
         summary_path = run_folder / "ablation_summary.json"

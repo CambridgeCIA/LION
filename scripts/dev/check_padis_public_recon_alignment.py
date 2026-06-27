@@ -122,6 +122,7 @@ def make_lion_reconstructor(*, image_size=8, pad_width=2, patch_size=5):
     params.patch_size = int(patch_size)
     params.clip_output = False
     params.trace_interval = 1
+    params.data_consistency_scale = 1.0
     return PaDIS(
         IdentityOperator((1, image_size, image_size)), model, parameters=params
     )
