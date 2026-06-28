@@ -45,9 +45,11 @@ LION_ROOT="$(padis_lion_root)"
 PADIS_RUN_ROOT="$(padis_default_run_root)"
 PADIS_TRAIN_ROOT="${PADIS_TRAIN_ROOT:?PADIS_TRAIN_ROOT must point at a trained PaDIS A100 training root.}"
 PADIS_RECON_ROOT="${PADIS_RECON_ROOT:-$PADIS_RUN_ROOT/final_real_runs/a100_reconstruction_${PADIS_RUN_STAMP:-${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-manual}}}}"
-PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-all}"
+PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-method_default}"
+PADIS_RECON_METHODS="${PADIS_RECON_METHODS:-all}"
 PADIS_RECON_EXPERIMENTS="${PADIS_RECON_EXPERIMENTS:-paper_matrix}"
-PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-paper,public_repo}"
+PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS="${PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS:-0}"
+PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-method_default}"
 PADIS_RECON_GEOMETRIES="${PADIS_RECON_GEOMETRIES:-lion}"
 PADIS_RECON_SPLIT="${PADIS_RECON_SPLIT:-test}"
 PADIS_RECON_ALGORITHM="${PADIS_RECON_ALGORITHM:-dps_langevin}"
@@ -59,6 +61,18 @@ PADIS_RECON_SAVE_PREVIEWS="${PADIS_RECON_SAVE_PREVIEWS:-1}"
 PADIS_RECON_PROG_BAR="${PADIS_RECON_PROG_BAR:-0}"
 PADIS_RECON_TRACE_INTERVAL="${PADIS_RECON_TRACE_INTERVAL:-}"
 PADIS_RECON_TRACE_IMAGES="${PADIS_RECON_TRACE_IMAGES:-0}"
+PADIS_PNP_OUTPUT_ROOT="${PADIS_PNP_OUTPUT_ROOT:-$PADIS_TRAIN_ROOT}"
+PADIS_PNP_RUN_NAME="${PADIS_PNP_RUN_NAME:-pnp_lidc_drunet}"
+PADIS_PNP_FINAL_NAME="${PADIS_PNP_FINAL_NAME:-pnp_lidc_drunet.pt}"
+PADIS_PNP_ROOT="${PADIS_PNP_ROOT:-$PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_RUN_NAME}"
+PADIS_PNP_CHECKPOINT="${PADIS_PNP_CHECKPOINT:-}"
+PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-10}"
+PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-4}"
+PADIS_PNP_CG_ITERATIONS="${PADIS_PNP_CG_ITERATIONS:-100}"
+PADIS_PNP_CG_TOLERANCE="${PADIS_PNP_CG_TOLERANCE:-1e-7}"
+PADIS_PNP_NOISE_LEVEL="${PADIS_PNP_NOISE_LEVEL:-}"
+PADIS_TV_LAMBDA="${PADIS_TV_LAMBDA:-0.001}"
+PADIS_TV_ITERATIONS="${PADIS_TV_ITERATIONS:-500}"
 PADIS_DATA_FOLDER="${PADIS_DATA_FOLDER:-}"
 PADIS_PUBLIC_IMAGE_DIR="${PADIS_PUBLIC_IMAGE_DIR:-}"
 MPLCONFIGDIR="${MPLCONFIGDIR:-$PADIS_RECON_ROOT/matplotlib}"
@@ -69,12 +83,21 @@ cd "$LION_ROOT"
 padis_print_job_header
 
 TASK_ID="${SLURM_ARRAY_TASK_ID:-0}"
+compact_recon_methods="${PADIS_RECON_METHODS//[[:space:]]/}"
+if {
+        [ "$compact_recon_methods" = "all" ] ||
+                [[ ",$compact_recon_methods," == *",pnp_admm,"* ]];
+} && [ -z "$PADIS_PNP_CHECKPOINT" ]; then
+        PADIS_PNP_CHECKPOINT="$PADIS_PNP_ROOT/$PADIS_PNP_FINAL_NAME"
+fi
+
 CMD=(
         python -u scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py
         --training-root "$PADIS_TRAIN_ROOT"
         --output-root "$PADIS_RECON_ROOT"
         --task-index "$TASK_ID"
         --models "$PADIS_RECON_MODELS"
+        --methods "$PADIS_RECON_METHODS"
         --experiments "$PADIS_RECON_EXPERIMENTS"
         --implementations "$PADIS_RECON_IMPLEMENTATIONS"
         --geometries "$PADIS_RECON_GEOMETRIES"
@@ -84,8 +107,24 @@ CMD=(
         --start-index "$PADIS_RECON_START_INDEX"
         --seed "$PADIS_RECON_SEED"
         --device "$PADIS_RECON_DEVICE"
+        --pnp-root "$PADIS_PNP_ROOT"
+        --pnp-iterations "$PADIS_PNP_ITERATIONS"
+        --pnp-eta "$PADIS_PNP_ETA"
+        --pnp-cg-iterations "$PADIS_PNP_CG_ITERATIONS"
+        --pnp-cg-tolerance "$PADIS_PNP_CG_TOLERANCE"
+        --tv-lambda "$PADIS_TV_LAMBDA"
+        --tv-iterations "$PADIS_TV_ITERATIONS"
 )
 
+if [ -n "$PADIS_PNP_CHECKPOINT" ]; then
+        CMD+=(--pnp-checkpoint "$PADIS_PNP_CHECKPOINT")
+fi
+if [ -n "$PADIS_PNP_NOISE_LEVEL" ]; then
+        CMD+=(--pnp-noise-level "$PADIS_PNP_NOISE_LEVEL")
+fi
+if [ "$PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS" = "1" ]; then
+        CMD+=(--allow-off-paper-experiments)
+fi
 if [ -n "$PADIS_DATA_FOLDER" ]; then
         CMD+=(--data-folder "$PADIS_DATA_FOLDER")
 fi
@@ -107,7 +146,7 @@ fi
 if [ -n "${PADIS_RECON_EXTRA_ARGS:-}" ]; then
         read -r -a EXTRA_ARGS <<< "$PADIS_RECON_EXTRA_ARGS"
         for item in "${EXTRA_ARGS[@]}"; do
-                CMD+=(--reconstruction-arg "$item")
+                CMD+=("--reconstruction-arg=$item")
         done
 fi
 

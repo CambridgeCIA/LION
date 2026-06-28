@@ -15,6 +15,11 @@ cd "$LION_ROOT"
 account="${PADIS_SLURM_ACCOUNT:-MPHIL-DIS-SL2-GPU}"
 time_limit="${PADIS_RECON_TIME:-06:00:00}"
 array_limit="${PADIS_RECON_ARRAY_LIMIT:-10}"
+verify_account="${PADIS_RECON_VERIFY_ACCOUNT:-${PADIS_CACHE_SLURM_ACCOUNT:-MPHIL-DIS-SL2-CPU}}"
+verify_partition="${PADIS_RECON_VERIFY_PARTITION:-icelake}"
+verify_cpus="${PADIS_RECON_VERIFY_CPUS_PER_TASK:-4}"
+verify_mem="${PADIS_RECON_VERIFY_MEM:-16G}"
+verify_time="${PADIS_RECON_VERIFY_TIME:-00:20:00}"
 run_root="$(padis_default_run_root)"
 run_stamp="${PADIS_RUN_STAMP:-}"
 
@@ -45,9 +50,11 @@ fi
 
 run_stamp="${run_stamp:-$(date +%Y%m%d_%H%M%S)}"
 PADIS_RECON_ROOT="${PADIS_RECON_ROOT:-$run_root/final_real_runs/a100_reconstruction_$run_stamp}"
-PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-all}"
+PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-method_default}"
+PADIS_RECON_METHODS="${PADIS_RECON_METHODS:-all}"
 PADIS_RECON_EXPERIMENTS="${PADIS_RECON_EXPERIMENTS:-paper_matrix}"
-PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-paper,public_repo}"
+PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS="${PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS:-0}"
+PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-method_default}"
 PADIS_RECON_GEOMETRIES="${PADIS_RECON_GEOMETRIES:-lion}"
 PADIS_RECON_SPLIT="${PADIS_RECON_SPLIT:-test}"
 PADIS_RECON_ALGORITHM="${PADIS_RECON_ALGORITHM:-dps_langevin}"
@@ -55,23 +62,122 @@ PADIS_RECON_MAX_SAMPLES="${PADIS_RECON_MAX_SAMPLES:-25}"
 PADIS_RECON_START_INDEX="${PADIS_RECON_START_INDEX:-0}"
 PADIS_RECON_SEED="${PADIS_RECON_SEED:-33}"
 PADIS_RECON_DEVICE="${PADIS_RECON_DEVICE:-cuda}"
+PADIS_PNP_OUTPUT_ROOT="${PADIS_PNP_OUTPUT_ROOT:-$PADIS_TRAIN_ROOT}"
+PADIS_PNP_RUN_NAME="${PADIS_PNP_RUN_NAME:-pnp_lidc_drunet}"
+PADIS_PNP_FINAL_NAME="${PADIS_PNP_FINAL_NAME:-pnp_lidc_drunet.pt}"
+PADIS_PNP_ROOT="${PADIS_PNP_ROOT:-$PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_RUN_NAME}"
+PADIS_PNP_CHECKPOINT="${PADIS_PNP_CHECKPOINT:-}"
+PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-10}"
+PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-4}"
+PADIS_PNP_CG_ITERATIONS="${PADIS_PNP_CG_ITERATIONS:-100}"
+PADIS_PNP_CG_TOLERANCE="${PADIS_PNP_CG_TOLERANCE:-1e-7}"
+PADIS_PNP_NOISE_LEVEL="${PADIS_PNP_NOISE_LEVEL:-}"
+PADIS_TV_LAMBDA="${PADIS_TV_LAMBDA:-0.001}"
+PADIS_TV_ITERATIONS="${PADIS_TV_ITERATIONS:-500}"
+PADIS_RECON_VERIFY="${PADIS_RECON_VERIFY:-0}"
+PADIS_RECON_VERIFY_METHODS="${PADIS_RECON_VERIFY_METHODS:-$PADIS_RECON_METHODS}"
+PADIS_RECON_VERIFY_EXPERIMENTS="${PADIS_RECON_VERIFY_EXPERIMENTS:-$PADIS_RECON_EXPERIMENTS}"
+PADIS_RECON_VERIFY_GEOMETRIES="${PADIS_RECON_VERIFY_GEOMETRIES:-$PADIS_RECON_GEOMETRIES}"
+PADIS_RECON_EXTRA_ARGS="${PADIS_RECON_EXTRA_ARGS:-}"
 
 export PADIS_RUN_STAMP="$run_stamp"
 export PADIS_SLURM_DIR="$SCRIPT_DIR"
 export LION_ROOT PADIS_TRAIN_ROOT PADIS_RECON_ROOT
-export PADIS_RECON_MODELS PADIS_RECON_EXPERIMENTS PADIS_RECON_IMPLEMENTATIONS
+export PADIS_RECON_MODELS PADIS_RECON_METHODS PADIS_RECON_EXPERIMENTS
+export PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS PADIS_RECON_IMPLEMENTATIONS
 export PADIS_RECON_GEOMETRIES PADIS_RECON_SPLIT PADIS_RECON_ALGORITHM
 export PADIS_RECON_MAX_SAMPLES PADIS_RECON_START_INDEX PADIS_RECON_SEED
 export PADIS_RECON_DEVICE
+export PADIS_PNP_OUTPUT_ROOT PADIS_PNP_RUN_NAME PADIS_PNP_FINAL_NAME
+export PADIS_PNP_ROOT PADIS_PNP_CHECKPOINT PADIS_PNP_ITERATIONS PADIS_PNP_ETA
+export PADIS_PNP_CG_ITERATIONS PADIS_PNP_CG_TOLERANCE PADIS_PNP_NOISE_LEVEL
+export PADIS_TV_LAMBDA PADIS_TV_ITERATIONS
+export PADIS_RECON_VERIFY PADIS_RECON_VERIFY_METHODS PADIS_RECON_VERIFY_EXPERIMENTS
+export PADIS_RECON_VERIFY_GEOMETRIES
+export PADIS_RECON_EXTRA_ARGS
 
 mkdir -p "$run_root/debug_runs/slurm_logs" "$PADIS_RECON_ROOT"
+
+pnp_noise_args=()
+if [ -n "$PADIS_PNP_NOISE_LEVEL" ]; then
+        pnp_noise_args=(--pnp-noise-level "$PADIS_PNP_NOISE_LEVEL")
+fi
+off_paper_args=()
+if [ "$PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS" = "1" ]; then
+        off_paper_args=(--allow-off-paper-experiments)
+fi
+recon_extra_args=()
+if [ -n "$PADIS_RECON_EXTRA_ARGS" ]; then
+        read -r -a RECON_EXTRA_ARGS <<< "$PADIS_RECON_EXTRA_ARGS"
+        for item in "${RECON_EXTRA_ARGS[@]}"; do
+                recon_extra_args+=("--reconstruction-arg=$item")
+        done
+fi
+
+recon_needs_pnp="0"
+compact_recon_methods="${PADIS_RECON_METHODS//[[:space:]]/}"
+if [ "$compact_recon_methods" = "all" ] || [[ ",$compact_recon_methods," == *",pnp_admm,"* ]]; then
+        recon_needs_pnp="1"
+fi
+if [ "$recon_needs_pnp" = "1" ]; then
+        if [ -z "$PADIS_PNP_CHECKPOINT" ]; then
+                export PADIS_PNP_CHECKPOINT="$PADIS_PNP_ROOT/$PADIS_PNP_FINAL_NAME"
+        fi
+        pnp_checkpoint="$PADIS_PNP_CHECKPOINT"
+        if [ ! -f "$pnp_checkpoint" ]; then
+                cat >&2 <<EOF
+PADIS_RECON_METHODS selected a matrix containing pnp_admm, but no PnP
+checkpoint was found.
+
+Either:
+  - run scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_pnp_training.sh first,
+  - set PADIS_PNP_CHECKPOINT to an existing DRUNet checkpoint, or
+  - exclude pnp_admm from PADIS_RECON_METHODS.
+EOF
+                exit 1
+        fi
+fi
+
+pnp_checkpoint_args=()
+if [ -n "$PADIS_PNP_CHECKPOINT" ]; then
+        pnp_checkpoint_args=(--pnp-checkpoint "$PADIS_PNP_CHECKPOINT")
+fi
+
+python scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py \
+        --training-root "$PADIS_TRAIN_ROOT" \
+        --output-root "$PADIS_RECON_ROOT" \
+        --models "$PADIS_RECON_MODELS" \
+        --methods "$PADIS_RECON_METHODS" \
+        --experiments "$PADIS_RECON_EXPERIMENTS" \
+        "${off_paper_args[@]}" \
+        --implementations "$PADIS_RECON_IMPLEMENTATIONS" \
+        --geometries "$PADIS_RECON_GEOMETRIES" \
+        --split "$PADIS_RECON_SPLIT" \
+        --algorithm "$PADIS_RECON_ALGORITHM" \
+        --max-samples "$PADIS_RECON_MAX_SAMPLES" \
+        --start-index "$PADIS_RECON_START_INDEX" \
+        --seed "$PADIS_RECON_SEED" \
+        --device "$PADIS_RECON_DEVICE" \
+        --pnp-root "$PADIS_PNP_ROOT" \
+        "${pnp_checkpoint_args[@]}" \
+        --pnp-iterations "$PADIS_PNP_ITERATIONS" \
+        --pnp-eta "$PADIS_PNP_ETA" \
+        --pnp-cg-iterations "$PADIS_PNP_CG_ITERATIONS" \
+        --pnp-cg-tolerance "$PADIS_PNP_CG_TOLERANCE" \
+        "${pnp_noise_args[@]}" \
+        --tv-lambda "$PADIS_TV_LAMBDA" \
+        --tv-iterations "$PADIS_TV_ITERATIONS" \
+        "${recon_extra_args[@]}" \
+        --check-inputs >/dev/null
 
 task_count="$(
         python scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py \
                 --training-root "$PADIS_TRAIN_ROOT" \
                 --output-root "$PADIS_RECON_ROOT" \
                 --models "$PADIS_RECON_MODELS" \
+                --methods "$PADIS_RECON_METHODS" \
                 --experiments "$PADIS_RECON_EXPERIMENTS" \
+                "${off_paper_args[@]}" \
                 --implementations "$PADIS_RECON_IMPLEMENTATIONS" \
                 --geometries "$PADIS_RECON_GEOMETRIES" \
                 --split "$PADIS_RECON_SPLIT" \
@@ -80,8 +186,47 @@ task_count="$(
                 --start-index "$PADIS_RECON_START_INDEX" \
                 --seed "$PADIS_RECON_SEED" \
                 --device "$PADIS_RECON_DEVICE" \
+                --pnp-root "$PADIS_PNP_ROOT" \
+                "${pnp_checkpoint_args[@]}" \
+                --pnp-iterations "$PADIS_PNP_ITERATIONS" \
+                --pnp-eta "$PADIS_PNP_ETA" \
+                --pnp-cg-iterations "$PADIS_PNP_CG_ITERATIONS" \
+                --pnp-cg-tolerance "$PADIS_PNP_CG_TOLERANCE" \
+                "${pnp_noise_args[@]}" \
+                --tv-lambda "$PADIS_TV_LAMBDA" \
+                --tv-iterations "$PADIS_TV_ITERATIONS" \
+                "${recon_extra_args[@]}" \
                 --count
 )"
+export PADIS_RECON_EXPECTED_JOBS_JSON="${PADIS_RECON_EXPECTED_JOBS_JSON:-$PADIS_RECON_ROOT/reconstruction_matrix_jobs.json}"
+python scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py \
+        --training-root "$PADIS_TRAIN_ROOT" \
+        --output-root "$PADIS_RECON_ROOT" \
+        --models "$PADIS_RECON_MODELS" \
+        --methods "$PADIS_RECON_METHODS" \
+        --experiments "$PADIS_RECON_EXPERIMENTS" \
+        "${off_paper_args[@]}" \
+        --implementations "$PADIS_RECON_IMPLEMENTATIONS" \
+        --geometries "$PADIS_RECON_GEOMETRIES" \
+        --split "$PADIS_RECON_SPLIT" \
+        --algorithm "$PADIS_RECON_ALGORITHM" \
+        --max-samples "$PADIS_RECON_MAX_SAMPLES" \
+        --start-index "$PADIS_RECON_START_INDEX" \
+        --seed "$PADIS_RECON_SEED" \
+        --device "$PADIS_RECON_DEVICE" \
+        --pnp-root "$PADIS_PNP_ROOT" \
+        "${pnp_checkpoint_args[@]}" \
+        --pnp-iterations "$PADIS_PNP_ITERATIONS" \
+        --pnp-eta "$PADIS_PNP_ETA" \
+        --pnp-cg-iterations "$PADIS_PNP_CG_ITERATIONS" \
+        --pnp-cg-tolerance "$PADIS_PNP_CG_TOLERANCE" \
+        "${pnp_noise_args[@]}" \
+        --tv-lambda "$PADIS_TV_LAMBDA" \
+        --tv-iterations "$PADIS_TV_ITERATIONS" \
+        "${recon_extra_args[@]}" \
+        --list > "$PADIS_RECON_EXPECTED_JOBS_JSON"
+export PADIS_RECON_EXPECTED_RECORDS="${PADIS_RECON_EXPECTED_RECORDS:-$task_count}"
+export PADIS_RECON_EXPECTED_SAMPLES="${PADIS_RECON_EXPECTED_SAMPLES:-$PADIS_RECON_MAX_SAMPLES}"
 last_task=$((task_count - 1))
 array_spec="${PADIS_RECON_ARRAY:-0-${last_task}%${array_limit}}"
 
@@ -96,6 +241,23 @@ recon_job="$(
                 "$SCRIPT_DIR/slurm_PaDIS_A100_reconstruction_array.sh"
 )"
 
+verify_job=""
+if [ "$PADIS_RECON_VERIFY" = "1" ]; then
+        verify_job="$(
+                sbatch \
+                        --parsable \
+                        -A "$verify_account" \
+                        -p "$verify_partition" \
+                        --cpus-per-task "$verify_cpus" \
+                        --mem "$verify_mem" \
+                        --time "$verify_time" \
+                        --dependency "afterok:$recon_job" \
+                        --export=ALL \
+                        --output "$run_root/debug_runs/slurm_logs/%x-%j.out" \
+                        "$SCRIPT_DIR/slurm_PaDIS_A100_reconstruction_verify.sh"
+        )"
+fi
+
 cat <<EOF
 Submitted PaDIS reconstruction array: $recon_job
 
@@ -105,14 +267,16 @@ Run stamp: $run_stamp
 Array: $array_spec
 Tasks: $task_count
 Models: $PADIS_RECON_MODELS
+Methods: $PADIS_RECON_METHODS
 Experiments: $PADIS_RECON_EXPERIMENTS
 Implementations: $PADIS_RECON_IMPLEMENTATIONS
 Geometries: $PADIS_RECON_GEOMETRIES
 Slurm logs: $run_root/debug_runs/slurm_logs
+Verification job: ${verify_job:-not submitted}
 
 Monitor:
-  squeue -j $recon_job
+  squeue -j $recon_job${verify_job:+,$verify_job}
 
 Cancel:
-  scancel $recon_job
+  scancel $recon_job${verify_job:+ $verify_job}
 EOF

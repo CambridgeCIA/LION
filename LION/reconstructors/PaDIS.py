@@ -9,6 +9,7 @@ from typing import Literal
 
 import torch
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint as activation_checkpoint
 from tqdm import tqdm
 
 from LION.classical_algorithms.fdk import fdk
@@ -81,6 +82,7 @@ class PaDIS(LIONReconstructor):
         params.patch_size = int(getattr(model_params, "largest_patch_size", 56))
         params.sigma_data = 0.5
         params.initial_reconstruction = "fdk"
+        params.noise_initialization = "padded"
         params.initial_fdk_filter_type = None
         params.initial_fdk_frequency_scaling = 1.0
         params.initial_fdk_padded = True
@@ -91,7 +93,12 @@ class PaDIS(LIONReconstructor):
         params.clip_state = False
         params.patch_batch_size = None
         params.langevin_ddnm = False
+        params.ddnm_pseudoinverse_clip = False
+        params.ddnm_projected_pseudoinverse_clip = False
+        params.ddnm_corrected_clip = False
         params.pc_snr = 0.16
+        params.pc_corrector_step_rule = "paper_linear"
+        params.pc_corrector_denoise_sigma = "next"
         params.langevin_noise_scale = 1.0
         params.measurement_scale = 1.0
         params.measurement_offset = 0.0
@@ -110,6 +117,10 @@ class PaDIS(LIONReconstructor):
         params.disable_prior_score = False
         params.naive_patch_fixed_layout = True
         params.naive_patch_output = "sampler_state"
+        params.patch_assembly = "padis"
+        params.patch_overlap = 8
+        params.fixed_overlap_layout = "lion_clipped"
+        params.fixed_overlap_checkpoint_denoiser = False
         params.trace_interval = 0
         params.trace_images = False
         params.stop_after_outer_steps = None
@@ -179,6 +190,7 @@ class PaDIS(LIONReconstructor):
         params.consume_discarded_initial_noise = True
         params.consume_unused_latents = True
         params.consume_denoise_output_noise = True
+        params.pc_corrector_denoise_sigma = "current"
         return params
 
     @staticmethod
@@ -416,6 +428,26 @@ class PaDIS(LIONReconstructor):
             )
         if getattr(params, "patch_offset_rng", "torch") not in ("torch", "python"):
             raise ValueError("patch_offset_rng must be 'torch' or 'python'.")
+        if getattr(params, "pc_corrector_step_rule", "paper_linear") not in (
+            "paper_linear",
+            "score_sde_squared",
+        ):
+            raise ValueError(
+                "pc_corrector_step_rule must be 'paper_linear' or "
+                "'score_sde_squared'."
+            )
+        if getattr(params, "pc_corrector_denoise_sigma", "next") not in (
+            "next",
+            "current",
+        ):
+            raise ValueError("pc_corrector_denoise_sigma must be 'next' or 'current'.")
+        if getattr(params, "noise_initialization", "padded") not in (
+            "padded",
+            "central_then_pad",
+        ):
+            raise ValueError(
+                "noise_initialization must be 'padded' or 'central_then_pad'."
+            )
 
     @staticmethod
     def _canonical_algorithm(algorithm: str) -> str:
@@ -453,6 +485,36 @@ class PaDIS(LIONReconstructor):
             x = x.clamp(0.0, 1.0)
         return x.to(device=measurement.device, dtype=measurement.dtype)
 
+    def _pseudoinverse_reconstruction(
+        self, measurement: torch.Tensor, params, *, clip: bool | None = None
+    ) -> torch.Tensor:
+        clip_pseudoinverse = (
+            bool(getattr(params, "ddnm_pseudoinverse_clip", False))
+            if clip is None
+            else bool(clip)
+        )
+        if self.geometry is not None:
+            x = fdk(
+                measurement,
+                self.op,
+                clip=clip_pseudoinverse,
+                padded=bool(getattr(params, "initial_fdk_padded", True)),
+                filter_type=getattr(params, "initial_fdk_filter_type", None),
+                frequency_scaling=float(
+                    getattr(params, "initial_fdk_frequency_scaling", 1.0)
+                ),
+                batch_size=int(getattr(params, "initial_fdk_batch_size", 10)),
+            )
+        else:
+            try:
+                x = self.op.inverse(measurement)
+            except NotImplementedError:
+                x = self.op.adjoint(measurement)
+        x = self._from_measurement_image(x, params)
+        if clip_pseudoinverse:
+            x = x.clamp(0.0, 1.0)
+        return x.to(device=measurement.device, dtype=measurement.dtype)
+
     def _initial_padded_state(
         self,
         measurement: torch.Tensor,
@@ -460,6 +522,14 @@ class PaDIS(LIONReconstructor):
         generator: torch.Generator | None,
     ) -> torch.Tensor:
         x_init = self._initial_reconstruction(measurement, params).unsqueeze(0)
+        if (
+            params.initial_reconstruction == "noise"
+            and getattr(params, "noise_initialization", "padded") == "central_then_pad"
+        ):
+            return self._pad(
+                float(params.sigma_max) * self._sample_noise(x_init, generator),
+                params,
+            )
         if params.initial_reconstruction == "noise":
             return float(params.sigma_max) * self._sample_noise(
                 self._pad(x_init, params), generator
@@ -606,7 +676,13 @@ class PaDIS(LIONReconstructor):
             torch.cat(position_patches, dim=0) if positions is not None else None
         )
         denoised_batch = self._edm_denoise_batch(
-            image_batch, position_batch, sigma, params
+            image_batch,
+            position_batch,
+            sigma,
+            params,
+            use_checkpoint=bool(
+                getattr(params, "fixed_overlap_checkpoint_denoiser", False)
+            ),
         )
 
         output = torch.zeros_like(x)
@@ -625,6 +701,163 @@ class PaDIS(LIONReconstructor):
         zero_border[
             :, :, pad : pad + layout.image_height, pad : pad + layout.image_width
         ] = denoised[
+            :, :, pad : pad + layout.image_height, pad : pad + layout.image_width
+        ]
+        return zero_border
+
+    @staticmethod
+    def _fixed_patch_starts(
+        padded_length: int,
+        *,
+        pad: int,
+        patch_size: int,
+        overlap: int,
+        layout: str = "lion_clipped",
+    ) -> list[int]:
+        if patch_size <= 0:
+            raise ValueError("patch_size must be positive.")
+        if overlap < 0 or overlap >= patch_size:
+            raise ValueError("patch_overlap must satisfy 0 <= overlap < patch_size.")
+        if patch_size > padded_length:
+            raise ValueError("patch_size cannot exceed padded image dimensions.")
+        stride = patch_size - overlap
+        last_valid_start = padded_length - patch_size
+        if layout == "lion_clipped":
+            starts = [pad]
+            while starts[-1] < last_valid_start:
+                starts.append(starts[-1] + stride)
+            starts[-1] = min(starts[-1], last_valid_start)
+        elif layout in ("public_overlap", "public_tile"):
+            start = pad if layout == "public_overlap" else 4
+            if start < 0 or start + patch_size > padded_length:
+                raise ValueError(
+                    f"fixed_overlap_layout={layout!r} cannot place its first "
+                    "patch inside the padded image."
+                )
+            starts = [start]
+            public_stop = padded_length - pad - patch_size
+            while starts[-1] < public_stop:
+                next_start = starts[-1] + stride
+                if next_start + patch_size > padded_length:
+                    next_start = last_valid_start
+                if next_start <= starts[-1]:
+                    break
+                starts.append(next_start)
+        else:
+            raise ValueError(
+                "fixed_overlap_layout must be 'lion_clipped', "
+                "'public_overlap', or 'public_tile'."
+            )
+        return sorted(set(int(start) for start in starts))
+
+    def _fixed_overlap_patch_layout(
+        self,
+        image_shape: tuple[int, int],
+        params,
+    ) -> _PatchLayout:
+        height, width = image_shape
+        pad = int(params.pad_width)
+        patch_size = int(params.patch_size)
+        overlap = int(getattr(params, "patch_overlap", 8))
+        fixed_overlap_layout = getattr(params, "fixed_overlap_layout", "lion_clipped")
+        padded_height = height + 2 * pad
+        padded_width = width + 2 * pad
+        row_starts = self._fixed_patch_starts(
+            padded_height,
+            pad=pad,
+            patch_size=patch_size,
+            overlap=overlap,
+            layout=fixed_overlap_layout,
+        )
+        col_starts = self._fixed_patch_starts(
+            padded_width,
+            pad=pad,
+            patch_size=patch_size,
+            overlap=overlap,
+            layout=fixed_overlap_layout,
+        )
+        indices = [
+            (top, top + patch_size, left, left + patch_size)
+            for top in row_starts
+            for left in col_starts
+        ]
+        if not indices:
+            raise ValueError("Fixed-overlap patch layout produced no valid patches.")
+        return _PatchLayout(indices, height, width)
+
+    def _denoise_fixed_overlap_patches(
+        self,
+        x: torch.Tensor,
+        sigma: torch.Tensor,
+        layout: _PatchLayout,
+        params,
+        *,
+        assembly: Literal["fixed_average", "fixed_stitch"],
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        if x.dim() != 4 or x.shape[0] != 1:
+            raise ValueError(
+                "Fixed-overlap patch denoising expects a single padded image batch."
+            )
+
+        image_patches = []
+        position_patches = []
+        positions = (
+            self._position_grid(x)
+            if int(getattr(self.model.model_parameters, "input_position_channels", 2))
+            > 0
+            else None
+        )
+        for top, bottom, left, right in layout.indices:
+            image_patches.append(x[:, :, top:bottom, left:right])
+            if positions is not None:
+                position_patches.append(positions[:, :, top:bottom, left:right])
+
+        image_batch = torch.cat(image_patches, dim=0)
+        position_batch = (
+            torch.cat(position_patches, dim=0) if positions is not None else None
+        )
+        denoised_batch = self._edm_denoise_batch(
+            image_batch,
+            position_batch,
+            sigma,
+            params,
+            use_checkpoint=bool(
+                getattr(params, "fixed_overlap_checkpoint_denoiser", False)
+            ),
+        )
+
+        output = torch.zeros_like(x)
+        if assembly == "fixed_average":
+            counts = torch.zeros_like(x)
+        else:
+            counts = None
+        cursor = 0
+        for top, bottom, left, right in layout.indices:
+            patch = denoised_batch[cursor : cursor + 1]
+            if assembly == "fixed_average":
+                output[:, :, top:bottom, left:right] += patch
+                counts[:, :, top:bottom, left:right] += 1
+            elif assembly == "fixed_stitch":
+                output[:, :, top:bottom, left:right] = patch
+            else:
+                raise ValueError(
+                    "patch_assembly must be 'padis', 'fixed_average', or 'fixed_stitch'."
+                )
+            cursor += 1
+
+        if assembly == "fixed_average":
+            output = torch.where(counts > 0, output / counts.clamp_min(1), x)
+
+        if bool(getattr(params, "consume_denoise_output_noise", False)):
+            _ = self._sample_noise(output, generator)
+        pad = int(params.pad_width)
+        if pad == 0:
+            return output
+        zero_border = torch.zeros_like(output)
+        zero_border[
+            :, :, pad : pad + layout.image_height, pad : pad + layout.image_width
+        ] = output[
             :, :, pad : pad + layout.image_height, pad : pad + layout.image_width
         ]
         return zero_border
@@ -685,6 +918,29 @@ class PaDIS(LIONReconstructor):
                 or patch_size > width + 2 * pad_width
             ):
                 raise ValueError("patch_size cannot exceed padded image dimensions.")
+            patch_assembly = getattr(params, "patch_assembly", "padis")
+            if patch_assembly not in ("padis", "fixed_average", "fixed_stitch"):
+                raise ValueError(
+                    "patch_assembly must be 'padis', 'fixed_average', or 'fixed_stitch'."
+                )
+            if patch_assembly in ("fixed_average", "fixed_stitch"):
+                patch_overlap = int(getattr(params, "patch_overlap", 8))
+                if patch_overlap < 0 or patch_overlap >= patch_size:
+                    raise ValueError(
+                        "patch_overlap must satisfy 0 <= patch_overlap < patch_size."
+                    )
+                fixed_overlap_layout = getattr(
+                    params, "fixed_overlap_layout", "lion_clipped"
+                )
+                if fixed_overlap_layout not in (
+                    "lion_clipped",
+                    "public_overlap",
+                    "public_tile",
+                ):
+                    raise ValueError(
+                        "fixed_overlap_layout must be 'lion_clipped', "
+                        "'public_overlap', or 'public_tile'."
+                    )
         else:
             raise ValueError("prior_mode must be 'patch' or 'whole_image'.")
 
@@ -702,6 +958,17 @@ class PaDIS(LIONReconstructor):
             return self._denoise_whole_image(x, sigma, params)
         if prior_mode != "patch":
             raise ValueError("prior_mode must be 'patch' or 'whole_image'.")
+        patch_assembly = getattr(params, "patch_assembly", "padis")
+        if patch_assembly in ("fixed_average", "fixed_stitch"):
+            layout = self._fixed_overlap_patch_layout(image_shape, params)
+            return self._denoise_fixed_overlap_patches(
+                x,
+                sigma,
+                layout,
+                params,
+                assembly=patch_assembly,
+                generator=generator,
+            )
         layout = self._patch_layout(image_shape, params, x.device, generator)
         return self._denoise_patches(x, sigma, layout, params, generator)
 
@@ -711,6 +978,8 @@ class PaDIS(LIONReconstructor):
         position_batch: torch.Tensor | None,
         sigma: torch.Tensor,
         params,
+        *,
+        use_checkpoint: bool = False,
     ) -> torch.Tensor:
         batch_size = image_batch.shape[0]
         patch_batch_size = params.patch_batch_size
@@ -725,14 +994,10 @@ class PaDIS(LIONReconstructor):
             model_dtype = next(self.model.parameters()).dtype
         except StopIteration:
             model_dtype = image_batch.dtype
-        for start in range(0, batch_size, patch_batch_size):
-            stop = min(start + patch_batch_size, batch_size)
-            image = image_batch[start:stop].to(model_dtype)
-            position = (
-                position_batch[start:stop].to(model_dtype)
-                if position_batch is not None
-                else None
-            )
+
+        def denoise_chunk(
+            image: torch.Tensor, position: torch.Tensor | None
+        ) -> torch.Tensor:
             sigma_vec = sigma.expand(image.shape[0]).to(
                 device=image.device, dtype=model_dtype
             )
@@ -753,7 +1018,35 @@ class PaDIS(LIONReconstructor):
             else:
                 model_input = c_in * image
             model_output = self.model(model_input, c_noise)
-            outputs.append(c_skip * image + c_out * model_output)
+            return c_skip * image + c_out * model_output
+
+        for start in range(0, batch_size, patch_batch_size):
+            stop = min(start + patch_batch_size, batch_size)
+            image = image_batch[start:stop].to(model_dtype)
+            position = (
+                position_batch[start:stop].to(model_dtype)
+                if position_batch is not None
+                else None
+            )
+            if use_checkpoint and torch.is_grad_enabled() and image.requires_grad:
+                if position is None:
+                    output = activation_checkpoint(
+                        lambda image_arg: denoise_chunk(image_arg, None),
+                        image,
+                        use_reentrant=False,
+                    )
+                else:
+                    output = activation_checkpoint(
+                        lambda image_arg, position_arg: denoise_chunk(
+                            image_arg, position_arg
+                        ),
+                        image,
+                        position,
+                        use_reentrant=False,
+                    )
+            else:
+                output = denoise_chunk(image, position)
+            outputs.append(output)
         return torch.cat(outputs, dim=0)
 
     def _crop(self, x: torch.Tensor, params) -> torch.Tensor:
@@ -1225,30 +1518,50 @@ class PaDIS(LIONReconstructor):
             alpha = float(getattr(params, "dps_epsilon", 1.0)) * t_cur.square()
             for inner_index in range(int(params.inner_steps)):
                 x_current = x
-                denoised = self._denoise_prior(
-                    x_current,
-                    t_cur.reshape(1),
-                    params,
-                    tuple(x_init.shape[-2:]),
-                    generator,
-                )
-                denoised = self._clip_model_range(denoised, params)
+                if bool(params.disable_data_consistency):
+                    with torch.no_grad():
+                        denoised = self._denoise_prior(
+                            x_current,
+                            t_cur.reshape(1),
+                            params,
+                            tuple(x_init.shape[-2:]),
+                            generator,
+                        )
+                        denoised = self._clip_model_range(denoised, params)
+                else:
+                    denoised = self._denoise_prior(
+                        x_current,
+                        t_cur.reshape(1),
+                        params,
+                        tuple(x_init.shape[-2:]),
+                        generator,
+                    )
+                    denoised = self._clip_model_range(denoised, params)
                 score = (denoised - x_current) / t_cur.square()
-                (
-                    data_gradient,
-                    raw_data_gradient,
-                    residual,
-                    data_normalizer,
-                    data_scale,
-                    data_step_size,
-                ) = self._dps_data_gradient(
-                    measurement, x_current, denoised, params, sigma=t_cur
-                )
-                projected = (
-                    x_current
-                    if bool(params.disable_data_consistency)
-                    else x_current - data_step_size * data_gradient
-                )
+                if bool(params.disable_data_consistency):
+                    with torch.no_grad():
+                        predicted = self._forward_project(
+                            self._crop(denoised, params).squeeze(0)
+                        )
+                        residual = measurement - predicted.to(dtype=measurement.dtype)
+                    data_gradient = torch.zeros_like(x_current)
+                    raw_data_gradient = data_gradient
+                    data_normalizer = 1.0
+                    data_scale = 0.0
+                    data_step_size = 0.0
+                    projected = x_current
+                else:
+                    (
+                        data_gradient,
+                        raw_data_gradient,
+                        residual,
+                        data_normalizer,
+                        data_scale,
+                        data_step_size,
+                    ) = self._dps_data_gradient(
+                        measurement, x_current, denoised, params, sigma=t_cur
+                    )
+                    projected = x_current - data_step_size * data_gradient
                 z = self._sample_noise(x_current, generator)
                 score_step = (
                     0 if bool(params.disable_prior_score) else alpha / 2 * score
@@ -1334,6 +1647,26 @@ class PaDIS(LIONReconstructor):
             return step_size
         raise ValueError("adjoint_data_step_schedule must be 'paper' or 'public_repo'.")
 
+    @staticmethod
+    def _pc_corrector_step_size(
+        noise: torch.Tensor,
+        score: torch.Tensor,
+        snr: float,
+        rule: str = "paper_linear",
+    ) -> torch.Tensor:
+        ratio = (
+            float(snr)
+            * torch.linalg.norm(noise)
+            / torch.linalg.norm(score).clamp_min(1e-12)
+        )
+        if rule == "paper_linear":
+            return 2.0 * ratio
+        if rule == "score_sde_squared":
+            return 2.0 * ratio.square()
+        raise ValueError(
+            "pc_corrector_step_rule must be 'paper_linear' or 'score_sde_squared'."
+        )
+
     def _predictor_corrector(
         self,
         measurement: torch.Tensor,
@@ -1343,20 +1676,39 @@ class PaDIS(LIONReconstructor):
         generator: torch.Generator | None,
     ) -> torch.Tensor:
         x_init = self._initial_reconstruction(measurement, params).unsqueeze(0)
-        x = float(params.sigma_max) * self._sample_noise(
-            self._pad(x_init, params), generator
-        )
+        if (
+            params.initial_reconstruction == "noise"
+            and getattr(params, "noise_initialization", "padded") == "central_then_pad"
+        ):
+            x = self._pad(
+                float(params.sigma_max) * self._sample_noise(x_init, generator),
+                params,
+            )
+        else:
+            x = float(params.sigma_max) * self._sample_noise(
+                self._pad(x_init, params), generator
+            )
         t_steps = self._noise_schedule(params, x.device)
         iterator = zip(t_steps[:-1], t_steps[1:])
+        stop_after = getattr(params, "stop_after_outer_steps", None)
+        if stop_after is not None:
+            stop_after = int(stop_after)
+            if stop_after <= 0:
+                raise ValueError("stop_after_outer_steps must be positive or None.")
         if prog_bar:
+            total_steps = max(int(params.num_steps) - 1, 0)
+            if stop_after is not None:
+                total_steps = min(total_steps, stop_after)
             iterator = tqdm(
                 list(iterator),
                 desc="PaDIS predictor-corrector",
-                total=max(int(params.num_steps) - 1, 0),
+                total=total_steps,
             )
 
         with torch.no_grad():
             for step_index, (t_cur, t_next) in enumerate(iterator):
+                if stop_after is not None and step_index >= stop_after:
+                    break
                 if step_index == int(params.num_steps) - 1:
                     break
 
@@ -1410,20 +1762,26 @@ class PaDIS(LIONReconstructor):
 
                 if step_index < int(params.num_steps) - 1:
                     z = self._sample_noise(x, generator)
+                    corrector_sigma = (
+                        t_cur
+                        if getattr(params, "pc_corrector_denoise_sigma", "next")
+                        == "current"
+                        else t_next
+                    )
                     denoised = self._denoise_prior(
                         x,
-                        t_cur.reshape(1),
+                        corrector_sigma.reshape(1),
                         params,
                         tuple(x_init.shape[-2:]),
                         generator,
                     )
                     denoised = self._clip_model_range(denoised, params)
                     score = (denoised - x) / t_next.square().clamp_min(1e-12)
-                    eps = (
-                        2.0
-                        * float(params.pc_snr)
-                        * torch.linalg.norm(z)
-                        / torch.linalg.norm(score).clamp_min(1e-12)
+                    eps = self._pc_corrector_step_size(
+                        z,
+                        score,
+                        params.pc_snr,
+                        getattr(params, "pc_corrector_step_rule", "paper_linear"),
                     )
                     if not bool(params.disable_prior_score):
                         x = x + eps * score
@@ -1477,18 +1835,35 @@ class PaDIS(LIONReconstructor):
         generator: torch.Generator | None,
     ) -> torch.Tensor:
         x_init = self._initial_reconstruction(measurement, params).unsqueeze(0)
-        x = float(params.sigma_max) * self._sample_noise(
-            self._pad(x_init, params), generator
-        )
+        if (
+            params.initial_reconstruction == "noise"
+            and getattr(params, "noise_initialization", "padded") == "central_then_pad"
+        ):
+            x = self._pad(
+                float(params.sigma_max) * self._sample_noise(x_init, generator),
+                params,
+            )
+        else:
+            x = float(params.sigma_max) * self._sample_noise(
+                self._pad(x_init, params), generator
+            )
         t_steps = self._noise_schedule(params, x.device)
         iterator = zip(t_steps[:-1], t_steps[1:])
+        stop_after = getattr(params, "stop_after_outer_steps", None)
+        if stop_after is not None:
+            stop_after = int(stop_after)
+            if stop_after <= 0:
+                raise ValueError("stop_after_outer_steps must be positive or None.")
         if prog_bar:
-            iterator = tqdm(
-                list(iterator), desc="PaDIS Langevin", total=int(params.num_steps)
-            )
+            total_steps = int(params.num_steps)
+            if stop_after is not None:
+                total_steps = min(total_steps, stop_after)
+            iterator = tqdm(list(iterator), desc="PaDIS Langevin", total=total_steps)
 
         with torch.no_grad():
             for step_index, (t_cur, _t_next) in enumerate(iterator):
+                if stop_after is not None and step_index >= stop_after:
+                    break
                 alpha = float(getattr(params, "sampling_epsilon", 1.0)) * t_cur.square()
                 for inner_index in range(int(params.inner_steps)):
                     denoised = self._denoise_prior(
@@ -1501,15 +1876,27 @@ class PaDIS(LIONReconstructor):
                     denoised = self._clip_model_range(denoised, params)
                     if bool(params.langevin_ddnm):
                         denoised_crop = self._crop(denoised, params).squeeze(0)
-                        backprojected = self._initial_reconstruction(
+                        backprojected = self._pseudoinverse_reconstruction(
                             measurement, params
                         )
                         projected_denoised = self._forward_project(denoised_crop)
                         corrected = (
                             backprojected
                             + denoised_crop
-                            - self._initial_reconstruction(projected_denoised, params)
+                            - self._pseudoinverse_reconstruction(
+                                projected_denoised,
+                                params,
+                                clip=bool(
+                                    getattr(
+                                        params,
+                                        "ddnm_projected_pseudoinverse_clip",
+                                        False,
+                                    )
+                                ),
+                            )
                         )
+                        if bool(getattr(params, "ddnm_corrected_clip", False)):
+                            corrected = corrected.clamp(0.0, 1.0)
                         x0hat = self._pad(corrected.unsqueeze(0), params)
                         score = (x0hat - x) / t_cur.square()
                         self._append_trace(

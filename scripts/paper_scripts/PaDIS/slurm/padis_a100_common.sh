@@ -31,7 +31,8 @@ padis_setup_modules() {
 padis_activate_environment() {
         local env_candidates env_name activated
         MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-/home/tjh200/miniforge3}"
-        LION_MAMBA_ENV="${LION_MAMBA_ENV:-lion}"
+        LION_MAMBA_ENV="${LION_MAMBA_ENV:-lion-dev}"
+        LION_MAMBA_ENV_FALLBACKS="${LION_MAMBA_ENV_FALLBACKS:-padis-dev}"
         export MAMBA_ROOT_PREFIX
         export PATH="$MAMBA_ROOT_PREFIX/bin:$PATH"
 

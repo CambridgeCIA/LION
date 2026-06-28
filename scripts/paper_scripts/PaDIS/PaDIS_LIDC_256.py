@@ -667,6 +667,14 @@ def build_arg_parser():
     return parser
 
 
+def run_prefix_for_prior_mode(prior_mode: str) -> str:
+    if prior_mode == "whole-image":
+        return "whole_image_lidc_256"
+    if prior_mode == "patch":
+        return "padis_lidc_256"
+    raise ValueError(f"Unsupported prior mode: {prior_mode!r}.")
+
+
 def main():
     args = build_arg_parser().parse_args()
     if args.max_slices_per_patient == 0 or args.max_slices_per_patient < -1:
@@ -754,9 +762,7 @@ def main():
         sigma_distribution=solver_params.sigma_distribution,
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=2e-4)
-    run_prefix = (
-        "whole_image_lidc_256" if args.prior_mode == "whole-image" else "padis_lidc_256"
-    )
+    run_prefix = run_prefix_for_prior_mode(args.prior_mode)
     run_folder = make_run_folder(args.save_folder, args.run_name, run_prefix)
     print(f"Saving {args.prior_mode} diffusion run to {run_folder}")
     wandb_run = init_wandb(args, run_folder, preset)

@@ -28,8 +28,11 @@ from LION.CTtools.ct_utils import sinogram_add_noise
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 import LION.experiments.ct_experiments as ct_experiments
 from LION.classical_algorithms.fdk import fdk
+from LION.classical_algorithms.tv_min import tv_min
+from LION.models.CNNs.drunet import DRUNet
 from LION.models.diffusion import NCSNpp
 from LION.reconstructors import PaDIS
+from LION.reconstructors.PnP import PnP
 from LION.utils.parameter import LIONParameter
 from LION.utils.paths import LION_EXPERIMENTS_PATH
 
@@ -129,6 +132,36 @@ EXPERIMENT_ALIASES = {
 
 IMPLEMENTATION_CHOICES = ("custom", "public_repo", "paper", "lion_quality")
 GEOMETRY_CHOICES = ("lion", "padis", "padis_parallel", "padis_fanbeam")
+RECONSTRUCTION_METHOD_CHOICES = (
+    "padis_dps",
+    "baseline",
+    "admm_tv",
+    "pnp_admm",
+    "whole_image_diffusion",
+    "langevin",
+    "predictor_corrector",
+    "ve_ddnm",
+    "patch_average",
+    "patch_stitch",
+)
+DIFFUSION_RECONSTRUCTION_METHODS = {
+    "padis_dps",
+    "whole_image_diffusion",
+    "langevin",
+    "predictor_corrector",
+    "ve_ddnm",
+    "patch_average",
+    "patch_stitch",
+}
+NO_PADIS_PRIOR_METHODS = {"baseline", "admm_tv", "pnp_admm"}
+PUBLIC_REPO_IMPLEMENTATION_METHODS = {
+    "padis_dps",
+    "langevin",
+    "predictor_corrector",
+    "ve_ddnm",
+    "patch_average",
+    "patch_stitch",
+}
 UNSUPPORTED_PADIS_GEOMETRY_MESSAGE = (
     "PaDIS geometry is intentionally not implemented for LIDC-IDRI. The "
     "processed LIDC slices used by these scripts are saved as 512x512 HU arrays "
@@ -198,6 +231,81 @@ def torch_load(path: pathlib.Path, map_location):
         return torch.load(path, map_location=map_location)
 
 
+def _checkpoint_geometry(checkpoint, *, image_scaling: float) -> Geometry:
+    if isinstance(checkpoint, dict) and "geometry" in checkpoint:
+        return Geometry.init_from_parameter(checkpoint["geometry"])
+    return Geometry.default_parameters(image_scaling=image_scaling)
+
+
+def _checkpoint_paper_preset(checkpoint) -> str | None:
+    if not isinstance(checkpoint, dict):
+        return None
+    training_params = checkpoint.get("training_params")
+    if training_params is None:
+        return None
+    paper_preset = getattr(training_params, "paper_preset", None)
+    if isinstance(paper_preset, str) and paper_preset:
+        return paper_preset
+    prior_mode = getattr(training_params, "prior_mode", None)
+    if prior_mode == "whole_image":
+        return "padis-paper-whole-ct-256"
+    patch_sizes = getattr(training_params, "patch_sizes", None)
+    if patch_sizes:
+        largest_patch_size = max(int(size) for size in patch_sizes)
+        if largest_patch_size == 64:
+            return "padis-paper-ct-512"
+        if largest_patch_size in (8, 16, 32, 56, 96):
+            preset = (
+                "padis-paper-ct-256"
+                if largest_patch_size == 56
+                else f"padis-paper-ct-p{largest_patch_size}"
+            )
+            if getattr(training_params, "use_position_channels", True) is False:
+                preset = f"{preset}-no-position"
+            return preset
+    return None
+
+
+def checkpoint_model_metadata(
+    checkpoint_path: pathlib.Path,
+    *,
+    map_location,
+    image_scaling: float,
+    disable_position_channels: bool,
+    checkpoint=None,
+):
+    json_path = checkpoint_path.with_suffix(".json")
+    if json_path.is_file():
+        options = LIONParameter()
+        options.load(json_path)
+        if getattr(options, "model_name", "NCSNpp") != "NCSNpp":
+            warnings.warn(
+                f"{json_path} says model_name={options.model_name!r}; trying NCSNpp anyway."
+            )
+        model_params = copy.deepcopy(options.model_parameters)
+        geometry = Geometry.init_from_parameter(options.geometry)
+    else:
+        if checkpoint is None:
+            checkpoint = torch_load(checkpoint_path, map_location=map_location)
+        paper_preset = _checkpoint_paper_preset(checkpoint)
+        if paper_preset is None:
+            warnings.warn(
+                f"No sidecar JSON found at {json_path}; using PaDIS LIDC 256 defaults."
+            )
+            paper_preset = "padis-paper-ct-256"
+        else:
+            warnings.warn(
+                f"No sidecar JSON found at {json_path}; inferred {paper_preset!r} "
+                "from checkpoint metadata."
+            )
+        model_params = NCSNpp.default_parameters(paper_preset)
+        geometry = _checkpoint_geometry(checkpoint, image_scaling=image_scaling)
+
+    if disable_position_channels:
+        model_params.input_position_channels = 0
+    return model_params, geometry, checkpoint
+
+
 def resolve_checkpoint_path(path: pathlib.Path) -> pathlib.Path:
     path = path.expanduser()
     candidates = [path]
@@ -231,28 +339,16 @@ def load_model(
     use_ema: bool,
     disable_position_channels: bool,
 ):
-    json_path = checkpoint_path.with_suffix(".json")
-    if json_path.is_file():
-        options = LIONParameter()
-        options.load(json_path)
-        if getattr(options, "model_name", "NCSNpp") != "NCSNpp":
-            warnings.warn(
-                f"{json_path} says model_name={options.model_name!r}; trying NCSNpp anyway."
-            )
-        model_params = options.model_parameters
-        geometry = Geometry.init_from_parameter(options.geometry)
-    else:
-        warnings.warn(
-            f"No sidecar JSON found at {json_path}; using PaDIS LIDC 256 defaults."
-        )
-        model_params = NCSNpp.default_parameters("padis-paper-ct-256")
-        geometry = Geometry.default_parameters(image_scaling=0.5)
-
-    if disable_position_channels:
-        model_params.input_position_channels = 0
+    checkpoint = torch_load(checkpoint_path, map_location=device)
+    model_params, geometry, checkpoint = checkpoint_model_metadata(
+        checkpoint_path,
+        map_location=device,
+        image_scaling=0.5,
+        disable_position_channels=disable_position_channels,
+        checkpoint=checkpoint,
+    )
 
     model = NCSNpp(model_params, geometry).to(device)
-    checkpoint = torch_load(checkpoint_path, map_location=device)
     state_dict = checkpoint.get("model_state_dict", checkpoint)
     ema_state = (
         checkpoint.get("ema_state_dict") if isinstance(checkpoint, dict) else None
@@ -270,6 +366,83 @@ def load_model(
     return model, model_params, geometry
 
 
+def load_checkpoint_metadata(
+    checkpoint_path: pathlib.Path,
+    *,
+    image_scaling: float,
+    disable_position_channels: bool,
+):
+    model_params, geometry, _ = checkpoint_model_metadata(
+        checkpoint_path,
+        map_location="cpu",
+        image_scaling=image_scaling,
+        disable_position_channels=disable_position_channels,
+    )
+    return model_params, geometry
+
+
+def fallback_metadata(
+    *,
+    image_scaling: float,
+    disable_position_channels: bool,
+    paper_preset: str = "padis-paper-ct-256",
+):
+    model_params = NCSNpp.default_parameters(paper_preset)
+    if disable_position_channels:
+        model_params.input_position_channels = 0
+    return model_params, Geometry.default_parameters(image_scaling=image_scaling)
+
+
+class PnPDenoiser(torch.nn.Module):
+    """Batch/dataset-normalising wrapper for LION image denoisers used by PnP."""
+
+    def __init__(self, model: torch.nn.Module, noise_level: float | None = None):
+        super().__init__()
+        self.model = model
+        self.noise_level = noise_level
+
+    def forward(self, image: torch.Tensor) -> torch.Tensor:
+        squeeze_batch = image.dim() == 3
+        if squeeze_batch:
+            image = image.unsqueeze(0)
+        normalised = (
+            self.model.normalise(image) if hasattr(self.model, "normalise") else image
+        )
+        model_params = getattr(self.model, "model_parameters", None)
+        if bool(getattr(model_params, "use_noise_level", False)):
+            noise_level = 0.0 if self.noise_level is None else float(self.noise_level)
+            denoised = self.model(normalised, noise_level=noise_level)
+        else:
+            denoised = self.model(normalised)
+        if hasattr(self.model, "unnormalise"):
+            denoised = self.model.unnormalise(denoised)
+        return denoised.squeeze(0) if squeeze_batch else denoised
+
+
+def load_pnp_denoiser(
+    checkpoint_path: pathlib.Path,
+    device: torch.device,
+    *,
+    noise_level: float | None,
+) -> PnPDenoiser:
+    checkpoint_path = pathlib.Path(checkpoint_path)
+    checkpoint_path = resolve_checkpoint_path(checkpoint_path)
+    options = LIONParameter()
+    options.load(checkpoint_path.with_suffix(".json"))
+    model_name = getattr(options, "model_name", "DRUNet")
+    if model_name != "DRUNet":
+        raise ValueError(
+            f"Only DRUNet PnP denoiser checkpoints are supported here; got {model_name!r}."
+        )
+    model = DRUNet(options.model_parameters).to(device)
+    payload = torch_load(checkpoint_path, map_location=device)
+    if not isinstance(payload, dict) or "model_state_dict" not in payload:
+        raise KeyError(f"{checkpoint_path} does not contain a model_state_dict.")
+    model.load_state_dict(payload["model_state_dict"])
+    model.eval()
+    return PnPDenoiser(model, noise_level=noise_level).to(device).eval()
+
+
 def build_dataset(args, geometry):
     task = "image_prior" if args.measurement_source == "normal" else "reconstruction"
     data_params = LIDC_IDRI.default_parameters(geometry=geometry, task=task)
@@ -281,6 +454,20 @@ def build_dataset(args, geometry):
 
 def canonical_experiment_name(name: str) -> str:
     return EXPERIMENT_ALIASES.get(name, name)
+
+
+def validate_public_repo_method(implementation: str, method: str) -> None:
+    if (
+        implementation == "public_repo"
+        and method not in PUBLIC_REPO_IMPLEMENTATION_METHODS
+    ):
+        supported = ", ".join(sorted(PUBLIC_REPO_IMPLEMENTATION_METHODS))
+        raise ValueError(
+            "--implementation public_repo is only supported for methods with "
+            "a public PaDIS inverse-sampler analogue: "
+            f"{supported}. Method {method!r} has no runnable public-repo "
+            "equivalent."
+        )
 
 
 def experiment_spec_from_args(args) -> PaperCTExperiment | None:
@@ -611,6 +798,103 @@ def fdk_baseline(sinogram: torch.Tensor, reconstructor: PaDIS, params) -> torch.
         return reconstruction.clamp(0.0, 1.0)
 
 
+def tv_reconstruction(
+    sinogram: torch.Tensor,
+    reconstructor: PaDIS,
+    params,
+    args,
+) -> torch.Tensor:
+    with torch.no_grad():
+        reconstruction = tv_min(
+            sinogram.unsqueeze(0),
+            reconstructor.op,
+            lam=float(args.tv_lambda),
+            num_iterations=int(args.tv_iterations),
+            L=args.tv_lipschitz,
+            non_negativity=bool(args.tv_non_negativity),
+            progress_bar=bool(args.prog_bar),
+        )[0]
+        reconstruction = measurement_image_to_sampler_domain(reconstruction, params)
+        return reconstruction.clamp(0.0, 1.0)
+
+
+def pnp_reconstruction(
+    sinogram: torch.Tensor,
+    reconstruction_geometry,
+    denoiser: PnPDenoiser,
+    params,
+    args,
+) -> torch.Tensor:
+    reconstructor = PnP(reconstruction_geometry, denoiser, algorithm="ADMM")
+    with torch.no_grad():
+        reconstruction = reconstructor.reconstruct_sample(
+            sinogram,
+            eta=float(args.pnp_eta),
+            max_iter=int(args.pnp_iterations),
+            cg_max_iter=int(args.pnp_cg_iterations),
+            cg_tol=float(args.pnp_cg_tolerance),
+            prog_bar=bool(args.prog_bar),
+        )
+        reconstruction = measurement_image_to_sampler_domain(reconstruction, params)
+        return reconstruction.clamp(0.0, 1.0)
+
+
+def effective_algorithm(args) -> str:
+    if args.method in ("langevin", "ve_ddnm"):
+        return "langevin"
+    if args.method == "predictor_corrector":
+        return "pc"
+    return args.algorithm
+
+
+def reconstruction_label(args, sampler_params) -> str:
+    labels = {
+        "baseline": "Baseline FDK",
+        "admm_tv": "TV",
+        "pnp_admm": "PnP-ADMM",
+        "whole_image_diffusion": "Whole-image diffusion",
+        "langevin": "Langevin dynamics",
+        "predictor_corrector": "Predictor-corrector",
+        "ve_ddnm": "VE-DDNM",
+        "patch_average": "Patch averaging",
+        "patch_stitch": "Patch stitching",
+        "padis_dps": "PaDIS",
+    }
+    if args.method in labels:
+        return labels[args.method]
+    return (
+        "Whole-image diffusion"
+        if getattr(sampler_params, "prior_mode", "patch") == "whole_image"
+        else "PaDIS"
+    )
+
+
+def method_settings(args) -> dict:
+    if args.method == "baseline":
+        return {"baseline": "fdk"}
+    if args.method == "admm_tv":
+        return {
+            "tv_lambda": float(args.tv_lambda),
+            "tv_iterations": int(args.tv_iterations),
+            "tv_lipschitz": (
+                None if args.tv_lipschitz is None else float(args.tv_lipschitz)
+            ),
+            "tv_non_negativity": bool(args.tv_non_negativity),
+        }
+    if args.method == "pnp_admm":
+        return {
+            "pnp_checkpoint": str(args.pnp_checkpoint),
+            "pnp_iterations": int(args.pnp_iterations),
+            "pnp_eta": float(args.pnp_eta),
+            "pnp_cg_iterations": int(args.pnp_cg_iterations),
+            "pnp_cg_tolerance": float(args.pnp_cg_tolerance),
+            "pnp_noise_level": (
+                None if args.pnp_noise_level is None else float(args.pnp_noise_level)
+            ),
+        }
+    return {}
+
+
 def forward_project_normal_image(
     image: torch.Tensor,
     reconstructor: PaDIS,
@@ -707,6 +991,100 @@ def add_reconstruction_metrics(
         window_ssim = ssim_on_bbox_or_none(recon_window, target_window, 1.0, body_bbox)
         if window_ssim is not None:
             item[f"{key}{window_name}_window_body_bbox_ssim"] = window_ssim
+
+
+def add_ddnm_pseudoinverse_diagnostics(
+    item: dict,
+    *,
+    target: torch.Tensor,
+    sinogram: torch.Tensor,
+    reconstructor: PaDIS,
+    params,
+    body_mask: torch.Tensor,
+    nonair_mask: torch.Tensor,
+    body_bbox,
+    data_range: float,
+) -> None:
+    """Measure the LION pseudoinverse terms used by the DDNM correction."""
+    with torch.no_grad():
+        measured_pinv = reconstructor._pseudoinverse_reconstruction(
+            sinogram,
+            params,
+        )
+        target_sinogram = forward_project_normal_image(target, reconstructor, params)
+        projected_target_pinv = reconstructor._pseudoinverse_reconstruction(
+            target_sinogram.to(dtype=sinogram.dtype),
+            params,
+            clip=bool(getattr(params, "ddnm_projected_pseudoinverse_clip", False)),
+        )
+        perfect_denoiser_corrected = measured_pinv + target - projected_target_pinv
+        corrected_clipped = perfect_denoiser_corrected.clamp(0.0, 1.0)
+
+    add_reconstruction_metrics(
+        item,
+        prefix="ddnm_measured_pseudoinverse",
+        recon=measured_pinv,
+        target=target,
+        sinogram=sinogram,
+        reconstructor=reconstructor,
+        params=params,
+        body_mask=body_mask,
+        nonair_mask=nonair_mask,
+        body_bbox=body_bbox,
+        data_range=data_range,
+    )
+    add_reconstruction_metrics(
+        item,
+        prefix="ddnm_projected_target_pseudoinverse",
+        recon=projected_target_pinv,
+        target=target,
+        sinogram=sinogram,
+        reconstructor=reconstructor,
+        params=params,
+        body_mask=body_mask,
+        nonair_mask=nonair_mask,
+        body_bbox=body_bbox,
+        data_range=data_range,
+    )
+    add_reconstruction_metrics(
+        item,
+        prefix="ddnm_perfect_denoiser_corrected",
+        recon=perfect_denoiser_corrected,
+        target=target,
+        sinogram=sinogram,
+        reconstructor=reconstructor,
+        params=params,
+        body_mask=body_mask,
+        nonair_mask=nonair_mask,
+        body_bbox=body_bbox,
+        data_range=data_range,
+    )
+    add_reconstruction_metrics(
+        item,
+        prefix="ddnm_perfect_denoiser_corrected_clipped",
+        recon=corrected_clipped,
+        target=target,
+        sinogram=sinogram,
+        reconstructor=reconstructor,
+        params=params,
+        body_mask=body_mask,
+        nonair_mask=nonair_mask,
+        body_bbox=body_bbox,
+        data_range=data_range,
+    )
+    item["ddnm_pseudoinverse_diagnostic"] = {
+        "formula": "A^dagger y + x - A^dagger A(x), evaluated with x=target",
+        "measured_pseudoinverse_clip": bool(
+            getattr(params, "ddnm_pseudoinverse_clip", False)
+        ),
+        "projected_pseudoinverse_clip": bool(
+            getattr(params, "ddnm_projected_pseudoinverse_clip", False)
+        ),
+        "corrected_min": float(perfect_denoiser_corrected.detach().amin().cpu()),
+        "corrected_max": float(perfect_denoiser_corrected.detach().amax().cpu()),
+        "corrected_clipped_min": float(corrected_clipped.detach().amin().cpu()),
+        "corrected_clipped_max": float(corrected_clipped.detach().amax().cpu()),
+    }
 
 
 def save_preview(
@@ -1024,6 +1402,22 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
             public_params.adjoint_data_step_schedule
         )
         sampler_params.data_consistency_scale = public_params.data_consistency_scale
+        sampler_params.pc_corrector_denoise_sigma = (
+            public_params.pc_corrector_denoise_sigma
+        )
+        if args.public_repo_helper_initialization and args.method in (
+            "predictor_corrector",
+            "langevin",
+            "ve_ddnm",
+        ):
+            sampler_params.initial_reconstruction = "noise"
+            sampler_params.noise_initialization = (
+                "central_then_pad" if args.method == "predictor_corrector" else "padded"
+            )
+            sampler_params.initial_fdk_filter_type = None
+            sampler_params.initial_fdk_frequency_scaling = 1.0
+            sampler_params.initial_fdk_padded = True
+            sampler_params.clip_initial = False
     elif args.implementation == "lion_quality":
         quality_params = PaDIS.lion_quality_ct_parameters(model, views=paper_views)
         sampler_params.num_steps = quality_params.num_steps
@@ -1053,6 +1447,33 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
             quality_params.data_consistency_normalization
         )
         sampler_params.data_consistency_scale = quality_params.data_consistency_scale
+    if args.method == "ve_ddnm":
+        ve_ddnm_layout = args.ve_ddnm_nfe_layout
+        if ve_ddnm_layout is None:
+            ve_ddnm_layout = (
+                "public_inner"
+                if args.implementation == "public_repo"
+                else "paper_1000x1"
+            )
+        if ve_ddnm_layout == "paper_1000x1":
+            sampler_params.num_steps = 1000
+            sampler_params.inner_steps = 1
+        elif ve_ddnm_layout == "public_inner":
+            sampler_params.num_steps = 100
+            sampler_params.inner_steps = 10
+        sampler_params.ve_ddnm_nfe_layout = ve_ddnm_layout
+        if args.implementation == "lion_quality":
+            # LION fan-beam FDK pseudoinverses make strict paper VE-DDNM unstable;
+            # this preset keeps the paper NFE layout but uses the locally validated
+            # stability settings documented in README.md.
+            sampler_params.initial_reconstruction = "noise"
+            sampler_params.initial_fdk_filter_type = None
+            sampler_params.initial_fdk_frequency_scaling = 1.0
+            sampler_params.initial_fdk_padded = True
+            sampler_params.clip_initial = False
+            sampler_params.clip_output = False
+            sampler_params.sampling_epsilon = 0.1
+            sampler_params.ddnm_corrected_clip = True
     if args.initial_reconstruction is not None:
         sampler_params.initial_reconstruction = args.initial_reconstruction
     if args.initial_fdk_filter_type is not None:
@@ -1070,8 +1491,22 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
     if args.initial_fdk_batch_size is not None:
         sampler_params.initial_fdk_batch_size = args.initial_fdk_batch_size
     sampler_params.patch_batch_size = args.patch_batch_size
-    sampler_params.langevin_ddnm = args.langevin_ddnm
+    sampler_params.langevin_ddnm = args.langevin_ddnm or args.method == "ve_ddnm"
     sampler_params.langevin_noise_scale = args.langevin_noise_scale
+    sampler_params.pc_corrector_step_rule = args.pc_corrector_step_rule
+    if args.pc_corrector_denoise_sigma is not None:
+        sampler_params.pc_corrector_denoise_sigma = args.pc_corrector_denoise_sigma
+    if args.method == "ve_ddnm":
+        sampler_params.ddnm_pseudoinverse_clip = True
+        sampler_params.ddnm_projected_pseudoinverse_clip = True
+    if args.ddnm_pseudoinverse_clip is not None:
+        sampler_params.ddnm_pseudoinverse_clip = args.ddnm_pseudoinverse_clip
+    if args.ddnm_projected_pseudoinverse_clip is not None:
+        sampler_params.ddnm_projected_pseudoinverse_clip = (
+            args.ddnm_projected_pseudoinverse_clip
+        )
+    if args.ddnm_corrected_clip is not None:
+        sampler_params.ddnm_corrected_clip = args.ddnm_corrected_clip
     if args.clip_initial is not None:
         sampler_params.clip_initial = args.clip_initial
     if args.clip_output is not None:
@@ -1116,6 +1551,10 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.prior_mode = (
             "whole_image" if args.prior_mode == "whole-image" else "patch"
         )
+    if args.method == "whole_image_diffusion":
+        sampler_params.prior_mode = "whole_image"
+    elif args.method in ("patch_average", "patch_stitch"):
+        sampler_params.prior_mode = "patch"
     if measurement_source == "reconstruction":
         sampler_params.measurement_scale = LIDC_NORMAL_TO_MU_SCALE
         sampler_params.measurement_offset = LIDC_NORMAL_TO_MU_OFFSET
@@ -1123,6 +1562,26 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.patch_size = args.patch_size
     if args.pad_width is not None:
         sampler_params.pad_width = args.pad_width
+    if args.patch_assembly is not None:
+        sampler_params.patch_assembly = args.patch_assembly
+    if args.method == "patch_average":
+        sampler_params.patch_assembly = "fixed_average"
+        sampler_params.fixed_overlap_checkpoint_denoiser = True
+        if args.implementation == "public_repo":
+            sampler_params.fixed_overlap_layout = "public_overlap"
+    elif args.method == "patch_stitch":
+        sampler_params.patch_assembly = "fixed_stitch"
+        sampler_params.fixed_overlap_checkpoint_denoiser = True
+        if args.implementation == "public_repo":
+            sampler_params.fixed_overlap_layout = "public_tile"
+    if args.patch_overlap is not None:
+        sampler_params.patch_overlap = args.patch_overlap
+    if args.fixed_overlap_layout is not None:
+        sampler_params.fixed_overlap_layout = args.fixed_overlap_layout
+    if args.fixed_overlap_checkpoint_denoiser is not None:
+        sampler_params.fixed_overlap_checkpoint_denoiser = (
+            args.fixed_overlap_checkpoint_denoiser
+        )
     return sampler_params
 
 
@@ -1138,7 +1597,7 @@ def run_reconstruction_variant(
     *,
     args,
     dataset,
-    checkpoint_path: pathlib.Path,
+    checkpoint_path: pathlib.Path | None,
     geometry,
     reconstruction_geometry,
     experiment,
@@ -1158,18 +1617,26 @@ def run_reconstruction_variant(
     for key, value in variant_overrides.items():
         setattr(sampler_params, key, value)
 
+    algorithm = effective_algorithm(args)
     reconstructor = PaDIS(
         reconstruction_geometry,
         model,
         parameters=sampler_params,
-        algorithm=args.algorithm,
+        algorithm=algorithm,
     )
+    reconstructor.last_trace = []
+    reconstructor.last_trace_images = []
+    pnp_denoiser = None
+    if args.method == "pnp_admm":
+        if args.pnp_checkpoint is None:
+            raise ValueError("--method pnp_admm requires --pnp-checkpoint.")
+        pnp_denoiser = load_pnp_denoiser(
+            args.pnp_checkpoint,
+            device,
+            noise_level=args.pnp_noise_level,
+        )
     output_folder.mkdir(parents=True, exist_ok=True)
-    recon_label = (
-        "Whole-image diffusion"
-        if getattr(sampler_params, "prior_mode", "patch") == "whole_image"
-        else "PaDIS"
-    )
+    recon_label = reconstruction_label(args, sampler_params)
     print(f"Saving {recon_label} {variant_name} reconstructions to {output_folder}")
 
     stop = min(len(dataset), args.start_index + args.max_samples)
@@ -1210,12 +1677,27 @@ def run_reconstruction_variant(
         )
         if bool(getattr(sampler_params, "consume_discarded_measurement_noise", False)):
             _ = torch.randn_like(sinogram)
-        recon = reconstructor.reconstruct_sample(
-            sinogram,
-            prog_bar=args.prog_bar,
-            generator=None,
-        )
         fdk_recon = fdk_baseline(sinogram, reconstructor, sampler_params)
+        if args.method == "baseline":
+            recon = fdk_recon
+        elif args.method == "admm_tv":
+            recon = tv_reconstruction(sinogram, reconstructor, sampler_params, args)
+        elif args.method == "pnp_admm":
+            assert pnp_denoiser is not None
+            recon = pnp_reconstruction(
+                sinogram,
+                reconstruction_geometry,
+                pnp_denoiser,
+                sampler_params,
+                args,
+            )
+        else:
+            recon = reconstructor.reconstruct_sample(
+                sinogram,
+                algorithm=algorithm,
+                prog_bar=args.prog_bar,
+                generator=None,
+            )
         reconstructions.append(recon.detach().cpu())
         fdk_reconstructions.append(fdk_recon.detach().cpu())
         targets.append(target.detach().cpu())
@@ -1279,6 +1761,18 @@ def run_reconstruction_variant(
             body_bbox=body_bbox,
             data_range=args.data_range,
         )
+        if getattr(args, "diagnose_ddnm_pseudoinverse", False):
+            add_ddnm_pseudoinverse_diagnostics(
+                item,
+                target=target,
+                sinogram=sinogram,
+                reconstructor=reconstructor,
+                params=sampler_params,
+                body_mask=body_mask,
+                nonair_mask=nonair_mask,
+                body_bbox=body_bbox,
+                data_range=args.data_range,
+            )
         if reference is not None:
             add_image_similarity_metrics(
                 item,
@@ -1322,12 +1816,13 @@ def run_reconstruction_variant(
             )
 
     payload = {
-        "checkpoint": str(checkpoint_path),
+        "checkpoint": "" if checkpoint_path is None else str(checkpoint_path),
         "split": args.split,
         "experiment": args.experiment,
         "implementation": args.implementation,
         "geometry_tag": args.geometry,
-        "algorithm": args.algorithm,
+        "method": args.method,
+        "algorithm": algorithm,
         "ablation": variant_name,
         "ablation_overrides": variant_overrides,
         "measurement_source": experiment_measurement_source,
@@ -1342,6 +1837,7 @@ def run_reconstruction_variant(
         "measurement_offset": float(sampler_params.measurement_offset),
         "prior_mode": getattr(sampler_params, "prior_mode", "patch"),
         "model_patch_size": int(getattr(model_params, "largest_patch_size", -1)),
+        "method_settings": method_settings(args),
         "sampler": {
             key: value
             for key, value in sampler_params.__dict__.items()
@@ -1410,6 +1906,12 @@ def run_reconstruction_variant(
     mean_reference_abs_error_p95 = mean_metric(
         metrics, "public_reference_abs_error_p95"
     )
+    mean_ddnm_perfect_corrected_psnr = mean_metric(
+        metrics, "ddnm_perfect_denoiser_corrected_psnr"
+    )
+    mean_ddnm_perfect_corrected_clipped_psnr = mean_metric(
+        metrics, "ddnm_perfect_denoiser_corrected_clipped_psnr"
+    )
     print(f"{variant_name} mean MSE:  {mean_mse:.6g}")
     print(f"{variant_name} mean MAE:  {mean_mae:.6g}")
     print(f"{variant_name} mean p95 abs error: {mean_abs_error_p95:.6g}")
@@ -1458,6 +1960,16 @@ def run_reconstruction_variant(
             f"{variant_name} public-reference mean p95 abs error: "
             f"{mean_reference_abs_error_p95:.6g}"
         )
+    if mean_ddnm_perfect_corrected_psnr is not None:
+        print(
+            f"{variant_name} DDNM perfect-denoiser correction PSNR: "
+            f"{mean_ddnm_perfect_corrected_psnr:.4g} dB"
+        )
+    if mean_ddnm_perfect_corrected_clipped_psnr is not None:
+        print(
+            f"{variant_name} DDNM clipped perfect-denoiser correction PSNR: "
+            f"{mean_ddnm_perfect_corrected_clipped_psnr:.4g} dB"
+        )
     print(f"Saved metrics to {metric_path}")
     if trace_path is not None:
         print(f"Saved sampler trace to {trace_path}")
@@ -1494,6 +2006,10 @@ def run_reconstruction_variant(
         "min_reference_edge_ssim": min_reference_edge_ssim,
         "mean_reference_mae": mean_reference_mae,
         "mean_reference_abs_error_p95": mean_reference_abs_error_p95,
+        "mean_ddnm_perfect_corrected_psnr": mean_ddnm_perfect_corrected_psnr,
+        "mean_ddnm_perfect_corrected_clipped_psnr": (
+            mean_ddnm_perfect_corrected_clipped_psnr
+        ),
         "mean_body_psnr": mean_body_psnr,
         "mean_fdk_body_psnr": mean_fdk_body_psnr,
         "mean_soft_tissue_window_psnr": mean_soft_tissue_psnr,
@@ -1681,6 +2197,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--checkpoint", type=pathlib.Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
     parser.add_argument(
+        "--image-scaling",
+        type=float,
+        default=0.5,
+        help=(
+            "Fallback LIDC image scaling when a method does not need a PaDIS "
+            "checkpoint and no checkpoint sidecar JSON is available."
+        ),
+    )
+    parser.add_argument(
         "--output-folder",
         type=pathlib.Path,
         default=LION_EXPERIMENTS_PATH / "PaDIS" / "LIDC_reconstruction",
@@ -1723,6 +2248,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--algorithm",
         choices=("dps_langevin", "langevin", "pc"),
         default="dps_langevin",
+    )
+    parser.add_argument(
+        "--method",
+        choices=RECONSTRUCTION_METHOD_CHOICES,
+        default="padis_dps",
+        help=(
+            "Paper-comparison reconstruction method. Diffusion methods reuse "
+            "the PaDIS sampler with method-specific prior/algorithm settings; "
+            "baseline, ADMM-TV, and PnP-ADMM use LION-native reconstruction paths."
+        ),
     )
     parser.add_argument(
         "--prior-mode",
@@ -1790,6 +2325,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "Sigma schedule for --implementation public_repo. Default 'paper' "
             "uses the paper geometric CT schedule; 'readme' uses the literal "
             "public README/default EDM schedule for legacy comparisons."
+        ),
+    )
+    parser.add_argument(
+        "--public-repo-helper-initialization",
+        action="store_true",
+        help=(
+            "For --implementation public_repo and the public helper methods "
+            "predictor_corrector/langevin/ve_ddnm, use the helper functions' "
+            "Gaussian initial state instead of the README DPS FDK initial "
+            "state. This is for output-level comparisons against "
+            "PaDIS_lion_recon --sampler pc|langevin|ddnm."
         ),
     )
     parser.add_argument(
@@ -1874,11 +2420,156 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pad-width", type=int, default=None)
     parser.add_argument("--patch-batch-size", type=int, default=None)
     parser.add_argument(
+        "--patch-assembly",
+        choices=("padis", "fixed_average", "fixed_stitch"),
+        default=None,
+        help=(
+            "Patch score assembly mode. The default PaDIS mode uses shifted "
+            "non-overlapping layouts; fixed_average/fixed_stitch implement the "
+            "paper comparison patch averaging/stitching forms."
+        ),
+    )
+    parser.add_argument(
+        "--patch-overlap",
+        type=int,
+        default=None,
+        help="Overlap in pixels for fixed patch averaging/stitching. Paper default is 8.",
+    )
+    parser.add_argument(
+        "--fixed-overlap-layout",
+        choices=("lion_clipped", "public_overlap", "public_tile"),
+        default=None,
+        help=(
+            "Patch start rule for fixed patch averaging/stitching. "
+            "public_overlap/public_tile mirror the public PaDIS helper "
+            "functions; lion_clipped is the original LION-safe default."
+        ),
+    )
+    parser.set_defaults(fixed_overlap_checkpoint_denoiser=None)
+    parser.add_argument(
+        "--fixed-overlap-checkpoint-denoiser",
+        dest="fixed_overlap_checkpoint_denoiser",
+        action="store_true",
+        help=(
+            "Use activation checkpointing for fixed-overlap patch "
+            "averaging/stitching denoiser batches. This preserves gradients "
+            "but recomputes model batches during the DPS data-gradient step to "
+            "reduce peak memory."
+        ),
+    )
+    parser.add_argument(
+        "--no-fixed-overlap-checkpoint-denoiser",
+        dest="fixed_overlap_checkpoint_denoiser",
+        action="store_false",
+        help=(
+            "Disable activation checkpointing for fixed-overlap patch "
+            "averaging/stitching denoiser batches."
+        ),
+    )
+    parser.add_argument(
         "--langevin-ddnm",
         action="store_true",
         help="Use VE-DDNM correction inside the Langevin sampler.",
     )
+    parser.set_defaults(
+        ddnm_pseudoinverse_clip=None,
+        ddnm_projected_pseudoinverse_clip=None,
+        ddnm_corrected_clip=None,
+    )
+    parser.add_argument(
+        "--ddnm-pseudoinverse-clip",
+        dest="ddnm_pseudoinverse_clip",
+        action="store_true",
+        help=(
+            "Clip the measured pseudoinverse A^dagger y used by VE-DDNM. "
+            "Enabled by default for --method ve_ddnm under LION fan-beam geometry."
+        ),
+    )
+    parser.add_argument(
+        "--no-ddnm-pseudoinverse-clip",
+        dest="ddnm_pseudoinverse_clip",
+        action="store_false",
+        help="Disable clipping of the measured VE-DDNM pseudoinverse.",
+    )
+    parser.add_argument(
+        "--ddnm-projected-pseudoinverse-clip",
+        dest="ddnm_projected_pseudoinverse_clip",
+        action="store_true",
+        help=(
+            "Clip the A^dagger A(D) pseudoinverse term used by VE-DDNM. "
+            "Enabled by default for --method ve_ddnm to keep LION fan-beam "
+            "runs finite."
+        ),
+    )
+    parser.add_argument(
+        "--no-ddnm-projected-pseudoinverse-clip",
+        dest="ddnm_projected_pseudoinverse_clip",
+        action="store_false",
+        help=(
+            "Disable clipping of the A^dagger A(D) VE-DDNM term. This is "
+            "closer to the paper/public formula but can be unstable with "
+            "LION fan-beam FDK."
+        ),
+    )
+    parser.add_argument(
+        "--ddnm-corrected-clip",
+        dest="ddnm_corrected_clip",
+        action="store_true",
+        help=(
+            "Clip the corrected VE-DDNM clean estimate "
+            "A^dagger y + D - A^dagger A(D) before forming the score. "
+            "This is a LION-stability diagnostic, not the paper formula."
+        ),
+    )
+    parser.add_argument(
+        "--no-ddnm-corrected-clip",
+        dest="ddnm_corrected_clip",
+        action="store_false",
+        help="Disable clipping of the corrected VE-DDNM clean estimate.",
+    )
+    parser.add_argument(
+        "--diagnose-ddnm-pseudoinverse",
+        action="store_true",
+        help=(
+            "Record DDNM pseudoinverse diagnostics in metrics.json by applying "
+            "A^dagger y + x - A^dagger A(x) to the target image. This is a "
+            "debugging aid for checking whether the LION pseudoinverse is "
+            "accurate enough for VE-DDNM."
+        ),
+    )
+    parser.add_argument(
+        "--ve-ddnm-nfe-layout",
+        choices=("paper_1000x1", "public_inner"),
+        default=None,
+        help=(
+            "How VE-DDNM spends its 1000 neural function evaluations. "
+            "paper_1000x1 uses 1000 descending sigma levels with one denoise "
+            "per level, matching Algorithm A.3 literally. public_inner uses "
+            "100 outer sigma levels and 10 inner denoising updates per level, "
+            "matching the public helper implementation."
+        ),
+    )
     parser.add_argument("--langevin-noise-scale", type=float, default=1.0)
+    parser.add_argument(
+        "--pc-corrector-step-rule",
+        choices=("paper_linear", "score_sde_squared"),
+        default="paper_linear",
+        help=(
+            "Predictor-corrector corrector step-size rule. The paper and "
+            "public PaDIS code use paper_linear; score_sde_squared is retained "
+            "only as a diagnostic score-SDE variant."
+        ),
+    )
+    parser.add_argument(
+        "--pc-corrector-denoise-sigma",
+        choices=("next", "current"),
+        default=None,
+        help=(
+            "Sigma used for the PC corrector denoising call. Paper mode uses "
+            "next; public-repo compatibility uses current to mirror the "
+            "published code."
+        ),
+    )
     parser.add_argument("--data-range", type=float, default=1.0)
     parser.add_argument(
         "--body-threshold",
@@ -1926,6 +2617,31 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--disable-data-consistency", action="store_true")
     parser.add_argument("--disable-langevin-noise", action="store_true")
     parser.add_argument("--disable-prior-score", action="store_true")
+    parser.add_argument(
+        "--tv-lambda",
+        type=float,
+        default=0.001,
+        help="TV regularisation weight. The paper uses 0.001 for CT.",
+    )
+    parser.add_argument("--tv-iterations", type=int, default=500)
+    parser.add_argument("--tv-lipschitz", type=float, default=None)
+    parser.add_argument("--tv-non-negativity", action="store_true")
+    parser.add_argument(
+        "--pnp-checkpoint",
+        type=pathlib.Path,
+        default=None,
+        help="DRUNet denoiser checkpoint for --method pnp_admm.",
+    )
+    parser.add_argument("--pnp-iterations", type=int, default=10)
+    parser.add_argument("--pnp-eta", type=float, default=1e-4)
+    parser.add_argument("--pnp-cg-iterations", type=int, default=100)
+    parser.add_argument("--pnp-cg-tolerance", type=float, default=1e-7)
+    parser.add_argument(
+        "--pnp-noise-level",
+        type=float,
+        default=None,
+        help="Optional denoiser noise-level input for DRUNet checkpoints trained with noise channels.",
+    )
     parser.add_argument(
         "--data-consistency-normalization",
         choices=("operator_norm", "none"),
@@ -2151,10 +2867,17 @@ def main() -> None:
         args.experiment = canonical_experiment_name(args.experiment)
     if args.geometry != "lion":
         raise ValueError(UNSUPPORTED_PADIS_GEOMETRY_MESSAGE)
+    validate_public_repo_method(args.implementation, args.method)
     if args.trace_interval < 0:
         raise ValueError("--trace-interval must be non-negative.")
     if args.stop_after_outer_steps is not None and args.stop_after_outer_steps <= 0:
         raise ValueError("--stop-after-outer-steps must be positive when set.")
+    if args.patch_overlap is not None and args.patch_overlap < 0:
+        raise ValueError("--patch-overlap must be non-negative.")
+    if args.run_ablations and args.method not in DIFFUSION_RECONSTRUCTION_METHODS:
+        raise ValueError("--run-ablations is only supported for diffusion methods.")
+    if args.method == "pnp_admm" and args.pnp_checkpoint is None:
+        raise ValueError("--method pnp_admm requires --pnp-checkpoint.")
     if args.trace_images and args.trace_interval == 0:
         args.trace_interval = 5
 
@@ -2169,13 +2892,43 @@ def main() -> None:
             )
         print("CUDA was requested but is not available; using CPU.")
 
-    checkpoint_path = resolve_checkpoint_path(args.checkpoint)
-    model, model_params, geometry = load_model(
-        checkpoint_path,
-        device,
-        use_ema=not args.raw_weights,
-        disable_position_channels=args.no_position_channels,
-    )
+    if args.method in NO_PADIS_PRIOR_METHODS:
+        checkpoint_path = None
+        metadata_image_scaling = float(args.image_scaling)
+        spec = experiment_spec_from_args(args)
+        if spec is not None and spec.key == "ct_512_60":
+            metadata_image_scaling = 1.0
+        paper_preset = (
+            "padis-paper-ct-512"
+            if spec is not None and spec.key == "ct_512_60"
+            else "padis-paper-ct-256"
+        )
+        if args.checkpoint != DEFAULT_CHECKPOINT:
+            try:
+                checkpoint_path = resolve_checkpoint_path(args.checkpoint)
+            except FileNotFoundError:
+                checkpoint_path = None
+        if checkpoint_path is None:
+            model_params, geometry = fallback_metadata(
+                image_scaling=metadata_image_scaling,
+                disable_position_channels=args.no_position_channels,
+                paper_preset=paper_preset,
+            )
+        else:
+            model_params, geometry = load_checkpoint_metadata(
+                checkpoint_path,
+                image_scaling=metadata_image_scaling,
+                disable_position_channels=args.no_position_channels,
+            )
+        model = None
+    else:
+        checkpoint_path = resolve_checkpoint_path(args.checkpoint)
+        model, model_params, geometry = load_model(
+            checkpoint_path,
+            device,
+            use_ema=not args.raw_weights,
+            disable_position_channels=args.no_position_channels,
+        )
     reconstruction_geometry = geometry
 
     if args.experiment == "none":
@@ -2230,7 +2983,8 @@ def main() -> None:
     )
     print(
         "PaDIS reconstruction preset: "
-        f"implementation={args.implementation}, geometry={args.geometry}, "
+        f"method={args.method}, implementation={args.implementation}, "
+        f"geometry={args.geometry}, "
         f"experiment={args.experiment}, "
         f"schedule={sampler_params.noise_schedule}, "
         f"sigma_min={sampler_params.sigma_min}, "
@@ -2250,7 +3004,13 @@ def main() -> None:
         run_name = args.experiment
     else:
         run_name = "manual"
-    output_root = args.output_folder / run_name / args.split / args.algorithm
+    output_root = (
+        args.output_folder
+        / run_name
+        / args.split
+        / args.method
+        / effective_algorithm(args)
+    )
 
     if args.run_ablations:
         variants = ABLATION_VARIANTS.items()
@@ -2292,7 +3052,8 @@ def main() -> None:
                 {
                     "split": args.split,
                     "experiment": args.experiment,
-                    "algorithm": args.algorithm,
+                    "method": args.method,
+                    "algorithm": effective_algorithm(args),
                     "seed": args.seed,
                     "variants": summaries,
                 },

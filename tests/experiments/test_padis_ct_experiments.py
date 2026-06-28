@@ -125,6 +125,253 @@ def test_public_repo_branch_can_use_literal_readme_sigma_schedule():
     assert params.data_consistency_gradient == "norm"
 
 
+def test_method_flags_set_expected_sampler_modes():
+    parser = build_arg_parser()
+
+    average_args = parser.parse_args(
+        [
+            "--implementation",
+            "paper",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "patch_average",
+        ]
+    )
+    average_params = build_sampler_params(
+        average_args, None, measurement_source="normal"
+    )
+    assert average_params.prior_mode == "patch"
+    assert average_params.patch_assembly == "fixed_average"
+    assert average_params.fixed_overlap_layout == "lion_clipped"
+    assert average_params.fixed_overlap_checkpoint_denoiser is True
+
+    stitch_args = parser.parse_args(
+        [
+            "--implementation",
+            "paper",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "patch_stitch",
+        ]
+    )
+    stitch_params = build_sampler_params(stitch_args, None, measurement_source="normal")
+    assert stitch_params.patch_assembly == "fixed_stitch"
+    assert stitch_params.fixed_overlap_layout == "lion_clipped"
+    assert stitch_params.fixed_overlap_checkpoint_denoiser is True
+
+    public_average_args = parser.parse_args(
+        [
+            "--implementation",
+            "public_repo",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "patch_average",
+        ]
+    )
+    public_average_params = build_sampler_params(
+        public_average_args, None, measurement_source="normal"
+    )
+    assert public_average_params.patch_assembly == "fixed_average"
+    assert public_average_params.fixed_overlap_layout == "public_overlap"
+
+    public_stitch_args = parser.parse_args(
+        [
+            "--implementation",
+            "public_repo",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "patch_stitch",
+        ]
+    )
+    public_stitch_params = build_sampler_params(
+        public_stitch_args, None, measurement_source="normal"
+    )
+    assert public_stitch_params.patch_assembly == "fixed_stitch"
+    assert public_stitch_params.fixed_overlap_layout == "public_tile"
+
+    no_checkpoint_average_args = parser.parse_args(
+        [
+            "--implementation",
+            "paper",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "patch_average",
+            "--no-fixed-overlap-checkpoint-denoiser",
+        ]
+    )
+    no_checkpoint_average_params = build_sampler_params(
+        no_checkpoint_average_args,
+        None,
+        measurement_source="normal",
+    )
+    assert no_checkpoint_average_params.fixed_overlap_checkpoint_denoiser is False
+
+    ddnm_args = parser.parse_args(
+        ["--implementation", "paper", "--experiment", "ct_20", "--method", "ve_ddnm"]
+    )
+    ddnm_params = build_sampler_params(ddnm_args, None, measurement_source="normal")
+    assert ddnm_params.langevin_ddnm is True
+    assert ddnm_params.num_steps == 1000
+    assert ddnm_params.inner_steps == 1
+    assert ddnm_params.ve_ddnm_nfe_layout == "paper_1000x1"
+    assert ddnm_params.ddnm_pseudoinverse_clip is True
+    assert ddnm_params.ddnm_projected_pseudoinverse_clip is True
+    assert ddnm_params.ddnm_corrected_clip is False
+    assert ddnm_params.sampling_epsilon == 1.0
+
+    stable_ddnm_args = parser.parse_args(
+        [
+            "--implementation",
+            "lion_quality",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "ve_ddnm",
+        ]
+    )
+    stable_ddnm_params = build_sampler_params(
+        stable_ddnm_args,
+        None,
+        measurement_source="normal",
+    )
+    assert stable_ddnm_params.num_steps == 1000
+    assert stable_ddnm_params.inner_steps == 1
+    assert stable_ddnm_params.ve_ddnm_nfe_layout == "paper_1000x1"
+    assert stable_ddnm_params.initial_reconstruction == "noise"
+    assert stable_ddnm_params.initial_fdk_filter_type is None
+    assert stable_ddnm_params.initial_fdk_frequency_scaling == 1.0
+    assert stable_ddnm_params.initial_fdk_padded is True
+    assert stable_ddnm_params.clip_initial is False
+    assert stable_ddnm_params.clip_output is False
+    assert stable_ddnm_params.sampling_epsilon == 0.1
+    assert stable_ddnm_params.ddnm_corrected_clip is True
+
+    public_inner_ddnm_args = parser.parse_args(
+        [
+            "--implementation",
+            "paper",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "ve_ddnm",
+            "--ve-ddnm-nfe-layout",
+            "public_inner",
+        ]
+    )
+    public_inner_ddnm_params = build_sampler_params(
+        public_inner_ddnm_args,
+        None,
+        measurement_source="normal",
+    )
+    assert public_inner_ddnm_params.num_steps == 100
+    assert public_inner_ddnm_params.inner_steps == 10
+    assert public_inner_ddnm_params.ve_ddnm_nfe_layout == "public_inner"
+
+    public_repo_ddnm_args = parser.parse_args(
+        [
+            "--implementation",
+            "public_repo",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "ve_ddnm",
+        ]
+    )
+    public_repo_ddnm_params = build_sampler_params(
+        public_repo_ddnm_args,
+        None,
+        measurement_source="normal",
+    )
+    assert public_repo_ddnm_params.num_steps == 100
+    assert public_repo_ddnm_params.inner_steps == 10
+    assert public_repo_ddnm_params.ve_ddnm_nfe_layout == "public_inner"
+
+    strict_ddnm_args = parser.parse_args(
+        [
+            "--implementation",
+            "paper",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "ve_ddnm",
+            "--no-ddnm-projected-pseudoinverse-clip",
+        ]
+    )
+    strict_ddnm_params = build_sampler_params(
+        strict_ddnm_args,
+        None,
+        measurement_source="normal",
+    )
+    assert strict_ddnm_params.ddnm_projected_pseudoinverse_clip is False
+
+    clipped_ddnm_args = parser.parse_args(
+        [
+            "--implementation",
+            "paper",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "ve_ddnm",
+            "--ddnm-corrected-clip",
+        ]
+    )
+    clipped_ddnm_params = build_sampler_params(
+        clipped_ddnm_args,
+        None,
+        measurement_source="normal",
+    )
+    assert clipped_ddnm_params.ddnm_corrected_clip is True
+
+    pc_args = parser.parse_args(
+        [
+            "--implementation",
+            "paper",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "predictor_corrector",
+        ]
+    )
+    pc_params = build_sampler_params(pc_args, None, measurement_source="normal")
+    assert pc_params.pc_snr == 0.16
+    assert pc_params.pc_corrector_step_rule == "paper_linear"
+    assert pc_params.pc_corrector_denoise_sigma == "next"
+
+    public_pc_args = parser.parse_args(
+        [
+            "--implementation",
+            "public_repo",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "predictor_corrector",
+        ]
+    )
+    public_pc_params = build_sampler_params(
+        public_pc_args, None, measurement_source="normal"
+    )
+    assert public_pc_params.pc_corrector_step_rule == "paper_linear"
+    assert public_pc_params.pc_corrector_denoise_sigma == "current"
+
+    whole_args = parser.parse_args(
+        [
+            "--implementation",
+            "paper",
+            "--experiment",
+            "ct_20",
+            "--method",
+            "whole_image_diffusion",
+        ]
+    )
+    whole_params = build_sampler_params(whole_args, None, measurement_source="normal")
+    assert whole_params.prior_mode == "whole_image"
+
+
 def test_reconstruction_parser_defaults_to_paper_ct_test_count():
     args = build_arg_parser().parse_args([])
 
