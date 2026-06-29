@@ -35,8 +35,8 @@ class Experiment(ABC):
         self.geometry = self.experiment_params.geometry
         self.dataset = dataset
         if hasattr(self.param, "noise_params"):
-            self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, cross_talk=self.param.noise_params.cross_talk: ct.sinogram_add_noise(
-                sino, I0=I0, sigma=sigma, cross_talk=cross_talk
+            self.sino_fun = lambda sino, I0=self.param.noise_params.I0, sigma=self.param.noise_params.sigma, sigma_blur=self.param.noise_params.sigma_blur: ct.sinogram_add_noise(
+                sino, I0=I0, sigma=sigma, sigma_blur=sigma_blur
             )
 
     @staticmethod
@@ -62,8 +62,8 @@ class Experiment(ABC):
                 self.param.data_loader_params.noise_params.I0 = (
                     self.param.noise_params.I0
                 )
-                self.param.data_loader_params.noise_params.cross_talk = (
-                    self.param.noise_params.cross_talk
+                self.param.data_loader_params.noise_params.sigma_blur = (
+                    self.param.noise_params.sigma_blur
                 )
                 self.param.data_loader_params.add_noise = True
             dataloader = deteCT(
@@ -112,7 +112,7 @@ class ExtremeLowDoseCTRecon(Experiment):
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 1000
         param.noise_params.sigma = 5
-        param.noise_params.cross_talk = 0.05
+        param.noise_params.sigma_blur = 0.3015
         param.data_loader_params = Experiment.get_dataset_parameters(
             dataset, geometry=param.geometry
         )
@@ -135,7 +135,7 @@ class LowDoseCTRecon(Experiment):
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 3500
         param.noise_params.sigma = 5
-        param.noise_params.cross_talk = 0.05
+        param.noise_params.sigma_blur = 0.3015
         param.data_loader_params = Experiment.get_dataset_parameters(
             dataset, geometry=param.geometry
         )
@@ -158,7 +158,7 @@ class LimitedAngleCTRecon(Experiment):
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
-        param.noise_params.cross_talk = 0.05
+        param.noise_params.sigma_blur = 0.3015
         param.data_loader_params = Experiment.get_dataset_parameters(
             dataset, geometry=param.geometry
         )
@@ -180,7 +180,7 @@ class LimitedAngleLowDoseCTRecon(Experiment):
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 3500
         param.noise_params.sigma = 5
-        param.noise_params.cross_talk = 0.05
+        param.noise_params.sigma_blur = 0.3015
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
@@ -207,7 +207,7 @@ class LimitedAngleExtremeLowDoseCTRecon(Experiment):
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 1000
         param.noise_params.sigma = 5
-        param.noise_params.cross_talk = 0.05
+        param.noise_params.sigma_blur = 0.3015
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
@@ -235,7 +235,7 @@ class SparseAngleCTRecon(Experiment):
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
-        param.noise_params.cross_talk = 0.05
+        param.noise_params.sigma_blur = 0.3015
 
         param.data_loader_params = Experiment.get_dataset_parameters(
             dataset, geometry=param.geometry
@@ -258,7 +258,7 @@ class SparseAngleLowDoseCTRecon(Experiment):
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 3500
         param.noise_params.sigma = 5
-        param.noise_params.cross_talk = 0.05
+        param.noise_params.sigma_blur = 0.3015
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
@@ -285,7 +285,7 @@ class SparseAngleExtremeLowDoseCTRecon(Experiment):
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 1000
         param.noise_params.sigma = 5
-        param.noise_params.cross_talk = 0.05
+        param.noise_params.sigma_blur = 0.3015
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
@@ -313,7 +313,7 @@ class clinicalCTRecon(Experiment):
         param.noise_params = LIONParameter()
         param.noise_params.I0 = 10000
         param.noise_params.sigma = 5
-        param.noise_params.cross_talk = 0.05
+        param.noise_params.sigma_blur = 0.3015
 
         param.data_loader_params = Experiment.get_dataset_parameters(
             dataset, geometry=param.geometry
