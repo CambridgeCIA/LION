@@ -181,6 +181,8 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
     assert padis_sampler["dps_epsilon"] == 0.5
     assert padis_sampler["data_consistency_gradient"] == "norm"
     assert padis_sampler["adjoint_data_step_schedule"] == "public_repo"
+    assert padis_sampler["data_consistency_scale"] == 0.0405
+    assert padis_sampler["adjoint_data_consistency_scale"] == 0.1022
 
     assert payloads["ve_ddnm"]["implementation"] == "lion_quality"
     assert payloads["ve_ddnm"]["expected_sampler"]["langevin_ddnm"] is True
@@ -210,6 +212,10 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
             "pc_corrector_denoise_sigma"
         ]
         == "current"
+    )
+    assert (
+        payloads["predictor_corrector"]["expected_sampler"]["pc_reuse_predictor_layout"]
+        is True
     )
     assert (
         payloads["patch_average"]["expected_sampler"]["patch_assembly"]
@@ -266,9 +272,12 @@ def test_public_repo_manifest_contains_public_sampler_settings(tmp_path):
     assert sampler["dps_epsilon"] == 0.5
     assert sampler["data_consistency_gradient"] == "norm"
     assert sampler["adjoint_data_step_schedule"] == "public_repo"
+    assert sampler["data_consistency_scale"] == 0.0405
+    assert sampler["adjoint_data_consistency_scale"] == 0.1022
     pc_sampler = payloads["predictor_corrector"]["expected_sampler"]
     assert pc_sampler["pc_corrector_step_rule"] == "paper_linear"
     assert pc_sampler["pc_corrector_denoise_sigma"] == "current"
+    assert pc_sampler["pc_reuse_predictor_layout"] is True
 
 
 def test_job_manifest_contains_expected_method_settings(tmp_path):

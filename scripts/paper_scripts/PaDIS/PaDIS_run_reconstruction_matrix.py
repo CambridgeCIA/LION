@@ -436,6 +436,8 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
                 "dps_epsilon": 0.5,
                 "data_consistency_gradient": "norm",
                 "adjoint_data_step_schedule": "public_repo",
+                "data_consistency_scale": 0.0405,
+                "adjoint_data_consistency_scale": 0.1022,
             }
         )
     elif job.implementation == "lion_quality":
@@ -462,6 +464,7 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
         settings["pc_corrector_denoise_sigma"] = (
             "current" if job.implementation == "public_repo" else "next"
         )
+        settings["pc_reuse_predictor_layout"] = job.implementation == "public_repo"
     if job.method.name == "ve_ddnm":
         if job.implementation == "paper":
             settings["num_steps"] = 1000

@@ -266,6 +266,9 @@ def test_public_repo_helper_initialization_is_opt_in_for_helper_methods():
     assert helper_params.noise_initialization == "central_then_pad"
     assert helper_params.clip_initial is False
     assert helper_params.pc_corrector_denoise_sigma == "current"
+    assert helper_params.pc_reuse_predictor_layout is True
+    assert helper_params.data_consistency_scale == 0.0405
+    assert helper_params.adjoint_data_consistency_scale == 0.1022
 
     langevin_helper_args = parser.parse_args(
         [

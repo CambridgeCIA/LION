@@ -85,7 +85,7 @@ where that is needed to reproduce the observed reconstruction behavior.
 | Reconstruction method | PaDIS with DPS or Langevin-style data consistency. | Public README reconstruction uses the `dps()` path in `inverse_nodist.py`. | Uses LION `dps_langevin`. | Matches the public DPS/Langevin method family. |
 | Langevin / DPS epsilon | Paper states `epsilon=1` for Langevin and DDNM. | Public DPS code uses `alpha = 0.5 * sigma^2`. | `--implementation paper` uses `dps_epsilon=1`. `--implementation public_repo` uses `dps_epsilon=0.5`. | Toggle implemented. |
 | Data consistency objective | Paper pseudocode applies an adjoint residual step. A strict paper-style LION preset corresponds to a squared-residual objective with residual-normalized step size. | Public DPS uses the gradient of the L2 norm of the residual, computed from `y - A(x0hat)`. | `--implementation paper` uses the squared-residual objective. `--implementation public_repo` uses the norm-gradient DPS objective. | Toggle implemented. |
-| Data step size | Paper describes `zeta_i = 0.3 / L2Norm(y - A(x))` for Langevin and PC-style data steps. | Public DPS applies `x = x - zeta * grad(L2Norm(y - A(x0hat)))` with `zeta=0.3`; the norm-gradient already normalizes the gradient direction. | `--implementation paper` uses residual-normalized paper stepping. `--implementation public_repo --geometry lion` uses calibrated CT gradient scale `0.0405`. | Toggle implemented, with a LION-geometry public-repo calibration. |
+| Data step size | Paper describes `zeta_i = 0.3 / L2Norm(y - A(x))` for Langevin and PC-style data steps. | Public DPS applies `x = x - zeta * grad(L2Norm(y - A(x0hat)))` with `zeta=0.3`; the norm-gradient already normalizes the gradient direction. Public PC/Langevin helpers use explicit adjoint residual steps. | `--implementation paper` uses residual-normalized paper stepping. `--implementation public_repo --geometry lion` uses calibrated CT norm-gradient scale `0.0405` for DPS and calibrated direct-adjoint scale `0.1022` for PC/Langevin. | Toggle implemented, with LION-geometry public-repo calibrations. |
 | Public-compatible LION-geometry reference | Not in paper. | Not in the original README path. | The companion `PaDIS_lion_recon` repo adds `ct_lion_fanbeam` / `ct_lion_parbeam`; these use `data_gradient_scale=0.09` to normalize the ODL adjoint scale for LION geometry comparisons. | Compatibility shim only; not paper. |
 | Patch offsets and random draws | Paper does not specify exact RNG consumption. | Public code uses Python-style patch offset behavior and consumes several otherwise-unused random draws. | LION public preset mirrors those offset and RNG-consumption semantics. | Matches public repo; not paper-specified. |
 | Output clipping | Not a central paper reconstruction detail. | Public repo clamps reconstructions to `[0, 1]`. | LION clips initial and final reconstructions to `[0, 1]`. | Matches public behavior. |
@@ -133,7 +133,7 @@ The older flags `--paper-ct-sampling`, `--public-padis-ct-sampling`, and
 | `pnp_admm` | DRUNet denoiser | LION `PnP(..., algorithm="ADMM")` with a DRUNet denoiser wrapper | Requires a trained denoising CNN. Agreement depends on the denoiser training run; this is not the PaDIS diffusion checkpoint. |
 | `whole_image_diffusion` | Whole-image NCSN++ checkpoint | LION PaDIS sampler with `prior_mode=whole_image` | Matches the paper comparison design when the whole-image checkpoint is trained with the paper architecture/settings. |
 | `langevin` | Patch PaDIS checkpoint | LION PaDIS Langevin sampler | Method default uses `--implementation public_repo` with the paper geometric CT sigma schedule, because the public helper mechanics reproduced reported-quality local behavior. Strict paper mode remains available explicitly and uses `epsilon=1`, noise initialization, and the paper residual step. |
-| `predictor_corrector` | Patch PaDIS checkpoint | LION PaDIS predictor-corrector sampler | Method default uses `--implementation public_repo` with paper/public `r=0.16`, the linear corrector step `2*r*||z||/||score||`, and the public code's current-sigma corrector denoising. Strict paper mode remains available and denoises the corrector at the next/lower sigma. |
+| `predictor_corrector` | Patch PaDIS checkpoint | LION PaDIS predictor-corrector sampler | Method default uses `--implementation public_repo` with paper/public `r=0.16`, the linear corrector step `2*r*||z||/||score||`, the public code's current-sigma corrector denoising, and public-helper patch-layout reuse between predictor and corrector denoising calls. Strict paper mode remains available and denoises the corrector at the next/lower sigma without layout reuse. |
 | `ve_ddnm` | Patch PaDIS checkpoint | LION PaDIS Langevin sampler with VE-DDNM correction | Strict `--implementation paper` follows Algorithm A.3 with 1000 sigma levels, one denoising update per level, and `epsilon=1`, but is unstable locally. The method-default matrix uses `--implementation lion_quality`, keeps the paper `paper_1000x1` NFE layout, clips LION FDK pseudoinverse terms and the corrected DDNM estimate, and uses `sampling_epsilon=0.1`. This is a LION fan-beam stability divergence from the paper. |
 | `patch_average` | Patch PaDIS checkpoint | Fixed-overlap patch denoising with averaged overlap pixels | Method default uses `--implementation public_repo` and mirrors the public PaDIS `denoisedOverlap(...)` helper inside the DPS loop: patch size 56, overlap 8, start at `pad`, and average overlaps. LION clips the final overlap start to the last valid patch because the upstream helper overruns the README default padded image. `--implementation paper` keeps the earlier LION clipped layout. This is not a faithful implementation of the original conditional patch-DDPM paper cited as `[23]`. |
 | `patch_stitch` | Patch PaDIS checkpoint | Fixed-overlap patch denoising with overwrite/stitching semantics | Method default uses `--implementation public_repo` and mirrors the public PaDIS `denoisedTile(...)` helper inside the DPS loop: patch size 56, overlap 8, hard-coded first start `4`, and overwrite/stitch overlaps. `--implementation paper` keeps the earlier LION clipped layout. This is not a faithful implementation of the original tile-and-stitch paper cited as `[66]`. |
@@ -218,6 +218,112 @@ The reconstruction matrix expects the denoiser at:
 /path/to/a100_training_<stamp>/pnp_lidc_drunet/pnp_lidc_drunet.pt
 ```
 
+### PnP DRUNet Training Defaults
+
+The PnP denoiser script is:
+
+```bash
+scripts/paper_scripts/PaDIS/PaDIS_LIDC_PnP_denoiser.py
+```
+
+Current defaults are:
+
+| Setting | Default | Notes |
+|---|---:|---|
+| Validation frequency | 1 epoch | Keeps the best-validation model responsive after the validation-loss fix. |
+| Periodic checkpoint frequency | 10 epochs | Periodic resume checkpoints are intentionally sparse. |
+| Retained periodic checkpoints | 5 | Use `--max-periodic-checkpoints -1` to keep all periodic checkpoints. |
+| Best-validation checkpoint | `pnp_lidc_drunet_min_val.pt` | Saved independently of periodic checkpoint retention. |
+| W&B resume metadata | `wandb_run.json` in the run folder | Existing run IDs are reused automatically unless `--wandb-id` is given. Metrics use W&B's resumed step counter with `epoch` as the chart axis. |
+
+The local corrected-validation DRUNet run was stopped after epoch 50 completed
+and resumed to 100 total epochs with a 7-hour wall-clock budget:
+
+```bash
+conda run --no-capture-output -n lion-dev env \
+  PYTHONPATH=/home/thomas/DiS/Project/LION \
+  MPLCONFIGDIR=/tmp/padis-mpl \
+  XDG_CACHE_HOME=/tmp/padis-xdg \
+  PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+  python scripts/paper_scripts/PaDIS/PaDIS_LIDC_PnP_denoiser.py \
+  --output-root /home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_pnp_fixed_validation_20260629 \
+  --run-name pnp_drunet_fixed_val_6h_wandb_local \
+  --epochs 100 \
+  --max-train-seconds 25200 \
+  --batch-size 8 \
+  --max-slices-per-patient 4 \
+  --validation-every 1 \
+  --checkpoint-every 10 \
+  --max-periodic-checkpoints 5 \
+  --device cuda \
+  --num-workers 4 \
+  --final-name pnp_lidc_drunet.pt \
+  --validation-name pnp_lidc_drunet_min_val.pt \
+  --wandb-project PaDIS-LIDC \
+  --wandb-name pnp_drunet_fixed_val_6h_wandb_local \
+  --wandb-id yzjn69ku
+```
+
+The resumed local run logs to:
+
+```text
+https://wandb.ai/tjh200-university-of-cambridge/PaDIS-LIDC/runs/yzjn69ku
+```
+
+After checking the interrupted resume, the remote run was explicitly verified
+through W&B's API to contain epoch 50 under the same run id before restarting
+from the epoch-50 checkpoint.
+
+The resume issue was traced to manual W&B step logging. The script now logs
+metrics without passing a manual `step` and defines `epoch` as the W&B metric
+axis. After the repair, W&B API checks verified the same run id at epochs 80,
+90, and 100. The completed run has `lastHistoryStep=100`, 100 history rows,
+summary `epoch=100`, final `train_loss=8.738872675601616e-05`, final
+`validation_loss=0.0001103682602217482`, and
+`min_validation_loss=7.537099122046352e-05`.
+
+At resume, the script loaded:
+
+```bash
+/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_pnp_fixed_validation_20260629/pnp_drunet_fixed_val_6h_wandb_local/pnp_lidc_drunet_check_0050.pt
+```
+
+and restored the previous best validation loss from
+`pnp_lidc_drunet_min_val.pt`, so the first resumed validation epoch does not
+overwrite the best model unless it is actually better.
+
+The final model and retained resume checkpoints are:
+
+```bash
+/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_pnp_fixed_validation_20260629/pnp_drunet_fixed_val_6h_wandb_local/pnp_lidc_drunet.pt
+/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_pnp_fixed_validation_20260629/pnp_drunet_fixed_val_6h_wandb_local/pnp_lidc_drunet_min_val.pt
+/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_pnp_fixed_validation_20260629/pnp_drunet_fixed_val_6h_wandb_local/pnp_lidc_drunet_check_0060.pt
+/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_pnp_fixed_validation_20260629/pnp_drunet_fixed_val_6h_wandb_local/pnp_lidc_drunet_check_0070.pt
+/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_pnp_fixed_validation_20260629/pnp_drunet_fixed_val_6h_wandb_local/pnp_lidc_drunet_check_0080.pt
+/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_pnp_fixed_validation_20260629/pnp_drunet_fixed_val_6h_wandb_local/pnp_lidc_drunet_check_0090.pt
+/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_pnp_fixed_validation_20260629/pnp_drunet_fixed_val_6h_wandb_local/pnp_lidc_drunet_check_0100.pt
+```
+
+The `Expected 'geometry' parameter!` message during save is expected for these
+denoiser-only checkpoints and did not prevent the final, best-validation, or
+periodic checkpoints from being written. The best-validation checkpoint still
+uses the legacy scalar-loss checkpoint schema, so its `epoch` field should be
+treated as checkpoint metadata rather than a one-indexed W&B epoch label.
+
+The A100 PnP Slurm job now validates every epoch by default, saves periodic
+checkpoints every 10 epochs, retains 5 periodic checkpoints, and logs to W&B
+unless `PADIS_NO_WANDB=1` is set. The optional wall-clock stop can be supplied
+with:
+
+```bash
+PADIS_PNP_MAX_TRAIN_SECONDS=25200 \
+scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_pnp_training.sh
+```
+
+For the matrixed PaDIS diffusion-prior Slurm jobs, W&B model artifacts are now
+enabled by default. Set `PADIS_NO_WANDB_ARTIFACT=1` only for runs where artifact
+upload should be disabled.
+
 If you customise the PnP denoiser output path, use the same variables for
 training and reconstruction:
 
@@ -245,6 +351,66 @@ variables, including `PADIS_PNP_BATCH_SIZE`, `PADIS_PNP_EPOCHS`,
 `PADIS_PNP_N_BLOCKS`, `PADIS_PNP_VALIDATION_EVERY`,
 `PADIS_PNP_CHECKPOINT_EVERY`, `PADIS_PNP_FINAL_NAME`,
 `PADIS_PNP_CHECKPOINT_PATTERN`, and `PADIS_PNP_VALIDATION_NAME`.
+
+Both training entry points can log to Weights & Biases. For local runs, pass
+`--wandb-project PaDIS-LIDC` and optionally `--wandb-name <run_name>`. The PnP
+denoiser script also supports `--wandb-entity`, `--wandb-id`, `--wandb-mode`,
+`--no-wandb`, and `--max-train-seconds` for clean wall-clock-limited training.
+The whole-image diffusion training script supports the same project/name style
+and can skip large checkpoint uploads with `--no-wandb-artifact`.
+
+The local six-hour W&B DRUNet run used:
+
+```bash
+conda run --no-capture-output -n lion-dev env \
+  PYTHONPATH=/home/thomas/DiS/Project/LION \
+  MPLCONFIGDIR=/tmp/padis-mpl \
+  XDG_CACHE_HOME=/tmp/padis-xdg \
+  PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+  python scripts/paper_scripts/PaDIS/PaDIS_LIDC_PnP_denoiser.py \
+  --output-root /home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_long_training_20260628 \
+  --run-name pnp_drunet_6h_wandb_local \
+  --epochs 1000 \
+  --max-train-seconds 21600 \
+  --batch-size 8 \
+  --max-slices-per-patient 4 \
+  --validation-every 1 \
+  --checkpoint-every 1 \
+  --device cuda \
+  --num-workers 4 \
+  --final-name pnp_lidc_drunet.pt \
+  --validation-name pnp_lidc_drunet_min_val.pt \
+  --wandb-project PaDIS-LIDC \
+  --wandb-name pnp_drunet_6h_wandb_local
+```
+
+The matching local six-hour W&B whole-image run used:
+
+```bash
+conda run --no-capture-output -n lion-dev env \
+  PYTHONPATH=/home/thomas/DiS/Project/LION \
+  MPLCONFIGDIR=/tmp/padis-mpl \
+  XDG_CACHE_HOME=/tmp/padis-xdg \
+  PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+  python scripts/paper_scripts/PaDIS/PaDIS_LIDC_256.py \
+  --prior-mode whole-image \
+  --save-folder /home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_long_training_20260628 \
+  --run-name whole_image_6h_wandb_local \
+  --max-slices-per-patient 4 \
+  --max-train-seconds 21600 \
+  --batch-size 1 \
+  --microbatch-size 1 \
+  --validation-interval-patches 64 \
+  --validation-max-patches 64 \
+  --checkpoint-interval-patches 2048 \
+  --log-interval-patches 64 \
+  --max-periodic-checkpoints 3 \
+  --device cuda \
+  --num-workers 4 \
+  --wandb-project PaDIS-LIDC \
+  --wandb-name whole_image_6h_wandb_local \
+  --no-wandb-artifact
+```
 
 For a pilot run:
 
@@ -799,6 +965,15 @@ a replacement for the A100 paper matrix.
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_current_nontraining_smoke_20260628` | `baseline`, `admm_tv`, `padis_dps`, `langevin`, `predictor_corrector`, `ve_ddnm` | 1 `ct_20` test slice per method | Current-code escaped-CUDA matrix smoke using the existing patch PaDIS checkpoint. The manifest verifier passed 6 records, 1 sample each, and method-specific quality gates. Mean PSNRs: baseline/FDK 22.15 dB, ADMM-TV 29.49 dB, PaDIS DPS 34.10 dB, Langevin 33.57 dB, predictor-corrector 30.26 dB, and LION-stabilized VE-DDNM 33.10 dB. All non-baseline gated rows beat FDK on the sample and wrote metrics, tensors, traces, and trace images. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_current_fixed_overlap_probe_20260628` | `patch_average`, `patch_stitch` | 1 `ct_20` test slice per method, stopped after 5 outer steps | Current-code escaped-CUDA fixed-overlap probe using `--patch-batch-size 1`, checkpointed denoising, trace JSON, trace images, previews, and tensors. The manifest verifier passed structurally for both records. Quality is intentionally meaningless for this truncated noise-initialized run; both rows remained far below FDK. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_cuda_training_dependent_rerun_20260628` | `whole_image_diffusion` training, `pnp_admm` denoiser training, `whole_image_diffusion`, `pnp_admm` | 1 tiny training smoke each; 1 `ct_20` reconstruction slice each | Current-code escaped-CUDA smoke for the two training-dependent rows. Whole-image diffusion trained one patch budget unit and produced `whole_lidc_default/whole_image_lidc_256.pt`; PnP trained a deliberately tiny DRUNet and produced `pnp_lidc_drunet/pnp_lidc_drunet.pt`. The verifier passed structurally for both rows and applied a quality gate to PnP-ADMM. PnP-ADMM reached 28.03 dB versus FDK 22.15 dB in this tiny smoke; whole-image diffusion was intentionally not quality-meaningful because the checkpoint is one-step trained and the reconstruction was stopped after 2 outer steps. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_training_watch_20260628/pnp_drunet_watch_local` | DRUNet denoiser training for `pnp_admm` | 64 training samples, 16 validation samples, local subset | Escaped-CUDA monitored training run using the LION-native DRUNet PnP denoiser script. Validation was checked every epoch. The run was manually interrupted after epoch 12 once the validation loss had worsened after the best epoch: validation loss improved from 0.00342 at epoch 1 to a best observed 0.000665 at epoch 9, then rose to 0.000722, 0.000804, and 0.000701 at epochs 10-12 while training loss kept dropping. Saved artifacts include `pnp_lidc_drunet_min_val.pt` plus periodic checkpoints at epochs 5 and 10. No final `pnp_lidc_drunet.pt` was written because the run was intentionally interrupted after the overfitting signal. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_training_watch_20260628/whole_image_watch_local_v2` | Whole-image diffusion training | 224 whole-image samples before 240 s cap | Escaped-CUDA monitored whole-image NCSN++ training run using `--prior-mode whole-image`, batch size 1, validation every 64 samples, and metrics JSONL at `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_training_watch_20260628/whole_image_watch_local_v2_metrics.jsonl`. The run stopped cleanly at `--max-train-seconds 240`. Validation worsened from 44064.8 at 64 samples to 51765.1 at 128 and 52530.0 at 192, so this checkpoint is not quality-useful. It did write final and min-validation checkpoints plus `loss.png` and `validation_loss.png`. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_pnp_watch_recon_20260628` | `pnp_admm` | 1 `ct_20` test slice | Escaped-CUDA reconstruction smoke using the watched DRUNet best-validation checkpoint `pnp_lidc_drunet_min_val.pt`. The PnP-ADMM pipeline completed 10 ADMM iterations and beat FDK on the sample: PSNR 28.90 dB and SSIM 0.669 versus FDK PSNR 22.15 dB and SSIM 0.328. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_whole_image_watch_recon_20260628` | `whole_image_diffusion` | 1 `ct_20` test slice, stopped after 1 outer step | Escaped-CUDA reconstruction smoke using the watched whole-image checkpoint `whole_image_lidc_256_min_val.pt`. The pipeline completed and wrote metrics, tensors, trace JSON, trace images, and previews, but quality was poor: PSNR -21.23 dB versus FDK 22.15 dB. This verifies dispatch/output plumbing only; the short whole-image training watch did not produce a useful prior. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_long_training_20260628/pnp_drunet_6h_wandb_local` | DRUNet denoiser training for `pnp_admm` | 6-hour local CUDA run, 53 epochs | W&B run `wh0t93qz` (`https://wandb.ai/tjh200-university-of-cambridge/PaDIS-LIDC/runs/wh0t93qz`). The run stopped cleanly at `--max-train-seconds 21600`, saved `pnp_lidc_drunet.pt` and `pnp_lidc_drunet_min_val.pt`, and reached min validation loss `0.0004345`; final epoch train loss was `8.48e-05` and validation loss was `0.000757`. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_pnp_fixed_validation_20260629/pnp_drunet_fixed_val_6h_wandb_local` | DRUNet denoiser training for `pnp_admm` | Resumed local CUDA run from epoch 50 to epoch 100 | W&B run `yzjn69ku` (`https://wandb.ai/tjh200-university-of-cambridge/PaDIS-LIDC/runs/yzjn69ku`). The initial resume concern was traced to manual W&B step logging; after removing the manual step and using `epoch` as the metric axis, W&B API verification reported `lastHistoryStep=100` with 100 history rows. Final train loss was `8.7389e-05`, final validation loss was `0.00011037`, and min validation loss was `7.5371e-05`. Periodic checkpoint retention kept exactly epochs 60, 70, 80, 90, and 100, with final and best-validation checkpoints also present. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_long_training_20260628/whole_image_6h_wandb_local` | Whole-image diffusion training | 6-hour local CUDA run, 17,664 seen patches | W&B run `pk2frvqf` (`https://wandb.ai/tjh200-university-of-cambridge/PaDIS-LIDC/runs/pk2frvqf`). The run stopped cleanly at `--max-train-seconds 21600`, saved final and min-validation checkpoints including `whole_image_lidc_256_min_val.pt`, and reached min validation loss `12261.434`. Validation was still high and only trending downward, so this is not enough evidence that the whole-image prior is trained to paper quality. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_long_training_recon_20260629/pnp_admm_6h_minval` | `pnp_admm` | 1 `ct_20` test slice | Escaped-CUDA reconstruction using the six-hour DRUNet min-validation checkpoint. The run completed 10 ADMM iterations and beat FDK clearly: PSNR 28.90 dB, SSIM 0.669, MAE 0.0242, and p95 absolute error 0.0711 versus FDK PSNR 22.15 dB and SSIM 0.328. This gives useful confidence that the LION PnP-ADMM wiring and denoiser training path are functioning, though it is still a LION-native DRUNet surrogate rather than an exact paper denoiser. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_long_training_recon_20260629/whole_image_6h_minval_paper` | `whole_image_diffusion` | 1 `ct_20` test slice, full 100 outer / 10 inner paper preset | Escaped-CUDA reconstruction using the six-hour whole-image min-validation checkpoint with `--implementation paper`, geometric schedule, `sigma_max=10`, `sigma_min=0.002`, Gaussian initialization, and `prior_mode=whole_image`. The full sampler completed and wrote trace images, but quality was poor: PSNR 9.67 dB, SSIM -0.0017, MAE 0.307, and relative sinogram residual 1.19 versus FDK PSNR 22.15 dB and SSIM 0.328. This verifies loader/sampler/output plumbing only; the six-hour local whole-image checkpoint is not a reliable reconstruction prior. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_sampler_dps_smoke_20260628` | public-fork `dps` helper | 1 LIDC PNG, stopped after 1 outer step | Escaped-CUDA smoke of the LION-compatible public fork's default DPS sampler after adding public helper sampler selection and patch-denoiser microbatch plumbing. The run completed with the default gradient-tracking DPS path and wrote `reconstructions.npz` plus `trace.json`. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_sampler_pc_trace_20260628` | public-fork `pc_sampling` helper | 1 LIDC PNG, stopped after 1 outer step | Escaped-CUDA smoke of the LION-compatible public fork's predictor-corrector helper via `--sampler pc --patch_batch_size 1 --trace_interval 1`. The helper path completed on the local 8GB GPU after disabling denoiser-gradient storage for non-DPS public helpers and wrote `reconstructions.npz` plus PC predictor/corrector trace statistics. This is a reference-generation smoke, not a quality run. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_sampler_langevin_smoke_20260628` | public-fork `langevin` helper | 1 LIDC PNG, stopped after 1 outer step | Escaped-CUDA smoke of the LION-compatible public fork's Langevin helper via `--sampler langevin --patch_batch_size 1`. The helper branch completed and wrote `reconstructions.npz`; this is a reference-generation smoke, not a quality run. |
@@ -806,10 +981,28 @@ a replacement for the A100 paper matrix.
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_patch_average_1step_checkpoint_20260628` | public-fork `patch_average` helper | 1 LIDC PNG, stopped after 1 outer step | Escaped-CUDA smoke of the LION-compatible public fork's `denoisedOverlap(...)` helper inside the DPS loop via `--sampler patch_average --patch_batch_size 1 --checkpoint_denoiser`. The upstream helper's default overrun is bounded to the last valid patch in this fork path. The run completed and wrote `reconstructions.npz`, intermediates, and trace statistics. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_patch_stitch_1step_checkpoint_20260628` | public-fork `patch_stitch` helper | 1 LIDC PNG, stopped after 1 outer step | Escaped-CUDA smoke of the LION-compatible public fork's `denoisedTile(...)` helper inside the DPS loop via `--sampler patch_stitch --patch_batch_size 1 --checkpoint_denoiser`. This keeps the public helper's hard-coded start index `4`. The run completed and wrote `reconstructions.npz`, intermediates, and trace statistics. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_pc_1step_central_noise_20260628` | LION `predictor_corrector` versus public-fork `pc_sampling` helper | 1 `ct_20` test slice, stopped after 1 outer step | Escaped-CUDA comparison using `--implementation public_repo --public-repo-sigma-schedule readme --public-repo-helper-initialization` and `--public-reference-reconstructions` from the traced public-fork PC smoke. After matching the helper's central-noise-then-pad initialization, LION reached public-reference SSIM 0.991, edge SSIM 0.980, MAE 0.0120, and p95 absolute error 0.0255. This validates one-step output-level alignment for the public PC helper under LION geometry. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_pc_5step_20260628` | public-fork `pc_sampling` helper | 1 LIDC PNG, stopped after 5 outer steps | Escaped-CUDA reference-generation run for a longer public predictor-corrector helper comparison using the literal README sigma schedule, `ct_lion_fanbeam`, `--patch_batch_size 1`, and seed 2. It wrote `reconstructions.npz` and trace statistics. The public-fork quality is intentionally poor for this truncated diagnostic: PSNR 4.69 dB and SSIM 0.0023. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_pc_5step_reuse_layout_20260628` | LION `predictor_corrector` versus public-fork `pc_sampling` helper | 1 `ct_20` test slice, stopped after 5 outer steps | Escaped-CUDA comparison after adding the public-helper PC behavior that reuses the predictor patch layout for the corrector denoising call. The focused tests passed (`79 passed`), but output-level agreement did not improve versus the previous 5-step run: public-reference SSIM 0.9649, edge SSIM 0.9225, MAE 0.0303, and p95 absolute error 0.258. Trace comparison showed the first denoised prior output matched exactly at step 0, but the CT data update differed immediately; LION's raw adjoint correction norm was about 10x the public fork's, so the remaining PC drift was a data-consistency/operator-scaling issue rather than a patch-denoiser issue. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_pc_5step_split_adjscale_default_20260628` | LION `predictor_corrector` versus public-fork `pc_sampling` helper | 1 `ct_20` test slice, stopped after 5 outer steps | Escaped-CUDA comparison after splitting public-compatible DPS norm-gradient scaling from direct-adjoint PC/Langevin scaling. The public-repo preset now keeps `data_consistency_scale=0.0405` for DPS and uses `adjoint_data_consistency_scale=0.1022` for direct adjoint residual updates. Focused tests passed (`80 passed`). With no manual scale override, LION reached public-reference SSIM 0.9987, edge SSIM 0.9967, MAE 0.00459, and p95 absolute error 0.0133 against the 5-step public PC helper reference. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_pc_100step_20260628` | public-fork `pc_sampling` helper | 1 LIDC PNG, full public helper run | Escaped-CUDA 100-step reference-generation run using the literal README sigma schedule, `ct_lion_fanbeam`, `--patch_batch_size 1`, trace interval 10, and seed 2. The helper completed with finite output: PSNR 30.40 dB and SSIM 0.7130. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_pc_100step_20260628` | LION `predictor_corrector` versus public-fork `pc_sampling` helper | 1 `ct_20` test slice, full public-helper-compatible run | Escaped-CUDA comparison using `--implementation public_repo --public-repo-sigma-schedule readme --public-repo-helper-initialization` and the 100-step public PC reference. LION reached target PSNR 30.17 dB and SSIM 0.7092; against the public reference it reached SSIM 0.9913, edge SSIM 0.9874, MAE 0.00419, and p95 absolute error 0.00771. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_langevin_1step_helper_init_fixed_20260628` | LION `langevin` versus public-fork `langevin` helper | 1 `ct_20` test slice, stopped after 1 outer step | Escaped-CUDA comparison using `--implementation public_repo --public-repo-sigma-schedule readme --public-repo-helper-initialization` and `--public-reference-reconstructions` from the public-fork Langevin smoke. With the public helper's padded-state noise convention, LION reached public-reference SSIM 0.980, edge SSIM 0.954, MAE 0.0196, and p95 absolute error 0.0612. This validates one-step output-level alignment for the public Langevin helper under LION geometry. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_langevin_5step_20260628` | public-fork `langevin` helper | 1 LIDC PNG, stopped after 5 outer steps | Escaped-CUDA reference-generation run for a longer public Langevin helper comparison using the literal README sigma schedule, `ct_lion_fanbeam`, `--patch_batch_size 1`, and seed 2. It wrote `reconstructions.npz` and intermediate PNGs. The public-fork quality is intentionally poor for this truncated diagnostic: PSNR 5.06 dB and SSIM 0.00284. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_langevin_5step_split_adjscale_default_20260628` | LION `langevin` versus public-fork `langevin` helper | 1 `ct_20` test slice, stopped after 5 outer steps | Escaped-CUDA comparison after adding the split direct-adjoint scale parameter but before routing the Langevin hand-written data update through it. The trace still showed `data_consistency_scale=0.0405`, and output-level agreement stayed poor: public-reference SSIM 0.9662, edge SSIM 0.9247, MAE 0.0290, and p95 absolute error 0.258. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_langevin_5step_split_adjscale_applied_20260628` | LION `langevin` versus public-fork `langevin` helper | 1 `ct_20` test slice, stopped after 5 outer steps | Escaped-CUDA comparison after routing Langevin's data step through the shared direct-adjoint correction helper. Focused tests still passed (`80 passed`). LION reached public-reference SSIM 0.9998, edge SSIM 0.9995, MAE 0.00165, and p95 absolute error 0.0 against the 5-step public Langevin helper reference. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_langevin_100step_20260628` | public-fork `langevin` helper | 1 LIDC PNG, full 100 outer / 10 inner sampler | Escaped-CUDA 100-step reference-generation run using the literal README sigma schedule, `ct_lion_fanbeam`, `--patch_batch_size 1`, and seed 2. The helper completed with finite output: PSNR 31.92 dB and SSIM 0.7541. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_langevin_100step_20260628` | LION `langevin` versus public-fork `langevin` helper | 1 `ct_20` test slice, full public-helper-compatible run | Escaped-CUDA comparison using `--implementation public_repo --public-repo-sigma-schedule readme --public-repo-helper-initialization` and the 100-step public Langevin reference. LION reached target PSNR 31.99 dB and SSIM 0.7536; against the public reference it reached SSIM 0.9983, edge SSIM 0.9920, MAE 0.00132, and p95 absolute error 0.00401. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_ddnm_1step_helper_init_20260628` | LION `ve_ddnm` versus public-fork DDNM helper | 1 `ct_20` test slice, stopped after 1 outer step | Escaped-CUDA comparison using `--implementation public_repo --public-repo-sigma-schedule readme --public-repo-helper-initialization --ve-ddnm-nfe-layout public_inner` and `--public-reference-reconstructions` from the public-fork DDNM smoke. With padded-state noise and the public helper's 100x10 loop layout, LION reached public-reference SSIM 1.000, edge SSIM 0.999, MAE 0.00182, and p95 absolute error 0.0. This validates one-step output-level alignment for the public DDNM helper under LION geometry. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_ddnm_5step_20260628` | public-fork DDNM helper | 1 LIDC PNG, stopped after 5 outer steps | Escaped-CUDA reference-generation run for a longer public DDNM helper comparison using the literal README sigma schedule, `ct_lion_fanbeam`, `--patch_batch_size 1`, and seed 2. It wrote `reconstructions.npz` and intermediate PNGs. The public-fork quality is intentionally poor for this truncated diagnostic: PSNR 4.86 dB and SSIM 0.00295. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_ddnm_5step_split_adjscale_default_20260628` | LION `ve_ddnm` versus public-fork DDNM helper | 1 `ct_20` test slice, stopped after 5 outer steps | Escaped-CUDA comparison using `--implementation public_repo --public-repo-sigma-schedule readme --public-repo-helper-initialization --ve-ddnm-nfe-layout public_inner` and the new split-scale defaults. LION reached public-reference SSIM 0.9996, edge SSIM 0.9991, MAE 0.00217, and p95 absolute error 0.0 against the 5-step public DDNM helper reference. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_ddnm_100step_20260628` | public-fork DDNM helper | 1 LIDC PNG, full 100 outer / 10 inner sampler | Escaped-CUDA run of the public DDNM branch without LION's VE-DDNM stabilisation, using the literal README sigma schedule, `ct_lion_fanbeam`, `--patch_batch_size 1`, and seed 2. The run executed to completion but produced an all-NaN reconstruction array: public-repo PSNR and SSIM were both `nan`, and `reconstructions.npz` contained 65,536 NaN pixels out of 65,536. This confirms the un-stabilised public DDNM formula is executable but not numerically usable in this matched CT setup. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_patch_average_1step_20260628` | LION `patch_average` versus public-fork `patch_average` helper | 1 `ct_20` test slice, stopped after 1 outer step | Escaped-CUDA comparison using `--implementation public_repo --public-repo-sigma-schedule readme`, `fixed_overlap_layout=public_overlap`, checkpointed denoising, and `--public-reference-reconstructions` from the public-fork patch-average smoke. LION reached public-reference SSIM 1.000, edge SSIM 1.000, MAE 1.35e-5, and p95 absolute error 0.0. This validates one-step output-level alignment for the public overlap-averaging helper under LION geometry. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_patch_stitch_1step_20260628` | LION `patch_stitch` versus public-fork `patch_stitch` helper | 1 `ct_20` test slice, stopped after 1 outer step | Escaped-CUDA comparison using `--implementation public_repo --public-repo-sigma-schedule readme`, `fixed_overlap_layout=public_tile`, checkpointed denoising, and `--public-reference-reconstructions` from the public-fork patch-stitch smoke. LION reached public-reference SSIM 1.000, edge SSIM 1.000, MAE 1.32e-5, and p95 absolute error 0.0. This validates one-step output-level alignment for the public tile/stitch helper under LION geometry. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_patch_average_100step_20260628` | public-fork `patch_average` helper | 1 LIDC PNG, attempted full 100 outer / 10 inner sampler | Earlier escaped-CUDA attempt using the literal README sigma schedule, `ct_lion_fanbeam`, `--patch_batch_size 1`, `--checkpoint_denoiser`, trace interval 10, and seed 2. The helper fit in memory and wrote intermediates through step 40, but local runtime degraded sharply; it was interrupted at 48/100 after 38 minutes before `reconstructions.npz` was written. This was superseded by the detach-fixed public-fork run below. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_patch_average_100step_detach_20260628_retry` | public-fork `patch_average` helper | 1 LIDC PNG, full 100 outer / 10 inner sampler | Escaped-CUDA 100-step reference-generation run after detaching the public fork's fixed-overlap iterate between inner updates to avoid autograd graph retention. It used the literal README sigma schedule, `ct_lion_fanbeam`, `--patch_batch_size 1`, `--checkpoint_denoiser`, no trace/intermediate output, and seed 2. The helper completed in 48:21 with finite output: PSNR 33.36 dB and SSIM 0.7998. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_patch_average_100step_detach_20260628` | LION `patch_average` versus public-fork `patch_average` helper | 1 `ct_20` test slice, full public-helper-compatible run | Escaped-CUDA comparison using `--implementation public_repo --public-repo-sigma-schedule readme`, `fixed_overlap_layout=public_overlap`, checkpointed denoising, and the detach-fixed 100-step public patch-average reference. LION reached target PSNR 33.39 dB and SSIM 0.7990; against the public reference it reached SSIM 0.9973, edge SSIM 0.9880, MAE 0.00120, and p95 absolute error 0.00387. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_public_helper_patch_stitch_100step_detach_20260628` | public-fork `patch_stitch` helper | 1 LIDC PNG, full 100 outer / 10 inner sampler | Escaped-CUDA 100-step reference-generation run after the same public-fork fixed-overlap detach fix. It used the literal README sigma schedule, `ct_lion_fanbeam`, `--patch_batch_size 1`, `--checkpoint_denoiser`, no trace/intermediate output, and seed 2. The helper completed in 48:16 with finite output: PSNR 32.10 dB and SSIM 0.7799. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_vs_public_helper_patch_stitch_100step_detach_20260628` | LION `patch_stitch` versus public-fork `patch_stitch` helper | 1 `ct_20` test slice, full public-helper-compatible run | Escaped-CUDA comparison using `--implementation public_repo --public-repo-sigma-schedule readme`, `fixed_overlap_layout=public_tile`, checkpointed denoising, and the detach-fixed 100-step public patch-stitch reference. LION reached target PSNR 32.04 dB and SSIM 0.7780; against the public reference it reached SSIM 0.9966, edge SSIM 0.9845, MAE 0.00157, and p95 absolute error 0.00500. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_baseline_tv_25slice_noiseinit_20260628` | `baseline`, `admm_tv` | 25 `ct_20` test slices | Current-code escaped-CUDA no-prior validation with a saved reconstruction-matrix manifest. The strict verifier passed 2 records, 25 samples each, expected sampler/method settings including `noise_initialization`, and ADMM-TV beating FDK in mean and on every slice. Mean PSNRs: baseline/FDK 20.59 dB and LION TV substitute 27.67 dB. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_local_cuda_validation_20260627` | `langevin` | 1 `ct_20` test slice | Full paper-preset run, mean PSNR 26.08 dB versus FDK 22.15 dB; verifier passed the method-specific better-than-FDK gate. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_local_cuda_validation_20260627` | `predictor_corrector` | 1 `ct_20` test slice | Paper/public linear PC corrector step completed with finite output, but mean PSNR was 11.51 dB versus FDK 22.15 dB. This row needs full-array/A100 validation or tuning before treating quality as paper-like. |
@@ -838,6 +1031,8 @@ a replacement for the A100 paper matrix.
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_patch_stitch_checkpoint_dc_probe_5step_20260628` | `patch_stitch` | 1 `ct_20` test slice, stopped after 5 outer steps | Escaped-CUDA run with `--patch-batch-size 1 --fixed-overlap-checkpoint-denoiser`, data consistency, trace JSON, trace images, previews, and tensors completed in about 2.5 minutes on the local GTX 1070. Quality remains intentionally meaningless for a 5-step noise-initialized run. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_patch_average_checkpoint_dc_full_20260628` | `patch_average` | 1 `ct_20` test slice, full 100 outer / 10 inner sampler | Escaped-CUDA run with `--patch-batch-size 1 --fixed-overlap-checkpoint-denoiser`, data consistency, trace JSON, trace images, previews, and tensors completed in 48:54 on the local GTX 1070. The matrix verifier passed structurally, but quality was poor: mean PSNR 6.18 dB and SSIM -0.283 versus FDK 22.15 dB. This validates the full fixed-overlap reconstruction path, not paper-like CT reconstruction quality. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_patch_stitch_checkpoint_dc_full_20260628` | `patch_stitch` | 1 `ct_20` test slice, full 100 outer / 10 inner sampler | Escaped-CUDA run with `--patch-batch-size 1 --fixed-overlap-checkpoint-denoiser`, data consistency, trace JSON, trace images, previews, and tensors completed in 49:12 on the local GTX 1070. The matrix verifier passed structurally, but quality was poor: mean PSNR 6.63 dB and SSIM -0.241 versus FDK 22.15 dB. This validates the full fixed-overlap stitching reconstruction path, not paper-like CT reconstruction quality. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/local_public_patch_average_full_20260628` | `patch_average` | 1 `ct_20` test slice, full 100 outer / 10 inner sampler | Current public-helper default full run using `--implementation public_repo`, paper CT sigma schedule, public-overlap layout, and checkpointed denoising. It reached PSNR 33.30 dB, SSIM 0.801, edge SSIM 0.538, MAE 0.0156, and p95 absolute error 0.0428 versus FDK PSNR 25.43 dB and SSIM 0.489. This is the current evidence for the usable public-helper patch-average path. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/local_public_patch_stitch_full_20260628` | `patch_stitch` | 1 `ct_20` test slice, full 100 outer / 10 inner sampler | Current public-helper default full run using `--implementation public_repo`, paper CT sigma schedule, public-tile layout, and checkpointed denoising. It reached PSNR 32.89 dB, SSIM 0.787, edge SSIM 0.527, MAE 0.0162, and p95 absolute error 0.0451 versus FDK PSNR 25.43 dB and SSIM 0.489. This is the current evidence for the usable public-helper patch-stitch path. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_whole_image_training_smoke_20260628/whole_lidc_smoke` | `whole_image_diffusion` training | 1 training unit | Tiny CUDA training smoke produced `whole_image_lidc_256.pt` and sidecar metadata with `paper_preset=padis-paper-whole-ct-256`, `prior_mode=whole_image`, and `patch_sizes=[256]`. This validates the checkpoint path and metadata only, not paper-quality whole-image training. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_whole_image_reconstruction_smoke_20260628` | `whole_image_diffusion` | 1 `ct_20` test slice, stopped after 2 outer steps | CUDA reconstruction smoke loaded the tiny whole-image checkpoint and ran the LION CT sampler with `prior_mode=whole_image`, `model_patch_size=256`, 100 outer / 10 inner paper sampler settings, trace images, previews, and tensors. Quality metrics are intentionally not meaningful because the checkpoint is tiny and the run is truncated. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_local_cuda_pnp_smoke_20260627` | `pnp_admm` | 1 `ct_20` test slice | CUDA smoke with the tiny DRUNet denoiser completed and passed the matrix verifier with PnP-ADMM beating FDK on the sample, mean PSNR 26.90 dB versus FDK 22.15 dB. This is a wiring/runtime check, not a paper-quality PnP result. |
@@ -873,17 +1068,26 @@ a replacement for the A100 paper matrix.
   CT experiment geometry plus `--image-scaling` defaults unless an explicit
   checkpoint is supplied for metadata only. The verifier records an empty
   checkpoint identity for these rows.
-- The `whole_image_diffusion`, `pnp_admm`, and newly trained PaDIS comparison
-  rows still require A100/CUDA CT validation after their checkpoints are
-  available. Local CPU tests cover dispatch, metrics, and output writing, but
-  not final CT reconstruction quality for these rows.
+- The latest local six-hour W&B runs give different confidence levels for the
+  two training-dependent rows. The PnP-ADMM DRUNet path now has a clean
+  train-to-reconstruction run and beats FDK on one `ct_20` slice, so the LION
+  implementation wiring is credible; it is still a LION-native DRUNet surrogate
+  because the PaDIS paper does not provide enough detail for an exact denoiser
+  reproduction. The whole-image diffusion path also trains, loads, samples, and
+  writes traces under the full paper CT preset, but the six-hour local
+  checkpoint reconstructs much worse than FDK. Treat `whole_image_diffusion` as
+  plumbing-verified but not quality-validated until a substantially stronger
+  whole-image checkpoint is trained and passes CT reconstruction metrics.
 - Strict paper-mode one-sample `predictor_corrector` and `ve_ddnm` runs
   completed but were below FDK on PSNR. The predictor-corrector implementation
   now follows the paper/public linear corrector step. The paper mode denoises
   the corrector at the next/lower sigma; `--implementation public_repo` uses the
-  public code's current-sigma denoising behavior and produced much better local
-  quality. The older squared score-SDE step-size form is retained only behind
-  `--pc-corrector-step-rule score_sde_squared` for diagnostics.
+  public code's current-sigma denoising behavior and reuses the predictor patch
+  layout for the corrector denoising call, matching the public helper's
+  `indices = getIndices(...)` placement. This produced much better local
+  quality than strict paper mode. The older squared score-SDE step-size form is
+  retained only behind `--pc-corrector-step-rule score_sde_squared` for
+  diagnostics.
 - The method-default matrix uses public-repo mechanics for `padis_dps`,
   `langevin`, and `predictor_corrector` because those settings are the only
   locally validated route to reported-like reconstruction behavior. This is an
@@ -922,8 +1126,11 @@ a replacement for the A100 paper matrix.
   denoiser graph. These rows now enable activation checkpointing by default so
   the denoiser microbatches are recomputed during the DPS backward pass instead
   of retaining all activations. This made the full `patch_average` CT
-  and `patch_stitch` CT reconstruction paths fit on the local 8GB GPU, but the
-  one-sample full runs were far below FDK quality. The paper reports patch
+  and `patch_stitch` CT reconstruction paths fit on the local 8GB GPU. Earlier
+  fixed-overlap probes with older settings were far below FDK, but the current
+  public-helper default full one-slice runs beat FDK clearly: patch averaging
+  reached 33.30 dB PSNR and patch stitching reached 32.89 dB PSNR versus FDK
+  25.43 dB on the same sample. The paper reports patch
   averaging and patch stitching as CT reconstruction comparison rows in the main
   inverse-problem table, and also shows unconditional CT generation examples in
   the appendix. Their inclusion in the LION reconstruction matrix is therefore
@@ -943,24 +1150,42 @@ a replacement for the A100 paper matrix.
   DPS. The LION-compatible `PaDIS_lion_recon` fork now exposes those helpers
   through `--sampler pc|langevin|ddnm|patch_average|patch_stitch` for diagnostic
   reference generation, with `--patch_batch_size` to fit them on smaller GPUs.
-  LION still treats `--implementation public_repo` for `langevin`,
-  `predictor_corrector`, and `ve_ddnm` as formula-level compatibility unless an
-  explicit helper-reference run is supplied through
-  `--public-reference-reconstructions`; full output-level matching is only
-  claimed for full `padis_dps` runs. For `patch_average` and `patch_stitch`,
-  LION and the fork now agree exactly at fixed-overlap denoiser-assembly level
-  under a dummy denoiser. A one-step `predictor_corrector` comparison against
-  the public-fork `pc_sampling` helper now matches closely when
+  LION still treats `--implementation public_repo` as formula-level
+  compatibility unless an explicit helper-reference run is supplied through
+  `--public-reference-reconstructions`. Full output-level matching is claimed
+  for full `padis_dps` runs and for 100-step public-helper
+  `predictor_corrector`, `langevin`, `patch_average`, and `patch_stitch`
+  diagnostics on the local one-slice reference. The fixed-overlap
+  `patch_average` and `patch_stitch` public-helper runs required one
+  compatibility-fork runtime fix: detach the updated iterate between inner
+  updates so PyTorch does not retain the whole previous denoiser/data-gradient
+  graph. This preserves the update value but is a runtime divergence from the
+  literal public helper code. LION and the fork also agree exactly at
+  fixed-overlap denoiser-assembly level under a dummy denoiser. A one-step
+  `predictor_corrector` comparison against the public-fork
+  `pc_sampling` helper now matches closely when
   `--public-repo-helper-initialization` is used, because that flag reproduces
   the helper's central-noise-then-pad initial state. A one-step Langevin
   comparison also matches closely using the helper's padded-state noise
   convention. A one-step DDNM comparison also matches closely with the public
   helper's padded-state noise and `public_inner` loop layout.
-  Full PC/Langevin/DDNM helper-output matching still needs longer reference runs
-  before being claimed.
-  The public repo does not provide runnable ADMM-TV, PnP-ADMM, whole-image
-  diffusion, patch averaging, or patch stitching comparison rows to match
-  against.
+  A 5-step predictor-corrector comparison with helper initialization,
+  public-helper layout reuse, and the split direct-adjoint scale now matches
+  the public fork closely (public-reference SSIM 0.9987, MAE 0.00459, p95
+  absolute error 0.0133). A 5-step Langevin helper comparison also matches
+  closely after routing Langevin through the same direct-adjoint correction
+  helper (public-reference SSIM 0.9998, MAE 0.00165, p95 absolute error 0.0).
+  A 5-step DDNM helper comparison also matches closely in `public_inner` layout
+  (public-reference SSIM 0.9996, MAE 0.00217, p95 absolute error 0.0). The
+  100-step public DDNM helper itself produced an all-NaN reconstruction in the
+  matched CT setup, so no useful full DDNM parity target exists for that
+  branch; the LION-stabilized VE-DDNM row remains a deliberate non-public
+  stability divergence. The detach-fixed 100-step fixed-overlap helper checks
+  then completed successfully: patch-average matched the public reference with
+  SSIM 0.9973 and p95 absolute error 0.00387, and patch-stitch matched with
+  SSIM 0.9966 and p95 absolute error 0.00500.
+  The public repo does not provide runnable ADMM-TV, PnP-ADMM, or whole-image
+  diffusion comparison rows to match against.
 - The target images retain high-frequency CT texture/noise that both public
   PaDIS and LION PaDIS smooth. Matching the public repo and exactly preserving
   all target texture are not simultaneously achievable with this sampler setup.

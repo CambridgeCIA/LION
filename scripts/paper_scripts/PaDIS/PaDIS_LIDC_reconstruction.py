@@ -1402,8 +1402,14 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
             public_params.adjoint_data_step_schedule
         )
         sampler_params.data_consistency_scale = public_params.data_consistency_scale
+        sampler_params.adjoint_data_consistency_scale = (
+            public_params.adjoint_data_consistency_scale
+        )
         sampler_params.pc_corrector_denoise_sigma = (
             public_params.pc_corrector_denoise_sigma
+        )
+        sampler_params.pc_reuse_predictor_layout = (
+            public_params.pc_reuse_predictor_layout
         )
         if args.public_repo_helper_initialization and args.method in (
             "predictor_corrector",
@@ -1496,6 +1502,8 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
     sampler_params.pc_corrector_step_rule = args.pc_corrector_step_rule
     if args.pc_corrector_denoise_sigma is not None:
         sampler_params.pc_corrector_denoise_sigma = args.pc_corrector_denoise_sigma
+    if args.pc_reuse_predictor_layout is not None:
+        sampler_params.pc_reuse_predictor_layout = args.pc_reuse_predictor_layout
     if args.method == "ve_ddnm":
         sampler_params.ddnm_pseudoinverse_clip = True
         sampler_params.ddnm_projected_pseudoinverse_clip = True
@@ -1532,6 +1540,10 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         )
     if args.data_consistency_scale is not None:
         sampler_params.data_consistency_scale = args.data_consistency_scale
+    if args.adjoint_data_consistency_scale is not None:
+        sampler_params.adjoint_data_consistency_scale = (
+            args.adjoint_data_consistency_scale
+        )
     if args.consume_discarded_measurement_noise is not None:
         sampler_params.consume_discarded_measurement_noise = (
             args.consume_discarded_measurement_noise
@@ -2570,6 +2582,23 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "published code."
         ),
     )
+    parser.set_defaults(pc_reuse_predictor_layout=None)
+    parser.add_argument(
+        "--pc-reuse-predictor-layout",
+        dest="pc_reuse_predictor_layout",
+        action="store_true",
+        help=(
+            "Reuse the predictor patch layout for the PC corrector denoising "
+            "call. This mirrors the public PaDIS helper; paper mode leaves it "
+            "disabled unless this flag is passed."
+        ),
+    )
+    parser.add_argument(
+        "--no-pc-reuse-predictor-layout",
+        dest="pc_reuse_predictor_layout",
+        action="store_false",
+        help="Disable PC predictor-layout reuse for the corrector denoising call.",
+    )
     parser.add_argument("--data-range", type=float, default=1.0)
     parser.add_argument(
         "--body-threshold",
@@ -2653,6 +2682,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=float,
         default=None,
         help="Extra multiplier after data-consistency normalisation.",
+    )
+    parser.add_argument(
+        "--adjoint-data-consistency-scale",
+        type=float,
+        default=None,
+        help=(
+            "Optional separate multiplier for direct adjoint residual updates "
+            "used by Langevin and predictor-corrector. Defaults to "
+            "--data-consistency-scale when unset."
+        ),
     )
     parser.set_defaults(consume_discarded_measurement_noise=None)
     parser.add_argument(

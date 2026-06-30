@@ -114,7 +114,7 @@ padis_configure_real_training_defaults() {
         export PADIS_WANDB_ENTITY="${PADIS_WANDB_ENTITY:-}"
         export PADIS_WANDB_MODE="${PADIS_WANDB_MODE:-online}"
         export PADIS_NO_WANDB="${PADIS_NO_WANDB:-0}"
-        export PADIS_NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-1}"
+        export PADIS_NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-0}"
         export PADIS_WANDB_NAME_PREFIX="${PADIS_WANDB_NAME_PREFIX:-PaDIS_A100_${run_stamp}}"
 
         if [ -z "${PADIS_MAX_TRAIN_SECONDS:-}" ]; then

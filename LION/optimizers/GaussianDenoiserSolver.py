@@ -156,7 +156,7 @@ class GaussianDenoiserSolver(LIONsolver):
                     outputs = self.model(y)
                 validation_loss = np.append(
                     validation_loss,
-                    self.validation_fn(y.to(self.device), outputs.to(self.device))
+                    self.validation_fn(outputs.to(self.device), data.to(self.device))
                     .cpu()
                     .numpy(),
                 )

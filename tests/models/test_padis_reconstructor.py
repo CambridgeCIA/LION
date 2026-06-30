@@ -290,7 +290,10 @@ def test_padis_public_repo_ct_sampling_preset():
     assert params.dps_epsilon == 0.5
     assert params.data_consistency_gradient == "norm"
     assert params.adjoint_data_step_schedule == "public_repo"
+    assert params.data_consistency_scale == 0.0405
+    assert params.adjoint_data_consistency_scale == 0.1022
     assert params.pc_corrector_denoise_sigma == "current"
+    assert params.pc_reuse_predictor_layout is True
 
 
 def test_padis_default_sampling_uses_unscaled_data_step_like_original_repo():
@@ -338,6 +341,24 @@ def test_padis_data_consistency_scale_schedule():
     )
     assert high_sigma < low_sigma
     assert low_sigma <= params.data_consistency_scale
+
+
+def test_padis_adjoint_data_consistency_scale_can_differ_from_dps_scale():
+    model = ZeroPatchModel()
+    params = PaDIS.default_parameters(model)
+    params.data_consistency_scale = 0.04
+    params.adjoint_data_consistency_scale = 0.1
+    reconstructor = PaDIS(IdentityOp(), model, params)
+
+    dps_scale = reconstructor._scheduled_data_consistency_scale(
+        params, torch.tensor(0.02), torch.device("cpu")
+    )
+    adjoint_scale = reconstructor._scheduled_adjoint_data_consistency_scale(
+        params, torch.tensor(0.02), torch.device("cpu")
+    )
+
+    assert dps_scale == 0.04
+    assert adjoint_scale == 0.1
 
 
 def test_padis_langevin_reconstructor_smoke():
@@ -525,6 +546,32 @@ def test_padis_predictor_corrector_public_compat_denoises_corrector_at_current_s
     reconstructor.reconstruct_sample(measurement)
 
     assert torch.allclose(torch.tensor(sigmas), torch.tensor([0.08, 0.08]))
+
+
+def test_padis_predictor_corrector_can_reuse_predictor_patch_layout(monkeypatch):
+    torch.manual_seed(0)
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.num_steps = 2
+    params.sigma_max = 0.08
+    params.sigma_min = 0.02
+    params.noise_schedule = "geometric"
+    params.pc_reuse_predictor_layout = True
+    reconstructor = PaDIS(IdentityOp(), model, params, algorithm="pc")
+    original_patch_layout = reconstructor._patch_layout
+    layouts = []
+
+    def recording_patch_layout(*args, **kwargs):
+        layout = original_patch_layout(*args, **kwargs)
+        layouts.append(layout)
+        return layout
+
+    monkeypatch.setattr(reconstructor, "_patch_layout", recording_patch_layout)
+    measurement = torch.rand(1, 8, 8)
+
+    reconstructor.reconstruct_sample(measurement)
+
+    assert len(layouts) == 1
 
 
 def test_padis_predictor_corrector_honours_stop_after_outer_steps(monkeypatch):
@@ -835,6 +882,7 @@ def test_padis_adjoint_correction_matches_scaled_identity_closed_form():
     params = _sampler_params(model)
     params.pad_width = 0
     params.data_consistency_normalization = "none"
+    params.adjoint_data_consistency_scale = 0.25
     reconstructor = PaDIS(ScaledIdentityOp(3.0), model, params, algorithm="langevin")
 
     x = torch.zeros(1, 1, 8, 8)
@@ -849,12 +897,13 @@ def test_padis_adjoint_correction_matches_scaled_identity_closed_form():
         x, residual, torch.tensor(0.5), params, torch.tensor(0.02)
     )
 
-    expected_correction = torch.full_like(x, 3.0)
+    expected_raw_correction = torch.full_like(x, 3.0)
+    expected_correction = torch.full_like(x, 0.75)
     assert normalizer == 1.0
-    assert data_scale == 1.0
-    assert torch.allclose(raw_correction, expected_correction)
+    assert data_scale == 0.25
+    assert torch.allclose(raw_correction, expected_raw_correction)
     assert torch.allclose(correction, expected_correction)
-    assert torch.allclose(updated, torch.full_like(x, 1.5))
+    assert torch.allclose(updated, torch.full_like(x, 0.375))
 
 
 def test_padis_adjoint_data_step_schedule_matches_paper_and_public_repo():

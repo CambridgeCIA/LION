@@ -22,6 +22,7 @@ from LION.utils.parameter import LIONParameter
 
 
 PUBLIC_REPO_CT_GRADIENT_SCALE = 0.0405
+PUBLIC_REPO_CT_ADJOINT_SCALE = 0.1022
 
 
 @dataclass(frozen=True)
@@ -99,6 +100,7 @@ class PaDIS(LIONReconstructor):
         params.pc_snr = 0.16
         params.pc_corrector_step_rule = "paper_linear"
         params.pc_corrector_denoise_sigma = "next"
+        params.pc_reuse_predictor_layout = False
         params.langevin_noise_scale = 1.0
         params.measurement_scale = 1.0
         params.measurement_offset = 0.0
@@ -106,6 +108,7 @@ class PaDIS(LIONReconstructor):
         params.adjoint_data_step_schedule = "public_repo"
         params.data_consistency_normalization = "none"
         params.data_consistency_scale = 1.0
+        params.adjoint_data_consistency_scale = None
         params.data_consistency_scale_schedule = "constant"
         params.data_consistency_scale_power = 1.0
         params.data_consistency_scale_floor = 0.0
@@ -179,6 +182,7 @@ class PaDIS(LIONReconstructor):
         params.data_consistency_gradient = "norm"
         params.adjoint_data_step_schedule = "public_repo"
         params.data_consistency_scale = PUBLIC_REPO_CT_GRADIENT_SCALE
+        params.adjoint_data_consistency_scale = PUBLIC_REPO_CT_ADJOINT_SCALE
         params.initial_reconstruction = "fdk"
         params.initial_fdk_filter_type = "hann"
         params.initial_fdk_frequency_scaling = 0.3
@@ -191,6 +195,7 @@ class PaDIS(LIONReconstructor):
         params.consume_unused_latents = True
         params.consume_denoise_output_noise = True
         params.pc_corrector_denoise_sigma = "current"
+        params.pc_reuse_predictor_layout = True
         return params
 
     @staticmethod
@@ -951,15 +956,23 @@ class PaDIS(LIONReconstructor):
         params,
         image_shape: tuple[int, int],
         generator: torch.Generator | None = None,
+        *,
+        layout_override: _PatchLayout | None = None,
     ) -> torch.Tensor:
         self._validate_prior_configuration(params, image_shape)
         prior_mode = getattr(params, "prior_mode", "patch")
         if prior_mode == "whole_image":
+            if layout_override is not None:
+                raise ValueError("layout_override is only valid for patch priors.")
             return self._denoise_whole_image(x, sigma, params)
         if prior_mode != "patch":
             raise ValueError("prior_mode must be 'patch' or 'whole_image'.")
         patch_assembly = getattr(params, "patch_assembly", "padis")
         if patch_assembly in ("fixed_average", "fixed_stitch"):
+            if layout_override is not None:
+                raise ValueError(
+                    "layout_override is only valid for padis patch assembly."
+                )
             layout = self._fixed_overlap_patch_layout(image_shape, params)
             return self._denoise_fixed_overlap_patches(
                 x,
@@ -969,7 +982,11 @@ class PaDIS(LIONReconstructor):
                 assembly=patch_assembly,
                 generator=generator,
             )
-        layout = self._patch_layout(image_shape, params, x.device, generator)
+        layout = (
+            layout_override
+            if layout_override is not None
+            else self._patch_layout(image_shape, params, x.device, generator)
+        )
         return self._denoise_patches(x, sigma, layout, params, generator)
 
     def _edm_denoise_batch(
@@ -1163,8 +1180,14 @@ class PaDIS(LIONReconstructor):
         params,
         sigma: torch.Tensor | None,
         device: torch.device,
+        *,
+        base_override: float | None = None,
     ) -> float:
-        base = float(getattr(params, "data_consistency_scale", 1.0))
+        base = (
+            float(base_override)
+            if base_override is not None
+            else float(getattr(params, "data_consistency_scale", 1.0))
+        )
         schedule = getattr(params, "data_consistency_scale_schedule", "constant")
         if sigma is None or schedule in (None, "constant"):
             return base
@@ -1184,6 +1207,19 @@ class PaDIS(LIONReconstructor):
             )
         factor = max(float(factor) ** power, floor)
         return base * factor
+
+    def _scheduled_adjoint_data_consistency_scale(
+        self,
+        params,
+        sigma: torch.Tensor | None,
+        device: torch.device,
+    ) -> float:
+        adjoint_scale = getattr(params, "adjoint_data_consistency_scale", None)
+        if adjoint_scale is None:
+            return self._scheduled_data_consistency_scale(params, sigma, device)
+        return self._scheduled_data_consistency_scale(
+            params, sigma, device, base_override=float(adjoint_scale)
+        )
 
     def _measurement_gradient(
         self,
@@ -1613,7 +1649,7 @@ class PaDIS(LIONReconstructor):
         data_normalizer = self._data_consistency_normalizer(
             params, raw_correction.device
         )
-        data_scale = self._scheduled_data_consistency_scale(
+        data_scale = self._scheduled_adjoint_data_consistency_scale(
             params, sigma, raw_correction.device
         )
         correction = data_scale * raw_correction / data_normalizer
@@ -1711,6 +1747,18 @@ class PaDIS(LIONReconstructor):
                     break
                 if step_index == int(params.num_steps) - 1:
                     break
+                pc_layout = None
+                if (
+                    bool(getattr(params, "pc_reuse_predictor_layout", False))
+                    and getattr(params, "prior_mode", "patch") == "patch"
+                    and getattr(params, "patch_assembly", "padis") == "padis"
+                ):
+                    pc_layout = self._patch_layout(
+                        tuple(x_init.shape[-2:]), params, x.device, generator
+                    )
+                denoise_kwargs = (
+                    {"layout_override": pc_layout} if pc_layout is not None else {}
+                )
 
                 denoised = self._denoise_prior(
                     x,
@@ -1718,6 +1766,7 @@ class PaDIS(LIONReconstructor):
                     params,
                     tuple(x_init.shape[-2:]),
                     generator,
+                    **denoise_kwargs,
                 )
                 denoised = self._clip_model_range(denoised, params)
                 score = (denoised - x) / t_cur.square()
@@ -1774,6 +1823,7 @@ class PaDIS(LIONReconstructor):
                         params,
                         tuple(x_init.shape[-2:]),
                         generator,
+                        **denoise_kwargs,
                     )
                     denoised = self._clip_model_range(denoised, params)
                     score = (denoised - x) / t_next.square().clamp_min(1e-12)
@@ -1918,24 +1968,15 @@ class PaDIS(LIONReconstructor):
                         step_size = self._adjoint_data_step_size(
                             residual, t_cur, params, public_repo_multiplier=True
                         )
-                        raw_correction = self._adjoint_project(residual).unsqueeze(0)
-                        data_normalizer = self._data_consistency_normalizer(
-                            params, raw_correction.device
+                        (
+                            projected,
+                            correction,
+                            raw_correction,
+                            data_normalizer,
+                            data_scale,
+                        ) = self._apply_adjoint_correction(
+                            x, residual, step_size, params, t_cur
                         )
-                        data_scale = self._scheduled_data_consistency_scale(
-                            params, t_cur, raw_correction.device
-                        )
-                        correction = data_scale * raw_correction / data_normalizer
-                        projected = x
-                        if not bool(params.disable_data_consistency):
-                            pad = int(params.pad_width)
-                            if pad == 0:
-                                projected = x + step_size * correction
-                            else:
-                                projected = x.clone()
-                                projected[:, :, pad:-pad, pad:-pad] += (
-                                    step_size * correction
-                                )
                         self._append_trace(
                             params,
                             algorithm="langevin",

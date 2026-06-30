@@ -23,6 +23,9 @@ def test_pnp_training_defaults_match_paper_matrix_expectations():
     assert args.noise_max == 0.05
     assert args.int_channels == 64
     assert args.n_blocks == 4
+    assert args.validation_every == 1
+    assert args.checkpoint_every == 10
+    assert args.max_periodic_checkpoints == 5
     validate_args(args)
 
 
@@ -52,6 +55,8 @@ def test_lidc_256_training_prefixes_match_reconstruction_checkpoint_names():
         ("--max-validation-samples", "0", "--max-validation-samples"),
         ("--validation-every", "0", "--validation-every"),
         ("--checkpoint-every", "0", "--checkpoint-every"),
+        ("--max-periodic-checkpoints", "0", "--max-periodic-checkpoints"),
+        ("--max-periodic-checkpoints", "-2", "--max-periodic-checkpoints"),
         ("--num-workers", "-1", "--num-workers"),
         ("--final-name", "", "--final-name"),
     ],

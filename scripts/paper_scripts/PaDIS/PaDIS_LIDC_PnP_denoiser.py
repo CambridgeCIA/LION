@@ -7,6 +7,7 @@ import json
 import os
 import pathlib
 import random
+import time
 
 _CACHE_ROOT = pathlib.Path("/tmp") / "lion_matplotlib_cache"
 (_CACHE_ROOT / "mpl").mkdir(parents=True, exist_ok=True)
@@ -50,6 +51,122 @@ def jsonable(value):
     if isinstance(value, np.generic):
         return value.item()
     return value
+
+
+def wandb_id_file(run_folder: pathlib.Path) -> pathlib.Path:
+    return run_folder / "wandb_run.json"
+
+
+def discover_wandb_id(run_folder: pathlib.Path) -> str | None:
+    id_path = wandb_id_file(run_folder)
+    if id_path.is_file():
+        try:
+            with open(id_path) as f:
+                payload = json.load(f)
+            run_id = payload.get("id")
+            if run_id:
+                return str(run_id)
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    wandb_dir = run_folder / "wandb"
+    if not wandb_dir.is_dir():
+        return None
+    run_dirs = sorted(
+        (path for path in wandb_dir.glob("*run-*") if path.is_dir()),
+        key=lambda path: path.stat().st_mtime,
+    )
+    for run_dir in reversed(run_dirs):
+        run_id = run_dir.name.split("-")[-1]
+        if run_id:
+            return run_id
+    return None
+
+
+def init_wandb(args, run_folder: pathlib.Path, config: dict):
+    if args.no_wandb or args.wandb_project is None:
+        return None
+    try:
+        import wandb
+    except ImportError as exc:
+        raise RuntimeError(
+            "WandB logging was requested, but wandb is not installed."
+        ) from exc
+
+    init_kwargs = {
+        "project": args.wandb_project,
+        "entity": args.wandb_entity,
+        "name": args.wandb_name or run_folder.name,
+        "config": config,
+        "dir": str(run_folder),
+        "mode": args.wandb_mode,
+        "resume": "allow",
+    }
+    run_id = args.wandb_id or discover_wandb_id(run_folder)
+    if run_id is not None:
+        init_kwargs["id"] = run_id
+    wandb_run = wandb.init(**init_kwargs)
+    wandb_run.define_metric("epoch")
+    wandb_run.define_metric("train_loss", step_metric="epoch")
+    wandb_run.define_metric("validation_loss", step_metric="epoch")
+    with open(wandb_id_file(run_folder), "w") as f:
+        json.dump({"id": wandb_run.id, "name": wandb_run.name}, f, indent=2)
+    return wandb_run
+
+
+def log_epoch_to_wandb(wandb_run, solver, epoch_index: int) -> None:
+    if wandb_run is None:
+        return
+    metrics = {
+        "epoch": int(epoch_index + 1),
+        "train_loss": float(solver.train_loss[epoch_index]),
+    }
+    if solver.validation_loss is not None:
+        value = float(solver.validation_loss[epoch_index])
+        if np.isfinite(value) and value != 0.0:
+            metrics["validation_loss"] = value
+    wandb_run.log(metrics)
+
+
+def ensure_loss_capacity(loss: np.ndarray, n_epochs: int) -> np.ndarray:
+    if len(loss) >= n_epochs:
+        return loss
+    return np.append(loss, np.zeros(n_epochs - len(loss)))
+
+
+def periodic_checkpoint_sidecars(checkpoint_path: pathlib.Path) -> list[pathlib.Path]:
+    return [
+        checkpoint_path.with_suffix(".pt"),
+        checkpoint_path.with_suffix(".json"),
+        checkpoint_path.with_suffix(".ema.pt"),
+    ]
+
+
+def prune_periodic_checkpoints(solver, max_periodic_checkpoints: int | None) -> None:
+    if max_periodic_checkpoints is None:
+        return
+    if max_periodic_checkpoints <= 0:
+        raise ValueError("max_periodic_checkpoints must be positive or None.")
+    if solver.checkpoint_save_folder is None or solver.checkpoint_fname is None:
+        return
+    checkpoints = sorted(
+        path
+        for path in solver.checkpoint_save_folder.glob(solver.checkpoint_fname)
+        if not path.name.endswith(".ema.pt")
+    )
+    for checkpoint in checkpoints[:-max_periodic_checkpoints]:
+        for path in periodic_checkpoint_sidecars(checkpoint):
+            if path.exists():
+                path.unlink()
+
+
+def save_checkpoint_with_retention(
+    solver,
+    epoch: int,
+    max_periodic_checkpoints: int | None,
+) -> None:
+    solver.save_checkpoint(epoch)
+    prune_periodic_checkpoints(solver, max_periodic_checkpoints)
 
 
 def build_experiment(args):
@@ -104,14 +221,34 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--n-blocks", type=int, default=4)
     parser.add_argument("--patch-size", type=int, default=None)
     parser.add_argument("--patches-per-image", type=int, default=1)
-    parser.add_argument("--validation-every", type=int, default=10)
+    parser.add_argument("--validation-every", type=int, default=1)
     parser.add_argument("--checkpoint-every", type=int, default=10)
+    parser.add_argument(
+        "--max-periodic-checkpoints",
+        type=int,
+        default=5,
+        help="Maximum periodic checkpoints to retain. Use -1 to keep all.",
+    )
+    parser.add_argument(
+        "--max-train-seconds",
+        type=float,
+        default=None,
+        help="Stop training cleanly after this many wall-clock seconds.",
+    )
     parser.add_argument("--seed", type=int, default=33)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--final-name", default="pnp_lidc_drunet.pt")
     parser.add_argument("--checkpoint-pattern", default="pnp_lidc_drunet_check_*.pt")
     parser.add_argument("--validation-name", default="pnp_lidc_drunet_min_val.pt")
+    parser.add_argument("--wandb-project", type=str, default=None)
+    parser.add_argument("--wandb-entity", type=str, default=None)
+    parser.add_argument("--wandb-name", type=str, default=None)
+    parser.add_argument("--wandb-id", type=str, default=None)
+    parser.add_argument(
+        "--wandb-mode", choices=("online", "offline", "disabled"), default="online"
+    )
+    parser.add_argument("--no-wandb", action="store_true")
     return parser
 
 
@@ -146,10 +283,61 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--validation-every must be positive.")
     if args.checkpoint_every <= 0:
         raise ValueError("--checkpoint-every must be positive.")
+    if args.max_periodic_checkpoints == 0 or args.max_periodic_checkpoints < -1:
+        raise ValueError("--max-periodic-checkpoints must be positive or -1.")
+    if args.max_train_seconds is not None and args.max_train_seconds <= 0:
+        raise ValueError("--max-train-seconds must be positive when set.")
     if args.num_workers < 0:
         raise ValueError("--num-workers must be non-negative.")
     if not args.final_name:
         raise ValueError("--final-name must not be empty.")
+
+
+def train_with_optional_time_limit(
+    solver,
+    n_epochs: int,
+    max_train_seconds: float | None,
+    max_periodic_checkpoints: int | None,
+    wandb_run=None,
+) -> None:
+    assert n_epochs > 0, "Number of epochs must be a positive integer"
+    solver.check_training_ready()
+
+    if solver.check_validation_ready() == 0:
+        solver.validation_loss = np.zeros((n_epochs))
+    if solver.validation_loader is None:
+        solver.validation_loss = None
+
+    if solver.do_load_checkpoint:
+        print("Loading checkpoint...")
+        solver.current_epoch = solver.load_checkpoint()
+        solver.train_loss = ensure_loss_capacity(solver.train_loss, n_epochs)
+    else:
+        solver.train_loss = np.zeros(n_epochs)
+
+    solver.model.train()
+    train_start_wall = time.monotonic()
+    while solver.current_epoch < n_epochs:
+        print(f"Training epoch {solver.current_epoch + 1}")
+        solver.epoch_step(solver.current_epoch)
+        log_epoch_to_wandb(wandb_run, solver, solver.current_epoch)
+
+        if (solver.current_epoch + 1) % solver.checkpoint_freq == 0:
+            save_checkpoint_with_retention(
+                solver,
+                solver.current_epoch,
+                max_periodic_checkpoints,
+            )
+
+        solver.current_epoch += 1
+        elapsed = time.monotonic() - train_start_wall
+        if max_train_seconds is not None and elapsed >= max_train_seconds:
+            print(
+                "Reached --max-train-seconds "
+                f"({max_train_seconds:g}); stopping after epoch "
+                f"{solver.current_epoch}."
+            )
+            break
 
 
 def main() -> None:
@@ -240,23 +428,55 @@ def main() -> None:
         load_checkpoint_if_exists=True,
         save_folder=run_folder,
     )
+    max_periodic_checkpoints = (
+        None
+        if args.max_periodic_checkpoints == -1
+        else int(args.max_periodic_checkpoints)
+    )
+    prune_periodic_checkpoints(solver, max_periodic_checkpoints)
 
     config = {key: jsonable(value) for key, value in vars(args).items()}
     config["run_folder"] = str(run_folder)
     config["experiment"] = experiment.param.name
+    config["max_periodic_checkpoints_effective"] = max_periodic_checkpoints
     with open(run_folder / "training_config.json", "w") as f:
         json.dump(config, f, indent=2)
 
-    solver.train(train_params.epochs)
-    solver.model.save(
-        run_folder / args.final_name,
-        epoch=solver.current_epoch,
-        training=solver.metadata,
-        loss=solver.train_loss,
-        dataset=solver.dataset_param,
-        geometry=experiment.geometry,
-    )
-    print(f"Saved PnP denoiser to {run_folder / args.final_name}")
+    wandb_run = init_wandb(args, run_folder, config)
+    try:
+        train_with_optional_time_limit(
+            solver,
+            train_params.epochs,
+            args.max_train_seconds,
+            max_periodic_checkpoints,
+            wandb_run=wandb_run,
+        )
+        solver.model.save(
+            run_folder / args.final_name,
+            epoch=solver.current_epoch,
+            training=solver.metadata,
+            loss=solver.train_loss,
+            dataset=solver.dataset_param,
+            geometry=experiment.geometry,
+        )
+        if wandb_run is not None:
+            wandb_run.summary["epochs_completed"] = int(solver.current_epoch)
+            finite_train = solver.train_loss[
+                np.isfinite(solver.train_loss) & (solver.train_loss != 0.0)
+            ]
+            if finite_train.size > 0:
+                wandb_run.summary["min_train_loss"] = float(np.min(finite_train))
+            if solver.validation_loss is not None:
+                finite_val = solver.validation_loss[
+                    np.isfinite(solver.validation_loss)
+                    & (solver.validation_loss != 0.0)
+                ]
+                if finite_val.size > 0:
+                    wandb_run.summary["min_validation_loss"] = float(np.min(finite_val))
+        print(f"Saved PnP denoiser to {run_folder / args.final_name}")
+    finally:
+        if wandb_run is not None:
+            wandb_run.finish()
 
 
 if __name__ == "__main__":

@@ -341,6 +341,7 @@ def test_method_flags_set_expected_sampler_modes():
     assert pc_params.pc_snr == 0.16
     assert pc_params.pc_corrector_step_rule == "paper_linear"
     assert pc_params.pc_corrector_denoise_sigma == "next"
+    assert pc_params.pc_reuse_predictor_layout is False
 
     public_pc_args = parser.parse_args(
         [
@@ -357,6 +358,9 @@ def test_method_flags_set_expected_sampler_modes():
     )
     assert public_pc_params.pc_corrector_step_rule == "paper_linear"
     assert public_pc_params.pc_corrector_denoise_sigma == "current"
+    assert public_pc_params.pc_reuse_predictor_layout is True
+    assert public_pc_params.data_consistency_scale == 0.0405
+    assert public_pc_params.adjoint_data_consistency_scale == 0.1022
 
     whole_args = parser.parse_args(
         [
