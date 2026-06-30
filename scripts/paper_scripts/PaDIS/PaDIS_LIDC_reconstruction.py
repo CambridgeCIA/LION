@@ -130,7 +130,13 @@ EXPERIMENT_ALIASES = {
     "PaDISFanBeam180CTRecon": "ct_fanbeam_180",
 }
 
-IMPLEMENTATION_CHOICES = ("custom", "public_repo", "paper", "lion_quality")
+IMPLEMENTATION_CHOICES = (
+    "custom",
+    "public_repo",
+    "paper",
+    "lion_physics",
+    "lion_quality",
+)
 GEOMETRY_CHOICES = ("lion", "padis", "padis_parallel", "padis_fanbeam")
 RECONSTRUCTION_METHOD_CHOICES = (
     "padis_dps",
@@ -1348,6 +1354,8 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params = PaDIS.paper_ct_parameters(model, views=paper_views)
     elif args.implementation == "public_repo":
         sampler_params = PaDIS.padis_repo_ct_parameters(model)
+    elif args.implementation == "lion_physics":
+        sampler_params = PaDIS.lion_physics_ct_parameters(model, views=paper_views)
     elif args.implementation == "lion_quality":
         sampler_params = PaDIS.lion_quality_ct_parameters(model, views=paper_views)
     else:
@@ -1357,7 +1365,6 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
     sampler_params.sigma_min = args.sigma_min
     sampler_params.sigma_max = args.sigma_max
     sampler_params.rho = args.rho
-    sampler_params.zeta = args.zeta
     if args.implementation == "paper":
         paper_params = PaDIS.paper_ct_parameters(model, views=paper_views)
         sampler_params.num_steps = paper_params.num_steps
@@ -1424,6 +1431,38 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
             sampler_params.initial_fdk_frequency_scaling = 1.0
             sampler_params.initial_fdk_padded = True
             sampler_params.clip_initial = False
+    elif args.implementation == "lion_physics":
+        physics_params = PaDIS.lion_physics_ct_parameters(model, views=paper_views)
+        sampler_params.num_steps = physics_params.num_steps
+        sampler_params.inner_steps = physics_params.inner_steps
+        sampler_params.sigma_min = physics_params.sigma_min
+        sampler_params.sigma_max = physics_params.sigma_max
+        sampler_params.noise_schedule = physics_params.noise_schedule
+        sampler_params.zeta = physics_params.zeta
+        sampler_params.initial_reconstruction = physics_params.initial_reconstruction
+        sampler_params.initial_fdk_filter_type = physics_params.initial_fdk_filter_type
+        sampler_params.initial_fdk_frequency_scaling = (
+            physics_params.initial_fdk_frequency_scaling
+        )
+        sampler_params.initial_fdk_padded = physics_params.initial_fdk_padded
+        sampler_params.initial_fdk_batch_size = physics_params.initial_fdk_batch_size
+        sampler_params.clip_initial = physics_params.clip_initial
+        sampler_params.clip_output = physics_params.clip_output
+        sampler_params.dps_epsilon = physics_params.dps_epsilon
+        sampler_params.sampling_epsilon = physics_params.sampling_epsilon
+        sampler_params.data_consistency_gradient = (
+            physics_params.data_consistency_gradient
+        )
+        sampler_params.adjoint_data_step_schedule = (
+            physics_params.adjoint_data_step_schedule
+        )
+        sampler_params.data_consistency_normalization = (
+            physics_params.data_consistency_normalization
+        )
+        sampler_params.data_consistency_scale = physics_params.data_consistency_scale
+        sampler_params.adjoint_data_consistency_scale = (
+            physics_params.adjoint_data_consistency_scale
+        )
     elif args.implementation == "lion_quality":
         quality_params = PaDIS.lion_quality_ct_parameters(model, views=paper_views)
         sampler_params.num_steps = quality_params.num_steps
@@ -1453,6 +1492,15 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
             quality_params.data_consistency_normalization
         )
         sampler_params.data_consistency_scale = quality_params.data_consistency_scale
+    if args.implementation == "lion_physics":
+        if args.method == "predictor_corrector":
+            sampler_params.zeta = 4.25
+            sampler_params.pc_snr = 0.08
+        elif args.method == "langevin":
+            sampler_params.zeta = 4.0
+            sampler_params.sampling_epsilon = 0.5
+        elif args.method in ("patch_average", "patch_stitch"):
+            sampler_params.dps_epsilon = 0.5
     if args.method == "ve_ddnm":
         ve_ddnm_layout = args.ve_ddnm_nfe_layout
         if ve_ddnm_layout is None:
@@ -1468,10 +1516,10 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
             sampler_params.num_steps = 100
             sampler_params.inner_steps = 10
         sampler_params.ve_ddnm_nfe_layout = ve_ddnm_layout
-        if args.implementation == "lion_quality":
+        if args.implementation in ("lion_physics", "lion_quality"):
             # LION fan-beam FDK pseudoinverses make strict paper VE-DDNM unstable;
-            # this preset keeps the paper NFE layout but uses the locally validated
-            # stability settings documented in README.md.
+            # these presets keep the paper NFE layout but project the corrected
+            # clean DDNM estimate back to the physically valid model support.
             sampler_params.initial_reconstruction = "noise"
             sampler_params.initial_fdk_filter_type = None
             sampler_params.initial_fdk_frequency_scaling = 1.0
@@ -1500,6 +1548,8 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
     sampler_params.langevin_ddnm = args.langevin_ddnm or args.method == "ve_ddnm"
     sampler_params.langevin_noise_scale = args.langevin_noise_scale
     sampler_params.pc_corrector_step_rule = args.pc_corrector_step_rule
+    if args.pc_snr is not None:
+        sampler_params.pc_snr = args.pc_snr
     if args.pc_corrector_denoise_sigma is not None:
         sampler_params.pc_corrector_denoise_sigma = args.pc_corrector_denoise_sigma
     if args.pc_reuse_predictor_layout is not None:
@@ -1523,6 +1573,8 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.dps_epsilon = args.dps_epsilon
     if args.sampling_epsilon is not None:
         sampler_params.sampling_epsilon = args.sampling_epsilon
+    if args.zeta is not None:
+        sampler_params.zeta = args.zeta
     if args.noise_schedule is not None:
         sampler_params.noise_schedule = args.noise_schedule
     if args.data_consistency_gradient is not None:
@@ -1579,12 +1631,12 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
     if args.method == "patch_average":
         sampler_params.patch_assembly = "fixed_average"
         sampler_params.fixed_overlap_checkpoint_denoiser = True
-        if args.implementation == "public_repo":
+        if args.implementation in ("public_repo", "lion_physics"):
             sampler_params.fixed_overlap_layout = "public_overlap"
     elif args.method == "patch_stitch":
         sampler_params.patch_assembly = "fixed_stitch"
         sampler_params.fixed_overlap_checkpoint_denoiser = True
-        if args.implementation == "public_repo":
+        if args.implementation in ("public_repo", "lion_physics"):
             sampler_params.fixed_overlap_layout = "public_tile"
     if args.patch_overlap is not None:
         sampler_params.patch_overlap = args.patch_overlap
@@ -2241,6 +2293,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "Sampler preset. 'paper' uses the paper-described CT schedule and "
             "data step; 'public_repo' keeps the PaDIS README reconstruction "
             "mechanics but uses the paper CT sigma schedule; "
+            "'lion_physics' uses LION CT operators with operator-normalized "
+            "least-squares data updates and no public matching constants; "
             "'lion_quality' is the LION-native quality preset; 'custom' uses "
             "the explicit sampler flags."
         ),
@@ -2378,7 +2432,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="Sigma schedule. The paper text uses geometric; the public PaDIS script uses edm/rho.",
     )
-    parser.add_argument("--zeta", type=float, default=0.3)
+    parser.add_argument("--zeta", type=float, default=None)
     parser.add_argument(
         "--initial-reconstruction",
         choices=("noise", "fdk", "inverse"),
@@ -2418,9 +2472,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sampling-epsilon", type=float, default=None)
     parser.add_argument(
         "--data-consistency-gradient",
-        choices=("norm", "paper_squared_residual"),
+        choices=("norm", "least_squares", "paper_squared_residual"),
         default=None,
-        help="DPS measurement gradient. The paper uses paper_squared_residual; the public repo uses norm.",
+        help=(
+            "DPS measurement gradient. The paper uses paper_squared_residual; "
+            "LION-physics uses least_squares; the public repo uses norm."
+        ),
     )
     parser.add_argument(
         "--adjoint-data-step-schedule",
@@ -2573,6 +2630,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--pc-snr",
+        type=float,
+        default=None,
+        help=(
+            "Signal-to-noise ratio used by the predictor-corrector "
+            "corrector step. Defaults to the sampler preset value."
+        ),
+    )
+    parser.add_argument(
         "--pc-corrector-denoise-sigma",
         choices=("next", "current"),
         default=None,
@@ -2673,9 +2739,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--data-consistency-normalization",
-        choices=("operator_norm", "none"),
+        choices=("operator_norm", "operator_lipschitz", "none"),
         default=None,
-        help="Optionally scale data-consistency updates by the composed measurement operator norm.",
+        help=(
+            "Optionally scale data-consistency updates by the composed "
+            "measurement operator norm or least-squares Lipschitz constant."
+        ),
     )
     parser.add_argument(
         "--data-consistency-scale",

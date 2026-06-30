@@ -167,6 +167,39 @@ class PaDIS(LIONReconstructor):
         return params
 
     @staticmethod
+    def lion_physics_ct_parameters(
+        model: NCSNpp | None = None, *, views: int = 20
+    ) -> LIONParameter:
+        """Return the LION-native CT sampler with physical operator scaling.
+
+        The paper sigma schedule is kept unchanged, but the measurement update
+        is expressed in LION CT units: residual gradients use the LION forward
+        operator and adjoint, normalized by the composed measurement operator
+        Lipschitz constant rather than by public-repository matching constants.
+        """
+        params = PaDIS.paper_ct_parameters(model, views=views)
+        params.initial_reconstruction = "fdk"
+        params.initial_fdk_filter_type = "hann"
+        params.initial_fdk_frequency_scaling = 0.9
+        params.initial_fdk_padded = False
+        params.initial_fdk_batch_size = 10
+        params.clip_initial = True
+        params.clip_output = True
+        params.zeta = 3.0
+        params.data_consistency_gradient = "least_squares"
+        params.data_consistency_normalization = "operator_lipschitz"
+        params.data_consistency_scale = 1.0
+        params.adjoint_data_consistency_scale = None
+        params.adjoint_data_step_schedule = "paper"
+        params.pc_snr = 0.08
+        params.patch_offset_rng = "torch"
+        params.consume_discarded_measurement_noise = False
+        params.consume_discarded_initial_noise = False
+        params.consume_unused_latents = False
+        params.consume_denoise_output_noise = False
+        return params
+
+    @staticmethod
     def padis_repo_ct_parameters(model: NCSNpp | None = None) -> LIONParameter:
         """Return the public PaDIS CT-script sampler settings for compatibility."""
         params = PaDIS.default_parameters(model)
@@ -411,11 +444,12 @@ class PaDIS(LIONReconstructor):
             raise ValueError("generation_epsilon must be positive.")
         if getattr(params, "data_consistency_gradient", "norm") not in (
             "norm",
+            "least_squares",
             "paper_squared_residual",
         ):
             raise ValueError(
-                "data_consistency_gradient must be 'norm' or "
-                "'paper_squared_residual'."
+                "data_consistency_gradient must be 'norm', 'least_squares', "
+                "or 'paper_squared_residual'."
             )
         if getattr(params, "adjoint_data_step_schedule", "public_repo") not in (
             "paper",
@@ -1150,9 +1184,10 @@ class PaDIS(LIONReconstructor):
         method = getattr(params, "data_consistency_normalization", "none")
         if method in (None, "none", False):
             return 1.0
-        if method != "operator_norm":
+        if method not in ("operator_norm", "operator_lipschitz"):
             raise ValueError(
-                "data_consistency_normalization must be 'operator_norm' or 'none'."
+                "data_consistency_normalization must be 'operator_norm', "
+                "'operator_lipschitz', or 'none'."
             )
 
         # The sampler state is in the diffusion model's normalized image units,
@@ -1161,6 +1196,8 @@ class PaDIS(LIONReconstructor):
         normalizer = abs(float(params.measurement_scale)) * self._operator_norm(
             params, device
         )
+        if method == "operator_lipschitz":
+            normalizer = normalizer**2
         return max(normalizer, 1e-12)
 
     def _normalise_data_gradient(
@@ -1243,7 +1280,10 @@ class PaDIS(LIONReconstructor):
         residual = measurement - predicted.to(dtype=measurement.dtype)
         residual_norm = torch.linalg.norm(residual).clamp_min(1e-12)
         gradient_mode = getattr(params, "data_consistency_gradient", "norm")
-        if gradient_mode == "paper_squared_residual":
+        if gradient_mode == "least_squares":
+            objective = 0.5 * residual.square().sum()
+            step_size = float(params.zeta)
+        elif gradient_mode == "paper_squared_residual":
             objective = residual.square().sum()
             step_size = float(params.zeta) / float(residual_norm.detach().cpu())
         elif gradient_mode == "norm":
@@ -1251,8 +1291,8 @@ class PaDIS(LIONReconstructor):
             step_size = float(params.zeta)
         else:
             raise ValueError(
-                "data_consistency_gradient must be 'norm' or "
-                "'paper_squared_residual'."
+                "data_consistency_gradient must be 'norm', 'least_squares', "
+                "or 'paper_squared_residual'."
             )
         raw_gradient = torch.autograd.grad(outputs=objective, inputs=x)[0]
         gradient, data_normalizer, data_scale = self._normalise_data_gradient(
@@ -1672,6 +1712,10 @@ class PaDIS(LIONReconstructor):
         *,
         public_repo_multiplier: bool,
     ) -> torch.Tensor:
+        if getattr(params, "data_consistency_gradient", "norm") == "least_squares":
+            return torch.as_tensor(
+                float(params.zeta), device=residual.device, dtype=residual.dtype
+            )
         residual_norm = torch.linalg.norm(residual).clamp_min(1e-12)
         step_size = float(params.zeta) / residual_norm
         schedule = getattr(params, "adjoint_data_step_schedule", "public_repo")

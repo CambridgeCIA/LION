@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 
-IMPLEMENTATIONS = ("paper", "public_repo", "lion_quality")
+IMPLEMENTATIONS = ("paper", "public_repo", "lion_physics", "lion_quality")
 GEOMETRIES = ("lion", "padis", "padis_parallel", "padis_fanbeam")
 EXPERIMENTS = ("ct_8", "ct_20", "ct_60", "ct_fanbeam_180", "ct_512_60")
 METHODS = (
@@ -194,42 +194,42 @@ METHOD_TASKS = (
     MethodTask(
         "langevin",
         "patch_lidc_default",
-        "public_repo",
+        "lion_physics",
         "langevin",
         ("ct_20",),
     ),
     MethodTask(
         "predictor_corrector",
         "patch_lidc_default",
-        "public_repo",
+        "lion_physics",
         "pc",
         ("ct_20",),
     ),
     MethodTask(
         "ve_ddnm",
         "patch_lidc_default",
-        "lion_quality",
+        "lion_physics",
         "langevin",
         ("ct_20",),
     ),
     MethodTask(
         "patch_average",
         "patch_lidc_default",
-        "public_repo",
+        "lion_physics",
         "dps_langevin",
         ("ct_20",),
     ),
     MethodTask(
         "patch_stitch",
         "patch_lidc_default",
-        "public_repo",
+        "lion_physics",
         "dps_langevin",
         ("ct_20",),
     ),
     MethodTask(
         "padis_dps",
         "patch_lidc_default",
-        "public_repo",
+        "lion_physics",
         "dps_langevin",
         _PATCH_CT_EXPERIMENTS,
         {"ct_512_60": "patch_lidc_512"},
@@ -455,22 +455,46 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
                 "data_consistency_normalization": "operator_norm",
             }
         )
+    elif job.implementation == "lion_physics":
+        settings.update(
+            {
+                "initial_reconstruction": "fdk",
+                "clip_initial": True,
+                "clip_output": True,
+                "zeta": 3.0,
+                "dps_epsilon": 1.0,
+                "data_consistency_gradient": "least_squares",
+                "adjoint_data_step_schedule": "paper",
+                "initial_fdk_filter_type": "hann",
+                "initial_fdk_frequency_scaling": 0.9,
+                "initial_fdk_padded": False,
+                "data_consistency_normalization": "operator_lipschitz",
+                "data_consistency_scale": 1.0,
+                "adjoint_data_consistency_scale": None,
+                "pc_snr": 0.08,
+            }
+        )
 
     if job.method.name == "whole_image_diffusion":
         settings["prior_mode"] = "whole_image"
     if job.method.name == "predictor_corrector":
-        settings["pc_snr"] = 0.16
+        settings["pc_snr"] = 0.08 if job.implementation == "lion_physics" else 0.16
+        if job.implementation == "lion_physics":
+            settings["zeta"] = 4.25
         settings["pc_corrector_step_rule"] = "paper_linear"
         settings["pc_corrector_denoise_sigma"] = (
             "current" if job.implementation == "public_repo" else "next"
         )
         settings["pc_reuse_predictor_layout"] = job.implementation == "public_repo"
+    if job.method.name == "langevin" and job.implementation == "lion_physics":
+        settings["zeta"] = 4.0
+        settings["sampling_epsilon"] = 0.5
     if job.method.name == "ve_ddnm":
         if job.implementation == "paper":
             settings["num_steps"] = 1000
             settings["inner_steps"] = 1
             settings["ve_ddnm_nfe_layout"] = "paper_1000x1"
-        elif job.implementation == "lion_quality":
+        elif job.implementation in ("lion_physics", "lion_quality"):
             settings["num_steps"] = 1000
             settings["inner_steps"] = 1
             settings["ve_ddnm_nfe_layout"] = "paper_1000x1"
@@ -489,14 +513,22 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
         settings["ddnm_projected_pseudoinverse_clip"] = True
     if job.method.name == "patch_average":
         settings["patch_assembly"] = "fixed_average"
+        if job.implementation == "lion_physics":
+            settings["dps_epsilon"] = 0.5
         settings["fixed_overlap_layout"] = (
-            "public_overlap" if job.implementation == "public_repo" else "lion_clipped"
+            "public_overlap"
+            if job.implementation in ("public_repo", "lion_physics")
+            else "lion_clipped"
         )
         settings["fixed_overlap_checkpoint_denoiser"] = True
     elif job.method.name == "patch_stitch":
         settings["patch_assembly"] = "fixed_stitch"
+        if job.implementation == "lion_physics":
+            settings["dps_epsilon"] = 0.5
         settings["fixed_overlap_layout"] = (
-            "public_tile" if job.implementation == "public_repo" else "lion_clipped"
+            "public_tile"
+            if job.implementation in ("public_repo", "lion_physics")
+            else "lion_clipped"
         )
         settings["fixed_overlap_checkpoint_denoiser"] = True
     return settings

@@ -304,6 +304,22 @@ def test_padis_default_sampling_uses_unscaled_data_step_like_original_repo():
     assert params.data_consistency_gradient == "norm"
 
 
+def test_padis_lion_physics_sampling_uses_lipschitz_scaled_least_squares():
+    model = ZeroPatchModel()
+    params = PaDIS.lion_physics_ct_parameters(model, views=20)
+    assert params.noise_schedule == "geometric"
+    assert params.sigma_min == 0.002
+    assert params.sigma_max == 10.0
+    assert params.initial_reconstruction == "fdk"
+    assert params.zeta == 3.0
+    assert params.data_consistency_gradient == "least_squares"
+    assert params.data_consistency_normalization == "operator_lipschitz"
+    assert params.data_consistency_scale == 1.0
+    assert params.adjoint_data_consistency_scale is None
+    assert params.adjoint_data_step_schedule == "paper"
+    assert params.pc_snr == 0.08
+
+
 def test_padis_noise_schedule_modes():
     model = ZeroPatchModel()
     params = _sampler_params(model)
@@ -818,6 +834,39 @@ def test_padis_paper_squared_residual_gradient_matches_formula():
     assert step_size == params.zeta / float(residual_norm)
 
 
+def test_padis_least_squares_gradient_uses_lipschitz_step_form():
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.pad_width = 0
+    params.patch_size = 8
+    params.zeta = 0.3
+    params.data_consistency_gradient = "least_squares"
+    params.data_consistency_normalization = "operator_lipschitz"
+    params.operator_norm = 2.0
+    reconstructor = PaDIS(
+        ScaledIdentityOp(2.0), model, params, algorithm="dps_langevin"
+    )
+
+    x = torch.zeros(1, 1, 8, 8, requires_grad=True)
+    measurement = torch.ones(1, 8, 8)
+    (
+        gradient,
+        raw_gradient,
+        _residual,
+        normalizer,
+        data_scale,
+        step_size,
+    ) = reconstructor._dps_data_gradient(
+        measurement, x, x, params, sigma=torch.tensor(0.02)
+    )
+
+    assert torch.allclose(raw_gradient, torch.full_like(x, -2.0))
+    assert normalizer == 4.0
+    assert data_scale == 1.0
+    assert torch.allclose(gradient, torch.full_like(x, -0.5))
+    assert step_size == params.zeta
+
+
 def test_padis_norm_gradient_matches_public_repo_formula():
     model = ZeroPatchModel()
     params = _sampler_params(model)
@@ -928,6 +977,38 @@ def test_padis_adjoint_data_step_schedule_matches_paper_and_public_repo():
     assert torch.allclose(public_step, base_step * 4.0)
 
 
+def test_padis_least_squares_adjoint_step_uses_lipschitz_form():
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.pad_width = 0
+    params.zeta = 3.0
+    params.data_consistency_gradient = "least_squares"
+    params.data_consistency_normalization = "operator_lipschitz"
+    params.operator_norm = 2.0
+    reconstructor = PaDIS(ScaledIdentityOp(2.0), model, params, algorithm="langevin")
+
+    x = torch.zeros(1, 1, 8, 8)
+    residual = torch.ones(1, 8, 8)
+    sigma = torch.tensor(0.02)
+    step = reconstructor._adjoint_data_step_size(
+        residual, sigma, params, public_repo_multiplier=True
+    )
+    (
+        updated,
+        correction,
+        raw_correction,
+        normalizer,
+        data_scale,
+    ) = reconstructor._apply_adjoint_correction(x, residual, step, params, sigma)
+
+    assert torch.allclose(step, torch.tensor(3.0))
+    assert normalizer == 4.0
+    assert data_scale == 1.0
+    assert torch.allclose(raw_correction, torch.full_like(x, 2.0))
+    assert torch.allclose(correction, torch.full_like(x, 0.5))
+    assert torch.allclose(updated, torch.full_like(x, 1.5))
+
+
 def test_padis_data_gradient_normalization_uses_measurement_operator_norm():
     model = ZeroPatchModel()
     params = _sampler_params(model)
@@ -940,6 +1021,22 @@ def test_padis_data_gradient_normalization_uses_measurement_operator_norm():
     scaled, normalizer, scale = reconstructor._normalise_data_gradient(gradient, params)
 
     assert normalizer == 15.0
+    assert scale == 1.0
+    assert torch.allclose(scaled, torch.full_like(gradient, 2.0))
+
+
+def test_padis_data_gradient_normalization_uses_measurement_lipschitz_constant():
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.measurement_scale = 3.0
+    params.operator_norm = 5.0
+    params.data_consistency_normalization = "operator_lipschitz"
+    reconstructor = PaDIS(ScaledIdentityOp(5.0), model, params)
+
+    gradient = torch.full((1, 1, 12, 12), 450.0)
+    scaled, normalizer, scale = reconstructor._normalise_data_gradient(gradient, params)
+
+    assert normalizer == 225.0
     assert scale == 1.0
     assert torch.allclose(scaled, torch.full_like(gradient, 2.0))
 

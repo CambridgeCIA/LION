@@ -58,7 +58,7 @@ def test_method_default_matrix_uses_method_specific_models(tmp_path):
     assert [job.implementation for job in jobs] == [
         "paper",
         "paper",
-        "public_repo",
+        "lion_physics",
     ]
 
 
@@ -178,13 +178,14 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
     assert padis_sampler["initial_reconstruction"] == "fdk"
     assert padis_sampler["clip_initial"] is True
     assert padis_sampler["clip_output"] is True
-    assert padis_sampler["dps_epsilon"] == 0.5
-    assert padis_sampler["data_consistency_gradient"] == "norm"
-    assert padis_sampler["adjoint_data_step_schedule"] == "public_repo"
-    assert padis_sampler["data_consistency_scale"] == 0.0405
-    assert padis_sampler["adjoint_data_consistency_scale"] == 0.1022
+    assert padis_sampler["dps_epsilon"] == 1.0
+    assert padis_sampler["data_consistency_gradient"] == "least_squares"
+    assert padis_sampler["adjoint_data_step_schedule"] == "paper"
+    assert padis_sampler["data_consistency_normalization"] == "operator_lipschitz"
+    assert padis_sampler["data_consistency_scale"] == 1.0
+    assert padis_sampler["adjoint_data_consistency_scale"] is None
 
-    assert payloads["ve_ddnm"]["implementation"] == "lion_quality"
+    assert payloads["ve_ddnm"]["implementation"] == "lion_physics"
     assert payloads["ve_ddnm"]["expected_sampler"]["langevin_ddnm"] is True
     assert payloads["ve_ddnm"]["expected_sampler"]["num_steps"] == 1000
     assert payloads["ve_ddnm"]["expected_sampler"]["inner_steps"] == 1
@@ -202,7 +203,9 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
     assert payloads["ve_ddnm"]["expected_sampler"]["noise_initialization"] == "padded"
     assert payloads["ve_ddnm"]["expected_sampler"]["clip_initial"] is False
     assert payloads["ve_ddnm"]["expected_sampler"]["clip_output"] is False
-    assert payloads["predictor_corrector"]["expected_sampler"]["pc_snr"] == 0.16
+    assert payloads["predictor_corrector"]["implementation"] == "lion_physics"
+    assert payloads["predictor_corrector"]["expected_sampler"]["pc_snr"] == 0.08
+    assert payloads["predictor_corrector"]["expected_sampler"]["zeta"] == 4.25
     assert (
         payloads["predictor_corrector"]["expected_sampler"]["pc_corrector_step_rule"]
         == "paper_linear"
@@ -211,17 +214,18 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
         payloads["predictor_corrector"]["expected_sampler"][
             "pc_corrector_denoise_sigma"
         ]
-        == "current"
+        == "next"
     )
     assert (
         payloads["predictor_corrector"]["expected_sampler"]["pc_reuse_predictor_layout"]
-        is True
+        is False
     )
     assert (
         payloads["patch_average"]["expected_sampler"]["patch_assembly"]
         == "fixed_average"
     )
-    assert payloads["patch_average"]["implementation"] == "public_repo"
+    assert payloads["patch_average"]["implementation"] == "lion_physics"
+    assert payloads["patch_average"]["expected_sampler"]["dps_epsilon"] == 0.5
     assert (
         payloads["patch_average"]["expected_sampler"]["fixed_overlap_layout"]
         == "public_overlap"
@@ -235,7 +239,8 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
     assert (
         payloads["patch_stitch"]["expected_sampler"]["patch_assembly"] == "fixed_stitch"
     )
-    assert payloads["patch_stitch"]["implementation"] == "public_repo"
+    assert payloads["patch_stitch"]["implementation"] == "lion_physics"
+    assert payloads["patch_stitch"]["expected_sampler"]["dps_epsilon"] == 0.5
     assert (
         payloads["patch_stitch"]["expected_sampler"]["fixed_overlap_layout"]
         == "public_tile"
@@ -416,6 +421,65 @@ def test_lion_quality_implementation_can_be_selected_for_stabilized_rows(tmp_pat
     assert jobs[0].implementation == "lion_quality"
     assert payload["expected_sampler"]["sampling_epsilon"] == 0.1
     assert payload["expected_sampler"]["ddnm_corrected_clip"] is True
+
+
+def test_lion_physics_implementation_uses_operator_normalized_settings(tmp_path):
+    args = _args(
+        tmp_path,
+        "--methods",
+        "padis_dps,langevin,predictor_corrector,ve_ddnm,patch_average,patch_stitch",
+        "--implementations",
+        "lion_physics",
+        "--experiments",
+        "ct_20",
+    )
+
+    payloads = {job.method.name: job_json(args, job) for job in build_jobs(args)}
+    sampler = payloads["padis_dps"]["expected_sampler"]
+
+    assert sampler["noise_schedule"] == "geometric"
+    assert sampler["sigma_min"] == 0.002
+    assert sampler["sigma_max"] == 10.0
+    assert sampler["initial_reconstruction"] == "fdk"
+    assert sampler["initial_fdk_filter_type"] == "hann"
+    assert sampler["initial_fdk_frequency_scaling"] == 0.9
+    assert sampler["zeta"] == 3.0
+    assert sampler["data_consistency_gradient"] == "least_squares"
+    assert sampler["adjoint_data_step_schedule"] == "paper"
+    assert sampler["data_consistency_normalization"] == "operator_lipschitz"
+    assert sampler["data_consistency_scale"] == 1.0
+    assert sampler["adjoint_data_consistency_scale"] is None
+    assert sampler["pc_snr"] == 0.08
+    assert "public_repo" not in sampler.values()
+
+    assert (
+        payloads["predictor_corrector"]["expected_sampler"][
+            "pc_corrector_denoise_sigma"
+        ]
+        == "next"
+    )
+    assert payloads["predictor_corrector"]["expected_sampler"]["zeta"] == 4.25
+    assert payloads["predictor_corrector"]["expected_sampler"]["pc_snr"] == 0.08
+    assert (
+        payloads["predictor_corrector"]["expected_sampler"]["pc_reuse_predictor_layout"]
+        is False
+    )
+    assert payloads["langevin"]["expected_sampler"]["zeta"] == 4.0
+    assert payloads["langevin"]["expected_sampler"]["sampling_epsilon"] == 0.5
+    assert payloads["ve_ddnm"]["expected_sampler"]["ve_ddnm_nfe_layout"] == (
+        "paper_1000x1"
+    )
+    assert payloads["ve_ddnm"]["expected_sampler"]["ddnm_corrected_clip"] is True
+    assert payloads["patch_average"]["expected_sampler"]["dps_epsilon"] == 0.5
+    assert (
+        payloads["patch_average"]["expected_sampler"]["fixed_overlap_layout"]
+        == "public_overlap"
+    )
+    assert payloads["patch_stitch"]["expected_sampler"]["dps_epsilon"] == 0.5
+    assert (
+        payloads["patch_stitch"]["expected_sampler"]["fixed_overlap_layout"]
+        == "public_tile"
+    )
 
 
 def test_method_default_rejects_off_paper_experiment_selection(tmp_path):

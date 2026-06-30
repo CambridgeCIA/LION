@@ -287,6 +287,121 @@ def test_public_repo_helper_initialization_is_opt_in_for_helper_methods():
     assert langevin_helper_params.clip_initial is False
 
 
+def test_lion_physics_method_specific_sampler_defaults_are_applied():
+    parser = recon_script.build_arg_parser()
+
+    dps_args = parser.parse_args(
+        [
+            "--method",
+            "padis_dps",
+            "--implementation",
+            "lion_physics",
+        ]
+    )
+    dps_params = recon_script.build_sampler_params(
+        dps_args, model=None, measurement_source="normal"
+    )
+    assert dps_params.zeta == 3.0
+    assert dps_params.sampling_epsilon == 1.0
+
+    pc_args = parser.parse_args(
+        [
+            "--method",
+            "predictor_corrector",
+            "--implementation",
+            "lion_physics",
+        ]
+    )
+    pc_params = recon_script.build_sampler_params(
+        pc_args, model=None, measurement_source="normal"
+    )
+    assert pc_params.zeta == 4.25
+    assert pc_params.pc_snr == 0.08
+    assert pc_params.sampling_epsilon == 1.0
+
+    langevin_args = parser.parse_args(
+        [
+            "--method",
+            "langevin",
+            "--implementation",
+            "lion_physics",
+        ]
+    )
+    langevin_params = recon_script.build_sampler_params(
+        langevin_args, model=None, measurement_source="normal"
+    )
+    assert langevin_params.zeta == 4.0
+    assert langevin_params.sampling_epsilon == 0.5
+
+    patch_average_args = parser.parse_args(
+        [
+            "--method",
+            "patch_average",
+            "--implementation",
+            "lion_physics",
+        ]
+    )
+    patch_average_params = recon_script.build_sampler_params(
+        patch_average_args, model=None, measurement_source="normal"
+    )
+    assert patch_average_params.dps_epsilon == 0.5
+    assert patch_average_params.patch_assembly == "fixed_average"
+    assert patch_average_params.fixed_overlap_layout == "public_overlap"
+    assert patch_average_params.fixed_overlap_checkpoint_denoiser is True
+
+    patch_stitch_args = parser.parse_args(
+        [
+            "--method",
+            "patch_stitch",
+            "--implementation",
+            "lion_physics",
+        ]
+    )
+    patch_stitch_params = recon_script.build_sampler_params(
+        patch_stitch_args, model=None, measurement_source="normal"
+    )
+    assert patch_stitch_params.dps_epsilon == 0.5
+    assert patch_stitch_params.patch_assembly == "fixed_stitch"
+    assert patch_stitch_params.fixed_overlap_layout == "public_tile"
+    assert patch_stitch_params.fixed_overlap_checkpoint_denoiser is True
+
+    langevin_override_args = parser.parse_args(
+        [
+            "--method",
+            "langevin",
+            "--implementation",
+            "lion_physics",
+            "--zeta",
+            "3.5",
+            "--sampling-epsilon",
+            "1.0",
+        ]
+    )
+    langevin_override_params = recon_script.build_sampler_params(
+        langevin_override_args, model=None, measurement_source="normal"
+    )
+    assert langevin_override_params.zeta == 3.5
+    assert langevin_override_params.sampling_epsilon == 1.0
+
+    override_args = parser.parse_args(
+        [
+            "--method",
+            "patch_average",
+            "--implementation",
+            "lion_physics",
+            "--dps-epsilon",
+            "1.0",
+            "--fixed-overlap-layout",
+            "lion_clipped",
+        ]
+    )
+    override_params = recon_script.build_sampler_params(
+        override_args, model=None, measurement_source="normal"
+    )
+    assert override_params.dps_epsilon == 1.0
+    assert override_params.fixed_overlap_layout == "lion_clipped"
+
+
 def test_checkpoint_metadata_fallback_infers_whole_image_preset(tmp_path):
     training = LIONParameter()
     training.paper_preset = "padis-paper-whole-ct-256"
