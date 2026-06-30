@@ -1,5 +1,11 @@
 """
-This module implements the abstract base class for predictors (Predictor) and correctors (Corrector) in the sampling process of Score-Based Generative Models.
+Predictor-Corrector (PC) samplers for reverse-time SDE integration.
+
+Processes & Samplers:
+  1. pc_sampler (Standard): Implements the standard loop: Hijack -> Predictor -> Corrector.
+  2. pc_sampler_new (JAX-Equivalent): Follows the sequence: Hijack -> Corrector -> Hijack -> Predictor, terminating with Tweedie denoising and a final Hijack data-consistency projection.
+  3. get_score_conditional: Modifies the score function using the conditional likelihood gradient for standard conditional sampling.
+  4. get_hijack / get_hijack_new: Return a hijack function for data consistency, get_hijack uses the invertible operator T in [Song2022], while get_hijack_new uses a generalized right inverse.
 
 Author: Tianzhen Peng
 

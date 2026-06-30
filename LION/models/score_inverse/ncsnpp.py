@@ -20,6 +20,26 @@ from .layer import default_num_groups, GaussianFourierProjection, SelfAttn, Conv
 from .sde import SimpleForwardSDE
 
 class NCSNpp(nn.Module):
+    """
+    NCSN++ architecture for score matching.
+    
+    Uses a U-Net structure with multi-resolution ResNet blocks, self-attention layers, FIR up/down-sampling, and Gaussian Fourier embeddings for noise-level.
+    
+    Args:
+        image_resolution (int): Height/width of square input images.
+        num_channels (int): Input image channels (typically 1 for CT).
+        nf (int): Base feature map channels.
+        ch_mult (tuple): Channel multiplier per resolution stage.
+        num_res_blocks (int): Number of ResNet blocks per stage.
+        attn_resolutions (tuple): Resolutions at which self-attention is applied.
+        fourier_scale (float): Scaling factor for Gaussian Fourier embeddings for noise levels.
+        fir (bool): Enable FIR up/down-sampling.
+        act (nn.Module): Activation function.
+        skip_rescale (bool): Rescale skip connection outputs by 1/sqrt(2).
+        init_scale (float): Scale factor for initialization of convolutional weights.
+        dropout (float): Dropout probability.
+        scale_by_sigma (bool): If True, normalize outputs by current noise levels (sigma).
+    """
     def __init__(self,
                  image_resolution=512,
                  num_channels=1,

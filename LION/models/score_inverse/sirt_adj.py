@@ -1,3 +1,12 @@
+"""
+Preconditioned Adjoint (SIRT backprojection) operator for Radon transforms.
+
+Processing Flow:
+  Computes volume (C) and projection (R) space normalization weights to balance the backprojection matrix, implementing the preconditioned operator x = C * A^T * R * y. This provides a stable approximate right inverse for CT reconstruction, particularly useful for fan-beam and parallel-beam geometries.
+
+Author: Tianzhen Peng
+"""
+
 from __future__ import annotations
 import math
 import tomosipo as ts

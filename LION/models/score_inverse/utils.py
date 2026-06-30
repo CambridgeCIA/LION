@@ -1,3 +1,9 @@
+"""
+Utility functions for global seed control, checkpoint validation, and batch-wise operator wrapping.
+
+Author: Tianzhen Peng
+"""
+
 import torch
 import random
 import numpy as np

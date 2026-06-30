@@ -1,17 +1,13 @@
 """
-This module implements the necessary building blocks for the score-based model (NCSN++).
+Building block layers for the NCSN++ network architecture.
+
+Includes Conv1x1, Conv3x3, Combine blocks (for skip-connections), self-attention layers, and FIR up/down-samplers.
 
 Author: Tianzhen Peng
 
 References
 ----------
-.. [Song2021] Song, Y., Sohl-Dickstein, J., Kingma, D. P., Kumar, A., 
-   Ermon, S., & Poole, B. (2021). "Score-Based Generative Modeling 
-   through Stochastic Differential Equations." ICLR. https://openreview.net/forum?id=PxTIG12RRHS
-
-.. [Song2022] Song, Y., Shen, L., Xing, L., & Ermon, S. (2022). 
-   "Solving Inverse Problems in Medical Imaging with Score-Based 
-   Generative Models." ICLR. https://openreview.net/forum?id=vaRCHVj0uGI
+.. [Song2021] Song, Y., Sohl-Dickstein, J., Kingma, D. P., Kumar, A., Ermon, S., & Poole, B. (2021). "Score-Based Generative Modeling through Stochastic Differential Equations." ICLR. https://arxiv.org/abs/2011.13456
 """
 
 import torch
