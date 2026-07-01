@@ -49,7 +49,7 @@ import inspect
 class ModelInputType(int, Enum):
     SINOGRAM = 0
     NOISY_RECON = 1
-    IMAGE = 1
+    IMAGE = 2
 
 
 # Class for Model parameters that should be true for all models
