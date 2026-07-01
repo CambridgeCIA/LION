@@ -35,7 +35,8 @@ def format_index(index: int) -> str:
 def load_json(file_path: pathlib.Path):
     if not file_path.is_file():
         raise FileNotFoundError(f"No file found at {file_path}")
-    return json.load(open(file_path))
+    with open(file_path) as file:
+        return json.load(file)
 
 
 def choose_random_annotation(
@@ -151,16 +152,24 @@ class LIDC_IDRI(Dataset):
             self.path_to_processed_dataset.joinpath("patients_masks.json")
         )
 
-        # Add patients without masks, for now hardcoded, find a solution in preprocessing
-        self.patients_masks_dictionary["LIDC-IDRI-0238"] = {}
-        self.patients_masks_dictionary["LIDC-IDRI-0585"] = {}
-
         self.patients_diagnosis_dictionary = load_json(
             self.path_to_processed_dataset.joinpath("patient_id_to_diagnosis.json")
         )
-        self.total_patients = (
-            len(list(self.path_to_processed_dataset.glob("LIDC-IDRI-*"))) + 1
+        self.patient_ids = sorted(
+            [
+                patient_folder.name
+                for patient_folder in self.path_to_processed_dataset.glob("LIDC-IDRI-*")
+                if patient_folder.is_dir()
+            ],
+            key=lambda patient_id: int(patient_id.rsplit("-", maxsplit=1)[-1]),
         )
+        if len(self.patient_ids) == 0:
+            raise FileNotFoundError(
+                f"No processed LIDC-IDRI patient folders found in {self.path_to_processed_dataset}"
+            )
+        for patient_id in self.patient_ids:
+            self.patients_masks_dictionary.setdefault(patient_id, {})
+        self.total_patients = len(self.patient_ids)
         self.num_slices_per_patient = self.params.max_num_slices_per_patient
         self.pcg_slices_nodule = self.params.pcg_slices_nodule
         self.annotation = self.params.annotation
@@ -168,60 +177,46 @@ class LIDC_IDRI(Dataset):
             self.params.clevel
         )  # consensus level, only used if annotation == consensus
         self.patient_index_to_n_slices_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": len(
+            patient_id: len(
                 list(
-                    self.path_to_processed_dataset.joinpath(
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ).glob("slice_*.npy")
+                    self.path_to_processed_dataset.joinpath(patient_id).glob(
+                        "slice_*.npy"
+                    )
                 )
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids
         }
 
         # Dict with all slices of each patient
         self.patient_index_to_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": list(
+            patient_id: list(
                 np.arange(
                     0,
-                    self.patient_index_to_n_slices_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ],
+                    self.patient_index_to_n_slices_dict[patient_id],
                     1,
                 )
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids
         }
 
         # Dict with all nodule slices of each patient
         # Converts the keys from self.patients_masks_dictionary to integer
         self.patient_index_to_nodule_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": [
+            patient_id: [
                 int(item)
-                for item in list(
-                    self.patients_masks_dictionary[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ].keys()
-                )
+                for item in list(self.patients_masks_dictionary[patient_id].keys())
             ]
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids
         }
 
         # Dict with all non-nodule slices of each patient
         # Computes as difference of all slices dict and dict with nodules
         self.patient_index_to_non_nodule_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": list(
-                set(
-                    self.patient_index_to_slices_index_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ]
-                )
-                - set(
-                    self.patient_index_to_nodule_slices_index_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ]
-                )
+            patient_id: list(
+                set(self.patient_index_to_slices_index_dict[patient_id])
+                - set(self.patient_index_to_nodule_slices_index_dict[patient_id])
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids
         }
 
         # Corrupted data handling
@@ -242,15 +237,11 @@ class LIDC_IDRI(Dataset):
                         break
 
         self.patient_index_to_nodule_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": list(
-                set(
-                    self.patient_index_to_nodule_slices_index_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ]
-                )
-                - set(self.removed_slices[f"LIDC-IDRI-{format_index(index)}"])
+            patient_id: list(
+                set(self.patient_index_to_nodule_slices_index_dict[patient_id])
+                - set(self.removed_slices[patient_id])
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids
         }
 
         ##% Divide dataset in training/validation/testing
@@ -277,7 +268,6 @@ class LIDC_IDRI(Dataset):
         )
 
         # Get patient IDs for each
-        self.patient_ids = list(self.patient_index_to_n_slices_dict.keys())
         self.training_patients_list = self.patient_ids[: self.n_patients_training]
         self.validation_patients_list = self.patient_ids[
             self.n_patients_training : self.n_patients_training

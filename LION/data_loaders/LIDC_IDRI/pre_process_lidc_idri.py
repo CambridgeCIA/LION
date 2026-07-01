@@ -21,6 +21,11 @@ import pylidc as pl
 import pandas as pd
 
 
+LIDC_IDRI_PATIENT_COUNT = 1012
+EXPECTED_PROCESSED_FILE_COUNT = 282776
+EXPECTED_PROCESSED_PATIENT_DIR_COUNT = 1010
+
+
 spec = importlib.util.spec_from_file_location(
     "aipaths", pathlib.Path(__file__).resolve().parents[2] / "utils/paths.py"
 )
@@ -48,6 +53,14 @@ def format_index(index: int) -> str:
         str_index = "0" + str_index
     assert len(str_index) == 4
     return str_index
+
+
+def iter_lidc_patient_indices():
+    return range(1, LIDC_IDRI_PATIENT_COUNT + 1)
+
+
+def format_patient_id(index: int) -> str:
+    return f"LIDC-IDRI-{format_index(index)}"
 
 
 def get_nodule_boundaries(
@@ -202,13 +215,114 @@ def remove_error_for_patient(error_list: List, patient_id: str) -> List:
     return [error for error in error_list if error[0] != patient_id]
 
 
+def count_regular_files(path: pathlib.Path) -> int:
+    if not path.is_dir():
+        return 0
+    return sum(1 for file_path in path.rglob("*") if file_path.is_file())
+
+
+def processed_patient_ids(path_to_processed_dataset: pathlib.Path) -> List[str]:
+    if not path_to_processed_dataset.is_dir():
+        return []
+    return sorted(
+        path.name
+        for path in path_to_processed_dataset.glob("LIDC-IDRI-*")
+        if path.is_dir()
+    )
+
+
+def format_patient_list(patient_ids: List[str], limit: int = 20) -> str:
+    if len(patient_ids) <= limit:
+        return ", ".join(patient_ids)
+    shown_patients = ", ".join(patient_ids[:limit])
+    return f"{shown_patients}, ... ({len(patient_ids) - limit} more)"
+
+
+def patient_has_scan(patient_id: str) -> bool:
+    scan = pl.query(pl.Scan).filter(pl.Scan.patient_id == patient_id).first()
+    return scan is not None
+
+
+def print_download_recovery_hint() -> None:
+    print(
+        "\t If this is due to missing raw DICOM files, rerun the downloader "
+        "from LION/data_loaders/LIDC_IDRI:"
+    )
+    print("\t     NBIA_RESUME_CHOICE=M ./download_LIDC_IDRI.sh")
+    print(
+        "\t If NBIA still leaves missing or corrupt series, redownload all "
+        "series when prompted:"
+    )
+    print("\t     NBIA_RESUME_CHOICE=A ./download_LIDC_IDRI.sh")
+    print(
+        "\t Then rerun preprocessing with the dedicated environment, e.g. "
+        "`conda activate lidc_idri && python pre_process_lidc_idri.py`."
+    )
+
+
+def validate_processed_dataset_completeness(
+    path_to_processed_dataset: pathlib.Path,
+) -> None:
+    processed_file_count = count_regular_files(path_to_processed_dataset)
+    processed_patients = processed_patient_ids(path_to_processed_dataset)
+    processed_patient_set = set(processed_patients)
+    expected_patient_ids = [
+        format_patient_id(index) for index in iter_lidc_patient_indices()
+    ]
+    missing_patient_ids = [
+        patient_id
+        for patient_id in expected_patient_ids
+        if patient_id not in processed_patient_set
+    ]
+    missing_patients_with_scans = [
+        patient_id for patient_id in missing_patient_ids if patient_has_scan(patient_id)
+    ]
+    error_list = load_json(path_to_processed_dataset.joinpath("error_list.json"), [])
+
+    print("LIDC-IDRI processed dataset completeness check")
+    print(
+        f"\t Regular files: {processed_file_count} "
+        f"(expected at least {EXPECTED_PROCESSED_FILE_COUNT})"
+    )
+    print(
+        f"\t Processed patient directories: {len(processed_patients)} "
+        f"(expected at least {EXPECTED_PROCESSED_PATIENT_DIR_COUNT})"
+    )
+
+    is_complete = (
+        processed_file_count >= EXPECTED_PROCESSED_FILE_COUNT
+        and len(processed_patients) >= EXPECTED_PROCESSED_PATIENT_DIR_COUNT
+        and not missing_patients_with_scans
+        and not error_list
+    )
+    if is_complete:
+        print("\t Complete: all expected processed files are present.")
+        return
+
+    print("\t WARNING: processed LIDC-IDRI output appears incomplete.")
+    if missing_patient_ids:
+        print(
+            f"\t Missing patient directories: "
+            f"{format_patient_list(missing_patient_ids)}"
+        )
+    if missing_patients_with_scans:
+        print(
+            "\t Missing patient directories with pylidc scan records: "
+            f"{format_patient_list(missing_patients_with_scans)}"
+        )
+    if error_list:
+        print("\t Current processing errors:")
+        for patient_id, message in error_list:
+            print(f"\t     {patient_id}: {message}")
+    print_download_recovery_hint()
+
+
 def compute_slice_thickness(path_to_processed_dataset: pathlib.Path):
     file_name = "patient_id_to_slice_thickness.json"
     patient_dict_to_slice_thickness = {}
 
-    for patient_index in range(1, 1012):
-        formatted_index = format_index(patient_index)
-        formatted_index = f"LIDC-IDRI-{formatted_index}"
+    for patient_index in iter_lidc_patient_indices():
+        formatted_index = format_patient_id(patient_index)
         scan: pl.Scan = (
             pl.query(pl.Scan).filter(pl.Scan.patient_id == formatted_index).first()
         )  # type:ignore
@@ -258,10 +372,9 @@ def pre_process_dataset(
                 dry_run=dry_run_raw_delete,
             )
 
-    for patient_index in range(1, 1012):
+    for patient_index in iter_lidc_patient_indices():
         # for patient_index in [197]:
-        formatted_index = format_index(patient_index)
-        formatted_index = f"LIDC-IDRI-{formatted_index}"
+        formatted_index = format_patient_id(patient_index)
         path_to_processed_volume_folder = path_to_processed_dataset.joinpath(
             formatted_index
         )
@@ -353,9 +466,8 @@ def compute_diagnosis_file(
         patients_column_name = diagnosis_df.columns[0]
         diagnosis_column_name = diagnosis_df.columns[1]
 
-        for patient_index in range(1, 1012):
-            formatted_index = format_index(patient_index)
-            formatted_index = f"LIDC-IDRI-{formatted_index}"
+        for patient_index in iter_lidc_patient_indices():
+            formatted_index = format_patient_id(patient_index)
             is_index_in_df = (
                 diagnosis_df[patients_column_name] == formatted_index
             ).any()
@@ -490,3 +602,4 @@ if __name__ == "__main__":
         path_to_processed_dataset, nodule_subtelty=4, operator="superior"
     )
     compute_slice_thickness(path_to_processed_dataset)
+    validate_processed_dataset_completeness(path_to_processed_dataset)

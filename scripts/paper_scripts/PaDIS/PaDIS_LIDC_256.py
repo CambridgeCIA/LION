@@ -347,17 +347,18 @@ def stage_cache_from_archive(mode, cache_path, archive_path):
     return True
 
 
-def write_cache_archive(cache_path, archive_folder):
+def write_cache_archive(cache_path, archive_folder, overwrite=False):
     zstd = shutil.which("zstd")
     if zstd is None:
         raise RuntimeError("Cannot write compressed cache archive: zstd was not found.")
     archive_folder.mkdir(parents=True, exist_ok=True)
     archive_path = archive_folder / f"{cache_path.name}.zst"
-    if archive_path.is_file():
+    if archive_path.is_file() and not overwrite:
         print(f"Compressed image-prior cache archive already exists at {archive_path}")
         return
     tmp_path = archive_path.with_suffix(archive_path.suffix + f".tmp.{os.getpid()}")
-    print(f"Writing compressed image-prior cache archive to {archive_path}")
+    action = "Overwriting" if archive_path.is_file() else "Writing"
+    print(f"{action} compressed image-prior cache archive at {archive_path}")
     with tmp_path.open("wb") as output:
         subprocess.run(
             [zstd, "-T0", "-3", "-c", str(cache_path)],
@@ -433,7 +434,11 @@ def materialize_image_prior_dataset(
     torch.save(payload, tmp_path)
     tmp_path.replace(cache_path)
     if write_archive and cache_archive_folder is not None:
-        write_cache_archive(cache_path, cache_archive_folder)
+        write_cache_archive(
+            cache_path,
+            cache_archive_folder,
+            overwrite=rebuild_cache,
+        )
     print(
         f"Cached {mode} images: shape={tuple(images.shape)}, "
         f"size={images.numel() * images.element_size() / 1024**3:.2f} GiB"

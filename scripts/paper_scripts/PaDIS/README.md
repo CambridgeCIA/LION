@@ -213,6 +213,18 @@ real PaDIS training, and the PnP denoiser job by default:
 scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_pipeline.sh
 ```
 
+To build the reusable single-file tensor caches and `.pt.zst` archives on a
+machine without Slurm, run:
+
+```bash
+scripts/paper_scripts/PaDIS/run_prepare_lidc_cache.sh
+```
+
+By default this builds `256-default`, `256-full`, and `512-default` under
+`$LION_DATA_PATH/processed/LIDC-IDRI-cache`, matching the Slurm cache-prep job.
+Set `PADIS_CACHE_PREP_VARIANTS`, `PADIS_CACHE_ROOT`, `PADIS_DATA_FOLDER`, or
+`PYTHON` to override the local defaults.
+
 Set `PADIS_SUBMIT_PNP_TRAINING=0` to disable the PnP denoiser job in either
 submitter. To submit the reconstruction matrix automatically after real
 training and PnP training finish, enable the opt-in reconstruction chain:

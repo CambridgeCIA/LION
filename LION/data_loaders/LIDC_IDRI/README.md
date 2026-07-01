@@ -81,6 +81,13 @@ conda activate lidc_idri
 python pre_process_lidc_idri.py
 ```
 
+The preprocessing run finishes with a completeness check. On the current
+downloaded dataset, the complete processed output contains at least `282,776`
+regular files and `1,010` processed patient directories. If the count is short,
+rerun the downloader with `NBIA_RESUME_CHOICE=M ./download_LIDC_IDRI.sh` to fetch
+missing series, or use `NBIA_RESUME_CHOICE=A ./download_LIDC_IDRI.sh` if the
+NBIA retriever needs to redownload all series.
+
 The preprocessing script automatically writes the `pylidc` DICOM location to `~/.pylidcrc` using `LIDC_IDRI_PATH` from `LION/utils/paths.py`. With the default download layout, this points `pylidc` at:
 
 ```text
