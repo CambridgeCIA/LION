@@ -87,6 +87,25 @@ The preprocessing script automatically writes the `pylidc` DICOM location to `~/
 LION_DATA_PATH/raw/LIDC-IDRI/LIDC-IDRI
 ```
 
+If disk space is limited, the preprocessing script can remove each per-patient
+raw DICOM folder after the matching processed folder has been written:
+
+```bash
+python pre_process_lidc_idri.py --delete-raw-after-processing
+```
+
+To reduce deletion frequency, remove raw folders in completed blocks:
+
+```bash
+python pre_process_lidc_idri.py --delete-raw-after-processing --raw-delete-block-size 10
+```
+
+Use a dry run first to inspect the patient folders that would be deleted:
+
+```bash
+python pre_process_lidc_idri.py --dry-run-raw-delete --raw-delete-block-size 10
+```
+
 ## Optional PaDIS Cache Preparation
 
 The PaDIS paper scripts can use reusable tensor caches derived from the processed LIDC-IDRI slices. This avoids repeatedly walking many small `slice_*.npy` files when launching PaDIS training jobs. Run this only after `pre_process_lidc_idri.py` has produced `LION_DATA_PATH/processed/LIDC-IDRI`.
@@ -114,4 +133,3 @@ Default archive locations are:
 LION_DATA_PATH/processed/LIDC-IDRI-cache/padis_256/archives
 LION_DATA_PATH/processed/LIDC-IDRI-cache/padis_512/archives
 ```
-

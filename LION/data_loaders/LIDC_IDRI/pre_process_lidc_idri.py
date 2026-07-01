@@ -6,19 +6,19 @@
 # Modifications:-
 # =============================================================================
 
+import argparse
+import importlib.util
+import json
 import pathlib
-from pathlib import Path
-from typing import Tuple, List, Dict
 import shutil
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pylidc as pl
 import pandas as pd
-import json
-
-import importlib.util
-import sys
 
 
 spec = importlib.util.spec_from_file_location(
@@ -129,6 +129,75 @@ def write_json(path: pathlib.Path, data) -> None:
         json.dump(data, out_file, indent=4)
 
 
+def get_raw_dicom_root(path_to_raw_dataset: pathlib.Path) -> pathlib.Path:
+    return path_to_raw_dataset.joinpath("LIDC-IDRI").resolve()
+
+
+def get_raw_patient_dir(
+    path_to_raw_dataset: pathlib.Path, patient_id: str
+) -> Optional[pathlib.Path]:
+    patient_dir = get_raw_dicom_root(path_to_raw_dataset).joinpath(patient_id)
+    if patient_dir.is_dir():
+        return patient_dir
+    return None
+
+
+def processed_patient_has_slices(
+    path_to_processed_volume_folder: pathlib.Path,
+) -> bool:
+    return path_to_processed_volume_folder.is_dir() and any(
+        path_to_processed_volume_folder.glob("slice_*.npy")
+    )
+
+
+def remove_raw_patient_dir(
+    path_to_raw_dataset: pathlib.Path,
+    patient_id: str,
+    dry_run: bool = False,
+) -> None:
+    dicom_root = get_raw_dicom_root(path_to_raw_dataset)
+    patient_dir = get_raw_patient_dir(path_to_raw_dataset, patient_id)
+
+    if patient_dir is None:
+        print(f"\t Raw files for {patient_id} were not found, passing...")
+        return
+
+    resolved_patient_dir = patient_dir.resolve()
+    if patient_dir.is_symlink():
+        raise ValueError(
+            f"Refusing to delete symlinked patient directory {patient_dir}"
+        )
+    if patient_dir.name != patient_id:
+        raise ValueError(
+            f"Refusing to delete {patient_dir}: expected directory named {patient_id}"
+        )
+    if resolved_patient_dir.parent != dicom_root:
+        raise ValueError(
+            f"Refusing to delete {patient_dir}: it is not directly under {dicom_root}"
+        )
+
+    if dry_run:
+        print(f"\t Would remove raw files for {patient_id}: {patient_dir}")
+        return
+
+    print(f"\t Removing raw files for {patient_id}: {patient_dir}")
+    shutil.rmtree(patient_dir)
+
+
+def flush_raw_delete_block(
+    path_to_raw_dataset: pathlib.Path,
+    patients_to_delete: List[str],
+    dry_run: bool = False,
+) -> None:
+    if not patients_to_delete:
+        return
+
+    print(f"\t Cleaning raw files for {len(patients_to_delete)} processed patients")
+    for patient_id in patients_to_delete:
+        remove_raw_patient_dir(path_to_raw_dataset, patient_id, dry_run=dry_run)
+    patients_to_delete.clear()
+
+
 def remove_error_for_patient(error_list: List, patient_id: str) -> List:
     return [error for error in error_list if error[0] != patient_id]
 
@@ -153,7 +222,18 @@ def compute_slice_thickness(path_to_processed_dataset: pathlib.Path):
         json.dump(patient_dict_to_slice_thickness, out_file)
 
 
-def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
+def pre_process_dataset(
+    path_to_processed_dataset: pathlib.Path,
+    path_to_raw_dataset: Optional[pathlib.Path] = None,
+    delete_raw_after_processing: bool = False,
+    raw_delete_block_size: int = 1,
+    dry_run_raw_delete: bool = False,
+):
+    if raw_delete_block_size < 1:
+        raise ValueError("raw_delete_block_size must be at least 1")
+    if delete_raw_after_processing and path_to_raw_dataset is None:
+        raise ValueError("path_to_raw_dataset must be set when deleting raw files")
+
     path_to_processed_dataset.mkdir(exist_ok=True, parents=True)
 
     path_to_patients_masks_dict = path_to_processed_dataset.joinpath(
@@ -162,6 +242,21 @@ def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
     path_to_error_list = path_to_processed_dataset.joinpath("error_list.json")
     patients_masks = load_json(path_to_patients_masks_dict, {})
     error_list = load_json(path_to_error_list, [])
+    raw_delete_block: List[str] = []
+
+    def queue_raw_delete(patient_id: str) -> None:
+        if not delete_raw_after_processing:
+            return
+        if path_to_raw_dataset is None:
+            raise ValueError("path_to_raw_dataset must be set when deleting raw files")
+
+        raw_delete_block.append(patient_id)
+        if len(raw_delete_block) >= raw_delete_block_size:
+            flush_raw_delete_block(
+                path_to_raw_dataset,
+                raw_delete_block,
+                dry_run=dry_run_raw_delete,
+            )
 
     for patient_index in range(1, 1012):
         # for patient_index in [197]:
@@ -176,8 +271,15 @@ def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
 
         if path_to_processed_volume_folder.is_dir():
             print(f"\t Patient {formatted_index} already sampled, passing...")
+            if (
+                delete_raw_after_processing
+                and formatted_index in patients_masks
+                and processed_patient_has_slices(path_to_processed_volume_folder)
+            ):
+                queue_raw_delete(formatted_index)
             continue
 
+        patient_ready_for_raw_delete = False
         try:
             print(f"Processing patient with PID {formatted_index}")
             scan: pl.Scan = (
@@ -204,6 +306,7 @@ def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
                 write_json(path_to_patients_masks_dict, patients_masks)
                 write_json(path_to_error_list, error_list)
                 tmp_processed_volume_folder.rename(path_to_processed_volume_folder)
+                patient_ready_for_raw_delete = True
         except Exception as e:
             print(
                 f"An error occurred while processing patient {formatted_index}, skipping..."
@@ -214,6 +317,22 @@ def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
             error_list.append([formatted_index, str(e)])
             write_json(path_to_error_list, error_list)
             write_json(path_to_patients_masks_dict, patients_masks)
+
+        if (
+            patient_ready_for_raw_delete
+            and delete_raw_after_processing
+            and processed_patient_has_slices(path_to_processed_volume_folder)
+        ):
+            queue_raw_delete(formatted_index)
+
+    if delete_raw_after_processing:
+        if path_to_raw_dataset is None:
+            raise ValueError("path_to_raw_dataset must be set when deleting raw files")
+        flush_raw_delete_block(
+            path_to_raw_dataset,
+            raw_delete_block,
+            dry_run=dry_run_raw_delete,
+        )
 
     # exit()
 
@@ -312,8 +431,41 @@ def compute_patient_with_nodule_subtetly(
         json.dump(patient_list, out_file)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Pre-process the LIDC-IDRI raw DICOM dataset."
+    )
+    parser.add_argument(
+        "--delete-raw-after-processing",
+        action="store_true",
+        help=(
+            "Remove each raw per-patient DICOM directory after that patient has "
+            "been successfully written to the processed dataset."
+        ),
+    )
+    parser.add_argument(
+        "--raw-delete-block-size",
+        type=int,
+        default=1,
+        help=(
+            "Number of successfully processed patients to collect before removing "
+            "their raw DICOM directories. Default: 1."
+        ),
+    )
+    parser.add_argument(
+        "--dry-run-raw-delete",
+        action="store_true",
+        help=(
+            "Print the raw patient directories that would be removed, without "
+            "deleting them. This also enables raw cleanup scanning."
+        ),
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
 
+    args = parse_args()
     path_to_raw_dataset = pathlib.Path(LIDC_IDRI_PATH)
     configure_pylidc(path_to_raw_dataset)
     path_to_diagnosis_file = path_to_raw_dataset.joinpath(
@@ -321,7 +473,15 @@ if __name__ == "__main__":
     )
     path_to_processed_dataset = pathlib.Path(LIDC_IDRI_PROCESSED_DATASET_PATH)
     print("LIDC-IDRI dataset pre-processing functions")
-    pre_process_dataset(path_to_processed_dataset)
+    pre_process_dataset(
+        path_to_processed_dataset,
+        path_to_raw_dataset=path_to_raw_dataset,
+        delete_raw_after_processing=(
+            args.delete_raw_after_processing or args.dry_run_raw_delete
+        ),
+        raw_delete_block_size=args.raw_delete_block_size,
+        dry_run_raw_delete=args.dry_run_raw_delete,
+    )
     compute_diagnosis_file(
         path_to_diagnosis_file,
         path_to_processed_dataset.joinpath("patient_id_to_diagnosis.json"),
