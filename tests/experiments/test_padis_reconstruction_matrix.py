@@ -57,9 +57,13 @@ def test_method_default_matrix_uses_method_specific_models(tmp_path):
     ]
     assert [job.implementation for job in jobs] == [
         "paper",
-        "paper",
+        "lion_physics",
         "lion_physics",
     ]
+    whole_payload = job_json(args, jobs[1])
+    assert whole_payload["checkpoint"].endswith(
+        "whole_lidc_default/whole_image_lidc_256_min_val.pt"
+    )
 
 
 def test_method_default_matrix_uses_native_512_model_for_512_experiment(tmp_path):
@@ -79,6 +83,11 @@ def test_method_default_matrix_uses_native_512_model_for_512_experiment(tmp_path
         "patch_lidc_512",
     ]
     assert [job.experiment for job in jobs] == ["ct_512_60"] * 3
+    padis_payload = job_json(args, jobs[2])
+    sampler = padis_payload["expected_sampler"]
+    assert sampler["patch_batch_size"] == 1
+    assert sampler["patch_checkpoint_denoiser"] is True
+    assert sampler["fixed_overlap_checkpoint_denoiser"] is False
 
 
 def test_reconstruction_smoke_selector_has_six_expected_jobs(tmp_path):
@@ -152,11 +161,42 @@ def test_job_manifest_contains_verifier_identity_fields(tmp_path):
     assert whole_payload["method"] == "whole_image_diffusion"
     assert whole_payload["algorithm"] == "dps_langevin"
     assert whole_payload["prior_mode"] == "whole_image"
+    assert whole_payload["implementation"] == "lion_physics"
+    assert whole_payload["checkpoint"].endswith(
+        "whole_lidc_default/whole_image_lidc_256_min_val.pt"
+    )
+    assert whole_payload["expected_sampler"]["prior_mode"] == "whole_image"
+    assert (
+        whole_payload["expected_sampler"]["data_consistency_normalization"]
+        == "operator_lipschitz"
+    )
 
     langevin_payload = payloads[1]
     assert langevin_payload["method"] == "langevin"
     assert langevin_payload["algorithm"] == "langevin"
     assert langevin_payload["prior_mode"] == "patch"
+
+
+def test_whole_image_lion_physics_fanbeam_uses_stabilized_epsilon(tmp_path):
+    args = _args(
+        tmp_path,
+        "--methods",
+        "whole_image_diffusion",
+        "--experiments",
+        "ct_fanbeam_180",
+        "--implementations",
+        "lion_physics",
+    )
+
+    payload = job_json(args, build_jobs(args)[0])
+    sampler = payload["expected_sampler"]
+
+    assert payload["implementation"] == "lion_physics"
+    assert payload["experiment"] == "ct_fanbeam_180"
+    assert sampler["prior_mode"] == "whole_image"
+    assert sampler["dps_epsilon"] == 0.5
+    assert sampler["data_consistency_gradient"] == "least_squares"
+    assert sampler["data_consistency_normalization"] == "operator_lipschitz"
 
 
 def test_job_manifest_contains_expected_sampler_settings(tmp_path):
@@ -236,6 +276,7 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
         ]
         is True
     )
+    assert payloads["patch_average"]["expected_sampler"]["patch_batch_size"] == 1
     assert (
         payloads["patch_stitch"]["expected_sampler"]["patch_assembly"] == "fixed_stitch"
     )
@@ -251,6 +292,7 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
         ]
         is True
     )
+    assert payloads["patch_stitch"]["expected_sampler"]["patch_batch_size"] == 1
 
 
 def test_public_repo_manifest_contains_public_sampler_settings(tmp_path):
@@ -327,6 +369,7 @@ def test_job_manifest_contains_expected_method_settings(tmp_path):
         "pnp_cg_iterations": 80,
         "pnp_cg_tolerance": 1e-6,
         "pnp_noise_level": 0.02,
+        "pnp_clip": True,
     }
 
 
@@ -348,6 +391,57 @@ def test_full_method_default_matrix_has_one_method_set_per_default_experiment(tm
         "patch_stitch",
         "padis_dps",
     }
+
+
+def test_full_lion_physics_matrix_uses_lipschitz_scaled_data_updates(tmp_path):
+    args = _args(
+        tmp_path,
+        "--methods",
+        "all",
+        "--experiments",
+        "paper_matrix",
+        "--implementations",
+        "lion_physics",
+    )
+
+    payloads = [job_json(args, job) for job in build_jobs(args)]
+    diffusion_methods = {
+        "whole_image_diffusion",
+        "langevin",
+        "predictor_corrector",
+        "ve_ddnm",
+        "patch_average",
+        "patch_stitch",
+        "padis_dps",
+    }
+    diffusion_payloads = [
+        payload for payload in payloads if payload["method"] in diffusion_methods
+    ]
+
+    assert len(payloads) == 26
+    assert len(diffusion_payloads) == 14
+    for payload in diffusion_payloads:
+        sampler = payload["expected_sampler"]
+        assert payload["implementation"] == "lion_physics"
+        assert sampler["noise_schedule"] == "geometric"
+        assert sampler["sigma_max"] == 10.0
+        assert sampler["data_consistency_gradient"] == "least_squares"
+        assert sampler["data_consistency_normalization"] == "operator_lipschitz"
+        assert sampler["data_consistency_scale"] == 1.0
+        assert sampler["adjoint_data_consistency_scale"] is None
+        assert sampler.get("data_consistency_scale") != 0.0405
+        assert sampler.get("adjoint_data_consistency_scale") != 0.1022
+        assert "public_repo" not in sampler.values()
+
+    sigma_by_experiment = {
+        payload["experiment"]: payload["expected_sampler"]["sigma_min"]
+        for payload in diffusion_payloads
+    }
+    assert sigma_by_experiment["ct_8"] == 0.003
+    assert sigma_by_experiment["ct_20"] == 0.002
+    assert sigma_by_experiment["ct_60"] == 0.002
+    assert sigma_by_experiment["ct_fanbeam_180"] == 0.002
+    assert sigma_by_experiment["ct_512_60"] == 0.002
 
 
 def test_paper_matrix_uses_method_specific_experiment_sets(tmp_path):

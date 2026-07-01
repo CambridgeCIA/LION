@@ -226,6 +226,7 @@ def test_pnp_reconstruction_runs_with_lion_operator_without_ct_backend():
         pnp_iterations=1,
         pnp_cg_iterations=5,
         pnp_cg_tolerance=1e-8,
+        pnp_clip=True,
         prog_bar=False,
     )
     measurement = torch.full((1, 8, 8), 0.25)
@@ -723,6 +724,7 @@ def test_fixed_overlap_patch_average_and_stitch_overlap_semantics(monkeypatch):
     params.patch_size = 4
     params.pad_width = 2
     params.patch_overlap = 1
+    params.patch_batch_size = None
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
     x = torch.zeros(1, 1, 12, 12)
     sigma = torch.tensor([0.02])
@@ -753,6 +755,96 @@ def test_fixed_overlap_patch_average_and_stitch_overlap_semantics(monkeypatch):
     assert stitch[0, 0, 5, 5] == 5
     assert torch.count_nonzero(average[:, :, : params.pad_width]) == 0
     assert torch.count_nonzero(stitch[:, :, : params.pad_width]) == 0
+
+
+def test_fixed_overlap_patch_denoising_respects_patch_batch_size(monkeypatch):
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.patch_size = 4
+    params.pad_width = 2
+    params.patch_overlap = 1
+    params.patch_batch_size = 2
+    reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
+    x = torch.zeros(1, 1, 12, 12)
+    sigma = torch.tensor([0.02])
+    layout = reconstructor._fixed_overlap_patch_layout((8, 8), params)
+    chunk_sizes = []
+
+    def chunked_denoise(image_batch, position_batch, sigma, params, **kwargs):
+        del position_batch, sigma, params, kwargs
+        chunk_sizes.append(image_batch.shape[0])
+        return torch.ones_like(image_batch)
+
+    monkeypatch.setattr(reconstructor, "_edm_denoise_batch", chunked_denoise)
+
+    output = reconstructor._denoise_fixed_overlap_patches(
+        x, sigma, layout, params, assembly="fixed_average"
+    )
+
+    assert output.shape == x.shape
+    assert chunk_sizes
+    assert max(chunk_sizes) <= params.patch_batch_size
+    assert sum(chunk_sizes) == len(layout.indices)
+
+
+def test_regular_patch_denoising_respects_patch_batch_size(monkeypatch):
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.patch_size = 4
+    params.pad_width = 2
+    params.patch_batch_size = 2
+    params.patch_checkpoint_denoiser = True
+    reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
+    x = torch.zeros(1, 1, 12, 12)
+    sigma = torch.tensor([0.02])
+    generator = torch.Generator().manual_seed(1)
+    layout = reconstructor._patch_layout((8, 8), params, torch.device("cpu"), generator)
+    chunk_sizes = []
+    checkpoint_flags = []
+
+    def chunked_denoise(image_batch, position_batch, sigma, params, **kwargs):
+        del position_batch, sigma, params
+        chunk_sizes.append(image_batch.shape[0])
+        checkpoint_flags.append(kwargs.get("use_checkpoint"))
+        return torch.ones_like(image_batch)
+
+    monkeypatch.setattr(reconstructor, "_edm_denoise_batch", chunked_denoise)
+
+    output = reconstructor._denoise_patches(x, sigma, layout, params)
+
+    assert output.shape == x.shape
+    assert chunk_sizes
+    assert max(chunk_sizes) <= params.patch_batch_size
+    assert sum(chunk_sizes) == len(layout.indices)
+    assert all(checkpoint_flags)
+
+
+def test_regular_patch_denoising_honours_legacy_checkpoint_alias(monkeypatch):
+    model = ZeroPatchModel()
+    params = _sampler_params(model)
+    params.patch_size = 4
+    params.pad_width = 2
+    params.patch_batch_size = 2
+    params.fixed_overlap_checkpoint_denoiser = True
+    reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
+    x = torch.zeros(1, 1, 12, 12)
+    sigma = torch.tensor([0.02])
+    generator = torch.Generator().manual_seed(1)
+    layout = reconstructor._patch_layout((8, 8), params, torch.device("cpu"), generator)
+    checkpoint_flags = []
+
+    def chunked_denoise(image_batch, position_batch, sigma, params, **kwargs):
+        del position_batch, sigma, params
+        checkpoint_flags.append(kwargs.get("use_checkpoint"))
+        return torch.ones_like(image_batch)
+
+    monkeypatch.setattr(reconstructor, "_edm_denoise_batch", chunked_denoise)
+
+    output = reconstructor._denoise_patches(x, sigma, layout, params)
+
+    assert output.shape == x.shape
+    assert checkpoint_flags
+    assert all(checkpoint_flags)
 
 
 def test_fixed_overlap_patch_denoising_can_checkpoint_batches(monkeypatch):
@@ -1029,6 +1121,7 @@ def test_padis_data_gradient_normalization_uses_measurement_lipschitz_constant()
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.measurement_scale = 3.0
+    params.measurement_offset = 7.0
     params.operator_norm = 5.0
     params.data_consistency_normalization = "operator_lipschitz"
     reconstructor = PaDIS(ScaledIdentityOp(5.0), model, params)

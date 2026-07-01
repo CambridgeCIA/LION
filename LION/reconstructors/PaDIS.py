@@ -93,6 +93,7 @@ class PaDIS(LIONReconstructor):
         params.clip_denoised = False
         params.clip_state = False
         params.patch_batch_size = None
+        params.patch_checkpoint_denoiser = False
         params.langevin_ddnm = False
         params.ddnm_pseudoinverse_clip = False
         params.ddnm_projected_pseudoinverse_clip = False
@@ -697,39 +698,51 @@ class PaDIS(LIONReconstructor):
                 "PaDIS patch denoising expects a single padded image batch."
             )
 
-        image_patches = []
-        position_patches = []
         positions = (
             self._position_grid(x)
             if int(getattr(self.model.model_parameters, "input_position_channels", 2))
             > 0
             else None
         )
-        for top, bottom, left, right in layout.indices:
-            image_patches.append(x[:, :, top:bottom, left:right])
-            if positions is not None:
-                position_patches.append(positions[:, :, top:bottom, left:right])
-
-        image_batch = torch.cat(image_patches, dim=0)
-        position_batch = (
-            torch.cat(position_patches, dim=0) if positions is not None else None
-        )
-        denoised_batch = self._edm_denoise_batch(
-            image_batch,
-            position_batch,
-            sigma,
-            params,
-            use_checkpoint=bool(
-                getattr(params, "fixed_overlap_checkpoint_denoiser", False)
-            ),
-        )
+        patch_batch_size = getattr(params, "patch_batch_size", None)
+        if patch_batch_size is None:
+            patch_batch_size = len(layout.indices)
+        patch_batch_size = int(patch_batch_size)
+        if patch_batch_size <= 0:
+            raise ValueError("patch_batch_size must be positive or None.")
+        use_checkpoint = self._use_patch_checkpoint_denoiser(params)
 
         output = torch.zeros_like(x)
-        cursor = 0
-        for top, bottom, left, right in layout.indices:
-            output[:, :, top:bottom, left:right] += denoised_batch[cursor : cursor + 1]
-            output[:, :, top:bottom, left:right] -= x[:, :, top:bottom, left:right]
-            cursor += 1
+        for chunk_start in range(0, len(layout.indices), patch_batch_size):
+            chunk_indices = layout.indices[chunk_start : chunk_start + patch_batch_size]
+            image_batch = torch.cat(
+                [
+                    x[:, :, top:bottom, left:right]
+                    for top, bottom, left, right in chunk_indices
+                ],
+                dim=0,
+            )
+            position_batch = None
+            if positions is not None:
+                position_batch = torch.cat(
+                    [
+                        positions[:, :, top:bottom, left:right]
+                        for top, bottom, left, right in chunk_indices
+                    ],
+                    dim=0,
+                )
+            denoised_batch = self._edm_denoise_batch(
+                image_batch,
+                position_batch,
+                sigma,
+                params,
+                use_checkpoint=use_checkpoint,
+            )
+            for offset, (top, bottom, left, right) in enumerate(chunk_indices):
+                output[:, :, top:bottom, left:right] += denoised_batch[
+                    offset : offset + 1
+                ]
+                output[:, :, top:bottom, left:right] -= x[:, :, top:bottom, left:right]
         denoised = x + output
         if bool(getattr(params, "consume_denoise_output_noise", False)):
             _ = self._sample_noise(denoised, generator)
@@ -824,6 +837,13 @@ class PaDIS(LIONReconstructor):
             raise ValueError("Fixed-overlap patch layout produced no valid patches.")
         return _PatchLayout(indices, height, width)
 
+    @staticmethod
+    def _use_patch_checkpoint_denoiser(params) -> bool:
+        return bool(
+            getattr(params, "patch_checkpoint_denoiser", False)
+            or getattr(params, "fixed_overlap_checkpoint_denoiser", False)
+        )
+
     def _denoise_fixed_overlap_patches(
         self,
         x: torch.Tensor,
@@ -839,51 +859,63 @@ class PaDIS(LIONReconstructor):
                 "Fixed-overlap patch denoising expects a single padded image batch."
             )
 
-        image_patches = []
-        position_patches = []
         positions = (
             self._position_grid(x)
             if int(getattr(self.model.model_parameters, "input_position_channels", 2))
             > 0
             else None
         )
-        for top, bottom, left, right in layout.indices:
-            image_patches.append(x[:, :, top:bottom, left:right])
-            if positions is not None:
-                position_patches.append(positions[:, :, top:bottom, left:right])
-
-        image_batch = torch.cat(image_patches, dim=0)
-        position_batch = (
-            torch.cat(position_patches, dim=0) if positions is not None else None
-        )
-        denoised_batch = self._edm_denoise_batch(
-            image_batch,
-            position_batch,
-            sigma,
-            params,
-            use_checkpoint=bool(
-                getattr(params, "fixed_overlap_checkpoint_denoiser", False)
-            ),
-        )
+        patch_batch_size = getattr(params, "patch_batch_size", None)
+        if patch_batch_size is None:
+            patch_batch_size = len(layout.indices)
+        patch_batch_size = int(patch_batch_size)
+        if patch_batch_size <= 0:
+            raise ValueError("patch_batch_size must be positive or None.")
+        use_checkpoint = self._use_patch_checkpoint_denoiser(params)
 
         output = torch.zeros_like(x)
         if assembly == "fixed_average":
             counts = torch.zeros_like(x)
         else:
             counts = None
-        cursor = 0
-        for top, bottom, left, right in layout.indices:
-            patch = denoised_batch[cursor : cursor + 1]
-            if assembly == "fixed_average":
-                output[:, :, top:bottom, left:right] += patch
-                counts[:, :, top:bottom, left:right] += 1
-            elif assembly == "fixed_stitch":
-                output[:, :, top:bottom, left:right] = patch
-            else:
-                raise ValueError(
-                    "patch_assembly must be 'padis', 'fixed_average', or 'fixed_stitch'."
+        for chunk_start in range(0, len(layout.indices), patch_batch_size):
+            chunk_indices = layout.indices[chunk_start : chunk_start + patch_batch_size]
+            image_batch = torch.cat(
+                [
+                    x[:, :, top:bottom, left:right]
+                    for top, bottom, left, right in chunk_indices
+                ],
+                dim=0,
+            )
+            position_batch = None
+            if positions is not None:
+                position_batch = torch.cat(
+                    [
+                        positions[:, :, top:bottom, left:right]
+                        for top, bottom, left, right in chunk_indices
+                    ],
+                    dim=0,
                 )
-            cursor += 1
+            denoised_batch = self._edm_denoise_batch(
+                image_batch,
+                position_batch,
+                sigma,
+                params,
+                use_checkpoint=use_checkpoint,
+            )
+
+            for offset, (top, bottom, left, right) in enumerate(chunk_indices):
+                patch = denoised_batch[offset : offset + 1]
+                if assembly == "fixed_average":
+                    output[:, :, top:bottom, left:right] += patch
+                    counts[:, :, top:bottom, left:right] += 1
+                elif assembly == "fixed_stitch":
+                    output[:, :, top:bottom, left:right] = patch
+                else:
+                    raise ValueError(
+                        "patch_assembly must be 'padis', 'fixed_average', "
+                        "or 'fixed_stitch'."
+                    )
 
         if assembly == "fixed_average":
             output = torch.where(counts > 0, output / counts.clamp_min(1), x)

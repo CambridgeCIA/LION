@@ -127,6 +127,7 @@ def test_reconstruction_smoke_defaults_cover_validated_quality_rows(tmp_path):
         "predictor_corrector",
         "ve_ddnm",
     ]
+    assert {job["implementation"] for job in jobs} == {"lion_physics"}
 
 
 def test_standalone_reconstruction_submitter_writes_manifest_and_verifier_env(
@@ -196,11 +197,7 @@ def test_standalone_reconstruction_submitter_full_default_matrix_with_checkpoint
         "padis_dps": 5,
     }
     assert {job["geometry"] for job in jobs} == {"lion"}
-    assert {job["implementation"] for job in jobs} == {
-        "paper",
-        "public_repo",
-        "lion_quality",
-    }
+    assert {job["implementation"] for job in jobs} == {"lion_physics"}
     no_prior_jobs = [
         job for job in jobs if job["method"] in {"baseline", "admm_tv", "pnp_admm"}
     ]
@@ -219,6 +216,16 @@ def test_reconstruction_array_passes_dash_prefixed_extra_args_with_equals():
     text = RECONSTRUCTION_ARRAY.read_text()
 
     assert 'CMD+=("--reconstruction-arg=$item")' in text
+
+
+def test_reconstruction_array_defaults_to_fragmentation_resistant_cuda_allocator():
+    text = RECONSTRUCTION_ARRAY.read_text()
+
+    assert (
+        'PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"'
+        in text
+    )
+    assert "export PYTORCH_CUDA_ALLOC_CONF" in text
 
 
 def test_standalone_reconstruction_submitter_records_extra_reconstruction_args(

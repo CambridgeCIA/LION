@@ -10,6 +10,9 @@ COMMON = LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh"
 SUBMIT_ALL_TRAINING = (
     LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_all_training.sh"
 )
+TRAINING_ARRAY = (
+    LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/slurm_PaDIS_A100_training_array.sh"
+)
 LEGACY_LIDC_256 = (
     LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/slurm_PaDIS_LIDC_256.sh"
 )
@@ -96,7 +99,7 @@ def test_a100_training_tasks_produce_matrix_checkpoint_filenames():
         if task["engine"] == "lidc512":
             produced_checkpoint = "padis_lidc_512.pt"
         elif "--prior-mode whole-image" in arguments:
-            produced_checkpoint = "whole_image_lidc_256.pt"
+            produced_checkpoint = "whole_image_lidc_256_min_val.pt"
         else:
             produced_checkpoint = "padis_lidc_256.pt"
 
@@ -123,6 +126,17 @@ def test_slurm_training_defaults_to_lion_dev_with_padis_dev_fallback():
             'LION_MAMBA_ENV_FALLBACKS="${LION_MAMBA_ENV_FALLBACKS:-padis-dev}"'
             in script
         )
+
+
+def test_a100_training_array_keeps_wandb_artifacts_enabled_by_default():
+    script = TRAINING_ARRAY.read_text()
+
+    assert 'PADIS_WANDB_MODE="${PADIS_WANDB_MODE:-online}"' in script
+    assert 'PADIS_NO_WANDB="${PADIS_NO_WANDB:-0}"' in script
+    assert 'NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-0}"' in script
+    assert 'if [ "$NO_WANDB_ARTIFACT" = "1" ]; then' in script
+    assert "wandb_args+=(--no-wandb-artifact)" in script
+    assert script.count('CMD+=("${wandb_args[@]}")') >= 2
 
 
 def _install_fake_sbatch(tmp_path):

@@ -782,6 +782,45 @@ def measurement_image_to_sampler_domain(image: torch.Tensor, params) -> torch.Te
     return (image - float(params.measurement_offset)) / scale
 
 
+def sampler_payload_with_runtime_scaling(
+    params, reconstructor: PaDIS, device: torch.device
+) -> dict:
+    payload = {
+        key: value for key, value in params.__dict__.items() if not key.startswith("_")
+    }
+    normalization = payload.get("data_consistency_normalization", "none")
+    if normalization not in ("operator_norm", "operator_lipschitz"):
+        return payload
+
+    operator_norm = payload.get("operator_norm")
+    if operator_norm is None:
+        cache = getattr(reconstructor, "_operator_norm_cache", {})
+        operator_norm = cache.get((device.type, device.index))
+        if operator_norm is None:
+            operator_norm = next(
+                (
+                    value
+                    for (cache_type, _cache_index), value in cache.items()
+                    if cache_type == device.type
+                ),
+                None,
+            )
+    if operator_norm is None:
+        return payload
+
+    operator_norm = float(operator_norm)
+    measurement_operator_norm = abs(float(params.measurement_scale)) * operator_norm
+    payload["operator_norm_estimate"] = operator_norm
+    payload["measurement_operator_norm"] = measurement_operator_norm
+    payload["data_lipschitz"] = measurement_operator_norm**2
+    payload["data_lipschitz_objective"] = "sum_squared_residual"
+    payload[
+        "data_lipschitz_measurement_map"
+    ] = "A(measurement_scale*x + measurement_offset)"
+    payload["data_lipschitz_offset_included"] = False
+    return payload
+
+
 def fdk_baseline(sinogram: torch.Tensor, reconstructor: PaDIS, params) -> torch.Tensor:
     with torch.no_grad():
         if reconstructor.geometry is None:
@@ -839,6 +878,8 @@ def pnp_reconstruction(
             max_iter=int(args.pnp_iterations),
             cg_max_iter=int(args.pnp_cg_iterations),
             cg_tol=float(args.pnp_cg_tolerance),
+            clip_min=0.0 if bool(args.pnp_clip) else None,
+            clip_max=1.0 if bool(args.pnp_clip) else None,
             prog_bar=bool(args.prog_bar),
         )
         reconstruction = measurement_image_to_sampler_domain(reconstruction, params)
@@ -897,6 +938,7 @@ def method_settings(args) -> dict:
             "pnp_noise_level": (
                 None if args.pnp_noise_level is None else float(args.pnp_noise_level)
             ),
+            "pnp_clip": bool(args.pnp_clip),
         }
     return {}
 
@@ -1493,12 +1535,20 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         )
         sampler_params.data_consistency_scale = quality_params.data_consistency_scale
     if args.implementation == "lion_physics":
+        experiment_key = (
+            spec.key if spec is not None else canonical_experiment_name(args.experiment)
+        )
         if args.method == "predictor_corrector":
             sampler_params.zeta = 4.25
             sampler_params.pc_snr = 0.08
         elif args.method == "langevin":
             sampler_params.zeta = 4.0
             sampler_params.sampling_epsilon = 0.5
+        elif (
+            args.method == "whole_image_diffusion"
+            and experiment_key == "ct_fanbeam_180"
+        ):
+            sampler_params.dps_epsilon = 0.5
         elif args.method in ("patch_average", "patch_stitch"):
             sampler_params.dps_epsilon = 0.5
     if args.method == "ve_ddnm":
@@ -1628,14 +1678,30 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.pad_width = args.pad_width
     if args.patch_assembly is not None:
         sampler_params.patch_assembly = args.patch_assembly
+    if (
+        args.method == "padis_dps"
+        and args.implementation == "lion_physics"
+        and args.experiment == "ct_512_60"
+    ):
+        # Memory-only control for the 512 paper row. The regular PaDIS patch
+        # path uses the generic denoiser checkpoint flag; the fixed-overlap
+        # alias is kept only for backward compatibility with older commands.
+        if args.patch_batch_size is None:
+            sampler_params.patch_batch_size = 1
+        if args.patch_checkpoint_denoiser is None:
+            sampler_params.patch_checkpoint_denoiser = True
     if args.method == "patch_average":
         sampler_params.patch_assembly = "fixed_average"
         sampler_params.fixed_overlap_checkpoint_denoiser = True
+        if args.patch_batch_size is None:
+            sampler_params.patch_batch_size = 1
         if args.implementation in ("public_repo", "lion_physics"):
             sampler_params.fixed_overlap_layout = "public_overlap"
     elif args.method == "patch_stitch":
         sampler_params.patch_assembly = "fixed_stitch"
         sampler_params.fixed_overlap_checkpoint_denoiser = True
+        if args.patch_batch_size is None:
+            sampler_params.patch_batch_size = 1
         if args.implementation in ("public_repo", "lion_physics"):
             sampler_params.fixed_overlap_layout = "public_tile"
     if args.patch_overlap is not None:
@@ -1646,6 +1712,8 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.fixed_overlap_checkpoint_denoiser = (
             args.fixed_overlap_checkpoint_denoiser
         )
+    if args.patch_checkpoint_denoiser is not None:
+        sampler_params.patch_checkpoint_denoiser = args.patch_checkpoint_denoiser
     return sampler_params
 
 
@@ -1902,11 +1970,9 @@ def run_reconstruction_variant(
         "prior_mode": getattr(sampler_params, "prior_mode", "patch"),
         "model_patch_size": int(getattr(model_params, "largest_patch_size", -1)),
         "method_settings": method_settings(args),
-        "sampler": {
-            key: value
-            for key, value in sampler_params.__dict__.items()
-            if not key.startswith("_")
-        },
+        "sampler": sampler_payload_with_runtime_scaling(
+            sampler_params, reconstructor, device
+        ),
         "metrics": metrics,
     }
     if experiment is not None:
@@ -2488,6 +2554,23 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--patch-size", type=int, default=None)
     parser.add_argument("--pad-width", type=int, default=None)
     parser.add_argument("--patch-batch-size", type=int, default=None)
+    parser.set_defaults(patch_checkpoint_denoiser=None)
+    parser.add_argument(
+        "--patch-checkpoint-denoiser",
+        dest="patch_checkpoint_denoiser",
+        action="store_true",
+        help=(
+            "Use activation checkpointing for ordinary PaDIS patch denoiser "
+            "batches. This reduces peak memory during DPS data-gradient steps "
+            "without changing the CT objective or sigma schedule."
+        ),
+    )
+    parser.add_argument(
+        "--no-patch-checkpoint-denoiser",
+        dest="patch_checkpoint_denoiser",
+        action="store_false",
+        help="Disable activation checkpointing for ordinary PaDIS patch denoiser batches.",
+    )
     parser.add_argument(
         "--patch-assembly",
         choices=("padis", "fixed_average", "fixed_stitch"),
@@ -2731,6 +2814,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pnp-eta", type=float, default=1e-4)
     parser.add_argument("--pnp-cg-iterations", type=int, default=100)
     parser.add_argument("--pnp-cg-tolerance", type=float, default=1e-7)
+    parser.set_defaults(pnp_clip=True)
+    parser.add_argument(
+        "--pnp-clip",
+        dest="pnp_clip",
+        action="store_true",
+        help="Clip PnP-ADMM iterates and denoiser outputs to the normalized image support [0, 1].",
+    )
+    parser.add_argument(
+        "--no-pnp-clip",
+        dest="pnp_clip",
+        action="store_false",
+        help="Disable PnP-ADMM iterate clipping.",
+    )
     parser.add_argument(
         "--pnp-noise-level",
         type=float,

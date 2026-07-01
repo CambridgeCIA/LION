@@ -61,6 +61,7 @@ def _args(method: str):
         pnp_iterations=1,
         pnp_cg_iterations=5,
         pnp_cg_tolerance=1e-8,
+        pnp_clip=True,
         tv_lambda=0.001,
         tv_iterations=1,
         tv_lipschitz=None,
@@ -176,6 +177,7 @@ def test_pnp_admm_driver_uses_lion_pnp_path(monkeypatch, tmp_path):
     assert metrics_payload["method_settings"]["pnp_checkpoint"] == "unused.pt"
     assert metrics_payload["method_settings"]["pnp_iterations"] == 1
     assert metrics_payload["method_settings"]["pnp_eta"] == 0.0
+    assert metrics_payload["method_settings"]["pnp_clip"] is True
     payload = torch.load(tmp_path / "pnp_admm" / "reconstructions.pt")
     assert payload["reconstructions"].shape == (1, 1, 8, 8)
 
@@ -208,6 +210,42 @@ def test_driver_can_record_ddnm_pseudoinverse_diagnostics(tmp_path):
     assert item["ddnm_pseudoinverse_diagnostic"]["formula"].startswith("A^dagger y + x")
     assert math.isinf(item["ddnm_perfect_denoiser_corrected_psnr"])
     assert math.isinf(summary["mean_ddnm_perfect_corrected_psnr"])
+
+
+def test_sampler_payload_records_effective_lipschitz_scaling():
+    params = _params()
+    params.data_consistency_normalization = "operator_lipschitz"
+    params.operator_norm = None
+    params.measurement_scale = 3.0
+    params.measurement_offset = 7.0
+    reconstructor = SimpleNamespace(_operator_norm_cache={("cpu", None): 5.0})
+
+    payload = recon_script.sampler_payload_with_runtime_scaling(
+        params, reconstructor, torch.device("cpu")
+    )
+
+    assert payload["operator_norm"] is None
+    assert payload["operator_norm_estimate"] == 5.0
+    assert payload["measurement_operator_norm"] == 15.0
+    assert payload["data_lipschitz"] == 225.0
+    assert payload["data_lipschitz_objective"] == "sum_squared_residual"
+    assert payload["data_lipschitz_offset_included"] is False
+
+
+def test_sampler_payload_falls_back_to_matching_device_type_cache_entry():
+    params = _params()
+    params.data_consistency_normalization = "operator_lipschitz"
+    params.operator_norm = None
+    params.measurement_scale = 2.0
+    reconstructor = SimpleNamespace(_operator_norm_cache={("cuda", 0): 7.0})
+
+    payload = recon_script.sampler_payload_with_runtime_scaling(
+        params, reconstructor, torch.device("cuda")
+    )
+
+    assert payload["operator_norm_estimate"] == 7.0
+    assert payload["measurement_operator_norm"] == 14.0
+    assert payload["data_lipschitz"] == 196.0
 
 
 def test_reconstruction_cli_validation_rejects_public_repo_for_methods_without_public_analogue():
@@ -304,6 +342,41 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
     assert dps_params.zeta == 3.0
     assert dps_params.sampling_epsilon == 1.0
 
+    whole_fanbeam_args = parser.parse_args(
+        [
+            "--method",
+            "whole_image_diffusion",
+            "--implementation",
+            "lion_physics",
+            "--experiment",
+            "ct_fanbeam_180",
+        ]
+    )
+    whole_fanbeam_params = recon_script.build_sampler_params(
+        whole_fanbeam_args, model=None, measurement_source="normal"
+    )
+    assert whole_fanbeam_params.prior_mode == "whole_image"
+    assert whole_fanbeam_params.dps_epsilon == 0.5
+    assert whole_fanbeam_params.data_consistency_gradient == "least_squares"
+    assert whole_fanbeam_params.data_consistency_normalization == "operator_lipschitz"
+
+    dps_512_args = parser.parse_args(
+        [
+            "--method",
+            "padis_dps",
+            "--implementation",
+            "lion_physics",
+            "--experiment",
+            "ct_512_60",
+        ]
+    )
+    dps_512_params = recon_script.build_sampler_params(
+        dps_512_args, model=None, measurement_source="normal"
+    )
+    assert dps_512_params.patch_batch_size == 1
+    assert dps_512_params.patch_checkpoint_denoiser is True
+    assert dps_512_params.fixed_overlap_checkpoint_denoiser is False
+
     pc_args = parser.parse_args(
         [
             "--method",
@@ -348,6 +421,7 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
     assert patch_average_params.patch_assembly == "fixed_average"
     assert patch_average_params.fixed_overlap_layout == "public_overlap"
     assert patch_average_params.fixed_overlap_checkpoint_denoiser is True
+    assert patch_average_params.patch_batch_size == 1
 
     patch_stitch_args = parser.parse_args(
         [
@@ -364,6 +438,7 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
     assert patch_stitch_params.patch_assembly == "fixed_stitch"
     assert patch_stitch_params.fixed_overlap_layout == "public_tile"
     assert patch_stitch_params.fixed_overlap_checkpoint_denoiser is True
+    assert patch_stitch_params.patch_batch_size == 1
 
     langevin_override_args = parser.parse_args(
         [

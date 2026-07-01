@@ -186,11 +186,18 @@ class PnP(LIONReconstructor):
         max_iter: int = 10,
         cg_max_iter: int = 100,
         cg_tol: float = 1e-7,
+        clip_min: float | None = None,
+        clip_max: float | None = None,
         prog_bar: bool = False,
     ) -> torch.Tensor:
         x = torch.zeros(self.op.domain_shape, device=measurement.device)
         v = torch.zeros(self.op.domain_shape, device=measurement.device)
         u = torch.zeros(self.op.domain_shape, device=measurement.device)
+
+        def clip_image(image: torch.Tensor) -> torch.Tensor:
+            if clip_min is None and clip_max is None:
+                return image
+            return image.clamp(min=clip_min, max=clip_max)
 
         def matmul_closure(x: torch.Tensor) -> torch.Tensor:
             return self.op.adjoint(self.op(x)) + eta * x
@@ -204,6 +211,7 @@ class PnP(LIONReconstructor):
             x = conjugate_gradient(
                 matmul_closure, d, x, max_iter=cg_max_iter, tol=cg_tol
             )
-            v = self.model(x + u)
+            x = clip_image(x)
+            v = clip_image(self.model(clip_image(x + u)))
             u = u + (x - v)
         return x

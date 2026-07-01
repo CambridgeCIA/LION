@@ -127,14 +127,14 @@ MODEL_TASKS = (
     ),
     ModelTask(
         "whole_lidc_default",
-        "whole_image_lidc_256.pt",
+        "whole_image_lidc_256_min_val.pt",
         "whole-image",
         False,
         ("ct_20", "ct_8", "ct_60", "ct_fanbeam_180"),
     ),
     ModelTask(
         "whole_lidc_full",
-        "whole_image_lidc_256.pt",
+        "whole_image_lidc_256_min_val.pt",
         "whole-image",
         False,
         ("ct_20",),
@@ -187,7 +187,7 @@ METHOD_TASKS = (
     MethodTask(
         "whole_image_diffusion",
         "whole_lidc_default",
-        "paper",
+        "lion_physics",
         "dps_langevin",
         (*_MAIN_CT_EXPERIMENTS, *_EXTRA_CT_EXPERIMENTS),
     ),
@@ -477,6 +477,16 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
 
     if job.method.name == "whole_image_diffusion":
         settings["prior_mode"] = "whole_image"
+        if job.implementation == "lion_physics" and job.experiment == "ct_fanbeam_180":
+            settings["dps_epsilon"] = 0.5
+    if (
+        job.method.name == "padis_dps"
+        and job.implementation == "lion_physics"
+        and job.experiment == "ct_512_60"
+    ):
+        settings["patch_checkpoint_denoiser"] = True
+        settings["fixed_overlap_checkpoint_denoiser"] = False
+        settings["patch_batch_size"] = 1
     if job.method.name == "predictor_corrector":
         settings["pc_snr"] = 0.08 if job.implementation == "lion_physics" else 0.16
         if job.implementation == "lion_physics":
@@ -521,6 +531,7 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
             else "lion_clipped"
         )
         settings["fixed_overlap_checkpoint_denoiser"] = True
+        settings["patch_batch_size"] = 1
     elif job.method.name == "patch_stitch":
         settings["patch_assembly"] = "fixed_stitch"
         if job.implementation == "lion_physics":
@@ -531,6 +542,7 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
             else "lion_clipped"
         )
         settings["fixed_overlap_checkpoint_denoiser"] = True
+        settings["patch_batch_size"] = 1
     return settings
 
 
@@ -560,6 +572,7 @@ def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -
             "pnp_noise_level": (
                 None if args.pnp_noise_level is None else float(args.pnp_noise_level)
             ),
+            "pnp_clip": True,
         }
     return {}
 
