@@ -264,12 +264,23 @@ from the LION root:
 scripts/paper_scripts/PaDIS/gcp/run_PaDIS_GCP_spot_training.sh
 ```
 
+On the retained GCP image, the runner auto-activates the `lion` Conda
+environment from `/mnt/data/conda` if no Conda environment is already active.
+You can still activate it manually first if preferred.
+
 Defaults match the retained instance layout:
 
 ```text
 LION_DATA_PATH=/mnt/data/Datasets
 PADIS_TRAIN_ROOT=/mnt/data/Datasets/experiments/PaDIS/final_real_runs/gcp_spot_training
 PADIS_RAM_DISK=/mnt/ram-disk
+```
+
+Mount the RAM cache directory before running:
+
+```bash
+sudo mkdir -p /mnt/ram-disk
+sudo mount -t tmpfs -o size=300g tmpfs /mnt/ram-disk
 ```
 
 The runner uses up to four visible GPUs and assigns one model per GPU. It trains

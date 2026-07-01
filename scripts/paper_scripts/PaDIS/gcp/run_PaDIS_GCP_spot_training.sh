@@ -32,7 +32,8 @@ time_to_seconds() {
 }
 
 activate_environment() {
-        local mamba_bin env_candidates env_name activated conda_lib
+        local mamba_bin conda_bin conda_sh env_candidates env_name activated conda_lib
+        local env_list
 
         if [ "${PADIS_GCP_SKIP_ENV_ACTIVATE:-0}" = "1" ]; then
                 log "Skipping environment activation because PADIS_GCP_SKIP_ENV_ACTIVATE=1."
@@ -52,35 +53,84 @@ activate_environment() {
                 mamba_bin="$(command -v mamba)"
         fi
 
-        if [ -z "$mamba_bin" ]; then
-                if ! command -v python >/dev/null 2>&1; then
-                        die \
-                                "No active Python and no mamba found." \
-                                "Activate the LION environment or set MAMBA_ROOT_PREFIX."
-                fi
-                log "No mamba found; using python from PATH: $(command -v python)."
+        env_list="$(
+                printf '%s %s %s %s\n' \
+                        "${LION_CONDA_ENV:-}" \
+                        "${LION_MAMBA_ENV:-}" \
+                        "lion" \
+                        "${LION_CONDA_ENV_FALLBACKS:-lion-dev padis-dev}"
+        )"
+        read -r -a env_candidates <<< "$env_list"
+
+        if [ -n "$mamba_bin" ]; then
+                eval "$("$mamba_bin" shell hook --shell bash)"
+                activated=""
+                for env_name in "${env_candidates[@]}"; do
+                        if [ -z "$env_name" ]; then
+                                continue
+                        fi
+                        if mamba activate "$env_name"; then
+                                activated="$env_name"
+                                break
+                        fi
+                done
+                [ -n "$activated" ] || die \
+                        "Failed to activate any mamba environment from: ${env_candidates[*]}"
+                LION_CONDA_ENV="$activated"
+                LION_MAMBA_ENV="$activated"
+                conda_lib="${CONDA_PREFIX:-${MAMBA_ROOT_PREFIX:-$HOME/miniforge3}/envs/$activated}/lib"
+                export LION_CONDA_ENV LION_MAMBA_ENV LD_LIBRARY_PATH="$conda_lib:${LD_LIBRARY_PATH:-}"
+                log "Activated $activated using mamba."
                 return
         fi
 
-        eval "$("$mamba_bin" shell hook --shell bash)"
-        LION_MAMBA_ENV="${LION_MAMBA_ENV:-lion-dev}"
-        LION_MAMBA_ENV_FALLBACKS="${LION_MAMBA_ENV_FALLBACKS:-padis-dev}"
-        read -r -a env_candidates <<< "$LION_MAMBA_ENV ${LION_MAMBA_ENV_FALLBACKS:-}"
-        activated=""
-        for env_name in "${env_candidates[@]}"; do
-                if [ -z "$env_name" ]; then
-                        continue
+        conda_bin=""
+        if [ -n "${CONDA_EXE:-}" ] && [ -x "$CONDA_EXE" ]; then
+                conda_bin="$CONDA_EXE"
+        elif [ -x /mnt/data/conda/miniconda3/bin/conda ]; then
+                conda_bin="/mnt/data/conda/miniconda3/bin/conda"
+        elif command -v conda >/dev/null 2>&1; then
+                conda_bin="$(command -v conda)"
+        fi
+
+        if [ -n "$conda_bin" ]; then
+                conda_sh="$(cd "$(dirname "$conda_bin")/.." && pwd -P)/etc/profile.d/conda.sh"
+                if [ -f "$conda_sh" ]; then
+                        # shellcheck source=/dev/null
+                        . "$conda_sh"
+                else
+                        eval "$("$conda_bin" shell.bash hook)"
                 fi
-                if mamba activate "$env_name"; then
-                        activated="$env_name"
-                        break
-                fi
-        done
-        [ -n "$activated" ] || die "Failed to activate any mamba environment from: ${env_candidates[*]}"
-        LION_MAMBA_ENV="$activated"
-        conda_lib="${CONDA_PREFIX:-${MAMBA_ROOT_PREFIX:-$HOME/miniforge3}/envs/$LION_MAMBA_ENV}/lib"
-        export LION_MAMBA_ENV LD_LIBRARY_PATH="$conda_lib:${LD_LIBRARY_PATH:-}"
-        log "Activated $LION_MAMBA_ENV using mamba."
+                activated=""
+                for env_name in "${env_candidates[@]}"; do
+                        if [ -z "$env_name" ]; then
+                                continue
+                        fi
+                        if conda activate "$env_name"; then
+                                activated="$env_name"
+                                break
+                        fi
+                done
+                [ -n "$activated" ] || die \
+                        "Failed to activate any conda environment from: ${env_candidates[*]}"
+                LION_CONDA_ENV="$activated"
+                conda_lib="${CONDA_PREFIX:-$(dirname "$(dirname "$conda_bin")")/envs/$activated}/lib"
+                export LION_CONDA_ENV LD_LIBRARY_PATH="$conda_lib:${LD_LIBRARY_PATH:-}"
+                log "Activated $activated using conda."
+                return
+        fi
+
+        if ! command -v python >/dev/null 2>&1; then
+                die \
+                        "No active Python, mamba, or conda found." \
+                        "Activate the LION environment or set CONDA_EXE/MAMBA_EXE."
+        fi
+        if ! python -c "import torch" >/dev/null 2>&1; then
+                die \
+                        "No conda/mamba environment could be activated, and PATH python lacks torch." \
+                        "Activate the LION conda environment before running."
+        fi
+        log "No conda or mamba found; using python from PATH: $(command -v python)."
 }
 
 discover_gpu_ids() {
@@ -503,12 +553,36 @@ stage_cache_variant() {
         fi
 }
 
+ensure_ramdisk_mount() {
+        local fs_type
+        mkdir -p "$PADIS_RAM_DISK"
+        fs_type=""
+        if command -v findmnt >/dev/null 2>&1; then
+                fs_type="$(findmnt -n -o FSTYPE --target "$PADIS_RAM_DISK" 2>/dev/null || true)"
+        else
+                fs_type="$(stat -f -c %T "$PADIS_RAM_DISK" 2>/dev/null || true)"
+        fi
+        case "$fs_type" in
+                tmpfs|ramfs)
+                        return
+                        ;;
+        esac
+        if [ "${PADIS_GCP_ALLOW_NON_TMPFS_RAMDISK:-0}" = "1" ]; then
+                log "WARNING: $PADIS_RAM_DISK is backed by '$fs_type', not tmpfs/ramfs."
+                return
+        fi
+        die \
+                "$PADIS_RAM_DISK is not a tmpfs/ramfs mount." \
+                "Mount it first, or set PADIS_GCP_ALLOW_NON_TMPFS_RAMDISK=1 to override."
+}
+
 stage_ramdisk_caches() {
         local variants variant
         if [ "$PADIS_GCP_STAGE_CACHES" != "1" ]; then
                 log "Skipping ramdisk cache staging because PADIS_GCP_STAGE_CACHES=$PADIS_GCP_STAGE_CACHES."
                 return
         fi
+        ensure_ramdisk_mount
         mkdir -p "$PADIS_RAM_DISK" "$PADIS_256_CACHE_FOLDER" "$PADIS_512_CACHE_FOLDER" "$STATE_DIR/cache_builds"
         variants="${PADIS_GCP_CACHE_VARIANTS//,/ }"
         for variant in $variants; do
