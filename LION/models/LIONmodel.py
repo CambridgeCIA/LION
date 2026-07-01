@@ -43,6 +43,7 @@ from abc import ABC, abstractmethod, ABCMeta
 # Some other imports
 import warnings
 from pathlib import Path
+import inspect
 
 
 class ModelInputType(int, Enum):
@@ -354,7 +355,8 @@ class LIONmodel(nn.Module, ABC):
         )
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
-        if hasattr(options, "geometry"):
+        sig = inspect.signature(cls.__init__)
+        if hasattr(options, "geometry") and "geometry" in sig.parameters:
             model = cls(
                 model_parameters=options.model_parameters,
                 geometry=options.geometry,
@@ -384,7 +386,8 @@ class LIONmodel(nn.Module, ABC):
         data = LIONmodel._load_data(fname, supress_warnings=True)
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
-        if hasattr(options, "geometry"):
+        sig = inspect.signature(cls.__init__)
+        if hasattr(options, "geometry") and "geometry" in sig.parameters:
             model = cls(
                 model_parameters=options.model_parameters,
                 geometry=options.geometry,
