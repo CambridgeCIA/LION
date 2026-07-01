@@ -33,6 +33,7 @@ time_to_seconds() {
 
 activate_environment() {
         local mamba_bin conda_bin conda_sh env_candidates env_name activated conda_lib
+        local default_conda_envs_path default_lion_env_prefix
         local env_list
 
         if [ "${PADIS_GCP_SKIP_ENV_ACTIVATE:-0}" = "1" ]; then
@@ -42,6 +43,12 @@ activate_environment() {
         if [ -n "${CONDA_PREFIX:-}" ] && command -v python >/dev/null 2>&1; then
                 log "Using active Python environment at $CONDA_PREFIX."
                 return
+        fi
+
+        default_conda_envs_path="${CONDA_ENVS_PATH:-/mnt/data/conda/envs}"
+        default_lion_env_prefix="${LION_CONDA_ENV:-$default_conda_envs_path/lion}"
+        if [ -d "$default_conda_envs_path" ]; then
+                export CONDA_ENVS_PATH="$default_conda_envs_path"
         fi
 
         mamba_bin=""
@@ -54,11 +61,12 @@ activate_environment() {
         fi
 
         env_list="$(
-                printf '%s %s %s %s\n' \
+                printf '%s %s %s %s %s\n' \
                         "${LION_CONDA_ENV:-}" \
                         "${LION_MAMBA_ENV:-}" \
+                        "$default_lion_env_prefix" \
                         "lion" \
-                        "${LION_CONDA_ENV_FALLBACKS:-lion-dev padis-dev}"
+                        "${LION_CONDA_ENV_FALLBACKS:-$default_conda_envs_path/lion-dev $default_conda_envs_path/padis-dev lion-dev padis-dev}"
         )"
         read -r -a env_candidates <<< "$env_list"
 
@@ -916,6 +924,10 @@ PADIS_PNP_VALIDATION_NAME="${PADIS_PNP_VALIDATION_NAME:-pnp_lidc_drunet_min_val.
 
 MPLCONFIGDIR="${MPLCONFIGDIR:-$PADIS_TRAIN_ROOT/matplotlib}"
 WANDB_DIR="${WANDB_DIR:-$PADIS_TRAIN_ROOT/wandb}"
+PADIS_WANDB_NETRC="${PADIS_WANDB_NETRC:-/mnt/data/.netrc}"
+if [ -z "${NETRC:-}" ] && [ -f "$PADIS_WANDB_NETRC" ]; then
+        NETRC="$PADIS_WANDB_NETRC"
+fi
 if [ "$PADIS_GCP_DRY_RUN" = "1" ]; then
         STATE_DIR="$PADIS_TRAIN_ROOT/.gcp_spot_dry_run"
 else
@@ -930,6 +942,10 @@ export LION_ROOT PADIS_RUN_ROOT PADIS_RUN_STAMP PADIS_TRAIN_ROOT
 export PADIS_DATA_FOLDER MPLCONFIGDIR WANDB_DIR PYTHONUNBUFFERED=1
 export OMP_NUM_THREADS=1 PYTHONHASHSEED="$PADIS_SEED"
 export PADIS_WANDB_PROJECT PADIS_WANDB_ENTITY PADIS_WANDB_MODE PADIS_NO_WANDB
+export PADIS_WANDB_NETRC
+if [ -n "${NETRC:-}" ]; then
+        export NETRC
+fi
 
 mkdir -p \
         "$PADIS_TRAIN_ROOT" \

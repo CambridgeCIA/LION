@@ -69,6 +69,22 @@ resolve_training_user() {
         printf 'root\n'
 }
 
+resolve_user_home() {
+        local user="$1"
+        local home_dir
+        home_dir=""
+        if command -v getent >/dev/null 2>&1; then
+                home_dir="$(getent passwd "$user" 2>/dev/null | cut -d: -f6 || true)"
+        fi
+        if [ -n "$home_dir" ]; then
+                printf '%s\n' "$home_dir"
+        elif [ "$user" = "root" ]; then
+                printf '/root\n'
+        else
+                printf '/home/%s\n' "$user"
+        fi
+}
+
 ensure_data_mount() {
         mkdir -p "$PADIS_DATA_MOUNT"
         if mountpoint -q "$PADIS_DATA_MOUNT"; then
@@ -159,6 +175,40 @@ wait_for_gpu() {
         die "nvidia-smi did not become available within ${PADIS_GCP_GPU_WAIT_SECONDS}s."
 }
 
+ensure_wandb_netrc() {
+        local user_home home_netrc current_target
+        if [ ! -f "$PADIS_WANDB_NETRC" ]; then
+                log "W&B netrc not found at $PADIS_WANDB_NETRC; leaving W&B auth to the environment."
+                return
+        fi
+
+        NETRC="$PADIS_WANDB_NETRC"
+        export NETRC
+
+        if [ "$PADIS_GCP_STARTUP_DRY_RUN" = "1" ]; then
+                log "Dry-run: would configure W&B netrc from $PADIS_WANDB_NETRC for $PADIS_GCP_RUN_AS_USER."
+                return
+        fi
+
+        chmod 600 "$PADIS_WANDB_NETRC" 2>/dev/null || true
+        chown "$PADIS_GCP_RUN_AS_USER":"$PADIS_GCP_RUN_AS_USER" "$PADIS_WANDB_NETRC" 2>/dev/null || true
+
+        user_home="$(resolve_user_home "$PADIS_GCP_RUN_AS_USER")"
+        mkdir -p "$user_home"
+        home_netrc="$user_home/.netrc"
+        current_target="$(readlink "$home_netrc" 2>/dev/null || true)"
+        if [ -e "$home_netrc" ] || [ -L "$home_netrc" ]; then
+                if [ "$current_target" != "$PADIS_WANDB_NETRC" ]; then
+                        log "Leaving existing $home_netrc in place; exported NETRC=$NETRC for W&B."
+                        return
+                fi
+        else
+                ln -s "$PADIS_WANDB_NETRC" "$home_netrc"
+                chown -h "$PADIS_GCP_RUN_AS_USER":"$PADIS_GCP_RUN_AS_USER" "$home_netrc" 2>/dev/null || true
+        fi
+        log "Configured W&B netrc at $NETRC."
+}
+
 write_shell_assignment() {
         local name="$1"
         case "$name" in
@@ -176,7 +226,7 @@ write_env_file() {
                 local name
                 for name in $(compgen -v); do
                         case "$name" in
-                                LION_*|PADIS_*|CUDA_VISIBLE_DEVICES|MPLCONFIGDIR|OMP_NUM_THREADS|PYTHONUNBUFFERED|WANDB_DIR)
+                                LION_*|PADIS_*|CONDA_EXE|CONDA_ENVS_PATH|CUDA_VISIBLE_DEVICES|MPLCONFIGDIR|NETRC|OMP_NUM_THREADS|PYTHONUNBUFFERED|WANDB_DIR)
                                         write_shell_assignment "$name"
                                         ;;
                         esac
@@ -193,7 +243,7 @@ start_runner() {
         local runner_cmd
         mkdir -p "$PADIS_TRAIN_ROOT/.gcp_spot/logs"
         chown -R "$PADIS_GCP_RUN_AS_USER":"$PADIS_GCP_RUN_AS_USER" "$PADIS_TRAIN_ROOT" 2>/dev/null || true
-        runner_cmd="set -euo pipefail; source '$PADIS_GCP_ENV_FILE'; cd '$LION_ROOT'; nohup '$RUNNER_PATH' >> '$PADIS_GCP_RUNNER_LOG' 2>&1 &"
+        runner_cmd="set -euo pipefail; set -a; source '$PADIS_GCP_ENV_FILE'; set +a; cd '$LION_ROOT'; nohup '$RUNNER_PATH' >> '$PADIS_GCP_RUNNER_LOG' 2>&1 &"
         if runner_already_active; then
                 log "PaDIS GCP runner is already active for user $PADIS_GCP_RUN_AS_USER."
                 return
@@ -221,6 +271,10 @@ PADIS_DATA_MOUNT="${PADIS_DATA_MOUNT:-/mnt/data}"
 LION_ROOT="${LION_ROOT:-$PADIS_DATA_MOUNT/LION}"
 LION_DATA_PATH="${LION_DATA_PATH:-$PADIS_DATA_MOUNT/Datasets}"
 LION_EXPERIMENTS_PATH="${LION_EXPERIMENTS_PATH:-$LION_DATA_PATH/experiments}"
+PADIS_GCP_CONDA_ROOT="${PADIS_GCP_CONDA_ROOT:-$PADIS_DATA_MOUNT/conda}"
+CONDA_EXE="${CONDA_EXE:-$PADIS_GCP_CONDA_ROOT/miniconda3/bin/conda}"
+CONDA_ENVS_PATH="${CONDA_ENVS_PATH:-$PADIS_GCP_CONDA_ROOT/envs}"
+LION_CONDA_ENV="${LION_CONDA_ENV:-$CONDA_ENVS_PATH/lion}"
 PADIS_RUN_ROOT="${PADIS_RUN_ROOT:-$LION_EXPERIMENTS_PATH/PaDIS}"
 PADIS_GCP_RUN_NAME="${PADIS_GCP_RUN_NAME:-PaDIS-Reproduction-GCP}"
 PADIS_TRAIN_ROOT="${PADIS_TRAIN_ROOT:-$PADIS_RUN_ROOT/final_real_runs/$PADIS_GCP_RUN_NAME}"
@@ -229,6 +283,7 @@ PADIS_RAM_DISK_SIZE="${PADIS_RAM_DISK_SIZE:-}"
 PADIS_WANDB_PROJECT="${PADIS_WANDB_PROJECT:-PaDIS-Reproduction}"
 PADIS_WANDB_MODE="${PADIS_WANDB_MODE:-online}"
 WANDB_DIR="${WANDB_DIR:-$PADIS_TRAIN_ROOT/wandb}"
+PADIS_WANDB_NETRC="${PADIS_WANDB_NETRC:-$PADIS_DATA_MOUNT/.netrc}"
 PADIS_GCP_STARTUP_DRY_RUN="${PADIS_GCP_STARTUP_DRY_RUN:-0}"
 PADIS_GCP_START_RUNNER="${PADIS_GCP_START_RUNNER:-1}"
 PADIS_GCP_REQUIRE_NVIDIA_SMI="${PADIS_GCP_REQUIRE_NVIDIA_SMI:-1}"
@@ -245,8 +300,10 @@ ensure_ramdisk
 wait_for_gpu
 PADIS_GCP_RUN_AS_USER="$(resolve_training_user)"
 export LION_ROOT LION_DATA_PATH LION_EXPERIMENTS_PATH PADIS_RUN_ROOT
+export CONDA_EXE CONDA_ENVS_PATH LION_CONDA_ENV
 export PADIS_GCP_RUN_NAME PADIS_TRAIN_ROOT PADIS_RAM_DISK
-export PADIS_WANDB_PROJECT PADIS_WANDB_MODE WANDB_DIR PADIS_GCP_RUN_AS_USER
+export PADIS_WANDB_PROJECT PADIS_WANDB_MODE WANDB_DIR PADIS_WANDB_NETRC PADIS_GCP_RUN_AS_USER
+ensure_wandb_netrc
 write_env_file
 if [ "$PADIS_GCP_START_RUNNER" = "1" ]; then
         start_runner

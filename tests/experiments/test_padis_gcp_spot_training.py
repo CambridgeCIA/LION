@@ -204,6 +204,9 @@ def test_gcp_startup_hook_dry_run_prepares_env_and_runner_command(tmp_path):
     runner_dir.mkdir(parents=True)
     runner_path = runner_dir / "run_PaDIS_GCP_spot_training.sh"
     runner_path.symlink_to(GCP_RUNNER)
+    netrc_path = data_mount / ".netrc"
+    netrc_path.write_text("machine api.wandb.ai\n  login user\n  password test-key\n")
+    netrc_path.chmod(0o600)
     run_root = data_mount / "Datasets/experiments/PaDIS"
     env = {
         **os.environ,
@@ -235,6 +238,8 @@ def test_gcp_startup_hook_dry_run_prepares_env_and_runner_command(tmp_path):
     env_text = env_file.read_text()
     assert f"LION_ROOT={lion_root}" in env_text
     assert f"PADIS_TRAIN_ROOT={train_root}" in env_text
+    assert f"PADIS_WANDB_NETRC={netrc_path}" in env_text
+    assert f"NETRC={netrc_path}" in env_text
     assert "PADIS_GCP_GPU_IDS=0\\,1\\,2\\,3" in env_text
     assert "PADIS_GCP_TASK_ORDER=patch_lidc_default" in env_text
     mem_total_kb = next(
@@ -247,6 +252,7 @@ def test_gcp_startup_hook_dry_run_prepares_env_and_runner_command(tmp_path):
         100 * 1024 * 1024 * 1024,
     )
     assert f"size {expected_ramdisk_size}" in result.stdout
+    assert "Dry-run: would configure W&B netrc" in result.stdout
     assert "Dry-run runner command" in result.stdout
     assert str(runner_path) in result.stdout
 
