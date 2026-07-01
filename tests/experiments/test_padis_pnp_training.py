@@ -1,5 +1,13 @@
+import warnings
+
 import pytest
 import torch
+
+warnings.filterwarnings(
+    "ignore",
+    message="`torch.jit.script` is deprecated",
+    category=DeprecationWarning,
+)
 
 from scripts.paper_scripts.PaDIS.PaDIS_LIDC_256 import run_prefix_for_prior_mode
 from scripts.paper_scripts.PaDIS.PaDIS_LIDC_PnP_denoiser import (

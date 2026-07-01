@@ -145,7 +145,7 @@ discover_gpu_ids() {
         raw_ids="${raw_ids:-0}"
         raw_ids="${raw_ids//,/ }"
 
-        max_gpus="${PADIS_GCP_MAX_GPUS:-4}"
+        max_gpus="${PADIS_GCP_MAX_GPUS:-1}"
         GPU_IDS=()
         count=0
         for gpu in $raw_ids; do
@@ -218,6 +218,79 @@ write_task_elapsed_seconds() {
         local path="$RUNTIME_DIR/$task_name.seconds"
         printf '%s\n' "$seconds" > "$path.tmp"
         mv "$path.tmp" "$path"
+}
+
+read_marker_value() {
+        local marker="$1"
+        local key="$2"
+        local line
+        line="$(grep -m 1 "^${key}=" "$marker" 2>/dev/null || true)"
+        if [ -n "$line" ]; then
+                printf '%s\n' "${line#*=}"
+        fi
+}
+
+write_running_task_metadata() {
+        local task_name="$1"
+        local gpu_id="$2"
+        local start_total="$3"
+        local start_epoch="$4"
+        local child_pid="$5"
+        local monitor_pid="$6"
+        local log_path="$7"
+        local marker="$RUNNING_DIR/$task_name.running"
+        local tmp="$marker.tmp.$BASHPID"
+        {
+                printf 'task=%s\n' "$task_name"
+                printf 'gpu=%s\n' "$gpu_id"
+                printf 'pid=%s\n' "$$"
+                printf 'worker_pid=%s\n' "$BASHPID"
+                printf 'host=%s\n' "$(hostname)"
+                printf 'started=%s\n' "$(date --date="@$start_epoch" --iso-8601=seconds)"
+                printf 'start_epoch=%s\n' "$start_epoch"
+                printf 'start_elapsed=%s\n' "$start_total"
+                printf 'child_pid=%s\n' "$child_pid"
+                printf 'monitor_pid=%s\n' "$monitor_pid"
+                printf 'log_path=%s\n' "$log_path"
+        } > "$tmp"
+        mv "$tmp" "$marker"
+}
+
+refresh_active_runtimes() {
+        local marker task start_elapsed start_epoch now total
+        now="$(date +%s)"
+        for marker in "$RUNNING_DIR"/*.running; do
+                [ -e "$marker" ] || continue
+                task="$(read_marker_value "$marker" task)"
+                if [ -z "$task" ]; then
+                        task="${marker##*/}"
+                        task="${task%.running}"
+                fi
+                start_elapsed="$(read_marker_value "$marker" start_elapsed)"
+                start_epoch="$(read_marker_value "$marker" start_epoch)"
+                if [[ "$start_elapsed" =~ ^[0-9]+$ && "$start_epoch" =~ ^[0-9]+$ ]]; then
+                        total=$((start_elapsed + now - start_epoch))
+                        if [ "$total" -lt "$start_elapsed" ]; then
+                                total="$start_elapsed"
+                        fi
+                        write_task_elapsed_seconds "$task" "$total"
+                fi
+        done
+}
+
+terminate_active_children() {
+        local marker child_pid monitor_pid
+        for marker in "$RUNNING_DIR"/*.running; do
+                [ -e "$marker" ] || continue
+                child_pid="$(read_marker_value "$marker" child_pid)"
+                if [[ "$child_pid" =~ ^[0-9]+$ ]] && kill -0 "$child_pid" >/dev/null 2>&1; then
+                        kill -TERM "$child_pid" >/dev/null 2>&1 || true
+                fi
+                monitor_pid="$(read_marker_value "$marker" monitor_pid)"
+                if [[ "$monitor_pid" =~ ^[0-9]+$ ]] && kill -0 "$monitor_pid" >/dev/null 2>&1; then
+                        kill -TERM "$monitor_pid" >/dev/null 2>&1 || true
+                fi
+        done
 }
 
 remaining_budget_seconds() {
@@ -603,8 +676,10 @@ claim_next_task() {
                         continue
                 fi
                 {
+                        printf 'task=%s\n' "$task"
                         printf 'gpu=%s\n' "$gpu_id"
                         printf 'pid=%s\n' "$$"
+                        printf 'worker_pid=%s\n' "$BASHPID"
                         printf 'host=%s\n' "$(hostname)"
                         printf 'started=%s\n' "$(date --iso-8601=seconds)"
                 } > "$RUNNING_DIR/$task.running"
@@ -652,6 +727,14 @@ run_task_command() {
         child_pid="$!"
         record_runtime_while_running "$task_name" "$child_pid" "$start_total" "$start_epoch" &
         monitor_pid="$!"
+        write_running_task_metadata \
+                "$task_name" \
+                "$gpu_id" \
+                "$start_total" \
+                "$start_epoch" \
+                "$child_pid" \
+                "$monitor_pid" \
+                "$log_path"
 
         set +e
         wait "$child_pid"
@@ -745,8 +828,11 @@ write_manifest() {
 
 terminate_runner() {
         log "Termination requested; stopping child jobs. Rerun this script to resume."
+        refresh_active_runtimes
+        terminate_active_children
         kill $(jobs -pr) >/dev/null 2>&1 || true
         wait >/dev/null 2>&1 || true
+        refresh_active_runtimes
         exit 143
 }
 
@@ -757,7 +843,7 @@ LION_DATA_PATH="${LION_DATA_PATH:-/mnt/data/Datasets}"
 LION_EXPERIMENTS_PATH="${LION_EXPERIMENTS_PATH:-$LION_DATA_PATH/experiments}"
 export LION_DATA_PATH LION_EXPERIMENTS_PATH
 PADIS_RUN_ROOT="${PADIS_RUN_ROOT:-$(padis_default_run_root)}"
-PADIS_GCP_RUN_NAME="${PADIS_GCP_RUN_NAME:-gcp_spot_training}"
+PADIS_GCP_RUN_NAME="${PADIS_GCP_RUN_NAME:-PaDIS-Reproduction-GCP}"
 PADIS_RUN_STAMP="${PADIS_RUN_STAMP:-$PADIS_GCP_RUN_NAME}"
 PADIS_TRAIN_ROOT="${PADIS_TRAIN_ROOT:-$PADIS_RUN_ROOT/final_real_runs/$PADIS_GCP_RUN_NAME}"
 PADIS_PNP_OUTPUT_ROOT="${PADIS_PNP_OUTPUT_ROOT:-$PADIS_TRAIN_ROOT}"
@@ -782,7 +868,7 @@ PADIS_DATA_FOLDER="${PADIS_DATA_FOLDER:-}"
 PATCH_TRAIN_SECONDS="$(time_to_seconds "${PADIS_GCP_PATCH_TRAIN_TIME:-06:00:00}")"
 WHOLE_TRAIN_SECONDS="$(time_to_seconds "${PADIS_GCP_WHOLE_TRAIN_TIME:-18:00:00}")"
 PADIS_GCP_FINALIZE_SECONDS="${PADIS_GCP_FINALIZE_SECONDS:-900}"
-PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS="${PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS:-600}"
+PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS="${PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS:-300}"
 PADIS_GCP_MAX_PERIODIC_CHECKPOINTS="${PADIS_GCP_MAX_PERIODIC_CHECKPOINTS:-2}"
 PADIS_GCP_FINAL_PERIODIC_CHECKPOINTS="${PADIS_GCP_FINAL_PERIODIC_CHECKPOINTS:-1}"
 PADIS_GCP_RUNTIME_HEARTBEAT_SECONDS="${PADIS_GCP_RUNTIME_HEARTBEAT_SECONDS:-60}"
@@ -797,7 +883,7 @@ PADIS_WANDB_PROJECT="${PADIS_WANDB_PROJECT:-PaDIS-Reproduction}"
 PADIS_WANDB_ENTITY="${PADIS_WANDB_ENTITY:-}"
 PADIS_WANDB_MODE="${PADIS_WANDB_MODE:-online}"
 PADIS_NO_WANDB="${PADIS_NO_WANDB:-0}"
-PADIS_WANDB_NAME_PREFIX="${PADIS_WANDB_NAME_PREFIX:-PaDIS_GCP_${PADIS_RUN_STAMP}}"
+PADIS_WANDB_NAME_PREFIX="${PADIS_WANDB_NAME_PREFIX:-PaDIS-Reproduction-GCP}"
 
 PADIS_PNP_RUN_NAME="${PADIS_PNP_RUN_NAME:-pnp_lidc_drunet}"
 PADIS_PNP_BATCH_SIZE="${PADIS_PNP_BATCH_SIZE:-8}"

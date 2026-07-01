@@ -11,6 +11,7 @@ import pathlib
 import random
 import re
 import shutil
+import signal
 import subprocess
 import uuid
 
@@ -26,6 +27,10 @@ from LION.losses.PaDIS import PaDISDenoisingLoss
 from LION.models.diffusion import NCSNpp
 from LION.optimizers import PaDISSolver
 from LION.utils.paths import LION_EXPERIMENTS_PATH
+
+
+class TerminationRequested(Exception):
+    """Raised when the process receives a shutdown signal."""
 
 
 def make_run_folder(save_root, run_name, prefix):
@@ -76,6 +81,37 @@ def set_run_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
+
+
+def install_termination_handler():
+    previous_handler = signal.getsignal(signal.SIGTERM)
+
+    def request_stop(signum, _frame):
+        signal.signal(signum, signal.SIG_IGN)
+        raise TerminationRequested(f"Received signal {signum}")
+
+    signal.signal(signal.SIGTERM, request_stop)
+    return previous_handler
+
+
+def save_interruption_checkpoint(solver):
+    if solver.checkpoint_save_folder is None or solver.checkpoint_fname is None:
+        return
+    if getattr(solver, "train_loss", None) is None:
+        return
+    checkpoint_pattern = solver.checkpoint_fname
+    checkpoint_re = re.compile(
+        "^" + re.escape(checkpoint_pattern).replace(r"\*", r"(\d+)") + "$"
+    )
+    latest_index = 0
+    for path in solver.checkpoint_save_folder.glob(checkpoint_pattern):
+        if path.name.endswith(".ema.pt"):
+            continue
+        match = checkpoint_re.match(path.name)
+        if match is not None:
+            latest_index = max(latest_index, int(match.group(1)))
+    solver.save_checkpoint(latest_index)
+    print("Saved interruption checkpoint after shutdown signal.")
 
 
 def wandb_id_file(run_folder):
@@ -146,6 +182,12 @@ def init_wandb(args, run_folder, preset):
         print(f"Resuming WandB run id {run_id}")
 
     wandb_run = wandb.init(**init_kwargs)
+    wandb_run.define_metric("train/seen_patches")
+    wandb_run.define_metric("train/*", step_metric="train/seen_patches")
+    wandb_run.define_metric("optimizer/*", step_metric="train/seen_patches")
+    wandb_run.define_metric("timing/*", step_metric="train/seen_patches")
+    wandb_run.define_metric("validation/seen_patches")
+    wandb_run.define_metric("validation/*", step_metric="validation/seen_patches")
     save_wandb_id(run_folder, wandb_run)
     return wandb_run
 
@@ -161,7 +203,8 @@ def wandb_log_fn(wandb_run):
         return None
 
     def log_fn(metrics, step):
-        wandb_run.log(metrics, step=step)
+        _ = step
+        wandb_run.log(metrics)
 
     return log_fn
 
@@ -708,6 +751,7 @@ def main():
     run_folder = make_run_folder(args.save_folder, args.run_name, "padis_lidc_512")
     print(f"Saving PaDIS run to {run_folder}")
     wandb_run = init_wandb(args, run_folder, preset)
+    previous_sigterm_handler = install_termination_handler()
     solver = PaDISSolver(
         model,
         optimizer,
@@ -727,16 +771,21 @@ def main():
     solver.set_training(train_loader)
     solver.set_validation(validation_loader, validation_freq=10**12)
     try:
-        solver.train_for_patches(
-            args.target_patches,
-            validation_interval_patches=args.validation_interval_patches,
-            validation_max_patches=validation_max_patches,
-            checkpoint_interval_patches=args.checkpoint_interval_patches,
-            checkpoint_interval_seconds=args.checkpoint_interval_seconds,
-            log_interval_patches=args.log_interval_patches,
-            max_train_seconds=args.max_train_seconds,
-            log_fn=wandb_log_fn(wandb_run),
-        )
+        try:
+            solver.train_for_patches(
+                args.target_patches,
+                validation_interval_patches=args.validation_interval_patches,
+                validation_max_patches=validation_max_patches,
+                checkpoint_interval_patches=args.checkpoint_interval_patches,
+                checkpoint_interval_seconds=args.checkpoint_interval_seconds,
+                log_interval_patches=args.log_interval_patches,
+                max_train_seconds=args.max_train_seconds,
+                log_fn=wandb_log_fn(wandb_run),
+            )
+        except TerminationRequested as exc:
+            print(f"{exc}; saving resumable checkpoint before exit.")
+            save_interruption_checkpoint(solver)
+            raise SystemExit(143)
         if args.keep_final_periodic_checkpoints == 0:
             solver.clean_checkpoints()
         else:
@@ -751,6 +800,7 @@ def main():
             wandb_run, run_folder, log_artifact=not args.no_wandb_artifact
         )
     finally:
+        signal.signal(signal.SIGTERM, previous_sigterm_handler)
         if wandb_run is not None:
             wandb_run.finish()
 

@@ -284,21 +284,42 @@ Defaults match the retained instance layout:
 
 ```text
 LION_DATA_PATH=/mnt/data/Datasets
-PADIS_TRAIN_ROOT=/mnt/data/Datasets/experiments/PaDIS/final_real_runs/gcp_spot_training
+PADIS_TRAIN_ROOT=/mnt/data/Datasets/experiments/PaDIS/final_real_runs/PaDIS-Reproduction-GCP
 PADIS_RAM_DISK=/mnt/ram-disk
 ```
 
-Mount the RAM cache directory before running:
+For a managed instance group, configure the VM startup script to run the small
+metadata bootstrap:
+
+```bash
+scripts/paper_scripts/PaDIS/gcp/padis_gcp_spot_metadata_startup.sh
+```
+
+This bootstrap must be available before `/mnt/data` is mounted, so put it in
+instance-template metadata, a GCS startup-script URL, or the boot image. Set
+`PADIS_DATA_DEVICE=/dev/disk/by-id/<device>` if `/mnt/data` is not mounted by
+`/etc/fstab`. The bootstrap mounts the stateful data disk and then delegates to
+`/mnt/data/LION/scripts/paper_scripts/PaDIS/gcp/padis_gcp_spot_startup.sh`.
+
+The startup hook verifies or mounts `/mnt/data`, mounts `/mnt/ram-disk` as
+tmpfs sized to the smaller of 100 GB and 50% of system RAM, waits for
+`nvidia-smi`, writes the GCP runner environment file, and starts the runner as
+the owner of `/mnt/data/LION` so outputs are not root-owned. For manual runs
+without the startup hook, mount the RAM cache directory first:
 
 ```bash
 sudo mkdir -p /mnt/ram-disk
-sudo mount -t tmpfs -o size=300g tmpfs /mnt/ram-disk
+sudo mount -t tmpfs -o size=<min(100GB,50%-RAM)> tmpfs /mnt/ram-disk
 ```
 
-The runner uses up to four visible GPUs and assigns one model per GPU. It trains
-patch-based PaDIS models for 6 hours each, whole-image PaDIS models for 18
-hours each, and trains the PnP DRUNet to its epoch target. Rerunning the same
+The runner uses one visible GPU by default and assigns one model per GPU. Set
+`PADIS_GCP_MAX_GPUS` higher only when you want multiple concurrent workers. It
+trains patch-based PaDIS models for 6 hours each, whole-image PaDIS models for
+18 hours each, and trains the PnP DRUNet to its epoch target. Rerunning the same
 command resumes from retained checkpoints and state under `PADIS_TRAIN_ROOT`.
+For wall-clock-limited diffusion jobs, elapsed runtime is tracked in
+`$PADIS_TRAIN_ROOT/.gcp_spot/runtime`, so a restarted spot VM subtracts time
+already spent before passing the next `--max-train-seconds` value.
 
 Durable training state stays under `/mnt/data`; only staged LIDC tensor caches
 live under `/mnt/ram-disk`. If prepared cache archives are absent, the runner
@@ -307,7 +328,7 @@ can build the RAM caches from `/mnt/data/Datasets/processed/LIDC-IDRI`.
 Checkpoint behavior:
 
 ```text
-Periodic resume checkpoint: every 10 minutes
+Periodic resume checkpoint: every 5 minutes
 Periodic checkpoints kept during training: 2
 Periodic checkpoints kept after completion: 1
 Final lightweight checkpoint: kept
@@ -315,11 +336,25 @@ Final full training-state checkpoint: kept
 Best-validation checkpoint: kept
 ```
 
+Set the GCP VM shutdown script to the PaDIS shutdown hook so preemptions refresh
+the runtime ledger immediately and send SIGTERM to active training processes:
+
+```bash
+scripts/paper_scripts/PaDIS/gcp/padis_gcp_spot_shutdown.sh
+```
+
+The training entry points catch that signal, save one more resumable periodic
+checkpoint when the training loop has initialized, finish W&B, and exit with
+code 143. The hook uses the same `PADIS_TRAIN_ROOT`/`PADIS_GCP_RUN_NAME`
+layout as the runner. It is safe to rerun the main spot-training command after
+it fires.
+
 Useful overrides:
 
 ```bash
 PADIS_GCP_GPU_IDS=0,1,2,3 \
-PADIS_GCP_RUN_NAME=gcp_spot_training_20260701 \
+PADIS_GCP_MAX_GPUS=4 \
+PADIS_GCP_RUN_NAME=PaDIS-Reproduction-GCP-20260701 \
 PADIS_WANDB_MODE=online \
 scripts/paper_scripts/PaDIS/gcp/run_PaDIS_GCP_spot_training.sh
 ```
@@ -462,9 +497,10 @@ variables, including `PADIS_PNP_BATCH_SIZE`, `PADIS_PNP_EPOCHS`,
 Both training entry points can log to Weights & Biases. For local runs, pass
 `--wandb-project PaDIS-LIDC` and optionally `--wandb-name <run_name>`. The PnP
 denoiser script also supports `--wandb-entity`, `--wandb-id`, `--wandb-mode`,
-`--no-wandb`, and `--max-train-seconds` for clean wall-clock-limited training.
-The whole-image diffusion training script supports the same project/name style
-and can skip large checkpoint uploads with `--no-wandb-artifact`.
+`--no-wandb`, `--no-wandb-artifact`, and `--max-train-seconds` for clean
+wall-clock-limited training. Both the diffusion and PnP scripts upload saved
+checkpoints, JSON metadata, and loss plots as W&B artifacts unless
+`--no-wandb-artifact` is set.
 
 The local six-hour W&B DRUNet run used:
 

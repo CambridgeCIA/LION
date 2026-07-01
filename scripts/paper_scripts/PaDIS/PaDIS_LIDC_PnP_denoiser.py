@@ -7,6 +7,7 @@ import json
 import os
 import pathlib
 import random
+import signal
 import time
 
 _CACHE_ROOT = pathlib.Path("/tmp") / "lion_matplotlib_cache"
@@ -15,6 +16,7 @@ _CACHE_ROOT = pathlib.Path("/tmp") / "lion_matplotlib_cache"
 os.environ.setdefault("MPLCONFIGDIR", str(_CACHE_ROOT / "mpl"))
 os.environ.setdefault("XDG_CACHE_HOME", str(_CACHE_ROOT / "xdg"))
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Subset
@@ -26,6 +28,10 @@ from LION.utils.parameter import LIONParameter
 from LION.utils.paths import LION_EXPERIMENTS_PATH
 
 
+class TerminationRequested(Exception):
+    """Raised when the process receives a shutdown signal."""
+
+
 def set_run_seed(seed: int) -> None:
     os.environ.setdefault("PYTHONHASHSEED", str(seed))
     random.seed(seed)
@@ -35,6 +41,17 @@ def set_run_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
+
+
+def install_termination_handler():
+    previous_handler = signal.getsignal(signal.SIGTERM)
+
+    def request_stop(signum, _frame):
+        signal.signal(signum, signal.SIG_IGN)
+        raise TerminationRequested(f"Received signal {signum}")
+
+    signal.signal(signal.SIGTERM, request_stop)
+    return previous_handler
 
 
 def cuda_device_index(device: torch.device) -> int:
@@ -51,6 +68,22 @@ def jsonable(value):
     if isinstance(value, np.generic):
         return value.item()
     return value
+
+
+def save_loss_plots(solver, save_folder: pathlib.Path) -> None:
+    plt.figure()
+    train_loss = (
+        solver.train_loss[1:] if len(solver.train_loss) > 1 else solver.train_loss
+    )
+    plt.semilogy(train_loss)
+    plt.savefig(save_folder / "loss.png")
+    plt.close()
+
+    if solver.validation_loss is not None and len(solver.validation_loss) > 0:
+        plt.figure()
+        plt.semilogy(solver.validation_loss)
+        plt.savefig(save_folder / "validation_loss.png")
+        plt.close()
 
 
 def wandb_id_file(run_folder: pathlib.Path) -> pathlib.Path:
@@ -128,6 +161,34 @@ def log_epoch_to_wandb(wandb_run, solver, epoch_index: int) -> None:
     wandb_run.log(metrics)
 
 
+def log_wandb_outputs(wandb_run, run_folder: pathlib.Path, log_artifact=True) -> None:
+    if wandb_run is None:
+        return
+    import wandb
+
+    plots = {}
+    for key, filename in (
+        ("plots/train_loss", "loss.png"),
+        ("plots/validation_loss", "validation_loss.png"),
+    ):
+        path = run_folder / filename
+        if path.is_file():
+            plots[key] = wandb.Image(str(path))
+    if plots:
+        wandb_run.log(plots)
+    if not log_artifact:
+        return
+
+    artifact = wandb.Artifact(run_folder.name, type="padis-run")
+    for path in run_folder.glob("*.pt"):
+        artifact.add_file(str(path))
+    for path in run_folder.glob("*.json"):
+        artifact.add_file(str(path))
+    for path in run_folder.glob("*.png"):
+        artifact.add_file(str(path))
+    wandb_run.log_artifact(artifact)
+
+
 def ensure_loss_capacity(loss: np.ndarray, n_epochs: int) -> np.ndarray:
     if len(loss) >= n_epochs:
         return loss
@@ -178,6 +239,19 @@ def save_checkpoint_with_retention(
 ) -> None:
     solver.save_checkpoint(epoch)
     prune_periodic_checkpoints(solver, max_periodic_checkpoints)
+
+
+def save_interruption_checkpoint(solver, max_periodic_checkpoints: int | None) -> None:
+    if solver.checkpoint_save_folder is None or solver.checkpoint_fname is None:
+        return
+    if getattr(solver, "train_loss", None) is None:
+        return
+    save_checkpoint_with_retention(
+        solver,
+        int(solver.current_epoch),
+        max_periodic_checkpoints,
+    )
+    print("Saved interruption checkpoint after shutdown signal.")
 
 
 def load_full_final_checkpoint_if_exists(
@@ -304,6 +378,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--wandb-id", type=str, default=None)
     parser.add_argument(
         "--wandb-mode", choices=("online", "offline", "disabled"), default="online"
+    )
+    parser.add_argument(
+        "--no-wandb-artifact",
+        action="store_true",
+        help="Log WandB metrics/plots but do not upload saved model artifacts.",
     )
     parser.add_argument("--no-wandb", action="store_true")
     return parser
@@ -536,16 +615,22 @@ def main() -> None:
         json.dump(config, f, indent=2)
 
     wandb_run = init_wandb(args, run_folder, config)
+    previous_sigterm_handler = install_termination_handler()
     try:
-        train_with_optional_time_limit(
-            solver,
-            train_params.epochs,
-            args.max_train_seconds,
-            max_periodic_checkpoints,
-            checkpoint_interval_seconds=args.checkpoint_interval_seconds,
-            full_final_checkpoint_path=full_final_checkpoint_path,
-            wandb_run=wandb_run,
-        )
+        try:
+            train_with_optional_time_limit(
+                solver,
+                train_params.epochs,
+                args.max_train_seconds,
+                max_periodic_checkpoints,
+                checkpoint_interval_seconds=args.checkpoint_interval_seconds,
+                full_final_checkpoint_path=full_final_checkpoint_path,
+                wandb_run=wandb_run,
+            )
+        except TerminationRequested as exc:
+            print(f"{exc}; saving resumable checkpoint before exit.")
+            save_interruption_checkpoint(solver, max_periodic_checkpoints)
+            raise SystemExit(143)
         solver.model.save(
             run_folder / args.final_name,
             epoch=solver.current_epoch,
@@ -584,7 +669,12 @@ def main() -> None:
         )
         if args.keep_final_periodic_checkpoints is not None:
             prune_periodic_checkpoints(solver, args.keep_final_periodic_checkpoints)
+        save_loss_plots(solver, run_folder)
+        log_wandb_outputs(
+            wandb_run, run_folder, log_artifact=not args.no_wandb_artifact
+        )
     finally:
+        signal.signal(signal.SIGTERM, previous_sigterm_handler)
         if wandb_run is not None:
             wandb_run.finish()
 
