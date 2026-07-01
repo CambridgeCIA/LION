@@ -1,0 +1,859 @@
+#!/usr/bin/env bash
+#
+# Run the LION PaDIS training matrix on a single GCP spot VM.
+#
+# The runner is intentionally resumable: rerunning it with the same
+# PADIS_GCP_RUN_NAME/PADIS_TRAIN_ROOT reuses existing run folders, WandB ids,
+# runtime ledgers, and checkpoints.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+SLURM_HELPER_DIR="$(cd "$SCRIPT_DIR/../slurm" && pwd -P)"
+# shellcheck source=scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh
+. "$SLURM_HELPER_DIR/padis_a100_common.sh"
+
+die() {
+        echo "$*" >&2
+        exit 1
+}
+
+log() {
+        printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
+}
+
+time_to_seconds() {
+        local value="$1"
+        if [[ "$value" =~ ^[0-9]+$ ]]; then
+                printf '%s\n' "$value"
+        else
+                padis_time_to_seconds "$value"
+        fi
+}
+
+activate_environment() {
+        local mamba_bin env_candidates env_name activated conda_lib
+
+        if [ "${PADIS_GCP_SKIP_ENV_ACTIVATE:-0}" = "1" ]; then
+                log "Skipping environment activation because PADIS_GCP_SKIP_ENV_ACTIVATE=1."
+                return
+        fi
+        if [ -n "${CONDA_PREFIX:-}" ] && command -v python >/dev/null 2>&1; then
+                log "Using active Python environment at $CONDA_PREFIX."
+                return
+        fi
+
+        mamba_bin=""
+        if [ -n "${MAMBA_EXE:-}" ] && [ -x "$MAMBA_EXE" ]; then
+                mamba_bin="$MAMBA_EXE"
+        elif [ -x "${MAMBA_ROOT_PREFIX:-$HOME/miniforge3}/bin/mamba" ]; then
+                mamba_bin="${MAMBA_ROOT_PREFIX:-$HOME/miniforge3}/bin/mamba"
+        elif command -v mamba >/dev/null 2>&1; then
+                mamba_bin="$(command -v mamba)"
+        fi
+
+        if [ -z "$mamba_bin" ]; then
+                if ! command -v python >/dev/null 2>&1; then
+                        die \
+                                "No active Python and no mamba found." \
+                                "Activate the LION environment or set MAMBA_ROOT_PREFIX."
+                fi
+                log "No mamba found; using python from PATH: $(command -v python)."
+                return
+        fi
+
+        eval "$("$mamba_bin" shell hook --shell bash)"
+        LION_MAMBA_ENV="${LION_MAMBA_ENV:-lion-dev}"
+        LION_MAMBA_ENV_FALLBACKS="${LION_MAMBA_ENV_FALLBACKS:-padis-dev}"
+        read -r -a env_candidates <<< "$LION_MAMBA_ENV ${LION_MAMBA_ENV_FALLBACKS:-}"
+        activated=""
+        for env_name in "${env_candidates[@]}"; do
+                if [ -z "$env_name" ]; then
+                        continue
+                fi
+                if mamba activate "$env_name"; then
+                        activated="$env_name"
+                        break
+                fi
+        done
+        [ -n "$activated" ] || die "Failed to activate any mamba environment from: ${env_candidates[*]}"
+        LION_MAMBA_ENV="$activated"
+        conda_lib="${CONDA_PREFIX:-${MAMBA_ROOT_PREFIX:-$HOME/miniforge3}/envs/$LION_MAMBA_ENV}/lib"
+        export LION_MAMBA_ENV LD_LIBRARY_PATH="$conda_lib:${LD_LIBRARY_PATH:-}"
+        log "Activated $LION_MAMBA_ENV using mamba."
+}
+
+discover_gpu_ids() {
+        local raw_ids max_gpus gpu id count
+        raw_ids="${PADIS_GCP_GPU_IDS:-}"
+        if [ -z "$raw_ids" ] && [ -n "${CUDA_VISIBLE_DEVICES:-}" ] && [ "$CUDA_VISIBLE_DEVICES" != "NoDevFiles" ]; then
+                raw_ids="$CUDA_VISIBLE_DEVICES"
+        fi
+        if [ -z "$raw_ids" ] && command -v nvidia-smi >/dev/null 2>&1; then
+                raw_ids="$(nvidia-smi --query-gpu=index --format=csv,noheader | tr '\n' ',')"
+        fi
+        raw_ids="${raw_ids:-0}"
+        raw_ids="${raw_ids//,/ }"
+
+        max_gpus="${PADIS_GCP_MAX_GPUS:-4}"
+        GPU_IDS=()
+        count=0
+        for gpu in $raw_ids; do
+                id="${gpu//[[:space:]]/}"
+                if [ -z "$id" ]; then
+                        continue
+                fi
+                GPU_IDS+=("$id")
+                count=$((count + 1))
+                if [ "$count" -ge "$max_gpus" ]; then
+                        break
+                fi
+        done
+        [ "${#GPU_IDS[@]}" -gt 0 ] || die "No GPUs selected."
+}
+
+task_index_by_name() {
+        local task_name="$1"
+        local i
+        for i in "${!PADIS_TASK_NAMES[@]}"; do
+                if [ "${PADIS_TASK_NAMES[$i]}" = "$task_name" ]; then
+                        printf '%s\n' "$i"
+                        return 0
+                fi
+        done
+        return 1
+}
+
+task_category() {
+        local task_name="$1"
+        if [[ "$task_name" == whole_lidc_* ]]; then
+                printf 'whole\n'
+        elif [[ "$task_name" == patch_lidc_* ]]; then
+                printf 'patch\n'
+        elif [ "$task_name" = "$PNP_TASK_NAME" ]; then
+                printf 'pnp\n'
+        else
+                die "Unknown task category for $task_name"
+        fi
+}
+
+task_budget_seconds() {
+        local task_name="$1"
+        case "$(task_category "$task_name")" in
+                patch)
+                        printf '%s\n' "$PATCH_TRAIN_SECONDS"
+                        ;;
+                whole)
+                        printf '%s\n' "$WHOLE_TRAIN_SECONDS"
+                        ;;
+                pnp)
+                        printf '\n'
+                        ;;
+        esac
+}
+
+task_elapsed_seconds() {
+        local task_name="$1"
+        local path="$RUNTIME_DIR/$task_name.seconds"
+        if [ -f "$path" ]; then
+                cat "$path"
+        else
+                printf '0\n'
+        fi
+}
+
+write_task_elapsed_seconds() {
+        local task_name="$1"
+        local seconds="$2"
+        local path="$RUNTIME_DIR/$task_name.seconds"
+        printf '%s\n' "$seconds" > "$path.tmp"
+        mv "$path.tmp" "$path"
+}
+
+remaining_budget_seconds() {
+        local task_name="$1"
+        local budget elapsed remaining
+        budget="$(task_budget_seconds "$task_name")"
+        if [ -z "$budget" ]; then
+                printf '\n'
+                return
+        fi
+        elapsed="$(task_elapsed_seconds "$task_name")"
+        remaining=$((budget - elapsed))
+        if [ "$remaining" -le 0 ]; then
+                remaining="$PADIS_GCP_FINALIZE_SECONDS"
+        fi
+        printf '%s\n' "$remaining"
+}
+
+task_final_checkpoint() {
+        local task_name="$1"
+        local index task_args engine prefix
+        if [ "$task_name" = "$PNP_TASK_NAME" ]; then
+                printf '%s\n' "$PADIS_TRAIN_ROOT/$PADIS_PNP_RUN_NAME/$PADIS_PNP_FINAL_NAME"
+                return
+        fi
+
+        index="$(task_index_by_name "$task_name")"
+        task_args="${PADIS_TASK_ARGUMENTS[$index]}"
+        engine="${PADIS_TASK_ENGINES[$index]}"
+        if [ "$engine" = "lidc512" ]; then
+                prefix="padis_lidc_512"
+        elif [[ " $task_args " == *" --prior-mode whole-image "* ]]; then
+                prefix="whole_image_lidc_256"
+        else
+                prefix="padis_lidc_256"
+        fi
+        printf '%s\n' "$PADIS_TRAIN_ROOT/$task_name/$prefix.pt"
+}
+
+task_final_full_checkpoint() {
+        local task_name="$1"
+        local final_checkpoint
+        if [ "$task_name" = "$PNP_TASK_NAME" ]; then
+                printf '%s\n' "$PADIS_TRAIN_ROOT/$PADIS_PNP_RUN_NAME/$PADIS_PNP_FINAL_FULL_NAME"
+                return
+        fi
+
+        final_checkpoint="$(task_final_checkpoint "$task_name")"
+        printf '%s\n' "${final_checkpoint%.pt}_full.pt"
+}
+
+is_task_done() {
+        local task_name="$1"
+        if [ "$PADIS_GCP_DRY_RUN" = "1" ]; then
+                [ -f "$DONE_DIR/$task_name.done" ]
+                return
+        fi
+        [ -f "$DONE_DIR/$task_name.done" ] \
+                && [ -f "$(task_final_checkpoint "$task_name")" ] \
+                && [ -f "$(task_final_full_checkpoint "$task_name")" ]
+}
+
+build_wandb_args() {
+        local task_name="$1"
+        WANDB_ARGS=()
+        if [ "$PADIS_NO_WANDB" = "1" ]; then
+                WANDB_ARGS=(--no-wandb --wandb-mode disabled)
+        else
+                WANDB_ARGS=(
+                        --wandb-project "$PADIS_WANDB_PROJECT"
+                        --wandb-name "${PADIS_WANDB_NAME_PREFIX}_${task_name}"
+                        --wandb-mode "$PADIS_WANDB_MODE"
+                )
+                if [ -n "$PADIS_WANDB_ENTITY" ]; then
+                        WANDB_ARGS+=(--wandb-entity "$PADIS_WANDB_ENTITY")
+                fi
+                if [ "$PADIS_NO_WANDB_ARTIFACT" = "1" ]; then
+                        WANDB_ARGS+=(--no-wandb-artifact)
+                fi
+        fi
+}
+
+add_cache_args() {
+        local engine="$1"
+        local task_name="$2"
+        local task_args="$3"
+        local cache_dataset cache_folder archive_folder source_folder
+
+        if [ "$engine" = "lidc256" ]; then
+                cache_dataset="${PADIS_256_CACHE_DATASET:-${PADIS_CACHE_DATASET:-ramdisk}}"
+                if [[ "$task_name" == *full ]] && [ "${PADIS_CACHE_FULL_LIDC:-1}" != "1" ]; then
+                        cache_dataset="none"
+                fi
+                cache_folder="$PADIS_256_CACHE_FOLDER"
+                archive_folder="$PADIS_256_CACHE_ARCHIVE_FOLDER"
+                source_folder="${PADIS_256_CACHE_SOURCE_FOLDER:-${PADIS_CACHE_SOURCE_FOLDER:-}}"
+        else
+                cache_dataset="${PADIS_512_CACHE_DATASET:-${PADIS_CACHE_DATASET:-ramdisk}}"
+                if [[ " $task_args " == *" --full-lidc "* ]] && [ "${PADIS_CACHE_FULL_512_LIDC:-0}" != "1" ]; then
+                        cache_dataset="none"
+                fi
+                cache_folder="$PADIS_512_CACHE_FOLDER"
+                archive_folder="$PADIS_512_CACHE_ARCHIVE_FOLDER"
+                source_folder="${PADIS_512_CACHE_SOURCE_FOLDER:-}"
+        fi
+
+        if [ "$cache_dataset" != "none" ]; then
+                CMD+=(
+                        --cache-dataset "$cache_dataset"
+                        --cache-folder "$cache_folder"
+                        --cache-archive-folder "$archive_folder"
+                )
+                if [ -n "$source_folder" ]; then
+                        CMD+=(--cache-source-folder "$source_folder")
+                fi
+                if [ "$PADIS_REQUIRE_CACHE_HIT" = "1" ]; then
+                        CMD+=(--require-cache-hit)
+                fi
+                if [ "$PADIS_WRITE_CACHE_ARCHIVE" = "1" ]; then
+                        CMD+=(--write-cache-archive)
+                fi
+        fi
+}
+
+build_diffusion_command() {
+        local task_name="$1"
+        local remaining_seconds="$2"
+        local index engine batch_size task_args validation_interval validation_max checkpoint_interval log_interval
+        local num_workers prefetch_factor script_path
+
+        index="$(task_index_by_name "$task_name")"
+        engine="${PADIS_TASK_ENGINES[$index]}"
+        batch_size="${PADIS_TASK_BATCH_SIZES[$index]}"
+        read -r -a task_args <<< "${PADIS_TASK_ARGUMENTS[$index]}"
+        build_wandb_args "$task_name"
+
+        if [[ "$task_name" == whole_lidc_* ]]; then
+                validation_interval="${PADIS_GCP_WHOLE_VALIDATION_INTERVAL_PATCHES:-}"
+                if [ -z "$validation_interval" ]; then
+                        validation_interval="${PADIS_WHOLE_VALIDATION_INTERVAL_PATCHES:-10000}"
+                fi
+                validation_max="${PADIS_GCP_WHOLE_VALIDATION_MAX_PATCHES:-${PADIS_WHOLE_VALIDATION_MAX_PATCHES:-128}}"
+                checkpoint_interval="${PADIS_GCP_WHOLE_CHECKPOINT_INTERVAL_PATCHES:-}"
+                if [ -z "$checkpoint_interval" ]; then
+                        checkpoint_interval="${PADIS_WHOLE_CHECKPOINT_INTERVAL_PATCHES:-25000}"
+                fi
+                log_interval="${PADIS_GCP_WHOLE_LOG_INTERVAL_PATCHES:-${PADIS_WHOLE_LOG_INTERVAL_PATCHES:-128}}"
+        else
+                validation_interval="${PADIS_GCP_VALIDATION_INTERVAL_PATCHES:-}"
+                if [ -z "$validation_interval" ]; then
+                        validation_interval="${PADIS_VALIDATION_INTERVAL_PATCHES:-200000}"
+                fi
+                validation_max="${PADIS_GCP_VALIDATION_MAX_PATCHES:-${PADIS_VALIDATION_MAX_PATCHES:-1000}}"
+                checkpoint_interval="${PADIS_GCP_CHECKPOINT_INTERVAL_PATCHES:-}"
+                if [ -z "$checkpoint_interval" ]; then
+                        checkpoint_interval="${PADIS_CHECKPOINT_INTERVAL_PATCHES:-1000000}"
+                fi
+                log_interval="${PADIS_GCP_LOG_INTERVAL_PATCHES:-${PADIS_LOG_INTERVAL_PATCHES:-128}}"
+        fi
+
+        if [ "$engine" = "lidc256" ]; then
+                script_path="scripts/paper_scripts/PaDIS/PaDIS_LIDC_256.py"
+                num_workers="$PADIS_NUM_WORKERS"
+                prefetch_factor="$PADIS_PREFETCH_FACTOR"
+        elif [ "$engine" = "lidc512" ]; then
+                script_path="scripts/paper_scripts/PaDIS/PaDIS_LIDC_512.py"
+                num_workers="${PADIS_512_NUM_WORKERS:-$PADIS_NUM_WORKERS}"
+                prefetch_factor="${PADIS_512_PREFETCH_FACTOR:-$PADIS_PREFETCH_FACTOR}"
+        else
+                die "Unknown diffusion task engine: $engine"
+        fi
+
+        CMD=(
+                python -u "$script_path"
+                --save-folder "$PADIS_TRAIN_ROOT"
+                --device cuda
+                --target-patches "$PADIS_TARGET_PATCHES"
+                --validation-interval-patches "$validation_interval"
+                --validation-max-patches "$validation_max"
+                --checkpoint-interval-patches "$checkpoint_interval"
+                --checkpoint-interval-seconds "$PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS"
+                --max-periodic-checkpoints "$PADIS_GCP_MAX_PERIODIC_CHECKPOINTS"
+                --keep-final-periodic-checkpoints "$PADIS_GCP_FINAL_PERIODIC_CHECKPOINTS"
+                --log-interval-patches "$log_interval"
+                --seed "$PADIS_SEED"
+                --batch-size "$batch_size"
+                --num-workers "$num_workers"
+                --prefetch-factor "$prefetch_factor"
+        )
+        CMD+=("${WANDB_ARGS[@]}")
+        if [ -n "$PADIS_DATA_FOLDER" ]; then
+                CMD+=(--data-folder "$PADIS_DATA_FOLDER")
+        fi
+        if [ -n "${PADIS_MICROBATCH_SIZE:-}" ]; then
+                CMD+=(--microbatch-size "$PADIS_MICROBATCH_SIZE")
+        fi
+        if [ -n "$remaining_seconds" ]; then
+                CMD+=(--max-train-seconds "$remaining_seconds")
+        fi
+        add_cache_args "$engine" "$task_name" "${PADIS_TASK_ARGUMENTS[$index]}"
+        CMD+=("${task_args[@]}")
+}
+
+build_pnp_command() {
+        local task_name="$1"
+        build_wandb_args "$task_name"
+        CMD=(
+                python -u scripts/paper_scripts/PaDIS/PaDIS_LIDC_PnP_denoiser.py
+                --output-root "$PADIS_PNP_OUTPUT_ROOT"
+                --run-name "$PADIS_PNP_RUN_NAME"
+                --batch-size "$PADIS_PNP_BATCH_SIZE"
+                --epochs "$PADIS_PNP_EPOCHS"
+                --learning-rate "$PADIS_PNP_LR"
+                --beta1 "$PADIS_PNP_BETA1"
+                --beta2 "$PADIS_PNP_BETA2"
+                --noise-min "$PADIS_PNP_NOISE_MIN"
+                --noise-max "$PADIS_PNP_NOISE_MAX"
+                --image-scaling "$PADIS_PNP_IMAGE_SCALING"
+                --max-slices-per-patient "$PADIS_PNP_MAX_SLICES_PER_PATIENT"
+                --int-channels "$PADIS_PNP_INT_CHANNELS"
+                --n-blocks "$PADIS_PNP_N_BLOCKS"
+                --patches-per-image "$PADIS_PNP_PATCHES_PER_IMAGE"
+                --validation-every "$PADIS_PNP_VALIDATION_EVERY"
+                --checkpoint-every "$PADIS_PNP_CHECKPOINT_EVERY"
+                --checkpoint-interval-seconds "$PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS"
+                --max-periodic-checkpoints "$PADIS_PNP_MAX_PERIODIC_CHECKPOINTS"
+                --keep-final-periodic-checkpoints "$PADIS_GCP_FINAL_PERIODIC_CHECKPOINTS"
+                --seed "$PADIS_PNP_SEED"
+                --device cuda
+                --num-workers "$PADIS_PNP_NUM_WORKERS"
+                --final-name "$PADIS_PNP_FINAL_NAME"
+                --final-full-name "$PADIS_PNP_FINAL_FULL_NAME"
+                --checkpoint-pattern "$PADIS_PNP_CHECKPOINT_PATTERN"
+                --validation-name "$PADIS_PNP_VALIDATION_NAME"
+        )
+        if [ "$PADIS_PNP_FULL_LIDC" = "1" ]; then
+                CMD+=(--full-lidc)
+        fi
+        if [ -n "$PADIS_PNP_MAX_TRAIN_SAMPLES" ]; then
+                CMD+=(--max-train-samples "$PADIS_PNP_MAX_TRAIN_SAMPLES")
+        fi
+        if [ -n "$PADIS_PNP_MAX_VALIDATION_SAMPLES" ]; then
+                CMD+=(--max-validation-samples "$PADIS_PNP_MAX_VALIDATION_SAMPLES")
+        fi
+        if [ "$PADIS_PNP_USE_NOISE_LEVEL" = "1" ]; then
+                CMD+=(--use-noise-level)
+        fi
+        if [ -n "$PADIS_PNP_PATCH_SIZE" ]; then
+                CMD+=(--patch-size "$PADIS_PNP_PATCH_SIZE")
+        fi
+        if [ -n "$PADIS_DATA_FOLDER" ]; then
+                CMD+=(--data-folder "$PADIS_DATA_FOLDER")
+        fi
+        if [ -n "$PADIS_PNP_MAX_TRAIN_SECONDS" ]; then
+                CMD+=(--max-train-seconds "$PADIS_PNP_MAX_TRAIN_SECONDS")
+        fi
+        CMD+=("${WANDB_ARGS[@]}")
+}
+
+build_task_command() {
+        local task_name="$1"
+        local remaining_seconds="$2"
+        if [ "$task_name" = "$PNP_TASK_NAME" ]; then
+                build_pnp_command "$task_name"
+        else
+                build_diffusion_command "$task_name" "$remaining_seconds"
+        fi
+}
+
+stage_cache_variant() {
+        local variant="$1"
+        local script_path save_name run_name cache_folder archive_folder cache_args
+        cache_args=()
+        case "$variant" in
+                default|256-default)
+                        script_path="scripts/paper_scripts/PaDIS/PaDIS_LIDC_256.py"
+                        save_name="default_lidc_256"
+                        run_name="gcp_prepare_default_lidc_cache"
+                        cache_folder="$PADIS_256_CACHE_FOLDER"
+                        archive_folder="$PADIS_256_CACHE_ARCHIVE_FOLDER"
+                        cache_args=(--max-slices-per-patient 4)
+                        ;;
+                full|256-full)
+                        script_path="scripts/paper_scripts/PaDIS/PaDIS_LIDC_256.py"
+                        save_name="full_lidc_256"
+                        run_name="gcp_prepare_full_lidc_cache"
+                        cache_folder="$PADIS_256_CACHE_FOLDER"
+                        archive_folder="$PADIS_256_CACHE_ARCHIVE_FOLDER"
+                        cache_args=(--full-lidc)
+                        ;;
+                512-default)
+                        script_path="scripts/paper_scripts/PaDIS/PaDIS_LIDC_512.py"
+                        save_name="default_lidc_512"
+                        run_name="gcp_prepare_default_lidc_512_cache"
+                        cache_folder="$PADIS_512_CACHE_FOLDER"
+                        archive_folder="$PADIS_512_CACHE_ARCHIVE_FOLDER"
+                        cache_args=(--max-slices-per-patient 4)
+                        ;;
+                *)
+                        die "Unknown cache variant: $variant"
+                        ;;
+        esac
+
+        CMD=(
+                python -u "$script_path"
+                --device cpu
+                --save-folder "$STATE_DIR/cache_builds/$save_name"
+                --run-name "$run_name"
+                --cache-dataset ramdisk
+                --cache-folder "$cache_folder"
+                --cache-archive-folder "$archive_folder"
+                --prepare-cache-only
+                --seed "$PADIS_SEED"
+                --no-wandb
+                --wandb-mode disabled
+        )
+        CMD+=("${cache_args[@]}")
+        if [ -n "$PADIS_DATA_FOLDER" ]; then
+                CMD+=(--data-folder "$PADIS_DATA_FOLDER")
+        fi
+        if [ "$PADIS_REQUIRE_CACHE_HIT" = "1" ]; then
+                CMD+=(--require-cache-hit)
+        fi
+        if [ "$PADIS_WRITE_CACHE_ARCHIVE" = "1" ]; then
+                CMD+=(--write-cache-archive)
+        fi
+
+        log "Staging cache variant $variant into $cache_folder"
+        printf '%q ' "${CMD[@]}"
+        printf '\n'
+        if [ "$PADIS_GCP_DRY_RUN" != "1" ]; then
+                "${CMD[@]}"
+        fi
+}
+
+stage_ramdisk_caches() {
+        local variants variant
+        if [ "$PADIS_GCP_STAGE_CACHES" != "1" ]; then
+                log "Skipping ramdisk cache staging because PADIS_GCP_STAGE_CACHES=$PADIS_GCP_STAGE_CACHES."
+                return
+        fi
+        mkdir -p "$PADIS_RAM_DISK" "$PADIS_256_CACHE_FOLDER" "$PADIS_512_CACHE_FOLDER" "$STATE_DIR/cache_builds"
+        variants="${PADIS_GCP_CACHE_VARIANTS//,/ }"
+        for variant in $variants; do
+                stage_cache_variant "$variant"
+        done
+}
+
+claim_next_task() {
+        local gpu_id="$1"
+        local claimed="" task fd
+        exec {fd}>"$STATE_DIR/queue.lock"
+        flock "$fd"
+        for task in "${GCP_TASK_NAMES[@]}"; do
+                if is_task_done "$task"; then
+                        continue
+                fi
+                if [ -f "$RUNNING_DIR/$task.running" ]; then
+                        continue
+                fi
+                {
+                        printf 'gpu=%s\n' "$gpu_id"
+                        printf 'pid=%s\n' "$$"
+                        printf 'host=%s\n' "$(hostname)"
+                        printf 'started=%s\n' "$(date --iso-8601=seconds)"
+                } > "$RUNNING_DIR/$task.running"
+                claimed="$task"
+                break
+        done
+        flock -u "$fd"
+        eval "exec $fd>&-"
+        printf '%s\n' "$claimed"
+}
+
+record_runtime_while_running() {
+        local task_name="$1"
+        local child_pid="$2"
+        local start_total="$3"
+        local start_epoch="$4"
+        local now total
+        while kill -0 "$child_pid" >/dev/null 2>&1; do
+                now="$(date +%s)"
+                total=$((start_total + now - start_epoch))
+                write_task_elapsed_seconds "$task_name" "$total"
+                sleep "$PADIS_GCP_RUNTIME_HEARTBEAT_SECONDS"
+        done
+}
+
+run_task_command() {
+        local task_name="$1"
+        local gpu_id="$2"
+        local start_total start_epoch child_pid monitor_pid rc now total log_path
+        start_total="$(task_elapsed_seconds "$task_name")"
+        start_epoch="$(date +%s)"
+        log_path="$LOG_DIR/$task_name.gpu${gpu_id}.log"
+
+        printf '%q ' "${CMD[@]}" > "$LOG_DIR/$task_name.command.txt"
+        printf '\n' >> "$LOG_DIR/$task_name.command.txt"
+        log "GPU $gpu_id running $task_name; log: $log_path"
+        if [ "$PADIS_GCP_DRY_RUN" = "1" ]; then
+                return 0
+        fi
+
+        (
+                export CUDA_VISIBLE_DEVICES="$gpu_id"
+                "${CMD[@]}"
+        ) > "$log_path" 2>&1 &
+        child_pid="$!"
+        record_runtime_while_running "$task_name" "$child_pid" "$start_total" "$start_epoch" &
+        monitor_pid="$!"
+
+        set +e
+        wait "$child_pid"
+        rc="$?"
+        set -e
+        kill "$monitor_pid" >/dev/null 2>&1 || true
+        wait "$monitor_pid" >/dev/null 2>&1 || true
+        now="$(date +%s)"
+        total=$((start_total + now - start_epoch))
+        write_task_elapsed_seconds "$task_name" "$total"
+        return "$rc"
+}
+
+run_task() {
+        local task_name="$1"
+        local gpu_id="$2"
+        local remaining final_checkpoint final_full_checkpoint rc
+        if is_task_done "$task_name"; then
+                log "Task $task_name is already done."
+                rm -f "$RUNNING_DIR/$task_name.running"
+                return 0
+        fi
+
+        remaining="$(remaining_budget_seconds "$task_name")"
+        if [ -n "$remaining" ]; then
+                log "Task $task_name remaining wall budget for this invocation: ${remaining}s"
+        else
+                log "Task $task_name has no wall-clock cap; it will train to completion."
+        fi
+        build_task_command "$task_name" "$remaining"
+        if run_task_command "$task_name" "$gpu_id"; then
+                rc=0
+        else
+                rc="$?"
+        fi
+        final_checkpoint="$(task_final_checkpoint "$task_name")"
+        final_full_checkpoint="$(task_final_full_checkpoint "$task_name")"
+        if [ "$rc" -eq 0 ] && {
+                [ "$PADIS_GCP_DRY_RUN" = "1" ] || {
+                        [ -f "$final_checkpoint" ] && [ -f "$final_full_checkpoint" ]
+                }
+        }; then
+                {
+                        printf 'completed=%s\n' "$(date --iso-8601=seconds)"
+                        printf 'final_checkpoint=%s\n' "$final_checkpoint"
+                        printf 'final_full_checkpoint=%s\n' "$final_full_checkpoint"
+                } > "$DONE_DIR/$task_name.done"
+                rm -f "$FAILED_DIR/$task_name.failed" "$RUNNING_DIR/$task_name.running"
+                log "Task $task_name completed. Final checkpoint: $final_checkpoint; full state: $final_full_checkpoint"
+                return 0
+        fi
+
+        {
+                printf 'failed=%s\n' "$(date --iso-8601=seconds)"
+                printf 'exit_code=%s\n' "$rc"
+                printf 'final_checkpoint=%s\n' "$final_checkpoint"
+                printf 'final_full_checkpoint=%s\n' "$final_full_checkpoint"
+        } > "$FAILED_DIR/$task_name.failed"
+        rm -f "$RUNNING_DIR/$task_name.running"
+        log "Task $task_name failed with exit code $rc. See $LOG_DIR/$task_name.gpu${gpu_id}.log"
+        return "$rc"
+}
+
+worker_loop() {
+        local gpu_id="$1"
+        local task
+        while true; do
+                task="$(claim_next_task "$gpu_id")"
+                if [ -z "$task" ]; then
+                        log "GPU $gpu_id has no remaining tasks."
+                        return 0
+                fi
+                run_task "$task" "$gpu_id"
+        done
+}
+
+write_manifest() {
+        local manifest="$STATE_DIR/manifest.txt"
+        {
+                printf 'lion_root=%s\n' "$LION_ROOT"
+                printf 'train_root=%s\n' "$PADIS_TRAIN_ROOT"
+                printf 'run_name=%s\n' "$PADIS_GCP_RUN_NAME"
+                printf 'ram_disk=%s\n' "$PADIS_RAM_DISK"
+                printf 'gpu_ids=%s\n' "${GPU_IDS[*]}"
+                printf 'patch_train_seconds=%s\n' "$PATCH_TRAIN_SECONDS"
+                printf 'whole_train_seconds=%s\n' "$WHOLE_TRAIN_SECONDS"
+                printf 'checkpoint_interval_seconds=%s\n' "$PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS"
+                printf 'tasks=%s\n' "${GCP_TASK_NAMES[*]}"
+        } > "$manifest"
+}
+
+terminate_runner() {
+        log "Termination requested; stopping child jobs. Rerun this script to resume."
+        kill $(jobs -pr) >/dev/null 2>&1 || true
+        wait >/dev/null 2>&1 || true
+        exit 143
+}
+
+trap terminate_runner INT TERM
+
+LION_ROOT="${LION_ROOT:-$(cd "$SCRIPT_DIR/../../../.." && pwd -P)}"
+LION_DATA_PATH="${LION_DATA_PATH:-/mnt/data/Datasets}"
+LION_EXPERIMENTS_PATH="${LION_EXPERIMENTS_PATH:-$LION_DATA_PATH/experiments}"
+export LION_DATA_PATH LION_EXPERIMENTS_PATH
+PADIS_RUN_ROOT="${PADIS_RUN_ROOT:-$(padis_default_run_root)}"
+PADIS_GCP_RUN_NAME="${PADIS_GCP_RUN_NAME:-gcp_spot_training}"
+PADIS_RUN_STAMP="${PADIS_RUN_STAMP:-$PADIS_GCP_RUN_NAME}"
+PADIS_TRAIN_ROOT="${PADIS_TRAIN_ROOT:-$PADIS_RUN_ROOT/final_real_runs/$PADIS_GCP_RUN_NAME}"
+PADIS_PNP_OUTPUT_ROOT="${PADIS_PNP_OUTPUT_ROOT:-$PADIS_TRAIN_ROOT}"
+PNP_TASK_NAME="${PADIS_GCP_PNP_TASK_NAME:-pnp_lidc_drunet}"
+
+PADIS_DATA_ROOT="${LION_DATA_PATH:-$LION_ROOT/../Data}"
+PADIS_CACHE_ROOT="${PADIS_CACHE_ROOT:-$PADIS_DATA_ROOT/processed/LIDC-IDRI-cache}"
+PADIS_RAM_DISK="${PADIS_RAM_DISK:-/mnt/ram-disk}"
+PADIS_256_CACHE_FOLDER="${PADIS_256_CACHE_FOLDER:-$PADIS_RAM_DISK/lion_lidc_cache_256}"
+PADIS_512_CACHE_FOLDER="${PADIS_512_CACHE_FOLDER:-$PADIS_RAM_DISK/lion_lidc_cache_512}"
+PADIS_256_CACHE_ARCHIVE_FOLDER="${PADIS_256_CACHE_ARCHIVE_FOLDER:-}"
+if [ -z "$PADIS_256_CACHE_ARCHIVE_FOLDER" ]; then
+        PADIS_256_CACHE_ARCHIVE_FOLDER="${PADIS_CACHE_ARCHIVE_FOLDER:-$PADIS_CACHE_ROOT/padis_256/archives}"
+fi
+PADIS_512_CACHE_ARCHIVE_FOLDER="${PADIS_512_CACHE_ARCHIVE_FOLDER:-$PADIS_CACHE_ROOT/padis_512/archives}"
+PADIS_GCP_CACHE_VARIANTS="${PADIS_GCP_CACHE_VARIANTS:-256-default,256-full,512-default}"
+PADIS_GCP_STAGE_CACHES="${PADIS_GCP_STAGE_CACHES:-1}"
+PADIS_REQUIRE_CACHE_HIT="${PADIS_REQUIRE_CACHE_HIT:-0}"
+PADIS_WRITE_CACHE_ARCHIVE="${PADIS_WRITE_CACHE_ARCHIVE:-0}"
+PADIS_DATA_FOLDER="${PADIS_DATA_FOLDER:-}"
+
+PATCH_TRAIN_SECONDS="$(time_to_seconds "${PADIS_GCP_PATCH_TRAIN_TIME:-06:00:00}")"
+WHOLE_TRAIN_SECONDS="$(time_to_seconds "${PADIS_GCP_WHOLE_TRAIN_TIME:-18:00:00}")"
+PADIS_GCP_FINALIZE_SECONDS="${PADIS_GCP_FINALIZE_SECONDS:-900}"
+PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS="${PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS:-600}"
+PADIS_GCP_MAX_PERIODIC_CHECKPOINTS="${PADIS_GCP_MAX_PERIODIC_CHECKPOINTS:-2}"
+PADIS_GCP_FINAL_PERIODIC_CHECKPOINTS="${PADIS_GCP_FINAL_PERIODIC_CHECKPOINTS:-1}"
+PADIS_GCP_RUNTIME_HEARTBEAT_SECONDS="${PADIS_GCP_RUNTIME_HEARTBEAT_SECONDS:-60}"
+PADIS_GCP_DRY_RUN="${PADIS_GCP_DRY_RUN:-0}"
+
+PADIS_TARGET_PATCHES="${PADIS_TARGET_PATCHES:-400000000}"
+PADIS_SEED="${PADIS_SEED:-33}"
+PADIS_NUM_WORKERS="${PADIS_NUM_WORKERS:-16}"
+PADIS_PREFETCH_FACTOR="${PADIS_PREFETCH_FACTOR:-4}"
+PADIS_NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-0}"
+PADIS_WANDB_PROJECT="${PADIS_WANDB_PROJECT:-PaDIS-Reproduction}"
+PADIS_WANDB_ENTITY="${PADIS_WANDB_ENTITY:-}"
+PADIS_WANDB_MODE="${PADIS_WANDB_MODE:-online}"
+PADIS_NO_WANDB="${PADIS_NO_WANDB:-0}"
+PADIS_WANDB_NAME_PREFIX="${PADIS_WANDB_NAME_PREFIX:-PaDIS_GCP_${PADIS_RUN_STAMP}}"
+
+PADIS_PNP_RUN_NAME="${PADIS_PNP_RUN_NAME:-pnp_lidc_drunet}"
+PADIS_PNP_BATCH_SIZE="${PADIS_PNP_BATCH_SIZE:-8}"
+PADIS_PNP_EPOCHS="${PADIS_PNP_EPOCHS:-100}"
+PADIS_PNP_LR="${PADIS_PNP_LR:-1e-4}"
+PADIS_PNP_BETA1="${PADIS_PNP_BETA1:-0.9}"
+PADIS_PNP_BETA2="${PADIS_PNP_BETA2:-0.99}"
+PADIS_PNP_NOISE_MIN="${PADIS_PNP_NOISE_MIN:-0.0}"
+PADIS_PNP_NOISE_MAX="${PADIS_PNP_NOISE_MAX:-0.05}"
+PADIS_PNP_IMAGE_SCALING="${PADIS_PNP_IMAGE_SCALING:-0.5}"
+PADIS_PNP_MAX_SLICES_PER_PATIENT="${PADIS_PNP_MAX_SLICES_PER_PATIENT:-4}"
+PADIS_PNP_MAX_TRAIN_SAMPLES="${PADIS_PNP_MAX_TRAIN_SAMPLES:-}"
+PADIS_PNP_MAX_VALIDATION_SAMPLES="${PADIS_PNP_MAX_VALIDATION_SAMPLES:-}"
+PADIS_PNP_FULL_LIDC="${PADIS_PNP_FULL_LIDC:-0}"
+PADIS_PNP_USE_NOISE_LEVEL="${PADIS_PNP_USE_NOISE_LEVEL:-0}"
+PADIS_PNP_INT_CHANNELS="${PADIS_PNP_INT_CHANNELS:-64}"
+PADIS_PNP_N_BLOCKS="${PADIS_PNP_N_BLOCKS:-4}"
+PADIS_PNP_PATCH_SIZE="${PADIS_PNP_PATCH_SIZE:-}"
+PADIS_PNP_PATCHES_PER_IMAGE="${PADIS_PNP_PATCHES_PER_IMAGE:-1}"
+PADIS_PNP_VALIDATION_EVERY="${PADIS_PNP_VALIDATION_EVERY:-1}"
+PADIS_PNP_CHECKPOINT_EVERY="${PADIS_PNP_CHECKPOINT_EVERY:-10}"
+PADIS_PNP_MAX_PERIODIC_CHECKPOINTS="${PADIS_PNP_MAX_PERIODIC_CHECKPOINTS:-$PADIS_GCP_MAX_PERIODIC_CHECKPOINTS}"
+PADIS_PNP_MAX_TRAIN_SECONDS="${PADIS_PNP_MAX_TRAIN_SECONDS:-}"
+PADIS_PNP_SEED="${PADIS_PNP_SEED:-$PADIS_SEED}"
+PADIS_PNP_NUM_WORKERS="${PADIS_PNP_NUM_WORKERS:-4}"
+PADIS_PNP_FINAL_NAME="${PADIS_PNP_FINAL_NAME:-pnp_lidc_drunet.pt}"
+PADIS_PNP_FINAL_FULL_NAME="${PADIS_PNP_FINAL_FULL_NAME:-${PADIS_PNP_FINAL_NAME%.pt}_full.pt}"
+PADIS_PNP_CHECKPOINT_PATTERN="${PADIS_PNP_CHECKPOINT_PATTERN:-pnp_lidc_drunet_check_*.pt}"
+PADIS_PNP_VALIDATION_NAME="${PADIS_PNP_VALIDATION_NAME:-pnp_lidc_drunet_min_val.pt}"
+
+MPLCONFIGDIR="${MPLCONFIGDIR:-$PADIS_TRAIN_ROOT/matplotlib}"
+WANDB_DIR="${WANDB_DIR:-$PADIS_TRAIN_ROOT/wandb}"
+if [ "$PADIS_GCP_DRY_RUN" = "1" ]; then
+        STATE_DIR="$PADIS_TRAIN_ROOT/.gcp_spot_dry_run"
+else
+        STATE_DIR="$PADIS_TRAIN_ROOT/.gcp_spot"
+fi
+DONE_DIR="$STATE_DIR/done"
+RUNNING_DIR="$STATE_DIR/running"
+FAILED_DIR="$STATE_DIR/failed"
+LOG_DIR="$STATE_DIR/logs"
+RUNTIME_DIR="$STATE_DIR/runtime"
+export LION_ROOT PADIS_RUN_ROOT PADIS_RUN_STAMP PADIS_TRAIN_ROOT
+export PADIS_DATA_FOLDER MPLCONFIGDIR WANDB_DIR PYTHONUNBUFFERED=1
+export OMP_NUM_THREADS=1 PYTHONHASHSEED="$PADIS_SEED"
+export PADIS_WANDB_PROJECT PADIS_WANDB_ENTITY PADIS_WANDB_MODE PADIS_NO_WANDB
+
+mkdir -p \
+        "$PADIS_TRAIN_ROOT" \
+        "$MPLCONFIGDIR" \
+        "$WANDB_DIR" \
+        "$STATE_DIR" \
+        "$DONE_DIR" \
+        "$RUNNING_DIR" \
+        "$FAILED_DIR" \
+        "$LOG_DIR" \
+        "$RUNTIME_DIR"
+exec 200>"$STATE_DIR/runner.lock"
+flock -n 200 || die "Another GCP PaDIS runner is already active for $PADIS_TRAIN_ROOT."
+rm -f "$RUNNING_DIR"/*.running
+
+activate_environment
+cd "$LION_ROOT"
+padis_init_training_tasks
+discover_gpu_ids
+
+default_task_order=(
+        whole_lidc_full
+        whole_lidc_default
+        "$PNP_TASK_NAME"
+        patch_lidc_full
+        patch_lidc_512
+        patch_lidc_default
+        patch_lidc_p96_default
+        patch_lidc_p32_default
+        patch_lidc_p16_default
+        patch_lidc_p8_default
+        patch_lidc_no_pos_default
+)
+
+GCP_TASK_NAMES=()
+if [ -n "${PADIS_GCP_TASK_ORDER:-}" ]; then
+        for task in ${PADIS_GCP_TASK_ORDER//,/ }; do
+                GCP_TASK_NAMES+=("$task")
+        done
+else
+        for task in "${default_task_order[@]}"; do
+                if [ "$task" = "$PNP_TASK_NAME" ] && [ "${PADIS_GCP_INCLUDE_PNP:-1}" != "1" ]; then
+                        continue
+                fi
+                GCP_TASK_NAMES+=("$task")
+        done
+fi
+
+for task in "${GCP_TASK_NAMES[@]}"; do
+        if [ "$task" != "$PNP_TASK_NAME" ]; then
+                task_index_by_name "$task" >/dev/null || die "Unknown PaDIS training task: $task"
+        fi
+done
+
+write_manifest
+log "LION root: $LION_ROOT"
+log "Training root: $PADIS_TRAIN_ROOT"
+log "Selected GPUs: ${GPU_IDS[*]}"
+log "Task order: ${GCP_TASK_NAMES[*]}"
+log "Patch task budget: ${PATCH_TRAIN_SECONDS}s; whole-image task budget: ${WHOLE_TRAIN_SECONDS}s"
+log "Checkpoint interval: ${PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS}s"
+log "Final periodic checkpoints kept: $PADIS_GCP_FINAL_PERIODIC_CHECKPOINTS"
+if command -v nvidia-smi >/dev/null 2>&1; then
+        nvidia-smi || true
+fi
+
+stage_ramdisk_caches
+
+worker_pids=()
+for gpu_id in "${GPU_IDS[@]}"; do
+        worker_loop "$gpu_id" &
+        worker_pids+=("$!")
+done
+
+overall_rc=0
+for pid in "${worker_pids[@]}"; do
+        if ! wait "$pid"; then
+                overall_rc=1
+        fi
+done
+
+if [ "$overall_rc" -ne 0 ]; then
+        log "One or more PaDIS GCP training tasks failed. Rerun after fixing the failure to resume remaining tasks."
+        exit "$overall_rc"
+fi
+
+log "All selected PaDIS GCP training tasks completed."

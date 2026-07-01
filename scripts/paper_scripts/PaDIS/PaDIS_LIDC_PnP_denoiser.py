@@ -142,11 +142,17 @@ def periodic_checkpoint_sidecars(checkpoint_path: pathlib.Path) -> list[pathlib.
     ]
 
 
+def full_final_name(final_name: str) -> str:
+    final_path = pathlib.Path(final_name)
+    suffix = final_path.suffix or ".pt"
+    return str(final_path.with_name(f"{final_path.stem}_full{suffix}"))
+
+
 def prune_periodic_checkpoints(solver, max_periodic_checkpoints: int | None) -> None:
     if max_periodic_checkpoints is None:
         return
-    if max_periodic_checkpoints <= 0:
-        raise ValueError("max_periodic_checkpoints must be positive or None.")
+    if max_periodic_checkpoints < 0:
+        raise ValueError("max_periodic_checkpoints must be non-negative or None.")
     if solver.checkpoint_save_folder is None or solver.checkpoint_fname is None:
         return
     checkpoints = sorted(
@@ -154,7 +160,12 @@ def prune_periodic_checkpoints(solver, max_periodic_checkpoints: int | None) -> 
         for path in solver.checkpoint_save_folder.glob(solver.checkpoint_fname)
         if not path.name.endswith(".ema.pt")
     )
-    for checkpoint in checkpoints[:-max_periodic_checkpoints]:
+    stale_checkpoints = (
+        checkpoints
+        if max_periodic_checkpoints == 0
+        else checkpoints[:-max_periodic_checkpoints]
+    )
+    for checkpoint in stale_checkpoints:
         for path in periodic_checkpoint_sidecars(checkpoint):
             if path.exists():
                 path.unlink()
@@ -167,6 +178,29 @@ def save_checkpoint_with_retention(
 ) -> None:
     solver.save_checkpoint(epoch)
     prune_periodic_checkpoints(solver, max_periodic_checkpoints)
+
+
+def load_full_final_checkpoint_if_exists(
+    solver,
+    full_final_path: pathlib.Path,
+) -> bool:
+    if not full_final_path.with_suffix(".pt").is_file():
+        return False
+
+    (
+        solver.model,
+        solver.optimizer,
+        solver.current_epoch,
+        solver.train_loss,
+        _,
+    ) = solver.model.load_checkpoint_if_exists(
+        full_final_path,
+        solver.model,
+        solver.optimizer,
+        solver.train_loss,
+    )
+    print(f"Loaded full final PnP training state from {full_final_path}")
+    return True
 
 
 def build_experiment(args):
@@ -224,10 +258,25 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--validation-every", type=int, default=1)
     parser.add_argument("--checkpoint-every", type=int, default=10)
     parser.add_argument(
+        "--checkpoint-interval-seconds",
+        type=float,
+        default=None,
+        help="Also save resumable checkpoints after this many wall-clock seconds.",
+    )
+    parser.add_argument(
         "--max-periodic-checkpoints",
         type=int,
         default=5,
         help="Maximum periodic checkpoints to retain. Use -1 to keep all.",
+    )
+    parser.add_argument(
+        "--keep-final-periodic-checkpoints",
+        type=int,
+        default=None,
+        help=(
+            "Periodic checkpoints to keep after clean completion. By default the "
+            "existing periodic retention setting is left unchanged."
+        ),
     )
     parser.add_argument(
         "--max-train-seconds",
@@ -239,6 +288,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--final-name", default="pnp_lidc_drunet.pt")
+    parser.add_argument(
+        "--final-full-name",
+        default=None,
+        help=(
+            "Full final training-state checkpoint containing optimizer state. "
+            "Defaults to <final-name> with _full before the suffix."
+        ),
+    )
     parser.add_argument("--checkpoint-pattern", default="pnp_lidc_drunet_check_*.pt")
     parser.add_argument("--validation-name", default="pnp_lidc_drunet_min_val.pt")
     parser.add_argument("--wandb-project", type=str, default=None)
@@ -283,14 +340,31 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--validation-every must be positive.")
     if args.checkpoint_every <= 0:
         raise ValueError("--checkpoint-every must be positive.")
+    if args.checkpoint_interval_seconds is not None and (
+        args.checkpoint_interval_seconds <= 0
+    ):
+        raise ValueError("--checkpoint-interval-seconds must be positive when set.")
     if args.max_periodic_checkpoints == 0 or args.max_periodic_checkpoints < -1:
         raise ValueError("--max-periodic-checkpoints must be positive or -1.")
+    if args.keep_final_periodic_checkpoints is not None and (
+        args.keep_final_periodic_checkpoints < 0
+        or (
+            args.max_periodic_checkpoints != -1
+            and args.keep_final_periodic_checkpoints > args.max_periodic_checkpoints
+        )
+    ):
+        raise ValueError(
+            "--keep-final-periodic-checkpoints must be between 0 and "
+            "--max-periodic-checkpoints."
+        )
     if args.max_train_seconds is not None and args.max_train_seconds <= 0:
         raise ValueError("--max-train-seconds must be positive when set.")
     if args.num_workers < 0:
         raise ValueError("--num-workers must be non-negative.")
     if not args.final_name:
         raise ValueError("--final-name must not be empty.")
+    if args.final_full_name is not None and not args.final_full_name:
+        raise ValueError("--final-full-name must not be empty when set.")
 
 
 def train_with_optional_time_limit(
@@ -298,6 +372,8 @@ def train_with_optional_time_limit(
     n_epochs: int,
     max_train_seconds: float | None,
     max_periodic_checkpoints: int | None,
+    checkpoint_interval_seconds: float | None = None,
+    full_final_checkpoint_path: pathlib.Path | None = None,
     wandb_run=None,
 ) -> None:
     assert n_epochs > 0, "Number of epochs must be a positive integer"
@@ -311,26 +387,39 @@ def train_with_optional_time_limit(
     if solver.do_load_checkpoint:
         print("Loading checkpoint...")
         solver.current_epoch = solver.load_checkpoint()
+        if solver.current_epoch == 0 and full_final_checkpoint_path is not None:
+            load_full_final_checkpoint_if_exists(solver, full_final_checkpoint_path)
         solver.train_loss = ensure_loss_capacity(solver.train_loss, n_epochs)
     else:
         solver.train_loss = np.zeros(n_epochs)
 
     solver.model.train()
     train_start_wall = time.monotonic()
+    next_timed_checkpoint = (
+        float(checkpoint_interval_seconds)
+        if checkpoint_interval_seconds is not None
+        else None
+    )
     while solver.current_epoch < n_epochs:
         print(f"Training epoch {solver.current_epoch + 1}")
         solver.epoch_step(solver.current_epoch)
         log_epoch_to_wandb(wandb_run, solver, solver.current_epoch)
 
-        if (solver.current_epoch + 1) % solver.checkpoint_freq == 0:
+        elapsed = time.monotonic() - train_start_wall
+        checkpoint_due = (solver.current_epoch + 1) % solver.checkpoint_freq == 0 or (
+            next_timed_checkpoint is not None and elapsed >= next_timed_checkpoint
+        )
+        if checkpoint_due:
             save_checkpoint_with_retention(
                 solver,
                 solver.current_epoch,
                 max_periodic_checkpoints,
             )
+            if next_timed_checkpoint is not None:
+                while elapsed >= next_timed_checkpoint:
+                    next_timed_checkpoint += float(checkpoint_interval_seconds)
 
         solver.current_epoch += 1
-        elapsed = time.monotonic() - train_start_wall
         if max_train_seconds is not None and elapsed >= max_train_seconds:
             print(
                 "Reached --max-train-seconds "
@@ -439,6 +528,10 @@ def main() -> None:
     config["run_folder"] = str(run_folder)
     config["experiment"] = experiment.param.name
     config["max_periodic_checkpoints_effective"] = max_periodic_checkpoints
+    config["final_full_name_effective"] = args.final_full_name or full_final_name(
+        args.final_name
+    )
+    full_final_checkpoint_path = run_folder / config["final_full_name_effective"]
     with open(run_folder / "training_config.json", "w") as f:
         json.dump(config, f, indent=2)
 
@@ -449,6 +542,8 @@ def main() -> None:
             train_params.epochs,
             args.max_train_seconds,
             max_periodic_checkpoints,
+            checkpoint_interval_seconds=args.checkpoint_interval_seconds,
+            full_final_checkpoint_path=full_final_checkpoint_path,
             wandb_run=wandb_run,
         )
         solver.model.save(
@@ -456,6 +551,15 @@ def main() -> None:
             epoch=solver.current_epoch,
             training=solver.metadata,
             loss=solver.train_loss,
+            dataset=solver.dataset_param,
+            geometry=experiment.geometry,
+        )
+        solver.model.save_checkpoint(
+            full_final_checkpoint_path,
+            solver.current_epoch,
+            solver.train_loss,
+            solver.optimizer,
+            solver.metadata,
             dataset=solver.dataset_param,
             geometry=experiment.geometry,
         )
@@ -474,6 +578,12 @@ def main() -> None:
                 if finite_val.size > 0:
                     wandb_run.summary["min_validation_loss"] = float(np.min(finite_val))
         print(f"Saved PnP denoiser to {run_folder / args.final_name}")
+        print(
+            "Saved full PnP training state to "
+            f"{run_folder / config['final_full_name_effective']}"
+        )
+        if args.keep_final_periodic_checkpoints is not None:
+            prune_periodic_checkpoints(solver, args.keep_final_periodic_checkpoints)
     finally:
         if wandb_run is not None:
             wandb_run.finish()

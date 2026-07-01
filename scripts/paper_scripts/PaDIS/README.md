@@ -255,6 +255,52 @@ The reconstruction matrix expects the denoiser at:
 /path/to/a100_training_<stamp>/pnp_lidc_drunet/pnp_lidc_drunet.pt
 ```
 
+### GCP Spot Training
+
+For a retained `/mnt/data` GCP spot instance, run the local spot orchestrator
+from the LION root:
+
+```bash
+scripts/paper_scripts/PaDIS/gcp/run_PaDIS_GCP_spot_training.sh
+```
+
+Defaults match the retained instance layout:
+
+```text
+LION_DATA_PATH=/mnt/data/Datasets
+PADIS_TRAIN_ROOT=/mnt/data/Datasets/experiments/PaDIS/final_real_runs/gcp_spot_training
+PADIS_RAM_DISK=/mnt/ram-disk
+```
+
+The runner uses up to four visible GPUs and assigns one model per GPU. It trains
+patch-based PaDIS models for 6 hours each, whole-image PaDIS models for 18
+hours each, and trains the PnP DRUNet to its epoch target. Rerunning the same
+command resumes from retained checkpoints and state under `PADIS_TRAIN_ROOT`.
+
+Durable training state stays under `/mnt/data`; only staged LIDC tensor caches
+live under `/mnt/ram-disk`. If prepared cache archives are absent, the runner
+can build the RAM caches from `/mnt/data/Datasets/processed/LIDC-IDRI`.
+
+Checkpoint behavior:
+
+```text
+Periodic resume checkpoint: every 10 minutes
+Periodic checkpoints kept during training: 2
+Periodic checkpoints kept after completion: 1
+Final lightweight checkpoint: kept
+Final full training-state checkpoint: kept
+Best-validation checkpoint: kept
+```
+
+Useful overrides:
+
+```bash
+PADIS_GCP_GPU_IDS=0,1,2,3 \
+PADIS_GCP_RUN_NAME=gcp_spot_training_20260701 \
+PADIS_WANDB_MODE=online \
+scripts/paper_scripts/PaDIS/gcp/run_PaDIS_GCP_spot_training.sh
+```
+
 ### PnP DRUNet Training Defaults
 
 The PnP denoiser script is:
@@ -271,6 +317,7 @@ Current defaults are:
 | Periodic checkpoint frequency | 10 epochs | Periodic resume checkpoints are intentionally sparse. |
 | Retained periodic checkpoints | 5 | Use `--max-periodic-checkpoints -1` to keep all periodic checkpoints. |
 | Best-validation checkpoint | `pnp_lidc_drunet_min_val.pt` | Saved independently of periodic checkpoint retention. |
+| Full final checkpoint | `pnp_lidc_drunet_full.pt` | Contains optimizer state for resuming from the final trained model. |
 | W&B resume metadata | `wandb_run.json` in the run folder | Existing run IDs are reused automatically unless `--wandb-id` is given. Metrics use W&B's resumed step counter with `epoch` as the chart axis. |
 
 The local corrected-validation DRUNet run was stopped after epoch 50 completed

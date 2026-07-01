@@ -513,6 +513,7 @@ class PaDISSolver(LIONsolver):
         validation_interval_patches: int | None = None,
         validation_max_patches: int | None = None,
         checkpoint_interval_patches: int | None = None,
+        checkpoint_interval_seconds: float | None = None,
         log_interval_patches: int | None = None,
         max_train_seconds: float | None = None,
         log_fn: Callable[[dict[str, object], int], None] | None = None,
@@ -531,6 +532,8 @@ class PaDISSolver(LIONsolver):
             raise ValueError("validation_max_patches must be positive.")
         if checkpoint_interval_patches is not None and checkpoint_interval_patches <= 0:
             raise ValueError("checkpoint_interval_patches must be positive.")
+        if checkpoint_interval_seconds is not None and checkpoint_interval_seconds <= 0:
+            raise ValueError("checkpoint_interval_seconds must be positive.")
         if log_interval_patches is not None and log_interval_patches <= 0:
             raise ValueError("log_interval_patches must be positive.")
         if max_train_seconds is not None and max_train_seconds <= 0:
@@ -568,6 +571,11 @@ class PaDISSolver(LIONsolver):
         next_checkpoint = (
             self.seen_patches + int(checkpoint_interval_patches)
             if checkpoint_interval_patches is not None
+            else None
+        )
+        next_timed_checkpoint = (
+            float(checkpoint_interval_seconds)
+            if checkpoint_interval_seconds is not None
             else None
         )
         next_log = (
@@ -696,15 +704,27 @@ class PaDISSolver(LIONsolver):
                         log_fn(validation_metrics, self.seen_patches)
                     next_validation += int(validation_interval_patches)
 
-                if next_checkpoint is not None and self.seen_patches >= next_checkpoint:
+                elapsed_train_seconds = time.monotonic() - train_start_wall
+                checkpoint_due = (
+                    next_checkpoint is not None and self.seen_patches >= next_checkpoint
+                ) or (
+                    next_timed_checkpoint is not None
+                    and elapsed_train_seconds >= next_timed_checkpoint
+                )
+                if checkpoint_due:
                     checkpoint_index += 1
                     if self.checkpoint_save_folder is not None:
                         self.save_checkpoint(checkpoint_index - 1)
-                    next_checkpoint += int(checkpoint_interval_patches)
+                    if next_checkpoint is not None:
+                        while self.seen_patches >= next_checkpoint:
+                            next_checkpoint += int(checkpoint_interval_patches)
+                    if next_timed_checkpoint is not None:
+                        while elapsed_train_seconds >= next_timed_checkpoint:
+                            next_timed_checkpoint += float(checkpoint_interval_seconds)
 
                 if (
                     max_train_seconds is not None
-                    and time.monotonic() - train_start_wall >= max_train_seconds
+                    and elapsed_train_seconds >= max_train_seconds
                 ):
                     if self.verbose:
                         print(

@@ -559,10 +559,25 @@ def build_arg_parser():
     )
     parser.add_argument("--checkpoint-interval-patches", type=int, default=5_000_000)
     parser.add_argument(
+        "--checkpoint-interval-seconds",
+        type=float,
+        default=None,
+        help="Also save resumable checkpoints after this many wall-clock seconds.",
+    )
+    parser.add_argument(
         "--max-periodic-checkpoints",
         type=int,
         default=5,
         help="Maximum periodic checkpoint states to retain. Use -1 to keep all.",
+    )
+    parser.add_argument(
+        "--keep-final-periodic-checkpoints",
+        type=int,
+        default=0,
+        help=(
+            "Periodic checkpoints to keep after clean completion. Default 0 "
+            "preserves the Slurm behavior of deleting all periodic checkpoints."
+        ),
     )
     parser.add_argument("--log-interval-patches", type=int, default=128)
     parser.add_argument(
@@ -689,6 +704,14 @@ def main():
     max_periodic_checkpoints = (
         None if args.max_periodic_checkpoints == -1 else args.max_periodic_checkpoints
     )
+    if args.keep_final_periodic_checkpoints < 0 or (
+        args.max_periodic_checkpoints != -1
+        and args.keep_final_periodic_checkpoints > args.max_periodic_checkpoints
+    ):
+        raise ValueError(
+            "--keep-final-periodic-checkpoints must be between 0 and "
+            "--max-periodic-checkpoints."
+        )
     if not 0.0 <= args.pcg_slices_nodule <= 1.0:
         raise ValueError("--pcg-slices-nodule must be in [0, 1].")
     set_run_seed(args.seed)
@@ -793,11 +816,15 @@ def main():
             validation_interval_patches=args.validation_interval_patches,
             validation_max_patches=validation_max_patches,
             checkpoint_interval_patches=args.checkpoint_interval_patches,
+            checkpoint_interval_seconds=args.checkpoint_interval_seconds,
             log_interval_patches=args.log_interval_patches,
             max_train_seconds=args.max_train_seconds,
             log_fn=train_log_fn,
         )
-        solver.clean_checkpoints()
+        if args.keep_final_periodic_checkpoints == 0:
+            solver.clean_checkpoints()
+        else:
+            solver.prune_periodic_checkpoints(args.keep_final_periodic_checkpoints)
         solver.save_final_results()
         save_loss_plots(solver, run_folder)
         if wandb_run is not None:
