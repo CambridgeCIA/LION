@@ -77,6 +77,18 @@ class LIONmodel(nn.Module, ABC):
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
 
+        if geometry is not None and not isinstance(geometry, ct.Geometry):
+            raise TypeError(
+                f"Expected geometry to be of type Geometry or None, but got {type(geometry).__name__}. "
+                "If you passed positional arguments to the model, please verify their order matches the model's __init__ signature."
+            )
+        
+        if model_parameters is not None and not isinstance(model_parameters, LIONModelParameter):
+            raise TypeError(
+                f"Expected model_parameters to be of type LIONModelParameter or None, but got {type(model_parameters).__name__}. "
+                "Ensure you are not accidentally passing a Geometry object as model_parameters."
+            )
+
         if model_parameters is None:
             model_parameters = self.default_parameters()
         # Pass all relevant parameters to internal storage.
