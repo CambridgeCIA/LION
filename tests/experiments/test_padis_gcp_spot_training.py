@@ -119,6 +119,18 @@ def test_gcp_spot_runner_defaults_to_one_gpu(tmp_path):
     assert "gpu_ids=0\n" in manifest.read_text()
 
 
+def test_gcp_spot_runner_uses_128_batch_for_p96_by_default(tmp_path):
+    result, train_root = _run_gcp_dry_run(
+        tmp_path,
+        "patch_lidc_p96_default",
+    )
+
+    assert result.returncode == 0, result.stderr
+    command = _command_text(train_root, "patch_lidc_p96_default")
+    assert "--patch-size-preset 96" in command
+    assert "--batch-size 128" in command
+
+
 def test_gcp_spot_runner_subtracts_previous_runtime_from_wall_budget(tmp_path):
     result, train_root = _run_gcp_dry_run(
         tmp_path,

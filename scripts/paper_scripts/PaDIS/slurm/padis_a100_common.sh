@@ -142,7 +142,7 @@ padis_print_job_header() {
 padis_init_training_tasks() {
         local patch_batch p96_batch whole_batch native512_batch
         patch_batch="${PADIS_PATCH_BATCH_SIZE:-128}"
-        p96_batch="${PADIS_P96_BATCH_SIZE:-${PADIS_PATCH_BATCH_SIZE:-120}}"
+        p96_batch="${PADIS_P96_BATCH_SIZE:-${PADIS_PATCH_BATCH_SIZE:-128}}"
         whole_batch="${PADIS_WHOLE_BATCH_SIZE:-8}"
         native512_batch="${PADIS_512_BATCH_SIZE:-128}"
 
