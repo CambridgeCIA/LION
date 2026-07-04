@@ -11,6 +11,12 @@ import subprocess
 import sys
 
 from LION.utils.paths import LION_EXPERIMENTS_PATH
+from scripts.paper_scripts.PaDIS.PaDIS_run_reconstruction_matrix import (
+    MODEL_BY_NAME,
+    TRAINING_ROOT_PRESETS,
+    checkpoint_path,
+    resolve_training_root,
+)
 
 
 @dataclass(frozen=True)
@@ -175,6 +181,83 @@ PRESETS = {
         ),
         engine="generation",
     ),
+    "paper-generation-patch-average": ReconstructionPreset(
+        implementation="lion-paper-protocol",
+        experiment=None,
+        description="Fixed-overlap patch-averaging LIDC image generation for Figure A.11.",
+        arguments=(
+            "--num-steps",
+            "1000",
+            "--inner-steps",
+            "1",
+            "--sigma-min",
+            "0.002",
+            "--sigma-max",
+            "40",
+            "--generation-epsilon",
+            "1",
+            "--langevin-noise-scale",
+            "1",
+            "--patch-assembly",
+            "fixed_average",
+            "--fixed-overlap-layout",
+            "public_overlap",
+            "--patch-overlap",
+            "8",
+            "--fixed-overlap-checkpoint-denoiser",
+        ),
+        engine="generation",
+    ),
+    "paper-generation-patch-stitch": ReconstructionPreset(
+        implementation="lion-paper-protocol",
+        experiment=None,
+        description="Fixed-overlap patch-stitching LIDC image generation for Figure A.11.",
+        arguments=(
+            "--num-steps",
+            "1000",
+            "--inner-steps",
+            "1",
+            "--sigma-min",
+            "0.002",
+            "--sigma-max",
+            "40",
+            "--generation-epsilon",
+            "1",
+            "--langevin-noise-scale",
+            "1",
+            "--patch-assembly",
+            "fixed_stitch",
+            "--fixed-overlap-layout",
+            "public_tile",
+            "--patch-overlap",
+            "8",
+            "--fixed-overlap-checkpoint-denoiser",
+        ),
+        engine="generation",
+    ),
+    "paper-generation-langevin-300nfe": ReconstructionPreset(
+        implementation="lion-paper-protocol",
+        experiment=None,
+        description=(
+            "PaDIS generation with 300 Langevin NFEs for the implemented row of "
+            "the acceleration figure."
+        ),
+        arguments=(
+            "--num-steps",
+            "300",
+            "--inner-steps",
+            "1",
+            "--sigma-min",
+            "0.002",
+            "--sigma-max",
+            "40",
+            "--generation-epsilon",
+            "1",
+            "--langevin-noise-scale",
+            "1",
+        ),
+        engine="generation",
+    ),
     "paper-fan-8": ReconstructionPreset(
         implementation="lion-paper-protocol",
         experiment="PaDISFanBeam8CTRecon",
@@ -281,8 +364,11 @@ PRESETS = {
     ),
     "paper-fan-180": ReconstructionPreset(
         implementation="lion-paper-protocol",
-        experiment="PaDISFanBeam180CTRecon",
-        description="PaDIS paper-style 180-view fan beam with LION's LIDC geometry.",
+        experiment="PaDISFanBeam120LimitedCTRecon",
+        description=(
+            "PaDIS limited-angle fan beam with 20 views over 120 degrees "
+            "using LION's LIDC geometry."
+        ),
         arguments=_paper_ct_arguments(0.002),
     ),
     "paper-whole-fan-8": ReconstructionPreset(
@@ -343,8 +429,11 @@ PRESETS = {
     ),
     "paper-whole-fan-180": ReconstructionPreset(
         implementation="lion-whole-image",
-        experiment="PaDISFanBeam180CTRecon",
-        description="Whole-image diffusion 180-view fan beam with LION's LIDC geometry.",
+        experiment="PaDISFanBeam120LimitedCTRecon",
+        description=(
+            "Whole-image diffusion limited-angle fan beam with 20 views over "
+            "120 degrees using LION's LIDC geometry."
+        ),
         arguments=_whole_image_ct_arguments(0.002),
     ),
     "train-patch-lidc-quarter": ReconstructionPreset(
@@ -467,28 +556,169 @@ PRESETS = {
 }
 
 
+FIGURE_PRESET_GROUPS = {
+    "paper-generation-figures": (
+        "paper-generation-whole",
+        "paper-generation-naive-patch",
+        "paper-generation",
+        "paper-generation-langevin-300nfe",
+        "paper-generation-patch-stitch",
+        "paper-generation-patch-average",
+    ),
+}
+
+
+def add_run_arguments(parser: argparse.ArgumentParser, *, include_preset: bool) -> None:
+    if include_preset:
+        parser.add_argument("preset", choices=tuple(PRESETS))
+    else:
+        parser.add_argument("group", choices=tuple(FIGURE_PRESET_GROUPS))
+    parser.add_argument("--checkpoint", type=pathlib.Path, default=None)
+    if not include_preset:
+        parser.add_argument(
+            "--patch-checkpoint",
+            type=pathlib.Path,
+            default=None,
+            help="Checkpoint for patch-prior generation presets in this group.",
+        )
+        parser.add_argument(
+            "--whole-checkpoint",
+            type=pathlib.Path,
+            default=None,
+            help="Checkpoint for whole-image generation presets in this group.",
+        )
+        parser.add_argument(
+            "--training-root",
+            type=pathlib.Path,
+            default=None,
+            help=(
+                "Root containing final model subfolders. Used to fill missing "
+                "--patch-checkpoint and --whole-checkpoint values."
+            ),
+        )
+        parser.add_argument(
+            "--training-root-preset",
+            choices=TRAINING_ROOT_PRESETS,
+            default=None,
+            help=(
+                "Infer --training-root from the final Slurm or GCP model "
+                "layout. Explicit checkpoint flags still take precedence."
+            ),
+        )
+        parser.add_argument(
+            "--run-root",
+            type=pathlib.Path,
+            default=None,
+            help="Base PaDIS experiment root for --training-root-preset.",
+        )
+        parser.add_argument(
+            "--run-stamp",
+            default=os.environ.get("PADIS_RUN_STAMP", ""),
+            help="Slurm run stamp for --training-root-preset slurm.",
+        )
+        parser.add_argument(
+            "--gcp-run-name",
+            default=os.environ.get("PADIS_GCP_RUN_NAME", "PaDIS-Reproduction-GCP"),
+            help="GCP run folder for --training-root-preset gcp.",
+        )
+    parser.add_argument(
+        "--output-root",
+        type=pathlib.Path,
+        default=LION_EXPERIMENTS_PATH / "PaDIS" / "reconstruction_presets",
+    )
+    parser.add_argument("--split", choices=("validation", "test"), default="validation")
+    parser.add_argument("--start-index", type=int, default=0)
+    parser.add_argument("--max-samples", type=int, default=1)
+    parser.add_argument("--seed", type=int, default=33)
+    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--dry-run", action="store_true")
+
+
+def add_figure_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--reconstruction-root",
+        type=pathlib.Path,
+        required=True,
+        help="Root produced by PaDIS_run_reconstruction_matrix.py.",
+    )
+    parser.add_argument(
+        "--generation-root",
+        type=pathlib.Path,
+        default=LION_EXPERIMENTS_PATH / "PaDIS" / "reconstruction_presets",
+        help="Root produced by the paper-generation-figures preset group.",
+    )
+    parser.add_argument(
+        "--output-folder",
+        type=pathlib.Path,
+        required=True,
+        help="Folder for rendered figure PNGs and the manifest.",
+    )
+    parser.add_argument("--figures", default="all")
+    parser.add_argument("--sample-index", type=int, default=0)
+    parser.add_argument("--body-bbox-padding", type=int, default=8)
+    parser.add_argument("--no-body-crop", action="store_true")
+    parser.add_argument("--allow-missing", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+
+
+def apply_generation_checkpoint_defaults(args: argparse.Namespace) -> None:
+    if args.training_root is None and args.training_root_preset is None:
+        return
+    training_root = resolve_training_root(args)
+    if args.patch_checkpoint is None:
+        args.patch_checkpoint = checkpoint_path(
+            training_root, MODEL_BY_NAME["patch_lidc_default"]
+        )
+    if args.whole_checkpoint is None:
+        args.whole_checkpoint = checkpoint_path(
+            training_root, MODEL_BY_NAME["whole_lidc_default"]
+        )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("list", help="List available reconstruction presets.")
 
     run_parser = subparsers.add_parser("run", help="Run one named preset.")
-    run_parser.add_argument("preset", choices=tuple(PRESETS))
-    run_parser.add_argument("--checkpoint", type=pathlib.Path, default=None)
-    run_parser.add_argument(
-        "--output-root",
-        type=pathlib.Path,
-        default=LION_EXPERIMENTS_PATH / "PaDIS" / "reconstruction_presets",
+    add_run_arguments(run_parser, include_preset=True)
+
+    group_parser = subparsers.add_parser(
+        "run-group", help="Run a named group of figure prerequisite presets."
     )
-    run_parser.add_argument(
-        "--split", choices=("validation", "test"), default="validation"
+    add_run_arguments(group_parser, include_preset=False)
+
+    figure_parser = subparsers.add_parser(
+        "make-figures", help="Render paper-style figures from completed outputs."
     )
-    run_parser.add_argument("--start-index", type=int, default=0)
-    run_parser.add_argument("--max-samples", type=int, default=1)
-    run_parser.add_argument("--seed", type=int, default=33)
-    run_parser.add_argument("--device", default="cuda")
-    run_parser.add_argument("--dry-run", action="store_true")
+    add_figure_arguments(figure_parser)
     return parser
+
+
+def figure_command_for(args: argparse.Namespace) -> list[str]:
+    engine = pathlib.Path(__file__).with_name("PaDIS_make_paper_figures.py")
+    command = [
+        sys.executable,
+        "-u",
+        str(engine),
+        "--reconstruction-root",
+        str(args.reconstruction_root),
+        "--generation-root",
+        str(args.generation_root),
+        "--output-folder",
+        str(args.output_folder),
+        "--figures",
+        args.figures,
+        "--sample-index",
+        str(args.sample_index),
+        "--body-bbox-padding",
+        str(args.body_bbox_padding),
+    ]
+    if args.no_body_crop:
+        command.append("--no-body-crop")
+    if args.allow_missing:
+        command.append("--allow-missing")
+    return command
 
 
 def command_for(args, passthrough: list[str]) -> tuple[list[str], pathlib.Path]:
@@ -559,6 +789,66 @@ def main() -> None:
             parser.error(f"Unexpected arguments: {' '.join(passthrough)}")
         for name, preset in PRESETS.items():
             print(f"{name:28} [{preset.implementation}] {preset.description}")
+        if FIGURE_PRESET_GROUPS:
+            print("\nPreset groups:")
+            for name, presets in FIGURE_PRESET_GROUPS.items():
+                print(f"{name:28} {', '.join(presets)}")
+        return
+
+    if args.command == "run-group":
+        apply_generation_checkpoint_defaults(args)
+        for preset_name in FIGURE_PRESET_GROUPS[args.group]:
+            child_args = argparse.Namespace(**vars(args))
+            child_args.preset = preset_name
+            if PRESETS[preset_name].engine == "generation":
+                if "whole" in preset_name and child_args.whole_checkpoint is not None:
+                    child_args.checkpoint = child_args.whole_checkpoint
+                elif child_args.patch_checkpoint is not None:
+                    child_args.checkpoint = child_args.patch_checkpoint
+            command, output_folder = command_for(child_args, passthrough)
+            print("Running:", " ".join(command))
+            if child_args.dry_run:
+                continue
+
+            output_folder.mkdir(parents=True, exist_ok=True)
+            manifest = {
+                "preset": preset_name,
+                "preset_group": args.group,
+                "preset_config": asdict(PRESETS[preset_name]),
+                "command": command,
+                "seed": child_args.seed,
+                "passthrough_overrides": passthrough,
+            }
+            with open(output_folder / "launcher_manifest.json", "w") as file:
+                json.dump(manifest, file, indent=2)
+            env = os.environ.copy()
+            env.setdefault("PYTHONHASHSEED", str(child_args.seed))
+            with open(output_folder / "run.log", "a", buffering=1) as log_file:
+                process = subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    env=env,
+                )
+                assert process.stdout is not None
+                for line in process.stdout:
+                    print(line, end="")
+                    log_file.write(line)
+                return_code = process.wait()
+            if return_code != 0:
+                raise subprocess.CalledProcessError(return_code, command)
+        return
+
+    if args.command == "make-figures":
+        if passthrough:
+            parser.error(f"Unexpected arguments: {' '.join(passthrough)}")
+        command = figure_command_for(args)
+        print("Running:", " ".join(command))
+        if args.dry_run:
+            return
+        subprocess.run(command, check=True)
         return
 
     command, output_folder = command_for(args, passthrough)

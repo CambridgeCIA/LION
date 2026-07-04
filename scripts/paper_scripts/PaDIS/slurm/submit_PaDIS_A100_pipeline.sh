@@ -19,7 +19,7 @@
 #   PADIS_PNP_TIME=24:00:00
 #   PADIS_SUBMIT_PNP_TRAINING=1
 #   PADIS_SUBMIT_RECONSTRUCTION=0
-#   PADIS_RECON_TIME=06:00:00
+#   PADIS_RECON_TIME=12:00:00
 #   PADIS_RECON_ARRAY_LIMIT=10
 #   PADIS_RECON_METHODS=all
 #   PADIS_RECON_MAX_SAMPLES=25
@@ -57,7 +57,7 @@ cache_variants="${PADIS_CACHE_PREP_VARIANTS:-256-default,256-full,512-default}"
 pilot_time="${PADIS_PILOT_TIME:-00:15:00}"
 real_time="${PADIS_REAL_TIME:-24:00:00}"
 pnp_time="${PADIS_PNP_TIME:-24:00:00}"
-recon_time="${PADIS_RECON_TIME:-06:00:00}"
+recon_time="${PADIS_RECON_TIME:-12:00:00}"
 recon_limit="${PADIS_RECON_ARRAY_LIMIT:-10}"
 verify_account="${PADIS_RECON_VERIFY_ACCOUNT:-${PADIS_CACHE_SLURM_ACCOUNT:-MPHIL-DIS-SL2-CPU}}"
 verify_partition="${PADIS_RECON_VERIFY_PARTITION:-icelake}"
@@ -92,8 +92,9 @@ if [ "${PADIS_SUBMIT_RECONSTRUCTION:-0}" = "1" ]; then
         PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-method_default}"
         PADIS_RECON_METHODS="${PADIS_RECON_METHODS:-all}"
         PADIS_RECON_EXPERIMENTS="${PADIS_RECON_EXPERIMENTS:-paper_matrix}"
+        PADIS_RECON_ABLATIONS="${PADIS_RECON_ABLATIONS:-all}"
         PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS="${PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS:-0}"
-        PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-lion_physics}"
+        PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-method_default}"
         PADIS_RECON_GEOMETRIES="${PADIS_RECON_GEOMETRIES:-lion}"
         PADIS_RECON_SPLIT="${PADIS_RECON_SPLIT:-test}"
         PADIS_RECON_ALGORITHM="${PADIS_RECON_ALGORITHM:-dps_langevin}"
@@ -102,8 +103,8 @@ if [ "${PADIS_SUBMIT_RECONSTRUCTION:-0}" = "1" ]; then
         PADIS_RECON_SEED="${PADIS_RECON_SEED:-33}"
         PADIS_RECON_DEVICE="${PADIS_RECON_DEVICE:-cuda}"
         PADIS_PNP_CHECKPOINT="${PADIS_PNP_CHECKPOINT:-}"
-        PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-10}"
-        PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-4}"
+        PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-20}"
+        PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-5}"
         PADIS_PNP_CG_ITERATIONS="${PADIS_PNP_CG_ITERATIONS:-100}"
         PADIS_PNP_CG_TOLERANCE="${PADIS_PNP_CG_TOLERANCE:-1e-7}"
         PADIS_PNP_NOISE_LEVEL="${PADIS_PNP_NOISE_LEVEL:-}"
@@ -129,6 +130,7 @@ if [ "${PADIS_SUBMIT_RECONSTRUCTION:-0}" = "1" ]; then
                 --models "$PADIS_RECON_MODELS" \
                 --methods "$PADIS_RECON_METHODS" \
                 --experiments "$PADIS_RECON_EXPERIMENTS" \
+                --ablations "$PADIS_RECON_ABLATIONS" \
                 "${off_paper_args[@]}" \
                 --implementations "$PADIS_RECON_IMPLEMENTATIONS" \
                 --geometries "$PADIS_RECON_GEOMETRIES" \
@@ -254,8 +256,9 @@ if [ "${PADIS_SUBMIT_RECONSTRUCTION:-0}" = "1" ]; then
         export PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-method_default}"
         export PADIS_RECON_METHODS="${PADIS_RECON_METHODS:-all}"
         export PADIS_RECON_EXPERIMENTS="${PADIS_RECON_EXPERIMENTS:-paper_matrix}"
+        export PADIS_RECON_ABLATIONS="${PADIS_RECON_ABLATIONS:-all}"
         export PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS="${PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS:-0}"
-        export PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-lion_physics}"
+        export PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-method_default}"
         export PADIS_RECON_GEOMETRIES="${PADIS_RECON_GEOMETRIES:-lion}"
         export PADIS_RECON_SPLIT="${PADIS_RECON_SPLIT:-test}"
         export PADIS_RECON_ALGORITHM="${PADIS_RECON_ALGORITHM:-dps_langevin}"
@@ -265,8 +268,8 @@ if [ "${PADIS_SUBMIT_RECONSTRUCTION:-0}" = "1" ]; then
         export PADIS_RECON_DEVICE="${PADIS_RECON_DEVICE:-cuda}"
         export PADIS_PNP_ROOT
         export PADIS_PNP_CHECKPOINT="${PADIS_PNP_CHECKPOINT:-}"
-        export PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-10}"
-        export PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-4}"
+        export PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-20}"
+        export PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-5}"
         export PADIS_PNP_CG_ITERATIONS="${PADIS_PNP_CG_ITERATIONS:-100}"
         export PADIS_PNP_CG_TOLERANCE="${PADIS_PNP_CG_TOLERANCE:-1e-7}"
         export PADIS_PNP_NOISE_LEVEL="${PADIS_PNP_NOISE_LEVEL:-}"
@@ -329,6 +332,7 @@ EOF
                         --models "$PADIS_RECON_MODELS" \
                         --methods "$PADIS_RECON_METHODS" \
                         --experiments "$PADIS_RECON_EXPERIMENTS" \
+                        --ablations "$PADIS_RECON_ABLATIONS" \
                         "${off_paper_args[@]}" \
                         --implementations "$PADIS_RECON_IMPLEMENTATIONS" \
                         --geometries "$PADIS_RECON_GEOMETRIES" \
@@ -357,6 +361,7 @@ EOF
                 --models "$PADIS_RECON_MODELS" \
                 --methods "$PADIS_RECON_METHODS" \
                 --experiments "$PADIS_RECON_EXPERIMENTS" \
+                --ablations "$PADIS_RECON_ABLATIONS" \
                 "${off_paper_args[@]}" \
                 --implementations "$PADIS_RECON_IMPLEMENTATIONS" \
                 --geometries "$PADIS_RECON_GEOMETRIES" \

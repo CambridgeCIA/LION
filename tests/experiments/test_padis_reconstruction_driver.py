@@ -136,9 +136,23 @@ def test_baseline_driver_writes_metrics_and_tensors(tmp_path):
         payload = json.load(f)
     assert len(payload["metrics"]) == 1
     assert payload["method_settings"] == {"baseline": "fdk"}
+    assert payload["display_label"] == "Baseline FDK"
+    assert payload["reconstruction_label"] == "Baseline FDK"
     assert summary["mean_psnr"] == float("inf")
     assert (tmp_path / "baseline" / "metrics.json").is_file()
     assert (tmp_path / "baseline" / "reconstructions.pt").is_file()
+
+
+def test_result_display_label_distinguishes_patch_and_whole_image_sampling():
+    args = SimpleNamespace(method="langevin")
+    patch_params = SimpleNamespace(prior_mode="patch")
+    whole_params = SimpleNamespace(prior_mode="whole_image")
+
+    assert recon_script.result_display_label(args, patch_params) == "Patch - Langevin"
+    assert (
+        recon_script.result_display_label(args, whole_params)
+        == "Whole image - Langevin"
+    )
 
 
 def test_admm_tv_driver_uses_lion_tv_path(monkeypatch, tmp_path):
@@ -334,13 +348,28 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
             "padis_dps",
             "--implementation",
             "lion_physics",
+            "--experiment",
+            "ct_20",
         ]
     )
     dps_params = recon_script.build_sampler_params(
         dps_args, model=None, measurement_source="normal"
     )
-    assert dps_params.zeta == 3.0
+    assert dps_params.zeta == 4.0
     assert dps_params.sampling_epsilon == 1.0
+
+    base_dps_args = parser.parse_args(
+        [
+            "--method",
+            "padis_dps",
+            "--implementation",
+            "lion_physics",
+        ]
+    )
+    base_dps_params = recon_script.build_sampler_params(
+        base_dps_args, model=None, measurement_source="normal"
+    )
+    assert base_dps_params.zeta == 3.0
 
     whole_fanbeam_args = parser.parse_args(
         [

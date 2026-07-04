@@ -79,6 +79,7 @@ def load_record(path: Path) -> dict:
         "experiment": payload.get("experiment", "unknown"),
         "implementation": payload.get("implementation", "unknown"),
         "geometry": payload.get("geometry_tag", "unknown"),
+        "matrix_group": payload.get("matrix_group", "main"),
         "num_samples": len(metrics),
         "mean_psnr": mean([item["psnr"] for item in metrics if "psnr" in item]),
         "min_psnr": minimum([item["psnr"] for item in metrics if "psnr" in item]),
@@ -121,7 +122,7 @@ def canonical_checkpoint(value) -> str:
     return str(Path(path_text).expanduser().resolve(strict=False))
 
 
-def identity_tuple(item: dict) -> tuple[str, str, str, str, str, str, str]:
+def identity_tuple(item: dict) -> tuple[str, str, str, str, str, str, str, str]:
     return (
         str(item.get("method", "")),
         str(item.get("algorithm", "")),
@@ -129,11 +130,12 @@ def identity_tuple(item: dict) -> tuple[str, str, str, str, str, str, str]:
         str(item.get("experiment", "")),
         str(item.get("implementation", "")),
         str(item.get("geometry", item.get("geometry_tag", ""))),
+        str(item.get("matrix_group", "main")),
         canonical_checkpoint(item.get("checkpoint", "")),
     )
 
 
-def identity_label(identity: tuple[str, str, str, str, str, str, str]) -> str:
+def identity_label(identity: tuple[str, str, str, str, str, str, str, str]) -> str:
     (
         method,
         algorithm,
@@ -141,12 +143,13 @@ def identity_label(identity: tuple[str, str, str, str, str, str, str]) -> str:
         experiment,
         implementation,
         geometry,
+        matrix_group,
         checkpoint,
     ) = identity
     return (
         f"method={method} algorithm={algorithm} prior_mode={prior_mode} "
         f"experiment={experiment} implementation={implementation} "
-        f"geometry={geometry} checkpoint={checkpoint}"
+        f"geometry={geometry} matrix_group={matrix_group} checkpoint={checkpoint}"
     )
 
 

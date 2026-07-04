@@ -13,7 +13,7 @@ LION_ROOT="$(padis_lion_root)"
 cd "$LION_ROOT"
 
 account="${PADIS_SLURM_ACCOUNT:-MPHIL-DIS-SL2-GPU}"
-time_limit="${PADIS_RECON_TIME:-06:00:00}"
+time_limit="${PADIS_RECON_TIME:-12:00:00}"
 array_limit="${PADIS_RECON_ARRAY_LIMIT:-10}"
 verify_account="${PADIS_RECON_VERIFY_ACCOUNT:-${PADIS_CACHE_SLURM_ACCOUNT:-MPHIL-DIS-SL2-CPU}}"
 verify_partition="${PADIS_RECON_VERIFY_PARTITION:-icelake}"
@@ -53,8 +53,9 @@ PADIS_RECON_ROOT="${PADIS_RECON_ROOT:-$run_root/final_real_runs/a100_reconstruct
 PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-method_default}"
 PADIS_RECON_METHODS="${PADIS_RECON_METHODS:-all}"
 PADIS_RECON_EXPERIMENTS="${PADIS_RECON_EXPERIMENTS:-paper_matrix}"
+PADIS_RECON_ABLATIONS="${PADIS_RECON_ABLATIONS:-all}"
 PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS="${PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS:-0}"
-PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-lion_physics}"
+PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-method_default}"
 PADIS_RECON_GEOMETRIES="${PADIS_RECON_GEOMETRIES:-lion}"
 PADIS_RECON_SPLIT="${PADIS_RECON_SPLIT:-test}"
 PADIS_RECON_ALGORITHM="${PADIS_RECON_ALGORITHM:-dps_langevin}"
@@ -67,8 +68,8 @@ PADIS_PNP_RUN_NAME="${PADIS_PNP_RUN_NAME:-pnp_lidc_drunet}"
 PADIS_PNP_FINAL_NAME="${PADIS_PNP_FINAL_NAME:-pnp_lidc_drunet.pt}"
 PADIS_PNP_ROOT="${PADIS_PNP_ROOT:-$PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_RUN_NAME}"
 PADIS_PNP_CHECKPOINT="${PADIS_PNP_CHECKPOINT:-}"
-PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-10}"
-PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-4}"
+PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-20}"
+PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-5}"
 PADIS_PNP_CG_ITERATIONS="${PADIS_PNP_CG_ITERATIONS:-100}"
 PADIS_PNP_CG_TOLERANCE="${PADIS_PNP_CG_TOLERANCE:-1e-7}"
 PADIS_PNP_NOISE_LEVEL="${PADIS_PNP_NOISE_LEVEL:-}"
@@ -84,6 +85,7 @@ export PADIS_RUN_STAMP="$run_stamp"
 export PADIS_SLURM_DIR="$SCRIPT_DIR"
 export LION_ROOT PADIS_TRAIN_ROOT PADIS_RECON_ROOT
 export PADIS_RECON_MODELS PADIS_RECON_METHODS PADIS_RECON_EXPERIMENTS
+export PADIS_RECON_ABLATIONS
 export PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS PADIS_RECON_IMPLEMENTATIONS
 export PADIS_RECON_GEOMETRIES PADIS_RECON_SPLIT PADIS_RECON_ALGORITHM
 export PADIS_RECON_MAX_SAMPLES PADIS_RECON_START_INDEX PADIS_RECON_SEED
@@ -149,6 +151,7 @@ python scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py \
         --models "$PADIS_RECON_MODELS" \
         --methods "$PADIS_RECON_METHODS" \
         --experiments "$PADIS_RECON_EXPERIMENTS" \
+        --ablations "$PADIS_RECON_ABLATIONS" \
         "${off_paper_args[@]}" \
         --implementations "$PADIS_RECON_IMPLEMENTATIONS" \
         --geometries "$PADIS_RECON_GEOMETRIES" \
@@ -177,6 +180,7 @@ task_count="$(
                 --models "$PADIS_RECON_MODELS" \
                 --methods "$PADIS_RECON_METHODS" \
                 --experiments "$PADIS_RECON_EXPERIMENTS" \
+                --ablations "$PADIS_RECON_ABLATIONS" \
                 "${off_paper_args[@]}" \
                 --implementations "$PADIS_RECON_IMPLEMENTATIONS" \
                 --geometries "$PADIS_RECON_GEOMETRIES" \
@@ -205,6 +209,7 @@ python scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py \
         --models "$PADIS_RECON_MODELS" \
         --methods "$PADIS_RECON_METHODS" \
         --experiments "$PADIS_RECON_EXPERIMENTS" \
+        --ablations "$PADIS_RECON_ABLATIONS" \
         "${off_paper_args[@]}" \
         --implementations "$PADIS_RECON_IMPLEMENTATIONS" \
         --geometries "$PADIS_RECON_GEOMETRIES" \
@@ -269,6 +274,7 @@ Tasks: $task_count
 Models: $PADIS_RECON_MODELS
 Methods: $PADIS_RECON_METHODS
 Experiments: $PADIS_RECON_EXPERIMENTS
+Ablations: $PADIS_RECON_ABLATIONS
 Implementations: $PADIS_RECON_IMPLEMENTATIONS
 Geometries: $PADIS_RECON_GEOMETRIES
 Slurm logs: $run_root/debug_runs/slurm_logs

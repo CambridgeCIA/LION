@@ -107,15 +107,20 @@ class Experiment(ABC):
 
 
 def _padis_lidc_fanbeam_parameters(
-    *, dataset: str, image_scaling: float, view_count: int
+    *, dataset: str, image_scaling: float, view_count: int, angle_span: float
 ) -> LIONParameter:
     if dataset != "LIDC-IDRI":
         raise NotImplementedError(f"Dataset {dataset} not implemented")
     param = LIONParameter()
-    param.name = f"PaDIS noise-free {view_count}-view LIDC fan-beam CT experiment"
+    span_degrees = float(np.degrees(angle_span))
+    param.name = (
+        f"PaDIS noise-free {view_count}-view {span_degrees:g}-degree "
+        "LIDC fan-beam CT experiment"
+    )
     param.geometry = ctgeo.Geometry.default_parameters(image_scaling=image_scaling)
-    param.geometry.angles = np.linspace(0, 2 * np.pi, view_count, endpoint=False)
+    param.geometry.angles = np.linspace(0, angle_span, view_count, endpoint=False)
     param.view_count = view_count
+    param.angle_span = angle_span
     # PaDIS forward-projects its [0, 1] model-domain CT images directly.
     param.measurement_source = "normal"
     param.data_loader_params = LIDC_IDRI.default_parameters(
@@ -128,6 +133,7 @@ class _PaDISFanBeamCTReconBase(Experiment):
     """Noise-free fan-beam PaDIS experiment in LION's LIDC geometry."""
 
     view_count: int
+    angle_span: float = 2 * np.pi
 
     def __init__(
         self,
@@ -144,6 +150,7 @@ class _PaDISFanBeamCTReconBase(Experiment):
             dataset=dataset,
             image_scaling=image_scaling,
             view_count=cls.view_count,
+            angle_span=cls.angle_span,
         )
 
 
@@ -159,8 +166,13 @@ class PaDISFanBeam60CTRecon(_PaDISFanBeamCTReconBase):
     view_count = 60
 
 
-class PaDISFanBeam180CTRecon(_PaDISFanBeamCTReconBase):
-    view_count = 180
+class PaDISFanBeam120LimitedCTRecon(_PaDISFanBeamCTReconBase):
+    view_count = 20
+    angle_span = 2 * np.pi / 3
+
+
+class PaDISFanBeam180CTRecon(PaDISFanBeam120LimitedCTRecon):
+    """Compatibility alias for the paper-facing limited-angle fan-beam row."""
 
 
 class ExtremeLowDoseCTRecon(Experiment):

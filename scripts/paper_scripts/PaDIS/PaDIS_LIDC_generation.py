@@ -70,6 +70,13 @@ def build_generation_params(args, model) -> LIONParameter:
         params.patch_size = args.patch_size
     if args.pad_width is not None:
         params.pad_width = args.pad_width
+    if args.patch_assembly is not None:
+        params.patch_assembly = args.patch_assembly
+    if args.fixed_overlap_layout is not None:
+        params.fixed_overlap_layout = args.fixed_overlap_layout
+    if args.patch_overlap is not None:
+        params.patch_overlap = args.patch_overlap
+    params.fixed_overlap_checkpoint_denoiser = args.fixed_overlap_checkpoint_denoiser
     return params
 
 
@@ -132,7 +139,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--generation-epsilon", type=float, default=1.0)
     parser.add_argument("--patch-size", type=int, default=None)
     parser.add_argument("--pad-width", type=int, default=None)
+    parser.add_argument(
+        "--patch-assembly",
+        choices=("padis", "fixed_average", "fixed_stitch"),
+        default=None,
+    )
+    parser.add_argument(
+        "--fixed-overlap-layout",
+        choices=("lion_clipped", "public_overlap", "public_tile"),
+        default=None,
+    )
+    parser.add_argument("--patch-overlap", type=int, default=None)
     parser.add_argument("--patch-batch-size", type=int, default=None)
+    parser.add_argument("--fixed-overlap-checkpoint-denoiser", action="store_true")
     parser.add_argument("--image-size", type=int, default=None)
     parser.add_argument("--langevin-noise-scale", type=float, default=1.0)
     parser.add_argument(

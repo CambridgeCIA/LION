@@ -177,27 +177,41 @@ def test_standalone_reconstruction_submitter_full_default_matrix_with_checkpoint
     assert result.returncode == 0, result.stderr
     assert "slurm_PaDIS_A100_reconstruction_array.sh" in sbatch_log
     assert "slurm_PaDIS_A100_reconstruction_verify.sh" in sbatch_log
-    assert "--array 0-25%10" in sbatch_log
-    assert "PADIS_RECON_EXPECTED_RECORDS=26" in sbatch_log
+    assert "--array 0-100%10" in sbatch_log
+    assert "PADIS_RECON_EXPECTED_RECORDS=101" in sbatch_log
     assert "PADIS_RECON_EXPECTED_SAMPLES=25" in sbatch_log
 
     manifest = tmp_path / "recon/reconstruction_matrix_jobs.json"
     jobs = json.loads(manifest.read_text())
-    assert len(jobs) == 26
+    assert len(jobs) == 101
     assert Counter(job["method"] for job in jobs) == {
         "baseline": 5,
         "admm_tv": 5,
         "pnp_admm": 2,
-        "whole_image_diffusion": 4,
-        "langevin": 1,
-        "predictor_corrector": 1,
-        "ve_ddnm": 1,
-        "patch_average": 1,
-        "patch_stitch": 1,
-        "padis_dps": 5,
+        "whole_image_diffusion": 10,
+        "langevin": 7,
+        "predictor_corrector": 7,
+        "ve_ddnm": 7,
+        "patch_average": 4,
+        "patch_stitch": 4,
+        "padis_dps": 50,
     }
     assert {job["geometry"] for job in jobs} == {"lion"}
-    assert {job["implementation"] for job in jobs} == {"lion_physics"}
+    assert {
+        job["display_label"]
+        for job in jobs
+        if job["model"] == "whole_lidc_default"
+        and job["method"] in {"langevin", "predictor_corrector", "ve_ddnm"}
+    } == {
+        "Whole image - Langevin",
+        "Whole image - Predictor-corrector",
+        "Whole image - VE-DDNM",
+    }
+    assert {job["implementation"] for job in jobs} == {
+        "lion_physics",
+        "public_repo",
+        "paper",
+    }
     no_prior_jobs = [
         job for job in jobs if job["method"] in {"baseline", "admm_tv", "pnp_admm"}
     ]
@@ -246,6 +260,7 @@ def test_standalone_reconstruction_submitter_records_extra_reconstruction_args(
     manifest = tmp_path / "recon/reconstruction_matrix_jobs.json"
     jobs = json.loads(manifest.read_text())
     assert len(jobs) == 1
+    assert {job["implementation"] for job in jobs} == {"lion_physics"}
     assert "--ddnm-corrected-clip" in jobs[0]["command"]
 
 
@@ -359,8 +374,8 @@ def test_standalone_reconstruction_submitter_derives_custom_pnp_checkpoint(tmp_p
 def test_standalone_reconstruction_submitter_rejects_off_paper_matrix(tmp_path):
     result, sbatch_log = _run_submitter(
         tmp_path,
-        PADIS_RECON_METHODS="langevin",
-        PADIS_RECON_EXPERIMENTS="ct_8",
+        PADIS_RECON_METHODS="whole_image_diffusion",
+        PADIS_RECON_EXPERIMENTS="ct_512_60",
         PADIS_RECON_VERIFY="0",
     )
 
@@ -370,27 +385,30 @@ def test_standalone_reconstruction_submitter_rejects_off_paper_matrix(tmp_path):
 
 
 def test_standalone_reconstruction_submitter_can_allow_off_paper_matrix(tmp_path):
-    checkpoint = tmp_path / "training/patch_lidc_default/padis_lidc_256.pt"
+    checkpoint = (
+        tmp_path / "training/whole_lidc_default/whole_image_lidc_256_min_val.pt"
+    )
     checkpoint.parent.mkdir(parents=True)
     checkpoint.write_text("placeholder")
 
     result, sbatch_log = _run_submitter(
         tmp_path,
-        PADIS_RECON_METHODS="langevin",
-        PADIS_RECON_EXPERIMENTS="ct_8",
+        PADIS_RECON_METHODS="whole_image_diffusion",
+        PADIS_RECON_EXPERIMENTS="ct_512_60",
         PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS="1",
         PADIS_RECON_VERIFY="0",
     )
 
     assert result.returncode == 0, result.stderr
     assert "slurm_PaDIS_A100_reconstruction_array.sh" in sbatch_log
-    assert "--array 0-0%10" in sbatch_log
+    assert "--array 0-1%10" in sbatch_log
 
     manifest = tmp_path / "recon/reconstruction_matrix_jobs.json"
     jobs = json.loads(manifest.read_text())
-    assert len(jobs) == 1
-    assert jobs[0]["method"] == "langevin"
-    assert jobs[0]["experiment"] == "ct_8"
+    assert len(jobs) == 2
+    assert {job["implementation"] for job in jobs} == {"lion_physics", "paper"}
+    assert {job["method"] for job in jobs} == {"whole_image_diffusion"}
+    assert {job["experiment"] for job in jobs} == {"ct_512_60"}
 
 
 def test_reconstruction_array_derives_custom_pnp_checkpoint_before_command():

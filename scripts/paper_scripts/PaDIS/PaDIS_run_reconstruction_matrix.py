@@ -5,15 +5,18 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import json
+import os
 import pathlib
 import shlex
 import subprocess
 import sys
 
 
+TRAINING_ROOT_PRESETS = ("slurm", "gcp")
 IMPLEMENTATIONS = ("paper", "public_repo", "lion_physics", "lion_quality")
 GEOMETRIES = ("lion", "padis", "padis_parallel", "padis_fanbeam")
 EXPERIMENTS = ("ct_8", "ct_20", "ct_60", "ct_fanbeam_180", "ct_512_60")
+ABLATIONS = ("schedule_init", "patch_size", "dataset_size", "position_encoding")
 METHODS = (
     "baseline",
     "admm_tv",
@@ -73,6 +76,21 @@ class ReconstructionJob:
     implementation: str
     geometry: str
     experiment: str
+    matrix_group: str = "main"
+    extra_reconstruction_args: tuple[str, ...] = ()
+    sampler_overrides: tuple[tuple[str, object], ...] = ()
+
+
+@dataclass(frozen=True)
+class AblationTask:
+    name: str
+    method: str
+    model: str
+    experiment: str
+    ablation_type: str
+    implementations: tuple[str, ...] | None = None
+    reconstruction_args: tuple[str, ...] = ()
+    sampler_overrides: tuple[tuple[str, object], ...] = ()
 
 
 MODEL_TASKS = (
@@ -158,30 +176,73 @@ _PATCH_CT_EXPERIMENTS = (
     *_EXTRA_CT_EXPERIMENTS,
     *_NATIVE_512_EXPERIMENTS,
 )
+_WHOLE_IMAGE_CT_EXPERIMENTS = (*_MAIN_CT_EXPERIMENTS, *_EXTRA_CT_EXPERIMENTS)
+_PATCH_512_MODEL = {"ct_512_60": "patch_lidc_512"}
+_WHOLE_IMAGE_SAMPLING_METHODS = ("langevin", "predictor_corrector", "ve_ddnm")
+_WHOLE_IMAGE_SAMPLING_EXPERIMENTS = ("ct_20",)
+_METHOD_DISPLAY_NAMES = {
+    "baseline": "Baseline FDK",
+    "admm_tv": "ADMM-TV",
+    "pnp_admm": "PnP-ADMM",
+    "whole_image_diffusion": "Whole image - VE-DPS",
+    "langevin": "Langevin",
+    "predictor_corrector": "Predictor-corrector",
+    "ve_ddnm": "VE-DDNM",
+    "patch_average": "Patch averaging",
+    "patch_stitch": "Patch stitching",
+    "padis_dps": "Patch - VE-DPS",
+}
+
+CORE_IMPLEMENTATIONS_BY_METHOD = {
+    "baseline": ("lion_physics",),
+    "admm_tv": ("lion_physics",),
+    "pnp_admm": ("lion_physics",),
+    "whole_image_diffusion": ("lion_physics", "paper"),
+    "langevin": ("lion_physics", "public_repo", "paper"),
+    "predictor_corrector": ("lion_physics", "public_repo", "paper"),
+    "ve_ddnm": ("lion_physics", "public_repo", "paper"),
+    "patch_average": ("lion_physics", "public_repo"),
+    "patch_stitch": ("lion_physics", "public_repo"),
+    "padis_dps": ("lion_physics", "public_repo", "paper"),
+}
+
+DEFAULT_PAPER_MATRIX_RESTRICTED_EXPERIMENTS = frozenset(
+    {"ct_60", "ct_fanbeam_180", "ct_512_60"}
+)
+DEFAULT_PAPER_MATRIX_RESTRICTED_MAIN_JOBS = frozenset(
+    {
+        ("baseline", "lion_physics"),
+        ("admm_tv", "lion_physics"),
+        ("whole_image_diffusion", "lion_physics"),
+        ("padis_dps", "lion_physics"),
+        ("padis_dps", "public_repo"),
+    }
+)
 
 METHOD_TASKS = (
     MethodTask(
         "baseline",
         "patch_lidc_default",
-        "paper",
+        "lion_physics",
         "dps_langevin",
         _PATCH_CT_EXPERIMENTS,
-        {"ct_512_60": "patch_lidc_512"},
+        _PATCH_512_MODEL,
     ),
     MethodTask(
         "admm_tv",
         "patch_lidc_default",
-        "paper",
+        "lion_physics",
         "dps_langevin",
         _PATCH_CT_EXPERIMENTS,
-        {"ct_512_60": "patch_lidc_512"},
+        _PATCH_512_MODEL,
     ),
     MethodTask(
         "pnp_admm",
         "patch_lidc_default",
-        "paper",
+        "lion_physics",
         "dps_langevin",
-        _MAIN_CT_EXPERIMENTS,
+        _PATCH_CT_EXPERIMENTS,
+        _PATCH_512_MODEL,
         requires_pnp=True,
     ),
     MethodTask(
@@ -189,42 +250,47 @@ METHOD_TASKS = (
         "whole_lidc_default",
         "lion_physics",
         "dps_langevin",
-        (*_MAIN_CT_EXPERIMENTS, *_EXTRA_CT_EXPERIMENTS),
+        _WHOLE_IMAGE_CT_EXPERIMENTS,
     ),
     MethodTask(
         "langevin",
         "patch_lidc_default",
         "lion_physics",
         "langevin",
-        ("ct_20",),
+        _PATCH_CT_EXPERIMENTS,
+        _PATCH_512_MODEL,
     ),
     MethodTask(
         "predictor_corrector",
         "patch_lidc_default",
         "lion_physics",
         "pc",
-        ("ct_20",),
+        _PATCH_CT_EXPERIMENTS,
+        _PATCH_512_MODEL,
     ),
     MethodTask(
         "ve_ddnm",
         "patch_lidc_default",
         "lion_physics",
         "langevin",
-        ("ct_20",),
+        _PATCH_CT_EXPERIMENTS,
+        _PATCH_512_MODEL,
     ),
     MethodTask(
         "patch_average",
         "patch_lidc_default",
         "lion_physics",
         "dps_langevin",
-        ("ct_20",),
+        _PATCH_CT_EXPERIMENTS,
+        _PATCH_512_MODEL,
     ),
     MethodTask(
         "patch_stitch",
         "patch_lidc_default",
         "lion_physics",
         "dps_langevin",
-        ("ct_20",),
+        _PATCH_CT_EXPERIMENTS,
+        _PATCH_512_MODEL,
     ),
     MethodTask(
         "padis_dps",
@@ -232,10 +298,165 @@ METHOD_TASKS = (
         "lion_physics",
         "dps_langevin",
         _PATCH_CT_EXPERIMENTS,
-        {"ct_512_60": "patch_lidc_512"},
+        _PATCH_512_MODEL,
     ),
 )
 METHOD_BY_NAME = {task.name: task for task in METHOD_TASKS}
+
+_NOISE_INIT_ARGS = (
+    "--initial-reconstruction",
+    "noise",
+    "--no-clip-initial",
+    "--no-clip-output",
+)
+_NOISE_INIT_OVERRIDES = (
+    ("initial_reconstruction", "noise"),
+    ("clip_initial", False),
+    ("clip_output", False),
+    ("initial_fdk_filter_type", None),
+    ("initial_fdk_frequency_scaling", 1.0),
+    ("initial_fdk_padded", True),
+)
+_FDK_INIT_OVERRIDES = (("initial_reconstruction", "fdk"),)
+_SCHEDULE_INIT_IMPLEMENTATIONS = ("lion_physics", "public_repo")
+_PATCH_ABLATION_IMPLEMENTATIONS = ("lion_physics", "public_repo")
+_DATASET_ABLATION_IMPLEMENTATIONS = ("lion_physics", "public_repo")
+_WHOLE_DATASET_ABLATION_IMPLEMENTATIONS = ("lion_physics", "paper")
+_POSITION_ABLATION_IMPLEMENTATIONS = ("lion_physics", "public_repo")
+
+SCHEDULE_INIT_ABLATION_TASKS = tuple(
+    AblationTask(
+        f"schedule_{schedule}_{init}_init",
+        "padis_dps",
+        "patch_lidc_512" if experiment == "ct_512_60" else "patch_lidc_default",
+        experiment,
+        "schedule_init",
+        _SCHEDULE_INIT_IMPLEMENTATIONS,
+        (
+            ("--noise-schedule", schedule)
+            + (_NOISE_INIT_ARGS if init == "noise" else ())
+        ),
+        (
+            (("noise_schedule", schedule),)
+            + (_NOISE_INIT_OVERRIDES if init == "noise" else _FDK_INIT_OVERRIDES)
+        ),
+    )
+    for experiment in EXPERIMENTS
+    for schedule in ("geometric", "edm")
+    for init in ("fdk", "noise")
+)
+
+TRAINED_ABLATION_TASKS = (
+    *SCHEDULE_INIT_ABLATION_TASKS,
+    AblationTask(
+        "patch_size_p8",
+        "padis_dps",
+        "patch_lidc_p8_default",
+        "ct_20",
+        "patch_size",
+        _PATCH_ABLATION_IMPLEMENTATIONS,
+    ),
+    AblationTask(
+        "patch_size_p16",
+        "padis_dps",
+        "patch_lidc_p16_default",
+        "ct_20",
+        "patch_size",
+        _PATCH_ABLATION_IMPLEMENTATIONS,
+    ),
+    AblationTask(
+        "patch_size_p32",
+        "padis_dps",
+        "patch_lidc_p32_default",
+        "ct_20",
+        "patch_size",
+        _PATCH_ABLATION_IMPLEMENTATIONS,
+    ),
+    AblationTask(
+        "patch_size_p56",
+        "padis_dps",
+        "patch_lidc_default",
+        "ct_20",
+        "patch_size",
+        _PATCH_ABLATION_IMPLEMENTATIONS,
+    ),
+    AblationTask(
+        "patch_size_p96",
+        "padis_dps",
+        "patch_lidc_p96_default",
+        "ct_20",
+        "patch_size",
+        _PATCH_ABLATION_IMPLEMENTATIONS,
+    ),
+    AblationTask(
+        "dataset_size_patch_default",
+        "padis_dps",
+        "patch_lidc_default",
+        "ct_20",
+        "dataset_size",
+        _DATASET_ABLATION_IMPLEMENTATIONS,
+    ),
+    AblationTask(
+        "dataset_size_patch_full",
+        "padis_dps",
+        "patch_lidc_full",
+        "ct_20",
+        "dataset_size",
+        _DATASET_ABLATION_IMPLEMENTATIONS,
+    ),
+    AblationTask(
+        "dataset_size_whole_default",
+        "whole_image_diffusion",
+        "whole_lidc_default",
+        "ct_20",
+        "dataset_size",
+        _WHOLE_DATASET_ABLATION_IMPLEMENTATIONS,
+    ),
+    AblationTask(
+        "dataset_size_whole_full",
+        "whole_image_diffusion",
+        "whole_lidc_full",
+        "ct_20",
+        "dataset_size",
+        _WHOLE_DATASET_ABLATION_IMPLEMENTATIONS,
+    ),
+    AblationTask(
+        "position_no_encoding_noise_init",
+        "padis_dps",
+        "patch_lidc_no_pos_default",
+        "ct_20",
+        "position_encoding",
+        _POSITION_ABLATION_IMPLEMENTATIONS,
+        _NOISE_INIT_ARGS,
+        _NOISE_INIT_OVERRIDES,
+    ),
+    AblationTask(
+        "position_no_encoding_fdk_init",
+        "padis_dps",
+        "patch_lidc_no_pos_default",
+        "ct_20",
+        "position_encoding",
+        _POSITION_ABLATION_IMPLEMENTATIONS,
+    ),
+    AblationTask(
+        "position_with_encoding_noise_init",
+        "padis_dps",
+        "patch_lidc_default",
+        "ct_20",
+        "position_encoding",
+        _POSITION_ABLATION_IMPLEMENTATIONS,
+        _NOISE_INIT_ARGS,
+        _NOISE_INIT_OVERRIDES,
+    ),
+    AblationTask(
+        "position_with_encoding_fdk_init",
+        "padis_dps",
+        "patch_lidc_default",
+        "ct_20",
+        "position_encoding",
+        _POSITION_ABLATION_IMPLEMENTATIONS,
+    ),
+)
 
 
 def parse_csv(value: str, *, valid: tuple[str, ...], label: str) -> tuple[str, ...]:
@@ -265,6 +486,13 @@ def selected_model_tasks(selection: str) -> tuple[ModelTask, ...]:
 def selected_method_tasks(selection: str) -> tuple[MethodTask, ...]:
     names = parse_csv(selection, valid=METHODS, label="method")
     return tuple(METHOD_BY_NAME[name] for name in names)
+
+
+def selected_ablation_types(selection: str) -> tuple[str, ...]:
+    selection = selection.strip()
+    if selection in ("", "none"):
+        return ()
+    return parse_csv(selection, valid=ABLATIONS, label="ablation")
 
 
 def selected_experiments(
@@ -320,6 +548,157 @@ def validate_method_implementation(method: MethodTask, implementation: str) -> N
         )
 
 
+def selected_implementations_for_method(
+    method: MethodTask, selection: str
+) -> tuple[str, ...]:
+    if selection == "method_default":
+        return CORE_IMPLEMENTATIONS_BY_METHOD[method.name]
+    return parse_csv(selection, valid=IMPLEMENTATIONS, label="implementation")
+
+
+def include_job_in_default_paper_matrix(
+    args: argparse.Namespace, job: ReconstructionJob
+) -> bool:
+    if args.models != "method_default" or args.experiments != "paper_matrix":
+        return True
+    if job.experiment not in DEFAULT_PAPER_MATRIX_RESTRICTED_EXPERIMENTS:
+        return True
+    if job.matrix_group != "main":
+        return False
+    return (
+        job.method.name,
+        job.implementation,
+    ) in DEFAULT_PAPER_MATRIX_RESTRICTED_MAIN_JOBS
+
+
+def job_identity(job: ReconstructionJob) -> tuple:
+    return (
+        job.method.name,
+        job.model.name,
+        job.implementation,
+        job.geometry,
+        job.experiment,
+        job.matrix_group,
+        job.extra_reconstruction_args,
+    )
+
+
+def job_prior_mode(job: ReconstructionJob) -> str:
+    if job.model.prior_mode == "whole-image":
+        return "whole_image"
+    if job.method.name == "whole_image_diffusion":
+        return "whole_image"
+    return "patch"
+
+
+def job_display_label(job: ReconstructionJob) -> str:
+    method_label = _METHOD_DISPLAY_NAMES.get(job.method.name, job.method.name)
+    if job.method.name in _WHOLE_IMAGE_SAMPLING_METHODS:
+        prefix = "Whole image" if job_prior_mode(job) == "whole_image" else "Patch"
+        return f"{prefix} - {method_label}"
+    return method_label
+
+
+def append_whole_image_sampling_jobs(
+    args: argparse.Namespace,
+    jobs: list[ReconstructionJob],
+    methods: tuple[MethodTask, ...],
+    geometries: tuple[str, ...],
+) -> None:
+    if args.models != "method_default" or args.experiments != "paper_matrix":
+        return
+    if args.implementations == "method_default":
+        implementations = IMPLEMENTATIONS
+    else:
+        implementations = parse_csv(
+            args.implementations,
+            valid=IMPLEMENTATIONS,
+            label="implementation",
+        )
+    if "lion_physics" not in implementations:
+        return
+
+    selected_method_names = {method.name for method in methods}
+    seen = {job_identity(job) for job in jobs}
+    model = MODEL_BY_NAME["whole_lidc_default"]
+    for method_name in _WHOLE_IMAGE_SAMPLING_METHODS:
+        if method_name not in selected_method_names:
+            continue
+        method = METHOD_BY_NAME[method_name]
+        for experiment in _WHOLE_IMAGE_SAMPLING_EXPERIMENTS:
+            for geometry in geometries:
+                job = ReconstructionJob(
+                    model=model,
+                    method=method,
+                    implementation="lion_physics",
+                    geometry=geometry,
+                    experiment=experiment,
+                )
+                identity = job_identity(job)
+                if identity not in seen:
+                    jobs.append(job)
+                    seen.add(identity)
+
+
+def append_trained_ablation_jobs(
+    args: argparse.Namespace,
+    jobs: list[ReconstructionJob],
+    methods: tuple[MethodTask, ...],
+    geometries: tuple[str, ...],
+) -> None:
+    ablation_types = selected_ablation_types(args.ablations)
+    if not ablation_types or args.models != "method_default":
+        return
+
+    if args.experiments == "paper_matrix":
+        selected_experiment_names = set(EXPERIMENTS)
+    else:
+        selected_experiment_names = set(
+            parse_csv(args.experiments, valid=EXPERIMENTS, label="experiment")
+        )
+    selected_method_names = {method.name for method in methods}
+    selected_ablation_type_names = set(ablation_types)
+    seen = {job_identity(job) for job in jobs}
+
+    for task in TRAINED_ABLATION_TASKS:
+        if task.ablation_type not in selected_ablation_type_names:
+            continue
+        if task.method not in selected_method_names:
+            continue
+        if task.experiment not in selected_experiment_names:
+            continue
+        method = METHOD_BY_NAME[task.method]
+        model = MODEL_BY_NAME[task.model]
+        implementations = selected_implementations_for_method(
+            method, args.implementations
+        )
+        if task.implementations is not None:
+            implementations = tuple(
+                implementation
+                for implementation in implementations
+                if implementation in task.implementations
+            )
+        for implementation in implementations:
+            validate_method_implementation(method, implementation)
+            for geometry in geometries:
+                job = ReconstructionJob(
+                    model=model,
+                    method=method,
+                    implementation=implementation,
+                    geometry=geometry,
+                    experiment=task.experiment,
+                    matrix_group=task.name,
+                    extra_reconstruction_args=task.reconstruction_args,
+                    sampler_overrides=task.sampler_overrides,
+                )
+                if not include_job_in_default_paper_matrix(args, job):
+                    continue
+                identity = job_identity(job)
+                if identity not in seen:
+                    jobs.append(job)
+                    seen.add(identity)
+
+
 def build_jobs(args: argparse.Namespace) -> list[ReconstructionJob]:
     methods = selected_method_tasks(args.methods)
     geometries = parse_csv(args.geometries, valid=GEOMETRIES, label="geometry")
@@ -328,14 +707,8 @@ def build_jobs(args: argparse.Namespace) -> list[ReconstructionJob]:
 
     jobs: list[ReconstructionJob] = []
     for method in methods:
-        implementations = (
-            (method.implementation,)
-            if args.implementations == "method_default"
-            else parse_csv(
-                args.implementations,
-                valid=IMPLEMENTATIONS,
-                label="implementation",
-            )
+        implementations = selected_implementations_for_method(
+            method, args.implementations
         )
         for implementation in implementations:
             validate_method_implementation(method, implementation)
@@ -375,20 +748,101 @@ def build_jobs(args: argparse.Namespace) -> list[ReconstructionJob]:
         for experiment, model in experiment_model_pairs:
             for geometry in geometries:
                 for implementation in implementations:
-                    jobs.append(
-                        ReconstructionJob(
-                            model=model,
-                            method=method,
-                            implementation=implementation,
-                            geometry=geometry,
-                            experiment=experiment,
-                        )
+                    job = ReconstructionJob(
+                        model=model,
+                        method=method,
+                        implementation=implementation,
+                        geometry=geometry,
+                        experiment=experiment,
                     )
+                    if include_job_in_default_paper_matrix(args, job):
+                        jobs.append(job)
+    append_whole_image_sampling_jobs(args, jobs, methods, geometries)
+    append_trained_ablation_jobs(args, jobs, methods, geometries)
     return jobs
 
 
 def checkpoint_path(training_root: pathlib.Path, model: ModelTask) -> pathlib.Path:
     return training_root / model.name / model.checkpoint_name
+
+
+def default_run_root() -> pathlib.Path:
+    if os.environ.get("PADIS_RUN_ROOT"):
+        return pathlib.Path(os.environ["PADIS_RUN_ROOT"]).expanduser().resolve()
+    if os.environ.get("LION_EXPERIMENTS_PATH"):
+        return (
+            pathlib.Path(os.environ["LION_EXPERIMENTS_PATH"]).expanduser().resolve()
+            / "PaDIS"
+        )
+    if os.environ.get("LION_DATA_PATH"):
+        return (
+            pathlib.Path(os.environ["LION_DATA_PATH"]).expanduser().resolve()
+            / "experiments"
+            / "PaDIS"
+        )
+    lion_root = pathlib.Path(__file__).resolve().parents[3]
+    return (lion_root.parent / "Data" / "experiments" / "PaDIS").resolve()
+
+
+def resolve_run_root(run_root: pathlib.Path | None) -> pathlib.Path:
+    if run_root is not None:
+        return run_root.expanduser().resolve()
+    return default_run_root()
+
+
+def latest_slurm_training_root(run_root: pathlib.Path) -> pathlib.Path | None:
+    final_real_runs = run_root / "final_real_runs"
+    if not final_real_runs.is_dir():
+        return None
+    candidates = tuple(
+        path for path in final_real_runs.glob("a100_training_*") if path.is_dir()
+    )
+    if not candidates:
+        return None
+    return max(candidates, key=lambda path: path.stat().st_mtime).resolve()
+
+
+def slurm_training_root(run_root: pathlib.Path, run_stamp: str | None) -> pathlib.Path:
+    if run_stamp:
+        folder_name = (
+            run_stamp
+            if run_stamp.startswith("a100_training_")
+            else f"a100_training_{run_stamp}"
+        )
+        return (run_root / "final_real_runs" / folder_name).resolve()
+    latest = latest_slurm_training_root(run_root)
+    if latest is not None:
+        return latest
+    raise ValueError(
+        "Could not infer the final Slurm model root. Set --training-root, "
+        "--run-stamp, PADIS_RUN_STAMP, or create an a100_training_* folder under "
+        f"{run_root / 'final_real_runs'}."
+    )
+
+
+def gcp_training_root(run_root: pathlib.Path, gcp_run_name: str) -> pathlib.Path:
+    if not gcp_run_name:
+        raise ValueError("--gcp-run-name cannot be empty for the gcp preset.")
+    return (run_root / "final_real_runs" / gcp_run_name).resolve()
+
+
+def resolve_training_root(args: argparse.Namespace) -> pathlib.Path:
+    if args.training_root is not None:
+        return args.training_root.expanduser().resolve()
+    if args.training_root_preset is None:
+        raise ValueError(
+            "Set --training-root explicitly or choose --training-root-preset "
+            "slurm|gcp."
+        )
+    run_root = resolve_run_root(args.run_root)
+    if args.training_root_preset == "slurm":
+        return slurm_training_root(run_root, args.run_stamp)
+    if args.training_root_preset == "gcp":
+        return gcp_training_root(run_root, args.gcp_run_name)
+    raise ValueError(
+        f"Unknown --training-root-preset {args.training_root_preset!r}. "
+        f"Valid values: {', '.join(TRAINING_ROOT_PRESETS)}."
+    )
 
 
 def paper_sampler_views(experiment: str) -> int:
@@ -412,9 +866,7 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
         "zeta": 0.3,
         "sampling_epsilon": 1.0,
         "noise_initialization": "padded",
-        "prior_mode": (
-            "whole_image" if job.model.prior_mode == "whole-image" else "patch"
-        ),
+        "prior_mode": job_prior_mode(job),
     }
     if job.implementation == "paper":
         settings.update(
@@ -433,6 +885,9 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
                 "initial_reconstruction": "fdk",
                 "clip_initial": True,
                 "clip_output": True,
+                "initial_fdk_filter_type": "hann",
+                "initial_fdk_frequency_scaling": 0.3,
+                "initial_fdk_padded": False,
                 "dps_epsilon": 0.5,
                 "data_consistency_gradient": "norm",
                 "adjoint_data_step_schedule": "public_repo",
@@ -466,7 +921,7 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
                 "data_consistency_gradient": "least_squares",
                 "adjoint_data_step_schedule": "paper",
                 "initial_fdk_filter_type": "hann",
-                "initial_fdk_frequency_scaling": 0.9,
+                "initial_fdk_frequency_scaling": 0.3,
                 "initial_fdk_padded": False,
                 "data_consistency_normalization": "operator_lipschitz",
                 "data_consistency_scale": 1.0,
@@ -477,16 +932,29 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
 
     if job.method.name == "whole_image_diffusion":
         settings["prior_mode"] = "whole_image"
-        if job.implementation == "lion_physics" and job.experiment == "ct_fanbeam_180":
-            settings["dps_epsilon"] = 0.5
+        if job.implementation == "lion_physics":
+            if job.experiment == "ct_20":
+                settings["zeta"] = 4.0
+            if job.experiment == "ct_fanbeam_180":
+                settings["dps_epsilon"] = 0.5
     if (
         job.method.name == "padis_dps"
         and job.implementation == "lion_physics"
-        and job.experiment == "ct_512_60"
+        and job.experiment == "ct_20"
     ):
-        settings["patch_checkpoint_denoiser"] = True
-        settings["fixed_overlap_checkpoint_denoiser"] = False
+        settings["zeta"] = 4.0
+    if job.experiment == "ct_512_60" and job.method.name in {
+        "padis_dps",
+        "langevin",
+        "predictor_corrector",
+        "ve_ddnm",
+        "patch_average",
+        "patch_stitch",
+    }:
         settings["patch_batch_size"] = 1
+        if job.method.name not in {"patch_average", "patch_stitch"}:
+            settings["patch_checkpoint_denoiser"] = True
+            settings["fixed_overlap_checkpoint_denoiser"] = False
     if job.method.name == "predictor_corrector":
         settings["pc_snr"] = 0.08 if job.implementation == "lion_physics" else 0.16
         if job.implementation == "lion_physics":
@@ -543,6 +1011,8 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
         )
         settings["fixed_overlap_checkpoint_denoiser"] = True
         settings["patch_batch_size"] = 1
+    for key, value in job.sampler_overrides:
+        settings[key] = value
     return settings
 
 
@@ -585,7 +1055,10 @@ def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[st
         / job.model.name
         / job.implementation
         / job.geometry
+        / job.experiment
     )
+    if job.matrix_group != "main":
+        output_folder = output_folder / job.matrix_group
     cmd = [
         sys.executable,
         "-u",
@@ -598,6 +1071,8 @@ def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[st
         job.implementation,
         "--geometry",
         job.geometry,
+        "--matrix-group",
+        job.matrix_group,
         "--method",
         job.method.name,
         "--split",
@@ -643,15 +1118,14 @@ def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[st
         cmd.extend(["--trace-interval", str(args.trace_interval)])
     if args.trace_images:
         cmd.append("--trace-images")
+    cmd.extend(job.extra_reconstruction_args)
     for extra_arg in args.reconstruction_arg:
         cmd.append(extra_arg)
     return cmd
 
 
 def job_json(args: argparse.Namespace, job: ReconstructionJob) -> dict:
-    prior_mode = "patch" if job.model.prior_mode == "auto" else job.model.prior_mode
-    if prior_mode == "whole-image":
-        prior_mode = "whole_image"
+    prior_mode = job_prior_mode(job)
     return {
         "model": job.model.name,
         "checkpoint": (
@@ -660,6 +1134,7 @@ def job_json(args: argparse.Namespace, job: ReconstructionJob) -> dict:
             else str(checkpoint_path(args.training_root, job.model))
         ),
         "method": job.method.name,
+        "display_label": job_display_label(job),
         "algorithm": job.method.algorithm,
         "prior_mode": prior_mode,
         "expected_sampler": expected_sampler_settings(job),
@@ -667,6 +1142,9 @@ def job_json(args: argparse.Namespace, job: ReconstructionJob) -> dict:
         "implementation": job.implementation,
         "geometry": job.geometry,
         "experiment": job.experiment,
+        "matrix_group": job.matrix_group,
+        "extra_reconstruction_args": list(job.extra_reconstruction_args),
+        "sampler_overrides": dict(job.sampler_overrides),
         "command": command_for_job(args, job),
     }
 
@@ -701,7 +1179,51 @@ def input_check_failures(
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--training-root", type=pathlib.Path, required=True)
+    parser.add_argument(
+        "--training-root",
+        type=pathlib.Path,
+        default=None,
+        help=(
+            "Root containing trained model subfolders. If omitted, choose "
+            "--training-root-preset slurm or gcp."
+        ),
+    )
+    parser.add_argument(
+        "--training-root-preset",
+        choices=TRAINING_ROOT_PRESETS,
+        default=None,
+        help=(
+            "Infer --training-root from the final Slurm or GCP model layout. "
+            "Explicit --training-root takes precedence."
+        ),
+    )
+    parser.add_argument(
+        "--run-root",
+        type=pathlib.Path,
+        default=None,
+        help=(
+            "Base PaDIS experiment root for --training-root-preset. Defaults "
+            "to PADIS_RUN_ROOT, LION_EXPERIMENTS_PATH/PaDIS, "
+            "LION_DATA_PATH/experiments/PaDIS, or ../Data/experiments/PaDIS."
+        ),
+    )
+    parser.add_argument(
+        "--run-stamp",
+        default=os.environ.get("PADIS_RUN_STAMP", ""),
+        help=(
+            "Slurm run stamp used by --training-root-preset slurm. The resolved "
+            "folder is final_real_runs/a100_training_<stamp>. If omitted, the "
+            "latest existing a100_training_* folder is used."
+        ),
+    )
+    parser.add_argument(
+        "--gcp-run-name",
+        default=os.environ.get("PADIS_GCP_RUN_NAME", "PaDIS-Reproduction-GCP"),
+        help=(
+            "GCP run folder used by --training-root-preset gcp. The resolved "
+            "folder is final_real_runs/<name>."
+        ),
+    )
     parser.add_argument("--output-root", type=pathlib.Path, required=True)
     parser.add_argument(
         "--models",
@@ -723,6 +1245,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help=(
             "paper_matrix for the paper-relevant experiment set per model, "
             "or a comma-separated list from: " + ", ".join(EXPERIMENTS)
+        ),
+    )
+    parser.add_argument(
+        "--ablations",
+        default="none",
+        help=(
+            "none, all, or a comma-separated list of trained ablation groups to "
+            "append when --models method_default is used. Valid values: "
+            + ", ".join(ABLATIONS)
         ),
     )
     parser.add_argument(
@@ -776,8 +1307,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--pnp-checkpoint", type=pathlib.Path, default=None)
-    parser.add_argument("--pnp-iterations", type=int, default=10)
-    parser.add_argument("--pnp-eta", type=float, default=1e-4)
+    parser.add_argument("--pnp-iterations", type=int, default=20)
+    parser.add_argument("--pnp-eta", type=float, default=1e-5)
     parser.add_argument("--pnp-cg-iterations", type=int, default=100)
     parser.add_argument("--pnp-cg-tolerance", type=float, default=1e-7)
     parser.add_argument("--pnp-noise-level", type=float, default=None)
@@ -821,7 +1352,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_arg_parser().parse_args()
-    args.training_root = args.training_root.expanduser().resolve()
+    args.training_root = resolve_training_root(args)
     args.output_root = args.output_root.expanduser().resolve()
     if args.pnp_root is None:
         args.pnp_root = args.training_root / "pnp_lidc_drunet"

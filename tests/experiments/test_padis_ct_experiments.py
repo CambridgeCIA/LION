@@ -5,24 +5,33 @@ from LION.experiments.ct_experiments import (
     PaDISFanBeam8CTRecon,
     PaDISFanBeam20CTRecon,
     PaDISFanBeam60CTRecon,
+    PaDISFanBeam120LimitedCTRecon,
     PaDISFanBeam180CTRecon,
 )
 from scripts.paper_scripts.PaDIS.PaDIS_LIDC_reconstruction import (
     build_arg_parser,
     build_sampler_params,
 )
-from scripts.paper_scripts.PaDIS.PaDIS_experiments import PRESETS, command_for
+from scripts.paper_scripts.PaDIS.PaDIS_experiments import (
+    FIGURE_PRESET_GROUPS,
+    PRESETS,
+    apply_generation_checkpoint_defaults,
+    build_parser as build_experiments_parser,
+    command_for,
+    figure_command_for,
+)
 
 
 def test_padis_fan_beam_experiments_use_lidc_default_geometry():
     expected = (
-        (PaDISFanBeam8CTRecon, 8),
-        (PaDISFanBeam20CTRecon, 20),
-        (PaDISFanBeam60CTRecon, 60),
-        (PaDISFanBeam180CTRecon, 180),
+        (PaDISFanBeam8CTRecon, 8, 2 * np.pi),
+        (PaDISFanBeam20CTRecon, 20, 2 * np.pi),
+        (PaDISFanBeam60CTRecon, 60, 2 * np.pi),
+        (PaDISFanBeam120LimitedCTRecon, 20, 2 * np.pi / 3),
+        (PaDISFanBeam180CTRecon, 20, 2 * np.pi / 3),
     )
 
-    for experiment_cls, view_count in expected:
+    for experiment_cls, view_count, angle_span in expected:
         experiment = experiment_cls(image_scaling=0.5)
         geometry = experiment.param.geometry
 
@@ -31,10 +40,22 @@ def test_padis_fan_beam_experiments_use_lidc_default_geometry():
         assert geometry.detector_shape.tolist() == [1, 900]
         assert len(geometry.angles) == view_count
         assert geometry.angles[0] == 0.0
-        assert geometry.angles[-1] < 2 * np.pi
+        assert geometry.angles[-1] < angle_span
+        assert np.isclose(experiment.param.angle_span, angle_span)
         assert np.isclose(geometry.dso, 575.0)
         assert np.isclose(geometry.dsd, 1050.0)
         assert experiment.param.view_count == view_count
+
+
+def test_padis_fanbeam_extra_row_is_120_degree_limited_angle():
+    experiment = PaDISFanBeam120LimitedCTRecon(image_scaling=0.5)
+    geometry = experiment.param.geometry
+
+    assert len(geometry.angles) == 20
+    assert np.isclose(geometry.angles[0], 0.0)
+    assert np.isclose(geometry.angles[1] - geometry.angles[0], np.pi / 30)
+    assert np.isclose(geometry.angles[-1], 19 * np.pi / 30)
+    assert np.isclose(experiment.param.angle_span, 2 * np.pi / 3)
 
 
 def test_padis_fan_beam_experiment_is_noise_free_and_model_domain():
@@ -53,7 +74,7 @@ def test_paper_fan_presets_use_requested_views_and_paper_ct_hyperparameters():
         "paper-fan-20-no-pos": ("PaDISFanBeam20CTRecon", "0.002"),
         "paper-fan-20-no-pos-fdk": ("PaDISFanBeam20CTRecon", "0.002"),
         "paper-fan-60": ("PaDISFanBeam60CTRecon", "0.002"),
-        "paper-fan-180": ("PaDISFanBeam180CTRecon", "0.002"),
+        "paper-fan-180": ("PaDISFanBeam120LimitedCTRecon", "0.002"),
     }
 
     assert set(expected).issubset(PRESETS)
@@ -424,6 +445,108 @@ def test_unconditional_generation_preset_uses_generation_engine(tmp_path):
     assert arguments[arguments.index("--sigma-max") + 1] == "40"
 
 
+def test_generation_figure_presets_cover_patch_assembly_methods():
+    assert FIGURE_PRESET_GROUPS["paper-generation-figures"] == (
+        "paper-generation-whole",
+        "paper-generation-naive-patch",
+        "paper-generation",
+        "paper-generation-langevin-300nfe",
+        "paper-generation-patch-stitch",
+        "paper-generation-patch-average",
+    )
+    stitch_args = list(PRESETS["paper-generation-patch-stitch"].arguments)
+    average_args = list(PRESETS["paper-generation-patch-average"].arguments)
+
+    assert stitch_args[stitch_args.index("--patch-assembly") + 1] == "fixed_stitch"
+    assert stitch_args[stitch_args.index("--fixed-overlap-layout") + 1] == "public_tile"
+    assert average_args[average_args.index("--patch-assembly") + 1] == "fixed_average"
+    assert (
+        average_args[average_args.index("--fixed-overlap-layout") + 1]
+        == "public_overlap"
+    )
+    assert "--fixed-overlap-checkpoint-denoiser" in stitch_args
+    assert "--fixed-overlap-checkpoint-denoiser" in average_args
+
+
+def test_generation_group_can_default_checkpoints_from_gcp_training_root(tmp_path):
+    parser = build_experiments_parser()
+    args, passthrough = parser.parse_known_args(
+        [
+            "run-group",
+            "paper-generation-figures",
+            "--training-root-preset",
+            "gcp",
+            "--run-root",
+            str(tmp_path / "runs"),
+            "--gcp-run-name",
+            "PaDIS-Reproduction-GCP-test",
+            "--output-root",
+            str(tmp_path / "generation"),
+            "--dry-run",
+        ]
+    )
+
+    assert passthrough == []
+    apply_generation_checkpoint_defaults(args)
+
+    training_root = (
+        tmp_path / "runs" / "final_real_runs" / "PaDIS-Reproduction-GCP-test"
+    ).resolve()
+    assert args.patch_checkpoint == (
+        training_root / "patch_lidc_default" / "padis_lidc_256.pt"
+    )
+    assert args.whole_checkpoint == (
+        training_root / "whole_lidc_default" / "whole_image_lidc_256_min_val.pt"
+    )
+
+    child_args = SimpleNamespace(**vars(args))
+    child_args.preset = "paper-generation-whole"
+    child_args.checkpoint = child_args.whole_checkpoint
+    command, _ = command_for(child_args, [])
+
+    assert command[command.index("--checkpoint") + 1].endswith(
+        "whole_lidc_default/whole_image_lidc_256_min_val.pt"
+    )
+
+
+def test_experiments_entrypoint_can_render_paper_figures(tmp_path):
+    parser = build_experiments_parser()
+    args, passthrough = parser.parse_known_args(
+        [
+            "make-figures",
+            "--reconstruction-root",
+            str(tmp_path / "recon"),
+            "--generation-root",
+            str(tmp_path / "generation"),
+            "--output-folder",
+            str(tmp_path / "figures"),
+            "--figures",
+            "figureA1_ct20_additional,figureA2_ct8_additional",
+            "--sample-index",
+            "4",
+            "--allow-missing",
+            "--dry-run",
+        ]
+    )
+
+    assert passthrough == []
+    command = figure_command_for(args)
+
+    assert any(item.endswith("PaDIS_make_paper_figures.py") for item in command)
+    assert command[command.index("--reconstruction-root") + 1] == str(
+        tmp_path / "recon"
+    )
+    assert command[command.index("--generation-root") + 1] == str(
+        tmp_path / "generation"
+    )
+    assert command[command.index("--output-folder") + 1] == str(tmp_path / "figures")
+    assert command[command.index("--figures") + 1] == (
+        "figureA1_ct20_additional,figureA2_ct8_additional"
+    )
+    assert command[command.index("--sample-index") + 1] == "4"
+    assert "--allow-missing" in command
+
+
 def test_compatible_lion_presets_are_separate_and_use_closest_ct_hyperparameters():
     expected = {
         "lion-compatible-clinical": "clinicalCTRecon",
@@ -483,7 +606,7 @@ def test_paper_fan_preset_is_separated_and_overrideable(tmp_path):
     assert PRESETS[args.preset].implementation == "lion-paper-protocol"
     assert output_folder == tmp_path / "lion-paper-protocol" / args.preset
     assert command[-2:] == ["--sigma-max", "0.1"]
-    assert "PaDISFanBeam180CTRecon" in command
+    assert "PaDISFanBeam120LimitedCTRecon" in command
 
 
 def test_lion_compatible_preset_has_own_namespace(tmp_path):

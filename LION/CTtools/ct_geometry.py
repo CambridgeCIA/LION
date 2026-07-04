@@ -189,7 +189,7 @@ class Geometry(LIONParameter):
 
     @staticmethod
     def padis_fan_beam_parameters(image_scaling=1.0):
-        """Return the 180-view fan-beam geometry used by PaDIS."""
+        """Return the 180-view, 180-degree fan-beam geometry used by PaDIS."""
         native_image_shape = [1, 512, 512]
         native_image_size = [40.0 / 512.0, 40.0, 40.0]
         image_shape = np.array(

@@ -181,7 +181,7 @@ class PaDIS(LIONReconstructor):
         params = PaDIS.paper_ct_parameters(model, views=views)
         params.initial_reconstruction = "fdk"
         params.initial_fdk_filter_type = "hann"
-        params.initial_fdk_frequency_scaling = 0.9
+        params.initial_fdk_frequency_scaling = 0.3
         params.initial_fdk_padded = False
         params.initial_fdk_batch_size = 10
         params.clip_initial = True

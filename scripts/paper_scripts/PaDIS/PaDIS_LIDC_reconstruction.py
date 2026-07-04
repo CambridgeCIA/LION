@@ -46,6 +46,7 @@ LIDC_EXPERIMENTS = {
     "PaDISFanBeam8CTRecon": ct_experiments.PaDISFanBeam8CTRecon,
     "PaDISFanBeam20CTRecon": ct_experiments.PaDISFanBeam20CTRecon,
     "PaDISFanBeam60CTRecon": ct_experiments.PaDISFanBeam60CTRecon,
+    "PaDISFanBeam120LimitedCTRecon": (ct_experiments.PaDISFanBeam120LimitedCTRecon),
     "PaDISFanBeam180CTRecon": ct_experiments.PaDISFanBeam180CTRecon,
     "clinicalCTRecon": ct_experiments.clinicalCTRecon,
     "LowDoseCTRecon": ct_experiments.LowDoseCTRecon,
@@ -100,11 +101,13 @@ PAPER_CT_EXPERIMENTS = {
     ),
     "ct_fanbeam_180": PaperCTExperiment(
         key="ct_fanbeam_180",
-        views=180,
+        views=20,
         paper_geometry="fan",
-        lion_experiment="PaDISFanBeam180CTRecon",
+        lion_experiment="PaDISFanBeam120LimitedCTRecon",
         paper_sampler_views=20,
-        description="180-view fan-beam CT experiment from the paper extra experiments.",
+        description=(
+            "20-view, 120-degree limited-angle fan-beam CT stress experiment."
+        ),
     ),
     "ct_512_60": PaperCTExperiment(
         key="ct_512_60",
@@ -123,10 +126,13 @@ EXPERIMENT_ALIASES = {
     "180": "ct_fanbeam_180",
     "fanbeam_180": "ct_fanbeam_180",
     "ct_fan_180": "ct_fanbeam_180",
+    "fanbeam_120": "ct_fanbeam_180",
+    "ct_fan_120": "ct_fanbeam_180",
     "512_60": "ct_512_60",
     "PaDISFanBeam8CTRecon": "ct_8",
     "PaDISFanBeam20CTRecon": "ct_20",
     "PaDISFanBeam60CTRecon": "ct_60",
+    "PaDISFanBeam120LimitedCTRecon": "ct_fanbeam_180",
     "PaDISFanBeam180CTRecon": "ct_fanbeam_180",
 }
 
@@ -908,12 +914,44 @@ def reconstruction_label(args, sampler_params) -> str:
         "padis_dps": "PaDIS",
     }
     if args.method in labels:
-        return labels[args.method]
+        label = labels[args.method]
+        if args.method in {"langevin", "predictor_corrector", "ve_ddnm"}:
+            prior_prefix = (
+                "Whole-image"
+                if getattr(sampler_params, "prior_mode", "patch") == "whole_image"
+                else "Patch"
+            )
+            return f"{prior_prefix} {label}"
+        return label
     return (
         "Whole-image diffusion"
         if getattr(sampler_params, "prior_mode", "patch") == "whole_image"
         else "PaDIS"
     )
+
+
+def result_display_label(args, sampler_params) -> str:
+    method_names = {
+        "baseline": "Baseline FDK",
+        "admm_tv": "ADMM-TV",
+        "pnp_admm": "PnP-ADMM",
+        "whole_image_diffusion": "Whole image - VE-DPS",
+        "padis_dps": "Patch - VE-DPS",
+        "langevin": "Langevin",
+        "predictor_corrector": "Predictor-corrector",
+        "ve_ddnm": "VE-DDNM",
+        "patch_average": "Patch averaging",
+        "patch_stitch": "Patch stitching",
+    }
+    label = method_names.get(args.method, args.method)
+    if args.method in {"langevin", "predictor_corrector", "ve_ddnm"}:
+        prior_prefix = (
+            "Whole image"
+            if getattr(sampler_params, "prior_mode", "patch") == "whole_image"
+            else "Patch"
+        )
+        return f"{prior_prefix} - {label}"
+    return label
 
 
 def method_settings(args) -> dict:
@@ -1544,11 +1582,13 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         elif args.method == "langevin":
             sampler_params.zeta = 4.0
             sampler_params.sampling_epsilon = 0.5
-        elif (
-            args.method == "whole_image_diffusion"
-            and experiment_key == "ct_fanbeam_180"
-        ):
-            sampler_params.dps_epsilon = 0.5
+        elif args.method == "whole_image_diffusion":
+            if experiment_key == "ct_20":
+                sampler_params.zeta = 4.0
+            if experiment_key == "ct_fanbeam_180":
+                sampler_params.dps_epsilon = 0.5
+        elif args.method == "padis_dps" and experiment_key == "ct_20":
+            sampler_params.zeta = 4.0
         elif args.method in ("patch_average", "patch_stitch"):
             sampler_params.dps_epsilon = 0.5
     if args.method == "ve_ddnm":
@@ -1580,6 +1620,10 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
             sampler_params.ddnm_corrected_clip = True
     if args.initial_reconstruction is not None:
         sampler_params.initial_reconstruction = args.initial_reconstruction
+        if args.initial_reconstruction == "noise":
+            sampler_params.initial_fdk_filter_type = None
+            sampler_params.initial_fdk_frequency_scaling = 1.0
+            sampler_params.initial_fdk_padded = True
     if args.initial_fdk_filter_type is not None:
         sampler_params.initial_fdk_filter_type = (
             None
@@ -1678,17 +1722,22 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.pad_width = args.pad_width
     if args.patch_assembly is not None:
         sampler_params.patch_assembly = args.patch_assembly
-    if (
-        args.method == "padis_dps"
-        and args.implementation == "lion_physics"
-        and args.experiment == "ct_512_60"
+    if args.experiment == "ct_512_60" and args.method in (
+        "padis_dps",
+        "langevin",
+        "predictor_corrector",
+        "ve_ddnm",
+        "patch_average",
+        "patch_stitch",
     ):
-        # Memory-only control for the 512 paper row. The regular PaDIS patch
-        # path uses the generic denoiser checkpoint flag; the fixed-overlap
-        # alias is kept only for backward compatibility with older commands.
+        # Memory-only control for the 512 paper row. Patch-prior methods can
+        # otherwise materialize more denoiser inputs than local/A100 jobs need.
         if args.patch_batch_size is None:
             sampler_params.patch_batch_size = 1
-        if args.patch_checkpoint_denoiser is None:
+        if (
+            args.method not in ("patch_average", "patch_stitch")
+            and args.patch_checkpoint_denoiser is None
+        ):
             sampler_params.patch_checkpoint_denoiser = True
     if args.method == "patch_average":
         sampler_params.patch_assembly = "fixed_average"
@@ -1954,7 +2003,10 @@ def run_reconstruction_variant(
         "implementation": args.implementation,
         "geometry_tag": args.geometry,
         "method": args.method,
+        "display_label": result_display_label(args, sampler_params),
+        "reconstruction_label": recon_label,
         "algorithm": algorithm,
+        "matrix_group": getattr(args, "matrix_group", "main"),
         "ablation": variant_name,
         "ablation_overrides": variant_overrides,
         "measurement_source": experiment_measurement_source,
@@ -2373,6 +2425,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "CT geometry family for paper CT experiment aliases. Only 'lion' "
             "is currently executable for LIDC-IDRI. PaDIS geometry tags are "
             "accepted only to fail with a physical-correctness explanation."
+        ),
+    )
+    parser.add_argument(
+        "--matrix-group",
+        default="main",
+        help=(
+            "Matrix row/group label propagated from "
+            "PaDIS_run_reconstruction_matrix.py for verification."
         ),
     )
     parser.add_argument("--device", type=str, default="cuda")
@@ -2810,8 +2870,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="DRUNet denoiser checkpoint for --method pnp_admm.",
     )
-    parser.add_argument("--pnp-iterations", type=int, default=10)
-    parser.add_argument("--pnp-eta", type=float, default=1e-4)
+    parser.add_argument("--pnp-iterations", type=int, default=20)
+    parser.add_argument("--pnp-eta", type=float, default=1e-5)
     parser.add_argument("--pnp-cg-iterations", type=int, default=100)
     parser.add_argument("--pnp-cg-tolerance", type=float, default=1e-7)
     parser.set_defaults(pnp_clip=True)
