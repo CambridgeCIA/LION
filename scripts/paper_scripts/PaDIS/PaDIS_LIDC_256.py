@@ -614,6 +614,27 @@ def build_arg_parser():
             "patch draws without selecting more LIDC slices per patient."
         ),
     )
+    parser.add_argument(
+        "--validation-name",
+        type=str,
+        default=None,
+        help=(
+            "Filename for the best-validation checkpoint. Defaults to "
+            "<run_prefix>_min_val.pt."
+        ),
+    )
+    parser.add_argument(
+        "--validation-summary-key",
+        type=str,
+        default="min_validation_loss",
+        help="WandB summary key used for the best validation loss.",
+    )
+    parser.add_argument(
+        "--validation-checkpoint-summary-key",
+        type=str,
+        default="validation_checkpoint",
+        help="WandB summary key used for the best validation checkpoint filename.",
+    )
     parser.add_argument("--checkpoint-interval-patches", type=int, default=5_000_000)
     parser.add_argument(
         "--checkpoint-interval-seconds",
@@ -867,7 +888,11 @@ def main():
     )
     solver.set_checkpoint_retention(max_periodic_checkpoints)
     solver.set_training(train_loader)
-    solver.set_validation(validation_loader, validation_freq=10**12)
+    solver.set_validation(
+        validation_loader,
+        validation_freq=10**12,
+        validation_fname=args.validation_name,
+    )
     try:
         try:
             solver.train_for_patches(
@@ -894,7 +919,11 @@ def main():
         solver.save_final_results()
         save_loss_plots(solver, run_folder)
         if wandb_run is not None:
-            wandb_run.summary["min_validation_loss"] = min_validation_loss(solver)
+            wandb_run.summary[args.validation_summary_key] = min_validation_loss(solver)
+            if solver.validation_fname is not None:
+                wandb_run.summary[
+                    args.validation_checkpoint_summary_key
+                ] = solver.validation_fname
             wandb_run.summary["seen_patches"] = solver.seen_patches
             wandb_run.summary["training_steps"] = len(solver.train_loss)
         log_wandb_outputs(

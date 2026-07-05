@@ -114,7 +114,7 @@ def test_gcp_spot_runner_dry_run_builds_expected_training_commands(tmp_path):
 def test_gcp_spot_runner_adds_validation_heavy_continuation_phase(tmp_path):
     result, train_root = _run_gcp_dry_run(
         tmp_path,
-        "whole_lidc_default,patch_lidc_default,pnp_lidc_drunet",
+        "whole_lidc_default,patch_lidc_default,patch_lidc_512,pnp_lidc_drunet",
     )
 
     assert result.returncode == 0, result.stderr
@@ -125,6 +125,12 @@ def test_gcp_spot_runner_adds_validation_heavy_continuation_phase(tmp_path):
     assert "--max-train-seconds 21600" in patch_command
     assert "--validation-interval-patches 20000" in patch_command
     assert "--validation-max-patches 4000" in patch_command
+    assert "--validation-name padis_lidc_256_min_intense_val.pt" in patch_command
+    assert "--validation-summary-key min_intense_validation_loss" in patch_command
+    assert (
+        "--validation-checkpoint-summary-key min_intense_validation_checkpoint"
+        in patch_command
+    )
     assert "--validation-repeat-until-max-patches" in patch_command
 
     whole_command = _command_text(
@@ -133,7 +139,23 @@ def test_gcp_spot_runner_adds_validation_heavy_continuation_phase(tmp_path):
     assert "--max-train-seconds 21600" in whole_command
     assert "--validation-interval-patches 2500" in whole_command
     assert "--validation-max-patches 328" in whole_command
+    assert "--validation-name whole_image_lidc_256_min_intense_val.pt" in whole_command
+    assert "--validation-summary-key min_intense_validation_loss" in whole_command
+    assert (
+        "--validation-checkpoint-summary-key min_intense_validation_checkpoint"
+        in whole_command
+    )
     assert "--validation-repeat-until-max-patches" in whole_command
+
+    patch_512_command = _command_text(
+        train_root, "patch_lidc_512", phase="validation_heavy"
+    )
+    assert "--validation-name padis_lidc_512_min_intense_val.pt" in patch_512_command
+    assert "--validation-summary-key min_intense_validation_loss" in patch_512_command
+    assert (
+        "--validation-checkpoint-summary-key min_intense_validation_checkpoint"
+        in patch_512_command
+    )
     manifest = train_root / ".gcp_spot_dry_run/manifest.txt"
     manifest_text = manifest.read_text()
     assert "whole_validation_heavy_interval_images=2500\n" in manifest_text
@@ -161,6 +183,9 @@ def test_gcp_spot_runner_validation_phase_resumes_base_done_tasks(tmp_path):
         train_root / ".gcp_spot_dry_run/done/patch_lidc_default.validation_heavy.done"
     )
     assert validation_done.is_file()
+    validation_done_text = validation_done.read_text()
+    assert "padis_lidc_256_min_intense_val.pt" in validation_done_text
+    assert "padis_lidc_256_min_intense_val_full.pt" in validation_done_text
 
 
 def test_gcp_spot_runner_validation_phase_uses_separate_runtime_ledger(tmp_path):

@@ -195,6 +195,18 @@ task_category() {
         fi
 }
 
+diffusion_run_prefix_from_engine_args() {
+        local engine="$1"
+        local task_args="$2"
+        if [ "$engine" = "lidc512" ]; then
+                printf 'padis_lidc_512\n'
+        elif [[ " $task_args " == *" --prior-mode whole-image "* ]]; then
+                printf 'whole_image_lidc_256\n'
+        else
+                printf 'padis_lidc_256\n'
+        fi
+}
+
 task_budget_seconds() {
         local task_name="$1"
         if [ "${PADIS_GCP_PHASE:-base}" = "validation_heavy" ]; then
@@ -366,13 +378,7 @@ task_final_checkpoint() {
         index="$(task_index_by_name "$task_name")"
         task_args="${PADIS_TASK_ARGUMENTS[$index]}"
         engine="${PADIS_TASK_ENGINES[$index]}"
-        if [ "$engine" = "lidc512" ]; then
-                prefix="padis_lidc_512"
-        elif [[ " $task_args " == *" --prior-mode whole-image "* ]]; then
-                prefix="whole_image_lidc_256"
-        else
-                prefix="padis_lidc_256"
-        fi
+        prefix="$(diffusion_run_prefix_from_engine_args "$engine" "$task_args")"
         printf '%s\n' "$PADIS_TRAIN_ROOT/$task_name/$prefix.pt"
 }
 
@@ -388,10 +394,35 @@ task_final_full_checkpoint() {
         printf '%s\n' "${final_checkpoint%.pt}_full.pt"
 }
 
+task_validation_intense_checkpoint() {
+        local task_name="$1"
+        local index task_args engine prefix
+        if [ "$task_name" = "$PNP_TASK_NAME" ]; then
+                printf '\n'
+                return
+        fi
+
+        index="$(task_index_by_name "$task_name")"
+        task_args="${PADIS_TASK_ARGUMENTS[$index]}"
+        engine="${PADIS_TASK_ENGINES[$index]}"
+        prefix="$(diffusion_run_prefix_from_engine_args "$engine" "$task_args")"
+        printf '%s\n' "$PADIS_TRAIN_ROOT/$task_name/${prefix}_min_intense_val.pt"
+}
+
+task_validation_intense_full_checkpoint() {
+        local checkpoint
+        checkpoint="$(task_validation_intense_checkpoint "$1")"
+        if [ -n "$checkpoint" ]; then
+                printf '%s\n' "${checkpoint%.pt}_full.pt"
+        else
+                printf '\n'
+        fi
+}
+
 is_task_done() {
         local task_name="$1"
         local phase="${2:-${PADIS_GCP_PHASE:-base}}"
-        local marker
+        local marker validation_intense_checkpoint validation_intense_full_checkpoint
         marker="$(task_done_marker "$task_name" "$phase")"
         if [ "$phase" != "base" ] && ! is_task_done "$task_name" "base"; then
                 return 1
@@ -402,7 +433,16 @@ is_task_done() {
         fi
         [ -f "$marker" ] \
                 && [ -f "$(task_final_checkpoint "$task_name")" ] \
-                && [ -f "$(task_final_full_checkpoint "$task_name")" ]
+                && [ -f "$(task_final_full_checkpoint "$task_name")" ] \
+                || return 1
+        if [ "$phase" = "validation_heavy" ]; then
+                validation_intense_checkpoint="$(task_validation_intense_checkpoint "$task_name")"
+                validation_intense_full_checkpoint="$(task_validation_intense_full_checkpoint "$task_name")"
+                [ -f "$validation_intense_checkpoint" ] \
+                        && [ -f "$validation_intense_full_checkpoint" ]
+                return
+        fi
+        return 0
 }
 
 build_wandb_args() {
@@ -472,12 +512,14 @@ build_diffusion_command() {
         local remaining_seconds="$2"
         local index engine batch_size task_args validation_interval validation_max checkpoint_interval log_interval
         local validation_heavy_interval validation_heavy_max
+        local validation_name run_prefix
         local num_workers prefetch_factor script_path
 
         index="$(task_index_by_name "$task_name")"
         engine="${PADIS_TASK_ENGINES[$index]}"
         batch_size="${PADIS_TASK_BATCH_SIZES[$index]}"
         read -r -a task_args <<< "${PADIS_TASK_ARGUMENTS[$index]}"
+        run_prefix="$(diffusion_run_prefix_from_engine_args "$engine" "${PADIS_TASK_ARGUMENTS[$index]}")"
         build_wandb_args "$task_name"
 
         if [[ "$task_name" == whole_lidc_* ]]; then
@@ -513,6 +555,7 @@ build_diffusion_command() {
                 fi
                 validation_interval="$validation_heavy_interval"
                 validation_max="$validation_heavy_max"
+                validation_name="${run_prefix}_min_intense_val.pt"
         fi
 
         if [ "$engine" = "lidc256" ]; then
@@ -553,6 +596,13 @@ build_diffusion_command() {
         fi
         if [ -n "$remaining_seconds" ]; then
                 CMD+=(--max-train-seconds "$remaining_seconds")
+        fi
+        if [ -n "${validation_name:-}" ]; then
+                CMD+=(
+                        --validation-name "$validation_name"
+                        --validation-summary-key min_intense_validation_loss
+                        --validation-checkpoint-summary-key min_intense_validation_checkpoint
+                )
         fi
         if [ "${PADIS_GCP_PHASE:-base}" = "validation_heavy" ] \
                 && [ "$PADIS_GCP_VALIDATION_HEAVY_REPEAT_UNTIL_MAX_PATCHES" = "1" ] \
@@ -825,6 +875,7 @@ run_task() {
         local task_name="$1"
         local gpu_id="$2"
         local remaining final_checkpoint final_full_checkpoint rc phase_key done_marker
+        local validation_intense_checkpoint validation_intense_full_checkpoint
         phase_key="$(phase_task_key "$task_name")"
         if is_task_done "$task_name"; then
                 log "Task $phase_key is already done."
@@ -846,9 +897,20 @@ run_task() {
         fi
         final_checkpoint="$(task_final_checkpoint "$task_name")"
         final_full_checkpoint="$(task_final_full_checkpoint "$task_name")"
+        validation_intense_checkpoint=""
+        validation_intense_full_checkpoint=""
+        if [ "${PADIS_GCP_PHASE:-base}" = "validation_heavy" ]; then
+                validation_intense_checkpoint="$(task_validation_intense_checkpoint "$task_name")"
+                validation_intense_full_checkpoint="$(task_validation_intense_full_checkpoint "$task_name")"
+        fi
         if [ "$rc" -eq 0 ] && {
                 [ "$PADIS_GCP_DRY_RUN" = "1" ] || {
-                        [ -f "$final_checkpoint" ] && [ -f "$final_full_checkpoint" ]
+                        [ -f "$final_checkpoint" ] && [ -f "$final_full_checkpoint" ] && {
+                                [ -z "$validation_intense_checkpoint" ] || {
+                                        [ -f "$validation_intense_checkpoint" ] \
+                                                && [ -f "$validation_intense_full_checkpoint" ]
+                                }
+                        }
                 }
         }; then
                 done_marker="$(task_done_marker "$task_name")"
@@ -858,6 +920,10 @@ run_task() {
                         printf 'phase=%s\n' "${PADIS_GCP_PHASE:-base}"
                         printf 'final_checkpoint=%s\n' "$final_checkpoint"
                         printf 'final_full_checkpoint=%s\n' "$final_full_checkpoint"
+                        if [ -n "$validation_intense_checkpoint" ]; then
+                                printf 'validation_intense_checkpoint=%s\n' "$validation_intense_checkpoint"
+                                printf 'validation_intense_full_checkpoint=%s\n' "$validation_intense_full_checkpoint"
+                        fi
                 } > "$done_marker"
                 rm -f "$FAILED_DIR/$phase_key.failed" "$(task_running_marker "$task_name")"
                 log "Task $phase_key completed. Final checkpoint: $final_checkpoint; full state: $final_full_checkpoint"
@@ -871,6 +937,10 @@ run_task() {
                 printf 'phase=%s\n' "${PADIS_GCP_PHASE:-base}"
                 printf 'final_checkpoint=%s\n' "$final_checkpoint"
                 printf 'final_full_checkpoint=%s\n' "$final_full_checkpoint"
+                if [ -n "$validation_intense_checkpoint" ]; then
+                        printf 'validation_intense_checkpoint=%s\n' "$validation_intense_checkpoint"
+                        printf 'validation_intense_full_checkpoint=%s\n' "$validation_intense_full_checkpoint"
+                fi
         } > "$FAILED_DIR/$phase_key.failed"
         rm -f "$(task_running_marker "$task_name")"
         log "Task $phase_key failed with exit code $rc. See $LOG_DIR/$phase_key.gpu${gpu_id}.log"
