@@ -341,6 +341,45 @@ def test_padis_validation_respects_max_patches():
     assert abs(validation_loss - (5 / 3)) < 1e-6
 
 
+def test_padis_validation_can_repeat_loader_until_max_patches():
+    class BatchSizeLoss(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.batch_sizes = []
+
+        def forward(self, model, clean_patch, position_patch=None):
+            del model, position_patch
+            self.batch_sizes.append(clean_patch.shape[0])
+            return clean_patch.new_tensor(float(clean_patch.shape[0]))
+
+    model, geometry = _tiny_padis_model()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
+    solver_params.patch_sizes = [16]
+    solver_params.patch_probabilities = [1.0]
+    loss_fn = BatchSizeLoss()
+    solver = PaDISSolver(
+        model,
+        optimizer,
+        loss_fn,
+        geometry=geometry,
+        solver_params=solver_params,
+        device=torch.device("cpu"),
+    )
+    images = torch.rand(2, 1, 256, 256)
+    validation_loader = DataLoader(TensorDataset(images, images), batch_size=2)
+    solver.set_validation(validation_loader, validation_freq=10**12)
+
+    validation_loss = solver.validate(
+        max_patches=5,
+        repeat_until_max_patches=True,
+    )
+
+    assert loss_fn.batch_sizes == [2, 2, 1]
+    assert solver.last_validation_patches == 5
+    assert abs(validation_loss - (9 / 5)) < 1e-6
+
+
 def test_padis_solver_uses_paper_relative_batch_multipliers():
     params = PaDISSolver.default_parameters("padis-paper-ct-256")
     assert params.patch_batch_multipliers == {16: 4, 32: 2, 56: 1}

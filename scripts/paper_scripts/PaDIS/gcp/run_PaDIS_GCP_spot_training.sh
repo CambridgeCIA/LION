@@ -197,6 +197,17 @@ task_category() {
 
 task_budget_seconds() {
         local task_name="$1"
+        if [ "${PADIS_GCP_PHASE:-base}" = "validation_heavy" ]; then
+                case "$(task_category "$task_name")" in
+                        patch|whole)
+                                printf '%s\n' "$VALIDATION_HEAVY_SECONDS"
+                                ;;
+                        pnp)
+                                printf '\n'
+                                ;;
+                esac
+                return
+        fi
         case "$(task_category "$task_name")" in
                 patch)
                         printf '%s\n' "$PATCH_TRAIN_SECONDS"
@@ -210,9 +221,33 @@ task_budget_seconds() {
         esac
 }
 
+phase_task_key() {
+        local task_name="$1"
+        local phase="${2:-${PADIS_GCP_PHASE:-base}}"
+        if [ "$phase" = "base" ]; then
+                printf '%s\n' "$task_name"
+        elif [[ "$task_name" == *".$phase" ]]; then
+                printf '%s\n' "$task_name"
+        else
+                printf '%s.%s\n' "$task_name" "$phase"
+        fi
+}
+
+task_done_marker() {
+        local task_name="$1"
+        local phase="${2:-${PADIS_GCP_PHASE:-base}}"
+        printf '%s/%s.done\n' "$DONE_DIR" "$(phase_task_key "$task_name" "$phase")"
+}
+
+task_running_marker() {
+        local task_name="$1"
+        local phase="${2:-${PADIS_GCP_PHASE:-base}}"
+        printf '%s/%s.running\n' "$RUNNING_DIR" "$(phase_task_key "$task_name" "$phase")"
+}
+
 task_elapsed_seconds() {
         local task_name="$1"
-        local path="$RUNTIME_DIR/$task_name.seconds"
+        local path="$RUNTIME_DIR/$(phase_task_key "$task_name").seconds"
         if [ -f "$path" ]; then
                 cat "$path"
         else
@@ -223,7 +258,7 @@ task_elapsed_seconds() {
 write_task_elapsed_seconds() {
         local task_name="$1"
         local seconds="$2"
-        local path="$RUNTIME_DIR/$task_name.seconds"
+        local path="$RUNTIME_DIR/$(phase_task_key "$task_name").seconds"
         printf '%s\n' "$seconds" > "$path.tmp"
         mv "$path.tmp" "$path"
 }
@@ -246,10 +281,13 @@ write_running_task_metadata() {
         local child_pid="$5"
         local monitor_pid="$6"
         local log_path="$7"
-        local marker="$RUNNING_DIR/$task_name.running"
+        local marker
+        marker="$(task_running_marker "$task_name")"
         local tmp="$marker.tmp.$BASHPID"
         {
-                printf 'task=%s\n' "$task_name"
+                printf 'task=%s\n' "$(phase_task_key "$task_name")"
+                printf 'base_task=%s\n' "$task_name"
+                printf 'phase=%s\n' "${PADIS_GCP_PHASE:-base}"
                 printf 'gpu=%s\n' "$gpu_id"
                 printf 'pid=%s\n' "$$"
                 printf 'worker_pid=%s\n' "$BASHPID"
@@ -352,11 +390,17 @@ task_final_full_checkpoint() {
 
 is_task_done() {
         local task_name="$1"
+        local phase="${2:-${PADIS_GCP_PHASE:-base}}"
+        local marker
+        marker="$(task_done_marker "$task_name" "$phase")"
+        if [ "$phase" != "base" ] && ! is_task_done "$task_name" "base"; then
+                return 1
+        fi
         if [ "$PADIS_GCP_DRY_RUN" = "1" ]; then
-                [ -f "$DONE_DIR/$task_name.done" ]
+                [ -f "$marker" ]
                 return
         fi
-        [ -f "$DONE_DIR/$task_name.done" ] \
+        [ -f "$marker" ] \
                 && [ -f "$(task_final_checkpoint "$task_name")" ] \
                 && [ -f "$(task_final_full_checkpoint "$task_name")" ]
 }
@@ -427,6 +471,7 @@ build_diffusion_command() {
         local task_name="$1"
         local remaining_seconds="$2"
         local index engine batch_size task_args validation_interval validation_max checkpoint_interval log_interval
+        local validation_heavy_interval validation_heavy_max
         local num_workers prefetch_factor script_path
 
         index="$(task_index_by_name "$task_name")"
@@ -457,6 +502,17 @@ build_diffusion_command() {
                         checkpoint_interval="${PADIS_CHECKPOINT_INTERVAL_PATCHES:-1000000}"
                 fi
                 log_interval="${PADIS_GCP_LOG_INTERVAL_PATCHES:-${PADIS_LOG_INTERVAL_PATCHES:-128}}"
+        fi
+        if [ "${PADIS_GCP_PHASE:-base}" = "validation_heavy" ]; then
+                if [[ "$task_name" == whole_lidc_* ]]; then
+                        validation_heavy_interval="${PADIS_GCP_WHOLE_VALIDATION_HEAVY_INTERVAL_PATCHES:-${PADIS_WHOLE_VALIDATION_HEAVY_INTERVAL_PATCHES:-2500}}"
+                        validation_heavy_max="${PADIS_GCP_WHOLE_VALIDATION_HEAVY_MAX_PATCHES:-${PADIS_WHOLE_VALIDATION_HEAVY_MAX_PATCHES:-328}}"
+                else
+                        validation_heavy_interval="${PADIS_GCP_PATCH_VALIDATION_HEAVY_INTERVAL_PATCHES:-${PADIS_PATCH_VALIDATION_HEAVY_INTERVAL_PATCHES:-20000}}"
+                        validation_heavy_max="${PADIS_GCP_PATCH_VALIDATION_HEAVY_MAX_PATCHES:-${PADIS_PATCH_VALIDATION_HEAVY_MAX_PATCHES:-$PADIS_GCP_VALIDATION_HEAVY_MAX_PATCHES}}"
+                fi
+                validation_interval="$validation_heavy_interval"
+                validation_max="$validation_heavy_max"
         fi
 
         if [ "$engine" = "lidc256" ]; then
@@ -497,6 +553,11 @@ build_diffusion_command() {
         fi
         if [ -n "$remaining_seconds" ]; then
                 CMD+=(--max-train-seconds "$remaining_seconds")
+        fi
+        if [ "${PADIS_GCP_PHASE:-base}" = "validation_heavy" ] \
+                && [ "$PADIS_GCP_VALIDATION_HEAVY_REPEAT_UNTIL_MAX_PATCHES" = "1" ] \
+                && [ "$validation_max" != "-1" ]; then
+                CMD+=(--validation-repeat-until-max-patches)
         fi
         add_cache_args "$engine" "$task_name" "${PADIS_TASK_ARGUMENTS[$index]}"
         CMD+=("${task_args[@]}")
@@ -673,24 +734,27 @@ stage_ramdisk_caches() {
 
 claim_next_task() {
         local gpu_id="$1"
-        local claimed="" task fd
+        local claimed="" task fd marker
         exec {fd}>"$STATE_DIR/queue.lock"
         flock "$fd"
-        for task in "${GCP_TASK_NAMES[@]}"; do
+        for task in "${ACTIVE_TASK_NAMES[@]}"; do
                 if is_task_done "$task"; then
                         continue
                 fi
-                if [ -f "$RUNNING_DIR/$task.running" ]; then
+                marker="$(task_running_marker "$task")"
+                if [ -f "$marker" ]; then
                         continue
                 fi
                 {
-                        printf 'task=%s\n' "$task"
+                        printf 'task=%s\n' "$(phase_task_key "$task")"
+                        printf 'base_task=%s\n' "$task"
+                        printf 'phase=%s\n' "${PADIS_GCP_PHASE:-base}"
                         printf 'gpu=%s\n' "$gpu_id"
                         printf 'pid=%s\n' "$$"
                         printf 'worker_pid=%s\n' "$BASHPID"
                         printf 'host=%s\n' "$(hostname)"
                         printf 'started=%s\n' "$(date --iso-8601=seconds)"
-                } > "$RUNNING_DIR/$task.running"
+                } > "$marker"
                 claimed="$task"
                 break
         done
@@ -716,14 +780,15 @@ record_runtime_while_running() {
 run_task_command() {
         local task_name="$1"
         local gpu_id="$2"
-        local start_total start_epoch child_pid monitor_pid rc now total log_path
+        local start_total start_epoch child_pid monitor_pid rc now total log_path phase_key
         start_total="$(task_elapsed_seconds "$task_name")"
         start_epoch="$(date +%s)"
-        log_path="$LOG_DIR/$task_name.gpu${gpu_id}.log"
+        phase_key="$(phase_task_key "$task_name")"
+        log_path="$LOG_DIR/$phase_key.gpu${gpu_id}.log"
 
-        printf '%q ' "${CMD[@]}" > "$LOG_DIR/$task_name.command.txt"
-        printf '\n' >> "$LOG_DIR/$task_name.command.txt"
-        log "GPU $gpu_id running $task_name; log: $log_path"
+        printf '%q ' "${CMD[@]}" > "$LOG_DIR/$phase_key.command.txt"
+        printf '\n' >> "$LOG_DIR/$phase_key.command.txt"
+        log "GPU $gpu_id running $phase_key; log: $log_path"
         if [ "$PADIS_GCP_DRY_RUN" = "1" ]; then
                 return 0
         fi
@@ -759,18 +824,19 @@ run_task_command() {
 run_task() {
         local task_name="$1"
         local gpu_id="$2"
-        local remaining final_checkpoint final_full_checkpoint rc
+        local remaining final_checkpoint final_full_checkpoint rc phase_key done_marker
+        phase_key="$(phase_task_key "$task_name")"
         if is_task_done "$task_name"; then
-                log "Task $task_name is already done."
-                rm -f "$RUNNING_DIR/$task_name.running"
+                log "Task $phase_key is already done."
+                rm -f "$(task_running_marker "$task_name")"
                 return 0
         fi
 
         remaining="$(remaining_budget_seconds "$task_name")"
         if [ -n "$remaining" ]; then
-                log "Task $task_name remaining wall budget for this invocation: ${remaining}s"
+                log "Task $phase_key remaining wall budget for this invocation: ${remaining}s"
         else
-                log "Task $task_name has no wall-clock cap; it will train to completion."
+                log "Task $phase_key has no wall-clock cap; it will train to completion."
         fi
         build_task_command "$task_name" "$remaining"
         if run_task_command "$task_name" "$gpu_id"; then
@@ -785,24 +851,29 @@ run_task() {
                         [ -f "$final_checkpoint" ] && [ -f "$final_full_checkpoint" ]
                 }
         }; then
+                done_marker="$(task_done_marker "$task_name")"
                 {
                         printf 'completed=%s\n' "$(date --iso-8601=seconds)"
+                        printf 'task=%s\n' "$task_name"
+                        printf 'phase=%s\n' "${PADIS_GCP_PHASE:-base}"
                         printf 'final_checkpoint=%s\n' "$final_checkpoint"
                         printf 'final_full_checkpoint=%s\n' "$final_full_checkpoint"
-                } > "$DONE_DIR/$task_name.done"
-                rm -f "$FAILED_DIR/$task_name.failed" "$RUNNING_DIR/$task_name.running"
-                log "Task $task_name completed. Final checkpoint: $final_checkpoint; full state: $final_full_checkpoint"
+                } > "$done_marker"
+                rm -f "$FAILED_DIR/$phase_key.failed" "$(task_running_marker "$task_name")"
+                log "Task $phase_key completed. Final checkpoint: $final_checkpoint; full state: $final_full_checkpoint"
                 return 0
         fi
 
         {
                 printf 'failed=%s\n' "$(date --iso-8601=seconds)"
                 printf 'exit_code=%s\n' "$rc"
+                printf 'task=%s\n' "$task_name"
+                printf 'phase=%s\n' "${PADIS_GCP_PHASE:-base}"
                 printf 'final_checkpoint=%s\n' "$final_checkpoint"
                 printf 'final_full_checkpoint=%s\n' "$final_full_checkpoint"
-        } > "$FAILED_DIR/$task_name.failed"
-        rm -f "$RUNNING_DIR/$task_name.running"
-        log "Task $task_name failed with exit code $rc. See $LOG_DIR/$task_name.gpu${gpu_id}.log"
+        } > "$FAILED_DIR/$phase_key.failed"
+        rm -f "$(task_running_marker "$task_name")"
+        log "Task $phase_key failed with exit code $rc. See $LOG_DIR/$phase_key.gpu${gpu_id}.log"
         return "$rc"
 }
 
@@ -819,6 +890,33 @@ worker_loop() {
         done
 }
 
+run_task_phase() {
+        local phase="$1"
+        local label="$2"
+        shift
+        shift
+        local worker_pids=()
+        local gpu_id pid phase_rc
+        if [ "$#" -eq 0 ]; then
+                log "Skipping $label phase because it has no tasks."
+                return 0
+        fi
+        PADIS_GCP_PHASE="$phase"
+        ACTIVE_TASK_NAMES=("$@")
+        log "Starting $label phase for tasks: ${ACTIVE_TASK_NAMES[*]}"
+        for gpu_id in "${GPU_IDS[@]}"; do
+                worker_loop "$gpu_id" &
+                worker_pids+=("$!")
+        done
+        phase_rc=0
+        for pid in "${worker_pids[@]}"; do
+                if ! wait "$pid"; then
+                        phase_rc=1
+                fi
+        done
+        return "$phase_rc"
+}
+
 write_manifest() {
         local manifest="$STATE_DIR/manifest.txt"
         {
@@ -829,6 +927,12 @@ write_manifest() {
                 printf 'gpu_ids=%s\n' "${GPU_IDS[*]}"
                 printf 'patch_train_seconds=%s\n' "$PATCH_TRAIN_SECONDS"
                 printf 'whole_train_seconds=%s\n' "$WHOLE_TRAIN_SECONDS"
+                printf 'validation_heavy_enabled=%s\n' "$PADIS_GCP_VALIDATION_HEAVY_PHASE"
+                printf 'validation_heavy_seconds=%s\n' "$VALIDATION_HEAVY_SECONDS"
+                printf 'validation_heavy_max_patches=%s\n' "$PADIS_GCP_VALIDATION_HEAVY_MAX_PATCHES"
+                printf 'patch_validation_heavy_interval_patches=%s\n' "${PADIS_GCP_PATCH_VALIDATION_HEAVY_INTERVAL_PATCHES:-${PADIS_PATCH_VALIDATION_HEAVY_INTERVAL_PATCHES:-20000}}"
+                printf 'whole_validation_heavy_interval_images=%s\n' "${PADIS_GCP_WHOLE_VALIDATION_HEAVY_INTERVAL_PATCHES:-${PADIS_WHOLE_VALIDATION_HEAVY_INTERVAL_PATCHES:-2500}}"
+                printf 'whole_validation_heavy_max_images=%s\n' "${PADIS_GCP_WHOLE_VALIDATION_HEAVY_MAX_PATCHES:-${PADIS_WHOLE_VALIDATION_HEAVY_MAX_PATCHES:-328}}"
                 printf 'checkpoint_interval_seconds=%s\n' "$PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS"
                 printf 'tasks=%s\n' "${GCP_TASK_NAMES[*]}"
         } > "$manifest"
@@ -876,6 +980,10 @@ PADIS_DATA_FOLDER="${PADIS_DATA_FOLDER:-}"
 PATCH_TRAIN_SECONDS="$(time_to_seconds "${PADIS_GCP_PATCH_TRAIN_TIME:-06:00:00}")"
 WHOLE_TRAIN_SECONDS="$(time_to_seconds "${PADIS_GCP_WHOLE_TRAIN_TIME:-18:00:00}")"
 PADIS_GCP_FINALIZE_SECONDS="${PADIS_GCP_FINALIZE_SECONDS:-900}"
+VALIDATION_HEAVY_SECONDS="$(time_to_seconds "${PADIS_GCP_VALIDATION_HEAVY_TIME:-06:00:00}")"
+PADIS_GCP_VALIDATION_HEAVY_PHASE="${PADIS_GCP_VALIDATION_HEAVY_PHASE:-1}"
+PADIS_GCP_VALIDATION_HEAVY_MAX_PATCHES="${PADIS_GCP_VALIDATION_HEAVY_MAX_PATCHES:-4000}"
+PADIS_GCP_VALIDATION_HEAVY_REPEAT_UNTIL_MAX_PATCHES="${PADIS_GCP_VALIDATION_HEAVY_REPEAT_UNTIL_MAX_PATCHES:-1}"
 PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS="${PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS:-300}"
 PADIS_GCP_MAX_PERIODIC_CHECKPOINTS="${PADIS_GCP_MAX_PERIODIC_CHECKPOINTS:-2}"
 PADIS_GCP_FINAL_PERIODIC_CHECKPOINTS="${PADIS_GCP_FINAL_PERIODIC_CHECKPOINTS:-1}"
@@ -1006,6 +1114,7 @@ log "Training root: $PADIS_TRAIN_ROOT"
 log "Selected GPUs: ${GPU_IDS[*]}"
 log "Task order: ${GCP_TASK_NAMES[*]}"
 log "Patch task budget: ${PATCH_TRAIN_SECONDS}s; whole-image task budget: ${WHOLE_TRAIN_SECONDS}s"
+log "Validation-heavy phase: enabled=$PADIS_GCP_VALIDATION_HEAVY_PHASE, budget=${VALIDATION_HEAVY_SECONDS}s, max_patches=$PADIS_GCP_VALIDATION_HEAVY_MAX_PATCHES"
 log "Checkpoint interval: ${PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS}s"
 log "Final periodic checkpoints kept: $PADIS_GCP_FINAL_PERIODIC_CHECKPOINTS"
 if command -v nvidia-smi >/dev/null 2>&1; then
@@ -1014,21 +1123,34 @@ fi
 
 stage_ramdisk_caches
 
-worker_pids=()
-for gpu_id in "${GPU_IDS[@]}"; do
-        worker_loop "$gpu_id" &
-        worker_pids+=("$!")
-done
-
 overall_rc=0
-for pid in "${worker_pids[@]}"; do
-        if ! wait "$pid"; then
-                overall_rc=1
-        fi
-done
+if ! run_task_phase "base" "base training" "${GCP_TASK_NAMES[@]}"; then
+        overall_rc=1
+fi
 
 if [ "$overall_rc" -ne 0 ]; then
         log "One or more PaDIS GCP training tasks failed. Rerun after fixing the failure to resume remaining tasks."
+        exit "$overall_rc"
+fi
+
+VALIDATION_HEAVY_TASK_NAMES=()
+if [ "$PADIS_GCP_VALIDATION_HEAVY_PHASE" = "1" ]; then
+        for task in "${GCP_TASK_NAMES[@]}"; do
+                if [ "$task" = "$PNP_TASK_NAME" ]; then
+                        continue
+                fi
+                VALIDATION_HEAVY_TASK_NAMES+=("$task")
+        done
+        if ! run_task_phase \
+                "validation_heavy" \
+                "validation-heavy continuation" \
+                "${VALIDATION_HEAVY_TASK_NAMES[@]}"; then
+                overall_rc=1
+        fi
+fi
+
+if [ "$overall_rc" -ne 0 ]; then
+        log "One or more PaDIS GCP validation-heavy continuation tasks failed. Rerun after fixing the failure to resume remaining tasks."
         exit "$overall_rc"
 fi
 

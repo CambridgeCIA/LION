@@ -544,6 +544,15 @@ def build_arg_parser():
         default=1_000,
         help="Maximum validation patches per validation event. Use -1 for full validation.",
     )
+    parser.add_argument(
+        "--validation-repeat-until-max-patches",
+        action="store_true",
+        help=(
+            "Repeat the selected validation image set until "
+            "--validation-max-patches is reached. This increases validation "
+            "patch draws without selecting more LIDC slices per patient."
+        ),
+    )
     parser.add_argument("--checkpoint-interval-patches", type=int, default=5_000_000)
     parser.add_argument(
         "--checkpoint-interval-seconds",
@@ -776,6 +785,9 @@ def main():
                 args.target_patches,
                 validation_interval_patches=args.validation_interval_patches,
                 validation_max_patches=validation_max_patches,
+                validation_repeat_until_max_patches=(
+                    args.validation_repeat_until_max_patches
+                ),
                 checkpoint_interval_patches=args.checkpoint_interval_patches,
                 checkpoint_interval_seconds=args.checkpoint_interval_seconds,
                 log_interval_patches=args.log_interval_patches,

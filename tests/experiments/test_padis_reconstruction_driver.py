@@ -62,7 +62,7 @@ def _args(method: str):
         pnp_cg_iterations=5,
         pnp_cg_tolerance=1e-8,
         pnp_clip=True,
-        tv_lambda=0.001,
+        tv_lambda=0.005,
         tv_iterations=1,
         tv_lipschitz=None,
         tv_non_negativity=False,
@@ -169,11 +169,11 @@ def test_admm_tv_driver_uses_lion_tv_path(monkeypatch, tmp_path):
     assert summary["mean_psnr"] == float("inf")
     with open(tmp_path / "admm_tv" / "metrics.json") as f:
         payload = json.load(f)
-    assert payload["method_settings"]["tv_lambda"] == 0.001
+    assert payload["method_settings"]["tv_lambda"] == 0.005
     assert payload["method_settings"]["tv_iterations"] == 1
     assert calls
     assert calls[0][0].shape == (1, 1, 8, 8)
-    assert calls[0][2]["lam"] == 0.001
+    assert calls[0][2]["lam"] == 0.005
 
 
 def test_pnp_admm_driver_uses_lion_pnp_path(monkeypatch, tmp_path):
@@ -355,7 +355,8 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
     dps_params = recon_script.build_sampler_params(
         dps_args, model=None, measurement_source="normal"
     )
-    assert dps_params.zeta == 4.0
+    assert dps_params.zeta == 4.5
+    assert dps_params.dps_epsilon == 0.5
     assert dps_params.sampling_epsilon == 1.0
 
     base_dps_args = parser.parse_args(
@@ -369,7 +370,8 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
     base_dps_params = recon_script.build_sampler_params(
         base_dps_args, model=None, measurement_source="normal"
     )
-    assert base_dps_params.zeta == 3.0
+    assert base_dps_params.zeta == 4.5
+    assert base_dps_params.dps_epsilon == 0.5
 
     whole_fanbeam_args = parser.parse_args(
         [
@@ -418,7 +420,7 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
         pc_args, model=None, measurement_source="normal"
     )
     assert pc_params.zeta == 4.25
-    assert pc_params.pc_snr == 0.08
+    assert pc_params.pc_snr == 0.04
     assert pc_params.sampling_epsilon == 1.0
 
     langevin_args = parser.parse_args(

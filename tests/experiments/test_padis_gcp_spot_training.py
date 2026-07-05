@@ -15,7 +15,13 @@ GCP_SHUTDOWN = LION_ROOT / "scripts/paper_scripts/PaDIS/gcp/padis_gcp_spot_shutd
 DEFAULT_GCP_RUN_NAME = "PaDIS-Reproduction-GCP"
 
 
-def _run_gcp_dry_run(tmp_path, task_order, extra_env=None, runtime_seconds=None):
+def _run_gcp_dry_run(
+    tmp_path,
+    task_order,
+    extra_env=None,
+    runtime_seconds=None,
+    done_tasks=None,
+):
     data_root = tmp_path / "Datasets"
     run_root = data_root / "experiments/PaDIS"
     run_name = (extra_env or {}).get("PADIS_GCP_RUN_NAME", DEFAULT_GCP_RUN_NAME)
@@ -25,6 +31,13 @@ def _run_gcp_dry_run(tmp_path, task_order, extra_env=None, runtime_seconds=None)
         runtime_dir.mkdir(parents=True)
         for task_name, seconds in runtime_seconds.items():
             (runtime_dir / f"{task_name}.seconds").write_text(f"{seconds}\n")
+    if done_tasks:
+        done_dir = train_root / ".gcp_spot_dry_run/done"
+        done_dir.mkdir(parents=True)
+        for task_name in done_tasks:
+            (done_dir / f"{task_name}.done").write_text(
+                f"task={task_name}\nphase=base\n"
+            )
     env = {
         **os.environ,
         "LION_DATA_PATH": str(data_root),
@@ -51,9 +64,15 @@ def _run_gcp_dry_run(tmp_path, task_order, extra_env=None, runtime_seconds=None)
     return result, train_root
 
 
-def _command_text(train_root, task_name):
-    command_path = train_root / ".gcp_spot_dry_run/logs" / f"{task_name}.command.txt"
+def _command_text(train_root, task_name, phase=None):
+    key = task_name if phase in (None, "base") else f"{task_name}.{phase}"
+    command_path = train_root / ".gcp_spot_dry_run/logs" / f"{key}.command.txt"
     return command_path.read_text()
+
+
+def _command_path(train_root, task_name, phase=None):
+    key = task_name if phase in (None, "base") else f"{task_name}.{phase}"
+    return train_root / ".gcp_spot_dry_run/logs" / f"{key}.command.txt"
 
 
 def test_gcp_spot_runner_is_executable():
@@ -90,6 +109,78 @@ def test_gcp_spot_runner_dry_run_builds_expected_training_commands(tmp_path):
     assert "--max-train-seconds" not in pnp_command
     assert "--final-full-name pnp_lidc_drunet_full.pt" in pnp_command
     assert "--checkpoint-interval-seconds 300" in pnp_command
+
+
+def test_gcp_spot_runner_adds_validation_heavy_continuation_phase(tmp_path):
+    result, train_root = _run_gcp_dry_run(
+        tmp_path,
+        "whole_lidc_default,patch_lidc_default,pnp_lidc_drunet",
+    )
+
+    assert result.returncode == 0, result.stderr
+
+    patch_command = _command_text(
+        train_root, "patch_lidc_default", phase="validation_heavy"
+    )
+    assert "--max-train-seconds 21600" in patch_command
+    assert "--validation-interval-patches 20000" in patch_command
+    assert "--validation-max-patches 4000" in patch_command
+    assert "--validation-repeat-until-max-patches" in patch_command
+
+    whole_command = _command_text(
+        train_root, "whole_lidc_default", phase="validation_heavy"
+    )
+    assert "--max-train-seconds 21600" in whole_command
+    assert "--validation-interval-patches 2500" in whole_command
+    assert "--validation-max-patches 328" in whole_command
+    assert "--validation-repeat-until-max-patches" in whole_command
+    manifest = train_root / ".gcp_spot_dry_run/manifest.txt"
+    manifest_text = manifest.read_text()
+    assert "whole_validation_heavy_interval_images=2500\n" in manifest_text
+    assert "whole_validation_heavy_max_images=328\n" in manifest_text
+
+    assert not _command_path(
+        train_root, "pnp_lidc_drunet", phase="validation_heavy"
+    ).exists()
+
+
+def test_gcp_spot_runner_validation_phase_resumes_base_done_tasks(tmp_path):
+    result, train_root = _run_gcp_dry_run(
+        tmp_path,
+        "patch_lidc_default",
+        done_tasks=["patch_lidc_default"],
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert not _command_path(train_root, "patch_lidc_default").exists()
+    patch_command = _command_text(
+        train_root, "patch_lidc_default", phase="validation_heavy"
+    )
+    assert "--validation-interval-patches 20000" in patch_command
+    validation_done = (
+        train_root / ".gcp_spot_dry_run/done/patch_lidc_default.validation_heavy.done"
+    )
+    assert validation_done.is_file()
+
+
+def test_gcp_spot_runner_validation_phase_uses_separate_runtime_ledger(tmp_path):
+    result, train_root = _run_gcp_dry_run(
+        tmp_path,
+        "patch_lidc_default",
+        done_tasks=["patch_lidc_default"],
+        runtime_seconds={
+            "patch_lidc_default": 21600,
+            "patch_lidc_default.validation_heavy": 7200,
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert not _command_path(train_root, "patch_lidc_default").exists()
+    patch_command = _command_text(
+        train_root, "patch_lidc_default", phase="validation_heavy"
+    )
+    assert "--max-train-seconds 14400" in patch_command
+    assert "--validation-interval-patches 20000" in patch_command
 
 
 def test_gcp_spot_runner_default_run_name_and_wandb_prefix(tmp_path):

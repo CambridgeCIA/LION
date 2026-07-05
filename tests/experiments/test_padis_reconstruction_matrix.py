@@ -208,6 +208,8 @@ def test_method_command_contains_method_and_expected_checkpoint_family(tmp_path)
     assert command[command.index("--pnp-checkpoint") + 1].endswith(
         "pnp_lidc_drunet/pnp_lidc_drunet.pt"
     )
+    assert command[command.index("--pnp-iterations") + 1] == "60"
+    assert command[command.index("--pnp-eta") + 1] == "2e-05"
 
 
 def test_input_check_reports_missing_required_checkpoints_once(tmp_path):
@@ -312,7 +314,8 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
     assert padis_sampler["initial_reconstruction"] == "fdk"
     assert padis_sampler["clip_initial"] is True
     assert padis_sampler["clip_output"] is True
-    assert padis_sampler["dps_epsilon"] == 1.0
+    assert padis_sampler["zeta"] == 4.5
+    assert padis_sampler["dps_epsilon"] == 0.5
     assert padis_sampler["data_consistency_gradient"] == "least_squares"
     assert padis_sampler["adjoint_data_step_schedule"] == "paper"
     assert padis_sampler["data_consistency_normalization"] == "operator_lipschitz"
@@ -338,7 +341,7 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
     assert payloads["ve_ddnm"]["expected_sampler"]["clip_initial"] is False
     assert payloads["ve_ddnm"]["expected_sampler"]["clip_output"] is False
     assert payloads["predictor_corrector"]["implementation"] == "lion_physics"
-    assert payloads["predictor_corrector"]["expected_sampler"]["pc_snr"] == 0.08
+    assert payloads["predictor_corrector"]["expected_sampler"]["pc_snr"] == 0.04
     assert payloads["predictor_corrector"]["expected_sampler"]["zeta"] == 4.25
     assert (
         payloads["predictor_corrector"]["expected_sampler"]["pc_corrector_step_rule"]
@@ -410,6 +413,7 @@ def test_public_repo_manifest_contains_public_sampler_settings(tmp_path):
     assert sampler["initial_reconstruction"] == "fdk"
     assert sampler["clip_initial"] is True
     assert sampler["clip_output"] is True
+    assert sampler["zeta"] == 0.2
     assert sampler["dps_epsilon"] == 0.5
     assert sampler["data_consistency_gradient"] == "norm"
     assert sampler["adjoint_data_step_schedule"] == "public_repo"
@@ -932,14 +936,15 @@ def test_lion_physics_implementation_uses_operator_normalized_settings(tmp_path)
     assert sampler["sigma_max"] == 10.0
     assert sampler["initial_reconstruction"] == "fdk"
     assert sampler["initial_fdk_filter_type"] == "hann"
-    assert sampler["initial_fdk_frequency_scaling"] == 0.3
-    assert sampler["zeta"] == 4.0
+    assert sampler["initial_fdk_frequency_scaling"] == 0.2
+    assert sampler["zeta"] == 4.5
+    assert sampler["dps_epsilon"] == 0.5
     assert sampler["data_consistency_gradient"] == "least_squares"
     assert sampler["adjoint_data_step_schedule"] == "paper"
     assert sampler["data_consistency_normalization"] == "operator_lipschitz"
     assert sampler["data_consistency_scale"] == 1.0
     assert sampler["adjoint_data_consistency_scale"] is None
-    assert sampler["pc_snr"] == 0.08
+    assert sampler["pc_snr"] == 0.04
     assert "public_repo" not in sampler.values()
 
     assert (
@@ -949,7 +954,7 @@ def test_lion_physics_implementation_uses_operator_normalized_settings(tmp_path)
         == "next"
     )
     assert payloads["predictor_corrector"]["expected_sampler"]["zeta"] == 4.25
-    assert payloads["predictor_corrector"]["expected_sampler"]["pc_snr"] == 0.08
+    assert payloads["predictor_corrector"]["expected_sampler"]["pc_snr"] == 0.04
     assert (
         payloads["predictor_corrector"]["expected_sampler"]["pc_reuse_predictor_layout"]
         is False

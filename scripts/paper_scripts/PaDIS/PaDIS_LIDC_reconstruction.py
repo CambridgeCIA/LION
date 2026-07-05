@@ -1511,6 +1511,10 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
             sampler_params.initial_fdk_frequency_scaling = 1.0
             sampler_params.initial_fdk_padded = True
             sampler_params.clip_initial = False
+        if args.method == "padis_dps":
+            sampler_params.zeta = 0.2
+        elif args.method == "predictor_corrector":
+            sampler_params.zeta = 0.5
     elif args.implementation == "lion_physics":
         physics_params = PaDIS.lion_physics_ct_parameters(model, views=paper_views)
         sampler_params.num_steps = physics_params.num_steps
@@ -1578,7 +1582,7 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         )
         if args.method == "predictor_corrector":
             sampler_params.zeta = 4.25
-            sampler_params.pc_snr = 0.08
+            sampler_params.pc_snr = 0.04
         elif args.method == "langevin":
             sampler_params.zeta = 4.0
             sampler_params.sampling_epsilon = 0.5
@@ -1587,8 +1591,9 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
                 sampler_params.zeta = 4.0
             if experiment_key == "ct_fanbeam_180":
                 sampler_params.dps_epsilon = 0.5
-        elif args.method == "padis_dps" and experiment_key == "ct_20":
-            sampler_params.zeta = 4.0
+        elif args.method == "padis_dps":
+            sampler_params.zeta = 4.5
+            sampler_params.dps_epsilon = 0.5
         elif args.method in ("patch_average", "patch_stitch"):
             sampler_params.dps_epsilon = 0.5
     if args.method == "ve_ddnm":
@@ -2858,8 +2863,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--tv-lambda",
         type=float,
-        default=0.001,
-        help="TV regularisation weight. The paper uses 0.001 for CT.",
+        default=0.005,
+        help="TV regularisation weight. The paper uses 0.001 for CT; LION validation promoted 0.005 for the TV substitute.",
     )
     parser.add_argument("--tv-iterations", type=int, default=500)
     parser.add_argument("--tv-lipschitz", type=float, default=None)
@@ -2870,8 +2875,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="DRUNet denoiser checkpoint for --method pnp_admm.",
     )
-    parser.add_argument("--pnp-iterations", type=int, default=20)
-    parser.add_argument("--pnp-eta", type=float, default=1e-5)
+    parser.add_argument("--pnp-iterations", type=int, default=60)
+    parser.add_argument("--pnp-eta", type=float, default=2e-5)
     parser.add_argument("--pnp-cg-iterations", type=int, default=100)
     parser.add_argument("--pnp-cg-tolerance", type=float, default=1e-7)
     parser.set_defaults(pnp_clip=True)

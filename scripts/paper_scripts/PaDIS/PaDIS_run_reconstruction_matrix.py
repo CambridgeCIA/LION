@@ -895,6 +895,10 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
                 "adjoint_data_consistency_scale": 0.1022,
             }
         )
+        if job.method.name == "padis_dps":
+            settings["zeta"] = 0.2
+        elif job.method.name == "predictor_corrector":
+            settings["zeta"] = 0.5
     elif job.implementation == "lion_quality":
         settings.update(
             {
@@ -921,12 +925,12 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
                 "data_consistency_gradient": "least_squares",
                 "adjoint_data_step_schedule": "paper",
                 "initial_fdk_filter_type": "hann",
-                "initial_fdk_frequency_scaling": 0.3,
+                "initial_fdk_frequency_scaling": 0.2,
                 "initial_fdk_padded": False,
                 "data_consistency_normalization": "operator_lipschitz",
                 "data_consistency_scale": 1.0,
                 "adjoint_data_consistency_scale": None,
-                "pc_snr": 0.08,
+                "pc_snr": 0.04,
             }
         )
 
@@ -937,12 +941,9 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
                 settings["zeta"] = 4.0
             if job.experiment == "ct_fanbeam_180":
                 settings["dps_epsilon"] = 0.5
-    if (
-        job.method.name == "padis_dps"
-        and job.implementation == "lion_physics"
-        and job.experiment == "ct_20"
-    ):
-        settings["zeta"] = 4.0
+    if job.method.name == "padis_dps" and job.implementation == "lion_physics":
+        settings["zeta"] = 4.5
+        settings["dps_epsilon"] = 0.5
     if job.experiment == "ct_512_60" and job.method.name in {
         "padis_dps",
         "langevin",
@@ -956,9 +957,11 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
             settings["patch_checkpoint_denoiser"] = True
             settings["fixed_overlap_checkpoint_denoiser"] = False
     if job.method.name == "predictor_corrector":
-        settings["pc_snr"] = 0.08 if job.implementation == "lion_physics" else 0.16
+        settings["pc_snr"] = 0.04 if job.implementation == "lion_physics" else 0.16
         if job.implementation == "lion_physics":
             settings["zeta"] = 4.25
+        elif job.implementation == "public_repo":
+            settings["zeta"] = 0.5
         settings["pc_corrector_step_rule"] = "paper_linear"
         settings["pc_corrector_denoise_sigma"] = (
             "current" if job.implementation == "public_repo" else "next"
@@ -1307,12 +1310,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--pnp-checkpoint", type=pathlib.Path, default=None)
-    parser.add_argument("--pnp-iterations", type=int, default=20)
-    parser.add_argument("--pnp-eta", type=float, default=1e-5)
+    parser.add_argument("--pnp-iterations", type=int, default=60)
+    parser.add_argument("--pnp-eta", type=float, default=2e-5)
     parser.add_argument("--pnp-cg-iterations", type=int, default=100)
     parser.add_argument("--pnp-cg-tolerance", type=float, default=1e-7)
     parser.add_argument("--pnp-noise-level", type=float, default=None)
-    parser.add_argument("--tv-lambda", type=float, default=0.001)
+    parser.add_argument("--tv-lambda", type=float, default=0.005)
     parser.add_argument("--tv-iterations", type=int, default=500)
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
     parser.add_argument("--public-padis-image-dir", type=pathlib.Path, default=None)

@@ -312,13 +312,14 @@ def test_padis_lion_physics_sampling_uses_lipschitz_scaled_least_squares():
     assert params.sigma_min == 0.002
     assert params.sigma_max == 10.0
     assert params.initial_reconstruction == "fdk"
+    assert params.initial_fdk_frequency_scaling == 0.2
     assert params.zeta == 3.0
     assert params.data_consistency_gradient == "least_squares"
     assert params.data_consistency_normalization == "operator_lipschitz"
     assert params.data_consistency_scale == 1.0
     assert params.adjoint_data_consistency_scale is None
     assert params.adjoint_data_step_schedule == "paper"
-    assert params.pc_snr == 0.08
+    assert params.pc_snr == 0.04
 
 
 def test_padis_noise_schedule_modes():

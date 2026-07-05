@@ -512,6 +512,7 @@ class PaDISSolver(LIONsolver):
         *,
         validation_interval_patches: int | None = None,
         validation_max_patches: int | None = None,
+        validation_repeat_until_max_patches: bool = False,
         checkpoint_interval_patches: int | None = None,
         checkpoint_interval_seconds: float | None = None,
         log_interval_patches: int | None = None,
@@ -530,6 +531,10 @@ class PaDISSolver(LIONsolver):
             raise ValueError("validation_interval_patches must be positive.")
         if validation_max_patches is not None and validation_max_patches <= 0:
             raise ValueError("validation_max_patches must be positive.")
+        if validation_repeat_until_max_patches and validation_max_patches is None:
+            raise ValueError(
+                "validation_repeat_until_max_patches requires validation_max_patches."
+            )
         if checkpoint_interval_patches is not None and checkpoint_interval_patches <= 0:
             raise ValueError("checkpoint_interval_patches must be positive.")
         if checkpoint_interval_seconds is not None and checkpoint_interval_seconds <= 0:
@@ -674,7 +679,12 @@ class PaDISSolver(LIONsolver):
 
                 if next_validation is not None and self.seen_patches >= next_validation:
                     validation_loss = (
-                        self.validate(max_patches=validation_max_patches)
+                        self.validate(
+                            max_patches=validation_max_patches,
+                            repeat_until_max_patches=(
+                                validation_repeat_until_max_patches
+                            ),
+                        )
                         if validation_max_patches is not None
                         else self.validate()
                     )
@@ -735,9 +745,16 @@ class PaDISSolver(LIONsolver):
         finally:
             progress.close()
 
-    def validate(self, max_patches: int | None = None):
+    def validate(
+        self,
+        max_patches: int | None = None,
+        *,
+        repeat_until_max_patches: bool = False,
+    ):
         if max_patches is not None and max_patches <= 0:
             raise ValueError("max_patches must be positive.")
+        if repeat_until_max_patches and max_patches is None:
+            raise ValueError("repeat_until_max_patches requires max_patches.")
         if self.validation_loader is None:
             return 0.0
         was_training = self.model.training
@@ -747,26 +764,42 @@ class PaDISSolver(LIONsolver):
         validation_patches = 0
         try:
             with torch.no_grad():
-                for _, target in tqdm(self.validation_loader):
-                    if max_patches is not None:
-                        remaining = int(max_patches) - validation_patches
-                        if remaining <= 0:
-                            break
-                        if target.shape[0] > remaining:
-                            target = target[:remaining]
-                    target = target.float()
-                    self._check_data_range(target)
-                    clean_patch, position_patch = self._sample_training_patch(target)
-                    non_blocking = self.device.type == "cuda"
-                    clean_patch = clean_patch.to(self.device, non_blocking=non_blocking)
-                    if position_patch is not None:
-                        position_patch = position_patch.to(
+                while True:
+                    pass_patches = 0
+                    for _, target in tqdm(self.validation_loader):
+                        if max_patches is not None:
+                            remaining = int(max_patches) - validation_patches
+                            if remaining <= 0:
+                                break
+                            if target.shape[0] > remaining:
+                                target = target[:remaining]
+                        target = target.float()
+                        self._check_data_range(target)
+                        clean_patch, position_patch = self._sample_training_patch(
+                            target
+                        )
+                        non_blocking = self.device.type == "cuda"
+                        clean_patch = clean_patch.to(
                             self.device, non_blocking=non_blocking
                         )
-                    loss = self.loss_fn(self.model, clean_patch, position_patch)
-                    batch_patches = int(clean_patch.shape[0])
-                    validation_loss_total += float(loss.cpu().item()) * batch_patches
-                    validation_patches += batch_patches
+                        if position_patch is not None:
+                            position_patch = position_patch.to(
+                                self.device, non_blocking=non_blocking
+                            )
+                        loss = self.loss_fn(self.model, clean_patch, position_patch)
+                        batch_patches = int(clean_patch.shape[0])
+                        validation_loss_total += (
+                            float(loss.cpu().item()) * batch_patches
+                        )
+                        validation_patches += batch_patches
+                        pass_patches += batch_patches
+                    if (
+                        not repeat_until_max_patches
+                        or max_patches is None
+                        or validation_patches >= int(max_patches)
+                        or pass_patches == 0
+                    ):
+                        break
         finally:
             self.last_validation_patches = validation_patches
             self._restore_raw_weights(raw_state)
