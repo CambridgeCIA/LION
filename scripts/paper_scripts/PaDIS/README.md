@@ -334,6 +334,19 @@ cheaper and the initial LION-physics default lagged the public-compatible row.
 | `predictor_corrector` / `public_repo` | previous `zeta=0.3` | `ct_20`, `ct_8` | 1 | 28.10 | 0.621 | 0.02465 | Strong public-compatible baseline. |
 | `predictor_corrector` / `public_repo` | `zeta=0.5` | `ct_20`, `ct_8` | 1 | 28.32 | 0.644 | 0.02393 | Best public-compatible PC bracket point; promoted as default. |
 
+The fixed-overlap patch validation pass uses the same `ct_20`/`ct_8`,
+one-sample, `--start-index 4` setup and the external `padis_lidc_default.pt`
+checkpoint. Each full fixed-overlap row takes about 49 minutes on the local
+GTX 1070. Both fixed-overlap methods were checked against the public-compatible
+rows on the same validation slice pair.
+
+| Method / implementation | Candidate | Experiments | Samples per experiment | Mean PSNR | Mean SSIM | Mean MAE | Status |
+|---|---|---|---:|---:|---:|---:|---|
+| `patch_average` / `lion_physics` | current default | `ct_20`, `ct_8` | 1 | 33.24 | 0.867 | 0.01162 | Strong validation result; beats public-compatible patch-average on this pair and remains the fixed-overlap average default. |
+| `patch_average` / `public_repo` | current default | `ct_20`, `ct_8` | 1 | 32.30 | 0.858 | 0.01283 | Public-compatible reference; also strong and well above FDK. |
+| `patch_stitch` / `lion_physics` | current default | `ct_20`, `ct_8` | 1 | 33.50 | 0.861 | 0.01198 | Strong validation result; beats public-compatible patch-stitch on this pair and remains the fixed-overlap stitch default. |
+| `patch_stitch` / `public_repo` | current default | `ct_20`, `ct_8` | 1 | 31.80 | 0.843 | 0.01398 | Public-compatible reference; above FDK but clearly below the LION-physics stitch row on the validation pair. |
+
 The VE-DDNM validation pass used the same `ct_20`/`ct_8`, one-sample,
 `--start-index 4` setup and the external `padis_lidc_default.pt` checkpoint.
 It confirms that the stabilized LION-physics row is finite and beats FDK, but
@@ -364,6 +377,7 @@ The detailed run outputs are under:
 /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/langevin_pc_defaults_validation_20260705
 /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/pc_lion_public_validation_bracket_20260705
 /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/ve_ddnm_defaults_validation_20260705
+/home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/patch_fixed_overlap_defaults_validation_20260705
 ```
 
 The current external-model conclusion for `padis_dps` / `lion_physics` is to
@@ -373,11 +387,15 @@ experiments. The current external-model conclusion for `padis_dps` /
 the public-compatible CT scaling, clipping, and initialization. The current
 external-model conclusion for predictor-corrector is to use LION-physics
 `zeta=4.25`, `pc_snr=0.04`, and public-compatible `zeta=0.5`. These choices
-have been promoted into the inference defaults. VE-DDNM remains implemented
-and finite only in the stabilized LION-physics form; it should be reported with
-a warning rather than treated as hyperparameter-competitive. The native 512-row
-still needs A100 confirmation because local 8 GB runs are too slow for
-full-quality tuning.
+have been promoted into the inference defaults. The fixed-overlap conclusion is
+to keep the existing LION-physics patch-average and patch-stitch defaults
+(`dps_epsilon=0.5`, public-overlap/public-tile layouts, checkpointed
+fixed-overlap denoising, operator-Lipschitz normalization); both beat the
+public-compatible references on the clean validation pair. VE-DDNM remains
+implemented and finite only in the stabilized LION-physics form; it should be
+reported with a warning rather than treated as hyperparameter-competitive. The
+native 512-row still needs A100 confirmation because local 8 GB runs are too
+slow for full-quality tuning.
 Detached background launches from the command sandbox were killed when the tool
 session exited, so long confirmation sweeps should be run in a live shell/tool
 session or on the Slurm/GCP runner rather than relying on `nohup` from Codex.

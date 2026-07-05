@@ -1148,10 +1148,10 @@ default_task_order=(
         whole_lidc_full
         whole_lidc_default
         "$PNP_TASK_NAME"
+        patch_lidc_p96_default
         patch_lidc_full
         patch_lidc_512
         patch_lidc_default
-        patch_lidc_p96_default
         patch_lidc_p32_default
         patch_lidc_p16_default
         patch_lidc_p8_default

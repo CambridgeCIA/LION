@@ -46,11 +46,12 @@ def _run_gcp_dry_run(
         "PADIS_GCP_SKIP_ENV_ACTIVATE": "1",
         "PADIS_GCP_DRY_RUN": "1",
         "PADIS_GCP_STAGE_CACHES": "0",
-        "PADIS_GCP_TASK_ORDER": task_order,
         "PADIS_GCP_GPU_IDS": "0,1",
         "PADIS_NO_WANDB": "1",
         "PADIS_WANDB_MODE": "disabled",
     }
+    if task_order is not None:
+        env["PADIS_GCP_TASK_ORDER"] = task_order
     if extra_env is not None:
         env.update(extra_env)
     result = subprocess.run(
@@ -109,6 +110,32 @@ def test_gcp_spot_runner_dry_run_builds_expected_training_commands(tmp_path):
     assert "--max-train-seconds" not in pnp_command
     assert "--final-full-name pnp_lidc_drunet_full.pt" in pnp_command
     assert "--checkpoint-interval-seconds 300" in pnp_command
+
+
+def test_gcp_spot_runner_default_order_runs_p96_immediately_after_pnp(tmp_path):
+    result, train_root = _run_gcp_dry_run(tmp_path, None)
+
+    assert result.returncode == 0, result.stderr
+
+    expected_base_order = (
+        "whole_lidc_full whole_lidc_default pnp_lidc_drunet "
+        "patch_lidc_p96_default patch_lidc_full patch_lidc_512 "
+        "patch_lidc_default patch_lidc_p32_default patch_lidc_p16_default "
+        "patch_lidc_p8_default patch_lidc_no_pos_default"
+    )
+    expected_validation_order = (
+        "whole_lidc_full whole_lidc_default patch_lidc_p96_default "
+        "patch_lidc_full patch_lidc_512 patch_lidc_default "
+        "patch_lidc_p32_default patch_lidc_p16_default "
+        "patch_lidc_p8_default patch_lidc_no_pos_default"
+    )
+    manifest = train_root / ".gcp_spot_dry_run/manifest.txt"
+    assert f"tasks={expected_base_order}\n" in manifest.read_text()
+    assert f"Task order: {expected_base_order}" in result.stdout
+    assert (
+        "Starting validation-heavy continuation phase for tasks: "
+        f"{expected_validation_order}"
+    ) in result.stdout
 
 
 def test_gcp_spot_runner_adds_validation_heavy_continuation_phase(tmp_path):
