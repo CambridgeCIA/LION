@@ -170,6 +170,58 @@ discover_gpu_ids() {
         [ "${#GPU_IDS[@]}" -gt 0 ] || die "No GPUs selected."
 }
 
+gpu_total_memory_mib() {
+        local gpu_id="$1"
+        local value
+        if ! command -v nvidia-smi >/dev/null 2>&1; then
+                return 1
+        fi
+        value="$(
+                nvidia-smi \
+                        --id="$gpu_id" \
+                        --query-gpu=memory.total \
+                        --format=csv,noheader,nounits 2>/dev/null \
+                        | sed -n '1{s/[^0-9]//g;p;}'
+        )"
+        if [[ "$value" =~ ^[0-9]+$ ]]; then
+                printf '%s\n' "$value"
+                return 0
+        fi
+        return 1
+}
+
+resolve_reconstruction_tasks_per_gpu() {
+        local requested min_memory memory gpu_id
+        requested="${PADIS_GCP_RECON_TASKS_PER_GPU:-auto}"
+        if [ "$requested" != "auto" ]; then
+                if ! [[ "$requested" =~ ^[1-9][0-9]*$ ]]; then
+                        die "PADIS_GCP_RECON_TASKS_PER_GPU must be a positive integer or auto."
+                fi
+                RECON_TASKS_PER_GPU="$requested"
+                return
+        fi
+
+        RECON_TASKS_PER_GPU=1
+        min_memory=""
+        for gpu_id in "${GPU_IDS[@]}"; do
+                memory="$(gpu_total_memory_mib "$gpu_id" || true)"
+                if [ -z "$memory" ]; then
+                        min_memory=""
+                        break
+                fi
+                if [ -z "$min_memory" ] || [ "$memory" -lt "$min_memory" ]; then
+                        min_memory="$memory"
+                fi
+        done
+
+        # The GCP RTX PRO 6000 Blackwell exposes roughly 96 GiB. Reconstruction
+        # runs without backprop and the large patch/512 rows use small patch
+        # batches, so three concurrent processes is a useful default.
+        if [ -n "$min_memory" ] && [ "$min_memory" -ge 90000 ]; then
+                RECON_TASKS_PER_GPU=3
+        fi
+}
+
 task_index_by_name() {
         local task_name="$1"
         local i
@@ -1111,11 +1163,12 @@ record_reconstruction_runtime_while_running() {
 write_running_reconstruction_metadata() {
         local task_index="$1"
         local gpu_id="$2"
-        local start_total="$3"
-        local start_epoch="$4"
-        local child_pid="$5"
-        local monitor_pid="$6"
-        local log_path="$7"
+        local slot_id="$3"
+        local start_total="$4"
+        local start_epoch="$5"
+        local child_pid="$6"
+        local monitor_pid="$7"
+        local log_path="$8"
         local phase_key marker tmp
         phase_key="$(reconstruction_phase_key "$task_index")"
         marker="$(reconstruction_running_marker "$task_index")"
@@ -1126,6 +1179,7 @@ write_running_reconstruction_metadata() {
                 printf 'phase=reconstruction\n'
                 printf 'task_index=%s\n' "$task_index"
                 printf 'gpu=%s\n' "$gpu_id"
+                printf 'slot=%s\n' "$slot_id"
                 printf 'pid=%s\n' "$$"
                 printf 'worker_pid=%s\n' "$BASHPID"
                 printf 'host=%s\n' "$(hostname)"
@@ -1160,6 +1214,7 @@ is_reconstruction_done() {
 
 claim_next_reconstruction_task() {
         local gpu_id="$1"
+        local slot_id="${2:-1}"
         local claimed="" task_index marker fd phase_key
         exec {fd}>"$STATE_DIR/reconstruction_queue.lock"
         flock "$fd"
@@ -1178,6 +1233,7 @@ claim_next_reconstruction_task() {
                         printf 'phase=reconstruction\n'
                         printf 'task_index=%s\n' "$task_index"
                         printf 'gpu=%s\n' "$gpu_id"
+                        printf 'slot=%s\n' "$slot_id"
                         printf 'pid=%s\n' "$$"
                         printf 'worker_pid=%s\n' "$BASHPID"
                         printf 'host=%s\n' "$(hostname)"
@@ -1194,6 +1250,7 @@ claim_next_reconstruction_task() {
 run_reconstruction_task() {
         local task_index="$1"
         local gpu_id="$2"
+        local slot_id="${3:-1}"
         local start_total start_epoch child_pid monitor_pid rc now total
         local phase_key log_path done_marker failed_marker
         phase_key="$(reconstruction_phase_key "$task_index")"
@@ -1212,12 +1269,14 @@ run_reconstruction_task() {
 
         printf '%q ' "${RECON_CMD[@]}" > "$LOG_DIR/$phase_key.command.txt"
         printf '\n' >> "$LOG_DIR/$phase_key.command.txt"
-        log "GPU $gpu_id running $phase_key; log: $log_path"
+        log "GPU $gpu_id reconstruction slot $slot_id running $phase_key; log: $log_path"
         if [ "$PADIS_GCP_DRY_RUN" = "1" ]; then
                 {
                         printf 'completed=%s\n' "$(date --iso-8601=seconds)"
                         printf 'phase=reconstruction\n'
                         printf 'task_index=%s\n' "$task_index"
+                        printf 'gpu=%s\n' "$gpu_id"
+                        printf 'slot=%s\n' "$slot_id"
                         printf 'dry_run=1\n'
                         printf 'log_path=%s\n' "$log_path"
                 } > "$done_marker"
@@ -1239,6 +1298,7 @@ run_reconstruction_task() {
         write_running_reconstruction_metadata \
                 "$task_index" \
                 "$gpu_id" \
+                "$slot_id" \
                 "$start_total" \
                 "$start_epoch" \
                 "$child_pid" \
@@ -1259,6 +1319,8 @@ run_reconstruction_task() {
                         printf 'completed=%s\n' "$(date --iso-8601=seconds)"
                         printf 'phase=reconstruction\n'
                         printf 'task_index=%s\n' "$task_index"
+                        printf 'gpu=%s\n' "$gpu_id"
+                        printf 'slot=%s\n' "$slot_id"
                         printf 'elapsed_seconds=%s\n' "$total"
                         printf 'log_path=%s\n' "$log_path"
                 } > "$done_marker"
@@ -1272,6 +1334,8 @@ run_reconstruction_task() {
                 printf 'exit_code=%s\n' "$rc"
                 printf 'phase=reconstruction\n'
                 printf 'task_index=%s\n' "$task_index"
+                printf 'gpu=%s\n' "$gpu_id"
+                printf 'slot=%s\n' "$slot_id"
                 printf 'elapsed_seconds=%s\n' "$total"
                 printf 'log_path=%s\n' "$log_path"
         } > "$failed_marker"
@@ -1282,30 +1346,33 @@ run_reconstruction_task() {
 
 reconstruction_worker_loop() {
         local gpu_id="$1"
+        local slot_id="${2:-1}"
         local task_index
         while true; do
-                task_index="$(claim_next_reconstruction_task "$gpu_id")"
+                task_index="$(claim_next_reconstruction_task "$gpu_id" "$slot_id")"
                 if [ -z "$task_index" ]; then
-                        log "GPU $gpu_id has no remaining reconstruction tasks."
+                        log "GPU $gpu_id reconstruction slot $slot_id has no remaining reconstruction tasks."
                         return 0
                 fi
-                run_reconstruction_task "$task_index" "$gpu_id"
+                run_reconstruction_task "$task_index" "$gpu_id" "$slot_id"
         done
 }
 
 run_reconstruction_phase() {
         local worker_pids=()
-        local gpu_id pid phase_rc
+        local gpu_id slot_id pid phase_rc
         if [ "$PADIS_GCP_RECONSTRUCTION_PHASE" != "1" ]; then
                 log "Skipping reconstruction phase because PADIS_GCP_RECONSTRUCTION_PHASE=$PADIS_GCP_RECONSTRUCTION_PHASE."
                 return 0
         fi
         PADIS_GCP_PHASE="reconstruction"
         prepare_reconstruction_matrix
-        log "Starting reconstruction phase for $RECON_TASK_COUNT matrix jobs."
+        log "Starting reconstruction phase for $RECON_TASK_COUNT matrix jobs with $RECON_TASKS_PER_GPU worker slot(s) per GPU."
         for gpu_id in "${GPU_IDS[@]}"; do
-                reconstruction_worker_loop "$gpu_id" &
-                worker_pids+=("$!")
+                for ((slot_id = 1; slot_id <= RECON_TASKS_PER_GPU; slot_id++)); do
+                        reconstruction_worker_loop "$gpu_id" "$slot_id" &
+                        worker_pids+=("$!")
+                done
         done
         phase_rc=0
         for pid in "${worker_pids[@]}"; do
@@ -1333,6 +1400,8 @@ write_manifest() {
                 printf 'whole_validation_heavy_interval_images=%s\n' "${PADIS_GCP_WHOLE_VALIDATION_HEAVY_INTERVAL_PATCHES:-${PADIS_WHOLE_VALIDATION_HEAVY_INTERVAL_PATCHES:-2500}}"
                 printf 'whole_validation_heavy_max_images=%s\n' "${PADIS_GCP_WHOLE_VALIDATION_HEAVY_MAX_PATCHES:-${PADIS_WHOLE_VALIDATION_HEAVY_MAX_PATCHES:-328}}"
                 printf 'reconstruction_enabled=%s\n' "$PADIS_GCP_RECONSTRUCTION_PHASE"
+                printf 'reconstruction_tasks_per_gpu_requested=%s\n' "$PADIS_GCP_RECON_TASKS_PER_GPU"
+                printf 'reconstruction_tasks_per_gpu=%s\n' "$RECON_TASKS_PER_GPU"
                 printf 'reconstruction_root=%s\n' "$PADIS_RECON_ROOT"
                 printf 'reconstruction_checkpoint_policy=%s\n' "$PADIS_RECON_CHECKPOINT_POLICY"
                 printf 'reconstruction_job_order=%s\n' "$PADIS_RECON_JOB_ORDER"
@@ -1442,6 +1511,7 @@ PADIS_PNP_VALIDATION_NAME="${PADIS_PNP_VALIDATION_NAME:-pnp_lidc_drunet_min_val.
 PADIS_PNP_ROOT="${PADIS_PNP_ROOT:-$PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_RUN_NAME}"
 
 PADIS_GCP_RECONSTRUCTION_PHASE="${PADIS_GCP_RECONSTRUCTION_PHASE:-1}"
+PADIS_GCP_RECON_TASKS_PER_GPU="${PADIS_GCP_RECON_TASKS_PER_GPU:-auto}"
 PADIS_RECON_ROOT="${PADIS_RECON_ROOT:-$PADIS_RUN_ROOT/final_real_runs/${PADIS_GCP_RUN_NAME}_reconstruction}"
 PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-method_default}"
 PADIS_RECON_METHODS="${PADIS_RECON_METHODS:-all}"
@@ -1481,6 +1551,7 @@ PADIS_PUBLIC_IMAGE_DIR="${PADIS_PUBLIC_IMAGE_DIR:-}"
 
 MPLCONFIGDIR="${MPLCONFIGDIR:-$PADIS_TRAIN_ROOT/matplotlib}"
 WANDB_DIR="${WANDB_DIR:-$PADIS_TRAIN_ROOT/wandb}"
+PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 PADIS_WANDB_NETRC="${PADIS_WANDB_NETRC:-/mnt/data/.netrc}"
 if [ -z "${NETRC:-}" ] && [ -f "$PADIS_WANDB_NETRC" ]; then
         NETRC="$PADIS_WANDB_NETRC"
@@ -1497,7 +1568,7 @@ LOG_DIR="$STATE_DIR/logs"
 RUNTIME_DIR="$STATE_DIR/runtime"
 export LION_ROOT PADIS_RUN_ROOT PADIS_RUN_STAMP PADIS_TRAIN_ROOT
 export PADIS_DATA_FOLDER MPLCONFIGDIR WANDB_DIR PYTHONUNBUFFERED=1
-export OMP_NUM_THREADS=1 PYTHONHASHSEED="$PADIS_SEED"
+export PYTORCH_CUDA_ALLOC_CONF OMP_NUM_THREADS=1 PYTHONHASHSEED="$PADIS_SEED"
 export PADIS_WANDB_PROJECT PADIS_WANDB_ENTITY PADIS_WANDB_MODE PADIS_NO_WANDB
 export PADIS_WANDB_NETRC
 export PADIS_RECON_ROOT PADIS_RECON_EXPECTED_JOBS_JSON
@@ -1524,6 +1595,7 @@ activate_environment
 cd "$LION_ROOT"
 padis_init_training_tasks
 discover_gpu_ids
+resolve_reconstruction_tasks_per_gpu
 
 default_task_order=(
         whole_lidc_full
@@ -1563,6 +1635,7 @@ write_manifest
 log "LION root: $LION_ROOT"
 log "Training root: $PADIS_TRAIN_ROOT"
 log "Selected GPUs: ${GPU_IDS[*]}"
+log "Reconstruction worker slots per GPU: $RECON_TASKS_PER_GPU (requested: $PADIS_GCP_RECON_TASKS_PER_GPU)"
 log "Task order: ${GCP_TASK_NAMES[*]}"
 log "Patch task budget: ${PATCH_TRAIN_SECONDS}s; whole-image task budget: ${WHOLE_TRAIN_SECONDS}s"
 log "Validation-heavy phase: enabled=$PADIS_GCP_VALIDATION_HEAVY_PHASE, budget=${VALIDATION_HEAVY_SECONDS}s, max_patches=$PADIS_GCP_VALIDATION_HEAVY_MAX_PATCHES"

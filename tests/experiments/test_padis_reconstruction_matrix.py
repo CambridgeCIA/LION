@@ -33,6 +33,8 @@ def _write_hparam_record(
     candidate="best",
     candidate_args=("--zeta", "4.25", "--dps-epsilon", "0.3"),
     mean_psnr=35.0,
+    mean_ssim=0.8,
+    mean_mae=0.02,
 ):
     path = run_root / run_name / "runs.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -50,8 +52,8 @@ def _write_hparam_record(
         "summary": {
             "all_finite_primary_metrics": True,
             "mean_psnr": mean_psnr,
-            "mean_ssim": 0.8,
-            "mean_mae": 0.02,
+            "mean_ssim": mean_ssim,
+            "mean_mae": mean_mae,
         },
         "command": [],
     }
@@ -318,6 +320,93 @@ def test_hparam_defaults_can_be_generated_and_loaded_from_json(tmp_path):
     assert payload["hparam_default"]["run_name"] == "fixedval_test"
     assert payload["expected_sampler"]["zeta"] == 4.25
     assert payload["expected_sampler"]["dps_epsilon"] == 0.3
+
+
+def test_hparam_defaults_consensus_prefers_cross_experiment_candidate(tmp_path):
+    run_root = tmp_path / "hparam_runs"
+    _write_hparam_record(
+        run_root,
+        experiment="ct_20",
+        candidate="single_experiment_high_psnr",
+        candidate_args=("--zeta", "5.0"),
+        mean_psnr=40.0,
+    )
+    _write_hparam_record(
+        run_root,
+        experiment="ct_20",
+        candidate="robust",
+        candidate_args=("--zeta", "4.25"),
+        mean_psnr=35.0,
+    )
+    _write_hparam_record(
+        run_root,
+        experiment="ct_8",
+        candidate="robust",
+        candidate_args=("--zeta", "4.25"),
+        mean_psnr=30.0,
+    )
+
+    payload = build_defaults_payload(
+        run_root,
+        selection_scope="consensus",
+        expected_experiments=("ct_20", "ct_8"),
+    )
+
+    assert payload["selection_scope"] == "consensus"
+    assert payload["defaults"][0]["experiment"] == "consensus"
+    assert payload["defaults"][0]["candidate"] == "robust"
+    assert payload["defaults"][0]["args"] == ["--zeta", "4.25"]
+    assert payload["defaults"][0]["source_experiments"] == ["ct_20", "ct_8"]
+    assert payload["defaults"][0]["covered_expected_experiments"] == 2
+
+
+def test_hparam_consensus_json_applies_to_all_experiments(tmp_path):
+    run_root = tmp_path / "hparam_runs"
+    _write_hparam_record(
+        run_root,
+        experiment="ct_20",
+        candidate="robust",
+        candidate_args=("--zeta", "4.25", "--dps-epsilon", "0.5"),
+        mean_psnr=35.0,
+    )
+    _write_hparam_record(
+        run_root,
+        experiment="ct_8",
+        candidate="robust",
+        candidate_args=("--zeta", "4.25", "--dps-epsilon", "0.5"),
+        mean_psnr=30.0,
+    )
+    defaults_path = tmp_path / "defaults.json"
+    defaults_path.write_text(
+        json.dumps(
+            build_defaults_payload(
+                run_root,
+                selection_scope="consensus",
+                expected_experiments=("ct_20", "ct_8"),
+            )
+        )
+    )
+    args = _args(
+        tmp_path,
+        "--methods",
+        "padis_dps",
+        "--experiments",
+        "ct_60",
+        "--implementations",
+        "lion_physics",
+        "--hparam-defaults",
+        "json",
+        "--hparam-defaults-json",
+        str(defaults_path),
+    )
+
+    payload = job_json(args, build_jobs(args)[0])
+
+    assert payload["hparam_default"]["source_experiment"] == "consensus"
+    assert payload["hparam_default"]["exact_experiment"] is False
+    assert payload["hparam_default"]["candidate"] == "robust"
+    assert payload["expected_sampler"]["zeta"] == 4.25
+    assert payload["expected_sampler"]["dps_epsilon"] == 0.5
 
 
 def test_hparam_defaults_fall_back_to_ct20_for_higher_view_experiments(tmp_path):

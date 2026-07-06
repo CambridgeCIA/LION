@@ -483,6 +483,8 @@ def test_gcp_spot_runner_runs_resumable_reconstruction_phase(tmp_path):
     manifest = train_root / ".gcp_spot_dry_run/manifest.txt"
     manifest_text = manifest.read_text()
     assert "reconstruction_enabled=1\n" in manifest_text
+    assert "reconstruction_tasks_per_gpu_requested=auto\n" in manifest_text
+    assert "reconstruction_tasks_per_gpu=1\n" in manifest_text
     assert "reconstruction_checkpoint_policy=min_intense_val\n" in manifest_text
     assert "reconstruction_job_order=gcp_spot\n" in manifest_text
     assert "reconstruction_hparam_defaults=json\n" in manifest_text
@@ -522,3 +524,74 @@ def test_gcp_spot_runner_runs_resumable_reconstruction_phase(tmp_path):
         train_root / ".gcp_spot_dry_run/done/reconstruction_000000.reconstruction.done"
     )
     assert done_marker.is_file()
+
+
+def test_gcp_spot_runner_allows_multiple_reconstruction_slots_per_gpu(tmp_path):
+    result, train_root = _run_gcp_dry_run(
+        tmp_path,
+        "patch_lidc_default",
+        extra_env={
+            "PADIS_GCP_RECONSTRUCTION_PHASE": "1",
+            "PADIS_GCP_VALIDATION_HEAVY_PHASE": "0",
+            "PADIS_GCP_RECON_TASKS_PER_GPU": "2",
+            "PADIS_RECON_METHODS": "baseline,padis_dps",
+            "PADIS_RECON_EXPERIMENTS": "ct_20",
+            "PADIS_RECON_MAX_SAMPLES": "1",
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    manifest = train_root / ".gcp_spot_dry_run/manifest.txt"
+    manifest_text = manifest.read_text()
+    assert "reconstruction_tasks_per_gpu_requested=2\n" in manifest_text
+    assert "reconstruction_tasks_per_gpu=2\n" in manifest_text
+    assert "with 2 worker slot(s) per GPU" in result.stdout
+
+    commands = sorted(
+        (train_root / ".gcp_spot_dry_run/logs").glob(
+            "reconstruction_*.reconstruction.command.txt"
+        )
+    )
+    assert len(commands) >= 2
+    done_markers = sorted(
+        (train_root / ".gcp_spot_dry_run/done").glob(
+            "reconstruction_*.reconstruction.done"
+        )
+    )
+    assert len(done_markers) >= 2
+    assert all("slot=" in marker.read_text() for marker in done_markers[:2])
+
+
+def test_gcp_spot_runner_auto_uses_three_reconstruction_slots_on_large_gpu(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    nvidia_smi = bin_dir / "nvidia-smi"
+    nvidia_smi.write_text(
+        "#!/bin/bash\n"
+        'if [[ "$*" == *"--query-gpu=memory.total"* ]]; then\n'
+        "  printf '97887\\n'\n"
+        "else\n"
+        "  printf 'NVIDIA RTX PRO 6000 Blackwell\\n'\n"
+        "fi\n"
+    )
+    nvidia_smi.chmod(0o755)
+
+    result, train_root = _run_gcp_dry_run(
+        tmp_path,
+        "patch_lidc_default",
+        extra_env={
+            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+            "PADIS_GCP_RECONSTRUCTION_PHASE": "1",
+            "PADIS_GCP_VALIDATION_HEAVY_PHASE": "0",
+            "PADIS_RECON_METHODS": "baseline,padis_dps",
+            "PADIS_RECON_EXPERIMENTS": "ct_20",
+            "PADIS_RECON_MAX_SAMPLES": "1",
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    manifest = train_root / ".gcp_spot_dry_run/manifest.txt"
+    manifest_text = manifest.read_text()
+    assert "reconstruction_tasks_per_gpu_requested=auto\n" in manifest_text
+    assert "reconstruction_tasks_per_gpu=3\n" in manifest_text
+    assert "with 3 worker slot(s) per GPU" in result.stdout
