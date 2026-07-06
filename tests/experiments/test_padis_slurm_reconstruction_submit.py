@@ -4,7 +4,10 @@ from pathlib import Path
 import subprocess
 from collections import Counter
 
-from scripts.paper_scripts.PaDIS.PaDIS_run_reconstruction_matrix import MODEL_TASKS
+from scripts.paper_scripts.PaDIS.PaDIS_run_reconstruction_matrix import (
+    MODEL_TASKS,
+    checkpoint_name_for_policy,
+)
 
 
 LION_ROOT = Path(__file__).resolve().parents[2]
@@ -92,7 +95,9 @@ def test_reconstruction_verify_script_supports_explicit_mean_gate_env_names():
 
 
 def test_reconstruction_smoke_defaults_cover_validated_quality_rows(tmp_path):
-    checkpoint = tmp_path / "training/patch_lidc_default/padis_lidc_256.pt"
+    checkpoint = (
+        tmp_path / "training/patch_lidc_default/padis_lidc_256_min_intense_val.pt"
+    )
     checkpoint.parent.mkdir(parents=True)
     checkpoint.write_text("placeholder")
 
@@ -165,10 +170,14 @@ def test_standalone_reconstruction_submitter_full_default_matrix_with_checkpoint
 ):
     training_root = tmp_path / "training"
     for model_task in MODEL_TASKS:
-        checkpoint = training_root / model_task.name / model_task.checkpoint_name
+        checkpoint = (
+            training_root
+            / model_task.name
+            / checkpoint_name_for_policy(model_task, "min_intense_val")
+        )
         checkpoint.parent.mkdir(parents=True)
         checkpoint.write_text("placeholder")
-    pnp_checkpoint = training_root / "pnp_lidc_drunet/pnp_lidc_drunet.pt"
+    pnp_checkpoint = training_root / "pnp_lidc_drunet/pnp_lidc_drunet_min_val.pt"
     pnp_checkpoint.parent.mkdir(parents=True)
     pnp_checkpoint.write_text("placeholder")
 
@@ -386,7 +395,7 @@ def test_standalone_reconstruction_submitter_rejects_off_paper_matrix(tmp_path):
 
 def test_standalone_reconstruction_submitter_can_allow_off_paper_matrix(tmp_path):
     checkpoint = (
-        tmp_path / "training/whole_lidc_default/whole_image_lidc_256_min_val.pt"
+        tmp_path / "training/whole_lidc_default/whole_image_lidc_256_min_intense_val.pt"
     )
     checkpoint.parent.mkdir(parents=True)
     checkpoint.write_text("placeholder")

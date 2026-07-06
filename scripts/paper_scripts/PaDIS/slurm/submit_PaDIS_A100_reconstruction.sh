@@ -54,6 +54,12 @@ PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-method_default}"
 PADIS_RECON_METHODS="${PADIS_RECON_METHODS:-all}"
 PADIS_RECON_EXPERIMENTS="${PADIS_RECON_EXPERIMENTS:-paper_matrix}"
 PADIS_RECON_ABLATIONS="${PADIS_RECON_ABLATIONS:-all}"
+PADIS_RECON_CHECKPOINT_POLICY="${PADIS_RECON_CHECKPOINT_POLICY:-min_intense_val}"
+PADIS_RECON_JOB_ORDER="${PADIS_RECON_JOB_ORDER:-gcp_spot}"
+PADIS_RECON_HPARAM_DEFAULTS="${PADIS_RECON_HPARAM_DEFAULTS:-json}"
+PADIS_RECON_HPARAM_DEFAULTS_JSON="${PADIS_RECON_HPARAM_DEFAULTS_JSON:-$LION_ROOT/scripts/paper_scripts/PaDIS/config/reconstruction_hparam_defaults.json}"
+PADIS_RECON_HPARAM_RUN_ROOT="${PADIS_RECON_HPARAM_RUN_ROOT:-$run_root/hparam_tuning/runs}"
+PADIS_RECON_HPARAM_RUN_GLOB="${PADIS_RECON_HPARAM_RUN_GLOB:-fixedval_*}"
 PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS="${PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS:-0}"
 PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-method_default}"
 PADIS_RECON_GEOMETRIES="${PADIS_RECON_GEOMETRIES:-lion}"
@@ -65,7 +71,8 @@ PADIS_RECON_SEED="${PADIS_RECON_SEED:-33}"
 PADIS_RECON_DEVICE="${PADIS_RECON_DEVICE:-cuda}"
 PADIS_PNP_OUTPUT_ROOT="${PADIS_PNP_OUTPUT_ROOT:-$PADIS_TRAIN_ROOT}"
 PADIS_PNP_RUN_NAME="${PADIS_PNP_RUN_NAME:-pnp_lidc_drunet}"
-PADIS_PNP_FINAL_NAME="${PADIS_PNP_FINAL_NAME:-pnp_lidc_drunet.pt}"
+PADIS_PNP_VALIDATION_NAME="${PADIS_PNP_VALIDATION_NAME:-pnp_lidc_drunet_min_val.pt}"
+PADIS_PNP_FINAL_NAME="${PADIS_PNP_FINAL_NAME:-$PADIS_PNP_VALIDATION_NAME}"
 PADIS_PNP_ROOT="${PADIS_PNP_ROOT:-$PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_RUN_NAME}"
 PADIS_PNP_CHECKPOINT="${PADIS_PNP_CHECKPOINT:-}"
 PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-20}"
@@ -86,6 +93,9 @@ export PADIS_SLURM_DIR="$SCRIPT_DIR"
 export LION_ROOT PADIS_TRAIN_ROOT PADIS_RECON_ROOT
 export PADIS_RECON_MODELS PADIS_RECON_METHODS PADIS_RECON_EXPERIMENTS
 export PADIS_RECON_ABLATIONS
+export PADIS_RECON_CHECKPOINT_POLICY PADIS_RECON_JOB_ORDER
+export PADIS_RECON_HPARAM_DEFAULTS PADIS_RECON_HPARAM_RUN_ROOT
+export PADIS_RECON_HPARAM_DEFAULTS_JSON PADIS_RECON_HPARAM_RUN_GLOB
 export PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS PADIS_RECON_IMPLEMENTATIONS
 export PADIS_RECON_GEOMETRIES PADIS_RECON_SPLIT PADIS_RECON_ALGORITHM
 export PADIS_RECON_MAX_SAMPLES PADIS_RECON_START_INDEX PADIS_RECON_SEED
@@ -148,6 +158,12 @@ fi
 python scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py \
         --training-root "$PADIS_TRAIN_ROOT" \
         --output-root "$PADIS_RECON_ROOT" \
+        --checkpoint-policy "$PADIS_RECON_CHECKPOINT_POLICY" \
+        --job-order "$PADIS_RECON_JOB_ORDER" \
+        --hparam-defaults "$PADIS_RECON_HPARAM_DEFAULTS" \
+        --hparam-defaults-json "$PADIS_RECON_HPARAM_DEFAULTS_JSON" \
+        --hparam-run-root "$PADIS_RECON_HPARAM_RUN_ROOT" \
+        --hparam-run-glob "$PADIS_RECON_HPARAM_RUN_GLOB" \
         --models "$PADIS_RECON_MODELS" \
         --methods "$PADIS_RECON_METHODS" \
         --experiments "$PADIS_RECON_EXPERIMENTS" \
@@ -177,6 +193,12 @@ task_count="$(
         python scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py \
                 --training-root "$PADIS_TRAIN_ROOT" \
                 --output-root "$PADIS_RECON_ROOT" \
+                --checkpoint-policy "$PADIS_RECON_CHECKPOINT_POLICY" \
+                --job-order "$PADIS_RECON_JOB_ORDER" \
+                --hparam-defaults "$PADIS_RECON_HPARAM_DEFAULTS" \
+                --hparam-defaults-json "$PADIS_RECON_HPARAM_DEFAULTS_JSON" \
+                --hparam-run-root "$PADIS_RECON_HPARAM_RUN_ROOT" \
+                --hparam-run-glob "$PADIS_RECON_HPARAM_RUN_GLOB" \
                 --models "$PADIS_RECON_MODELS" \
                 --methods "$PADIS_RECON_METHODS" \
                 --experiments "$PADIS_RECON_EXPERIMENTS" \
@@ -206,6 +228,12 @@ export PADIS_RECON_EXPECTED_JOBS_JSON="${PADIS_RECON_EXPECTED_JOBS_JSON:-$PADIS_
 python scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py \
         --training-root "$PADIS_TRAIN_ROOT" \
         --output-root "$PADIS_RECON_ROOT" \
+        --checkpoint-policy "$PADIS_RECON_CHECKPOINT_POLICY" \
+        --job-order "$PADIS_RECON_JOB_ORDER" \
+        --hparam-defaults "$PADIS_RECON_HPARAM_DEFAULTS" \
+        --hparam-defaults-json "$PADIS_RECON_HPARAM_DEFAULTS_JSON" \
+        --hparam-run-root "$PADIS_RECON_HPARAM_RUN_ROOT" \
+        --hparam-run-glob "$PADIS_RECON_HPARAM_RUN_GLOB" \
         --models "$PADIS_RECON_MODELS" \
         --methods "$PADIS_RECON_METHODS" \
         --experiments "$PADIS_RECON_EXPERIMENTS" \
@@ -275,6 +303,12 @@ Models: $PADIS_RECON_MODELS
 Methods: $PADIS_RECON_METHODS
 Experiments: $PADIS_RECON_EXPERIMENTS
 Ablations: $PADIS_RECON_ABLATIONS
+Checkpoint policy: $PADIS_RECON_CHECKPOINT_POLICY
+Job order: $PADIS_RECON_JOB_ORDER
+Hparam defaults: $PADIS_RECON_HPARAM_DEFAULTS
+Hparam defaults JSON: $PADIS_RECON_HPARAM_DEFAULTS_JSON
+Hparam run root: $PADIS_RECON_HPARAM_RUN_ROOT
+Hparam run glob: $PADIS_RECON_HPARAM_RUN_GLOB
 Implementations: $PADIS_RECON_IMPLEMENTATIONS
 Geometries: $PADIS_RECON_GEOMETRIES
 Slurm logs: $run_root/debug_runs/slurm_logs

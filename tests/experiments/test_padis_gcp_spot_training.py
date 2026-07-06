@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -46,6 +47,7 @@ def _run_gcp_dry_run(
         "PADIS_GCP_SKIP_ENV_ACTIVATE": "1",
         "PADIS_GCP_DRY_RUN": "1",
         "PADIS_GCP_STAGE_CACHES": "0",
+        "PADIS_GCP_RECONSTRUCTION_PHASE": "0",
         "PADIS_GCP_GPU_IDS": "0,1",
         "PADIS_NO_WANDB": "1",
         "PADIS_WANDB_MODE": "disabled",
@@ -461,3 +463,62 @@ def test_gcp_spot_runner_records_final_and_full_checkpoints(tmp_path):
     pnp_done = train_root / ".gcp_spot_dry_run/done/pnp_lidc_drunet.done"
     assert "pnp_lidc_drunet.pt" in pnp_done.read_text()
     assert "pnp_lidc_drunet_full.pt" in pnp_done.read_text()
+
+
+def test_gcp_spot_runner_runs_resumable_reconstruction_phase(tmp_path):
+    result, train_root = _run_gcp_dry_run(
+        tmp_path,
+        "patch_lidc_default",
+        extra_env={
+            "PADIS_GCP_RECONSTRUCTION_PHASE": "1",
+            "PADIS_GCP_VALIDATION_HEAVY_PHASE": "0",
+            "PADIS_RECON_METHODS": "baseline,padis_dps,patch_average",
+            "PADIS_RECON_EXPERIMENTS": "ct_20,ct_512_60",
+            "PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS": "1",
+            "PADIS_RECON_MAX_SAMPLES": "1",
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    manifest = train_root / ".gcp_spot_dry_run/manifest.txt"
+    manifest_text = manifest.read_text()
+    assert "reconstruction_enabled=1\n" in manifest_text
+    assert "reconstruction_checkpoint_policy=min_intense_val\n" in manifest_text
+    assert "reconstruction_job_order=gcp_spot\n" in manifest_text
+    assert "reconstruction_hparam_defaults=json\n" in manifest_text
+    assert "reconstruction_hparam_defaults_json=" in manifest_text
+
+    jobs_path = (
+        tmp_path
+        / "Datasets/experiments/PaDIS/final_real_runs"
+        / f"{DEFAULT_GCP_RUN_NAME}_reconstruction/reconstruction_matrix_jobs.json"
+    )
+    jobs = json.loads(jobs_path.read_text())
+    first_512 = next(
+        index for index, job in enumerate(jobs) if job["experiment"] == "ct_512_60"
+    )
+    first_fixed = next(
+        index
+        for index, job in enumerate(jobs)
+        if job["method"] in {"patch_stitch", "patch_average"}
+    )
+    assert all(
+        job["experiment"] != "ct_512_60"
+        and job["method"] not in {"patch_stitch", "patch_average"}
+        for job in jobs[:first_512]
+    )
+    assert all(job["experiment"] == "ct_512_60" for job in jobs[first_512:first_fixed])
+
+    command = (
+        train_root
+        / ".gcp_spot_dry_run/logs/reconstruction_000000.reconstruction.command.txt"
+    ).read_text()
+    assert "--checkpoint-policy min_intense_val" in command
+    assert "--hparam-defaults json" in command
+    assert "--hparam-defaults-json" in command
+    assert "--job-order gcp_spot" in command
+    assert "pnp_lidc_drunet_min_val.pt" in command
+    done_marker = (
+        train_root / ".gcp_spot_dry_run/done/reconstruction_000000.reconstruction.done"
+    )
+    assert done_marker.is_file()

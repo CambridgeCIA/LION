@@ -987,6 +987,335 @@ run_task_phase() {
         return "$phase_rc"
 }
 
+build_reconstruction_base_command() {
+        RECON_BASE_CMD=(
+                python -u scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py
+                --training-root "$PADIS_TRAIN_ROOT"
+                --output-root "$PADIS_RECON_ROOT"
+                --checkpoint-policy "$PADIS_RECON_CHECKPOINT_POLICY"
+                --job-order "$PADIS_RECON_JOB_ORDER"
+                --hparam-defaults "$PADIS_RECON_HPARAM_DEFAULTS"
+                --hparam-defaults-json "$PADIS_RECON_HPARAM_DEFAULTS_JSON"
+                --hparam-run-root "$PADIS_RECON_HPARAM_RUN_ROOT"
+                --hparam-run-glob "$PADIS_RECON_HPARAM_RUN_GLOB"
+                --models "$PADIS_RECON_MODELS"
+                --methods "$PADIS_RECON_METHODS"
+                --experiments "$PADIS_RECON_EXPERIMENTS"
+                --ablations "$PADIS_RECON_ABLATIONS"
+                --implementations "$PADIS_RECON_IMPLEMENTATIONS"
+                --geometries "$PADIS_RECON_GEOMETRIES"
+                --split "$PADIS_RECON_SPLIT"
+                --algorithm "$PADIS_RECON_ALGORITHM"
+                --max-samples "$PADIS_RECON_MAX_SAMPLES"
+                --start-index "$PADIS_RECON_START_INDEX"
+                --seed "$PADIS_RECON_SEED"
+                --device "$PADIS_RECON_DEVICE"
+                --pnp-root "$PADIS_PNP_ROOT"
+                --pnp-checkpoint "$PADIS_RECON_PNP_CHECKPOINT"
+                --pnp-iterations "$PADIS_PNP_ITERATIONS"
+                --pnp-eta "$PADIS_PNP_ETA"
+                --pnp-cg-iterations "$PADIS_PNP_CG_ITERATIONS"
+                --pnp-cg-tolerance "$PADIS_PNP_CG_TOLERANCE"
+                --tv-lambda "$PADIS_TV_LAMBDA"
+                --tv-iterations "$PADIS_TV_ITERATIONS"
+        )
+        if [ -n "$PADIS_PNP_NOISE_LEVEL" ]; then
+                RECON_BASE_CMD+=(--pnp-noise-level "$PADIS_PNP_NOISE_LEVEL")
+        fi
+        if [ "$PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS" = "1" ]; then
+                RECON_BASE_CMD+=(--allow-off-paper-experiments)
+        fi
+        if [ -n "$PADIS_DATA_FOLDER" ]; then
+                RECON_BASE_CMD+=(--data-folder "$PADIS_DATA_FOLDER")
+        fi
+        if [ -n "$PADIS_PUBLIC_IMAGE_DIR" ]; then
+                RECON_BASE_CMD+=(--public-padis-image-dir "$PADIS_PUBLIC_IMAGE_DIR")
+        fi
+        if [ "$PADIS_RECON_SAVE_PREVIEWS" = "1" ]; then
+                RECON_BASE_CMD+=(--save-previews)
+        fi
+        if [ "$PADIS_RECON_PROG_BAR" = "1" ]; then
+                RECON_BASE_CMD+=(--prog-bar)
+        fi
+        if [ -n "$PADIS_RECON_TRACE_INTERVAL" ]; then
+                RECON_BASE_CMD+=(--trace-interval "$PADIS_RECON_TRACE_INTERVAL")
+        fi
+        if [ "$PADIS_RECON_TRACE_IMAGES" = "1" ]; then
+                RECON_BASE_CMD+=(--trace-images)
+        fi
+        if [ "$PADIS_RECON_ALLOW_MISSING_CHECKPOINTS" = "1" ]; then
+                RECON_BASE_CMD+=(--allow-missing-checkpoint)
+        fi
+        if [ -n "$PADIS_RECON_EXTRA_ARGS" ]; then
+                read -r -a RECON_EXTRA_ARGS <<< "$PADIS_RECON_EXTRA_ARGS"
+                for item in "${RECON_EXTRA_ARGS[@]}"; do
+                        RECON_BASE_CMD+=("--reconstruction-arg=$item")
+                done
+        fi
+}
+
+reconstruction_phase_key() {
+        local task_index="$1"
+        printf 'reconstruction_%06d.reconstruction\n' "$task_index"
+}
+
+reconstruction_done_marker() {
+        printf '%s/%s.done\n' "$DONE_DIR" "$(reconstruction_phase_key "$1")"
+}
+
+reconstruction_running_marker() {
+        printf '%s/%s.running\n' "$RUNNING_DIR" "$(reconstruction_phase_key "$1")"
+}
+
+reconstruction_failed_marker() {
+        printf '%s/%s.failed\n' "$FAILED_DIR" "$(reconstruction_phase_key "$1")"
+}
+
+reconstruction_runtime_path() {
+        printf '%s/%s.seconds\n' "$RUNTIME_DIR" "$(reconstruction_phase_key "$1")"
+}
+
+reconstruction_elapsed_seconds() {
+        local path
+        path="$(reconstruction_runtime_path "$1")"
+        if [ -f "$path" ]; then
+                cat "$path"
+        else
+                printf '0\n'
+        fi
+}
+
+write_reconstruction_elapsed_seconds() {
+        local task_index="$1"
+        local seconds="$2"
+        local path
+        path="$(reconstruction_runtime_path "$task_index")"
+        printf '%s\n' "$seconds" > "$path.tmp"
+        mv "$path.tmp" "$path"
+}
+
+record_reconstruction_runtime_while_running() {
+        local task_index="$1"
+        local child_pid="$2"
+        local start_total="$3"
+        local start_epoch="$4"
+        local now total
+        while kill -0 "$child_pid" >/dev/null 2>&1; do
+                now="$(date +%s)"
+                total=$((start_total + now - start_epoch))
+                write_reconstruction_elapsed_seconds "$task_index" "$total"
+                sleep "$PADIS_GCP_RUNTIME_HEARTBEAT_SECONDS"
+        done
+}
+
+write_running_reconstruction_metadata() {
+        local task_index="$1"
+        local gpu_id="$2"
+        local start_total="$3"
+        local start_epoch="$4"
+        local child_pid="$5"
+        local monitor_pid="$6"
+        local log_path="$7"
+        local phase_key marker tmp
+        phase_key="$(reconstruction_phase_key "$task_index")"
+        marker="$(reconstruction_running_marker "$task_index")"
+        tmp="$marker.tmp.$BASHPID"
+        {
+                printf 'task=%s\n' "$phase_key"
+                printf 'base_task=reconstruction_%06d\n' "$task_index"
+                printf 'phase=reconstruction\n'
+                printf 'task_index=%s\n' "$task_index"
+                printf 'gpu=%s\n' "$gpu_id"
+                printf 'pid=%s\n' "$$"
+                printf 'worker_pid=%s\n' "$BASHPID"
+                printf 'host=%s\n' "$(hostname)"
+                printf 'started=%s\n' "$(date --date="@$start_epoch" --iso-8601=seconds)"
+                printf 'start_epoch=%s\n' "$start_epoch"
+                printf 'start_elapsed=%s\n' "$start_total"
+                printf 'child_pid=%s\n' "$child_pid"
+                printf 'monitor_pid=%s\n' "$monitor_pid"
+                printf 'log_path=%s\n' "$log_path"
+        } > "$tmp"
+        mv "$tmp" "$marker"
+}
+
+prepare_reconstruction_matrix() {
+        mkdir -p "$PADIS_RECON_ROOT"
+        build_reconstruction_base_command
+        if [ "$PADIS_GCP_DRY_RUN" != "1" ] \
+                && [ "$PADIS_RECON_ALLOW_MISSING_CHECKPOINTS" != "1" ]; then
+                "${RECON_BASE_CMD[@]}" --check-inputs
+        fi
+        RECON_TASK_COUNT="$("${RECON_BASE_CMD[@]}" --count)"
+        if ! [[ "$RECON_TASK_COUNT" =~ ^[0-9]+$ ]] || [ "$RECON_TASK_COUNT" -le 0 ]; then
+                die "Reconstruction matrix produced invalid task count: $RECON_TASK_COUNT"
+        fi
+        "${RECON_BASE_CMD[@]}" --list > "$PADIS_RECON_EXPECTED_JOBS_JSON"
+        log "Prepared reconstruction matrix with $RECON_TASK_COUNT jobs at $PADIS_RECON_EXPECTED_JOBS_JSON"
+}
+
+is_reconstruction_done() {
+        [ -f "$(reconstruction_done_marker "$1")" ]
+}
+
+claim_next_reconstruction_task() {
+        local gpu_id="$1"
+        local claimed="" task_index marker fd phase_key
+        exec {fd}>"$STATE_DIR/reconstruction_queue.lock"
+        flock "$fd"
+        for ((task_index = 0; task_index < RECON_TASK_COUNT; task_index++)); do
+                if is_reconstruction_done "$task_index"; then
+                        continue
+                fi
+                marker="$(reconstruction_running_marker "$task_index")"
+                if [ -f "$marker" ]; then
+                        continue
+                fi
+                phase_key="$(reconstruction_phase_key "$task_index")"
+                {
+                        printf 'task=%s\n' "$phase_key"
+                        printf 'base_task=reconstruction_%06d\n' "$task_index"
+                        printf 'phase=reconstruction\n'
+                        printf 'task_index=%s\n' "$task_index"
+                        printf 'gpu=%s\n' "$gpu_id"
+                        printf 'pid=%s\n' "$$"
+                        printf 'worker_pid=%s\n' "$BASHPID"
+                        printf 'host=%s\n' "$(hostname)"
+                        printf 'started=%s\n' "$(date --iso-8601=seconds)"
+                } > "$marker"
+                claimed="$task_index"
+                break
+        done
+        flock -u "$fd"
+        eval "exec $fd>&-"
+        printf '%s\n' "$claimed"
+}
+
+run_reconstruction_task() {
+        local task_index="$1"
+        local gpu_id="$2"
+        local start_total start_epoch child_pid monitor_pid rc now total
+        local phase_key log_path done_marker failed_marker
+        phase_key="$(reconstruction_phase_key "$task_index")"
+        done_marker="$(reconstruction_done_marker "$task_index")"
+        failed_marker="$(reconstruction_failed_marker "$task_index")"
+        if is_reconstruction_done "$task_index"; then
+                log "Reconstruction task $phase_key is already done."
+                rm -f "$(reconstruction_running_marker "$task_index")"
+                return 0
+        fi
+
+        start_total="$(reconstruction_elapsed_seconds "$task_index")"
+        start_epoch="$(date +%s)"
+        log_path="$LOG_DIR/$phase_key.gpu${gpu_id}.log"
+        RECON_CMD=("${RECON_BASE_CMD[@]}" --task-index "$task_index")
+
+        printf '%q ' "${RECON_CMD[@]}" > "$LOG_DIR/$phase_key.command.txt"
+        printf '\n' >> "$LOG_DIR/$phase_key.command.txt"
+        log "GPU $gpu_id running $phase_key; log: $log_path"
+        if [ "$PADIS_GCP_DRY_RUN" = "1" ]; then
+                {
+                        printf 'completed=%s\n' "$(date --iso-8601=seconds)"
+                        printf 'phase=reconstruction\n'
+                        printf 'task_index=%s\n' "$task_index"
+                        printf 'dry_run=1\n'
+                        printf 'log_path=%s\n' "$log_path"
+                } > "$done_marker"
+                rm -f "$failed_marker" "$(reconstruction_running_marker "$task_index")"
+                return 0
+        fi
+
+        (
+                export CUDA_VISIBLE_DEVICES="$gpu_id"
+                "${RECON_CMD[@]}"
+        ) > "$log_path" 2>&1 &
+        child_pid="$!"
+        record_reconstruction_runtime_while_running \
+                "$task_index" \
+                "$child_pid" \
+                "$start_total" \
+                "$start_epoch" &
+        monitor_pid="$!"
+        write_running_reconstruction_metadata \
+                "$task_index" \
+                "$gpu_id" \
+                "$start_total" \
+                "$start_epoch" \
+                "$child_pid" \
+                "$monitor_pid" \
+                "$log_path"
+
+        set +e
+        wait "$child_pid"
+        rc="$?"
+        set -e
+        kill "$monitor_pid" >/dev/null 2>&1 || true
+        wait "$monitor_pid" >/dev/null 2>&1 || true
+        now="$(date +%s)"
+        total=$((start_total + now - start_epoch))
+        write_reconstruction_elapsed_seconds "$task_index" "$total"
+        if [ "$rc" -eq 0 ]; then
+                {
+                        printf 'completed=%s\n' "$(date --iso-8601=seconds)"
+                        printf 'phase=reconstruction\n'
+                        printf 'task_index=%s\n' "$task_index"
+                        printf 'elapsed_seconds=%s\n' "$total"
+                        printf 'log_path=%s\n' "$log_path"
+                } > "$done_marker"
+                rm -f "$failed_marker" "$(reconstruction_running_marker "$task_index")"
+                log "Reconstruction task $phase_key completed."
+                return 0
+        fi
+
+        {
+                printf 'failed=%s\n' "$(date --iso-8601=seconds)"
+                printf 'exit_code=%s\n' "$rc"
+                printf 'phase=reconstruction\n'
+                printf 'task_index=%s\n' "$task_index"
+                printf 'elapsed_seconds=%s\n' "$total"
+                printf 'log_path=%s\n' "$log_path"
+        } > "$failed_marker"
+        rm -f "$(reconstruction_running_marker "$task_index")"
+        log "Reconstruction task $phase_key failed with exit code $rc. See $log_path"
+        return "$rc"
+}
+
+reconstruction_worker_loop() {
+        local gpu_id="$1"
+        local task_index
+        while true; do
+                task_index="$(claim_next_reconstruction_task "$gpu_id")"
+                if [ -z "$task_index" ]; then
+                        log "GPU $gpu_id has no remaining reconstruction tasks."
+                        return 0
+                fi
+                run_reconstruction_task "$task_index" "$gpu_id"
+        done
+}
+
+run_reconstruction_phase() {
+        local worker_pids=()
+        local gpu_id pid phase_rc
+        if [ "$PADIS_GCP_RECONSTRUCTION_PHASE" != "1" ]; then
+                log "Skipping reconstruction phase because PADIS_GCP_RECONSTRUCTION_PHASE=$PADIS_GCP_RECONSTRUCTION_PHASE."
+                return 0
+        fi
+        PADIS_GCP_PHASE="reconstruction"
+        prepare_reconstruction_matrix
+        log "Starting reconstruction phase for $RECON_TASK_COUNT matrix jobs."
+        for gpu_id in "${GPU_IDS[@]}"; do
+                reconstruction_worker_loop "$gpu_id" &
+                worker_pids+=("$!")
+        done
+        phase_rc=0
+        for pid in "${worker_pids[@]}"; do
+                if ! wait "$pid"; then
+                        phase_rc=1
+                fi
+        done
+        return "$phase_rc"
+}
+
 write_manifest() {
         local manifest="$STATE_DIR/manifest.txt"
         {
@@ -1003,6 +1332,17 @@ write_manifest() {
                 printf 'patch_validation_heavy_interval_patches=%s\n' "${PADIS_GCP_PATCH_VALIDATION_HEAVY_INTERVAL_PATCHES:-${PADIS_PATCH_VALIDATION_HEAVY_INTERVAL_PATCHES:-20000}}"
                 printf 'whole_validation_heavy_interval_images=%s\n' "${PADIS_GCP_WHOLE_VALIDATION_HEAVY_INTERVAL_PATCHES:-${PADIS_WHOLE_VALIDATION_HEAVY_INTERVAL_PATCHES:-2500}}"
                 printf 'whole_validation_heavy_max_images=%s\n' "${PADIS_GCP_WHOLE_VALIDATION_HEAVY_MAX_PATCHES:-${PADIS_WHOLE_VALIDATION_HEAVY_MAX_PATCHES:-328}}"
+                printf 'reconstruction_enabled=%s\n' "$PADIS_GCP_RECONSTRUCTION_PHASE"
+                printf 'reconstruction_root=%s\n' "$PADIS_RECON_ROOT"
+                printf 'reconstruction_checkpoint_policy=%s\n' "$PADIS_RECON_CHECKPOINT_POLICY"
+                printf 'reconstruction_job_order=%s\n' "$PADIS_RECON_JOB_ORDER"
+                printf 'reconstruction_hparam_defaults=%s\n' "$PADIS_RECON_HPARAM_DEFAULTS"
+                printf 'reconstruction_hparam_defaults_json=%s\n' "$PADIS_RECON_HPARAM_DEFAULTS_JSON"
+                printf 'reconstruction_hparam_run_root=%s\n' "$PADIS_RECON_HPARAM_RUN_ROOT"
+                printf 'reconstruction_hparam_run_glob=%s\n' "$PADIS_RECON_HPARAM_RUN_GLOB"
+                printf 'reconstruction_methods=%s\n' "$PADIS_RECON_METHODS"
+                printf 'reconstruction_experiments=%s\n' "$PADIS_RECON_EXPERIMENTS"
+                printf 'reconstruction_ablations=%s\n' "$PADIS_RECON_ABLATIONS"
                 printf 'checkpoint_interval_seconds=%s\n' "$PADIS_GCP_CHECKPOINT_INTERVAL_SECONDS"
                 printf 'tasks=%s\n' "${GCP_TASK_NAMES[*]}"
         } > "$manifest"
@@ -1099,6 +1439,45 @@ PADIS_PNP_FINAL_NAME="${PADIS_PNP_FINAL_NAME:-pnp_lidc_drunet.pt}"
 PADIS_PNP_FINAL_FULL_NAME="${PADIS_PNP_FINAL_FULL_NAME:-${PADIS_PNP_FINAL_NAME%.pt}_full.pt}"
 PADIS_PNP_CHECKPOINT_PATTERN="${PADIS_PNP_CHECKPOINT_PATTERN:-pnp_lidc_drunet_check_*.pt}"
 PADIS_PNP_VALIDATION_NAME="${PADIS_PNP_VALIDATION_NAME:-pnp_lidc_drunet_min_val.pt}"
+PADIS_PNP_ROOT="${PADIS_PNP_ROOT:-$PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_RUN_NAME}"
+
+PADIS_GCP_RECONSTRUCTION_PHASE="${PADIS_GCP_RECONSTRUCTION_PHASE:-1}"
+PADIS_RECON_ROOT="${PADIS_RECON_ROOT:-$PADIS_RUN_ROOT/final_real_runs/${PADIS_GCP_RUN_NAME}_reconstruction}"
+PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-method_default}"
+PADIS_RECON_METHODS="${PADIS_RECON_METHODS:-all}"
+PADIS_RECON_EXPERIMENTS="${PADIS_RECON_EXPERIMENTS:-paper_matrix}"
+PADIS_RECON_ABLATIONS="${PADIS_RECON_ABLATIONS:-all}"
+PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS="${PADIS_RECON_ALLOW_OFF_PAPER_EXPERIMENTS:-0}"
+PADIS_RECON_IMPLEMENTATIONS="${PADIS_RECON_IMPLEMENTATIONS:-method_default}"
+PADIS_RECON_GEOMETRIES="${PADIS_RECON_GEOMETRIES:-lion}"
+PADIS_RECON_SPLIT="${PADIS_RECON_SPLIT:-test}"
+PADIS_RECON_ALGORITHM="${PADIS_RECON_ALGORITHM:-dps_langevin}"
+PADIS_RECON_MAX_SAMPLES="${PADIS_RECON_MAX_SAMPLES:-25}"
+PADIS_RECON_START_INDEX="${PADIS_RECON_START_INDEX:-0}"
+PADIS_RECON_SEED="${PADIS_RECON_SEED:-$PADIS_SEED}"
+PADIS_RECON_DEVICE="${PADIS_RECON_DEVICE:-cuda}"
+PADIS_RECON_SAVE_PREVIEWS="${PADIS_RECON_SAVE_PREVIEWS:-1}"
+PADIS_RECON_PROG_BAR="${PADIS_RECON_PROG_BAR:-0}"
+PADIS_RECON_TRACE_INTERVAL="${PADIS_RECON_TRACE_INTERVAL:-}"
+PADIS_RECON_TRACE_IMAGES="${PADIS_RECON_TRACE_IMAGES:-0}"
+PADIS_RECON_EXTRA_ARGS="${PADIS_RECON_EXTRA_ARGS:-}"
+PADIS_RECON_CHECKPOINT_POLICY="${PADIS_RECON_CHECKPOINT_POLICY:-min_intense_val}"
+PADIS_RECON_JOB_ORDER="${PADIS_RECON_JOB_ORDER:-gcp_spot}"
+PADIS_RECON_HPARAM_DEFAULTS="${PADIS_RECON_HPARAM_DEFAULTS:-json}"
+PADIS_RECON_HPARAM_DEFAULTS_JSON="${PADIS_RECON_HPARAM_DEFAULTS_JSON:-$LION_ROOT/scripts/paper_scripts/PaDIS/config/reconstruction_hparam_defaults.json}"
+PADIS_RECON_HPARAM_RUN_ROOT="${PADIS_RECON_HPARAM_RUN_ROOT:-$PADIS_RUN_ROOT/hparam_tuning/runs}"
+PADIS_RECON_HPARAM_RUN_GLOB="${PADIS_RECON_HPARAM_RUN_GLOB:-fixedval_*}"
+PADIS_RECON_ALLOW_MISSING_CHECKPOINTS="${PADIS_RECON_ALLOW_MISSING_CHECKPOINTS:-0}"
+PADIS_RECON_EXPECTED_JOBS_JSON="${PADIS_RECON_EXPECTED_JOBS_JSON:-$PADIS_RECON_ROOT/reconstruction_matrix_jobs.json}"
+PADIS_RECON_PNP_CHECKPOINT="${PADIS_RECON_PNP_CHECKPOINT:-${PADIS_PNP_CHECKPOINT:-$PADIS_PNP_ROOT/$PADIS_PNP_VALIDATION_NAME}}"
+PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-20}"
+PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-5}"
+PADIS_PNP_CG_ITERATIONS="${PADIS_PNP_CG_ITERATIONS:-100}"
+PADIS_PNP_CG_TOLERANCE="${PADIS_PNP_CG_TOLERANCE:-1e-7}"
+PADIS_PNP_NOISE_LEVEL="${PADIS_PNP_NOISE_LEVEL:-}"
+PADIS_TV_LAMBDA="${PADIS_TV_LAMBDA:-0.001}"
+PADIS_TV_ITERATIONS="${PADIS_TV_ITERATIONS:-500}"
+PADIS_PUBLIC_IMAGE_DIR="${PADIS_PUBLIC_IMAGE_DIR:-}"
 
 MPLCONFIGDIR="${MPLCONFIGDIR:-$PADIS_TRAIN_ROOT/matplotlib}"
 WANDB_DIR="${WANDB_DIR:-$PADIS_TRAIN_ROOT/wandb}"
@@ -1121,6 +1500,8 @@ export PADIS_DATA_FOLDER MPLCONFIGDIR WANDB_DIR PYTHONUNBUFFERED=1
 export OMP_NUM_THREADS=1 PYTHONHASHSEED="$PADIS_SEED"
 export PADIS_WANDB_PROJECT PADIS_WANDB_ENTITY PADIS_WANDB_MODE PADIS_NO_WANDB
 export PADIS_WANDB_NETRC
+export PADIS_RECON_ROOT PADIS_RECON_EXPECTED_JOBS_JSON
+export PADIS_RECON_HPARAM_DEFAULTS PADIS_RECON_HPARAM_DEFAULTS_JSON
 if [ -n "${NETRC:-}" ]; then
         export NETRC
 fi
@@ -1224,4 +1605,13 @@ if [ "$overall_rc" -ne 0 ]; then
         exit "$overall_rc"
 fi
 
-log "All selected PaDIS GCP training tasks completed."
+if ! run_reconstruction_phase; then
+        overall_rc=1
+fi
+
+if [ "$overall_rc" -ne 0 ]; then
+        log "One or more PaDIS GCP reconstruction tasks failed. Rerun after fixing the failure to resume remaining tasks."
+        exit "$overall_rc"
+fi
+
+log "All selected PaDIS GCP training, validation-heavy, and reconstruction tasks completed."

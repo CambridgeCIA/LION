@@ -1,20 +1,63 @@
+import json
 from pathlib import Path
 import subprocess
 import sys
 
 import pytest
 
+from scripts.paper_scripts.PaDIS.PaDIS_hparam_defaults import build_defaults_payload
 from scripts.paper_scripts.PaDIS.PaDIS_run_reconstruction_matrix import (
     build_arg_parser,
     build_jobs,
+    checkpoint_name_for_policy,
     command_for_job,
     input_check_failures,
     job_json,
+    ordered_jobs,
     resolve_training_root,
 )
 
 
 MATRIX_SCRIPT = "scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py"
+
+
+def _write_hparam_record(
+    run_root,
+    *,
+    run_name="fixedval_test",
+    method="padis_dps",
+    implementation="lion_physics",
+    prior="patch",
+    model="patch_lidc_default",
+    experiment="ct_20",
+    candidate="best",
+    candidate_args=("--zeta", "4.25", "--dps-epsilon", "0.3"),
+    mean_psnr=35.0,
+):
+    path = run_root / run_name / "runs.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "candidate_group": f"{method}__{implementation}__{prior}",
+        "candidate": candidate,
+        "candidate_args": list(candidate_args),
+        "method": method,
+        "implementation": implementation,
+        "prior": prior,
+        "model": model,
+        "experiment": experiment,
+        "matrix_group": "main",
+        "status": "completed",
+        "summary": {
+            "all_finite_primary_metrics": True,
+            "mean_psnr": mean_psnr,
+            "mean_ssim": 0.8,
+            "mean_mae": 0.02,
+        },
+        "command": [],
+    }
+    with path.open("a") as file:
+        file.write(json.dumps(record) + "\n")
+    return path
 
 
 def _args(tmp_path, *extra):
@@ -164,6 +207,186 @@ def test_method_default_matrix_uses_native_512_model_for_512_experiment(tmp_path
     assert sampler["fixed_overlap_checkpoint_denoiser"] is False
 
 
+def test_min_intense_checkpoint_policy_selects_validation_intensive_models(tmp_path):
+    args = _args(
+        tmp_path,
+        "--methods",
+        "padis_dps,whole_image_diffusion",
+        "--experiments",
+        "ct_20",
+        "--checkpoint-policy",
+        "min_intense_val",
+    )
+
+    payloads = [job_json(args, job) for job in build_jobs(args)]
+
+    assert {
+        payload["model"]: Path(payload["checkpoint"]).name
+        for payload in payloads
+        if payload["checkpoint"]
+    } == {
+        "patch_lidc_default": "padis_lidc_256_min_intense_val.pt",
+        "whole_lidc_default": "whole_image_lidc_256_min_intense_val.pt",
+    }
+    assert (
+        checkpoint_name_for_policy(
+            next(
+                task
+                for task in build_jobs(args)
+                if task.model.name == "patch_lidc_default"
+            ).model,
+            "min_intense_val",
+        )
+        == "padis_lidc_256_min_intense_val.pt"
+    )
+
+
+def test_hparam_defaults_apply_best_fixedval_candidate_args(tmp_path):
+    run_root = tmp_path / "hparam_runs"
+    _write_hparam_record(
+        run_root,
+        experiment="ct_8",
+        candidate="weaker",
+        candidate_args=("--zeta", "4.0", "--dps-epsilon", "0.5"),
+        mean_psnr=30.0,
+    )
+    _write_hparam_record(
+        run_root,
+        experiment="ct_8",
+        candidate="best",
+        candidate_args=("--zeta", "4.25", "--dps-epsilon", "0.3"),
+        mean_psnr=31.0,
+    )
+    args = _args(
+        tmp_path,
+        "--methods",
+        "padis_dps",
+        "--experiments",
+        "ct_8",
+        "--implementations",
+        "lion_physics",
+        "--hparam-defaults",
+        "auto",
+        "--hparam-run-root",
+        str(run_root),
+    )
+
+    payload = job_json(args, build_jobs(args)[0])
+
+    assert payload["hparam_default"]["candidate"] == "best"
+    assert payload["expected_sampler"]["zeta"] == 4.25
+    assert payload["expected_sampler"]["dps_epsilon"] == 0.3
+    assert "--zeta" in payload["command"]
+    assert payload["command"][payload["command"].index("--zeta") + 1] == "4.25"
+
+
+def test_hparam_defaults_can_be_generated_and_loaded_from_json(tmp_path):
+    run_root = tmp_path / "hparam_runs"
+    _write_hparam_record(
+        run_root,
+        experiment="ct_8",
+        candidate="weaker",
+        candidate_args=("--zeta", "4.0", "--dps-epsilon", "0.5"),
+        mean_psnr=30.0,
+    )
+    _write_hparam_record(
+        run_root,
+        experiment="ct_8",
+        candidate="best",
+        candidate_args=("--zeta", "4.25", "--dps-epsilon", "0.3"),
+        mean_psnr=31.0,
+    )
+    defaults_path = tmp_path / "defaults.json"
+    defaults_path.write_text(json.dumps(build_defaults_payload(run_root)))
+    args = _args(
+        tmp_path,
+        "--methods",
+        "padis_dps",
+        "--experiments",
+        "ct_8",
+        "--implementations",
+        "lion_physics",
+        "--hparam-defaults",
+        "json",
+        "--hparam-defaults-json",
+        str(defaults_path),
+    )
+
+    payload = job_json(args, build_jobs(args)[0])
+
+    assert payload["hparam_default"]["candidate"] == "best"
+    assert payload["hparam_default"]["run_name"] == "fixedval_test"
+    assert payload["expected_sampler"]["zeta"] == 4.25
+    assert payload["expected_sampler"]["dps_epsilon"] == 0.3
+
+
+def test_hparam_defaults_fall_back_to_ct20_for_higher_view_experiments(tmp_path):
+    run_root = tmp_path / "hparam_runs"
+    _write_hparam_record(
+        run_root,
+        experiment="ct_20",
+        candidate_args=("--zeta", "4.25", "--dps-epsilon", "0.5"),
+        mean_psnr=35.0,
+    )
+    args = _args(
+        tmp_path,
+        "--methods",
+        "padis_dps",
+        "--experiments",
+        "ct_512_60",
+        "--implementations",
+        "lion_physics",
+        "--hparam-defaults",
+        "auto",
+        "--hparam-run-root",
+        str(run_root),
+    )
+
+    payload = job_json(args, build_jobs(args)[0])
+
+    assert payload["model"] == "patch_lidc_512"
+    assert payload["hparam_default"]["source_experiment"] == "ct_20"
+    assert payload["hparam_default"]["exact_experiment"] is False
+    assert payload["hparam_default"]["exact_model"] is False
+    assert payload["expected_sampler"]["zeta"] == 4.25
+    assert payload["expected_sampler"]["dps_epsilon"] == 0.5
+
+
+def test_gcp_spot_job_order_defers_512_and_fixed_overlap_rows(tmp_path):
+    args = _args(
+        tmp_path,
+        "--methods",
+        "padis_dps,patch_average,patch_stitch",
+        "--allow-off-paper-experiments",
+    )
+    args.job_order = "gcp_spot"
+
+    jobs = ordered_jobs(args, build_jobs(args))
+
+    first_512 = next(
+        index for index, job in enumerate(jobs) if job.experiment == "ct_512_60"
+    )
+    first_fixed_overlap = next(
+        index
+        for index, job in enumerate(jobs)
+        if job.method.name in {"patch_stitch", "patch_average"}
+    )
+    assert all(
+        job.experiment != "ct_512_60"
+        and job.method.name not in {"patch_stitch", "patch_average"}
+        for job in jobs[:first_512]
+    )
+    assert all(
+        job.experiment == "ct_512_60"
+        and job.method.name not in {"patch_stitch", "patch_average"}
+        for job in jobs[first_512:first_fixed_overlap]
+    )
+    assert [job.method.name for job in jobs[first_fixed_overlap:]][:2] == [
+        "patch_stitch",
+        "patch_stitch",
+    ]
+
+
 def test_reconstruction_smoke_selector_has_six_expected_jobs(tmp_path):
     args = _args(
         tmp_path,
@@ -206,10 +429,10 @@ def test_method_command_contains_method_and_expected_checkpoint_family(tmp_path)
     assert command[command.index("--method") + 1] == "pnp_admm"
     assert "--checkpoint" not in command
     assert command[command.index("--pnp-checkpoint") + 1].endswith(
-        "pnp_lidc_drunet/pnp_lidc_drunet.pt"
+        "pnp_lidc_drunet/pnp_lidc_drunet_min_val.pt"
     )
     assert command[command.index("--pnp-iterations") + 1] == "60"
-    assert command[command.index("--pnp-eta") + 1] == "2e-05"
+    assert command[command.index("--pnp-eta") + 1] == "3e-05"
 
 
 def test_input_check_reports_missing_required_checkpoints_once(tmp_path):
@@ -311,10 +534,10 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
     assert padis_sampler["sigma_min"] == 0.002
     assert padis_sampler["sigma_max"] == 10.0
     assert padis_sampler["noise_initialization"] == "padded"
-    assert padis_sampler["initial_reconstruction"] == "fdk"
-    assert padis_sampler["clip_initial"] is True
-    assert padis_sampler["clip_output"] is True
-    assert padis_sampler["zeta"] == 4.5
+    assert padis_sampler["initial_reconstruction"] == "noise"
+    assert padis_sampler["clip_initial"] is False
+    assert padis_sampler["clip_output"] is False
+    assert padis_sampler["zeta"] == 4.25
     assert padis_sampler["dps_epsilon"] == 0.5
     assert padis_sampler["data_consistency_gradient"] == "least_squares"
     assert padis_sampler["adjoint_data_step_schedule"] == "paper"
@@ -341,7 +564,7 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
     assert payloads["ve_ddnm"]["expected_sampler"]["clip_initial"] is False
     assert payloads["ve_ddnm"]["expected_sampler"]["clip_output"] is False
     assert payloads["predictor_corrector"]["implementation"] == "lion_physics"
-    assert payloads["predictor_corrector"]["expected_sampler"]["pc_snr"] == 0.04
+    assert payloads["predictor_corrector"]["expected_sampler"]["pc_snr"] == 0.01
     assert payloads["predictor_corrector"]["expected_sampler"]["zeta"] == 4.25
     assert (
         payloads["predictor_corrector"]["expected_sampler"]["pc_corrector_step_rule"]
@@ -461,7 +684,7 @@ def test_job_manifest_contains_expected_method_settings(tmp_path):
         "tv_non_negativity": False,
     }
     assert payloads["pnp_admm"]["expected_method_settings"] == {
-        "pnp_checkpoint": str(args.pnp_root / "pnp_lidc_drunet.pt"),
+        "pnp_checkpoint": str(args.pnp_root / "pnp_lidc_drunet_min_val.pt"),
         "pnp_iterations": 12,
         "pnp_eta": 0.0002,
         "pnp_cg_iterations": 80,
@@ -934,17 +1157,17 @@ def test_lion_physics_implementation_uses_operator_normalized_settings(tmp_path)
     assert sampler["noise_schedule"] == "geometric"
     assert sampler["sigma_min"] == 0.002
     assert sampler["sigma_max"] == 10.0
-    assert sampler["initial_reconstruction"] == "fdk"
-    assert sampler["initial_fdk_filter_type"] == "hann"
-    assert sampler["initial_fdk_frequency_scaling"] == 0.2
-    assert sampler["zeta"] == 4.5
+    assert sampler["initial_reconstruction"] == "noise"
+    assert sampler["initial_fdk_filter_type"] is None
+    assert sampler["initial_fdk_frequency_scaling"] == 1.0
+    assert sampler["zeta"] == 4.25
     assert sampler["dps_epsilon"] == 0.5
     assert sampler["data_consistency_gradient"] == "least_squares"
     assert sampler["adjoint_data_step_schedule"] == "paper"
     assert sampler["data_consistency_normalization"] == "operator_lipschitz"
     assert sampler["data_consistency_scale"] == 1.0
     assert sampler["adjoint_data_consistency_scale"] is None
-    assert sampler["pc_snr"] == 0.04
+    assert sampler["pc_snr"] == 0.01
     assert "public_repo" not in sampler.values()
 
     assert (
@@ -954,7 +1177,7 @@ def test_lion_physics_implementation_uses_operator_normalized_settings(tmp_path)
         == "next"
     )
     assert payloads["predictor_corrector"]["expected_sampler"]["zeta"] == 4.25
-    assert payloads["predictor_corrector"]["expected_sampler"]["pc_snr"] == 0.04
+    assert payloads["predictor_corrector"]["expected_sampler"]["pc_snr"] == 0.01
     assert (
         payloads["predictor_corrector"]["expected_sampler"]["pc_reuse_predictor_layout"]
         is False

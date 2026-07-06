@@ -11,12 +11,28 @@ import shlex
 import subprocess
 import sys
 
+try:
+    from scripts.paper_scripts.PaDIS.PaDIS_hparam_defaults import (
+        DEFAULT_RECONSTRUCTION_HPARAM_DEFAULTS_JSON,
+        HparamDefaults,
+        apply_reconstruction_args_to_settings,
+    )
+except ModuleNotFoundError:
+    from PaDIS_hparam_defaults import (  # type: ignore[no-redef]
+        DEFAULT_RECONSTRUCTION_HPARAM_DEFAULTS_JSON,
+        HparamDefaults,
+        apply_reconstruction_args_to_settings,
+    )
+
 
 TRAINING_ROOT_PRESETS = ("slurm", "gcp")
 IMPLEMENTATIONS = ("paper", "public_repo", "lion_physics", "lion_quality")
 GEOMETRIES = ("lion", "padis", "padis_parallel", "padis_fanbeam")
 EXPERIMENTS = ("ct_8", "ct_20", "ct_60", "ct_fanbeam_180", "ct_512_60")
 ABLATIONS = ("schedule_init", "patch_size", "dataset_size", "position_encoding")
+CHECKPOINT_POLICIES = ("model_default", "min_val", "min_intense_val")
+JOB_ORDERS = ("default", "gcp_spot")
+HPARAM_DEFAULT_MODES = ("none", "auto", "json")
 METHODS = (
     "baseline",
     "admm_tv",
@@ -784,8 +800,59 @@ def build_jobs(args: argparse.Namespace) -> list[ReconstructionJob]:
     return jobs
 
 
-def checkpoint_path(training_root: pathlib.Path, model: ModelTask) -> pathlib.Path:
-    return training_root / model.name / model.checkpoint_name
+def checkpoint_name_for_policy(model: ModelTask, policy: str) -> str:
+    if policy == "model_default":
+        return model.checkpoint_name
+    if policy not in CHECKPOINT_POLICIES:
+        raise ValueError(
+            f"Unknown checkpoint policy {policy!r}. "
+            f"Valid values: {', '.join(CHECKPOINT_POLICIES)}."
+        )
+    if model.name.startswith("whole_lidc_"):
+        prefix = "whole_image_lidc_256"
+    elif model.name == "patch_lidc_512":
+        prefix = "padis_lidc_512"
+    else:
+        prefix = "padis_lidc_256"
+    return f"{prefix}_{policy}.pt"
+
+
+def checkpoint_path(
+    training_root: pathlib.Path,
+    model: ModelTask,
+    checkpoint_policy: str = "model_default",
+) -> pathlib.Path:
+    return (
+        training_root
+        / model.name
+        / checkpoint_name_for_policy(model, checkpoint_policy)
+    )
+
+
+def ordered_jobs(
+    args: argparse.Namespace, jobs: list[ReconstructionJob]
+) -> list[ReconstructionJob]:
+    if args.job_order == "default":
+        return jobs
+    if args.job_order != "gcp_spot":
+        raise ValueError(
+            f"Unknown job order {args.job_order!r}. "
+            f"Valid values: {', '.join(JOB_ORDERS)}."
+        )
+
+    def sort_key(item: tuple[int, ReconstructionJob]) -> tuple[int, int, int, int]:
+        index, job = item
+        fixed_overlap_rank = {
+            "patch_stitch": 0,
+            "patch_average": 1,
+        }
+        if job.method.name in fixed_overlap_rank:
+            return (2, fixed_overlap_rank[job.method.name], 0, index)
+        if job.experiment == "ct_512_60":
+            return (1, 0, 0, index)
+        return (0, 0, 0, index)
+
+    return [job for _, job in sorted(enumerate(jobs), key=sort_key)]
 
 
 def default_run_root() -> pathlib.Path:
@@ -810,6 +877,75 @@ def resolve_run_root(run_root: pathlib.Path | None) -> pathlib.Path:
     if run_root is not None:
         return run_root.expanduser().resolve()
     return default_run_root()
+
+
+def default_hparam_run_root(args: argparse.Namespace) -> pathlib.Path:
+    if os.environ.get("PADIS_HPARAM_RUN_ROOT"):
+        return pathlib.Path(os.environ["PADIS_HPARAM_RUN_ROOT"]).expanduser().resolve()
+    if os.environ.get("PADIS_HPARAM_TUNING_RUN_ROOT"):
+        return (
+            pathlib.Path(os.environ["PADIS_HPARAM_TUNING_RUN_ROOT"])
+            .expanduser()
+            .resolve()
+        )
+    return (resolve_run_root(args.run_root) / "hparam_tuning" / "runs").resolve()
+
+
+def resolve_hparam_run_root(args: argparse.Namespace) -> pathlib.Path | None:
+    if args.hparam_defaults in {"none", "json"}:
+        return None
+    if args.hparam_run_root is not None:
+        return args.hparam_run_root.expanduser().resolve()
+    return default_hparam_run_root(args)
+
+
+def resolve_hparam_defaults_json(args: argparse.Namespace) -> pathlib.Path:
+    if args.hparam_defaults_json is not None:
+        return args.hparam_defaults_json.expanduser().resolve()
+    return DEFAULT_RECONSTRUCTION_HPARAM_DEFAULTS_JSON
+
+
+def hparam_defaults_for_args(args: argparse.Namespace) -> HparamDefaults:
+    cached = getattr(args, "_hparam_defaults_cache", None)
+    if cached is not None:
+        return cached
+    if args.hparam_defaults == "none":
+        cached = HparamDefaults(())
+    elif args.hparam_defaults == "auto":
+        cached = HparamDefaults.from_run_root(
+            resolve_hparam_run_root(args),
+            args.hparam_run_glob,
+        )
+    elif args.hparam_defaults == "json":
+        cached = HparamDefaults.from_json(resolve_hparam_defaults_json(args))
+    else:
+        raise ValueError(
+            f"Unknown hparam default mode {args.hparam_defaults!r}. "
+            f"Valid values: {', '.join(HPARAM_DEFAULT_MODES)}."
+        )
+    setattr(args, "_hparam_defaults_cache", cached)
+    return cached
+
+
+def hparam_selection_for_job(args: argparse.Namespace, job: ReconstructionJob):
+    if args.hparam_defaults == "none":
+        return None
+    return hparam_defaults_for_args(args).select(
+        method=job.method.name,
+        implementation=job.implementation,
+        prior=job_prior_mode(job),
+        model=job.model.name,
+        experiment=job.experiment,
+    )
+
+
+def hparam_args_for_job(
+    args: argparse.Namespace, job: ReconstructionJob
+) -> tuple[str, ...]:
+    selection = hparam_selection_for_job(args, job)
+    if selection is None:
+        return ()
+    return selection.args
 
 
 def latest_slurm_training_root(run_root: pathlib.Path) -> pathlib.Path | None:
@@ -877,7 +1013,17 @@ def expected_sigma_min(experiment: str) -> float:
     return 0.003 if paper_sampler_views(experiment) == 8 else 0.002
 
 
-def expected_sampler_settings(job: ReconstructionJob) -> dict:
+def job_reconstruction_args(
+    args: argparse.Namespace, job: ReconstructionJob
+) -> tuple[str, ...]:
+    return (
+        *hparam_args_for_job(args, job),
+        *job.extra_reconstruction_args,
+        *tuple(args.reconstruction_arg),
+    )
+
+
+def expected_sampler_settings(args: argparse.Namespace, job: ReconstructionJob) -> dict:
     sigma_min = expected_sigma_min(job.experiment)
     settings = {
         "num_steps": 100,
@@ -1074,27 +1220,41 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
         settings["patch_batch_size"] = 1
     for key, value in job.sampler_overrides:
         settings[key] = value
+    settings, _ = apply_reconstruction_args_to_settings(
+        reconstruction_args=job_reconstruction_args(args, job),
+        sampler_settings=settings,
+    )
     return settings
 
 
 def pnp_checkpoint_for_args(args: argparse.Namespace) -> pathlib.Path:
     if args.pnp_checkpoint is not None:
         return args.pnp_checkpoint
-    return args.pnp_root / "pnp_lidc_drunet.pt"
+    return args.pnp_root / "pnp_lidc_drunet_min_val.pt"
 
 
 def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -> dict:
     if job.method.name == "baseline":
-        return {"baseline": "fdk"}
+        settings = {"baseline": "fdk"}
+        _, settings = apply_reconstruction_args_to_settings(
+            reconstruction_args=job_reconstruction_args(args, job),
+            method_settings=settings,
+        )
+        return settings
     if job.method.name == "admm_tv":
-        return {
+        settings = {
             "tv_lambda": float(args.tv_lambda),
             "tv_iterations": int(args.tv_iterations),
             "tv_lipschitz": None,
             "tv_non_negativity": False,
         }
+        _, settings = apply_reconstruction_args_to_settings(
+            reconstruction_args=job_reconstruction_args(args, job),
+            method_settings=settings,
+        )
+        return settings
     if job.method.name == "pnp_admm":
-        return {
+        settings = {
             "pnp_checkpoint": str(pnp_checkpoint_for_args(args)),
             "pnp_iterations": int(args.pnp_iterations),
             "pnp_eta": float(args.pnp_eta),
@@ -1105,11 +1265,20 @@ def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -
             ),
             "pnp_clip": True,
         }
-    return {}
+        _, settings = apply_reconstruction_args_to_settings(
+            reconstruction_args=job_reconstruction_args(args, job),
+            method_settings=settings,
+        )
+        return settings
+    _, settings = apply_reconstruction_args_to_settings(
+        reconstruction_args=job_reconstruction_args(args, job),
+        method_settings={},
+    )
+    return settings
 
 
 def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[str]:
-    checkpoint = checkpoint_path(args.training_root, job.model)
+    checkpoint = checkpoint_path(args.training_root, job.model, args.checkpoint_policy)
     output_folder = (
         args.output_root
         / job.method.name
@@ -1179,27 +1348,32 @@ def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[st
         cmd.extend(["--trace-interval", str(args.trace_interval)])
     if args.trace_images:
         cmd.append("--trace-images")
-    cmd.extend(job.extra_reconstruction_args)
-    for extra_arg in args.reconstruction_arg:
+    for extra_arg in job_reconstruction_args(args, job):
         cmd.append(extra_arg)
     return cmd
 
 
 def job_json(args: argparse.Namespace, job: ReconstructionJob) -> dict:
     prior_mode = job_prior_mode(job)
+    hparam_selection = hparam_selection_for_job(args, job)
     return {
         "model": job.model.name,
         "checkpoint": (
             ""
             if job.method.name in NO_PADIS_PRIOR_METHODS
-            else str(checkpoint_path(args.training_root, job.model))
+            else str(
+                checkpoint_path(args.training_root, job.model, args.checkpoint_policy)
+            )
         ),
         "method": job.method.name,
         "display_label": job_display_label(job),
         "algorithm": job.method.algorithm,
         "prior_mode": prior_mode,
-        "expected_sampler": expected_sampler_settings(job),
+        "expected_sampler": expected_sampler_settings(args, job),
         "expected_method_settings": expected_method_settings(args, job),
+        "hparam_default": (
+            None if hparam_selection is None else hparam_selection.to_json()
+        ),
         "implementation": job.implementation,
         "geometry": job.geometry,
         "experiment": job.experiment,
@@ -1217,7 +1391,9 @@ def input_check_failures(
     seen_model_checkpoints: set[pathlib.Path] = set()
     seen_pnp_checkpoints: set[pathlib.Path] = set()
     for job in jobs:
-        checkpoint = checkpoint_path(args.training_root, job.model)
+        checkpoint = checkpoint_path(
+            args.training_root, job.model, args.checkpoint_policy
+        )
         if (
             job.method.name not in NO_PADIS_PRIOR_METHODS
             and checkpoint not in seen_model_checkpoints
@@ -1286,6 +1462,56 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--output-root", type=pathlib.Path, required=True)
+    parser.add_argument(
+        "--checkpoint-policy",
+        choices=CHECKPOINT_POLICIES,
+        default="model_default",
+        help=(
+            "Which diffusion checkpoint family to use for matrix jobs. "
+            "model_default preserves the historical per-model names; "
+            "min_intense_val selects the validation-intensive checkpoint family."
+        ),
+    )
+    parser.add_argument(
+        "--hparam-defaults",
+        choices=HPARAM_DEFAULT_MODES,
+        default="none",
+        help=(
+            "none uses the reconstruction implementation presets. json loads "
+            "repo-local tuned defaults from --hparam-defaults-json. auto loads "
+            "completed fixed-validation tuning runs directly and appends the "
+            "best candidate args per method/implementation/experiment."
+        ),
+    )
+    parser.add_argument(
+        "--hparam-defaults-json",
+        type=pathlib.Path,
+        default=None,
+        help=(
+            "JSON file containing selected tuned reconstruction defaults. "
+            "Defaults to scripts/paper_scripts/PaDIS/config/"
+            "reconstruction_hparam_defaults.json when --hparam-defaults json "
+            "is used."
+        ),
+    )
+    parser.add_argument(
+        "--hparam-run-root",
+        type=pathlib.Path,
+        default=None,
+        help=(
+            "Folder containing tuning run subfolders with runs.jsonl. Defaults "
+            "to PADIS_HPARAM_RUN_ROOT, PADIS_HPARAM_TUNING_RUN_ROOT, or "
+            "<run-root>/hparam_tuning/runs when --hparam-defaults auto is used."
+        ),
+    )
+    parser.add_argument(
+        "--hparam-run-glob",
+        default="fixedval_*",
+        help=(
+            "Comma-separated glob(s) of tuning run folder names to use for "
+            "automatic defaults. Default fixedval_* uses corrected fixed-validation runs."
+        ),
+    )
     parser.add_argument(
         "--models",
         default="method_default",
@@ -1363,7 +1589,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=pathlib.Path,
         default=None,
         help=(
-            "Folder containing pnp_lidc_drunet.pt. Defaults to "
+            "Folder containing pnp_lidc_drunet_min_val.pt. Defaults to "
             "<training-root>/pnp_lidc_drunet."
         ),
     )
@@ -1392,6 +1618,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--task-index", type=int, default=None)
+    parser.add_argument(
+        "--job-order",
+        choices=JOB_ORDERS,
+        default="default",
+        help=(
+            "default preserves matrix construction order. gcp_spot runs regular "
+            "jobs first, then ct_512_60 jobs, then patch_stitch/patch_average."
+        ),
+    )
     parser.add_argument("--count", action="store_true")
     parser.add_argument("--list", action="store_true")
     parser.add_argument(
@@ -1421,7 +1656,7 @@ def main() -> None:
         args.pnp_root = args.pnp_root.expanduser().resolve()
     if args.pnp_checkpoint is not None:
         args.pnp_checkpoint = args.pnp_checkpoint.expanduser().resolve()
-    jobs = build_jobs(args)
+    jobs = ordered_jobs(args, build_jobs(args))
     if args.count:
         print(len(jobs))
         return
