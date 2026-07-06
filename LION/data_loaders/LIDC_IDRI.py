@@ -11,6 +11,7 @@ from typing import List, Dict
 import pathlib
 import random
 import math
+import re
 
 import torch
 import numpy as np
@@ -155,14 +156,19 @@ class LIDC_IDRI(Dataset):
         self.patients_diagnosis_dictionary = load_json(
             self.path_to_processed_dataset.joinpath("patient_id_to_diagnosis.json")
         )
-        self.patient_ids = sorted(
-            [
-                patient_folder.name
-                for patient_folder in self.path_to_processed_dataset.glob("LIDC-IDRI-*")
-                if patient_folder.is_dir()
-            ],
-            key=lambda patient_id: int(patient_id.rsplit("-", maxsplit=1)[-1]),
-        )
+        patient_id_pattern = re.compile(r"^LIDC-IDRI-(\d+)$")
+        patient_entries = []
+        for patient_folder in self.path_to_processed_dataset.glob("LIDC-IDRI-*"):
+            if not patient_folder.is_dir():
+                continue
+            match = patient_id_pattern.match(patient_folder.name)
+            if match is None:
+                continue
+            patient_entries.append((int(match.group(1)), patient_folder.name))
+        self.patient_ids = [
+            patient_id
+            for _, patient_id in sorted(patient_entries, key=lambda item: item[0])
+        ]
         if len(self.patient_ids) == 0:
             raise FileNotFoundError(
                 f"No processed LIDC-IDRI patient folders found in {self.path_to_processed_dataset}"

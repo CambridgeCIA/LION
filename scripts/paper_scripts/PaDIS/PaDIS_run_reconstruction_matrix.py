@@ -309,6 +309,17 @@ _NOISE_INIT_ARGS = (
     "--no-clip-initial",
     "--no-clip-output",
 )
+_FDK_INIT_ARGS = (
+    "--initial-reconstruction",
+    "fdk",
+    "--clip-initial",
+    "--clip-output",
+    "--initial-fdk-filter-type",
+    "hann",
+    "--initial-fdk-frequency-scaling",
+    "0.3",
+    "--no-initial-fdk-padded",
+)
 _NOISE_INIT_OVERRIDES = (
     ("initial_reconstruction", "noise"),
     ("clip_initial", False),
@@ -317,7 +328,14 @@ _NOISE_INIT_OVERRIDES = (
     ("initial_fdk_frequency_scaling", 1.0),
     ("initial_fdk_padded", True),
 )
-_FDK_INIT_OVERRIDES = (("initial_reconstruction", "fdk"),)
+_FDK_INIT_OVERRIDES = (
+    ("initial_reconstruction", "fdk"),
+    ("clip_initial", True),
+    ("clip_output", True),
+    ("initial_fdk_filter_type", "hann"),
+    ("initial_fdk_frequency_scaling", 0.3),
+    ("initial_fdk_padded", False),
+)
 _SCHEDULE_INIT_IMPLEMENTATIONS = ("lion_physics", "public_repo")
 _PATCH_ABLATION_IMPLEMENTATIONS = ("lion_physics", "public_repo")
 _DATASET_ABLATION_IMPLEMENTATIONS = ("lion_physics", "public_repo")
@@ -334,7 +352,7 @@ SCHEDULE_INIT_ABLATION_TASKS = tuple(
         _SCHEDULE_INIT_IMPLEMENTATIONS,
         (
             ("--noise-schedule", schedule)
-            + (_NOISE_INIT_ARGS if init == "noise" else ())
+            + (_NOISE_INIT_ARGS if init == "noise" else _FDK_INIT_ARGS)
         ),
         (
             (("noise_schedule", schedule),)
@@ -437,6 +455,8 @@ TRAINED_ABLATION_TASKS = (
         "ct_20",
         "position_encoding",
         _POSITION_ABLATION_IMPLEMENTATIONS,
+        _FDK_INIT_ARGS,
+        _FDK_INIT_OVERRIDES,
     ),
     AblationTask(
         "position_with_encoding_noise_init",
@@ -455,6 +475,8 @@ TRAINED_ABLATION_TASKS = (
         "ct_20",
         "position_encoding",
         _POSITION_ABLATION_IMPLEMENTATIONS,
+        _FDK_INIT_ARGS,
+        _FDK_INIT_OVERRIDES,
     ),
 )
 
@@ -879,6 +901,17 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
                 "adjoint_data_step_schedule": "paper",
             }
         )
+        if job.method.name == "padis_dps":
+            settings["zeta"] = 0.0075
+            settings["dps_epsilon"] = 0.5
+        elif job.method.name == "langevin":
+            settings["zeta"] = 0.03
+            settings["sampling_epsilon"] = 0.5
+        elif job.method.name == "predictor_corrector":
+            settings["zeta"] = 0.03
+            settings["pc_snr"] = 0.08
+        elif job.method.name == "ve_ddnm":
+            settings["sampling_epsilon"] = 0.1
     elif job.implementation == "public_repo":
         settings.update(
             {
@@ -897,8 +930,13 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
         )
         if job.method.name == "padis_dps":
             settings["zeta"] = 0.2
+        elif job.method.name == "langevin":
+            settings["zeta"] = 0.2
+            settings["sampling_epsilon"] = 0.5
         elif job.method.name == "predictor_corrector":
             settings["zeta"] = 0.5
+        elif job.method.name == "ve_ddnm":
+            settings["sampling_epsilon"] = 0.2
     elif job.implementation == "lion_quality":
         settings.update(
             {
@@ -925,25 +963,29 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
                 "data_consistency_gradient": "least_squares",
                 "adjoint_data_step_schedule": "paper",
                 "initial_fdk_filter_type": "hann",
-                "initial_fdk_frequency_scaling": 0.2,
+                "initial_fdk_frequency_scaling": 0.3,
                 "initial_fdk_padded": False,
                 "data_consistency_normalization": "operator_lipschitz",
                 "data_consistency_scale": 1.0,
                 "adjoint_data_consistency_scale": None,
-                "pc_snr": 0.04,
+                "pc_snr": 0.01,
             }
         )
 
     if job.method.name == "whole_image_diffusion":
         settings["prior_mode"] = "whole_image"
         if job.implementation == "lion_physics":
-            if job.experiment == "ct_20":
-                settings["zeta"] = 4.0
-            if job.experiment == "ct_fanbeam_180":
-                settings["dps_epsilon"] = 0.5
+            settings["zeta"] = 4.0
+            settings["dps_epsilon"] = 0.5
     if job.method.name == "padis_dps" and job.implementation == "lion_physics":
-        settings["zeta"] = 4.5
+        settings["zeta"] = 4.25
         settings["dps_epsilon"] = 0.5
+        settings["initial_reconstruction"] = "noise"
+        settings["clip_initial"] = False
+        settings["clip_output"] = False
+        settings["initial_fdk_filter_type"] = None
+        settings["initial_fdk_frequency_scaling"] = 1.0
+        settings["initial_fdk_padded"] = True
     if job.experiment == "ct_512_60" and job.method.name in {
         "padis_dps",
         "langevin",
@@ -957,9 +999,16 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
             settings["patch_checkpoint_denoiser"] = True
             settings["fixed_overlap_checkpoint_denoiser"] = False
     if job.method.name == "predictor_corrector":
-        settings["pc_snr"] = 0.04 if job.implementation == "lion_physics" else 0.16
+        if job.implementation == "lion_physics":
+            settings["pc_snr"] = 0.01
+        elif job.implementation == "paper":
+            settings["pc_snr"] = 0.08
+        else:
+            settings["pc_snr"] = 0.16
         if job.implementation == "lion_physics":
             settings["zeta"] = 4.25
+        elif job.implementation == "paper":
+            settings["zeta"] = 0.03
         elif job.implementation == "public_repo":
             settings["zeta"] = 0.5
         settings["pc_corrector_step_rule"] = "paper_linear"
@@ -967,14 +1016,22 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
             "current" if job.implementation == "public_repo" else "next"
         )
         settings["pc_reuse_predictor_layout"] = job.implementation == "public_repo"
-    if job.method.name == "langevin" and job.implementation == "lion_physics":
-        settings["zeta"] = 4.0
-        settings["sampling_epsilon"] = 0.5
+    if job.method.name == "langevin":
+        if job.implementation == "lion_physics":
+            settings["zeta"] = 4.0
+            settings["sampling_epsilon"] = 0.5
+        elif job.implementation == "paper":
+            settings["zeta"] = 0.03
+            settings["sampling_epsilon"] = 0.5
+        elif job.implementation == "public_repo":
+            settings["zeta"] = 0.2
+            settings["sampling_epsilon"] = 0.5
     if job.method.name == "ve_ddnm":
         if job.implementation == "paper":
             settings["num_steps"] = 1000
             settings["inner_steps"] = 1
             settings["ve_ddnm_nfe_layout"] = "paper_1000x1"
+            settings["sampling_epsilon"] = 0.1
         elif job.implementation in ("lion_physics", "lion_quality"):
             settings["num_steps"] = 1000
             settings["inner_steps"] = 1
@@ -989,6 +1046,7 @@ def expected_sampler_settings(job: ReconstructionJob) -> dict:
             settings["ddnm_corrected_clip"] = True
         else:
             settings["ve_ddnm_nfe_layout"] = "public_inner"
+            settings["sampling_epsilon"] = 0.2
         settings["langevin_ddnm"] = True
         settings["ddnm_pseudoinverse_clip"] = True
         settings["ddnm_projected_pseudoinverse_clip"] = True
@@ -1311,12 +1369,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--pnp-checkpoint", type=pathlib.Path, default=None)
     parser.add_argument("--pnp-iterations", type=int, default=60)
-    parser.add_argument("--pnp-eta", type=float, default=2e-5)
-    parser.add_argument("--pnp-cg-iterations", type=int, default=100)
+    parser.add_argument("--pnp-eta", type=float, default=3e-5)
+    parser.add_argument("--pnp-cg-iterations", type=int, default=50)
     parser.add_argument("--pnp-cg-tolerance", type=float, default=1e-7)
     parser.add_argument("--pnp-noise-level", type=float, default=None)
-    parser.add_argument("--tv-lambda", type=float, default=0.005)
-    parser.add_argument("--tv-iterations", type=int, default=500)
+    parser.add_argument("--tv-lambda", type=float, default=0.001)
+    parser.add_argument("--tv-iterations", type=int, default=1000)
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
     parser.add_argument("--public-padis-image-dir", type=pathlib.Path, default=None)
     parser.add_argument("--save-previews", action="store_true")

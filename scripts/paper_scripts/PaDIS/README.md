@@ -80,15 +80,15 @@ where that is needed to reproduce the observed reconstruction behavior.
 | Noise schedule type | Geometrically spaced descending noise levels. | README command executes an EDM/Karras-style power schedule with `rho=7`; it is not geometric in code unless changed by command-line arguments. | `--implementation paper`, `--implementation public_repo`, and `--implementation lion_physics` use the paper geometric schedule in the reconstruction array. | Matches the paper schedule for array runs; diverges from literal README defaults. |
 | CT sigma range | For 20-view CT: `sigma_max=10`, `sigma_min=0.002`. For 8-view CT: `sigma_min=0.003`. 60-view and fan-beam CT use the main 20-view CT schedule. | README command shows `sigma_min=0.003` for 20 views, but this is command-line configurable. | `--implementation paper`, `--implementation public_repo`, and `--implementation lion_physics` use the paper sigma range per experiment. | Matches the paper schedule for array runs; diverges from literal README defaults. |
 | Sampler length | 100 outer steps and 10 inner steps, about 1000 neural function evaluations. | README command uses `steps=100`; public DPS performs 10 inner denoising steps per outer step. | Uses 100 outer steps and 10 inner steps. | Matches. |
-| Initial sampler state | Paper Langevin pseudocode initializes from Gaussian noise. FBP is discussed as a baseline, not as the sampler initial state. | Public CT DPS computes a filtered backprojection-style reconstruction, clips it, pads it, and starts from that state. | Uses LION-native FDK initialization, clipped to `[0, 1]`, then padded. | Matches public behavior conceptually; differs from the paper. |
-| FBP / FDK filter | Not applicable to paper sampler initialization. | Public parallel-beam path uses Hann FBP frequency scaling `0.9`; public fan-beam path uses `0.3`. | `--implementation public_repo --geometry lion` keeps Hann FDK `0.3`. `--implementation lion_physics --geometry lion` now uses Hann FDK `0.2`, selected by the external-model validation baseline sweep. | Public-compatible keeps the public fan-beam cutoff; LION-physics uses a validation-tuned analytic baseline/initialization cutoff. Both differ from the paper sampler pseudocode. |
+| Initial sampler state | Paper Langevin pseudocode initializes from Gaussian noise. FBP is discussed as a baseline, not as the sampler initial state. | Public CT DPS computes a filtered backprojection-style reconstruction, clips it, pads it, and starts from that state. | `padis_dps` / `lion_physics` now uses Gaussian initialization with unclipped initial/output state. Public-compatible rows and explicit FDK-init ablations use LION-native FDK initialization, clipped to `[0, 1]`, then padded. | The promoted LION-physics DPS default now agrees with the paper initialization and differs from public README behavior. |
+| FBP / FDK filter | Not applicable to paper sampler initialization. | Public parallel-beam path uses Hann FBP frequency scaling `0.9`; public fan-beam path uses `0.3`. | Public-compatible rows and explicit FDK-init ablations use Hann FDK `0.3`. The promoted LION-physics PaDIS-DPS default does not use FDK initialization. | Fixed preset when FDK initialization is selected; not a tuning dimension. |
 | Reconstruction method | PaDIS with DPS or Langevin-style data consistency. | Public README reconstruction uses the `dps()` path in `inverse_nodist.py`. | Uses LION `dps_langevin`. | Matches the public DPS/Langevin method family. |
-| Langevin / DPS epsilon | Paper states `epsilon=1` for Langevin and DDNM. | Public DPS code uses `alpha = 0.5 * sigma^2`. | `--implementation paper` uses `dps_epsilon=1`. `--implementation public_repo` uses `dps_epsilon=0.5`. `--implementation lion_physics` now uses `dps_epsilon=0.5` for `padis_dps` and fixed-overlap patch rows after external-model validation; the whole-image `ct_fanbeam_180` row also uses `0.5`. Langevin uses its separate tuned `sampling_epsilon=0.5`, and VE-DDNM uses `sampling_epsilon=0.1`. | Toggle implemented; the LION-physics epsilon changes are documented paper divergences. |
+| Langevin / DPS epsilon | Paper states `epsilon=1` for Langevin and DDNM. | Public DPS code uses `alpha = 0.5 * sigma^2`. | `--implementation paper` uses `dps_epsilon=1` except tuned paper-mode `padis_dps`, which uses `0.5`. `--implementation public_repo` uses `dps_epsilon=0.5`. `--implementation lion_physics` now uses `dps_epsilon=0.5` for `padis_dps`, whole-image diffusion, and fixed-overlap patch rows after external-model validation. Langevin uses its separate tuned `sampling_epsilon=0.5`, and VE-DDNM uses `sampling_epsilon=0.1`. | Toggle implemented; the LION-physics and tuned paper-DPS epsilon changes are documented paper divergences. |
 | Data consistency objective | Paper pseudocode applies an adjoint residual step. A strict paper-style LION preset corresponds to a squared-residual objective with residual-normalized step size. | Public DPS uses the gradient of the L2 norm of the residual, computed from `y - A(x0hat)`. | `--implementation paper` uses the squared-residual objective. `--implementation public_repo` uses the norm-gradient DPS objective. `--implementation lion_physics` uses the least-squares objective `0.5 * ||y - A(x0hat)||^2`. | Paper/public toggles implemented; LION-physics intentionally uses the standard least-squares CT data term. |
-| Data step size | Paper describes `zeta_i = 0.3 / L2Norm(y - A(x))` for Langevin and PC-style data steps. | Public DPS applies `x = x - zeta * grad(L2Norm(y - A(x0hat)))` with `zeta=0.3`; the norm-gradient already normalizes the gradient direction. Public PC/Langevin helpers use explicit adjoint residual steps. | `--implementation paper` uses residual-normalized paper stepping. `--implementation public_repo --geometry lion` uses calibrated CT norm-gradient scale `0.0405` for DPS and calibrated direct-adjoint scale `0.1022` for PC/Langevin. `--implementation lion_physics` uses `zeta / L` with `L = ||F||^2 = (abs(measurement_scale) * ||A||)^2` for the composed LION measurement map `F(x)=A(measurement_scale*x + measurement_offset)`. The affine offset is not part of the Lipschitz scale. Current LION-physics method defaults are DPS `zeta=4.5`, whole-image diffusion `zeta=4.0` on `ct_20`, PC `zeta=4.25`, and Langevin `zeta=4.0`. | Paper/public toggles implemented. LION-physics avoids public-repo calibration constants but diverges from the paper's `0.3` coefficient. |
+| Data step size | Paper describes `zeta_i = 0.3 / L2Norm(y - A(x))` for Langevin and PC-style data steps. | Public DPS applies `x = x - zeta * grad(L2Norm(y - A(x0hat)))` with `zeta=0.3`; the norm-gradient already normalizes the gradient direction. Public PC/Langevin helpers use explicit adjoint residual steps. | `--implementation paper` uses residual-normalized paper stepping. `--implementation public_repo --geometry lion` uses calibrated CT norm-gradient scale `0.0405` for DPS and calibrated direct-adjoint scale `0.1022` for PC/Langevin. `--implementation lion_physics` uses `zeta / L` with `L = ||F||^2 = (abs(measurement_scale) * ||A||)^2` for the composed LION measurement map `F(x)=A(measurement_scale*x + measurement_offset)`. The affine offset is not part of the Lipschitz scale. Current LION-physics method defaults are DPS `zeta=4.25`, whole-image diffusion `zeta=4.0`, PC `zeta=4.25` with `pc_snr=0.01`, and Langevin `zeta=4.0`. | Paper/public toggles implemented. LION-physics avoids public-repo calibration constants but diverges from the paper's `0.3` coefficient. |
 | Public-compatible LION-geometry reference | Not in paper. | Not in the original README path. | The companion `PaDIS_lion_recon` repo adds `ct_lion_fanbeam` / `ct_lion_parbeam`; these use `data_gradient_scale=0.09` to normalize the ODL adjoint scale for LION geometry comparisons. | Compatibility shim only; not paper. |
 | Patch offsets and random draws | Paper does not specify exact RNG consumption. | Public code uses Python-style patch offset behavior and consumes several otherwise-unused random draws. | LION public preset mirrors those offset and RNG-consumption semantics. | Matches public repo; not paper-specified. |
-| Output clipping | Not a central paper reconstruction detail. | Public repo clamps reconstructions to `[0, 1]`. | LION clips initial and final reconstructions to `[0, 1]`. | Matches public behavior. |
+| Output clipping | Not a central paper reconstruction detail. | Public repo clamps reconstructions to `[0, 1]`. | Public-compatible and FDK-init rows clip initial/final reconstructions to `[0, 1]`. The promoted `padis_dps` / `lion_physics` Gaussian-init default leaves initial and final state unclipped. | Public-compatible behavior is retained for public rows; LION-physics DPS follows the best fixed-validation setting. |
 | Verified behavior | Paper reports aggregate CT reconstruction quality. | Matched public-compatible LION-geometry 3-sample reference has mean target PSNR 33.12 dB and mean target SSIM 0.836. | LION 3-sample run has mean target PSNR 33.16 dB, mean target SSIM 0.834, and mean public-reference SSIM 0.996. | Working setup is validated against both target and public-compatible reference. |
 
 ## Implementation And Geometry Switches
@@ -172,20 +172,20 @@ All EDM-style checks kept the paper 20-view endpoints
 
 | Mode / method | Schedule | Tuned value | Samples | PSNR | SSIM | MAE | Conclusion |
 |---|---|---:|---:|---:|---:|---:|---|
-| Paper-objective `padis_dps` | geometric | `zeta=0.01` | 3 | 33.98 | 0.719 | 0.01525 | Best paper-objective pilot point and finite on three validation slices; this is a major divergence from the paper's literal `zeta=0.3`. |
+| Paper-objective `padis_dps` | geometric | `zeta=0.0075`, `dps_epsilon=0.5` | 1 | 29.97 | 0.788 | 0.01936 | Fixed-validation winner across `ct_20,ct_8`; this is a major divergence from the paper's literal `zeta=0.3`, `epsilon=1`. |
 | Paper-objective `padis_dps` | EDM | `zeta=0.005` | 1 | 34.67 | 0.826 | 0.01176 | Bracketed below/above by `0.01` and `0.03`; did not beat geometric on SSIM. |
 | Public-compatible `padis_dps` | geometric | `zeta=0.2` | 3 | 36.11 | 0.900 | 0.00964 | Best public-compatible validation setting; the external-model clean-validation sweep below also selected `0.2` as the inference default. Literal README `zeta=0.3` remains available as an override for README reproduction. |
 | Public-compatible `padis_dps` | EDM | `zeta=0.2` | 3 | 34.91 | 0.885 | 0.01077 | Better SSIM/MAE than EDM `0.4`; still below geometric. |
-| LION-physics `padis_dps` | geometric | `zeta=4.0` | 3 | 35.26 | 0.914 | 0.00975 | Historical local-checkpoint setting; superseded for the inference defaults by the external-model `zeta=4.5`, `dps_epsilon=0.5` sweep below. |
+| LION-physics `padis_dps` | geometric | `zeta=4.0` | 3 | 35.26 | 0.914 | 0.00975 | Historical local-checkpoint setting; superseded first by the external-model `zeta=4.5`, `dps_epsilon=0.5` sweep, then by clean fixed-validation noise-init `zeta=4.25`, `dps_epsilon=0.5`. |
 | LION-physics `padis_dps` | EDM | `zeta=4.0` | 3 | 34.75 | 0.906 | 0.01021 | Stable but below geometric; `zeta=5.0` produced non-finite metrics. |
-| LION-physics whole-image diffusion | geometric | `zeta=4.0` | 3 | 37.85 | 0.928 | 0.00791 | Promoted as the `ct_20` method default. |
+| LION-physics whole-image diffusion | geometric | `zeta=4.0` | 3 | 37.85 | 0.928 | 0.00791 | Historical `ct_20` validation; the current external-model default also uses `dps_epsilon=0.5` across whole-image CT rows. |
 | LION-physics whole-image diffusion | EDM | `zeta=4.0` | 3 | 37.30 | 0.928 | 0.00815 | Similar SSIM, lower PSNR/MAE than geometric; `zeta=5.0` produced non-finite metrics. |
-| PnP-ADMM / DRUNet | not applicable | `60` iterations, `eta=2e-5` | 3 | 24.05 | 0.566 | 0.03886 | External-model clean-validation sweep across `ct_20` and `ct_8` with `--start-index 4`; promoted over the previous `20` iterations, `eta=1e-5` default because it substantially improves the harder sparse-view row. |
+| PnP-ADMM / DRUNet | not applicable | `60` iterations, `eta=3e-5`, CG cap `50` | 1 | 24.62 | 0.630 | 0.03514 | Fixed-validation two-anchor winner; the older `eta=2e-5` row is retained as historical contaminated-validation evidence. |
 
-The strict paper preset still defaults to the paper-reported `zeta=0.3`.
-The tuned paper-objective row above is only a diagnostic override showing that
-the paper data step is not numerically portable to LION CT units without a much
-smaller coefficient.
+The strict paper preset still uses the paper CT objective and initialization,
+but paper-mode `padis_dps` now uses the fixed-validation `zeta=0.0075` and
+`dps_epsilon=0.5` override. This shows that the paper data step is not
+numerically portable to LION CT units with the literal `0.3` coefficient.
 
 ## External-Model Hyperparameter Tuning
 
@@ -260,25 +260,28 @@ matrix.
 |---|---|---|---:|---:|---:|---:|---|
 | `padis_dps` / `lion_physics` | previous defaults (`zeta=4.0`, `dps_epsilon=1.0` for `ct_20`; base `zeta=3.0`, `dps_epsilon=1.0` for `ct_8`) | `ct_20`, `ct_8` | 1 | 27.33 | 0.671 | 0.02455 | Stable but much worse than tuned `dps_epsilon=0.5`; no longer the inference default. |
 | `padis_dps` / `lion_physics` | `zeta=4.0`, `dps_epsilon=0.5` | `ct_20`, `ct_8` | 1 | 31.74 | 0.860 | 0.01241 | Strong improvement over the previous defaults, but below `zeta=4.5`. |
-| `padis_dps` / `lion_physics` | `zeta=4.5`, `dps_epsilon=0.5` | `ct_20`, `ct_8` | 1 | 32.49 | 0.862 | 0.01209 | Best full-length two-experiment candidate; promoted as the LION-physics `padis_dps` inference default. |
+| `padis_dps` / `lion_physics` | `zeta=4.5`, `dps_epsilon=0.5` | `ct_20`, `ct_8` | 1 | 32.49 | 0.862 | 0.01209 | Historical contaminated-validation winner; superseded by clean fixed-validation noise-init `zeta=4.25`, `dps_epsilon=0.5`. |
 | `padis_dps` / `lion_physics` | `zeta=4.55`, `dps_epsilon=0.5` | `ct_20` | 1 | 35.25 | 0.847 | 0.01137 | Worse than `zeta=4.5` on the same `ct_20` sample. |
 | `padis_dps` / `lion_physics` | `zeta=4.6`, `dps_epsilon=0.5` | `ct_20` | 1 | 13.11 | 0.301 | 0.15477 | Rejected; finite but collapsed. |
 | `padis_dps` / `lion_physics` | `zeta=5.0`, `dps_epsilon=0.5` | `ct_20` | 1 | non-finite | non-finite | non-finite | Rejected; produced NaNs. |
-| `padis_dps` / `lion_physics` | `zeta=4.5`, `dps_epsilon=0.5`, Hann FDK `0.2` | `ct_20` | 1 | 36.04 | 0.910 | 0.00912 | Rechecked after the FDK cutoff promotion; same endpoint quality as the prior `0.3` run to numerical precision. |
-| `padis_dps` / `lion_physics` | `zeta=4.5`, `dps_epsilon=0.5`, Hann FDK `0.2` | `ct_8` | 1 | 28.94 | 0.814 | 0.01506 | Rechecked after the FDK cutoff promotion; same endpoint quality as the prior `0.3` run to numerical precision. |
-| `padis_dps` / `lion_physics` | `zeta=4.5`, `dps_epsilon=0.5`, Hann FDK `0.2` | `ct_60`, `ct_fanbeam_180` | 1 | 36.37 | 0.913 | 0.00904 | Stable on the extra 256 CT rows; minimum per-row PSNR was 31.98 dB on the harder limited-angle row. |
+| `padis_dps` / `lion_physics` | `zeta=4.5`, `dps_epsilon=0.5`, Hann FDK `0.3` | `ct_20` | 1 | 36.04 | 0.910 | 0.00912 | Historical contaminated-validation recheck after the FDK cutoff promotion. |
+| `padis_dps` / `lion_physics` | `zeta=4.5`, `dps_epsilon=0.5`, Hann FDK `0.3` | `ct_8` | 1 | 28.94 | 0.814 | 0.01506 | Historical contaminated-validation recheck after the FDK cutoff promotion. |
+| `padis_dps` / `lion_physics` | `zeta=4.5`, `dps_epsilon=0.5`, Hann FDK `0.3` | `ct_60`, `ct_fanbeam_180` | 1 | 36.37 | 0.913 | 0.00904 | Historical stability evidence on the extra 256 CT rows; superseded as a default by fixed-validation tuning. |
 
 The external-model FDK/Hann baseline sweep compared the analytic LION
 fan-beam baseline across all paper CT aliases on 25 validation slices. It
-selected `initial_fdk_frequency_scaling=0.2` as the best PSNR compromise:
+selected `initial_fdk_frequency_scaling=0.2` as the best PSNR compromise, but
+this has been superseded by the fixed-filter policy: the current LION-physics
+default is Hann `0.3`, matching the public-compatible fan-beam preset rather
+than tuning the analytic filter.
 
 | Hann cutoff | Samples | Mean PSNR | Mean SSIM | Mean MAE | Conclusion |
 |---:|---:|---:|---:|---:|---|
 | `0.15` | 25 | 23.84 | 0.566 | 0.04689 | Best SSIM/MAE, but lower high-view PSNR. |
-| `0.20` | 25 | 23.92 | 0.547 | 0.04813 | Best mean PSNR; promoted as the LION-physics FDK default. |
+| `0.20` | 25 | 23.92 | 0.547 | 0.04813 | Best mean PSNR in this historical sweep; no longer promoted as the active default. |
 | `0.225` | 25 | 23.91 | 0.538 | 0.04883 | Close to `0.20`, slightly worse PSNR. |
 | `0.25` | 25 | 23.88 | 0.528 | 0.04955 | Below `0.20`. |
-| `0.30` | 25 | 23.76 | 0.511 | 0.05094 | Public-compatible fan-beam cutoff, but worse for the LION-physics analytic baseline. |
+| `0.30` | 25 | 23.76 | 0.511 | 0.05094 | Current fixed LION-physics/public-compatible fan-beam cutoff; not tuned. |
 
 The ADMM-TV validation bracket used `ct_20` and `ct_8`, three validation
 samples per experiment, `--start-index 4`, and 500 iterations. The finer
@@ -290,20 +293,24 @@ substitute:
 | `tv_lambda=0.0003` | `ct_20`, `ct_8` | 3 | 25.40 | 0.613 | 0.03570 | Too weak. |
 | `tv_lambda=0.001` | `ct_20`, `ct_8` | 3 | 25.99 | 0.661 | 0.03213 | Previous paper-default value. |
 | `tv_lambda=0.003` | `ct_20`, `ct_8` | 3 | 26.53 | 0.713 | 0.02798 | Stronger than the paper default, but below the finer-bracket winner. |
-| `tv_lambda=0.005` | `ct_20`, `ct_8` | 3 | 26.56 | 0.729 | 0.02671 | Best mean PSNR in the fine bracket; promoted as the LION ADMM-TV substitute default. |
+| `tv_lambda=0.005` | `ct_20`, `ct_8` | 3 | 26.56 | 0.729 | 0.02671 | Earlier fine-bracket winner at 500 iterations; superseded by the external-model full ADMM-TV sweep. |
 | `tv_lambda=0.0075` | `ct_20`, `ct_8` | 3 | 26.43 | 0.735 | 0.02624 | Better SSIM/MAE but lower mean PSNR than `0.005`. |
 | `tv_lambda=0.01` | `ct_20`, `ct_8` | 3 | 26.29 | 0.735 | 0.02626 | Best `ct_8`, but lower mean PSNR. |
+| `tv_lambda=0.002`, 1000 iterations | `ct_20`, `ct_8` | 1 | 28.42 | 0.774 | 0.01977 | Historical contaminated-validation winner. Fixed validation restored `tv_lambda=0.001` as the LION ADMM-TV substitute default. |
 
 The PnP-ADMM validation bracket used the external DRUNet min-validation
 checkpoint, `ct_20` and `ct_8`, three validation samples per experiment, and
-`--start-index 4`. The current default was `20` iterations and `eta=1e-5`.
+`--start-index 4`. At the time of that bracket the default was `20`
+iterations and `eta=1e-5`; the current matrix default is now `60` iterations,
+`eta=3e-5`, and a 50-iteration CG cap after the fixed-validation restart.
 
 | Candidate | Experiments | Samples per experiment | Mean PSNR | Mean SSIM | Mean MAE | Status |
 |---|---|---:|---:|---:|---:|---|
 | `eta=1e-5`, `20` iterations | `ct_20`, `ct_8` | 3 | 22.39 | 0.447 | 0.06051 | Previous default; weak on `ct_8`. |
 | `eta=1e-5`, `40` iterations | `ct_20`, `ct_8` | 3 | 22.87 | 0.494 | 0.05376 | Better, but below the higher-eta bracket. |
 | `eta=2e-5`, `40` iterations | `ct_20`, `ct_8` | 3 | 24.05 | 0.563 | 0.03900 | Essentially tied with 60 iterations and faster. |
-| `eta=2e-5`, `60` iterations | `ct_20`, `ct_8` | 3 | 24.05 | 0.566 | 0.03886 | Best aggregate metrics; promoted as the matrix and standalone PnP default. |
+| `eta=2e-5`, `60` iterations | `ct_20`, `ct_8` | 3 | 24.05 | 0.566 | 0.03886 | Best aggregate metrics in the earlier eta/iteration bracket. |
+| `eta=2e-5`, `60` iterations, CG cap `50` | `ct_20`, `ct_8` | 1 | 26.13 | 0.684 | 0.02766 | Historical contaminated-validation winner; fixed validation promotes `eta=3e-5`, 60 iterations, and CG cap 50. |
 
 The whole-image LION-physics sampler is much more expensive locally than the
 patch and no-prior rows. A broad focused bracket was started on the local GPU,
@@ -329,10 +336,12 @@ cheaper and the initial LION-physics default lagged the public-compatible row.
 | `langevin` / `lion_physics` | `zeta=4.0`, `sampling_epsilon=0.5` | `ct_20`, `ct_8` | 1 | 32.37 | 0.863 | 0.01214 | Beats the public-compatible default on this validation pair; kept as default. |
 | `langevin` / `public_repo` | current default | `ct_20`, `ct_8` | 1 | 30.42 | 0.809 | 0.01793 | Public-compatible reference for the same samples. |
 | `predictor_corrector` / `lion_physics` | previous `zeta=4.25`, `pc_snr=0.08` | `ct_20`, `ct_8` | 1 | 25.68 | 0.494 | 0.03320 | Stable but below public-compatible PC. |
-| `predictor_corrector` / `lion_physics` | `zeta=4.25`, `pc_snr=0.04` | `ct_20`, `ct_8` | 1 | 26.22 | 0.526 | 0.03108 | Best LION-physics PC bracket point; promoted as default. |
+| `predictor_corrector` / `lion_physics` | `zeta=4.25`, `pc_snr=0.04` | `ct_20`, `ct_8` | 1 | 26.22 | 0.526 | 0.03108 | Superseded by the low-SNR confirmation; below the public-compatible PC reference. |
+| `predictor_corrector` / `lion_physics` | `zeta=4.25`, `pc_snr=0.01` | `ct_20`, `ct_8` | 3 | 27.60 | 0.701 | 0.02290 | Confirmed LION-physics default; beats same-sample public-compatible PC. |
 | `predictor_corrector` / `lion_physics` | `zeta=5.0`, any tested `pc_snr` | `ct_20`, `ct_8` | 1 | 11.73 | 0.244 | 0.20310 | Rejected; collapsed. |
 | `predictor_corrector` / `public_repo` | previous `zeta=0.3` | `ct_20`, `ct_8` | 1 | 28.10 | 0.621 | 0.02465 | Strong public-compatible baseline. |
 | `predictor_corrector` / `public_repo` | `zeta=0.5` | `ct_20`, `ct_8` | 1 | 28.32 | 0.644 | 0.02393 | Best public-compatible PC bracket point; promoted as default. |
+| `predictor_corrector` / `public_repo` | `zeta=0.5`, `pc_snr=0.16` | `ct_20`, `ct_8` | 3 | 26.83 | 0.604 | 0.02989 | Same-sample public-compatible PC anchor for the confirmed LION-physics default. |
 
 The fixed-overlap patch validation pass uses the same `ct_20`/`ct_8`,
 one-sample, `--start-index 4` setup and the external `padis_lidc_default.pt`
@@ -380,14 +389,30 @@ The detailed run outputs are under:
 /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/patch_fixed_overlap_defaults_validation_20260705
 ```
 
-The current external-model conclusion for `padis_dps` / `lion_physics` is to
-use `zeta=4.5`, `dps_epsilon=0.5`, and Hann FDK `0.2` across the 256
-experiments. The current external-model conclusion for `padis_dps` /
-`public_repo` is to use `zeta=0.2` across the 256 experiments while retaining
-the public-compatible CT scaling, clipping, and initialization. The current
-external-model conclusion for predictor-corrector is to use LION-physics
-`zeta=4.25`, `pc_snr=0.04`, and public-compatible `zeta=0.5`. These choices
-have been promoted into the inference defaults. The fixed-overlap conclusion is
+The current fixed-validation conclusion for `padis_dps` / `lion_physics` is to
+use `zeta=4.25`, `dps_epsilon=0.5`, Gaussian initialization, and unclipped
+initial/output state across the 256 experiments. On the clean `ct_20`/`ct_8`
+validation pair this reached mean PSNR 31.06 dB, SSIM 0.811, and MAE 0.01688,
+beating the public-compatible PaDIS-DPS reference on all three metrics. The
+extra `ct_60` and 120-degree limited-angle validation rows confirmed transfer:
+Gaussian-init `zeta=4.25`, `dps_epsilon=0.5` reached PSNR 38.32 / SSIM 0.916 on
+`ct_60` and PSNR 30.24 / SSIM 0.830 on `ct_fanbeam_180`, while matched FDK-init
+`dps_epsilon=0.5` reached PSNR 38.34 / SSIM 0.916 and PSNR 27.45 / SSIM 0.791.
+This supersedes the earlier clean-validation default of FDK-init `zeta=4.25`,
+`dps_epsilon=0.3`, and the earlier external-model conclusion of `zeta=4.5`,
+`dps_epsilon=0.5`, which was based on the contaminated validation split. The
+earlier Hann `0.2` baseline sweep is retained below as historical evidence, but
+filter/window selection is no longer part of the hyperparameter search. The
+current external-model conclusion for
+`whole_image_diffusion` / `lion_physics` is to use `zeta=4.0` and
+`dps_epsilon=0.5` across the whole-image CT rows; this is promoted from the
+`ct_20`-only setting after the clean `ct_20`/`ct_8` validation pair. The
+current external-model conclusion for `padis_dps` / `public_repo` is to use
+`zeta=0.2` across the 256 experiments while retaining the public-compatible CT
+scaling, clipping, and initialization. The current external-model conclusion
+for predictor-corrector is to use LION-physics `zeta=4.25`, `pc_snr=0.01`, and
+public-compatible `zeta=0.5`, `pc_snr=0.16`. These choices have been promoted into the
+inference defaults. The fixed-overlap conclusion is
 to keep the existing LION-physics patch-average and patch-stitch defaults
 (`dps_epsilon=0.5`, public-overlap/public-tile layouts, checkpointed
 fixed-overlap denoising, operator-Lipschitz normalization); both beat the
@@ -399,6 +424,417 @@ slow for full-quality tuning.
 Detached background launches from the command sandbox were killed when the tool
 session exited, so long confirmation sweeps should be run in a live shell/tool
 session or on the Slurm/GCP runner rather than relying on `nohup` from Codex.
+
+The tuner now also exposes exhaustive validation candidate sets for the
+LION-physics rows without changing the paper sigma endpoints. Use
+`--candidate-set padis_dps_lion_full` for the focused PaDIS-DPS sweep. It
+covers the core `zeta`/`dps_epsilon` grid, NFE allocation, EDM schedule shape
+via `rho`, initialization, clipping, and Langevin noise scale. Per the current
+tuning scope it does not sweep FDK filter/window settings, data objective,
+physical CT scaling/data weighting, or patch geometry.
+Use `--candidate-set lion_physics_full` for the broader method sweep; this adds
+TV lambda/iteration/non-negativity, PnP eta/iteration/CG and
+clipping/noise-level controls, whole-image DPS, Langevin,
+predictor-corrector, VE-DDNM, and fixed-overlap patch averaging/stitching
+sampler controls. Both candidate sets intentionally exclude `--sigma-min` and
+`--sigma-max`, because the CT sigma range is treated as paper-defined.
+
+Runtime smoke for the new PaDIS-DPS candidate set:
+
+```bash
+/home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/padis_dps_lion_full_hparam_smoke_20260705
+```
+
+This ran only the first two concrete jobs, `current_defaults` on `ct_20` and
+`ct_8`, with `--stop-after-outer-steps 1`. It verifies CUDA dispatch,
+checkpoint staging, validation split selection, and metric writing for the new
+candidate set; the resulting PSNR/SSIM values are not quality-tuning results.
+
+The full PaDIS-DPS validation sweep command is:
+
+```bash
+conda run --no-capture-output -n lion-dev python scripts/paper_scripts/PaDIS/PaDIS_tune_reconstruction_hyperparameters.py \
+  --candidate-set padis_dps_lion_full \
+  --run-name padis_dps_lion_sampler_hparam_validation_20260705 \
+  --only-methods padis_dps \
+  --only-implementations lion_physics \
+  --experiments ct_20,ct_8 \
+  --max-samples 1 \
+  --start-index 4 \
+  --device cuda \
+  --prog-bar
+```
+
+The earlier, broader `padis_dps_lion_full_hparam_validation_20260705` launch
+was stopped before writing completed metrics because it included now-excluded
+filter, objective, CT-scaling, and patch-geometry candidates. The constrained
+sweep should be launched locally on the GTX 1070 in a persistent tmux session:
+
+```bash
+tmux -S /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/padis_tune.tmux attach -t padis_dps_sampler
+```
+
+Run root:
+
+```bash
+/home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/padis_dps_lion_sampler_hparam_validation_20260705
+```
+
+The run contains 132 concrete validation reconstructions: 66 candidates times
+`ct_20` and `ct_8`, one validation slice per experiment at `--start-index 4`.
+It keeps the paper sigma endpoints fixed. It also keeps the canonical
+LION-physics data objective and weighting fixed: least-squares residual,
+`operator_lipschitz` CT normalization, unit data-consistency scale, and
+constant measurement-likelihood weight.
+
+The corresponding all-LION-physics sweep replaces
+`--candidate-set padis_dps_lion_full` with
+`--candidate-set lion_physics_full`; because that expands to 309 candidates
+before experiment multiplication, it should be treated as an A100/GCP job
+rather than a local 1070 job.
+
+A constrained predictor-corrector / VE-DDNM LION-physics sweep is queued to
+start after the PaDIS-DPS sampler sweep exits:
+
+```bash
+tmux -S /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/padis_tune.tmux attach -t pc_ve_queue
+```
+
+Planned run root:
+
+```bash
+/home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/pc_ve_lion_sampler_hparam_validation_20260705
+```
+
+This queued sweep uses the revised `lion_physics_full` candidate set filtered
+to `predictor_corrector,ve_ddnm` under `lion_physics`, on `ct_20` and `ct_8`,
+one validation slice per experiment at `--start-index 4`. It covers 80
+concrete validation reconstructions and does not sweep filter type, data
+objective, physical CT scaling, or patch geometry.
+
+The tuner also exposes `--candidate-set public_paper_sampler` and
+`--candidate-set sampler_full` for later public-compatible / paper sampler-only
+searches. These sets follow the same exclusions: they vary sampler coefficients,
+NFE/schedule shape where applicable, initialization/clipping where applicable,
+PC/DDNM controls, and stochasticity controls, but they do not sweep filter type,
+data objective, physical CT scaling/data weighting, or patch geometry.
+
+For broader local tuning coverage, the tuner now also exposes
+`--candidate-set consensus_24h` and `--candidate-set
+consensus_24h_no_defaults`. These are compact grids intended to be filtered by
+method/implementation. They keep the paper sigma endpoints, fixed FDK settings,
+fixed LION-physics data objective/scaling, and fixed patch geometry. The
+`consensus_24h_no_defaults` variant removes `current_defaults`, so it can be
+run after a `smoke` default-anchor pass without rerunning those anchors.
+
+The original exhaustive PaDIS-DPS LION-physics sweep was stopped after the
+default `ct_20` and `ct_8` validation anchors so the first local tuning day
+could cover all methods rather than only one method. The completed default
+PaDIS-DPS anchors were:
+
+| Method / implementation | Experiment | PSNR | SSIM | MAE | FDK PSNR | FDK SSIM |
+|---|---:|---:|---:|---:|---:|---:|
+| `padis_dps` / `lion_physics` | `ct_20` | 36.38 | 0.913 | 0.00834 | 26.00 | 0.567 |
+| `padis_dps` / `lion_physics` | `ct_8` | 32.20 | 0.851 | 0.01264 | 22.82 | 0.439 |
+
+Run root:
+
+```bash
+/home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/padis_dps_lion_sampler_hparam_validation_20260705
+```
+
+A broader default-anchor pass was started and then stopped once it moved from
+LION-physics anchors into non-priority public-compatible/paper rows. Completed
+records remain useful as fixed comparison evidence, but the active tuning queue
+now focuses on LION-physics only.
+
+```bash
+tmux -S /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/padis_tune.tmux attach -t default_anchor_nonpadis
+```
+
+Run root:
+
+```bash
+/home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/default_anchor_nonpadis_validation_20260705
+```
+
+The first completed anchors from that pass are:
+
+| Method / implementation | Experiments | Mean PSNR | Mean SSIM | Mean MAE | Notes |
+|---|---:|---:|---:|---:|---|
+| `baseline` / `lion_physics` | `ct_20`, `ct_8` | 24.41 | 0.503 | 0.04122 | FDK anchor. |
+| `admm_tv` / `lion_physics` | `ct_20`, `ct_8` | 27.85 | 0.768 | 0.02073 | Beats FDK on both anchors. |
+| `pnp_admm` / `lion_physics` | `ct_20`, `ct_8` | 26.13 | 0.684 | 0.02766 | Historical contaminated-validation winner for `eta=2e-5`, 60 ADMM iterations, and CG cap 50; fixed validation now promotes `eta=3e-5`. |
+| `whole_image_diffusion` / `lion_physics` | `ct_20`, `ct_8` | 32.98 | 0.879 | 0.01105 | Strong on both anchors; near PaDIS-DPS on `ct_20`, lower than PaDIS-DPS on `ct_8`. |
+| `whole_image_diffusion` / `paper` | `ct_20`, `ct_8` | 15.54 | 0.281 | 0.18701 | Strict paper-defined preset anchor; paper-mode tuning is now also staged separately. |
+| `langevin` / `lion_physics` | `ct_20`, `ct_8` | 32.37 | 0.863 | 0.01214 | Strong default; close to whole-image diffusion and below PaDIS-DPS on `ct_8`. |
+| `langevin` / `public_repo` | `ct_20`, `ct_8` | 30.42 | 0.809 | 0.01793 | Below LION-physics on both anchors under current defaults. |
+| `predictor_corrector` / `lion_physics` | `ct_20`, `ct_8` | 26.22 | 0.526 | 0.03108 | Stable but below the public-compatible PC reference; priority tuning target. |
+
+The current tuning policy is:
+
+| Mode | Tuning policy |
+|---|---|
+| `paper` | Keep the strict paper-defined defaults as anchors, but also tune paper-mode sampler hyperparameters with the same breadth as the LION-physics sampler sweep. The tuning keeps paper data objective, paper data-step schedule, paper sigma endpoints, and LION experiment geometry fixed. |
+| `public_repo` | Keep the public-compatible defaults as anchors, but also tune public-compatible sampler hyperparameters separately. The tuning keeps the public-compatible CT objective, calibrated LION-geometry public scales, FDK/filter setup, and patch geometry fixed. |
+| `lion_physics` | Main physical-mode target. Tune sampler/solver hyperparameters so LION-native CT reconstructions match or surpass the public-compatible references without public CT scale constants. |
+
+For method families with a public-compatible counterpart, the selected
+LION-physics setting should match or surpass the best available
+public-compatible validation reference on the same validation
+sample/experiment pair. Paper and public-compatible modes are now tuned as
+separate implementation families, not as moving targets for judging the
+LION-physics implementation.
+
+Important 2026-07-05 correction: the validation split used for the earlier
+`*_validation_20260705` tuning runs was contaminated by the local dataset state
+before the train/validation split fix. Treat those records as historical
+debugging evidence only. Do not use them to select final inference
+hyperparameters. The fixed local dataset now reports 809 training patients, 101
+validation patients, and 102 test patients, with zero train/validation/test
+patient overlap. Fresh tuning runs must use the `fixedval_*` run names below
+and the validation split.
+
+The fixed-validation restart session is:
+
+```bash
+tmux -S /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/padis_tune.tmux attach -t fixedval_reconstruction_tuning
+```
+
+It is launched by:
+
+```bash
+bash scripts/paper_scripts/PaDIS/run_fixedval_reconstruction_tuning.sh
+```
+
+The restart now writes a partial fixed-validation summary, runs a targeted
+LION-physics PaDIS-DPS refinement for lower-zeta/lower-epsilon settings, runs a
+targeted LION-physics refinement for the early non-DPS gaps, and then refreshes
+the recommendation summary. The default-anchor smoke pass is now opt-in via
+`RUN_SMOKE_ANCHORS=1` because it contains expensive rows that do not directly
+settle the remaining hyperparameter choices. The earlier broad 236-row
+consensus grid is also intentionally no longer part of the automatic 24-hour
+path; it remains available for later fine tuning if the focused rows leave
+unresolved gaps. The summarizer for this restart intentionally uses only
+fixed-validation run names:
+
+```bash
+conda run --no-capture-output -n lion-dev python scripts/paper_scripts/PaDIS/PaDIS_summarize_hparam_tuning.py \
+  --run-names fixedval_smoke_validation_20260705,fixedval_consensus_ct20_ct8_validation_20260705,fixedval_lion_physics_dps_refinement_ct20_ct8_validation_20260705,fixedval_lion_physics_refinement_ct20_ct8_validation_20260705 \
+  --expected-experiments ct_20,ct_8 \
+  --top-k 8 \
+  --output-csv /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/fixedval_hparam_recommendations.csv
+```
+
+When `--expected-experiments ct_20,ct_8` is supplied, the summarizer now
+restricts the aggregate ranking to those experiments by default. This avoids
+mixing full-paper-matrix smoke anchors such as `ct_60`, `ct_fanbeam_180`, or
+`ct_512_60` into the two-anchor hyperparameter ranking. Use
+`--include-extra-experiments` only for broader diagnostic summaries.
+
+| Fixed-validation stage | Run name | Candidate set | Concrete validation reconstructions |
+|---|---|---|---:|
+| LION-physics PaDIS-DPS targeted refinement | `fixedval_lion_physics_dps_refinement_ct20_ct8_validation_20260705` | `lion_physics_full` filtered to `zeta=3.5,3.75,4.0,4.25` and `dps_epsilon=0.3,0.5` where useful; NFE and schedule-shape diagnostics are deferred | 14 |
+| LION-physics targeted refinement | `fixedval_lion_physics_refinement_ct20_ct8_validation_20260705` | `lion_physics_full` filtered to the highest-value low ADMM-TV lambdas, PnP settings around the current best, and low-SNR patch-prior predictor-corrector candidates | 38 |
+| Full paper-matrix default anchors | `fixedval_smoke_validation_20260705` | Opt-in with `RUN_SMOKE_ANCHORS=1`; `smoke` over `method_default` implementations and `paper_matrix` experiments; resumes already completed rows | 59, 13 completed before deferral |
+| Deferred broad consensus search | `fixedval_consensus_ct20_ct8_validation_20260705` | Existing completed records are still summarized, but the 236-row `consensus_24h_no_defaults` grid is no longer run automatically under the 24-hour constraint | 36 completed before deferral |
+
+Current fixed-validation progress notes:
+
+| Area | Fixed-validation evidence so far | Action |
+|---|---|---|
+| ADMM-TV LION-physics | The completed fixed-validation refinement promotes `tv_lambda=0.001`, `1000` iterations: mean PSNR `26.552`, SSIM `0.724`, MAE `0.02755` over `ct_20,ct_8`. The old `0.002` default is effectively tied but slightly lower PSNR. | Promote `tv_lambda=0.001`, matching the paper CT value while using the LION TV substitute solver. |
+| PnP-ADMM LION-physics | The completed fixed-validation refinement promotes `eta=3e-5`, `60` iterations, CG cap `50`: mean PSNR `24.623`, SSIM `0.630`, MAE `0.03514`. The gain over nearby eta values is small, but it is the best two-anchor PSNR row. | Promote `eta=3e-5`, `60` iterations, CG cap `50`; treat PnP as implemented but lower-priority quality-wise. |
+| PaDIS-DPS LION-physics | The completed fixed-validation DPS bracket first promoted FDK-init `zeta=4.25`, `dps_epsilon=0.3`. A follow-up Gaussian-init check then improved the same clean `ct_20,ct_8` anchors to mean PSNR `31.061`, SSIM `0.811`, MAE `0.01688` with `zeta=4.25`, `dps_epsilon=0.5`, `--initial-reconstruction noise`, `--no-clip-initial`, and `--no-clip-output`. Extra `ct_60` and 120-degree limited-angle validation rows also favored the noise-init `0.5` setting over matched FDK-init `0.5` on the limited-angle row. | Promote Gaussian-init `zeta=4.25`, `dps_epsilon=0.5` as the LION-physics PaDIS-DPS inference default; keep explicit FDK/noise init ablations for the schedule/initialization grid. |
+| Public/paper PaDIS-DPS | The completed fixed-validation public/paper DPS sweep promotes paper-mode `zeta=0.0075`, `dps_epsilon=0.5`: mean PSNR `29.973`, SSIM `0.788`, MAE `0.01936`. Public-compatible keeps `zeta=0.2`, `dps_epsilon=0.5`: the `0.75` epsilon row gained only `0.077` dB mean PSNR but lost SSIM/MAE. The promoted LION-physics PaDIS-DPS noise-init row beats the best public-compatible row by `2.428` dB PSNR and `0.102` SSIM on these two fixed-validation anchors. | Promote the paper-mode DPS override and keep the public-compatible DPS default at `zeta=0.2`, `dps_epsilon=0.5`. |
+| Public/paper non-DPS samplers | The 48-row sampler refinement completed. Promoted paper Langevin `zeta=0.03`, `sampling_epsilon=0.5` with PSNR `28.946`, SSIM `0.733`; public Langevin `zeta=0.2`, `sampling_epsilon=0.5` with PSNR `27.577`, SSIM `0.668`; paper PC `zeta=0.03`, `pc_snr=0.08` with PSNR `23.859`, SSIM `0.385`; public PC keeps defaults at PSNR `26.266`, SSIM `0.600`; paper VE-DDNM `sampling_epsilon=0.1` reaches PSNR `19.901`, SSIM `0.333`; public VE-DDNM `sampling_epsilon=0.2` reaches PSNR `28.039`, SSIM `0.600`. Paper whole-image diffusion defaults remain poor at PSNR `8.055`, SSIM `0.291`. | Promoted the public/paper sampler defaults above. Paper PC, paper VE-DDNM, and paper whole-image diffusion remain quality warnings even after tuning. |
+| Recommendation CSV | `/home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/fixedval_hparam_recommendations.csv` is refreshed from fixed-validation run names only. | Treat any non-`fixedval_*` records as historical/debugging only. |
+
+Runtime note: the prior staged queue was about `50..70` local GTX 1070 hours if
+every row completed, which is no longer pragmatic with about 24 hours left. The
+active default 24-hour queue now reuses completed metrics and keeps only the
+remaining DPS rows plus the targeted non-DPS LION-physics rows. The 46 remaining
+default-anchor smoke rows are deferred unless `RUN_SMOKE_ANCHORS=1` is supplied.
+The broad public/paper/schedule/NFE consensus sweep is deferred until after
+these rows show whether any method still lacks a credible fixed-validation
+setting.
+
+The fixed-validation public/paper follow-up runner is:
+
+```bash
+bash scripts/paper_scripts/PaDIS/run_fixedval_public_paper_tuning.sh
+```
+
+It is intentionally separate from the active LION-physics tmux runner so the
+running script is not edited in place. Its default path runs compact
+public-compatible and paper-mode PaDIS-DPS validation around the existing
+defaults, then runs default anchors for paper/public Langevin,
+predictor-corrector, VE-DDNM, and paper whole-image diffusion on `ct_20` and
+`ct_8`. The broader public/paper non-DPS sampler refinement is gated behind
+`RUN_PUBLIC_PAPER_SAMPLER_REFINEMENT=1` and should only be enabled if the
+default anchors expose a real gap.
+
+| Fixed-validation public/paper stage | Run name | Candidate set | Concrete validation reconstructions |
+|---|---|---|---:|
+| Public/paper PaDIS-DPS compact tuning | `fixedval_public_paper_dps_ct20_ct8_validation_20260705` | `consensus_24h` filtered to public-compatible `zeta=0.15,0.2` and paper `zeta=0.0075,0.01,0.015`, plus current defaults | 24 |
+| Public/paper non-DPS default anchors | `fixedval_public_paper_default_anchors_ct20_ct8_validation_20260705` | `smoke` filtered to public/paper Langevin, predictor-corrector, VE-DDNM, and paper whole-image diffusion current defaults | 14 |
+| Public/paper non-DPS sampler refinement | `fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705` | Opt-in with `RUN_PUBLIC_PAPER_SAMPLER_REFINEMENT=1`; compact `consensus_24h` sampler controls around the public/paper defaults | 48 completed |
+
+The old pre-fix helper scripts
+`run_paper_public_consensus_tuning.sh` and
+`run_lion_physics_whole_failed_rerun.sh` are disabled because they target
+pre-fixed-validation run names and summarized `--run-names all`. Use
+`run_fixedval_reconstruction_tuning.sh` for final tuning data.
+
+The historical pre-fix LION-physics-focused queue was:
+
+```bash
+tmux -S /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/padis_tune.tmux attach -t lion_physics_focus_queue
+```
+
+It will run these stages in order; the non-anchor stages use
+`consensus_24h_no_defaults`:
+
+| Stage | Run name | Concrete validation reconstructions |
+|---|---|---:|
+| LION-physics default anchors after the fixed Hann `0.3` preset | `lion_physics_defaults_anchor_20260705` | 20 |
+| ADMM-TV and PnP-ADMM LION-physics solver tuning | `consensus_24h_admm_pnp_validation_20260705` | 32 |
+| PaDIS-DPS compact LION-physics tuning | `consensus_24h_padis_dps_lion_validation_20260705` | 24 |
+| Other LION-physics diffusion sampler tuning | `consensus_24h_lion_other_samplers_validation_20260705` | 72 |
+
+This queue was stopped on 2026-07-05 after completing the default-anchor rows
+through patch-prior predictor-corrector. The remaining active-row work was
+lower priority for the current decision because existing completed validation
+already showed LION-physics PaDIS-DPS, Langevin, VE-DDNM, patch averaging, and
+patch stitching beating their public-compatible references where applicable.
+The GPU was reprioritized to the PC public-gap sweep below.
+
+A second tmux session is waiting for the active queue to finish before running
+broader solver/PC sweeps:
+
+```bash
+tmux -S /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/padis_tune.tmux attach -t lion_physics_solver_pc_followup
+```
+
+It is launched by:
+
+```bash
+bash scripts/paper_scripts/PaDIS/run_lion_physics_solver_pc_followup.sh
+```
+
+That script waits until `lion_physics_focus_queue` exits, then runs the
+public-gap predictor-corrector confirmation first. This ordering is intentional:
+completed validation already has LION-physics ahead of public-compatible
+references for DPS, Langevin, patch averaging, and patch stitching, while
+predictor-corrector is still below the public-compatible anchor.
+After stopping the lower-priority focus queue, this session was restarted and
+started `lion_physics_full_pc_validation_20260705` directly. That broad one-sample
+PC scan was then stopped after 18 completed reconstructions once it had bracketed
+the useful low-SNR region: `pc_snr=0.01` beat the public-compatible PC reference,
+while `pc_snr>=0.015` degraded monotonically for the tested `zeta=3.75` and
+`zeta=4.0` rows. The active follow-up script now starts with the targeted
+3-sample low-SNR confirmation instead of repeating the dominated broad scan.
+
+| Stage | Run name | Candidate set | Concrete validation reconstructions |
+|---|---|---|---:|
+| Partial predictor-corrector LION-physics bracket scan | `lion_physics_full_pc_validation_20260705` | `lion_physics_full` filtered to `predictor_corrector`, including the patch-prior public-gap refinements around `zeta=3.75..4.75` and `pc_snr=0.01..0.06`; intentionally stopped after the low-SNR bracket was identified | 18 completed of 104 |
+| Predictor-corrector low-SNR confirmation | `lion_physics_pc_low_snr_confirm_validation_20260705` | `lion_physics_full` filtered to `zeta=3.75,4.0,4.25,4.5,4.75` at `pc_snr=0.01`, plus nearby `0.015` checks where useful | 14 |
+| Same-sample public-compatible predictor-corrector anchor | `public_repo_pc_default_anchor_validation_20260705` | `public_paper_sampler` filtered to patch-prior public-compatible PC with `zeta=0.5`, `pc_snr=0.16`; used to compare the 3-sample LION-physics confirmation against identical validation slices | 2 |
+| Broader ADMM-TV LION-physics sweep | `lion_physics_full_admm_validation_20260705` | `lion_physics_full` filtered to `admm_tv` | 52 |
+| Broader PnP-ADMM LION-physics sweep | `lion_physics_full_pnp_validation_20260705` | `lion_physics_full` filtered to `pnp_admm` | 70 |
+| Whole-image sampler default anchors | `lion_physics_whole_sampler_defaults_validation_20260705` | `smoke` filtered to the whole-image `langevin`, `predictor_corrector`, and `ve_ddnm` groups from the paper-matrix append rows | 3 |
+| Whole-image sampler consensus sweep | `lion_physics_whole_sampler_consensus_validation_20260705` | `consensus_24h_no_defaults` filtered to the same whole-image sampler groups | 18 |
+| Deferred whole-image sampler full sweep | `lion_physics_whole_sampler_full_validation_20260705` | `lion_physics_full` filtered to the same whole-image sampler groups; removed from the local GTX 1070 follow-up script after the compact consensus pass because it is an A100/GCP-scale validation sweep | 65 staged, not local-default |
+
+Before the fixed-validation correction, a third tmux session had been staged for
+the newly expanded paper/public tuning policy:
+
+```bash
+tmux -S /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/padis_tune.tmux attach -t paper_public_consensus_queue
+```
+
+It is launched by:
+
+```bash
+bash scripts/paper_scripts/PaDIS/run_paper_public_consensus_tuning.sh
+```
+
+That script waits until `lion_physics_solver_pc_followup` exits, then runs the
+compact `consensus_24h_no_defaults` paper/public validation pass on
+`ct_20,ct_8`, one validation sample per experiment, using the external
+checkpoints staged from
+`/home/thomas/DiS/Project/Data/experiments/PaDIS/external_models`.
+
+| Stage | Run name | Candidate set | Concrete validation reconstructions |
+|---|---|---|---:|
+| Paper/public compact consensus | `paper_public_consensus_validation_20260705` | `consensus_24h_no_defaults` filtered to `paper,public_repo` implementations and inference-relevant sampler methods | 108 |
+| Full paper-mode sampler sweep | not launched locally yet | `paper_full` | 1,034 one-sample `ct_20,ct_8` jobs |
+| Full public-compatible sampler sweep | not launched locally yet | `public_repo_full` | 898 one-sample `ct_20,ct_8` jobs |
+
+The full paper/public sweeps are A100/GCP-scale fine-tuning sets. The compact
+consensus pass is the local 24-hour triage stage; use its winners to select
+smaller full-sweep regions rather than launching all 1,932 public/paper jobs on
+the local GTX 1070.
+
+The whole-image sampler rows above are needed because the Slurm inference
+matrix appends `ct_20` whole-image Langevin, predictor-corrector, and VE-DDNM
+rows only when `--experiments paper_matrix` is used. The earlier active queue
+uses explicit `ct_20,ct_8` experiments and therefore only covers the patch-prior
+versions of those samplers plus whole-image VE-DPS.
+The partial whole-image Langevin consensus results currently support keeping
+`zeta=4.0`, `sampling_epsilon=0.5`: it matches the default-anchor row at
+PSNR `36.93`, SSIM `0.914`, and MAE `0.00812` on the `ct_20` validation slice.
+`zeta=3.5`, `sampling_epsilon=0.75` is slightly weaker; `zeta=4.0`,
+`sampling_epsilon=0.75` collapses; and `zeta=4.5`,
+`sampling_epsilon=0.5` is non-finite. The remaining whole-image PC/VE-DDNM
+consensus rows are still running in the active tmux session.
+
+Use the recommendation summarizer while the staged runs accumulate:
+
+```bash
+conda run --no-capture-output -n lion-dev python scripts/paper_scripts/PaDIS/PaDIS_summarize_hparam_tuning.py \
+  --run-names default_anchor_nonpadis_validation_20260705,padis_dps_lion_sampler_hparam_validation_20260705,lion_physics_defaults_anchor_20260705,consensus_24h_admm_pnp_validation_20260705,consensus_24h_padis_dps_lion_validation_20260705,consensus_24h_lion_other_samplers_validation_20260705,lion_physics_full_pc_validation_20260705,lion_physics_pc_low_snr_confirm_validation_20260705,public_repo_pc_default_anchor_validation_20260705,lion_physics_full_admm_validation_20260705,lion_physics_full_pnp_validation_20260705,lion_physics_whole_sampler_defaults_validation_20260705,lion_physics_whole_sampler_consensus_validation_20260705,paper_public_consensus_validation_20260705 \
+  --top-k 3
+```
+
+The summarizer now also writes public-reference comparison columns for
+LION-physics rows where a matching `public_repo` method/prior/model row exists:
+`reference_implementation`, `reference_candidate`, `reference_mean_psnr`,
+`reference_mean_ssim`, `reference_mean_mae`, and the corresponding delta
+columns. The `reference_status` column is `beats_reference` only when PSNR and
+SSIM are no worse than the public-compatible row and MAE is no worse;
+near-ties are marked `matches_reference_tolerance`, and weaker rows are marked
+`below_reference`. A current explicit public-delta snapshot can be regenerated
+with:
+
+```bash
+conda run --no-capture-output -n lion-dev python scripts/paper_scripts/PaDIS/PaDIS_summarize_hparam_tuning.py \
+  --run-names all \
+  --expected-experiments ct_20,ct_8 \
+  --top-k 3 \
+  --output-csv /home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/hparam_recommendations_with_public_deltas.csv
+```
+
+The latest completed-record snapshot shows LION-physics ahead of fixed
+public-compatible references for `langevin`, `padis_dps`, `patch_average`,
+`patch_stitch`, and predictor-corrector. The confirmed PC setting is
+`zeta=4.25`, `pc_snr=0.01`; on the same 3 validation slices it beats the
+public-compatible `zeta=0.5`, `pc_snr=0.16` anchor by about `0.77` dB PSNR,
+`0.097` SSIM, and `0.00699` MAE averaged over `ct_20` and `ct_8`.
+
+By default this writes:
+
+```bash
+/home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs/hparam_recommendations.csv
+```
+
+The summarizer ranks candidates separately by method, implementation, prior
+mode, and model, and reports validation coverage explicitly. It de-duplicates
+completed records by candidate and experiment using the newest run-file
+modification time, so older `current_defaults` records from before a default
+change do not override the current setting. It also reports
+`completed_samples`; do not treat a two-sample smoke anchor as stronger than a
+broader confirmation bracket merely because its mean metric is slightly higher.
 
 To reproduce the selected tuned validation runs from the LION root:
 
@@ -420,7 +856,7 @@ To reproduce the selected tuned validation runs from the LION root:
   --seed 33 --device cuda \
   --checkpoint /home/thomas/DiS/Project/Data/experiments/PaDIS/external_models/padis_lidc_default.pt \
   --noise-schedule geometric --zeta 4.5 --dps-epsilon 0.5 \
-  --initial-fdk-frequency-scaling 0.2 --save-previews --prog-bar
+  --initial-fdk-frequency-scaling 0.3 --save-previews --prog-bar
 
 # Tuned LION-physics whole-image diffusion, geometric schedule.
 /home/thomas/anaconda3/envs/lion-dev/bin/python -u scripts/paper_scripts/PaDIS/PaDIS_LIDC_reconstruction.py \
@@ -449,15 +885,15 @@ To reproduce the selected tuned validation runs from the LION root:
 | Method | Training dependency | LION implementation | Paper agreement |
 |---|---|---|---|
 | `baseline` | None | LION FDK/FBP-style analytic reconstruction from the CT operator | Paper says CT baseline is FBP. In LION fan-beam geometry this is implemented with FDK, the corresponding fan-beam analytic baseline. |
-| `admm_tv` | None | LION `tv_min` total-variation reconstruction | Similar method only: current LION TV uses Chambolle-Pock, not the paper's ADMM-TV solver. The paper reports CT `lambda=0.001`; external-model validation promoted `lambda=0.005` for the LION TV substitute. |
-| `pnp_admm` | DRUNet denoiser | LION `PnP(..., algorithm="ADMM")` with a DRUNet denoiser wrapper | Requires a trained denoising CNN. Agreement depends on the denoiser training run; this is not the PaDIS diffusion checkpoint. The PaDIS driver clips PnP-ADMM iterates and denoiser outputs to `[0, 1]`, the normalized LIDC image support, to keep sparse-view ADMM iterates inside the denoiser training domain. External-model validation promoted `60` iterations and `eta=2e-5` as the standalone and matrix defaults. |
-| `whole_image_diffusion` | Whole-image NCSN++ min-validation checkpoint | LION PaDIS sampler with `prior_mode=whole_image` | Method default now uses `--implementation lion_physics` with the paper geometric CT sigma schedule, LION fan-beam operator/FDK, least-squares data objective, and operator-Lipschitz-normalized data steps. The `ct_20` row uses validated `zeta=4.0`. The reconstruction matrix expects `whole_image_lidc_256_min_val.pt`, because the min-validation checkpoint is the validated whole-image reconstruction checkpoint. The `ct_fanbeam_180` whole-image row still carries the previous `dps_epsilon=0.5` relaxation, but that relaxation must be regenerated for the new 20-view/120-degree stress geometry. |
+| `admm_tv` | None | LION `tv_min` total-variation reconstruction | Similar method only: current LION TV uses Chambolle-Pock, not the paper's ADMM-TV solver. The paper reports CT `lambda=0.001`; fixed validation also promoted `lambda=0.001` with 1000 iterations for the LION TV substitute. |
+| `pnp_admm` | DRUNet denoiser | LION `PnP(..., algorithm="ADMM")` with a DRUNet denoiser wrapper | Requires a trained denoising CNN. Agreement depends on the denoiser training run; this is not the PaDIS diffusion checkpoint. The PaDIS driver clips PnP-ADMM iterates and denoiser outputs to `[0, 1]`, the normalized LIDC image support, to keep sparse-view ADMM iterates inside the denoiser training domain. Fixed validation promoted `60` ADMM iterations, `eta=3e-5`, and a 50-iteration CG cap as the standalone and matrix defaults. |
+| `whole_image_diffusion` | Whole-image NCSN++ min-validation checkpoint | LION PaDIS sampler with `prior_mode=whole_image` | Method default now uses `--implementation lion_physics` with the paper geometric CT sigma schedule, LION fan-beam operator/FDK, least-squares data objective, and operator-Lipschitz-normalized data steps. External-model validation promotes `zeta=4.0` and `dps_epsilon=0.5` across the whole-image CT rows. The reconstruction matrix expects `whole_image_lidc_256_min_val.pt`, because the min-validation checkpoint is the validated whole-image reconstruction checkpoint. The promoted default still needs cross-experiment confirmation on the current `ct_60` and 20-view/120-degree limited-angle rows. |
 | `langevin` | Patch PaDIS checkpoint | LION PaDIS Langevin sampler | Method default now uses `--implementation lion_physics`: paper geometric CT sigma schedule, LION fan-beam operator/FDK, least-squares data objective, and operator-Lipschitz-normalized direct-adjoint data steps. It uses tuned `zeta=4.0` and `sampling_epsilon=0.5`, which are paper divergences validated against the public-compatible Langevin row. |
-| `predictor_corrector` | Patch PaDIS checkpoint | LION PaDIS predictor-corrector sampler | Method default now uses `--implementation lion_physics`: paper geometric CT sigma schedule, LION fan-beam operator/FDK, least-squares data objective, and operator-Lipschitz-normalized direct-adjoint data steps. It uses tuned `zeta=4.25` and `pc_snr=0.04`, denoises the corrector at the next/lower sigma, and does not reuse the public helper patch layout. The public-compatible PC row uses `zeta=0.5`. |
+| `predictor_corrector` | Patch PaDIS checkpoint | LION PaDIS predictor-corrector sampler | Method default now uses `--implementation lion_physics`: paper geometric CT sigma schedule, LION fan-beam operator/FDK, least-squares data objective, and operator-Lipschitz-normalized direct-adjoint data steps. It uses tuned `zeta=4.25` and `pc_snr=0.01`, denoises the corrector at the next/lower sigma, and does not reuse the public helper patch layout. The public-compatible PC row uses `zeta=0.5`, `pc_snr=0.16`. |
 | `ve_ddnm` | Patch PaDIS checkpoint | LION PaDIS Langevin sampler with VE-DDNM correction | Method default now uses `--implementation lion_physics`. It keeps the paper `paper_1000x1` NFE layout but uses LION fan-beam stabilization: noise initialization, clipped LION FDK pseudoinverse terms, clipped corrected DDNM estimate, and `sampling_epsilon=0.1`. This remains a documented paper divergence caused by the LION fan-beam pseudoinverse. |
 | `patch_average` | Patch PaDIS checkpoint | Fixed-overlap patch denoising with averaged overlap pixels | Method default now uses `--implementation lion_physics` with the validated public-overlap denoiser layout, checkpointed fixed-overlap denoising, LION fan-beam least-squares data consistency, and `dps_epsilon=0.5`. The driver defaults to `patch_batch_size=1` for this fixed-overlap row unless overridden; fixed-overlap denoising streams patches in chunks of this size for memory, which is not a CT scaling change. The overlap layout mirrors the public PaDIS `denoisedOverlap(...)` helper but the CT update is LION-native and operator-normalized. This is not a faithful implementation of the original conditional patch-DDPM paper cited as `[23]`. |
 | `patch_stitch` | Patch PaDIS checkpoint | Fixed-overlap patch denoising with overwrite/stitching semantics | Method default now uses `--implementation lion_physics` with the validated public-tile denoiser layout, checkpointed fixed-overlap denoising, LION fan-beam least-squares data consistency, and `dps_epsilon=0.5`. The driver defaults to `patch_batch_size=1` for this fixed-overlap row unless overridden; fixed-overlap denoising streams patches in chunks of this size for memory, which is not a CT scaling change. The tile layout mirrors the public PaDIS `denoisedTile(...)` helper but the CT update is LION-native and operator-normalized. This is not a faithful implementation of the original tile-and-stitch paper cited as `[66]`. |
-| `padis_dps` | Patch PaDIS checkpoint | Main PaDIS patch sampler with DPS/Langevin-style data consistency | Method default now uses `--implementation lion_physics` with the paper geometric CT sigma schedule, LION fan-beam operator/FDK, least-squares data objective, and data steps normalized by the composed LION measurement Lipschitz constant. The external-model validation default is `zeta=4.5`, `dps_epsilon=0.5`, and Hann FDK `0.2` for the 256 rows. The `ct_512_60` row defaults to `patch_batch_size=1` plus `patch_checkpoint_denoiser=True` as a memory-only control for ordinary PaDIS patch denoising; full-quality 512 tuning still needs A100 confirmation. |
+| `padis_dps` | Patch PaDIS checkpoint | Main PaDIS patch sampler with DPS/Langevin-style data consistency | Method default now uses `--implementation lion_physics` with the paper geometric CT sigma schedule, LION fan-beam operator, least-squares data objective, and data steps normalized by the composed LION measurement Lipschitz constant. The fixed-validation default is Gaussian initialization with `zeta=4.25`, `dps_epsilon=0.5`, unclipped initial state, and unclipped output for the 256 rows. Explicit FDK-init ablation rows still use Hann FDK `0.3`. The `ct_512_60` row defaults to `patch_batch_size=1` plus `patch_checkpoint_denoiser=True` as a memory-only control for ordinary PaDIS patch denoising; full-quality 512 tuning still needs A100 confirmation. |
 
 The Slurm reconstruction matrix defaults to `PADIS_RECON_METHODS=all`,
 `PADIS_RECON_MODELS=method_default`, and
@@ -1207,12 +1643,12 @@ conda run --no-capture-output -n lion-dev python scripts/paper_scripts/PaDIS/PaD
   --save-previews
 ```
 
-The method-specific physical defaults are PaDIS DPS `zeta=4.5`,
-`dps_epsilon=0.5`, and Hann FDK `0.2`; `ct_20` whole-image diffusion
-`zeta=4.0`; predictor-corrector
-`zeta=4.25, pc_snr=0.04`, Langevin `zeta=4.0, sampling_epsilon=0.5`,
-VE-DDNM `sampling_epsilon=0.1` with corrected clipping, the whole-image
-`ct_fanbeam_180` row with `dps_epsilon=0.5`, and fixed-overlap patch rows with
+The method-specific physical defaults are PaDIS DPS `zeta=4.25`,
+`dps_epsilon=0.5`, Gaussian initialization, and unclipped output;
+whole-image diffusion
+`zeta=4.0` and `dps_epsilon=0.5`; predictor-corrector
+`zeta=4.25, pc_snr=0.01`, Langevin `zeta=4.0, sampling_epsilon=0.5`,
+VE-DDNM `sampling_epsilon=0.1` with corrected clipping, and fixed-overlap patch rows with
 public overlap/tile denoiser layouts, checkpointed denoising,
 `patch_batch_size=1`, and `dps_epsilon=0.5`. Use `--zeta`, `--pc-snr`,
 `--sampling-epsilon`, `--dps-epsilon`, `--patch-batch-size`, or
@@ -1657,7 +2093,7 @@ a replacement for the A100 paper matrix.
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_validation_20260630/padis_dps_3sample_zeta3` | `padis_dps` | 3 `ct_20` test slices, LION-physics least-squares/Lipschitz run | Superseded broader validation. With `zeta=3.0`, the run reached mean PSNR 32.33 dB, SSIM 0.829, edge SSIM 0.584, MAE 0.0152, p95 error 0.0487, and relative sinogram residual 0.00277 versus FDK PSNR 21.00 dB. Later validation improved the same method family with larger physical step sizes. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_validation_20260630/pc_1sample_zeta3p75_lsadj` | `predictor_corrector` | 1 `ct_20` test slice, LION-physics direct-adjoint least-squares/Lipschitz run | Best constant-zeta PC point tested so far. `zeta=3.75` reached PSNR 29.26 dB, SSIM 0.684, edge SSIM 0.460, MAE 0.0221, p95 error 0.0630, and relative sinogram residual 0.00517 versus FDK PSNR 23.17 dB. This remains below the public-compatible PC reference and should not yet drive matrix defaults. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_validation_20260630/pc_1sample_zeta3p75_lsadj_public_pc_layout` | `predictor_corrector` | 1 `ct_20` test slice, LION-physics data step plus public PC denoising-layout diagnostic | Keeping the LION-physics data objective and Lipschitz normalizer but switching to public-helper PC denoising conventions did not close the gap: PSNR 29.00 dB, SSIM 0.690, edge SSIM 0.454, MAE 0.0224, p95 error 0.0641, and relative sinogram residual 0.00564. |
-| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_validation_20260630/pc_1sample_zeta4p25_snr0p08` | `predictor_corrector` | 1 `ct_20` test slice, LION-physics direct-adjoint least-squares/Lipschitz run | Current PC physical default evidence. `zeta=4.25 --pc-snr 0.08` reached PSNR 30.99 dB, SSIM 0.738, edge SSIM 0.519, MAE 0.0189, p95 error 0.0535, and relative sinogram residual 0.00558. This exceeds the 1-slice public-compatible PC reference without public CT scale constants. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_validation_20260630/pc_1sample_zeta4p25_snr0p08` | `predictor_corrector` | 1 `ct_20` test slice, LION-physics direct-adjoint least-squares/Lipschitz run | Earlier PC physical-default evidence, now superseded by the 3-sample `pc_snr=0.01` confirmation. `zeta=4.25 --pc-snr 0.08` reached PSNR 30.99 dB, SSIM 0.738, edge SSIM 0.519, MAE 0.0189, p95 error 0.0535, and relative sinogram residual 0.00558. This exceeds the 1-slice public-compatible PC reference without public CT scale constants. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_validation_20260630/pc_3sample_default` | `predictor_corrector` | 3 `ct_20` test slices, current LION-physics default | No manual sampler flags; this validates the promoted driver default. Mean PSNR 29.79 dB, SSIM 0.747, edge SSIM 0.576, MAE 0.0207, p95 error 0.0660, and relative sinogram residual 0.00758 versus FDK PSNR 21.00 dB. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_validation_20260630/pc_3sample_public_repo_reference` | `predictor_corrector` | 3 `ct_20` test slices, public-compatible reference | Matching reference for the same samples. Mean PSNR 29.94 dB, SSIM 0.729, edge SSIM 0.566, MAE 0.0221, p95 error 0.0639, and relative sinogram residual 0.0466. LION-physics PC is therefore within 0.15 dB PSNR, better on SSIM/edge SSIM/MAE/residual, and no longer depends on the public CT scale constants. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_validation_20260630/langevin_1sample_zeta3p5_lsadj` | `langevin` | 1 `ct_20` test slice, LION-physics direct-adjoint least-squares/Lipschitz run | Best Langevin constant-zeta point tested so far. `zeta=3.5` reached PSNR 31.05 dB, SSIM 0.786, edge SSIM 0.455, MAE 0.0171, p95 error 0.0494, and relative sinogram residual 0.00242 versus FDK PSNR 23.17 dB. This is finite and useful but still below the public-compatible Langevin reference. |
@@ -1678,7 +2114,7 @@ a replacement for the A100 paper matrix.
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_cross_experiment_20260630/admm_tv_padis_dps_1sample` | `admm_tv`, `padis_dps` | 1 test slice per completed paper CT experiment | Escaped-CUDA cross-experiment validation of the forced `lion_physics` matrix path. The completed 8-record verifier passed with finite metrics. `padis_dps` completed `ct_20`, `ct_8`, and `ct_60`; all three beat FDK with PSNRs 32.29, 26.36, and 34.27 dB versus FDK 23.17, 18.94, and 29.09 dB, and relative sinogram residuals 0.00248, 0.00276, and 0.00321. This is direct evidence that the least-squares `operator_lipschitz` normalization transfers across 8, 20, and 60 views without public-repo matching constants. `admm_tv` completed all five paper CT aliases; it beat FDK on `ct_20`, `ct_8`, `ct_60`, and `ct_512_60` but not on `ct_fanbeam_180`, where FDK was already 35.45 dB and TV reached 31.71 dB. The parent matrix command was intentionally interrupted after starting the next long `padis_dps ct_fanbeam_180` row; no metrics were written for that partial row. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_cross_experiment_20260630/padis_dps_fanbeam_1sample` | `padis_dps` | 1 `ct_fanbeam_180` test slice | Historical full fan-beam validation of the earlier LION-physics DPS default before the 120-degree limited-angle redefinition and external-model retuning. The verifier passed 1 record with the better-than-FDK PSNR gate. The sampler used the paper geometric schedule, `sigma_min=0.002`, `sigma_max=10`, least-squares data consistency, `operator_lipschitz` normalization, and `zeta=3.0`. It reached PSNR 35.82 dB versus FDK 35.45 dB, MAE 0.0115, p95 error 0.0322, and relative sinogram residual 0.00345. SSIM was slightly below FDK, 0.868 versus 0.883, so treat this as finite historical evidence rather than current-default evidence. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_matrix_20260630/padis_dps_cross_experiment_3sample` | `padis_dps` | 3 test slices each for `ct_8`, `ct_60`, and `ct_fanbeam_180` | Escaped-CUDA production matrix validation of the promoted LION-physics DPS default outside the already-covered `ct_20` row. The command used `PaDIS_run_reconstruction_matrix.py --models method_default --methods padis_dps --experiments ct_8,ct_60,ct_fanbeam_180 --implementations lion_physics --max-samples 3`, so this validates matrix dispatch, not a manual reconstruction override. The verifier passed 3 expected records with 3 samples each, required every sample to beat FDK, and confirmed paper geometric sigma schedules, least-squares data consistency, `operator_lipschitz` normalization, `data_consistency_scale=1.0`, and no public-repo adjoint scale. `ct_8` reached mean PSNR 26.23 dB, SSIM 0.696, MAE 0.0260, residual 0.00286, and minimum FDK margin 7.42 dB versus FDK mean PSNR 16.71 dB. `ct_60` reached mean PSNR 35.40 dB, SSIM 0.893, MAE 0.0113, residual 0.00372, and minimum FDK margin 5.18 dB versus FDK mean PSNR 27.37 dB. `ct_fanbeam_180` reached mean PSNR 36.52 dB, SSIM 0.907, MAE 0.0103, residual 0.00412, and minimum FDK margin 0.367 dB versus FDK mean PSNR 34.68 dB. This strengthens the claim that the LION-native Lipschitz normalization transfers across sparse-view, high-view, and fan-beam rows without public compatibility scale constants. |
-| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_fanbeam120_limited_angle_smoke_20260704/lion_physics_padis_dps_full` | `padis_dps` | 1 `ct_fanbeam_180` test slice after redefining the alias as 20 views over 120 degrees | Escaped-CUDA full sampler run with the paper geometric schedule, `sigma_min=0.002`, `sigma_max=10`, LION fan-beam FDK initialization, least-squares data consistency, and `operator_lipschitz` normalization. This run predates the LION-physics Hann cutoff change and used frequency scaling `0.9`. The saved metadata reports `PaDIS noise-free 20-view 120-degree LIDC fan-beam CT experiment`. It reached PSNR 31.45 dB, SSIM 0.900, MAE 0.0114, p95 error 0.0448, and relative sinogram residual 0.00218 versus FDK PSNR 21.47 dB and SSIM 0.569. This is one-slice evidence that the new harder limited-angle row is nontrivial but still reconstructable under `lion_physics`, but it should be regenerated with Hann `0.2` before final reporting. |
+| `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_fanbeam120_limited_angle_smoke_20260704/lion_physics_padis_dps_full` | `padis_dps` | 1 `ct_fanbeam_180` test slice after redefining the alias as 20 views over 120 degrees | Escaped-CUDA full sampler run with the paper geometric schedule, `sigma_min=0.002`, `sigma_max=10`, LION fan-beam FDK initialization, least-squares data consistency, and `operator_lipschitz` normalization. This run predates the LION-physics Hann cutoff change and used frequency scaling `0.9`. The saved metadata reports `PaDIS noise-free 20-view 120-degree LIDC fan-beam CT experiment`. It reached PSNR 31.45 dB, SSIM 0.900, MAE 0.0114, p95 error 0.0448, and relative sinogram residual 0.00218 versus FDK PSNR 21.47 dB and SSIM 0.569. This is one-slice evidence that the new harder limited-angle row is nontrivial but still reconstructable under `lion_physics`, but it should be regenerated with Hann `0.3` before final reporting. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_fanbeam120_limited_angle_smoke_20260704/public_repo_padis_dps_full` | `padis_dps` | 1 `ct_fanbeam_180` test slice after redefining the alias as 20 views over 120 degrees | Escaped-CUDA full sampler run using `--implementation public_repo` with the paper geometric sigma schedule and public-compatible DPS mechanics. The saved metadata reports the same 20-view/120-degree experiment. It reached PSNR 33.37 dB, SSIM 0.914, MAE 0.0109, p95 error 0.0377, and relative sinogram residual 0.0333 versus FDK PSNR 21.98 dB and SSIM 0.657. Public-compatible quality is finite and better than FDK on this slice, but the much larger sinogram residual compared with `lion_physics` should be considered when interpreting public-scale compatibility on the harder limited-angle row. |
 | `/home/thomas/DiS/Project/Data/experiments/PaDIS/debug_runs/codex_lion_physics_matrix_20260630/metadata_payload_check` | `padis_dps` | 1 `ct_20` test slice, stopped after 1 outer step | Escaped-CUDA metadata-only check after fixing runtime Lipschitz reporting for CUDA cache keys. Quality is intentionally meaningless because the sampler stopped after one outer step. The saved `metrics.json` now records the actual cached LION operator norm used for `operator_lipschitz`: `operator_norm_estimate=269.3168`, `measurement_operator_norm=269.3168`, `data_lipschitz=72531.52`, `data_lipschitz_objective=sum_squared_residual`, and `data_lipschitz_offset_included=false`. This verifies the reporting path for the physical scaling; the data-step math was already using the cached normalizer during reconstruction. |
 | Current worktree Lipschitz audit | `lion_physics` data-consistency implementation | Code/readme/test inspection, no new reconstruction samples | The physical-mode scaling matches the LION/tomosipo operator-norm convention used elsewhere in LION: `power_method(op)` estimates `||A||`, and least-squares data steps use the composed-map gradient Lipschitz constant `L = ||F||^2 = (abs(measurement_scale) * ||A||)^2` for `F(x)=A(measurement_scale*x + measurement_offset)`. Because the sampler objective is the summed term `0.5 * ||F(x)-y||^2`, not a mean-squared residual, there is no division by `y.numel()`. The affine `measurement_offset` is excluded from `L` because it does not change the linear operator norm. Public-repo constants remain confined to `--implementation public_repo`; forced `lion_physics` matrix rows are guarded by tests to use `operator_lipschitz`, `data_consistency_scale=1.0`, and no public adjoint scale. |
@@ -1733,7 +2169,7 @@ a replacement for the A100 paper matrix.
   this runtime scaling in `metrics.json` as `operator_norm_estimate`,
   `measurement_operator_norm`, and `data_lipschitz` when the norm is available
   from the sampler cache or an explicit `operator_norm` override. Its tuned
-  PaDIS DPS default `zeta=4.5` is
+  PaDIS DPS default `zeta=4.25` is
   not the paper's `0.3 / L2Norm(y - A(x))` coefficient; this is an intentional
   divergence to avoid public-repo scale constants while keeping the update size
   appropriate for LION's operator normalization.
@@ -1757,11 +2193,13 @@ a replacement for the A100 paper matrix.
   geometries and should be regenerated before making claims about the new
   limited-angle row.
 - The LION-physics FDK initialization/default FDK baseline now uses Hann
-  frequency scaling `0.2`, selected by the 25-sample external validation
-  baseline sweep. Public-compatible LION geometry keeps the public fan-beam
-  cutoff `0.3`. Earlier LION-physics validation rows that used Hann `0.9` or
-  `0.3` remain historical evidence only and should be regenerated before final
-  reporting if they are used in figures or tables.
+  frequency scaling `0.3`, matching the public-compatible fan-beam cutoff. The
+  earlier 25-sample analytic-baseline sweep selected `0.2` by a small PSNR
+  margin, but the current fixed-filter policy avoids tuning the analytic FDK
+  filter separately from the reconstruction sampler. Earlier LION-physics
+  validation rows that used Hann `0.9` remain historical evidence only and
+  should be regenerated before final reporting if they are used in figures or
+  tables.
 - The default paper matrix now includes `ct_8` rows for all implemented Table 1
   methods. This added `langevin`, `predictor_corrector`, `ve_ddnm`,
   `patch_average`, and `patch_stitch` 8-view rows to avoid under-reporting the
@@ -1770,7 +2208,7 @@ a replacement for the A100 paper matrix.
   A100 matrix before making paper-quality claims.
 - The tuned LION-physics sampler settings are paper divergences where needed to
   match public-compatible reconstruction quality without public CT scale
-  constants: PC uses `pc_snr=0.04`; Langevin uses
+  constants: PC uses `pc_snr=0.01`; Langevin uses
   `sampling_epsilon=0.5`; VE-DDNM uses `sampling_epsilon=0.1`, noise
   initialization, and corrected DDNM clipping for LION fan-beam stability; the
   whole-image `ct_fanbeam_180` row uses `dps_epsilon=0.5`; and fixed-overlap
@@ -1943,6 +2381,24 @@ a replacement for the A100 paper matrix.
   SSIM 0.9966 and p95 absolute error 0.00500.
   The public repo does not provide runnable ADMM-TV, PnP-ADMM, or whole-image
   diffusion comparison rows to match against.
+- The LION-physics tuning target is now explicitly "match or beat the
+  public-compatible validation reference" where a public-compatible row exists.
+  The tuning summarizer writes `reference_status` so promoted LION-physics rows
+  can be separated from rows that still trail the public-compatible metric
+  anchor. Current completed validation already marks LION-physics PaDIS-DPS,
+  Langevin, predictor-corrector, patch averaging, patch stitching, and the
+  stabilized VE-DDNM row as `beats_reference`.
+  The PC public-gap scan found that reducing the LION-physics corrector SNR to
+  `pc_snr=0.01` moves PC above the public-compatible reference. The 3-sample
+  low-SNR confirmation selected `zeta=4.25`, `pc_snr=0.01` over nearby
+  `zeta=3.75` and `zeta=4.0`; `zeta>=4.5` collapsed and was rejected.
+- Paper-mode and public-compatible modes are now also tuned as implementation
+  families rather than left as fixed anchors only. The strict paper/public
+  defaults remain in the records as anchors, but `paper_full` and
+  `public_repo_full` now provide broad sampler sweeps for the implementations
+  that appear in the inference matrix. These sweeps keep sigma endpoints, CT
+  objective/scaling, FDK filter, and patch geometry fixed unless a future
+  experiment explicitly changes those controls.
 - The target images retain high-frequency CT texture/noise that both public
   PaDIS and LION PaDIS smooth. Matching the public repo and exactly preserving
   all target texture are not simultaneously achievable with this sampler setup.

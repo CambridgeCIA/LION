@@ -1464,6 +1464,17 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.adjoint_data_step_schedule = (
             paper_params.adjoint_data_step_schedule
         )
+        if args.method == "padis_dps":
+            sampler_params.zeta = 0.0075
+            sampler_params.dps_epsilon = 0.5
+        elif args.method == "langevin":
+            sampler_params.zeta = 0.03
+            sampler_params.sampling_epsilon = 0.5
+        elif args.method == "predictor_corrector":
+            sampler_params.zeta = 0.03
+            sampler_params.pc_snr = 0.08
+        elif args.method == "ve_ddnm":
+            sampler_params.sampling_epsilon = 0.1
     elif args.implementation == "public_repo":
         public_params = PaDIS.padis_repo_ct_parameters(model)
         if args.public_repo_sigma_schedule == "paper":
@@ -1498,6 +1509,11 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.pc_reuse_predictor_layout = (
             public_params.pc_reuse_predictor_layout
         )
+        if args.method == "langevin":
+            sampler_params.zeta = 0.2
+            sampler_params.sampling_epsilon = 0.5
+        elif args.method == "ve_ddnm":
+            sampler_params.sampling_epsilon = 0.2
         if args.public_repo_helper_initialization and args.method in (
             "predictor_corrector",
             "langevin",
@@ -1582,18 +1598,22 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         )
         if args.method == "predictor_corrector":
             sampler_params.zeta = 4.25
-            sampler_params.pc_snr = 0.04
+            sampler_params.pc_snr = 0.01
         elif args.method == "langevin":
             sampler_params.zeta = 4.0
             sampler_params.sampling_epsilon = 0.5
         elif args.method == "whole_image_diffusion":
-            if experiment_key == "ct_20":
-                sampler_params.zeta = 4.0
-            if experiment_key == "ct_fanbeam_180":
-                sampler_params.dps_epsilon = 0.5
-        elif args.method == "padis_dps":
-            sampler_params.zeta = 4.5
+            sampler_params.zeta = 4.0
             sampler_params.dps_epsilon = 0.5
+        elif args.method == "padis_dps":
+            sampler_params.zeta = 4.25
+            sampler_params.dps_epsilon = 0.5
+            sampler_params.initial_reconstruction = "noise"
+            sampler_params.clip_initial = False
+            sampler_params.clip_output = False
+            sampler_params.initial_fdk_filter_type = None
+            sampler_params.initial_fdk_frequency_scaling = 1.0
+            sampler_params.initial_fdk_padded = True
         elif args.method in ("patch_average", "patch_stitch"):
             sampler_params.dps_epsilon = 0.5
     if args.method == "ve_ddnm":
@@ -2863,10 +2883,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--tv-lambda",
         type=float,
-        default=0.005,
-        help="TV regularisation weight. The paper uses 0.001 for CT; LION validation promoted 0.005 for the TV substitute.",
+        default=0.001,
+        help="TV regularisation weight. The paper uses 0.001 for CT; fixed-validation also selected 0.001 for the LION TV substitute.",
     )
-    parser.add_argument("--tv-iterations", type=int, default=500)
+    parser.add_argument("--tv-iterations", type=int, default=1000)
     parser.add_argument("--tv-lipschitz", type=float, default=None)
     parser.add_argument("--tv-non-negativity", action="store_true")
     parser.add_argument(
@@ -2876,8 +2896,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="DRUNet denoiser checkpoint for --method pnp_admm.",
     )
     parser.add_argument("--pnp-iterations", type=int, default=60)
-    parser.add_argument("--pnp-eta", type=float, default=2e-5)
-    parser.add_argument("--pnp-cg-iterations", type=int, default=100)
+    parser.add_argument("--pnp-eta", type=float, default=3e-5)
+    parser.add_argument("--pnp-cg-iterations", type=int, default=50)
     parser.add_argument("--pnp-cg-tolerance", type=float, default=1e-7)
     parser.set_defaults(pnp_clip=True)
     parser.add_argument(
