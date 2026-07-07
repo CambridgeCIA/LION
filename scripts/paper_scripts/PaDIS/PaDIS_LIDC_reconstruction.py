@@ -17,6 +17,7 @@ _CACHE_ROOT = pathlib.Path("/tmp") / "lion_matplotlib_cache"
 (_CACHE_ROOT / "xdg").mkdir(parents=True, exist_ok=True)
 os.environ.setdefault("MPLCONFIGDIR", str(_CACHE_ROOT / "mpl"))
 os.environ.setdefault("XDG_CACHE_HOME", str(_CACHE_ROOT / "xdg"))
+os.environ["MPLBACKEND"] = os.environ.get("PADIS_MPLBACKEND", "Agg")
 
 import torch
 import numpy as np
