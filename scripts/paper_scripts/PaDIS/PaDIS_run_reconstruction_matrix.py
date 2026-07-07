@@ -843,13 +843,13 @@ def ordered_jobs(
     def sort_key(item: tuple[int, ReconstructionJob]) -> tuple[int, int, int, int]:
         index, job = item
         fixed_overlap_rank = {
-            "patch_stitch": 0,
-            "patch_average": 1,
+            "patch_average": 0,
+            "patch_stitch": 1,
         }
         if job.method.name in fixed_overlap_rank:
-            return (2, fixed_overlap_rank[job.method.name], 0, index)
+            return (1, fixed_overlap_rank[job.method.name], 0, index)
         if job.experiment == "ct_512_60":
-            return (1, 0, 0, index)
+            return (2, 0, 0, index)
         return (0, 0, 0, index)
 
     return [job for _, job in sorted(enumerate(jobs), key=sort_key)]
@@ -1624,7 +1624,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="default",
         help=(
             "default preserves matrix construction order. gcp_spot runs regular "
-            "jobs first, then ct_512_60 jobs, then patch_stitch/patch_average."
+            "jobs first, then patch_average/patch_stitch jobs, then ct_512_60 jobs."
         ),
     )
     parser.add_argument("--count", action="store_true")

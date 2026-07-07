@@ -102,6 +102,10 @@ if [ "${PADIS_SUBMIT_RECONSTRUCTION:-0}" = "1" ]; then
         PADIS_RECON_START_INDEX="${PADIS_RECON_START_INDEX:-0}"
         PADIS_RECON_SEED="${PADIS_RECON_SEED:-33}"
         PADIS_RECON_DEVICE="${PADIS_RECON_DEVICE:-cuda}"
+        PADIS_RECON_HPARAM_DEFAULTS="${PADIS_RECON_HPARAM_DEFAULTS:-json}"
+        PADIS_RECON_HPARAM_DEFAULTS_JSON="${PADIS_RECON_HPARAM_DEFAULTS_JSON:-$LION_ROOT/scripts/paper_scripts/PaDIS/config/reconstruction_hparam_defaults.json}"
+        PADIS_RECON_HPARAM_RUN_ROOT="${PADIS_RECON_HPARAM_RUN_ROOT:-$run_root/hparam_tuning/runs}"
+        PADIS_RECON_HPARAM_RUN_GLOB="${PADIS_RECON_HPARAM_RUN_GLOB:-fixedval_*}"
         PADIS_PNP_CHECKPOINT="${PADIS_PNP_CHECKPOINT:-}"
         PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-20}"
         PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-5}"
@@ -127,6 +131,10 @@ if [ "${PADIS_SUBMIT_RECONSTRUCTION:-0}" = "1" ]; then
         python scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py \
                 --training-root "$PADIS_TRAIN_ROOT" \
                 --output-root "$PADIS_RECON_ROOT" \
+                --hparam-defaults "$PADIS_RECON_HPARAM_DEFAULTS" \
+                --hparam-defaults-json "$PADIS_RECON_HPARAM_DEFAULTS_JSON" \
+                --hparam-run-root "$PADIS_RECON_HPARAM_RUN_ROOT" \
+                --hparam-run-glob "$PADIS_RECON_HPARAM_RUN_GLOB" \
                 --models "$PADIS_RECON_MODELS" \
                 --methods "$PADIS_RECON_METHODS" \
                 --experiments "$PADIS_RECON_EXPERIMENTS" \
@@ -266,6 +274,10 @@ if [ "${PADIS_SUBMIT_RECONSTRUCTION:-0}" = "1" ]; then
         export PADIS_RECON_START_INDEX="${PADIS_RECON_START_INDEX:-0}"
         export PADIS_RECON_SEED="${PADIS_RECON_SEED:-33}"
         export PADIS_RECON_DEVICE="${PADIS_RECON_DEVICE:-cuda}"
+        export PADIS_RECON_HPARAM_DEFAULTS="${PADIS_RECON_HPARAM_DEFAULTS:-json}"
+        export PADIS_RECON_HPARAM_DEFAULTS_JSON="${PADIS_RECON_HPARAM_DEFAULTS_JSON:-$LION_ROOT/scripts/paper_scripts/PaDIS/config/reconstruction_hparam_defaults.json}"
+        export PADIS_RECON_HPARAM_RUN_ROOT="${PADIS_RECON_HPARAM_RUN_ROOT:-$run_root/hparam_tuning/runs}"
+        export PADIS_RECON_HPARAM_RUN_GLOB="${PADIS_RECON_HPARAM_RUN_GLOB:-fixedval_*}"
         export PADIS_PNP_ROOT
         export PADIS_PNP_CHECKPOINT="${PADIS_PNP_CHECKPOINT:-}"
         export PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-20}"
@@ -329,6 +341,10 @@ EOF
                 python scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py \
                         --training-root "$PADIS_TRAIN_ROOT" \
                         --output-root "$PADIS_RECON_ROOT" \
+                        --hparam-defaults "$PADIS_RECON_HPARAM_DEFAULTS" \
+                        --hparam-defaults-json "$PADIS_RECON_HPARAM_DEFAULTS_JSON" \
+                        --hparam-run-root "$PADIS_RECON_HPARAM_RUN_ROOT" \
+                        --hparam-run-glob "$PADIS_RECON_HPARAM_RUN_GLOB" \
                         --models "$PADIS_RECON_MODELS" \
                         --methods "$PADIS_RECON_METHODS" \
                         --experiments "$PADIS_RECON_EXPERIMENTS" \
@@ -358,6 +374,10 @@ EOF
         python scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py \
                 --training-root "$PADIS_TRAIN_ROOT" \
                 --output-root "$PADIS_RECON_ROOT" \
+                --hparam-defaults "$PADIS_RECON_HPARAM_DEFAULTS" \
+                --hparam-defaults-json "$PADIS_RECON_HPARAM_DEFAULTS_JSON" \
+                --hparam-run-root "$PADIS_RECON_HPARAM_RUN_ROOT" \
+                --hparam-run-glob "$PADIS_RECON_HPARAM_RUN_GLOB" \
                 --models "$PADIS_RECON_MODELS" \
                 --methods "$PADIS_RECON_METHODS" \
                 --experiments "$PADIS_RECON_EXPERIMENTS" \

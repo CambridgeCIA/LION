@@ -39,6 +39,7 @@ EXTERNAL_MODEL_LINKS = {
     "patch_lidc_default/padis_lidc_256.pt": "padis_lidc_default.pt",
     "patch_lidc_512/padis_lidc_512.pt": "padis_lidc_512.pt",
     "whole_lidc_default/whole_image_lidc_256_min_val.pt": "whole_lidc_default.pt",
+    "pnp_lidc_drunet/pnp_lidc_drunet_min_val.pt": "pnp_lidc_drunet_min_val.pt",
     "pnp_lidc_drunet/pnp_lidc_drunet.pt": "pnp_lidc_drunet_min_val.pt",
 }
 
@@ -482,7 +483,25 @@ def padis_dps_lion_full_candidates() -> list[Candidate]:
             )
         )
 
-    for zeta in (3.5, 3.75, 4.0, 4.25, 4.5, 4.55, 4.6, 4.7, 4.8, 5.0):
+    for zeta in (
+        0.5,
+        1.0,
+        1.5,
+        2.0,
+        2.5,
+        3.0,
+        3.25,
+        3.5,
+        3.75,
+        4.0,
+        4.25,
+        4.5,
+        4.55,
+        4.6,
+        4.7,
+        4.8,
+        5.0,
+    ):
         for eps in (0.3, 0.5, 0.65, 0.75, 1.0):
             add(
                 f"core_zeta_{safe_name(f'{zeta:g}')}__eps_{safe_name(f'{eps:g}')}",
@@ -535,6 +554,44 @@ def padis_dps_lion_full_candidates() -> list[Candidate]:
                 "noise",
             ),
         ),
+        (
+            "init_fdk_clipped",
+            (
+                "--initial-reconstruction",
+                "fdk",
+                "--clip-initial",
+                "--clip-output",
+            ),
+        ),
+        (
+            "init_inverse_clipped",
+            (
+                "--initial-reconstruction",
+                "inverse",
+                "--clip-initial",
+                "--clip-output",
+            ),
+        ),
+        (
+            "init_fdk_clipped_no_langevin_noise",
+            (
+                "--initial-reconstruction",
+                "fdk",
+                "--clip-initial",
+                "--clip-output",
+                "--disable-langevin-noise",
+            ),
+        ),
+        (
+            "init_fdk_clipped_no_prior",
+            (
+                "--initial-reconstruction",
+                "fdk",
+                "--clip-initial",
+                "--clip-output",
+                "--disable-prior-score",
+            ),
+        ),
         ("init_inverse", ("--initial-reconstruction", "inverse")),
         ("no_clip_initial", ("--no-clip-initial",)),
         ("no_clip_output", ("--no-clip-output",)),
@@ -549,6 +606,56 @@ def padis_dps_lion_full_candidates() -> list[Candidate]:
             f"langevin_noise_scale_{safe_name(f'{scale:g}')}",
             "--langevin-noise-scale",
             f"{scale:g}",
+        )
+
+    # 512-specific stability diagnostics: keep the paper/LION sigma schedule
+    # and default NFE allocation, but reduce stochasticity without disabling it.
+    for zeta, eps, noise_scale in (
+        (4.25, 0.5, 0.1),
+        (4.25, 0.5, 0.25),
+        (4.25, 0.3, 0.1),
+        (3.0, 0.5, 0.1),
+        (2.0, 0.5, 0.1),
+        (2.0, 0.3, 0.1),
+        (3.0, 0.2, 0.05),
+        (3.0, 0.1, 0.05),
+        (2.0, 0.2, 0.05),
+        (2.0, 0.1, 0.05),
+        (1.0, 0.2, 0.05),
+        (1.0, 0.1, 0.05),
+        (2.0, 0.05, 0.05),
+        (1.0, 0.05, 0.05),
+        (3.0, 0.2, 0.02),
+        (2.0, 0.2, 0.02),
+        (1.0, 0.2, 0.02),
+        (3.0, 0.1, 0.02),
+        (2.0, 0.1, 0.02),
+        (1.0, 0.1, 0.02),
+        (2.0, 0.2, 0.01),
+        (1.0, 0.2, 0.01),
+        (2.0, 0.1, 0.01),
+        (1.0, 0.1, 0.01),
+    ):
+        add(
+            (
+                f"init_fdk_clipped_zeta_{safe_name(f'{zeta:g}')}"
+                f"__eps_{safe_name(f'{eps:g}')}"
+                f"__noise_{safe_name(f'{noise_scale:g}')}"
+            ),
+            "--initial-reconstruction",
+            "fdk",
+            "--clip-initial",
+            "--clip-output",
+            "--zeta",
+            f"{zeta:g}",
+            "--dps-epsilon",
+            f"{eps:g}",
+            "--langevin-noise-scale",
+            f"{noise_scale:g}",
+            notes=(
+                "512 PaDIS-DPS stability candidate: unchanged sigma schedule "
+                "and NFE, nonzero Langevin noise."
+            ),
         )
 
     return unique_candidates(candidates)
@@ -1433,7 +1540,7 @@ def lion_physics_full_candidates() -> list[Candidate]:
                 sigma_choice,
                 prior=prior,
             )
-        for eps in (0.05, 0.1, 0.2, 0.3):
+        for eps in (0.05, 0.075, 0.1, 0.125, 0.2, 0.3):
             add_dps_like(
                 "ve_ddnm",
                 f"sampling_eps_{safe_name(f'{eps:g}')}",
@@ -1441,6 +1548,20 @@ def lion_physics_full_candidates() -> list[Candidate]:
                 f"{eps:g}",
                 prior=prior,
             )
+        for scale in (0.0, 0.5, 1.5):
+            add_dps_like(
+                "ve_ddnm",
+                f"noise_scale_{safe_name(f'{scale:g}')}",
+                "--langevin-noise-scale",
+                f"{scale:g}",
+                prior=prior,
+            )
+        for name, args in (
+            ("clip_denoised", ("--clip-denoised",)),
+            ("clip_state", ("--clip-state",)),
+            ("clip_denoised_and_state", ("--clip-denoised", "--clip-state")),
+        ):
+            add_dps_like("ve_ddnm", name, *args, prior=prior)
         for name, args in (
             ("ddnm_no_corrected_clip", ("--no-ddnm-corrected-clip",)),
             ("ddnm_no_pinv_clip", ("--no-ddnm-pseudoinverse-clip",)),

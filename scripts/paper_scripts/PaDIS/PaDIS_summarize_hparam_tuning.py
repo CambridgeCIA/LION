@@ -22,6 +22,8 @@ DEFAULT_TUNING_RUN_ROOT = pathlib.Path(
 REFERENCE_PSNR_TOLERANCE = 0.05
 REFERENCE_SSIM_TOLERANCE = 0.002
 REFERENCE_MAE_TOLERANCE = 0.0005
+RANK_PSNR_TOLERANCE = 0.1
+RANK_SSIM_TOLERANCE = 0.01
 
 
 def parse_csv(value: str) -> tuple[str, ...] | None:
@@ -146,6 +148,9 @@ def usable_record(record: dict) -> bool:
     if record.get("status") != "completed":
         return False
     summary = record.get("summary") or {}
+    sampler = summary.get("sampler") or {}
+    if sampler.get("stop_after_outer_steps") is not None:
+        return False
     if not summary.get("all_finite_primary_metrics", False):
         return False
     return record_metric(record, "mean_psnr") is not None
@@ -270,11 +275,20 @@ def reference_sort_key(row: dict) -> tuple:
         coverage = row.get("completed_jobs") or 0
     expected = row.get("expected_experiments")
     full_coverage = expected is not None and coverage == expected
+    psnr = row_float(row, "mean_psnr")
+    ssim = row_float(row, "mean_ssim")
+    mae = row_float(row, "mean_mae")
+    is_current_default = str(row.get("candidate") or "") == "current_defaults"
     return (
         1 if full_coverage else 0,
         int(coverage),
-        row_float(row, "mean_psnr") or -1e9,
-        row_float(row, "mean_ssim") or -1e9,
+        round((psnr or -1e9) / RANK_PSNR_TOLERANCE),
+        round((ssim or -1e9) / RANK_SSIM_TOLERANCE),
+        -(mae if mae is not None else 1e9),
+        psnr or -1e9,
+        ssim or -1e9,
+        1 if is_current_default else 0,
+        -len(str(row.get("candidate_args") or "").split()),
     )
 
 
@@ -371,14 +385,23 @@ def sort_rows(rows: list[dict]) -> list[dict]:
         coverage = row["covered_expected_experiments"]
         if coverage is None:
             coverage = row["completed_jobs"]
+        psnr = row_float(row, "mean_psnr")
+        ssim = row_float(row, "mean_ssim")
+        mae = row_float(row, "mean_mae")
+        is_current_default = str(row.get("candidate") or "") == "current_defaults"
         return (
             str(row["method"]),
             str(row["implementation"]),
             str(row["prior"]),
             str(row["model"]),
             -int(coverage),
-            -float(row["mean_psnr"] if row["mean_psnr"] is not None else -1e9),
-            -float(row["mean_ssim"] if row["mean_ssim"] is not None else -1e9),
+            -round((psnr or -1e9) / RANK_PSNR_TOLERANCE),
+            -round((ssim or -1e9) / RANK_SSIM_TOLERANCE),
+            float(mae if mae is not None else 1e9),
+            -float(psnr if psnr is not None else -1e9),
+            -float(ssim if ssim is not None else -1e9),
+            0 if is_current_default else 1,
+            len(str(row.get("candidate_args") or "").split()),
         )
 
     return sorted(rows, key=key)

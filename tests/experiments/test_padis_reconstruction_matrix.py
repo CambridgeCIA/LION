@@ -16,6 +16,7 @@ from scripts.paper_scripts.PaDIS.PaDIS_run_reconstruction_matrix import (
     ordered_jobs,
     resolve_training_root,
 )
+from scripts.paper_scripts.PaDIS.PaDIS_summarize_hparam_tuning import sort_rows
 
 
 MATRIX_SCRIPT = "scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py"
@@ -409,6 +410,192 @@ def test_hparam_consensus_json_applies_to_all_experiments(tmp_path):
     assert payload["expected_sampler"]["dps_epsilon"] == 0.5
 
 
+def test_checked_in_hparam_defaults_cover_slurm_default_matrix(tmp_path):
+    defaults_path = (
+        Path(__file__).parents[2]
+        / "scripts"
+        / "paper_scripts"
+        / "PaDIS"
+        / "config"
+        / "reconstruction_hparam_defaults.json"
+    )
+    args = _args(
+        tmp_path,
+        "--checkpoint-policy",
+        "model_default",
+        "--job-order",
+        "gcp_spot",
+        "--hparam-defaults",
+        "json",
+        "--hparam-defaults-json",
+        str(defaults_path),
+        "--models",
+        "method_default",
+        "--methods",
+        "all",
+        "--experiments",
+        "paper_matrix",
+        "--ablations",
+        "all",
+        "--implementations",
+        "method_default",
+        "--geometries",
+        "lion",
+    )
+    args.pnp_root = args.training_root / "pnp_lidc_drunet"
+
+    payloads = [job_json(args, job) for job in ordered_jobs(args, build_jobs(args))]
+    missing = [
+        (
+            payload["method"],
+            payload["implementation"],
+            payload["model"],
+            payload["experiment"],
+            payload["matrix_group"],
+        )
+        for payload in payloads
+        if payload["method"] != "baseline" and payload["hparam_default"] is None
+    ]
+    non_consensus = [
+        (
+            payload["method"],
+            payload["implementation"],
+            payload["model"],
+            payload["experiment"],
+            payload["hparam_default"]["source_experiment"],
+            payload["hparam_default"]["candidate"],
+            payload["hparam_default"]["exact_model"],
+            payload["hparam_default"]["exact_experiment"],
+        )
+        for payload in payloads
+        if payload["hparam_default"] is not None
+        and payload["hparam_default"]["source_experiment"] != "consensus"
+    ]
+
+    assert len(payloads) == 101
+    assert missing == []
+    assert non_consensus == [
+        (
+            "baseline",
+            "lion_physics",
+            "patch_lidc_512",
+            "ct_512_60",
+            "ct_512_60",
+            "current_defaults",
+            True,
+            True,
+        ),
+        (
+            "admm_tv",
+            "lion_physics",
+            "patch_lidc_512",
+            "ct_512_60",
+            "ct_512_60",
+            "tv_lam_0p001__iters_1000",
+            True,
+            True,
+        ),
+    ]
+    assert {
+        (
+            payload["method"],
+            payload["hparam_default"]["candidate"],
+        )
+        for payload in payloads
+        if payload["model"] == "whole_lidc_default"
+        and payload["method"] in {"langevin", "predictor_corrector", "ve_ddnm"}
+    } == {
+        ("langevin", "zeta_3p5__eps_0p5"),
+        ("predictor_corrector", "zeta_4p25__snr_0p02"),
+        ("ve_ddnm", "sampling_eps_0p2"),
+    }
+
+
+def test_slurm_and_gcp_matrix_launchers_pass_hparam_defaults():
+    root = Path(__file__).parents[2]
+    launcher_paths = sorted(
+        [
+            *(root / "scripts" / "paper_scripts" / "PaDIS" / "slurm").glob("*.sh"),
+            *(root / "scripts" / "paper_scripts" / "PaDIS" / "gcp").glob("*.sh"),
+        ]
+    )
+    missing = []
+    for path in launcher_paths:
+        lines = path.read_text().splitlines()
+        for index, line in enumerate(lines):
+            stripped = line.strip()
+            if (
+                "PaDIS_run_reconstruction_matrix.py" not in stripped
+                or stripped.startswith("#")
+            ):
+                continue
+            window = "\n".join(lines[index : index + 45])
+            if "--hparam-defaults" not in window:
+                missing.append(f"{path.relative_to(root)}:{index + 1}")
+
+    assert missing == []
+
+
+def test_hparam_summary_ranking_prefers_ssim_mae_over_tiny_psnr_gain():
+    rows = [
+        {
+            "method": "padis_dps",
+            "implementation": "public_repo",
+            "prior": "patch",
+            "model": "patch_lidc_default",
+            "candidate": "tiny_psnr_gain",
+            "candidate_args": "--zeta 0.2 --dps-epsilon 0.75",
+            "covered_expected_experiments": 2,
+            "completed_jobs": 2,
+            "mean_psnr": 28.633,
+            "mean_ssim": 0.710,
+            "mean_mae": 0.0233,
+        },
+        {
+            "method": "padis_dps",
+            "implementation": "public_repo",
+            "prior": "patch",
+            "model": "patch_lidc_default",
+            "candidate": "current_defaults",
+            "candidate_args": "",
+            "covered_expected_experiments": 2,
+            "completed_jobs": 2,
+            "mean_psnr": 28.556,
+            "mean_ssim": 0.763,
+            "mean_mae": 0.0220,
+        },
+    ]
+
+    assert sort_rows(rows)[0]["candidate"] == "current_defaults"
+
+
+def test_external_model_staging_links_default_pnp_checkpoint_name(tmp_path):
+    padis_script_dir = Path(__file__).parents[2] / "scripts" / "paper_scripts" / "PaDIS"
+    sys.path.insert(0, str(padis_script_dir))
+    from PaDIS_tune_reconstruction_hyperparameters import (  # type: ignore[import-not-found]
+        EXTERNAL_MODEL_LINKS,
+        ensure_staged_training_root,
+    )
+
+    external_root = tmp_path / "external"
+    training_root = tmp_path / "training"
+    for source_name in set(EXTERNAL_MODEL_LINKS.values()):
+        source = external_root / source_name
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_bytes(b"checkpoint")
+
+    ensure_staged_training_root(
+        external_model_root=external_root,
+        training_root=training_root,
+    )
+
+    min_val = training_root / "pnp_lidc_drunet" / "pnp_lidc_drunet_min_val.pt"
+    legacy = training_root / "pnp_lidc_drunet" / "pnp_lidc_drunet.pt"
+    source = external_root / "pnp_lidc_drunet_min_val.pt"
+    assert min_val.resolve() == source.resolve()
+    assert legacy.resolve() == source.resolve()
+
+
 def test_hparam_defaults_fall_back_to_ct20_for_higher_view_experiments(tmp_path):
     run_root = tmp_path / "hparam_runs"
     _write_hparam_record(
@@ -441,7 +628,7 @@ def test_hparam_defaults_fall_back_to_ct20_for_higher_view_experiments(tmp_path)
     assert payload["expected_sampler"]["dps_epsilon"] == 0.5
 
 
-def test_gcp_spot_job_order_defers_512_and_fixed_overlap_rows(tmp_path):
+def test_gcp_spot_job_order_defers_512_until_after_fixed_overlap_rows(tmp_path):
     args = _args(
         tmp_path,
         "--methods",
@@ -460,19 +647,21 @@ def test_gcp_spot_job_order_defers_512_and_fixed_overlap_rows(tmp_path):
         for index, job in enumerate(jobs)
         if job.method.name in {"patch_stitch", "patch_average"}
     )
+    assert first_fixed_overlap < first_512
     assert all(
         job.experiment != "ct_512_60"
         and job.method.name not in {"patch_stitch", "patch_average"}
-        for job in jobs[:first_512]
+        for job in jobs[:first_fixed_overlap]
     )
     assert all(
-        job.experiment == "ct_512_60"
-        and job.method.name not in {"patch_stitch", "patch_average"}
-        for job in jobs[first_512:first_fixed_overlap]
+        job.experiment != "ct_512_60"
+        and job.method.name in {"patch_stitch", "patch_average"}
+        for job in jobs[first_fixed_overlap:first_512]
     )
+    assert all(job.experiment == "ct_512_60" for job in jobs[first_512:])
     assert [job.method.name for job in jobs[first_fixed_overlap:]][:2] == [
-        "patch_stitch",
-        "patch_stitch",
+        "patch_average",
+        "patch_average",
     ]
 
 

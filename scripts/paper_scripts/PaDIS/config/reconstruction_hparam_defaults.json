@@ -1,9 +1,15 @@
 {
   "schema_version": 1,
-  "description": "Selected PaDIS reconstruction hyperparameter defaults generated from fixed-validation tuning runs. For ct_60 and ct_512_60, the reconstruction matrix falls back to the tuned ct_20 defaults when an exact experiment default is absent.",
+  "description": "Selected PaDIS reconstruction hyperparameter defaults generated as consensus settings across fixed-validation experiments. The same selected args are used across the reconstruction experiment grid for each method/implementation/prior/model target. Exact experiment records are also retained for targets, such as native 512 models, that have no ct_20/ct_8 consensus record.",
   "generated_from_run_root": "/home/thomas/DiS/Project/Data/experiments/PaDIS/hparam_tuning/runs",
   "run_glob": "fixedval_*",
   "selection_metric": "mean_psnr",
+  "selection_scope": "consensus",
+  "consensus_experiment": "consensus",
+  "expected_consensus_experiments": [
+    "ct_20",
+    "ct_8"
+  ],
   "high_view_fallbacks": {
     "ct_60": [
       "ct_20"
@@ -17,22 +23,8 @@
       "method": "admm_tv",
       "implementation": "lion_physics",
       "prior": "patch",
-      "model": "patch_lidc_512",
-      "experiment": "ct_512_60",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "admm_tv__lion_physics__any",
-      "run_name": "fixedval_smoke_validation_20260705",
-      "mean_psnr": 28.482457367327463,
-      "mean_ssim": 0.7386989218564748,
-      "mean_mae": 0.021342869848012924
-    },
-    {
-      "method": "admm_tv",
-      "implementation": "lion_physics",
-      "prior": "patch",
       "model": "patch_lidc_default",
-      "experiment": "ct_20",
+      "experiment": "consensus",
       "args": [
         "--tv-lambda",
         "0.001",
@@ -42,56 +34,561 @@
       "candidate": "tv_lam_0p001__iters_1000",
       "candidate_group": "admm_tv__lion_physics__any",
       "run_name": "fixedval_lion_physics_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 27.763465967751234,
-      "mean_ssim": 0.7661877669659988,
-      "mean_mae": 0.022714950144290924
+      "mean_psnr": 26.551518223804173,
+      "mean_ssim": 0.7238737227371205,
+      "mean_mae": 0.02755201980471611,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
     },
     {
-      "method": "admm_tv",
+      "method": "baseline",
       "implementation": "lion_physics",
       "prior": "patch",
       "model": "patch_lidc_default",
-      "experiment": "ct_60",
+      "experiment": "consensus",
       "args": [],
       "candidate": "current_defaults",
-      "candidate_group": "admm_tv__lion_physics__any",
+      "candidate_group": "baseline__lion_physics__any",
       "run_name": "fixedval_smoke_validation_20260705",
-      "mean_psnr": 28.364442241968288,
-      "mean_ssim": 0.8070484604900936,
-      "mean_mae": 0.019625259563326836
+      "mean_psnr": 22.25031333363712,
+      "mean_ssim": 0.43600381344817,
+      "mean_mae": 0.05404920503497124,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "langevin",
+      "implementation": "lion_physics",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [],
+      "candidate": "current_defaults",
+      "candidate_group": "langevin__lion_physics__patch",
+      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
+      "mean_psnr": 29.86502219987465,
+      "mean_ssim": 0.7928440821921132,
+      "mean_mae": 0.018643485382199287,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "langevin",
+      "implementation": "lion_physics",
+      "prior": "whole_image",
+      "model": "whole_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--zeta",
+        "3.5",
+        "--sampling-epsilon",
+        "0.5"
+      ],
+      "candidate": "zeta_3p5__eps_0p5",
+      "candidate_group": "langevin__lion_physics__whole_image",
+      "run_name": "fixedval_lion_physics_whole_sampler_ct20_validation_20260707",
+      "mean_psnr": 33.582844589742514,
+      "mean_ssim": 0.8468216881387234,
+      "mean_mae": 0.013483772985637188,
+      "source_experiments": [
+        "ct_20"
+      ],
+      "covered_expected_experiments": 1,
+      "expected_experiments": 2
+    },
+    {
+      "method": "langevin",
+      "implementation": "paper",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--zeta",
+        "0.03",
+        "--sampling-epsilon",
+        "0.5"
+      ],
+      "candidate": "zeta_0p03__eps_0p5",
+      "candidate_group": "langevin__paper__patch",
+      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
+      "mean_psnr": 28.94604383105152,
+      "mean_ssim": 0.7334572426338895,
+      "mean_mae": 0.0227131312713027,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "langevin",
+      "implementation": "public_repo",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--zeta",
+        "0.2",
+        "--sampling-epsilon",
+        "0.5"
+      ],
+      "candidate": "zeta_0p2__eps_0p5",
+      "candidate_group": "langevin__public_repo__patch",
+      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
+      "mean_psnr": 27.57669527534614,
+      "mean_ssim": 0.6681245272004251,
+      "mean_mae": 0.026057262904942036,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "padis_dps",
+      "implementation": "lion_physics",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--zeta",
+        "4.25",
+        "--dps-epsilon",
+        "0.5",
+        "--initial-reconstruction",
+        "noise",
+        "--no-clip-initial",
+        "--no-clip-output"
+      ],
+      "candidate": "core_zeta_4p25__eps_0p5",
+      "candidate_group": "padis_dps__lion_physics__any",
+      "run_name": "fixedval_lion_physics_dps_noise_init_ct20_ct8_validation_20260706",
+      "mean_psnr": 31.060594863953266,
+      "mean_ssim": 0.8114316550128606,
+      "mean_mae": 0.016878075432032347,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "padis_dps",
+      "implementation": "paper",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--zeta",
+        "0.0075",
+        "--dps-epsilon",
+        "0.5"
+      ],
+      "candidate": "zeta_0p0075__eps_0p5",
+      "candidate_group": "padis_dps__paper__any",
+      "run_name": "fixedval_public_paper_dps_ct20_ct8_validation_20260705",
+      "mean_psnr": 29.972504533004585,
+      "mean_ssim": 0.7875668896784898,
+      "mean_mae": 0.01936009433120489,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "padis_dps",
+      "implementation": "public_repo",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [],
+      "candidate": "current_defaults",
+      "candidate_group": "padis_dps__public_repo__any",
+      "run_name": "fixedval_public_paper_dps_ct20_ct8_validation_20260705",
+      "mean_psnr": 28.55649486533253,
+      "mean_ssim": 0.7633283666662348,
+      "mean_mae": 0.021962197497487068,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "patch_average",
+      "implementation": "lion_physics",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--zeta",
+        "4",
+        "--dps-epsilon",
+        "0.5"
+      ],
+      "candidate": "core_zeta_4__eps_0p5",
+      "candidate_group": "patch_average__lion_physics__any",
+      "run_name": "fixedval_lion_physics_patch_average_followup_ct20_ct8_validation_20260706",
+      "mean_psnr": 29.78863241126897,
+      "mean_ssim": 0.8093508780052909,
+      "mean_mae": 0.01735540060326457,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "patch_average",
+      "implementation": "public_repo",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [],
+      "candidate": "current_defaults",
+      "candidate_group": "patch_average__public_repo__any",
+      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
+      "mean_psnr": 29.755725185040237,
+      "mean_ssim": 0.7718010709104127,
+      "mean_mae": 0.01971059711650014,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "patch_stitch",
+      "implementation": "lion_physics",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [],
+      "candidate": "current_defaults",
+      "candidate_group": "patch_stitch__lion_physics__any",
+      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
+      "mean_psnr": 28.814329948016223,
+      "mean_ssim": 0.7684370987730074,
+      "mean_mae": 0.020589569117873907,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "patch_stitch",
+      "implementation": "public_repo",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [],
+      "candidate": "current_defaults",
+      "candidate_group": "patch_stitch__public_repo__any",
+      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
+      "mean_psnr": 28.502698498346433,
+      "mean_ssim": 0.7370306915605617,
+      "mean_mae": 0.022908592596650124,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "pnp_admm",
+      "implementation": "lion_physics",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--pnp-eta",
+        "3e-05",
+        "--pnp-iterations",
+        "60"
+      ],
+      "candidate": "eta_3e_05__iters_60",
+      "candidate_group": "pnp_admm__lion_physics__any",
+      "run_name": "fixedval_consensus_ct20_ct8_validation_20260705",
+      "mean_psnr": 24.622824142152652,
+      "mean_ssim": 0.6297097391544695,
+      "mean_mae": 0.03513976000249386,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "predictor_corrector",
+      "implementation": "lion_physics",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--zeta",
+        "4.25",
+        "--pc-snr",
+        "0.01"
+      ],
+      "candidate": "zeta_4p25__snr_0p01",
+      "candidate_group": "predictor_corrector__lion_physics__patch",
+      "run_name": "fixedval_lion_physics_refinement_ct20_ct8_validation_20260705",
+      "mean_psnr": 26.596698390576293,
+      "mean_ssim": 0.6070111476786013,
+      "mean_mae": 0.029387854039669037,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "predictor_corrector",
+      "implementation": "lion_physics",
+      "prior": "whole_image",
+      "model": "whole_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--zeta",
+        "4.25",
+        "--pc-snr",
+        "0.02"
+      ],
+      "candidate": "zeta_4p25__snr_0p02",
+      "candidate_group": "predictor_corrector__lion_physics__whole_image",
+      "run_name": "fixedval_lion_physics_whole_sampler_ct20_validation_20260707",
+      "mean_psnr": 28.12696152967213,
+      "mean_ssim": 0.609460565823962,
+      "mean_mae": 0.02673131600022316,
+      "source_experiments": [
+        "ct_20"
+      ],
+      "covered_expected_experiments": 1,
+      "expected_experiments": 2
+    },
+    {
+      "method": "predictor_corrector",
+      "implementation": "paper",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--zeta",
+        "0.02",
+        "--pc-snr",
+        "0.04"
+      ],
+      "candidate": "zeta_0p02__snr_0p04",
+      "candidate_group": "predictor_corrector__paper__patch",
+      "run_name": "fixedval_paper_pc_veddnm_followup_ct20_ct8_validation_20260707",
+      "mean_psnr": 24.255077679625018,
+      "mean_ssim": 0.40254835873153894,
+      "mean_mae": 0.04220212437212467,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "predictor_corrector",
+      "implementation": "public_repo",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [],
+      "candidate": "current_defaults",
+      "candidate_group": "predictor_corrector__public_repo__patch",
+      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
+      "mean_psnr": 26.26620363146683,
+      "mean_ssim": 0.6001536966270443,
+      "mean_mae": 0.0319415470585227,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "ve_ddnm",
+      "implementation": "lion_physics",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--langevin-noise-scale",
+        "0.5"
+      ],
+      "candidate": "noise_scale_0p5",
+      "candidate_group": "ve_ddnm__lion_physics__patch",
+      "run_name": "fixedval_lion_physics_veddnm_relax_followup_ct20_ct8_validation_20260707",
+      "mean_psnr": 31.315903388832858,
+      "mean_ssim": 0.7748161948006368,
+      "mean_mae": 0.019940231926739216,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "ve_ddnm",
+      "implementation": "lion_physics",
+      "prior": "whole_image",
+      "model": "whole_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--sampling-epsilon",
+        "0.2"
+      ],
+      "candidate": "sampling_eps_0p2",
+      "candidate_group": "ve_ddnm__lion_physics__whole_image",
+      "run_name": "fixedval_lion_physics_whole_sampler_ct20_validation_20260707",
+      "mean_psnr": 34.8077283857504,
+      "mean_ssim": 0.8337957305290699,
+      "mean_mae": 0.013173079118132591,
+      "source_experiments": [
+        "ct_20"
+      ],
+      "covered_expected_experiments": 1,
+      "expected_experiments": 2
+    },
+    {
+      "method": "ve_ddnm",
+      "implementation": "paper",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--ddnm-corrected-clip"
+      ],
+      "candidate": "ddnm_corrected_clip",
+      "candidate_group": "ve_ddnm__paper__patch",
+      "run_name": "fixedval_paper_pc_veddnm_followup_ct20_ct8_validation_20260707",
+      "mean_psnr": 25.08395803010769,
+      "mean_ssim": 0.4193133841829767,
+      "mean_mae": 0.04296311363577843,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "ve_ddnm",
+      "implementation": "public_repo",
+      "prior": "patch",
+      "model": "patch_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--sampling-epsilon",
+        "0.2"
+      ],
+      "candidate": "sampling_eps_0p2",
+      "candidate_group": "ve_ddnm__public_repo__patch",
+      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
+      "mean_psnr": 28.038905136626518,
+      "mean_ssim": 0.599839497587491,
+      "mean_mae": 0.02697986736893654,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "whole_image_diffusion",
+      "implementation": "lion_physics",
+      "prior": "whole_image",
+      "model": "whole_lidc_default",
+      "experiment": "consensus",
+      "args": [],
+      "candidate": "current_defaults",
+      "candidate_group": "whole_image_diffusion__lion_physics__any",
+      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
+      "mean_psnr": 32.00646633727271,
+      "mean_ssim": 0.8213235840239466,
+      "mean_mae": 0.015520094893872738,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
+    },
+    {
+      "method": "whole_image_diffusion",
+      "implementation": "paper",
+      "prior": "whole_image",
+      "model": "whole_lidc_default",
+      "experiment": "consensus",
+      "args": [
+        "--zeta",
+        "0.01",
+        "--dps-epsilon",
+        "0.5"
+      ],
+      "candidate": "core_zeta_0p01__eps_0p5",
+      "candidate_group": "whole_image_diffusion__paper__any",
+      "run_name": "fixedval_whole_image_diffusion_paper_refinement_ct20_ct8_validation_20260707",
+      "mean_psnr": 32.084068015418815,
+      "mean_ssim": 0.8296913217566341,
+      "mean_mae": 0.015936336014419794,
+      "source_experiments": [
+        "ct_20",
+        "ct_8"
+      ],
+      "covered_expected_experiments": 2,
+      "expected_experiments": 2
     },
     {
       "method": "admm_tv",
       "implementation": "lion_physics",
       "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
+      "model": "patch_lidc_512",
+      "experiment": "ct_512_60",
       "args": [
         "--tv-lambda",
-        "0.002",
+        "0.001",
         "--tv-iterations",
         "1000"
       ],
-      "candidate": "tv_lam_0p002__iters_1000",
+      "candidate": "tv_lam_0p001__iters_1000",
       "candidate_group": "admm_tv__lion_physics__any",
-      "run_name": "fixedval_lion_physics_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 25.366142069540874,
-      "mean_ssim": 0.6873733772099998,
-      "mean_mae": 0.03184306621551514
-    },
-    {
-      "method": "admm_tv",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_fanbeam_180",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "admm_tv__lion_physics__any",
-      "run_name": "fixedval_smoke_validation_20260705",
-      "mean_psnr": 26.46760788089313,
-      "mean_ssim": 0.7509365106201845,
-      "mean_mae": 0.02540046162903309
+      "run_name": "fixedval_512_admm_tv_ct512_validation_20260707",
+      "mean_psnr": 29.11046741560428,
+      "mean_ssim": 0.7505178741895167,
+      "mean_mae": 0.02008887194097042
     },
     {
       "method": "baseline",
@@ -106,747 +603,6 @@
       "mean_psnr": 27.282698714083477,
       "mean_ssim": 0.6475354755371271,
       "mean_mae": 0.027730830013751984
-    },
-    {
-      "method": "baseline",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "baseline__lion_physics__any",
-      "run_name": "fixedval_smoke_validation_20260705",
-      "mean_psnr": 24.071910909492587,
-      "mean_ssim": 0.5080001349165763,
-      "mean_mae": 0.042216382920742035
-    },
-    {
-      "method": "baseline",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_60",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "baseline__lion_physics__any",
-      "run_name": "fixedval_smoke_validation_20260705",
-      "mean_psnr": 28.1061718350687,
-      "mean_ssim": 0.7193003700049594,
-      "mean_mae": 0.024474890902638435
-    },
-    {
-      "method": "baseline",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "baseline__lion_physics__any",
-      "run_name": "fixedval_smoke_validation_20260705",
-      "mean_psnr": 20.428715757781653,
-      "mean_ssim": 0.3640074919797638,
-      "mean_mae": 0.06588202714920044
-    },
-    {
-      "method": "baseline",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_fanbeam_180",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "baseline__lion_physics__any",
-      "run_name": "fixedval_smoke_validation_20260705",
-      "mean_psnr": 20.294985801392926,
-      "mean_ssim": 0.5194808548948261,
-      "mean_mae": 0.06975074857473373
-    },
-    {
-      "method": "langevin",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "langevin__lion_physics__patch",
-      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
-      "mean_psnr": 33.45898069304821,
-      "mean_ssim": 0.8535753419189454,
-      "mean_mae": 0.013523507863283157
-    },
-    {
-      "method": "langevin",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "langevin__lion_physics__patch",
-      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
-      "mean_psnr": 26.271063706701092,
-      "mean_ssim": 0.7321128224652812,
-      "mean_mae": 0.023763462901115417
-    },
-    {
-      "method": "langevin",
-      "implementation": "paper",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--zeta",
-        "0.03",
-        "--sampling-epsilon",
-        "0.5"
-      ],
-      "candidate": "zeta_0p03__eps_0p5",
-      "candidate_group": "langevin__paper__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 32.35292240618092,
-      "mean_ssim": 0.7954632498268913,
-      "mean_mae": 0.017822839319705963
-    },
-    {
-      "method": "langevin",
-      "implementation": "paper",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [
-        "--zeta",
-        "0.03",
-        "--sampling-epsilon",
-        "0.5"
-      ],
-      "candidate": "zeta_0p03__eps_0p5",
-      "candidate_group": "langevin__paper__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 25.53916525592211,
-      "mean_ssim": 0.6714512354408875,
-      "mean_mae": 0.027603423222899437
-    },
-    {
-      "method": "langevin",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--zeta",
-        "0.3",
-        "--sampling-epsilon",
-        "0.5"
-      ],
-      "candidate": "zeta_0p3__eps_0p5",
-      "candidate_group": "langevin__public_repo__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 28.399147701360366,
-      "mean_ssim": 0.6662303565567554,
-      "mean_mae": 0.024946779012680054
-    },
-    {
-      "method": "langevin",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [
-        "--zeta",
-        "0.2",
-        "--sampling-epsilon",
-        "0.75"
-      ],
-      "candidate": "zeta_0p2__eps_0p75",
-      "candidate_group": "langevin__public_repo__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 27.350259585988045,
-      "mean_ssim": 0.7340782369564359,
-      "mean_mae": 0.024123478680849075
-    },
-    {
-      "method": "padis_dps",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--zeta",
-        "4.25",
-        "--dps-epsilon",
-        "0.5",
-        "--initial-reconstruction",
-        "noise",
-        "--no-clip-initial",
-        "--no-clip-output"
-      ],
-      "candidate": "core_zeta_4p25__eps_0p5",
-      "candidate_group": "padis_dps__lion_physics__any",
-      "run_name": "fixedval_lion_physics_dps_noise_init_ct20_ct8_validation_20260706",
-      "mean_psnr": 35.21725878513214,
-      "mean_ssim": 0.8690573454740047,
-      "mean_mae": 0.012092784978449345
-    },
-    {
-      "method": "padis_dps",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_60",
-      "args": [
-        "--zeta",
-        "4.25",
-        "--dps-epsilon",
-        "0.3"
-      ],
-      "candidate": "core_zeta_4p25__eps_0p3",
-      "candidate_group": "padis_dps__lion_physics__any",
-      "run_name": "fixedval_lion_physics_dps_fdk_extra_validation_20260706",
-      "mean_psnr": 38.37642576247678,
-      "mean_ssim": 0.9149709395170211,
-      "mean_mae": 0.009051802568137646
-    },
-    {
-      "method": "padis_dps",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [
-        "--zeta",
-        "4.25",
-        "--dps-epsilon",
-        "0.3",
-        "--initial-reconstruction",
-        "noise",
-        "--no-clip-initial",
-        "--no-clip-output"
-      ],
-      "candidate": "core_zeta_4p25__eps_0p3",
-      "candidate_group": "padis_dps__lion_physics__any",
-      "run_name": "fixedval_lion_physics_dps_noise_init_ct20_ct8_validation_20260706",
-      "mean_psnr": 27.157811407332737,
-      "mean_ssim": 0.7392495782542804,
-      "mean_mae": 0.022555798292160034
-    },
-    {
-      "method": "padis_dps",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_fanbeam_180",
-      "args": [
-        "--zeta",
-        "4.25",
-        "--dps-epsilon",
-        "0.5",
-        "--initial-reconstruction",
-        "noise",
-        "--no-clip-initial",
-        "--no-clip-output"
-      ],
-      "candidate": "core_zeta_4p25__eps_0p5",
-      "candidate_group": "padis_dps__lion_physics__any",
-      "run_name": "fixedval_lion_physics_dps_noise_init_extra_validation_20260706",
-      "mean_psnr": 30.243154825045053,
-      "mean_ssim": 0.8296892976015862,
-      "mean_mae": 0.01634606346487999
-    },
-    {
-      "method": "padis_dps",
-      "implementation": "paper",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--zeta",
-        "0.0075",
-        "--dps-epsilon",
-        "0.5"
-      ],
-      "candidate": "zeta_0p0075__eps_0p5",
-      "candidate_group": "padis_dps__paper__any",
-      "run_name": "fixedval_public_paper_dps_ct20_ct8_validation_20260705",
-      "mean_psnr": 33.9268606546463,
-      "mean_ssim": 0.8455948726623058,
-      "mean_mae": 0.01414627768099308
-    },
-    {
-      "method": "padis_dps",
-      "implementation": "paper",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [
-        "--zeta",
-        "0.01",
-        "--dps-epsilon",
-        "0.5"
-      ],
-      "candidate": "zeta_0p01__eps_0p5",
-      "candidate_group": "padis_dps__paper__any",
-      "run_name": "fixedval_public_paper_dps_ct20_ct8_validation_20260705",
-      "mean_psnr": 26.286977017490667,
-      "mean_ssim": 0.7259040727970942,
-      "mean_mae": 0.024195438250899315
-    },
-    {
-      "method": "padis_dps",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--zeta",
-        "0.2",
-        "--dps-epsilon",
-        "0.5"
-      ],
-      "candidate": "zeta_0p2__eps_0p5",
-      "candidate_group": "padis_dps__public_repo__any",
-      "run_name": "fixedval_public_paper_dps_ct20_ct8_validation_20260705",
-      "mean_psnr": 32.19443758383179,
-      "mean_ssim": 0.8552133012618441,
-      "mean_mae": 0.01416252925992012
-    },
-    {
-      "method": "padis_dps",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [
-        "--zeta",
-        "0.2",
-        "--dps-epsilon",
-        "0.75"
-      ],
-      "candidate": "zeta_0p2__eps_0p75",
-      "candidate_group": "padis_dps__public_repo__any",
-      "run_name": "fixedval_public_paper_dps_ct20_ct8_validation_20260705",
-      "mean_psnr": 25.603432297768485,
-      "mean_ssim": 0.5758733325472464,
-      "mean_mae": 0.03162048012018204
-    },
-    {
-      "method": "patch_average",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--zeta",
-        "3.5",
-        "--dps-epsilon",
-        "0.5"
-      ],
-      "candidate": "core_zeta_3p5__eps_0p5",
-      "candidate_group": "patch_average__lion_physics__any",
-      "run_name": "fixedval_lion_physics_patch_average_followup_ct20_ct8_validation_20260706",
-      "mean_psnr": 31.41185643544665,
-      "mean_ssim": 0.8464320337878708,
-      "mean_mae": 0.014489386230707169
-    },
-    {
-      "method": "patch_average",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "patch_average__lion_physics__any",
-      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
-      "mean_psnr": 27.384653258048736,
-      "mean_ssim": 0.7616113305823113,
-      "mean_mae": 0.02169431932270527
-    },
-    {
-      "method": "patch_average",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "patch_average__public_repo__any",
-      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
-      "mean_psnr": 33.0850187119495,
-      "mean_ssim": 0.8262843610973358,
-      "mean_mae": 0.015342147089540958
-    },
-    {
-      "method": "patch_average",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "patch_average__public_repo__any",
-      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
-      "mean_psnr": 26.426431658130973,
-      "mean_ssim": 0.7173177807234896,
-      "mean_mae": 0.02407904714345932
-    },
-    {
-      "method": "patch_stitch",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "patch_stitch__lion_physics__any",
-      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
-      "mean_psnr": 32.81476927393148,
-      "mean_ssim": 0.8323232640476227,
-      "mean_mae": 0.014574741013348103
-    },
-    {
-      "method": "patch_stitch",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "patch_stitch__lion_physics__any",
-      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
-      "mean_psnr": 24.813890622100963,
-      "mean_ssim": 0.7045509334983919,
-      "mean_mae": 0.02660439722239971
-    },
-    {
-      "method": "patch_stitch",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "patch_stitch__public_repo__any",
-      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
-      "mean_psnr": 32.16212041520609,
-      "mean_ssim": 0.7972427895123959,
-      "mean_mae": 0.016906268894672394
-    },
-    {
-      "method": "patch_stitch",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "patch_stitch__public_repo__any",
-      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
-      "mean_psnr": 24.843276581486776,
-      "mean_ssim": 0.6768185936087274,
-      "mean_mae": 0.028910916298627853
-    },
-    {
-      "method": "pnp_admm",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--pnp-eta",
-        "2e-05",
-        "--pnp-iterations",
-        "40"
-      ],
-      "candidate": "eta_2e_05__iters_40",
-      "candidate_group": "pnp_admm__lion_physics__any",
-      "run_name": "fixedval_consensus_ct20_ct8_validation_20260705",
-      "mean_psnr": 28.069268370923837,
-      "mean_ssim": 0.7240393359620803,
-      "mean_mae": 0.02439751848578453
-    },
-    {
-      "method": "pnp_admm",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [
-        "--pnp-eta",
-        "3e-05",
-        "--pnp-iterations",
-        "60"
-      ],
-      "candidate": "eta_3e_05__iters_60",
-      "candidate_group": "pnp_admm__lion_physics__any",
-      "run_name": "fixedval_consensus_ct20_ct8_validation_20260705",
-      "mean_psnr": 21.182702356696566,
-      "mean_ssim": 0.539881740249489,
-      "mean_mae": 0.045796044170856476
-    },
-    {
-      "method": "predictor_corrector",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--zeta",
-        "4.25",
-        "--pc-snr",
-        "0.01"
-      ],
-      "candidate": "zeta_4p25__snr_0p01",
-      "candidate_group": "predictor_corrector__lion_physics__patch",
-      "run_name": "fixedval_lion_physics_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 28.200443331375617,
-      "mean_ssim": 0.6720867628663566,
-      "mean_mae": 0.024235617369413376
-    },
-    {
-      "method": "predictor_corrector",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [
-        "--zeta",
-        "4.25",
-        "--pc-snr",
-        "0.01"
-      ],
-      "candidate": "zeta_4p25__snr_0p01",
-      "candidate_group": "predictor_corrector__lion_physics__patch",
-      "run_name": "fixedval_lion_physics_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 24.99295344977697,
-      "mean_ssim": 0.5419355324908459,
-      "mean_mae": 0.0345400907099247
-    },
-    {
-      "method": "predictor_corrector",
-      "implementation": "paper",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--zeta",
-        "0.03",
-        "--pc-snr",
-        "0.08"
-      ],
-      "candidate": "zeta_0p03__snr_0p08",
-      "candidate_group": "predictor_corrector__paper__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 25.042258236708797,
-      "mean_ssim": 0.4086095830131933,
-      "mean_mae": 0.04073657840490341
-    },
-    {
-      "method": "predictor_corrector",
-      "implementation": "paper",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [
-        "--zeta",
-        "0.03",
-        "--pc-snr",
-        "0.08"
-      ],
-      "candidate": "zeta_0p03__snr_0p08",
-      "candidate_group": "predictor_corrector__paper__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 22.675772429883022,
-      "mean_ssim": 0.3607017356968004,
-      "mean_mae": 0.047811295837163925
-    },
-    {
-      "method": "predictor_corrector",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "predictor_corrector__public_repo__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 27.65475343721522,
-      "mean_ssim": 0.6769006686160024,
-      "mean_mae": 0.027162550017237663
-    },
-    {
-      "method": "predictor_corrector",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "predictor_corrector__public_repo__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 24.87765382571844,
-      "mean_ssim": 0.5234067246380862,
-      "mean_mae": 0.03672054409980774
-    },
-    {
-      "method": "ve_ddnm",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--sampling-epsilon",
-        "0.2"
-      ],
-      "candidate": "sampling_eps_0p2",
-      "candidate_group": "ve_ddnm__lion_physics__patch",
-      "run_name": "fixedval_lion_physics_veddnm_followup_ct20_ct8_validation_20260706",
-      "mean_psnr": 31.286045201364914,
-      "mean_ssim": 0.7128119719187058,
-      "mean_mae": 0.01924685388803482
-    },
-    {
-      "method": "ve_ddnm",
-      "implementation": "lion_physics",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [
-        "--initial-reconstruction",
-        "fdk"
-      ],
-      "candidate": "ddnm_init_fdk",
-      "candidate_group": "ve_ddnm__lion_physics__patch",
-      "run_name": "fixedval_lion_physics_veddnm_followup_ct20_ct8_validation_20260706",
-      "mean_psnr": 21.524566394214624,
-      "mean_ssim": 0.2661970136356095,
-      "mean_mae": 0.0584428645670414
-    },
-    {
-      "method": "ve_ddnm",
-      "implementation": "paper",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--sampling-epsilon",
-        "0.1"
-      ],
-      "candidate": "sampling_eps_0p1",
-      "candidate_group": "ve_ddnm__paper__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 28.764728534063295,
-      "mean_ssim": 0.5806368012877107,
-      "mean_mae": 0.0271172933280468
-    },
-    {
-      "method": "ve_ddnm",
-      "implementation": "paper",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [
-        "--sampling-epsilon",
-        "0.05"
-      ],
-      "candidate": "sampling_eps_0p05",
-      "candidate_group": "ve_ddnm__paper__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 17.1782708050087,
-      "mean_ssim": 0.16703255958591315,
-      "mean_mae": 0.08992275595664978
-    },
-    {
-      "method": "ve_ddnm",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_20",
-      "args": [
-        "--sampling-epsilon",
-        "0.2"
-      ],
-      "candidate": "sampling_eps_0p2",
-      "candidate_group": "ve_ddnm__public_repo__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 30.69067577418901,
-      "mean_ssim": 0.6685530208325386,
-      "mean_mae": 0.021339401602745056
-    },
-    {
-      "method": "ve_ddnm",
-      "implementation": "public_repo",
-      "prior": "patch",
-      "model": "patch_lidc_default",
-      "experiment": "ct_8",
-      "args": [
-        "--sampling-epsilon",
-        "0.2"
-      ],
-      "candidate": "sampling_eps_0p2",
-      "candidate_group": "ve_ddnm__public_repo__patch",
-      "run_name": "fixedval_public_paper_sampler_refinement_ct20_ct8_validation_20260705",
-      "mean_psnr": 25.387134499064025,
-      "mean_ssim": 0.5311259743424435,
-      "mean_mae": 0.03262033313512802
-    },
-    {
-      "method": "whole_image_diffusion",
-      "implementation": "lion_physics",
-      "prior": "whole_image",
-      "model": "whole_lidc_default",
-      "experiment": "ct_20",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "whole_image_diffusion__lion_physics__any",
-      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
-      "mean_psnr": 34.76649842131663,
-      "mean_ssim": 0.8571244990196228,
-      "mean_mae": 0.012546749785542488
-    },
-    {
-      "method": "whole_image_diffusion",
-      "implementation": "lion_physics",
-      "prior": "whole_image",
-      "model": "whole_lidc_default",
-      "experiment": "ct_8",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "whole_image_diffusion__lion_physics__any",
-      "run_name": "fixedval_gap_defaults_ct20_ct8_validation_20260706",
-      "mean_psnr": 29.24643425322879,
-      "mean_ssim": 0.7855226690282703,
-      "mean_mae": 0.018493440002202988
-    },
-    {
-      "method": "whole_image_diffusion",
-      "implementation": "paper",
-      "prior": "whole_image",
-      "model": "whole_lidc_default",
-      "experiment": "ct_20",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "whole_image_diffusion__paper__any",
-      "run_name": "fixedval_public_paper_default_anchors_ct20_ct8_validation_20260705",
-      "mean_psnr": 5.3801687913242935,
-      "mean_ssim": 0.2371764983310513,
-      "mean_mae": 0.5318887233734131
-    },
-    {
-      "method": "whole_image_diffusion",
-      "implementation": "paper",
-      "prior": "whole_image",
-      "model": "whole_lidc_default",
-      "experiment": "ct_8",
-      "args": [],
-      "candidate": "current_defaults",
-      "candidate_group": "whole_image_diffusion__paper__any",
-      "run_name": "fixedval_public_paper_default_anchors_ct20_ct8_validation_20260705",
-      "mean_psnr": 10.730210397929184,
-      "mean_ssim": 0.34397698049417397,
-      "mean_mae": 0.2808513939380646
     }
   ]
 }

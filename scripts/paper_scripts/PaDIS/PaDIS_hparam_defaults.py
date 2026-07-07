@@ -82,6 +82,9 @@ def completed_finite_record(record: dict) -> bool:
     if record.get("status") != "completed":
         return False
     summary = record.get("summary") or {}
+    sampler = summary.get("sampler") or {}
+    if sampler.get("stop_after_outer_steps") is not None:
+        return False
     if not summary.get("all_finite_primary_metrics", False):
         return False
     return finite_float(summary.get("mean_psnr")) is not None
@@ -416,7 +419,21 @@ def selected_consensus_records(
         previous = by_target.get(key)
         if previous is None or consensus_rank(record) >= consensus_rank(previous):
             by_target[key] = record
-    return [by_target[key] for key in sorted(by_target)]
+    supplemental_exact_records = []
+    for record in selected_default_records(records):
+        key = consensus_target_key(record)
+        if key not in by_target:
+            supplemental_exact_records.append(record)
+    return [
+        *[by_target[key] for key in sorted(by_target)],
+        *sorted(
+            supplemental_exact_records,
+            key=lambda record: (
+                consensus_target_key(record),
+                str(record.get("experiment") or ""),
+            ),
+        ),
+    ]
 
 
 def record_json_entry(record: dict) -> dict:
@@ -470,7 +487,9 @@ def build_defaults_payload(
             "Selected PaDIS reconstruction hyperparameter defaults generated "
             "as consensus settings across fixed-validation experiments. The "
             "same selected args are used across the reconstruction experiment "
-            "grid for each method/implementation/prior/model target."
+            "grid for each method/implementation/prior/model target. Exact "
+            "experiment records are also retained for targets, such as native "
+            "512 models, that have no ct_20/ct_8 consensus record."
         )
     else:
         raise ValueError(

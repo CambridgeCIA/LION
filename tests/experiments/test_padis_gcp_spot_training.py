@@ -8,6 +8,9 @@ LION_ROOT = Path(__file__).resolve().parents[2]
 GCP_RUNNER = (
     LION_ROOT / "scripts/paper_scripts/PaDIS/gcp/run_PaDIS_GCP_spot_training.sh"
 )
+GCP_MANUAL_RECONSTRUCTION = (
+    LION_ROOT / "scripts/paper_scripts/PaDIS/gcp/run_PaDIS_GCP_manual_reconstruction.sh"
+)
 GCP_STARTUP = LION_ROOT / "scripts/paper_scripts/PaDIS/gcp/padis_gcp_spot_startup.sh"
 GCP_METADATA_STARTUP = (
     LION_ROOT / "scripts/paper_scripts/PaDIS/gcp/padis_gcp_spot_metadata_startup.sh"
@@ -80,9 +83,72 @@ def _command_path(train_root, task_name, phase=None):
 
 def test_gcp_spot_runner_is_executable():
     assert GCP_RUNNER.stat().st_mode & 0o111
+    assert GCP_MANUAL_RECONSTRUCTION.stat().st_mode & 0o111
     assert GCP_STARTUP.stat().st_mode & 0o111
     assert GCP_METADATA_STARTUP.stat().st_mode & 0o111
     assert GCP_SHUTDOWN.stat().st_mode & 0o111
+
+
+def test_gcp_manual_reconstruction_dry_run_uses_bucket_mount_paths(tmp_path):
+    data_mount = tmp_path / "mnt_data"
+    env = {
+        **os.environ,
+        "PADIS_MANUAL_RECON_DRY_RUN": "1",
+        "PADIS_MANUAL_RECON_SKIP_ENV_ACTIVATE": "1",
+        "PADIS_MOUNT_BUCKET": "0",
+        "PADIS_DATA_MOUNT": str(data_mount),
+        "LION_DATA_PATH": str(data_mount / "Datasets"),
+        "LION_EXPERIMENTS_PATH": str(data_mount / "Datasets/experiments"),
+        "PADIS_RUN_ROOT": str(data_mount / "Datasets/experiments/PaDIS"),
+        "PADIS_RECON_METHODS": "baseline",
+        "PADIS_RECON_EXPERIMENTS": "ct_20",
+        "PADIS_RECON_ABLATIONS": "none",
+        "PADIS_RECON_MAX_SAMPLES": "1",
+        "PADIS_RECON_SAVE_PREVIEWS": "0",
+        "PADIS_RECON_TASKS_PER_GPU": "1",
+    }
+
+    result = subprocess.run(
+        ["bash", str(GCP_MANUAL_RECONSTRUCTION)],
+        cwd=LION_ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    recon_root = (
+        data_mount
+        / "Datasets/experiments/PaDIS/final_real_runs"
+        / f"{DEFAULT_GCP_RUN_NAME}_reconstruction"
+    )
+    state_dir = recon_root / ".manual_gcp_reconstruction"
+    manifest_text = (state_dir / "manifest.txt").read_text()
+    assert "gcs_bucket=padis-bucket\n" in manifest_text
+    assert f"data_mount={data_mount}\n" in manifest_text
+    assert "mount_bucket=0\n" in manifest_text
+    assert "reconstruction_checkpoint_policy=min_intense_val\n" in manifest_text
+    assert "reconstruction_job_order=gcp_spot\n" in manifest_text
+    assert "reconstruction_hparam_defaults=json\n" in manifest_text
+
+    jobs = json.loads((recon_root / "reconstruction_matrix_jobs.json").read_text())
+    assert len(jobs) == 1
+    assert jobs[0]["method"] == "baseline"
+    assert jobs[0]["experiment"] == "ct_20"
+
+    command = (
+        state_dir / "logs/reconstruction_000000.reconstruction.command.txt"
+    ).read_text()
+    assert "--training-root" in command
+    assert str(data_mount / "Datasets/experiments/PaDIS/final_real_runs") in command
+    assert "--checkpoint-policy min_intense_val" in command
+    assert "--hparam-defaults json" in command
+    assert "--job-order gcp_spot" in command
+
+    done_marker = state_dir / "done/reconstruction_000000.reconstruction.done"
+    assert done_marker.is_file()
+    assert (state_dir / "last_sync.txt").is_file()
 
 
 def test_gcp_spot_runner_dry_run_builds_expected_training_commands(tmp_path):
@@ -504,12 +570,18 @@ def test_gcp_spot_runner_runs_resumable_reconstruction_phase(tmp_path):
         for index, job in enumerate(jobs)
         if job["method"] in {"patch_stitch", "patch_average"}
     )
+    assert first_fixed < first_512
     assert all(
         job["experiment"] != "ct_512_60"
         and job["method"] not in {"patch_stitch", "patch_average"}
-        for job in jobs[:first_512]
+        for job in jobs[:first_fixed]
     )
-    assert all(job["experiment"] == "ct_512_60" for job in jobs[first_512:first_fixed])
+    assert all(
+        job["experiment"] != "ct_512_60"
+        and job["method"] in {"patch_stitch", "patch_average"}
+        for job in jobs[first_fixed:first_512]
+    )
+    assert all(job["experiment"] == "ct_512_60" for job in jobs[first_512:])
 
     command = (
         train_root
