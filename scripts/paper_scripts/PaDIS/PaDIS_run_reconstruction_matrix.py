@@ -234,6 +234,9 @@ DEFAULT_PAPER_MATRIX_RESTRICTED_MAIN_JOBS = frozenset(
         ("padis_dps", "public_repo"),
     }
 )
+DEFAULT_PAPER_MATRIX_EXTRA_CT_VE_DDNM_EXPERIMENTS = frozenset(
+    {"ct_60", "ct_fanbeam_180"}
+)
 
 METHOD_TASKS = (
     MethodTask(
@@ -603,6 +606,11 @@ def include_job_in_default_paper_matrix(
         return True
     if job.matrix_group != "main":
         return False
+    if (
+        job.method.name == "ve_ddnm"
+        and job.experiment in DEFAULT_PAPER_MATRIX_EXTRA_CT_VE_DDNM_EXPERIMENTS
+    ):
+        return job.implementation in CORE_IMPLEMENTATIONS_BY_METHOD["ve_ddnm"]
     return (
         job.method.name,
         job.implementation,
@@ -846,10 +854,15 @@ def ordered_jobs(
             "patch_average": 0,
             "patch_stitch": 1,
         }
+        if (
+            job.method.name == "ve_ddnm"
+            and job.experiment in DEFAULT_PAPER_MATRIX_EXTRA_CT_VE_DDNM_EXPERIMENTS
+        ):
+            return (1, 0, 0, index)
         if job.method.name in fixed_overlap_rank:
-            return (1, fixed_overlap_rank[job.method.name], 0, index)
+            return (2, fixed_overlap_rank[job.method.name], 0, index)
         if job.experiment == "ct_512_60":
-            return (2, 0, 0, index)
+            return (3, 0, 0, index)
         return (0, 0, 0, index)
 
     return [job for _, job in sorted(enumerate(jobs), key=sort_key)]
@@ -1624,7 +1637,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="default",
         help=(
             "default preserves matrix construction order. gcp_spot runs regular "
-            "jobs first, then patch_average/patch_stitch jobs, then ct_512_60 jobs."
+            "jobs first, then late-added VE-DDNM extra-CT jobs, then "
+            "patch_average/patch_stitch jobs, then ct_512_60 jobs."
         ),
     )
     parser.add_argument("--count", action="store_true")

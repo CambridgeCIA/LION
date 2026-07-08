@@ -24,6 +24,7 @@ DEFAULT_RECONSTRUCTION_HPARAM_DEFAULTS_JSON = (
 )
 HIGH_VIEW_FALLBACKS = {
     "ct_60": ("ct_20",),
+    "ct_fanbeam_180": ("ct_20",),
     "ct_512_60": ("ct_20",),
 }
 

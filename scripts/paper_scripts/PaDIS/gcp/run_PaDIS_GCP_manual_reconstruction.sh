@@ -276,6 +276,7 @@ sync_bucket_mount() {
 }
 
 prepare_reconstruction_matrix() {
+        local new_jobs_json reconcile_args=()
         mkdir -p "$PADIS_RECON_ROOT"
         build_reconstruction_base_command
         if [ "$PADIS_MANUAL_RECON_DRY_RUN" != "1" ] \
@@ -286,7 +287,26 @@ prepare_reconstruction_matrix() {
         if ! [[ "$RECON_TASK_COUNT" =~ ^[0-9]+$ ]] || [ "$RECON_TASK_COUNT" -le 0 ]; then
                 die "Reconstruction matrix produced invalid task count: $RECON_TASK_COUNT"
         fi
-        "${RECON_BASE_CMD[@]}" --list > "$PADIS_RECON_EXPECTED_JOBS_JSON"
+        new_jobs_json="$PADIS_RECON_EXPECTED_JOBS_JSON.tmp.$BASHPID"
+        "${RECON_BASE_CMD[@]}" --list > "$new_jobs_json"
+        if [ "$PADIS_RECON_RECONCILE_MANIFEST" = "1" ]; then
+                reconcile_args=(
+                        python -u scripts/paper_scripts/PaDIS/PaDIS_reconcile_reconstruction_manifest.py
+                        --old-json "$PADIS_RECON_EXPECTED_JOBS_JSON"
+                        --new-json "$new_jobs_json"
+                        --output-json "$PADIS_RECON_EXPECTED_JOBS_JSON"
+                        --state-dir "$STATE_DIR"
+                        --done-dir "$DONE_DIR"
+                        --failed-dir "$FAILED_DIR"
+                )
+                if [ "$PADIS_MANUAL_RECON_DRY_RUN" = "1" ]; then
+                        reconcile_args+=(--skip-output-check)
+                fi
+                "${reconcile_args[@]}" > "$STATE_DIR/reconstruction_manifest_reconcile.json"
+        else
+                mv "$new_jobs_json" "$PADIS_RECON_EXPECTED_JOBS_JSON"
+        fi
+        rm -f "$new_jobs_json"
         log "Prepared reconstruction matrix with $RECON_TASK_COUNT jobs at $PADIS_RECON_EXPECTED_JOBS_JSON."
         sync_bucket_mount
 }
@@ -428,6 +448,7 @@ write_manifest() {
                 printf 'reconstruction_tasks_per_gpu=%s\n' "$RECON_TASKS_PER_GPU"
                 printf 'reconstruction_checkpoint_policy=%s\n' "$PADIS_RECON_CHECKPOINT_POLICY"
                 printf 'reconstruction_job_order=%s\n' "$PADIS_RECON_JOB_ORDER"
+                printf 'reconstruction_reconcile_manifest=%s\n' "$PADIS_RECON_RECONCILE_MANIFEST"
                 printf 'reconstruction_hparam_defaults=%s\n' "$PADIS_RECON_HPARAM_DEFAULTS"
                 printf 'reconstruction_hparam_defaults_json=%s\n' "$PADIS_RECON_HPARAM_DEFAULTS_JSON"
                 printf 'reconstruction_methods=%s\n' "$PADIS_RECON_METHODS"
@@ -490,6 +511,7 @@ PADIS_RECON_HPARAM_RUN_ROOT="${PADIS_RECON_HPARAM_RUN_ROOT:-$PADIS_RUN_ROOT/hpar
 PADIS_RECON_HPARAM_RUN_GLOB="${PADIS_RECON_HPARAM_RUN_GLOB:-fixedval_*}"
 PADIS_RECON_ALLOW_MISSING_CHECKPOINTS="${PADIS_RECON_ALLOW_MISSING_CHECKPOINTS:-0}"
 PADIS_RECON_EXPECTED_JOBS_JSON="${PADIS_RECON_EXPECTED_JOBS_JSON:-$PADIS_RECON_ROOT/reconstruction_matrix_jobs.json}"
+PADIS_RECON_RECONCILE_MANIFEST="${PADIS_RECON_RECONCILE_MANIFEST:-1}"
 PADIS_PNP_OUTPUT_ROOT="${PADIS_PNP_OUTPUT_ROOT:-$PADIS_TRAIN_ROOT}"
 PADIS_PNP_RUN_NAME="${PADIS_PNP_RUN_NAME:-pnp_lidc_drunet}"
 PADIS_PNP_VALIDATION_NAME="${PADIS_PNP_VALIDATION_NAME:-pnp_lidc_drunet_min_val.pt}"
