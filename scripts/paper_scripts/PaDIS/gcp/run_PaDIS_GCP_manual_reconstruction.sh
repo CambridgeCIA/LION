@@ -153,7 +153,7 @@ gpu_total_memory_mib() {
 
 resolve_reconstruction_tasks_per_gpu() {
         local requested min_memory memory gpu_id
-        requested="${PADIS_RECON_TASKS_PER_GPU:-${PADIS_GCP_RECON_TASKS_PER_GPU:-auto}}"
+        requested="${PADIS_RECON_TASKS_PER_GPU:-${PADIS_GCP_RECON_TASKS_PER_GPU:-2}}"
         if [ "$requested" != "auto" ]; then
                 [[ "$requested" =~ ^[1-9][0-9]*$ ]] || die "PADIS_RECON_TASKS_PER_GPU must be a positive integer or auto."
                 RECON_TASKS_PER_GPU="$requested"
@@ -178,6 +178,122 @@ resolve_reconstruction_tasks_per_gpu() {
         elif [ -n "$min_memory" ] && [ "$min_memory" -ge 40000 ]; then
                 RECON_TASKS_PER_GPU=2
         fi
+}
+
+ramdisk_fs_type() {
+        local target="$1"
+        if command -v findmnt >/dev/null 2>&1; then
+                findmnt -n -o FSTYPE --target "$target" 2>/dev/null || true
+        else
+                stat -f -c %T "$target" 2>/dev/null || true
+        fi
+}
+
+ensure_training_ramdisk() {
+        local fs_type mount_cmd=(mount -t tmpfs)
+        if ! mkdir -p "$PADIS_RAM_DISK" 2>/dev/null; then
+                command -v sudo >/dev/null 2>&1 || die "Cannot create $PADIS_RAM_DISK and sudo is unavailable."
+                sudo mkdir -p "$PADIS_RAM_DISK"
+                sudo chown "$(id -u):$(id -g)" "$PADIS_RAM_DISK"
+        fi
+        fs_type="$(ramdisk_fs_type "$PADIS_RAM_DISK")"
+        case "$fs_type" in
+                tmpfs|ramfs)
+                        if [ ! -w "$PADIS_RAM_DISK" ] && command -v sudo >/dev/null 2>&1; then
+                                sudo chown "$(id -u):$(id -g)" "$PADIS_RAM_DISK"
+                        fi
+                        return
+                        ;;
+        esac
+
+        if [ "$PADIS_MANUAL_RECON_CREATE_RAMDISK" != "1" ]; then
+                die "$PADIS_RAM_DISK is backed by '$fs_type', not tmpfs/ramfs. Mount it first or set PADIS_MANUAL_RECON_USE_RAMDISK_DATA=0."
+        fi
+
+        if [ -n "$PADIS_RAM_DISK_SIZE" ]; then
+                mount_cmd+=(-o "size=$PADIS_RAM_DISK_SIZE")
+        fi
+        mount_cmd+=(tmpfs "$PADIS_RAM_DISK")
+        log "Mounting tmpfs ramdisk at $PADIS_RAM_DISK."
+        if command -v sudo >/dev/null 2>&1; then
+                sudo "${mount_cmd[@]}"
+                sudo chown "$(id -u):$(id -g)" "$PADIS_RAM_DISK"
+        else
+                "${mount_cmd[@]}"
+        fi
+        PADIS_RAMDISK_MOUNTED_BY_RUNNER=1
+        fs_type="$(ramdisk_fs_type "$PADIS_RAM_DISK")"
+        case "$fs_type" in
+                tmpfs|ramfs)
+                        ;;
+                *)
+                        die "Failed to mount $PADIS_RAM_DISK as tmpfs/ramfs; current type is '$fs_type'."
+                        ;;
+        esac
+}
+
+stage_training_data_on_ramdisk() {
+        local source_folder marker
+        if [ "$PADIS_MANUAL_RECON_USE_RAMDISK_DATA" != "1" ]; then
+                PADIS_PNP_TRAIN_DATA_FOLDER="${PADIS_PNP_TRAIN_DATA_FOLDER:-$PADIS_DATA_FOLDER}"
+                export PADIS_PNP_TRAIN_DATA_FOLDER
+                return
+        fi
+
+        source_folder="${PADIS_DATA_FOLDER:-$LION_DATA_PATH/processed/LIDC-IDRI}"
+        [ -d "$source_folder" ] || die "Processed LIDC data folder not found: $source_folder"
+        ensure_training_ramdisk
+        mkdir -p "$PADIS_PNP_RAMDISK_DATA_FOLDER"
+        marker="$PADIS_PNP_RAMDISK_DATA_FOLDER/.padis_lidc_staged"
+
+        if [ -f "$marker" ] \
+                && find "$PADIS_PNP_RAMDISK_DATA_FOLDER" -maxdepth 1 -type d -name 'LIDC-IDRI-*' -print -quit | grep -q .; then
+                log "Using already staged LIDC data at $PADIS_PNP_RAMDISK_DATA_FOLDER."
+        else
+                log "Staging processed LIDC data from $source_folder to $PADIS_PNP_RAMDISK_DATA_FOLDER."
+                rm -f "$marker"
+                if command -v rsync >/dev/null 2>&1; then
+                        rsync -a --delete --info=progress2 "$source_folder"/ "$PADIS_PNP_RAMDISK_DATA_FOLDER"/
+                else
+                        cp -a "$source_folder"/. "$PADIS_PNP_RAMDISK_DATA_FOLDER"/
+                fi
+                date --iso-8601=seconds > "$marker"
+        fi
+
+        PADIS_PNP_TRAIN_DATA_FOLDER="$PADIS_PNP_RAMDISK_DATA_FOLDER"
+        export PADIS_PNP_TRAIN_DATA_FOLDER
+}
+
+cleanup_training_ramdisk() {
+        if [ "$PADIS_MANUAL_RECON_USE_RAMDISK_DATA" != "1" ]; then
+                return
+        fi
+        if [ "$PADIS_MANUAL_RECON_REMOVE_RAMDISK_AFTER_TRAINING" != "1" ]; then
+                return
+        fi
+
+        if [ "${PADIS_RAMDISK_MOUNTED_BY_RUNNER:-0}" = "1" ]; then
+                log "Unmounting temporary training ramdisk at $PADIS_RAM_DISK."
+                if command -v sudo >/dev/null 2>&1; then
+                        sudo umount "$PADIS_RAM_DISK"
+                        sudo rmdir "$PADIS_RAM_DISK" 2>/dev/null || true
+                else
+                        umount "$PADIS_RAM_DISK"
+                        rmdir "$PADIS_RAM_DISK" 2>/dev/null || true
+                fi
+                PADIS_RAMDISK_MOUNTED_BY_RUNNER=0
+                PADIS_PNP_TRAIN_DATA_FOLDER=""
+                export PADIS_PNP_TRAIN_DATA_FOLDER
+                return
+        fi
+
+        if [ -n "${PADIS_PNP_RAMDISK_DATA_FOLDER:-}" ] \
+                && [ -d "$PADIS_PNP_RAMDISK_DATA_FOLDER" ]; then
+                log "Removing staged training data at $PADIS_PNP_RAMDISK_DATA_FOLDER."
+                rm -rf "$PADIS_PNP_RAMDISK_DATA_FOLDER"
+        fi
+        PADIS_PNP_TRAIN_DATA_FOLDER=""
+        export PADIS_PNP_TRAIN_DATA_FOLDER
 }
 
 build_manual_wandb_args() {
@@ -211,6 +327,7 @@ run_trainable_checkpoint_if_missing() {
         local validation_name="$7"
         local use_noise_level="$8"
         local max_train_seconds="${9:-}"
+        local pnp_data_folder
         local cmd=()
 
         if [ -f "$checkpoint_path" ]; then
@@ -219,6 +336,7 @@ run_trainable_checkpoint_if_missing() {
         fi
 
         log "Missing required $label checkpoint; training $run_name before reconstruction."
+        pnp_data_folder="${PADIS_PNP_TRAIN_DATA_FOLDER:-$PADIS_DATA_FOLDER}"
         build_manual_wandb_args "$run_name"
         cmd=(
                 python -u scripts/paper_scripts/PaDIS/PaDIS_LIDC_PnP_denoiser.py
@@ -264,8 +382,8 @@ run_trainable_checkpoint_if_missing() {
         if [ -n "$PADIS_PNP_PATCH_SIZE" ]; then
                 cmd+=(--patch-size "$PADIS_PNP_PATCH_SIZE")
         fi
-        if [ -n "$PADIS_DATA_FOLDER" ]; then
-                cmd+=(--data-folder "$PADIS_DATA_FOLDER")
+        if [ -n "$pnp_data_folder" ]; then
+                cmd+=(--data-folder "$pnp_data_folder")
         fi
         if [ -n "$max_train_seconds" ]; then
                 cmd+=(--max-train-seconds "$max_train_seconds")
@@ -285,8 +403,16 @@ run_trainable_checkpoint_if_missing() {
 }
 
 ensure_reconstruction_training_inputs() {
+        local needs_training=0
         if [ "$PADIS_RECON_TRAIN_MISSING_CHECKPOINTS" != "1" ]; then
                 return
+        fi
+        if [ ! -f "$PADIS_RECON_PNP_CHECKPOINT" ] \
+                || [ ! -f "$PADIS_RECON_PNP_NOISE_COND_CHECKPOINT" ]; then
+                needs_training=1
+        fi
+        if [ "$needs_training" = "1" ]; then
+                stage_training_data_on_ramdisk
         fi
         run_trainable_checkpoint_if_missing \
                 "standard" \
@@ -308,6 +434,9 @@ ensure_reconstruction_training_inputs() {
                 "$PADIS_PNP_NOISE_COND_VALIDATION_NAME" \
                 1 \
                 "$PADIS_PNP_NOISE_COND_MAX_TRAIN_SECONDS"
+        if [ "$needs_training" = "1" ]; then
+                cleanup_training_ramdisk
+        fi
 }
 
 build_reconstruction_base_command() {
@@ -647,6 +776,13 @@ PADIS_RECON_EXPECTED_JOBS_JSON="${PADIS_RECON_EXPECTED_JOBS_JSON:-$PADIS_RECON_R
 PADIS_RECON_RECONCILE_MANIFEST="${PADIS_RECON_RECONCILE_MANIFEST:-1}"
 PADIS_PNP_OUTPUT_ROOT="${PADIS_PNP_OUTPUT_ROOT:-$PADIS_TRAIN_ROOT}"
 PADIS_RECON_TRAIN_MISSING_CHECKPOINTS="${PADIS_RECON_TRAIN_MISSING_CHECKPOINTS:-${PADIS_RECON_TRAIN_MISSING_PNP:-1}}"
+PADIS_RAM_DISK="${PADIS_RAM_DISK:-/mnt/ram-disk}"
+PADIS_RAM_DISK_SIZE="${PADIS_RAM_DISK_SIZE:-}"
+PADIS_MANUAL_RECON_USE_RAMDISK_DATA="${PADIS_MANUAL_RECON_USE_RAMDISK_DATA:-1}"
+PADIS_MANUAL_RECON_CREATE_RAMDISK="${PADIS_MANUAL_RECON_CREATE_RAMDISK:-1}"
+PADIS_MANUAL_RECON_REMOVE_RAMDISK_AFTER_TRAINING="${PADIS_MANUAL_RECON_REMOVE_RAMDISK_AFTER_TRAINING:-1}"
+PADIS_PNP_RAMDISK_DATA_FOLDER="${PADIS_PNP_RAMDISK_DATA_FOLDER:-$PADIS_RAM_DISK/lidc_processed}"
+PADIS_PNP_TRAIN_DATA_FOLDER="${PADIS_PNP_TRAIN_DATA_FOLDER:-}"
 PADIS_NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-0}"
 PADIS_WANDB_PROJECT="${PADIS_WANDB_PROJECT:-PaDIS-Reproduction}"
 PADIS_WANDB_ENTITY="${PADIS_WANDB_ENTITY:-}"
