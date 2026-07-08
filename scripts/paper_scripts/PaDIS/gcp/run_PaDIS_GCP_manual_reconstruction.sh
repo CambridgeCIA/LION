@@ -263,10 +263,14 @@ cleanup_training_ramdisk() {
         if [ "${PADIS_RAMDISK_MOUNTED_BY_RUNNER:-0}" = "1" ]; then
                 log "Unmounting temporary training ramdisk at $PADIS_RAM_DISK."
                 if command -v sudo >/dev/null 2>&1; then
-                        sudo umount "$PADIS_RAM_DISK"
+                        sudo umount "$PADIS_RAM_DISK" \
+                                || sudo umount -l "$PADIS_RAM_DISK" \
+                                || log "WARNING: failed to unmount busy ramdisk $PADIS_RAM_DISK; continuing."
                         sudo rmdir "$PADIS_RAM_DISK" 2>/dev/null || true
                 else
-                        umount "$PADIS_RAM_DISK"
+                        umount "$PADIS_RAM_DISK" \
+                                || umount -l "$PADIS_RAM_DISK" \
+                                || log "WARNING: failed to unmount busy ramdisk $PADIS_RAM_DISK; continuing."
                         rmdir "$PADIS_RAM_DISK" 2>/dev/null || true
                 fi
                 PADIS_RAMDISK_MOUNTED_BY_RUNNER=0

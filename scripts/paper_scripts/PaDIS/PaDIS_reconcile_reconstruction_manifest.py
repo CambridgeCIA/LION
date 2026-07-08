@@ -186,17 +186,73 @@ def migrate_marker_kind(
     return migrated_count, stale_count
 
 
+def write_done_marker_from_output(
+    *,
+    done_dir: Path,
+    failed_dir: Path | None,
+    index: int,
+    job: dict,
+) -> bool:
+    destination = marker_path(done_dir, index, "done")
+    if destination.exists():
+        return False
+    metrics_path = metrics_path_for_job(job)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    now = _datetime.datetime.now(_datetime.UTC).isoformat()
+    with open(destination, "w") as file:
+        file.write(f"completed={now}\n")
+        file.write("phase=reconstruction\n")
+        file.write(f"task_index={index}\n")
+        file.write("source=completed_output_reconcile\n")
+        if metrics_path is not None:
+            file.write(f"metrics_path={metrics_path}\n")
+
+    if failed_dir is not None:
+        failed_marker = marker_path(failed_dir, index, "failed")
+        if failed_marker.exists():
+            failed_marker.unlink()
+    return True
+
+
+def synthesize_done_markers_from_completed_outputs(
+    *,
+    jobs: list[dict],
+    done_dir: Path,
+    failed_dir: Path | None,
+    skip_output_check: bool,
+) -> int:
+    if skip_output_check:
+        return 0
+    created = 0
+    for index, job in enumerate(jobs):
+        if completed_output_exists(job) and write_done_marker_from_output(
+            done_dir=done_dir,
+            failed_dir=failed_dir,
+            index=index,
+            job=job,
+        ):
+            created += 1
+    return created
+
+
 def reconcile(args: argparse.Namespace) -> dict:
     new_jobs = load_manifest(args.new_json)
     if not args.old_json.is_file():
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(args.new_json, args.output_json)
+        done_from_outputs = synthesize_done_markers_from_completed_outputs(
+            jobs=new_jobs,
+            done_dir=args.done_dir,
+            failed_dir=args.failed_dir,
+            skip_output_check=args.skip_output_check,
+        )
         return {
             "old_manifest_found": False,
             "new_jobs": len(new_jobs),
             "matched_jobs": 0,
             "migrated_markers": {},
             "stale_markers": {},
+            "done_markers_from_completed_outputs": done_from_outputs,
         }
 
     old_jobs = load_manifest(args.old_json)
@@ -224,6 +280,12 @@ def reconcile(args: argparse.Namespace) -> dict:
 
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(args.new_json, args.output_json)
+    done_from_outputs = synthesize_done_markers_from_completed_outputs(
+        jobs=new_jobs,
+        done_dir=args.done_dir,
+        failed_dir=args.failed_dir,
+        skip_output_check=args.skip_output_check,
+    )
     return {
         "old_manifest_found": True,
         "old_jobs": len(old_jobs),
@@ -232,6 +294,7 @@ def reconcile(args: argparse.Namespace) -> dict:
         "backup_root": str(backup_root),
         "migrated_markers": migrated,
         "stale_markers": stale,
+        "done_markers_from_completed_outputs": done_from_outputs,
     }
 
 

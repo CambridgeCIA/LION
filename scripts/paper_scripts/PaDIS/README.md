@@ -2422,13 +2422,23 @@ a replacement for the A100 paper matrix.
   that appear in the inference matrix. These sweeps keep sigma endpoints, CT
   objective/scaling, FDK filter, and patch geometry fixed unless a future
   experiment explicitly changes those controls.
-- Exact-model 512 PaDIS-DPS tuning remains unresolved on the local GTX 1070.
-  The matrix has a real `patch_lidc_512` checkpoint and can dispatch the 512
-  rows, but a full public-compatible single-sample DPS validation row was still
-  running after about 40 minutes without metrics and was stopped. The current
-  `ct_512_60` PaDIS-DPS rows therefore use the same consensus hyperparameters
-  tuned on the default 256 patch model. This is a pragmatic fallback, not a
-  claim that 512 DPS has been separately optimized.
+- Exact-model 512 PaDIS-DPS tuning is now being checked against a working
+  public-fork 512/60 reference rather than treated as a dispatch-only row. The
+  `PaDIS_lion_recon` fork completed the public `ct_parbeam` 60-view DPS path on
+  one LIDC validation slice with the trained `padis_lidc_512.pt` checkpoint.
+  The literal README/EDM schedule reached PSNR 32.61 dB and SSIM 0.802; the
+  paper geometric schedule with `sigma_min=0.002`, `sigma_max=10`, and
+  `zeta=0.3` reached PSNR 33.81 dB and SSIM 0.807. This confirms that 512/60
+  PaDIS is executable and sensible on the local data when the public fork is
+  corrected for 512 crop width and long-graph memory retention.
+  LION `--implementation public_repo --experiment ct_512_60 --geometry lion`
+  is still being tuned against that same single-slice anchor while retaining
+  LION fan-beam/FDK geometry. Completed LION runs with the paper geometric
+  schedule reached PSNR 31.93 dB at `zeta=0.4` and 32.00 dB at `zeta=0.5`;
+  a `zeta=0.8` run was launched on 2026-07-08 and was still active at the time
+  of this note. The final matrix should not yet treat 512 public-compatible DPS
+  as separately optimized until this gap to the public-fork 33.81 dB anchor is
+  closed or explicitly reported.
 - The target images retain high-frequency CT texture/noise that both public
   PaDIS and LION PaDIS smooth. Matching the public repo and exactly preserving
   all target texture are not simultaneously achievable with this sampler setup.
