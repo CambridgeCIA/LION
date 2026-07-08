@@ -240,7 +240,8 @@ task_category() {
                 printf 'whole\n'
         elif [[ "$task_name" == patch_lidc_* ]]; then
                 printf 'patch\n'
-        elif [ "$task_name" = "$PNP_TASK_NAME" ]; then
+        elif [ "$task_name" = "$PNP_TASK_NAME" ] \
+                || [ "$task_name" = "$PNP_NOISE_COND_TASK_NAME" ]; then
                 printf 'pnp\n'
         else
                 die "Unknown task category for $task_name"
@@ -426,6 +427,10 @@ task_final_checkpoint() {
                 printf '%s\n' "$PADIS_TRAIN_ROOT/$PADIS_PNP_RUN_NAME/$PADIS_PNP_FINAL_NAME"
                 return
         fi
+        if [ "$task_name" = "$PNP_NOISE_COND_TASK_NAME" ]; then
+                printf '%s\n' "$PADIS_TRAIN_ROOT/$PADIS_PNP_NOISE_COND_RUN_NAME/$PADIS_PNP_NOISE_COND_FINAL_NAME"
+                return
+        fi
 
         index="$(task_index_by_name "$task_name")"
         task_args="${PADIS_TASK_ARGUMENTS[$index]}"
@@ -441,6 +446,10 @@ task_final_full_checkpoint() {
                 printf '%s\n' "$PADIS_TRAIN_ROOT/$PADIS_PNP_RUN_NAME/$PADIS_PNP_FINAL_FULL_NAME"
                 return
         fi
+        if [ "$task_name" = "$PNP_NOISE_COND_TASK_NAME" ]; then
+                printf '%s\n' "$PADIS_TRAIN_ROOT/$PADIS_PNP_NOISE_COND_RUN_NAME/$PADIS_PNP_NOISE_COND_FINAL_FULL_NAME"
+                return
+        fi
 
         final_checkpoint="$(task_final_checkpoint "$task_name")"
         printf '%s\n' "${final_checkpoint%.pt}_full.pt"
@@ -449,7 +458,8 @@ task_final_full_checkpoint() {
 task_validation_intense_checkpoint() {
         local task_name="$1"
         local index task_args engine prefix
-        if [ "$task_name" = "$PNP_TASK_NAME" ]; then
+        if [ "$task_name" = "$PNP_TASK_NAME" ] \
+                || [ "$task_name" = "$PNP_NOISE_COND_TASK_NAME" ]; then
                 printf '\n'
                 return
         fi
@@ -667,11 +677,29 @@ build_diffusion_command() {
 
 build_pnp_command() {
         local task_name="$1"
+        local run_name final_name final_full_name checkpoint_pattern validation_name
+        local use_noise_level max_train_seconds
+        run_name="$PADIS_PNP_RUN_NAME"
+        final_name="$PADIS_PNP_FINAL_NAME"
+        final_full_name="$PADIS_PNP_FINAL_FULL_NAME"
+        checkpoint_pattern="$PADIS_PNP_CHECKPOINT_PATTERN"
+        validation_name="$PADIS_PNP_VALIDATION_NAME"
+        use_noise_level="$PADIS_PNP_USE_NOISE_LEVEL"
+        max_train_seconds="$PADIS_PNP_MAX_TRAIN_SECONDS"
+        if [ "$task_name" = "$PNP_NOISE_COND_TASK_NAME" ]; then
+                run_name="$PADIS_PNP_NOISE_COND_RUN_NAME"
+                final_name="$PADIS_PNP_NOISE_COND_FINAL_NAME"
+                final_full_name="$PADIS_PNP_NOISE_COND_FINAL_FULL_NAME"
+                checkpoint_pattern="$PADIS_PNP_NOISE_COND_CHECKPOINT_PATTERN"
+                validation_name="$PADIS_PNP_NOISE_COND_VALIDATION_NAME"
+                use_noise_level=1
+                max_train_seconds="$PADIS_PNP_NOISE_COND_MAX_TRAIN_SECONDS"
+        fi
         build_wandb_args "$task_name"
         CMD=(
                 python -u scripts/paper_scripts/PaDIS/PaDIS_LIDC_PnP_denoiser.py
                 --output-root "$PADIS_PNP_OUTPUT_ROOT"
-                --run-name "$PADIS_PNP_RUN_NAME"
+                --run-name "$run_name"
                 --batch-size "$PADIS_PNP_BATCH_SIZE"
                 --epochs "$PADIS_PNP_EPOCHS"
                 --learning-rate "$PADIS_PNP_LR"
@@ -692,10 +720,10 @@ build_pnp_command() {
                 --seed "$PADIS_PNP_SEED"
                 --device cuda
                 --num-workers "$PADIS_PNP_NUM_WORKERS"
-                --final-name "$PADIS_PNP_FINAL_NAME"
-                --final-full-name "$PADIS_PNP_FINAL_FULL_NAME"
-                --checkpoint-pattern "$PADIS_PNP_CHECKPOINT_PATTERN"
-                --validation-name "$PADIS_PNP_VALIDATION_NAME"
+                --final-name "$final_name"
+                --final-full-name "$final_full_name"
+                --checkpoint-pattern "$checkpoint_pattern"
+                --validation-name "$validation_name"
         )
         if [ "$PADIS_PNP_FULL_LIDC" = "1" ]; then
                 CMD+=(--full-lidc)
@@ -706,7 +734,7 @@ build_pnp_command() {
         if [ -n "$PADIS_PNP_MAX_VALIDATION_SAMPLES" ]; then
                 CMD+=(--max-validation-samples "$PADIS_PNP_MAX_VALIDATION_SAMPLES")
         fi
-        if [ "$PADIS_PNP_USE_NOISE_LEVEL" = "1" ]; then
+        if [ "$use_noise_level" = "1" ]; then
                 CMD+=(--use-noise-level)
         fi
         if [ -n "$PADIS_PNP_PATCH_SIZE" ]; then
@@ -715,8 +743,8 @@ build_pnp_command() {
         if [ -n "$PADIS_DATA_FOLDER" ]; then
                 CMD+=(--data-folder "$PADIS_DATA_FOLDER")
         fi
-        if [ -n "$PADIS_PNP_MAX_TRAIN_SECONDS" ]; then
-                CMD+=(--max-train-seconds "$PADIS_PNP_MAX_TRAIN_SECONDS")
+        if [ -n "$max_train_seconds" ]; then
+                CMD+=(--max-train-seconds "$max_train_seconds")
         fi
         CMD+=("${WANDB_ARGS[@]}")
 }
@@ -724,7 +752,8 @@ build_pnp_command() {
 build_task_command() {
         local task_name="$1"
         local remaining_seconds="$2"
-        if [ "$task_name" = "$PNP_TASK_NAME" ]; then
+        if [ "$task_name" = "$PNP_TASK_NAME" ] \
+                || [ "$task_name" = "$PNP_NOISE_COND_TASK_NAME" ]; then
                 build_pnp_command "$task_name"
         else
                 build_diffusion_command "$task_name" "$remaining_seconds"
@@ -1064,6 +1093,9 @@ build_reconstruction_base_command() {
                 --device "$PADIS_RECON_DEVICE"
                 --pnp-root "$PADIS_PNP_ROOT"
                 --pnp-checkpoint "$PADIS_RECON_PNP_CHECKPOINT"
+                --pnp-noise-conditioned-root "$PADIS_PNP_NOISE_COND_ROOT"
+                --pnp-noise-conditioned-checkpoint "$PADIS_RECON_PNP_NOISE_COND_CHECKPOINT"
+                --pnp-noise-conditioned-noise-level "$PADIS_PNP_NOISE_COND_NOISE_LEVEL"
                 --pnp-iterations "$PADIS_PNP_ITERATIONS"
                 --pnp-eta "$PADIS_PNP_ETA"
                 --pnp-cg-iterations "$PADIS_PNP_CG_ITERATIONS"
@@ -1461,6 +1493,7 @@ PADIS_RUN_STAMP="${PADIS_RUN_STAMP:-$PADIS_GCP_RUN_NAME}"
 PADIS_TRAIN_ROOT="${PADIS_TRAIN_ROOT:-$PADIS_RUN_ROOT/final_real_runs/$PADIS_GCP_RUN_NAME}"
 PADIS_PNP_OUTPUT_ROOT="${PADIS_PNP_OUTPUT_ROOT:-$PADIS_TRAIN_ROOT}"
 PNP_TASK_NAME="${PADIS_GCP_PNP_TASK_NAME:-pnp_lidc_drunet}"
+PNP_NOISE_COND_TASK_NAME="${PADIS_GCP_PNP_NOISE_COND_TASK_NAME:-pnp_lidc_drunet_noise_cond}"
 
 PADIS_DATA_ROOT="${LION_DATA_PATH:-$LION_ROOT/../Data}"
 PADIS_CACHE_ROOT="${PADIS_CACHE_ROOT:-$PADIS_DATA_ROOT/processed/LIDC-IDRI-cache}"
@@ -1531,6 +1564,14 @@ PADIS_PNP_FINAL_FULL_NAME="${PADIS_PNP_FINAL_FULL_NAME:-${PADIS_PNP_FINAL_NAME%.
 PADIS_PNP_CHECKPOINT_PATTERN="${PADIS_PNP_CHECKPOINT_PATTERN:-pnp_lidc_drunet_check_*.pt}"
 PADIS_PNP_VALIDATION_NAME="${PADIS_PNP_VALIDATION_NAME:-pnp_lidc_drunet_min_val.pt}"
 PADIS_PNP_ROOT="${PADIS_PNP_ROOT:-$PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_RUN_NAME}"
+PADIS_PNP_NOISE_COND_RUN_NAME="${PADIS_PNP_NOISE_COND_RUN_NAME:-pnp_lidc_drunet_noise_cond}"
+PADIS_PNP_NOISE_COND_FINAL_NAME="${PADIS_PNP_NOISE_COND_FINAL_NAME:-pnp_lidc_drunet_noise_cond.pt}"
+PADIS_PNP_NOISE_COND_FINAL_FULL_NAME="${PADIS_PNP_NOISE_COND_FINAL_FULL_NAME:-${PADIS_PNP_NOISE_COND_FINAL_NAME%.pt}_full.pt}"
+PADIS_PNP_NOISE_COND_CHECKPOINT_PATTERN="${PADIS_PNP_NOISE_COND_CHECKPOINT_PATTERN:-pnp_lidc_drunet_noise_cond_check_*.pt}"
+PADIS_PNP_NOISE_COND_VALIDATION_NAME="${PADIS_PNP_NOISE_COND_VALIDATION_NAME:-pnp_lidc_drunet_noise_cond_min_val.pt}"
+PADIS_PNP_NOISE_COND_ROOT="${PADIS_PNP_NOISE_COND_ROOT:-$PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_NOISE_COND_RUN_NAME}"
+PADIS_PNP_NOISE_COND_MAX_TRAIN_SECONDS="${PADIS_PNP_NOISE_COND_MAX_TRAIN_SECONDS:-$PADIS_PNP_MAX_TRAIN_SECONDS}"
+PADIS_PNP_NOISE_COND_NOISE_LEVEL="${PADIS_PNP_NOISE_COND_NOISE_LEVEL:-0.03}"
 
 PADIS_GCP_RECONSTRUCTION_PHASE="${PADIS_GCP_RECONSTRUCTION_PHASE:-1}"
 PADIS_GCP_RECON_TASKS_PER_GPU="${PADIS_GCP_RECON_TASKS_PER_GPU:-auto}"
@@ -1563,6 +1604,7 @@ PADIS_RECON_ALLOW_MISSING_CHECKPOINTS="${PADIS_RECON_ALLOW_MISSING_CHECKPOINTS:-
 PADIS_RECON_EXPECTED_JOBS_JSON="${PADIS_RECON_EXPECTED_JOBS_JSON:-$PADIS_RECON_ROOT/reconstruction_matrix_jobs.json}"
 PADIS_RECON_RECONCILE_MANIFEST="${PADIS_RECON_RECONCILE_MANIFEST:-1}"
 PADIS_RECON_PNP_CHECKPOINT="${PADIS_RECON_PNP_CHECKPOINT:-${PADIS_PNP_CHECKPOINT:-$PADIS_PNP_ROOT/$PADIS_PNP_VALIDATION_NAME}}"
+PADIS_RECON_PNP_NOISE_COND_CHECKPOINT="${PADIS_RECON_PNP_NOISE_COND_CHECKPOINT:-${PADIS_PNP_NOISE_COND_CHECKPOINT:-$PADIS_PNP_NOISE_COND_ROOT/$PADIS_PNP_NOISE_COND_VALIDATION_NAME}}"
 PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-20}"
 PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-5}"
 PADIS_PNP_CG_ITERATIONS="${PADIS_PNP_CG_ITERATIONS:-100}"
@@ -1624,6 +1666,7 @@ default_task_order=(
         whole_lidc_full
         whole_lidc_default
         "$PNP_TASK_NAME"
+        "$PNP_NOISE_COND_TASK_NAME"
         patch_lidc_p96_default
         patch_lidc_full
         patch_lidc_512
@@ -1641,7 +1684,9 @@ if [ -n "${PADIS_GCP_TASK_ORDER:-}" ]; then
         done
 else
         for task in "${default_task_order[@]}"; do
-                if [ "$task" = "$PNP_TASK_NAME" ] && [ "${PADIS_GCP_INCLUDE_PNP:-1}" != "1" ]; then
+                if { [ "$task" = "$PNP_TASK_NAME" ] \
+                        || [ "$task" = "$PNP_NOISE_COND_TASK_NAME" ]; } \
+                        && [ "${PADIS_GCP_INCLUDE_PNP:-1}" != "1" ]; then
                         continue
                 fi
                 GCP_TASK_NAMES+=("$task")
@@ -1649,7 +1694,8 @@ else
 fi
 
 for task in "${GCP_TASK_NAMES[@]}"; do
-        if [ "$task" != "$PNP_TASK_NAME" ]; then
+        if [ "$task" != "$PNP_TASK_NAME" ] \
+                && [ "$task" != "$PNP_NOISE_COND_TASK_NAME" ]; then
                 task_index_by_name "$task" >/dev/null || die "Unknown PaDIS training task: $task"
         fi
 done
@@ -1683,7 +1729,8 @@ fi
 VALIDATION_HEAVY_TASK_NAMES=()
 if [ "$PADIS_GCP_VALIDATION_HEAVY_PHASE" = "1" ]; then
         for task in "${GCP_TASK_NAMES[@]}"; do
-                if [ "$task" = "$PNP_TASK_NAME" ]; then
+                if [ "$task" = "$PNP_TASK_NAME" ] \
+                        || [ "$task" = "$PNP_NOISE_COND_TASK_NAME" ]; then
                         continue
                 fi
                 VALIDATION_HEAVY_TASK_NAMES+=("$task")

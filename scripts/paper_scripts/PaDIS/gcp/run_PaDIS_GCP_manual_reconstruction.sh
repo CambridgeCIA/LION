@@ -180,6 +180,136 @@ resolve_reconstruction_tasks_per_gpu() {
         fi
 }
 
+build_manual_wandb_args() {
+        local run_name="$1"
+        WANDB_ARGS=()
+        if [ "$PADIS_NO_WANDB" = "1" ]; then
+                WANDB_ARGS+=(--no-wandb --wandb-mode disabled)
+                return
+        fi
+
+        WANDB_ARGS+=(--wandb-project "$PADIS_WANDB_PROJECT")
+        if [ -n "$PADIS_WANDB_ENTITY" ]; then
+                WANDB_ARGS+=(--wandb-entity "$PADIS_WANDB_ENTITY")
+        fi
+        WANDB_ARGS+=(--wandb-mode "$PADIS_WANDB_MODE")
+        if [ -n "$PADIS_WANDB_NAME_PREFIX" ]; then
+                WANDB_ARGS+=(--wandb-name "$PADIS_WANDB_NAME_PREFIX-$run_name")
+        fi
+        if [ "$PADIS_NO_WANDB_ARTIFACT" = "1" ]; then
+                WANDB_ARGS+=(--no-wandb-artifact)
+        fi
+}
+
+run_trainable_checkpoint_if_missing() {
+        local label="$1"
+        local checkpoint_path="$2"
+        local run_name="$3"
+        local final_name="$4"
+        local final_full_name="$5"
+        local checkpoint_pattern="$6"
+        local validation_name="$7"
+        local use_noise_level="$8"
+        local max_train_seconds="${9:-}"
+        local cmd=()
+
+        if [ -f "$checkpoint_path" ]; then
+                log "Found $label PnP checkpoint: $checkpoint_path"
+                return
+        fi
+
+        log "Missing required $label checkpoint; training $run_name before reconstruction."
+        build_manual_wandb_args "$run_name"
+        cmd=(
+                python -u scripts/paper_scripts/PaDIS/PaDIS_LIDC_PnP_denoiser.py
+                --output-root "$PADIS_PNP_OUTPUT_ROOT"
+                --run-name "$run_name"
+                --batch-size "$PADIS_PNP_BATCH_SIZE"
+                --epochs "$PADIS_PNP_EPOCHS"
+                --learning-rate "$PADIS_PNP_LR"
+                --beta1 "$PADIS_PNP_BETA1"
+                --beta2 "$PADIS_PNP_BETA2"
+                --noise-min "$PADIS_PNP_NOISE_MIN"
+                --noise-max "$PADIS_PNP_NOISE_MAX"
+                --image-scaling "$PADIS_PNP_IMAGE_SCALING"
+                --max-slices-per-patient "$PADIS_PNP_MAX_SLICES_PER_PATIENT"
+                --int-channels "$PADIS_PNP_INT_CHANNELS"
+                --n-blocks "$PADIS_PNP_N_BLOCKS"
+                --patches-per-image "$PADIS_PNP_PATCHES_PER_IMAGE"
+                --validation-every "$PADIS_PNP_VALIDATION_EVERY"
+                --checkpoint-every "$PADIS_PNP_CHECKPOINT_EVERY"
+                --checkpoint-interval-seconds "$PADIS_PNP_CHECKPOINT_INTERVAL_SECONDS"
+                --max-periodic-checkpoints "$PADIS_PNP_MAX_PERIODIC_CHECKPOINTS"
+                --keep-final-periodic-checkpoints "$PADIS_PNP_FINAL_PERIODIC_CHECKPOINTS"
+                --seed "$PADIS_PNP_SEED"
+                --device cuda
+                --num-workers "$PADIS_PNP_NUM_WORKERS"
+                --final-name "$final_name"
+                --final-full-name "$final_full_name"
+                --checkpoint-pattern "$checkpoint_pattern"
+                --validation-name "$validation_name"
+        )
+        if [ "$PADIS_PNP_FULL_LIDC" = "1" ]; then
+                cmd+=(--full-lidc)
+        fi
+        if [ -n "$PADIS_PNP_MAX_TRAIN_SAMPLES" ]; then
+                cmd+=(--max-train-samples "$PADIS_PNP_MAX_TRAIN_SAMPLES")
+        fi
+        if [ -n "$PADIS_PNP_MAX_VALIDATION_SAMPLES" ]; then
+                cmd+=(--max-validation-samples "$PADIS_PNP_MAX_VALIDATION_SAMPLES")
+        fi
+        if [ "$use_noise_level" = "1" ]; then
+                cmd+=(--use-noise-level)
+        fi
+        if [ -n "$PADIS_PNP_PATCH_SIZE" ]; then
+                cmd+=(--patch-size "$PADIS_PNP_PATCH_SIZE")
+        fi
+        if [ -n "$PADIS_DATA_FOLDER" ]; then
+                cmd+=(--data-folder "$PADIS_DATA_FOLDER")
+        fi
+        if [ -n "$max_train_seconds" ]; then
+                cmd+=(--max-train-seconds "$max_train_seconds")
+        fi
+        cmd+=("${WANDB_ARGS[@]}")
+
+        if [ "$PADIS_MANUAL_RECON_DRY_RUN" = "1" ]; then
+                printf 'Dry run PnP training command:'
+                printf ' %q' "${cmd[@]}"
+                printf '\n'
+                return
+        fi
+
+        "${cmd[@]}"
+        [ -f "$checkpoint_path" ] || die "$label training finished but did not create expected checkpoint: $checkpoint_path"
+        sync_bucket_mount
+}
+
+ensure_reconstruction_training_inputs() {
+        if [ "$PADIS_RECON_TRAIN_MISSING_CHECKPOINTS" != "1" ]; then
+                return
+        fi
+        run_trainable_checkpoint_if_missing \
+                "standard" \
+                "$PADIS_RECON_PNP_CHECKPOINT" \
+                "$PADIS_PNP_RUN_NAME" \
+                "$PADIS_PNP_FINAL_NAME" \
+                "$PADIS_PNP_FINAL_FULL_NAME" \
+                "$PADIS_PNP_CHECKPOINT_PATTERN" \
+                "$PADIS_PNP_VALIDATION_NAME" \
+                "$PADIS_PNP_USE_NOISE_LEVEL" \
+                "$PADIS_PNP_MAX_TRAIN_SECONDS"
+        run_trainable_checkpoint_if_missing \
+                "noise-conditioned" \
+                "$PADIS_RECON_PNP_NOISE_COND_CHECKPOINT" \
+                "$PADIS_PNP_NOISE_COND_RUN_NAME" \
+                "$PADIS_PNP_NOISE_COND_FINAL_NAME" \
+                "$PADIS_PNP_NOISE_COND_FINAL_FULL_NAME" \
+                "$PADIS_PNP_NOISE_COND_CHECKPOINT_PATTERN" \
+                "$PADIS_PNP_NOISE_COND_VALIDATION_NAME" \
+                1 \
+                "$PADIS_PNP_NOISE_COND_MAX_TRAIN_SECONDS"
+}
+
 build_reconstruction_base_command() {
         RECON_BASE_CMD=(
                 python -u scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py
@@ -205,6 +335,9 @@ build_reconstruction_base_command() {
                 --device "$PADIS_RECON_DEVICE"
                 --pnp-root "$PADIS_PNP_ROOT"
                 --pnp-checkpoint "$PADIS_RECON_PNP_CHECKPOINT"
+                --pnp-noise-conditioned-root "$PADIS_PNP_NOISE_COND_ROOT"
+                --pnp-noise-conditioned-checkpoint "$PADIS_RECON_PNP_NOISE_COND_CHECKPOINT"
+                --pnp-noise-conditioned-noise-level "$PADIS_PNP_NOISE_COND_NOISE_LEVEL"
                 --pnp-iterations "$PADIS_PNP_ITERATIONS"
                 --pnp-eta "$PADIS_PNP_ETA"
                 --pnp-cg-iterations "$PADIS_PNP_CG_ITERATIONS"
@@ -513,10 +646,54 @@ PADIS_RECON_ALLOW_MISSING_CHECKPOINTS="${PADIS_RECON_ALLOW_MISSING_CHECKPOINTS:-
 PADIS_RECON_EXPECTED_JOBS_JSON="${PADIS_RECON_EXPECTED_JOBS_JSON:-$PADIS_RECON_ROOT/reconstruction_matrix_jobs.json}"
 PADIS_RECON_RECONCILE_MANIFEST="${PADIS_RECON_RECONCILE_MANIFEST:-1}"
 PADIS_PNP_OUTPUT_ROOT="${PADIS_PNP_OUTPUT_ROOT:-$PADIS_TRAIN_ROOT}"
+PADIS_RECON_TRAIN_MISSING_CHECKPOINTS="${PADIS_RECON_TRAIN_MISSING_CHECKPOINTS:-${PADIS_RECON_TRAIN_MISSING_PNP:-1}}"
+PADIS_NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-0}"
+PADIS_WANDB_PROJECT="${PADIS_WANDB_PROJECT:-PaDIS-Reproduction}"
+PADIS_WANDB_ENTITY="${PADIS_WANDB_ENTITY:-}"
+PADIS_WANDB_MODE="${PADIS_WANDB_MODE:-online}"
+PADIS_NO_WANDB="${PADIS_NO_WANDB:-0}"
+PADIS_WANDB_NAME_PREFIX="${PADIS_WANDB_NAME_PREFIX:-PaDIS-Reproduction-GCP}"
 PADIS_PNP_RUN_NAME="${PADIS_PNP_RUN_NAME:-pnp_lidc_drunet}"
+PADIS_PNP_BATCH_SIZE="${PADIS_PNP_BATCH_SIZE:-8}"
+PADIS_PNP_EPOCHS="${PADIS_PNP_EPOCHS:-100}"
+PADIS_PNP_LR="${PADIS_PNP_LR:-1e-4}"
+PADIS_PNP_BETA1="${PADIS_PNP_BETA1:-0.9}"
+PADIS_PNP_BETA2="${PADIS_PNP_BETA2:-0.99}"
+PADIS_PNP_NOISE_MIN="${PADIS_PNP_NOISE_MIN:-0.0}"
+PADIS_PNP_NOISE_MAX="${PADIS_PNP_NOISE_MAX:-0.05}"
+PADIS_PNP_IMAGE_SCALING="${PADIS_PNP_IMAGE_SCALING:-0.5}"
+PADIS_PNP_MAX_SLICES_PER_PATIENT="${PADIS_PNP_MAX_SLICES_PER_PATIENT:-4}"
+PADIS_PNP_MAX_TRAIN_SAMPLES="${PADIS_PNP_MAX_TRAIN_SAMPLES:-}"
+PADIS_PNP_MAX_VALIDATION_SAMPLES="${PADIS_PNP_MAX_VALIDATION_SAMPLES:-}"
+PADIS_PNP_FULL_LIDC="${PADIS_PNP_FULL_LIDC:-0}"
+PADIS_PNP_USE_NOISE_LEVEL="${PADIS_PNP_USE_NOISE_LEVEL:-0}"
+PADIS_PNP_INT_CHANNELS="${PADIS_PNP_INT_CHANNELS:-64}"
+PADIS_PNP_N_BLOCKS="${PADIS_PNP_N_BLOCKS:-4}"
+PADIS_PNP_PATCH_SIZE="${PADIS_PNP_PATCH_SIZE:-}"
+PADIS_PNP_PATCHES_PER_IMAGE="${PADIS_PNP_PATCHES_PER_IMAGE:-1}"
+PADIS_PNP_VALIDATION_EVERY="${PADIS_PNP_VALIDATION_EVERY:-1}"
+PADIS_PNP_CHECKPOINT_EVERY="${PADIS_PNP_CHECKPOINT_EVERY:-10}"
+PADIS_PNP_CHECKPOINT_INTERVAL_SECONDS="${PADIS_PNP_CHECKPOINT_INTERVAL_SECONDS:-300}"
+PADIS_PNP_MAX_PERIODIC_CHECKPOINTS="${PADIS_PNP_MAX_PERIODIC_CHECKPOINTS:-2}"
+PADIS_PNP_FINAL_PERIODIC_CHECKPOINTS="${PADIS_PNP_FINAL_PERIODIC_CHECKPOINTS:-1}"
+PADIS_PNP_MAX_TRAIN_SECONDS="${PADIS_PNP_MAX_TRAIN_SECONDS:-}"
+PADIS_PNP_SEED="${PADIS_PNP_SEED:-$PADIS_RECON_SEED}"
+PADIS_PNP_NUM_WORKERS="${PADIS_PNP_NUM_WORKERS:-4}"
+PADIS_PNP_FINAL_NAME="${PADIS_PNP_FINAL_NAME:-pnp_lidc_drunet.pt}"
+PADIS_PNP_FINAL_FULL_NAME="${PADIS_PNP_FINAL_FULL_NAME:-${PADIS_PNP_FINAL_NAME%.pt}_full.pt}"
+PADIS_PNP_CHECKPOINT_PATTERN="${PADIS_PNP_CHECKPOINT_PATTERN:-pnp_lidc_drunet_check_*.pt}"
 PADIS_PNP_VALIDATION_NAME="${PADIS_PNP_VALIDATION_NAME:-pnp_lidc_drunet_min_val.pt}"
 PADIS_PNP_ROOT="${PADIS_PNP_ROOT:-$PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_RUN_NAME}"
 PADIS_RECON_PNP_CHECKPOINT="${PADIS_RECON_PNP_CHECKPOINT:-${PADIS_PNP_CHECKPOINT:-$PADIS_PNP_ROOT/$PADIS_PNP_VALIDATION_NAME}}"
+PADIS_PNP_NOISE_COND_RUN_NAME="${PADIS_PNP_NOISE_COND_RUN_NAME:-pnp_lidc_drunet_noise_cond}"
+PADIS_PNP_NOISE_COND_FINAL_NAME="${PADIS_PNP_NOISE_COND_FINAL_NAME:-pnp_lidc_drunet_noise_cond.pt}"
+PADIS_PNP_NOISE_COND_FINAL_FULL_NAME="${PADIS_PNP_NOISE_COND_FINAL_FULL_NAME:-${PADIS_PNP_NOISE_COND_FINAL_NAME%.pt}_full.pt}"
+PADIS_PNP_NOISE_COND_CHECKPOINT_PATTERN="${PADIS_PNP_NOISE_COND_CHECKPOINT_PATTERN:-pnp_lidc_drunet_noise_cond_check_*.pt}"
+PADIS_PNP_NOISE_COND_VALIDATION_NAME="${PADIS_PNP_NOISE_COND_VALIDATION_NAME:-pnp_lidc_drunet_noise_cond_min_val.pt}"
+PADIS_PNP_NOISE_COND_ROOT="${PADIS_PNP_NOISE_COND_ROOT:-$PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_NOISE_COND_RUN_NAME}"
+PADIS_PNP_NOISE_COND_MAX_TRAIN_SECONDS="${PADIS_PNP_NOISE_COND_MAX_TRAIN_SECONDS:-$PADIS_PNP_MAX_TRAIN_SECONDS}"
+PADIS_PNP_NOISE_COND_NOISE_LEVEL="${PADIS_PNP_NOISE_COND_NOISE_LEVEL:-0.03}"
+PADIS_RECON_PNP_NOISE_COND_CHECKPOINT="${PADIS_RECON_PNP_NOISE_COND_CHECKPOINT:-${PADIS_PNP_NOISE_COND_CHECKPOINT:-$PADIS_PNP_NOISE_COND_ROOT/$PADIS_PNP_NOISE_COND_VALIDATION_NAME}}"
 PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-20}"
 PADIS_PNP_ETA="${PADIS_PNP_ETA:-1e-5}"
 PADIS_PNP_CG_ITERATIONS="${PADIS_PNP_CG_ITERATIONS:-100}"
@@ -528,7 +705,12 @@ PADIS_DATA_FOLDER="${PADIS_DATA_FOLDER:-}"
 PADIS_PUBLIC_IMAGE_DIR="${PADIS_PUBLIC_IMAGE_DIR:-}"
 MPLCONFIGDIR="${MPLCONFIGDIR:-$PADIS_RECON_ROOT/matplotlib}"
 MPLBACKEND="${PADIS_MPLBACKEND:-Agg}"
+WANDB_DIR="${WANDB_DIR:-$PADIS_TRAIN_ROOT/wandb}"
 PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+PADIS_WANDB_NETRC="${PADIS_WANDB_NETRC:-/mnt/data/.netrc}"
+if [ -z "${NETRC:-}" ] && [ -f "$PADIS_WANDB_NETRC" ]; then
+        NETRC="$PADIS_WANDB_NETRC"
+fi
 
 STATE_DIR="${PADIS_MANUAL_RECON_STATE_DIR:-$PADIS_RECON_ROOT/.manual_gcp_reconstruction}"
 DONE_DIR="$STATE_DIR/done"
@@ -538,9 +720,14 @@ LOG_DIR="$STATE_DIR/logs"
 
 export LION_ROOT LION_DATA_PATH LION_EXPERIMENTS_PATH PADIS_RUN_ROOT
 export PADIS_TRAIN_ROOT PADIS_RECON_ROOT PADIS_RECON_EXPECTED_JOBS_JSON
-export MPLCONFIGDIR MPLBACKEND PYTORCH_CUDA_ALLOC_CONF PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1
+export MPLCONFIGDIR MPLBACKEND WANDB_DIR PYTORCH_CUDA_ALLOC_CONF PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1
+export PADIS_WANDB_PROJECT PADIS_WANDB_ENTITY PADIS_WANDB_MODE PADIS_NO_WANDB
+export PADIS_WANDB_NETRC
+if [ -n "${NETRC:-}" ]; then
+        export NETRC
+fi
 
-mkdir -p "$PADIS_RECON_ROOT" "$MPLCONFIGDIR" "$STATE_DIR" "$DONE_DIR" "$RUNNING_DIR" "$FAILED_DIR" "$LOG_DIR"
+mkdir -p "$PADIS_RECON_ROOT" "$MPLCONFIGDIR" "$WANDB_DIR" "$STATE_DIR" "$DONE_DIR" "$RUNNING_DIR" "$FAILED_DIR" "$LOG_DIR"
 discover_gpu_ids
 resolve_reconstruction_tasks_per_gpu
 write_manifest
@@ -555,6 +742,7 @@ log "Reconstruction root: $PADIS_RECON_ROOT"
 log "Selected GPUs: ${GPU_IDS[*]}"
 log "Worker slots per GPU: $RECON_TASKS_PER_GPU"
 
+ensure_reconstruction_training_inputs
 prepare_reconstruction_matrix
 
 worker_pids=()

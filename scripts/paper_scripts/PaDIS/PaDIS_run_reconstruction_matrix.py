@@ -639,6 +639,8 @@ def job_prior_mode(job: ReconstructionJob) -> str:
 
 def job_display_label(job: ReconstructionJob) -> str:
     method_label = _METHOD_DISPLAY_NAMES.get(job.method.name, job.method.name)
+    if job.method.name == "pnp_admm" and job.matrix_group == "pnp_noise_conditioned":
+        return "PnP-ADMM (noise-conditioned)"
     if job.method.name in _WHOLE_IMAGE_SAMPLING_METHODS:
         prefix = "Whole image" if job_prior_mode(job) == "whole_image" else "Patch"
         return f"{prefix} - {method_label}"
@@ -745,6 +747,40 @@ def append_trained_ablation_jobs(
                     seen.add(identity)
 
 
+def append_pnp_noise_conditioned_jobs(
+    args: argparse.Namespace,
+    jobs: list[ReconstructionJob],
+    methods: tuple[MethodTask, ...],
+    geometries: tuple[str, ...],
+) -> None:
+    if args.models != "method_default" or args.experiments != "paper_matrix":
+        return
+    if "pnp_admm" not in {method.name for method in methods}:
+        return
+    if "lion_physics" not in selected_implementations_for_method(
+        METHOD_BY_NAME["pnp_admm"], args.implementations
+    ):
+        return
+
+    seen = {job_identity(job) for job in jobs}
+    model = MODEL_BY_NAME["patch_lidc_default"]
+    method = METHOD_BY_NAME["pnp_admm"]
+    for experiment in _MAIN_CT_EXPERIMENTS:
+        for geometry in geometries:
+            job = ReconstructionJob(
+                model=model,
+                method=method,
+                implementation="lion_physics",
+                geometry=geometry,
+                experiment=experiment,
+                matrix_group="pnp_noise_conditioned",
+            )
+            identity = job_identity(job)
+            if identity not in seen:
+                jobs.append(job)
+                seen.add(identity)
+
+
 def build_jobs(args: argparse.Namespace) -> list[ReconstructionJob]:
     methods = selected_method_tasks(args.methods)
     geometries = parse_csv(args.geometries, valid=GEOMETRIES, label="geometry")
@@ -805,6 +841,7 @@ def build_jobs(args: argparse.Namespace) -> list[ReconstructionJob]:
                         jobs.append(job)
     append_whole_image_sampling_jobs(args, jobs, methods, geometries)
     append_trained_ablation_jobs(args, jobs, methods, geometries)
+    append_pnp_noise_conditioned_jobs(args, jobs, methods, geometries)
     return jobs
 
 
@@ -859,10 +896,12 @@ def ordered_jobs(
             and job.experiment in DEFAULT_PAPER_MATRIX_EXTRA_CT_VE_DDNM_EXPERIMENTS
         ):
             return (1, 0, 0, index)
+        if job.matrix_group == "pnp_noise_conditioned":
+            return (2, 0, 0, index)
         if job.method.name in fixed_overlap_rank:
-            return (2, fixed_overlap_rank[job.method.name], 0, index)
+            return (3, fixed_overlap_rank[job.method.name], 0, index)
         if job.experiment == "ct_512_60":
-            return (3, 0, 0, index)
+            return (4, 0, 0, index)
         return (0, 0, 0, index)
 
     return [job for _, job in sorted(enumerate(jobs), key=sort_key)]
@@ -1246,6 +1285,30 @@ def pnp_checkpoint_for_args(args: argparse.Namespace) -> pathlib.Path:
     return args.pnp_root / "pnp_lidc_drunet_min_val.pt"
 
 
+def pnp_noise_conditioned_checkpoint_for_args(
+    args: argparse.Namespace,
+) -> pathlib.Path:
+    if args.pnp_noise_conditioned_checkpoint is not None:
+        return args.pnp_noise_conditioned_checkpoint
+    return args.pnp_noise_conditioned_root / "pnp_lidc_drunet_noise_cond_min_val.pt"
+
+
+def pnp_checkpoint_for_job(
+    args: argparse.Namespace, job: ReconstructionJob
+) -> pathlib.Path:
+    if job.matrix_group == "pnp_noise_conditioned":
+        return pnp_noise_conditioned_checkpoint_for_args(args)
+    return pnp_checkpoint_for_args(args)
+
+
+def pnp_noise_level_for_job(
+    args: argparse.Namespace, job: ReconstructionJob
+) -> float | None:
+    if job.matrix_group == "pnp_noise_conditioned":
+        return args.pnp_noise_conditioned_noise_level
+    return args.pnp_noise_level
+
+
 def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -> dict:
     if job.method.name == "baseline":
         settings = {"baseline": "fdk"}
@@ -1267,14 +1330,15 @@ def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -
         )
         return settings
     if job.method.name == "pnp_admm":
+        pnp_noise_level = pnp_noise_level_for_job(args, job)
         settings = {
-            "pnp_checkpoint": str(pnp_checkpoint_for_args(args)),
+            "pnp_checkpoint": str(pnp_checkpoint_for_job(args, job)),
             "pnp_iterations": int(args.pnp_iterations),
             "pnp_eta": float(args.pnp_eta),
             "pnp_cg_iterations": int(args.pnp_cg_iterations),
             "pnp_cg_tolerance": float(args.pnp_cg_tolerance),
             "pnp_noise_level": (
-                None if args.pnp_noise_level is None else float(args.pnp_noise_level)
+                None if pnp_noise_level is None else float(pnp_noise_level)
             ),
             "pnp_clip": True,
         }
@@ -1338,17 +1402,18 @@ def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[st
     if job.model.no_position_channels:
         cmd.append("--no-position-channels")
     if job.method.requires_pnp:
-        cmd.extend(["--pnp-checkpoint", str(pnp_checkpoint_for_args(args))])
+        cmd.extend(["--pnp-checkpoint", str(pnp_checkpoint_for_job(args, job))])
     if job.method.name == "admm_tv":
         cmd.extend(["--tv-lambda", str(args.tv_lambda)])
         cmd.extend(["--tv-iterations", str(args.tv_iterations)])
     if job.method.name == "pnp_admm":
+        pnp_noise_level = pnp_noise_level_for_job(args, job)
         cmd.extend(["--pnp-iterations", str(args.pnp_iterations)])
         cmd.extend(["--pnp-eta", str(args.pnp_eta)])
         cmd.extend(["--pnp-cg-iterations", str(args.pnp_cg_iterations)])
         cmd.extend(["--pnp-cg-tolerance", str(args.pnp_cg_tolerance)])
-        if args.pnp_noise_level is not None:
-            cmd.extend(["--pnp-noise-level", str(args.pnp_noise_level)])
+        if pnp_noise_level is not None:
+            cmd.extend(["--pnp-noise-level", str(pnp_noise_level)])
     if args.data_folder is not None:
         cmd.extend(["--data-folder", str(args.data_folder)])
     if args.public_padis_image_dir is not None:
@@ -1417,7 +1482,7 @@ def input_check_failures(
                     f"Missing checkpoint for {job.model.name}: {checkpoint}"
                 )
         if job.method.requires_pnp:
-            pnp_checkpoint = pnp_checkpoint_for_args(args)
+            pnp_checkpoint = pnp_checkpoint_for_job(args, job)
             if pnp_checkpoint not in seen_pnp_checkpoints:
                 seen_pnp_checkpoints.add(pnp_checkpoint)
                 if not pnp_checkpoint.is_file():
@@ -1607,11 +1672,26 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--pnp-checkpoint", type=pathlib.Path, default=None)
+    parser.add_argument(
+        "--pnp-noise-conditioned-root",
+        type=pathlib.Path,
+        default=None,
+        help=(
+            "Folder containing pnp_lidc_drunet_noise_cond_min_val.pt. Defaults "
+            "to <training-root>/pnp_lidc_drunet_noise_cond."
+        ),
+    )
+    parser.add_argument(
+        "--pnp-noise-conditioned-checkpoint",
+        type=pathlib.Path,
+        default=None,
+    )
     parser.add_argument("--pnp-iterations", type=int, default=60)
     parser.add_argument("--pnp-eta", type=float, default=3e-5)
     parser.add_argument("--pnp-cg-iterations", type=int, default=50)
     parser.add_argument("--pnp-cg-tolerance", type=float, default=1e-7)
     parser.add_argument("--pnp-noise-level", type=float, default=None)
+    parser.add_argument("--pnp-noise-conditioned-noise-level", type=float, default=0.03)
     parser.add_argument("--tv-lambda", type=float, default=0.001)
     parser.add_argument("--tv-iterations", type=int, default=1000)
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
@@ -1638,7 +1718,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help=(
             "default preserves matrix construction order. gcp_spot runs regular "
             "jobs first, then late-added VE-DDNM extra-CT jobs, then "
-            "patch_average/patch_stitch jobs, then ct_512_60 jobs."
+            "noise-conditioned PnP jobs, then patch_average/patch_stitch jobs, "
+            "then ct_512_60 jobs."
         ),
     )
     parser.add_argument("--count", action="store_true")
@@ -1670,6 +1751,18 @@ def main() -> None:
         args.pnp_root = args.pnp_root.expanduser().resolve()
     if args.pnp_checkpoint is not None:
         args.pnp_checkpoint = args.pnp_checkpoint.expanduser().resolve()
+    if args.pnp_noise_conditioned_root is None:
+        args.pnp_noise_conditioned_root = (
+            args.training_root / "pnp_lidc_drunet_noise_cond"
+        )
+    else:
+        args.pnp_noise_conditioned_root = (
+            args.pnp_noise_conditioned_root.expanduser().resolve()
+        )
+    if args.pnp_noise_conditioned_checkpoint is not None:
+        args.pnp_noise_conditioned_checkpoint = (
+            args.pnp_noise_conditioned_checkpoint.expanduser().resolve()
+        )
     jobs = ordered_jobs(args, build_jobs(args))
     if args.count:
         print(len(jobs))
