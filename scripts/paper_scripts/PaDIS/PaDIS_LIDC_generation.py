@@ -53,6 +53,7 @@ def build_generation_params(args, model) -> LIONParameter:
     params.inner_steps = args.inner_steps
     params.sigma_min = args.sigma_min
     params.sigma_max = args.sigma_max
+    params.noise_schedule = args.noise_schedule
     params.rho = args.rho
     params.generation_epsilon = args.generation_epsilon
     params.patch_batch_size = args.patch_batch_size
@@ -131,10 +132,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="padis",
         help="Use the PaDIS overlapping-patch prior sampler or independent patch generation.",
     )
-    parser.add_argument("--num-steps", type=int, default=1000)
+    parser.add_argument("--num-steps", type=int, default=300)
     parser.add_argument("--inner-steps", type=int, default=1)
     parser.add_argument("--sigma-min", type=float, default=0.002)
-    parser.add_argument("--sigma-max", type=float, default=40.0)
+    parser.add_argument("--sigma-max", type=float, default=10.0)
+    parser.add_argument(
+        "--noise-schedule",
+        choices=("edm", "geometric"),
+        default="geometric",
+    )
     parser.add_argument("--rho", type=float, default=7.0)
     parser.add_argument("--generation-epsilon", type=float, default=1.0)
     parser.add_argument("--patch-size", type=int, default=None)

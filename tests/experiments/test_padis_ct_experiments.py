@@ -439,10 +439,11 @@ def test_unconditional_generation_preset_uses_generation_engine(tmp_path):
     assert any(item.endswith("PaDIS_LIDC_generation.py") for item in command)
     assert "--experiment" not in command
     assert command[command.index("--num-samples") + 1] == "3"
-    assert arguments[arguments.index("--num-steps") + 1] == "1000"
+    assert arguments[arguments.index("--num-steps") + 1] == "300"
     assert arguments[arguments.index("--inner-steps") + 1] == "1"
     assert arguments[arguments.index("--sigma-min") + 1] == "0.002"
-    assert arguments[arguments.index("--sigma-max") + 1] == "40"
+    assert arguments[arguments.index("--sigma-max") + 1] == "10"
+    assert arguments[arguments.index("--noise-schedule") + 1] == "geometric"
 
 
 def test_generation_figure_presets_cover_patch_assembly_methods():

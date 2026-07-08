@@ -79,6 +79,25 @@ def _whole_image_ct_arguments(sigma_min: float) -> tuple[str, ...]:
     )
 
 
+def _paper_generation_arguments() -> tuple[str, ...]:
+    return (
+        "--num-steps",
+        "300",
+        "--inner-steps",
+        "1",
+        "--sigma-min",
+        "0.002",
+        "--sigma-max",
+        "10",
+        "--noise-schedule",
+        "geometric",
+        "--generation-epsilon",
+        "1",
+        "--langevin-noise-scale",
+        "1",
+    )
+
+
 def _with_sampler(
     arguments: tuple[str, ...], algorithm: str, *, ddnm: bool = False
 ) -> tuple[str, ...]:
@@ -117,39 +136,15 @@ PRESETS = {
         implementation="lion-paper-protocol",
         experiment=None,
         description="PaDIS paper-style unconditional LIDC image generation.",
-        arguments=(
-            "--num-steps",
-            "1000",
-            "--inner-steps",
-            "1",
-            "--sigma-min",
-            "0.002",
-            "--sigma-max",
-            "40",
-            "--generation-epsilon",
-            "1",
-            "--langevin-noise-scale",
-            "1",
-        ),
+        arguments=_paper_generation_arguments(),
         engine="generation",
     ),
     "paper-generation-whole": ReconstructionPreset(
         implementation="lion-paper-protocol",
         experiment=None,
         description="Whole-image diffusion unconditional LIDC image generation.",
-        arguments=(
-            "--num-steps",
-            "1000",
-            "--inner-steps",
-            "1",
-            "--sigma-min",
-            "0.002",
-            "--sigma-max",
-            "40",
-            "--generation-epsilon",
-            "1",
-            "--langevin-noise-scale",
-            "1",
+        arguments=_paper_generation_arguments()
+        + (
             "--prior-mode",
             "whole-image",
             "--patch-size",
@@ -163,19 +158,8 @@ PRESETS = {
         implementation="lion-paper-protocol",
         experiment=None,
         description="Naive independent-patch unconditional LIDC image generation.",
-        arguments=(
-            "--num-steps",
-            "1000",
-            "--inner-steps",
-            "1",
-            "--sigma-min",
-            "0.002",
-            "--sigma-max",
-            "40",
-            "--generation-epsilon",
-            "1",
-            "--langevin-noise-scale",
-            "1",
+        arguments=_paper_generation_arguments()
+        + (
             "--generation-mode",
             "naive-patch",
         ),
@@ -185,19 +169,8 @@ PRESETS = {
         implementation="lion-paper-protocol",
         experiment=None,
         description="Fixed-overlap patch-averaging LIDC image generation for Figure A.11.",
-        arguments=(
-            "--num-steps",
-            "1000",
-            "--inner-steps",
-            "1",
-            "--sigma-min",
-            "0.002",
-            "--sigma-max",
-            "40",
-            "--generation-epsilon",
-            "1",
-            "--langevin-noise-scale",
-            "1",
+        arguments=_paper_generation_arguments()
+        + (
             "--patch-assembly",
             "fixed_average",
             "--fixed-overlap-layout",
@@ -212,19 +185,8 @@ PRESETS = {
         implementation="lion-paper-protocol",
         experiment=None,
         description="Fixed-overlap patch-stitching LIDC image generation for Figure A.11.",
-        arguments=(
-            "--num-steps",
-            "1000",
-            "--inner-steps",
-            "1",
-            "--sigma-min",
-            "0.002",
-            "--sigma-max",
-            "40",
-            "--generation-epsilon",
-            "1",
-            "--langevin-noise-scale",
-            "1",
+        arguments=_paper_generation_arguments()
+        + (
             "--patch-assembly",
             "fixed_stitch",
             "--fixed-overlap-layout",
@@ -242,20 +204,7 @@ PRESETS = {
             "PaDIS generation with 300 Langevin NFEs for the implemented row of "
             "the acceleration figure."
         ),
-        arguments=(
-            "--num-steps",
-            "300",
-            "--inner-steps",
-            "1",
-            "--sigma-min",
-            "0.002",
-            "--sigma-max",
-            "40",
-            "--generation-epsilon",
-            "1",
-            "--langevin-noise-scale",
-            "1",
-        ),
+        arguments=_paper_generation_arguments(),
         engine="generation",
     ),
     "paper-fan-8": ReconstructionPreset(

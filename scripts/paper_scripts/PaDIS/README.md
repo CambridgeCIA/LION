@@ -2434,13 +2434,14 @@ a replacement for the A100 paper matrix.
   LION `--implementation public_repo --experiment ct_512_60 --geometry lion`
   is still being tuned against that same single-slice anchor while retaining
   LION fan-beam/FDK geometry. Completed LION runs with the paper geometric
-  schedule reached PSNR 31.93 dB at `zeta=0.4`, 32.00 dB at `zeta=0.5`, and
-  33.00 dB / SSIM 0.805 at `zeta=0.8`; the `zeta=0.8` result also had
-  public-reference SSIM 0.951 against the public-fork geometric reconstruction.
-  Because this still sits about 0.81 dB below the public-fork 33.81 dB anchor,
-  the queued `zeta=1.2` follow-up was launched on 2026-07-08. The final matrix
-  should not yet treat 512 public-compatible DPS as separately optimized until
-  this gap is closed or explicitly reported.
+  schedule reached PSNR 31.93 dB at `zeta=0.4`, 32.00 dB at `zeta=0.5`,
+  33.00 dB / SSIM 0.805 at `zeta=0.8`, and 33.26 dB / SSIM 0.803 at
+  `zeta=1.2`. The `zeta=0.8` and `zeta=1.2` results had public-reference SSIM
+  0.951 against the public-fork geometric reconstruction. Because `zeta=1.2`
+  still sits about 0.54 dB below the public-fork 33.81 dB anchor and improved
+  PSNR over `zeta=0.8`, a bounded `zeta=1.6` follow-up was launched on
+  2026-07-08. The final matrix should not yet treat 512 public-compatible DPS as
+  separately optimized until this gap is closed or explicitly reported.
 - The target images retain high-frequency CT texture/noise that both public
   PaDIS and LION PaDIS smooth. Matching the public repo and exactly preserving
   all target texture are not simultaneously achievable with this sampler setup.
