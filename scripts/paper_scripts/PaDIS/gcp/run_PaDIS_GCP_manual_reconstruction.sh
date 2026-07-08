@@ -588,7 +588,7 @@ claim_next_reconstruction_task() {
         local claimed="" task_index marker fd phase_key
         exec {fd}>"$STATE_DIR/reconstruction_queue.lock"
         flock "$fd"
-        for ((task_index = 0; task_index < RECON_TASK_COUNT; task_index++)); do
+        for ((task_index = RECON_CLAIM_START; task_index < RECON_CLAIM_END; task_index++)); do
                 if [ -f "$(reconstruction_done_marker "$task_index")" ]; then
                         continue
                 fi
@@ -704,6 +704,233 @@ reconstruction_worker_loop() {
         done
 }
 
+run_reconstruction_workers() {
+        local label="$1"
+        local start_index="$2"
+        local end_index="$3"
+        local worker_pids=()
+        local gpu_id slot_id pid phase_rc
+        if [ "$start_index" -ge "$end_index" ]; then
+                log "Skipping $label reconstruction range because it is empty [$start_index, $end_index)."
+                return 0
+        fi
+        RECON_CLAIM_START="$start_index"
+        RECON_CLAIM_END="$end_index"
+        log "Starting $label reconstruction range [$RECON_CLAIM_START, $RECON_CLAIM_END) with $RECON_TASKS_PER_GPU worker slot(s) per GPU."
+        for gpu_id in "${GPU_IDS[@]}"; do
+                for ((slot_id = 1; slot_id <= RECON_TASKS_PER_GPU; slot_id++)); do
+                        reconstruction_worker_loop "$gpu_id" "$slot_id" &
+                        worker_pids+=("$!")
+                done
+        done
+        phase_rc=0
+        for pid in "${worker_pids[@]}"; do
+                if ! wait "$pid"; then
+                        phase_rc=1
+                fi
+        done
+        return "$phase_rc"
+}
+
+generation_barrier_task_index() {
+        python - "$PADIS_RECON_EXPECTED_JOBS_JSON" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1]) as file:
+    jobs = json.load(file)
+for index, job in enumerate(jobs):
+    if job.get("method") in {"patch_average", "patch_stitch"}:
+        print(index)
+        break
+else:
+    print(len(jobs))
+PY
+}
+
+checkpoint_name_for_policy() {
+        local prefix="$1"
+        local policy="$2"
+        if [ "$policy" = "model_default" ]; then
+                printf '%s.pt\n' "$prefix"
+        else
+                printf '%s_%s.pt\n' "$prefix" "$policy"
+        fi
+}
+
+generation_output_folder() {
+        local preset="$1"
+        printf '%s/lion-paper-protocol/%s\n' "$PADIS_GENERATION_ROOT" "$preset"
+}
+
+generation_done_marker() {
+        local preset="$1"
+        printf '%s/%s.done\n' "$GENERATION_DONE_DIR" "$preset"
+}
+
+generation_running_marker() {
+        local preset="$1"
+        printf '%s/%s.running\n' "$GENERATION_RUNNING_DIR" "$preset"
+}
+
+generation_failed_marker() {
+        local preset="$1"
+        printf '%s/%s.failed\n' "$GENERATION_FAILED_DIR" "$preset"
+}
+
+generation_samples_path() {
+        local preset="$1"
+        printf '%s/samples.pt\n' "$(generation_output_folder "$preset")"
+}
+
+build_generation_command() {
+        local preset="$1"
+        local checkpoint="$PADIS_GENERATION_PATCH_CHECKPOINT"
+        local num_steps="$PADIS_GENERATION_NUM_STEPS"
+        GEN_CMD=(
+                python -u scripts/paper_scripts/PaDIS/PaDIS_LIDC_generation.py
+                --checkpoint "$checkpoint"
+                --output-folder "$(generation_output_folder "$preset")"
+                --device "$PADIS_GENERATION_DEVICE"
+                --num-samples "$PADIS_GENERATION_NUM_SAMPLES"
+                --seed "$PADIS_GENERATION_SEED"
+                --num-steps "$num_steps"
+                --inner-steps "$PADIS_GENERATION_INNER_STEPS"
+                --sigma-min "$PADIS_GENERATION_SIGMA_MIN"
+                --sigma-max "$PADIS_GENERATION_SIGMA_MAX"
+                --rho "$PADIS_GENERATION_RHO"
+                --generation-epsilon "$PADIS_GENERATION_EPSILON"
+        )
+        if [ -n "$PADIS_GENERATION_PATCH_BATCH_SIZE" ]; then
+                GEN_CMD+=(--patch-batch-size "$PADIS_GENERATION_PATCH_BATCH_SIZE")
+        fi
+        if [ "$PADIS_GENERATION_PROG_BAR" = "1" ]; then
+                GEN_CMD+=(--prog-bar)
+        fi
+
+        case "$preset" in
+                paper-generation-whole)
+                        GEN_CMD[4]="$PADIS_GENERATION_WHOLE_CHECKPOINT"
+                        GEN_CMD+=(--prior-mode whole-image)
+                        ;;
+                paper-generation-naive-patch)
+                        GEN_CMD+=(--prior-mode patch --generation-mode naive-patch)
+                        ;;
+                paper-generation)
+                        GEN_CMD+=(--prior-mode patch --generation-mode padis)
+                        ;;
+                paper-generation-langevin-300nfe)
+                        GEN_CMD+=(--prior-mode patch --generation-mode padis)
+                        GEN_CMD[14]="$PADIS_GENERATION_LANGEVIN_NUM_STEPS"
+                        ;;
+                paper-generation-patch-stitch)
+                        GEN_CMD+=(
+                                --prior-mode patch
+                                --generation-mode padis
+                                --patch-assembly fixed_stitch
+                                --fixed-overlap-layout public_tile
+                                --fixed-overlap-checkpoint-denoiser
+                        )
+                        ;;
+                paper-generation-patch-average)
+                        GEN_CMD+=(
+                                --prior-mode patch
+                                --generation-mode padis
+                                --patch-assembly fixed_average
+                                --fixed-overlap-layout public_overlap
+                                --fixed-overlap-checkpoint-denoiser
+                        )
+                        ;;
+                *)
+                        die "Unknown PaDIS generation preset: $preset"
+                        ;;
+        esac
+}
+
+run_generation_task() {
+        local preset="$1"
+        local samples_path done_marker running_marker failed_marker log_path
+        samples_path="$(generation_samples_path "$preset")"
+        done_marker="$(generation_done_marker "$preset")"
+        running_marker="$(generation_running_marker "$preset")"
+        failed_marker="$(generation_failed_marker "$preset")"
+        log_path="$LOG_DIR/generation_${preset}.log"
+
+        if [ -f "$samples_path" ]; then
+                {
+                        printf 'completed=%s\n' "$(date --iso-8601=seconds)"
+                        printf 'phase=generation\n'
+                        printf 'preset=%s\n' "$preset"
+                        printf 'samples_path=%s\n' "$samples_path"
+                } > "$done_marker"
+                rm -f "$running_marker" "$failed_marker"
+                log "Generation preset $preset already has samples at $samples_path."
+                return 0
+        fi
+        rm -f "$done_marker"
+
+        build_generation_command "$preset"
+        printf '%q ' "${GEN_CMD[@]}" > "$LOG_DIR/generation_${preset}.command.txt"
+        printf '\n' >> "$LOG_DIR/generation_${preset}.command.txt"
+        {
+                printf 'phase=generation\n'
+                printf 'preset=%s\n' "$preset"
+                printf 'started=%s\n' "$(date --iso-8601=seconds)"
+                printf 'host=%s\n' "$(hostname)"
+                printf 'log_path=%s\n' "$log_path"
+        } > "$running_marker"
+
+        log "Running generation preset $preset; log: $log_path"
+        if [ "$PADIS_MANUAL_RECON_DRY_RUN" = "1" ]; then
+                return 0
+        fi
+
+        if "${GEN_CMD[@]}" > "$log_path" 2>&1; then
+                {
+                        printf 'completed=%s\n' "$(date --iso-8601=seconds)"
+                        printf 'phase=generation\n'
+                        printf 'preset=%s\n' "$preset"
+                        printf 'samples_path=%s\n' "$samples_path"
+                        printf 'log_path=%s\n' "$log_path"
+                } > "$done_marker"
+                rm -f "$running_marker" "$failed_marker"
+                sync_bucket_mount
+                log "Generation preset $preset completed."
+                return 0
+        fi
+
+        {
+                printf 'failed=%s\n' "$(date --iso-8601=seconds)"
+                printf 'phase=generation\n'
+                printf 'preset=%s\n' "$preset"
+                printf 'samples_path=%s\n' "$samples_path"
+                printf 'log_path=%s\n' "$log_path"
+        } > "$failed_marker"
+        rm -f "$running_marker"
+        log "Generation preset $preset failed. See $log_path"
+        return 1
+}
+
+run_generation_phase() {
+        local preset
+        if [ "$PADIS_GENERATION_PHASE" != "1" ]; then
+                log "Skipping generation phase because PADIS_GENERATION_PHASE=$PADIS_GENERATION_PHASE."
+                return 0
+        fi
+        [ -f "$PADIS_GENERATION_PATCH_CHECKPOINT" ] || die "Missing patch generation checkpoint: $PADIS_GENERATION_PATCH_CHECKPOINT"
+        [ -f "$PADIS_GENERATION_WHOLE_CHECKPOINT" ] || die "Missing whole-image generation checkpoint: $PADIS_GENERATION_WHOLE_CHECKPOINT"
+
+        mkdir -p "$PADIS_GENERATION_ROOT" "$GENERATION_DONE_DIR" "$GENERATION_RUNNING_DIR" "$GENERATION_FAILED_DIR"
+        rm -f "$GENERATION_RUNNING_DIR"/*.running
+        log "Starting generation phase for presets: $PADIS_GENERATION_PRESETS"
+        for preset in ${PADIS_GENERATION_PRESETS//,/ }; do
+                if ! run_generation_task "$preset"; then
+                        return 1
+                fi
+        done
+        return 0
+}
+
 write_manifest() {
         local manifest="$STATE_DIR/manifest.txt"
         {
@@ -726,6 +953,9 @@ write_manifest() {
                 printf 'reconstruction_experiments=%s\n' "$PADIS_RECON_EXPERIMENTS"
                 printf 'reconstruction_ablations=%s\n' "$PADIS_RECON_ABLATIONS"
                 printf 'reconstruction_expected_jobs_json=%s\n' "$PADIS_RECON_EXPECTED_JOBS_JSON"
+                printf 'generation_enabled=%s\n' "$PADIS_GENERATION_PHASE"
+                printf 'generation_root=%s\n' "$PADIS_GENERATION_ROOT"
+                printf 'generation_presets=%s\n' "$PADIS_GENERATION_PRESETS"
                 printf 'sync_after_job=%s\n' "${PADIS_RECON_SYNC_AFTER_JOB:-1}"
                 printf 'dry_run=%s\n' "$PADIS_MANUAL_RECON_DRY_RUN"
         } > "$manifest"
@@ -734,6 +964,7 @@ write_manifest() {
 clear_stale_running_markers() {
         if [ "${PADIS_RECON_CLEAR_STALE_RUNNING:-1}" = "1" ]; then
                 find "$RUNNING_DIR" -maxdepth 1 -type f -name 'reconstruction_*.running' -delete
+                find "$GENERATION_RUNNING_DIR" -maxdepth 1 -type f -name '*.running' -delete 2>/dev/null || true
         fi
 }
 
@@ -783,6 +1014,23 @@ PADIS_RECON_HPARAM_RUN_GLOB="${PADIS_RECON_HPARAM_RUN_GLOB:-fixedval_*}"
 PADIS_RECON_ALLOW_MISSING_CHECKPOINTS="${PADIS_RECON_ALLOW_MISSING_CHECKPOINTS:-0}"
 PADIS_RECON_EXPECTED_JOBS_JSON="${PADIS_RECON_EXPECTED_JOBS_JSON:-$PADIS_RECON_ROOT/reconstruction_matrix_jobs.json}"
 PADIS_RECON_RECONCILE_MANIFEST="${PADIS_RECON_RECONCILE_MANIFEST:-1}"
+PADIS_GENERATION_PHASE="${PADIS_GENERATION_PHASE:-1}"
+PADIS_GENERATION_ROOT="${PADIS_GENERATION_ROOT:-$LION_EXPERIMENTS_PATH/PaDIS/reconstruction_presets}"
+PADIS_GENERATION_PRESETS="${PADIS_GENERATION_PRESETS:-paper-generation-whole,paper-generation-naive-patch,paper-generation,paper-generation-langevin-300nfe,paper-generation-patch-stitch,paper-generation-patch-average}"
+PADIS_GENERATION_PATCH_CHECKPOINT="${PADIS_GENERATION_PATCH_CHECKPOINT:-$PADIS_TRAIN_ROOT/patch_lidc_default/$(checkpoint_name_for_policy padis_lidc_256 "$PADIS_RECON_CHECKPOINT_POLICY")}"
+PADIS_GENERATION_WHOLE_CHECKPOINT="${PADIS_GENERATION_WHOLE_CHECKPOINT:-$PADIS_TRAIN_ROOT/whole_lidc_default/$(checkpoint_name_for_policy whole_image_lidc_256 "$PADIS_RECON_CHECKPOINT_POLICY")}"
+PADIS_GENERATION_DEVICE="${PADIS_GENERATION_DEVICE:-$PADIS_RECON_DEVICE}"
+PADIS_GENERATION_NUM_SAMPLES="${PADIS_GENERATION_NUM_SAMPLES:-4}"
+PADIS_GENERATION_SEED="${PADIS_GENERATION_SEED:-$PADIS_RECON_SEED}"
+PADIS_GENERATION_NUM_STEPS="${PADIS_GENERATION_NUM_STEPS:-1000}"
+PADIS_GENERATION_LANGEVIN_NUM_STEPS="${PADIS_GENERATION_LANGEVIN_NUM_STEPS:-300}"
+PADIS_GENERATION_INNER_STEPS="${PADIS_GENERATION_INNER_STEPS:-1}"
+PADIS_GENERATION_SIGMA_MIN="${PADIS_GENERATION_SIGMA_MIN:-0.002}"
+PADIS_GENERATION_SIGMA_MAX="${PADIS_GENERATION_SIGMA_MAX:-40.0}"
+PADIS_GENERATION_RHO="${PADIS_GENERATION_RHO:-7.0}"
+PADIS_GENERATION_EPSILON="${PADIS_GENERATION_EPSILON:-1.0}"
+PADIS_GENERATION_PATCH_BATCH_SIZE="${PADIS_GENERATION_PATCH_BATCH_SIZE:-}"
+PADIS_GENERATION_PROG_BAR="${PADIS_GENERATION_PROG_BAR:-$PADIS_RECON_PROG_BAR}"
 PADIS_PNP_OUTPUT_ROOT="${PADIS_PNP_OUTPUT_ROOT:-$PADIS_TRAIN_ROOT}"
 PADIS_RECON_TRAIN_MISSING_CHECKPOINTS="${PADIS_RECON_TRAIN_MISSING_CHECKPOINTS:-${PADIS_RECON_TRAIN_MISSING_PNP:-1}}"
 PADIS_RAM_DISK="${PADIS_RAM_DISK:-/mnt/ram-disk}"
@@ -869,6 +1117,9 @@ DONE_DIR="$STATE_DIR/done"
 RUNNING_DIR="$STATE_DIR/running"
 FAILED_DIR="$STATE_DIR/failed"
 LOG_DIR="$STATE_DIR/logs"
+GENERATION_DONE_DIR="$STATE_DIR/generation_done"
+GENERATION_RUNNING_DIR="$STATE_DIR/generation_running"
+GENERATION_FAILED_DIR="$STATE_DIR/generation_failed"
 
 export LION_ROOT LION_DATA_PATH LION_EXPERIMENTS_PATH PADIS_RUN_ROOT
 export PADIS_TRAIN_ROOT PADIS_RECON_ROOT PADIS_RECON_EXPECTED_JOBS_JSON
@@ -879,7 +1130,7 @@ if [ -n "${NETRC:-}" ]; then
         export NETRC
 fi
 
-mkdir -p "$PADIS_RECON_ROOT" "$MPLCONFIGDIR" "$WANDB_DIR" "$STATE_DIR" "$DONE_DIR" "$RUNNING_DIR" "$FAILED_DIR" "$LOG_DIR"
+mkdir -p "$PADIS_RECON_ROOT" "$MPLCONFIGDIR" "$WANDB_DIR" "$STATE_DIR" "$DONE_DIR" "$RUNNING_DIR" "$FAILED_DIR" "$LOG_DIR" "$GENERATION_DONE_DIR" "$GENERATION_RUNNING_DIR" "$GENERATION_FAILED_DIR"
 discover_gpu_ids
 resolve_reconstruction_tasks_per_gpu
 write_manifest
@@ -891,26 +1142,36 @@ log "LION root: $LION_ROOT"
 log "Data mount: $PADIS_DATA_MOUNT"
 log "Training root: $PADIS_TRAIN_ROOT"
 log "Reconstruction root: $PADIS_RECON_ROOT"
+log "Generation root: $PADIS_GENERATION_ROOT"
 log "Selected GPUs: ${GPU_IDS[*]}"
 log "Worker slots per GPU: $RECON_TASKS_PER_GPU"
 
 ensure_reconstruction_training_inputs
 prepare_reconstruction_matrix
 
-worker_pids=()
 phase_rc=0
-for gpu_id in "${GPU_IDS[@]}"; do
-        for ((slot_id = 1; slot_id <= RECON_TASKS_PER_GPU; slot_id++)); do
-                reconstruction_worker_loop "$gpu_id" "$slot_id" &
-                worker_pids+=("$!")
-        done
-done
-
-for pid in "${worker_pids[@]}"; do
-        if ! wait "$pid"; then
+GENERATION_BARRIER_INDEX="$(generation_barrier_task_index)"
+log "Generation barrier task index: $GENERATION_BARRIER_INDEX"
+if [ "$PADIS_GENERATION_PHASE" = "1" ]; then
+        if ! run_reconstruction_workers "pre-generation" 0 "$GENERATION_BARRIER_INDEX"; then
                 phase_rc=1
         fi
-done
+        if [ "$phase_rc" -eq 0 ]; then
+                if ! run_generation_phase; then
+                        log "One or more PaDIS generation tasks failed; inspect $GENERATION_FAILED_DIR and $LOG_DIR."
+                        phase_rc=1
+                fi
+        fi
+        if [ "$phase_rc" -eq 0 ]; then
+                if ! run_reconstruction_workers "post-generation" "$GENERATION_BARRIER_INDEX" "$RECON_TASK_COUNT"; then
+                        phase_rc=1
+                fi
+        fi
+else
+        if ! run_reconstruction_workers "full" 0 "$RECON_TASK_COUNT"; then
+                phase_rc=1
+        fi
+fi
 
 sync_bucket_mount
 if [ "$phase_rc" -eq 0 ]; then
