@@ -709,6 +709,7 @@ build_pnp_command() {
                 --noise-max "$PADIS_PNP_NOISE_MAX"
                 --image-scaling "$PADIS_PNP_IMAGE_SCALING"
                 --max-slices-per-patient "$PADIS_PNP_MAX_SLICES_PER_PATIENT"
+                --pcg-slices-nodule "$PADIS_PNP_PCG_SLICES_NODULE"
                 --int-channels "$PADIS_PNP_INT_CHANNELS"
                 --n-blocks "$PADIS_PNP_N_BLOCKS"
                 --patches-per-image "$PADIS_PNP_PATCHES_PER_IMAGE"
@@ -742,6 +743,22 @@ build_pnp_command() {
         fi
         if [ -n "$PADIS_DATA_FOLDER" ]; then
                 CMD+=(--data-folder "$PADIS_DATA_FOLDER")
+        fi
+        if [ "$PADIS_PNP_CACHE_DATASET" != "none" ]; then
+                CMD+=(
+                        --cache-dataset "$PADIS_PNP_CACHE_DATASET"
+                        --cache-folder "$PADIS_PNP_CACHE_FOLDER"
+                        --cache-archive-folder "$PADIS_PNP_CACHE_ARCHIVE_FOLDER"
+                )
+                if [ -n "$PADIS_PNP_CACHE_SOURCE_FOLDER" ]; then
+                        CMD+=(--cache-source-folder "$PADIS_PNP_CACHE_SOURCE_FOLDER")
+                fi
+                if [ "$PADIS_PNP_REBUILD_CACHE" = "1" ]; then
+                        CMD+=(--rebuild-cache)
+                fi
+                if [ "$PADIS_PNP_REQUIRE_CACHE_HIT" = "1" ]; then
+                        CMD+=(--require-cache-hit)
+                fi
         fi
         if [ -n "$max_train_seconds" ]; then
                 CMD+=(--max-train-seconds "$max_train_seconds")
@@ -1545,6 +1562,7 @@ PADIS_PNP_NOISE_MIN="${PADIS_PNP_NOISE_MIN:-0.0}"
 PADIS_PNP_NOISE_MAX="${PADIS_PNP_NOISE_MAX:-0.05}"
 PADIS_PNP_IMAGE_SCALING="${PADIS_PNP_IMAGE_SCALING:-0.5}"
 PADIS_PNP_MAX_SLICES_PER_PATIENT="${PADIS_PNP_MAX_SLICES_PER_PATIENT:-4}"
+PADIS_PNP_PCG_SLICES_NODULE="${PADIS_PNP_PCG_SLICES_NODULE:-0.5}"
 PADIS_PNP_MAX_TRAIN_SAMPLES="${PADIS_PNP_MAX_TRAIN_SAMPLES:-}"
 PADIS_PNP_MAX_VALIDATION_SAMPLES="${PADIS_PNP_MAX_VALIDATION_SAMPLES:-}"
 PADIS_PNP_FULL_LIDC="${PADIS_PNP_FULL_LIDC:-0}"
@@ -1564,6 +1582,12 @@ PADIS_PNP_FINAL_FULL_NAME="${PADIS_PNP_FINAL_FULL_NAME:-${PADIS_PNP_FINAL_NAME%.
 PADIS_PNP_CHECKPOINT_PATTERN="${PADIS_PNP_CHECKPOINT_PATTERN:-pnp_lidc_drunet_check_*.pt}"
 PADIS_PNP_VALIDATION_NAME="${PADIS_PNP_VALIDATION_NAME:-pnp_lidc_drunet_min_val.pt}"
 PADIS_PNP_ROOT="${PADIS_PNP_ROOT:-$PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_RUN_NAME}"
+PADIS_PNP_CACHE_DATASET="${PADIS_PNP_CACHE_DATASET:-ramdisk}"
+PADIS_PNP_CACHE_FOLDER="${PADIS_PNP_CACHE_FOLDER:-$PADIS_256_CACHE_FOLDER}"
+PADIS_PNP_CACHE_ARCHIVE_FOLDER="${PADIS_PNP_CACHE_ARCHIVE_FOLDER:-$PADIS_256_CACHE_ARCHIVE_FOLDER}"
+PADIS_PNP_CACHE_SOURCE_FOLDER="${PADIS_PNP_CACHE_SOURCE_FOLDER:-}"
+PADIS_PNP_REBUILD_CACHE="${PADIS_PNP_REBUILD_CACHE:-0}"
+PADIS_PNP_REQUIRE_CACHE_HIT="${PADIS_PNP_REQUIRE_CACHE_HIT:-1}"
 PADIS_PNP_NOISE_COND_RUN_NAME="${PADIS_PNP_NOISE_COND_RUN_NAME:-pnp_lidc_drunet_noise_cond}"
 PADIS_PNP_NOISE_COND_FINAL_NAME="${PADIS_PNP_NOISE_COND_FINAL_NAME:-pnp_lidc_drunet_noise_cond.pt}"
 PADIS_PNP_NOISE_COND_FINAL_FULL_NAME="${PADIS_PNP_NOISE_COND_FINAL_FULL_NAME:-${PADIS_PNP_NOISE_COND_FINAL_NAME%.pt}_full.pt}"

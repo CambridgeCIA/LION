@@ -338,7 +338,7 @@ def stage_cache_from_archive(mode, cache_path, archive_path):
     tmp_path = cache_path.with_suffix(cache_path.suffix + f".stage.{os.getpid()}")
     with tmp_path.open("wb") as output:
         subprocess.run(
-            [zstd, "-d", "-c", str(archive_path)],
+            [zstd, "-T0", "-d", "-c", str(archive_path)],
             check=True,
             stdout=output,
         )

@@ -233,34 +233,22 @@ ensure_training_ramdisk() {
 }
 
 stage_training_data_on_ramdisk() {
-        local source_folder marker
         if [ "$PADIS_MANUAL_RECON_USE_RAMDISK_DATA" != "1" ]; then
                 PADIS_PNP_TRAIN_DATA_FOLDER="${PADIS_PNP_TRAIN_DATA_FOLDER:-$PADIS_DATA_FOLDER}"
                 export PADIS_PNP_TRAIN_DATA_FOLDER
                 return
         fi
-
-        source_folder="${PADIS_DATA_FOLDER:-$LION_DATA_PATH/processed/LIDC-IDRI}"
-        [ -d "$source_folder" ] || die "Processed LIDC data folder not found: $source_folder"
-        ensure_training_ramdisk
-        mkdir -p "$PADIS_PNP_RAMDISK_DATA_FOLDER"
-        marker="$PADIS_PNP_RAMDISK_DATA_FOLDER/.padis_lidc_staged"
-
-        if [ -f "$marker" ] \
-                && find "$PADIS_PNP_RAMDISK_DATA_FOLDER" -maxdepth 1 -type d -name 'LIDC-IDRI-*' -print -quit | grep -q .; then
-                log "Using already staged LIDC data at $PADIS_PNP_RAMDISK_DATA_FOLDER."
-        else
-                log "Staging processed LIDC data from $source_folder to $PADIS_PNP_RAMDISK_DATA_FOLDER."
-                rm -f "$marker"
-                if command -v rsync >/dev/null 2>&1; then
-                        rsync -a --delete --info=progress2 "$source_folder"/ "$PADIS_PNP_RAMDISK_DATA_FOLDER"/
-                else
-                        cp -a "$source_folder"/. "$PADIS_PNP_RAMDISK_DATA_FOLDER"/
-                fi
-                date --iso-8601=seconds > "$marker"
+        if [ "$PADIS_PNP_CACHE_DATASET" = "none" ]; then
+                PADIS_PNP_TRAIN_DATA_FOLDER="${PADIS_PNP_TRAIN_DATA_FOLDER:-$PADIS_DATA_FOLDER}"
+                export PADIS_PNP_TRAIN_DATA_FOLDER
+                return
         fi
 
-        PADIS_PNP_TRAIN_DATA_FOLDER="$PADIS_PNP_RAMDISK_DATA_FOLDER"
+        [ -d "$PADIS_PNP_CACHE_ARCHIVE_FOLDER" ] || die "PnP cache archive folder not found: $PADIS_PNP_CACHE_ARCHIVE_FOLDER"
+        ensure_training_ramdisk
+        mkdir -p "$PADIS_PNP_CACHE_FOLDER"
+        log "Using PnP cache archives from $PADIS_PNP_CACHE_ARCHIVE_FOLDER; materialized tensors will be staged in $PADIS_PNP_CACHE_FOLDER."
+        PADIS_PNP_TRAIN_DATA_FOLDER="${PADIS_PNP_TRAIN_DATA_FOLDER:-$PADIS_DATA_FOLDER}"
         export PADIS_PNP_TRAIN_DATA_FOLDER
 }
 
@@ -287,10 +275,10 @@ cleanup_training_ramdisk() {
                 return
         fi
 
-        if [ -n "${PADIS_PNP_RAMDISK_DATA_FOLDER:-}" ] \
-                && [ -d "$PADIS_PNP_RAMDISK_DATA_FOLDER" ]; then
-                log "Removing staged training data at $PADIS_PNP_RAMDISK_DATA_FOLDER."
-                rm -rf "$PADIS_PNP_RAMDISK_DATA_FOLDER"
+        if [ -n "${PADIS_PNP_CACHE_FOLDER:-}" ] \
+                && [ -d "$PADIS_PNP_CACHE_FOLDER" ]; then
+                log "Removing staged training cache at $PADIS_PNP_CACHE_FOLDER."
+                rm -rf "$PADIS_PNP_CACHE_FOLDER"
         fi
         PADIS_PNP_TRAIN_DATA_FOLDER=""
         export PADIS_PNP_TRAIN_DATA_FOLDER
@@ -366,6 +354,7 @@ run_trainable_checkpoint_if_missing() {
                 --final-full-name "$final_full_name"
                 --checkpoint-pattern "$checkpoint_pattern"
                 --validation-name "$validation_name"
+                --pcg-slices-nodule "$PADIS_PNP_PCG_SLICES_NODULE"
         )
         if [ "$PADIS_PNP_FULL_LIDC" = "1" ]; then
                 cmd+=(--full-lidc)
@@ -384,6 +373,22 @@ run_trainable_checkpoint_if_missing() {
         fi
         if [ -n "$pnp_data_folder" ]; then
                 cmd+=(--data-folder "$pnp_data_folder")
+        fi
+        if [ "$PADIS_PNP_CACHE_DATASET" != "none" ]; then
+                cmd+=(
+                        --cache-dataset "$PADIS_PNP_CACHE_DATASET"
+                        --cache-folder "$PADIS_PNP_CACHE_FOLDER"
+                        --cache-archive-folder "$PADIS_PNP_CACHE_ARCHIVE_FOLDER"
+                )
+                if [ -n "$PADIS_PNP_CACHE_SOURCE_FOLDER" ]; then
+                        cmd+=(--cache-source-folder "$PADIS_PNP_CACHE_SOURCE_FOLDER")
+                fi
+                if [ "$PADIS_PNP_REBUILD_CACHE" = "1" ]; then
+                        cmd+=(--rebuild-cache)
+                fi
+                if [ "$PADIS_PNP_REQUIRE_CACHE_HIT" = "1" ]; then
+                        cmd+=(--require-cache-hit)
+                fi
         fi
         if [ -n "$max_train_seconds" ]; then
                 cmd+=(--max-train-seconds "$max_train_seconds")
@@ -781,8 +786,14 @@ PADIS_RAM_DISK_SIZE="${PADIS_RAM_DISK_SIZE:-}"
 PADIS_MANUAL_RECON_USE_RAMDISK_DATA="${PADIS_MANUAL_RECON_USE_RAMDISK_DATA:-1}"
 PADIS_MANUAL_RECON_CREATE_RAMDISK="${PADIS_MANUAL_RECON_CREATE_RAMDISK:-1}"
 PADIS_MANUAL_RECON_REMOVE_RAMDISK_AFTER_TRAINING="${PADIS_MANUAL_RECON_REMOVE_RAMDISK_AFTER_TRAINING:-1}"
-PADIS_PNP_RAMDISK_DATA_FOLDER="${PADIS_PNP_RAMDISK_DATA_FOLDER:-$PADIS_RAM_DISK/lidc_processed}"
 PADIS_PNP_TRAIN_DATA_FOLDER="${PADIS_PNP_TRAIN_DATA_FOLDER:-}"
+PADIS_CACHE_ROOT="${PADIS_CACHE_ROOT:-$LION_DATA_PATH/processed/LIDC-IDRI-cache}"
+PADIS_PNP_CACHE_DATASET="${PADIS_PNP_CACHE_DATASET:-ramdisk}"
+PADIS_PNP_CACHE_FOLDER="${PADIS_PNP_CACHE_FOLDER:-$PADIS_RAM_DISK/lion_lidc_cache_256}"
+PADIS_PNP_CACHE_ARCHIVE_FOLDER="${PADIS_PNP_CACHE_ARCHIVE_FOLDER:-$PADIS_CACHE_ROOT/padis_256/archives}"
+PADIS_PNP_CACHE_SOURCE_FOLDER="${PADIS_PNP_CACHE_SOURCE_FOLDER:-}"
+PADIS_PNP_REBUILD_CACHE="${PADIS_PNP_REBUILD_CACHE:-0}"
+PADIS_PNP_REQUIRE_CACHE_HIT="${PADIS_PNP_REQUIRE_CACHE_HIT:-1}"
 PADIS_NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-0}"
 PADIS_WANDB_PROJECT="${PADIS_WANDB_PROJECT:-PaDIS-Reproduction}"
 PADIS_WANDB_ENTITY="${PADIS_WANDB_ENTITY:-}"
@@ -799,6 +810,7 @@ PADIS_PNP_NOISE_MIN="${PADIS_PNP_NOISE_MIN:-0.0}"
 PADIS_PNP_NOISE_MAX="${PADIS_PNP_NOISE_MAX:-0.05}"
 PADIS_PNP_IMAGE_SCALING="${PADIS_PNP_IMAGE_SCALING:-0.5}"
 PADIS_PNP_MAX_SLICES_PER_PATIENT="${PADIS_PNP_MAX_SLICES_PER_PATIENT:-4}"
+PADIS_PNP_PCG_SLICES_NODULE="${PADIS_PNP_PCG_SLICES_NODULE:-0.5}"
 PADIS_PNP_MAX_TRAIN_SAMPLES="${PADIS_PNP_MAX_TRAIN_SAMPLES:-}"
 PADIS_PNP_MAX_VALIDATION_SAMPLES="${PADIS_PNP_MAX_VALIDATION_SAMPLES:-}"
 PADIS_PNP_FULL_LIDC="${PADIS_PNP_FULL_LIDC:-0}"
