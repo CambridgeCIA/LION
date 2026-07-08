@@ -3,10 +3,36 @@
 from __future__ import annotations
 
 import argparse
+import csv
 from collections import Counter
+import hashlib
 import json
 import math
 from pathlib import Path
+import random
+
+
+BOOTSTRAP_MEAN_METRICS = (
+    "psnr",
+    "ssim",
+    "mae",
+    "fdk_psnr",
+    "fdk_margin",
+    "relative_sinogram_residual",
+)
+
+CORE_CSV_FIELDS = (
+    "method",
+    "algorithm",
+    "prior_mode",
+    "experiment",
+    "implementation",
+    "geometry",
+    "matrix_group",
+    "num_samples",
+    "checkpoint",
+    "path",
+)
 
 
 def parse_csv(value: str | None) -> tuple[str, ...]:
@@ -53,6 +79,166 @@ def maximum(values: list[float]) -> float | None:
     if not values:
         return None
     return float(max(values))
+
+
+def finite_float(value) -> float | None:
+    if not isinstance(value, (int, float)):
+        return None
+    value = float(value)
+    if not math.isfinite(value):
+        return None
+    return value
+
+
+def sample_standard_deviation(values: list[float]) -> float | None:
+    if not values:
+        return None
+    if len(values) == 1:
+        return 0.0
+    value_mean = float(sum(values) / len(values))
+    variance = sum((item - value_mean) ** 2 for item in values) / (len(values) - 1)
+    return float(math.sqrt(variance))
+
+
+def percentile(sorted_values: list[float], probability: float) -> float | None:
+    if not sorted_values:
+        return None
+    if len(sorted_values) == 1:
+        return float(sorted_values[0])
+    position = probability * (len(sorted_values) - 1)
+    lower_index = int(math.floor(position))
+    upper_index = int(math.ceil(position))
+    if lower_index == upper_index:
+        return float(sorted_values[lower_index])
+    fraction = position - lower_index
+    return float(
+        sorted_values[lower_index] * (1.0 - fraction)
+        + sorted_values[upper_index] * fraction
+    )
+
+
+def bootstrap_mean_summary(
+    values: list[float],
+    *,
+    resamples: int,
+    confidence: float,
+    rng: random.Random,
+) -> dict[str, float | int | None]:
+    if not values:
+        return {
+            "n": 0,
+            "sample_sd": None,
+            "bootstrap_se": None,
+            "bootstrap_ci_low": None,
+            "bootstrap_ci_high": None,
+        }
+    if resamples <= 0:
+        return {
+            "n": len(values),
+            "sample_sd": sample_standard_deviation(values),
+            "bootstrap_se": None,
+            "bootstrap_ci_low": None,
+            "bootstrap_ci_high": None,
+        }
+
+    sample_count = len(values)
+    if sample_count == 1:
+        return {
+            "n": 1,
+            "sample_sd": 0.0,
+            "bootstrap_se": 0.0,
+            "bootstrap_ci_low": float(values[0]),
+            "bootstrap_ci_high": float(values[0]),
+        }
+
+    bootstrap_means = []
+    for _ in range(resamples):
+        bootstrap_means.append(
+            sum(values[rng.randrange(sample_count)] for _ in range(sample_count))
+            / sample_count
+        )
+    bootstrap_means.sort()
+    alpha = (1.0 - confidence) / 2.0
+    return {
+        "n": sample_count,
+        "sample_sd": sample_standard_deviation(values),
+        "bootstrap_se": sample_standard_deviation(bootstrap_means),
+        "bootstrap_ci_low": percentile(bootstrap_means, alpha),
+        "bootstrap_ci_high": percentile(bootstrap_means, 1.0 - alpha),
+    }
+
+
+def metric_values(metrics: list[dict], key: str) -> list[float]:
+    values = []
+    for item in metrics:
+        value = finite_float(item.get(key))
+        if value is not None:
+            values.append(value)
+    return values
+
+
+def fdk_margin_values(metrics: list[dict]) -> list[float]:
+    values = []
+    for item in metrics:
+        psnr = finite_float(item.get("psnr"))
+        fdk_psnr = finite_float(item.get("fdk_psnr"))
+        if psnr is not None and fdk_psnr is not None:
+            values.append(psnr - fdk_psnr)
+    return values
+
+
+def bootstrap_values_for_metric(metrics: list[dict], name: str) -> list[float]:
+    if name == "fdk_margin":
+        return fdk_margin_values(metrics)
+    if name == "relative_sinogram_residual":
+        return metric_values(metrics, "recon_relative_sinogram_residual")
+    return metric_values(metrics, name)
+
+
+def stable_record_seed(summary: dict, seed: int) -> int:
+    material = "|".join(
+        [
+            str(seed),
+            summary.get("method", ""),
+            summary.get("algorithm", ""),
+            summary.get("prior_mode", ""),
+            summary.get("experiment", ""),
+            summary.get("implementation", ""),
+            summary.get("geometry", ""),
+            summary.get("matrix_group", ""),
+            summary.get("checkpoint", ""),
+            summary.get("path", ""),
+        ]
+    )
+    digest = hashlib.sha256(material.encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], "big")
+
+
+def add_bootstrap_uncertainty(
+    summary: dict,
+    metrics: list[dict],
+    *,
+    resamples: int,
+    confidence: float,
+    seed: int,
+) -> None:
+    summary["bootstrap_resamples"] = int(resamples)
+    summary["bootstrap_confidence"] = float(confidence)
+    rng = random.Random(stable_record_seed(summary, seed))
+    for name in BOOTSTRAP_MEAN_METRICS:
+        values = bootstrap_values_for_metric(metrics, name)
+        stats = bootstrap_mean_summary(
+            values,
+            resamples=resamples,
+            confidence=confidence,
+            rng=rng,
+        )
+        prefix = f"mean_{name}"
+        summary[f"{prefix}_n"] = stats["n"]
+        summary[f"{prefix}_sample_sd"] = stats["sample_sd"]
+        summary[f"{prefix}_bootstrap_se"] = stats["bootstrap_se"]
+        summary[f"{prefix}_bootstrap_ci_low"] = stats["bootstrap_ci_low"]
+        summary[f"{prefix}_bootstrap_ci_high"] = stats["bootstrap_ci_high"]
 
 
 def finite_or_infinite_psnr(key: str, value) -> bool:
@@ -242,8 +428,35 @@ def find_records(args) -> list[dict]:
             continue
         if geometries and summary["geometry"] not in geometries:
             continue
+        add_bootstrap_uncertainty(
+            summary,
+            record["metrics"],
+            resamples=args.bootstrap_resamples,
+            confidence=args.bootstrap_confidence,
+            seed=args.bootstrap_seed,
+        )
         records.append(record)
     return records
+
+
+def output_csv_path(args: argparse.Namespace) -> Path | None:
+    if args.output_csv is not None:
+        return args.output_csv
+    if args.output_json is not None:
+        return args.output_json.with_suffix(".csv")
+    return None
+
+
+def write_records_csv(path: Path, records: list[dict]) -> None:
+    rows = [record["summary"] for record in records]
+    fieldnames = list(CORE_CSV_FIELDS)
+    extras = sorted({key for row in rows for key in row} - set(fieldnames))
+    fieldnames.extend(extras)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def check_records(args, records: list[dict]) -> list[str]:
@@ -414,6 +627,33 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--output-json", type=Path, default=None)
+    parser.add_argument(
+        "--output-csv",
+        type=Path,
+        default=None,
+        help=(
+            "Optional CSV summary path. Defaults to the --output-json path with "
+            "a .csv suffix when --output-json is set."
+        ),
+    )
+    parser.add_argument(
+        "--bootstrap-resamples",
+        type=int,
+        default=2000,
+        help="Bootstrap resamples per reconstruction record. Use 0 to disable.",
+    )
+    parser.add_argument(
+        "--bootstrap-confidence",
+        type=float,
+        default=0.95,
+        help="Central bootstrap confidence interval mass.",
+    )
+    parser.add_argument(
+        "--bootstrap-seed",
+        type=int,
+        default=33,
+        help="Seed used for deterministic bootstrap uncertainty estimates.",
+    )
     parser.add_argument("--methods", default=None)
     parser.add_argument("--experiments", default=None)
     parser.add_argument("--implementations", default=None)
@@ -495,6 +735,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_arg_parser().parse_args()
+    if args.bootstrap_resamples < 0:
+        raise ValueError("--bootstrap-resamples must be non-negative.")
+    if not 0.0 < args.bootstrap_confidence < 1.0:
+        raise ValueError("--bootstrap-confidence must be between 0 and 1.")
     records = find_records(args)
     failures = check_records(args, records)
     output = {
@@ -507,6 +751,9 @@ def main() -> None:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
         with open(args.output_json, "w") as f:
             json.dump(output, f, indent=2)
+    csv_path = output_csv_path(args)
+    if csv_path is not None:
+        write_records_csv(csv_path, records)
     print(json.dumps(output, indent=2))
     if failures:
         raise SystemExit(1)

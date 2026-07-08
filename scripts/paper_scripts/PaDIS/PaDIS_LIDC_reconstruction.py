@@ -1441,11 +1441,6 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params = PaDIS.lion_quality_ct_parameters(model, views=paper_views)
     else:
         sampler_params = PaDIS.default_parameters(model)
-    sampler_params.num_steps = args.num_steps
-    sampler_params.inner_steps = args.inner_steps
-    sampler_params.sigma_min = args.sigma_min
-    sampler_params.sigma_max = args.sigma_max
-    sampler_params.rho = args.rho
     if args.implementation == "paper":
         paper_params = PaDIS.paper_ct_parameters(model, views=paper_views)
         sampler_params.num_steps = paper_params.num_steps
@@ -1689,6 +1684,16 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.clip_initial = args.clip_initial
     if args.clip_output is not None:
         sampler_params.clip_output = args.clip_output
+    if args.num_steps is not None:
+        sampler_params.num_steps = args.num_steps
+    if args.inner_steps is not None:
+        sampler_params.inner_steps = args.inner_steps
+    if args.sigma_min is not None:
+        sampler_params.sigma_min = args.sigma_min
+    if args.sigma_max is not None:
+        sampler_params.sigma_max = args.sigma_max
+    if args.rho is not None:
+        sampler_params.rho = args.rho
     if args.dps_epsilon is not None:
         sampler_params.dps_epsilon = args.dps_epsilon
     if args.sampling_epsilon is not None:
@@ -2573,11 +2578,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=20,
         help="Select the PaDIS paper CT sigma_min for --paper-ct-sampling.",
     )
-    parser.add_argument("--num-steps", type=int, default=18)
-    parser.add_argument("--inner-steps", type=int, default=10)
-    parser.add_argument("--sigma-min", type=float, default=0.005)
-    parser.add_argument("--sigma-max", type=float, default=0.05)
-    parser.add_argument("--rho", type=float, default=7.0)
+    parser.add_argument("--num-steps", type=int, default=None)
+    parser.add_argument("--inner-steps", type=int, default=None)
+    parser.add_argument("--sigma-min", type=float, default=None)
+    parser.add_argument("--sigma-max", type=float, default=None)
+    parser.add_argument("--rho", type=float, default=None)
     parser.add_argument(
         "--noise-schedule",
         choices=("edm", "geometric"),
