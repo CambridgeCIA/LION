@@ -33,6 +33,9 @@ ABLATIONS = ("schedule_init", "patch_size", "dataset_size", "position_encoding")
 CHECKPOINT_POLICIES = ("model_default", "min_val", "min_intense_val")
 JOB_ORDERS = ("default", "gcp_spot")
 HPARAM_DEFAULT_MODES = ("none", "auto", "json")
+DEFAULT_EXPENSIVE_JOB_MAX_SAMPLES = 4
+EXPENSIVE_SAMPLE_CAP_METHODS = {"patch_average", "patch_stitch"}
+EXPENSIVE_SAMPLE_CAP_EXPERIMENTS = {"ct_512_60"}
 METHODS = (
     "baseline",
     "admm_tv",
@@ -1387,7 +1390,7 @@ def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[st
         "--algorithm",
         job.method.algorithm,
         "--max-samples",
-        str(args.max_samples),
+        str(max_samples_for_job(args, job)),
         "--start-index",
         str(args.start_index),
         "--seed",
@@ -1429,6 +1432,17 @@ def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[st
     for extra_arg in job_reconstruction_args(args, job):
         cmd.append(extra_arg)
     return cmd
+
+
+def max_samples_for_job(args: argparse.Namespace, job: ReconstructionJob) -> int:
+    max_samples = int(args.max_samples)
+    expensive_cap = getattr(args, "expensive_job_max_samples", None)
+    if expensive_cap is not None and (
+        job.method.name in EXPENSIVE_SAMPLE_CAP_METHODS
+        or job.experiment in EXPENSIVE_SAMPLE_CAP_EXPERIMENTS
+    ):
+        return min(max_samples, int(expensive_cap))
+    return max_samples
 
 
 def job_json(args: argparse.Namespace, job: ReconstructionJob) -> dict:
@@ -1659,6 +1673,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=25,
         help="Number of test/validation slices per reconstruction job. Default 25 matches the paper CT evaluation budget.",
     )
+    parser.add_argument(
+        "--expensive-job-max-samples",
+        type=int,
+        default=DEFAULT_EXPENSIVE_JOB_MAX_SAMPLES,
+        help=(
+            "Maximum samples for expensive tail jobs: patch_average, "
+            "patch_stitch, and ct_512_60. Use -1 to disable this cap."
+        ),
+    )
     parser.add_argument("--start-index", type=int, default=0)
     parser.add_argument("--seed", type=int, default=33)
     parser.add_argument("--device", default="cuda")
@@ -1743,6 +1766,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_arg_parser().parse_args()
+    if args.max_samples <= 0:
+        raise ValueError("--max-samples must be positive.")
+    if args.expensive_job_max_samples == -1:
+        args.expensive_job_max_samples = None
+    elif args.expensive_job_max_samples <= 0:
+        raise ValueError("--expensive-job-max-samples must be positive or -1.")
     args.training_root = resolve_training_root(args)
     args.output_root = args.output_root.expanduser().resolve()
     if args.pnp_root is None:

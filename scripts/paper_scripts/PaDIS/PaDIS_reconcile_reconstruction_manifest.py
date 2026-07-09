@@ -110,7 +110,7 @@ def completed_output_exists(job: dict) -> bool:
     except (OSError, json.JSONDecodeError):
         return False
     metrics = payload.get("metrics")
-    return isinstance(metrics, list) and len(metrics) == expected_samples
+    return isinstance(metrics, list) and len(metrics) >= expected_samples
 
 
 def build_index_mapping(old_jobs: list[dict], new_jobs: list[dict]) -> dict[int, int]:

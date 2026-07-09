@@ -2431,17 +2431,61 @@ a replacement for the A100 paper matrix.
   `zeta=0.3` reached PSNR 33.81 dB and SSIM 0.807. This confirms that 512/60
   PaDIS is executable and sensible on the local data when the public fork is
   corrected for 512 crop width and long-graph memory retention.
+  A geometry-isolation run then executed the public fork's same DPS sampler
+  through its `ct_lion_fanbeam` shim, with the same checkpoint, slice, seed,
+  geometric schedule, and public `zeta=0.3`. That LION-fanbeam public-fork run
+  completed in 1:56:02 on the local GTX 1070 and reached PSNR 33.17 dB and
+  SSIM 0.804. This shows that most of the remaining difference from the
+  parallel-beam public anchor is due to the CT operator/geometry path rather
+  than a LION sampler implementation failure.
+
   LION `--implementation public_repo --experiment ct_512_60 --geometry lion`
-  is still being tuned against that same single-slice anchor while retaining
-  LION fan-beam/FDK geometry. Completed LION runs with the paper geometric
-  schedule reached PSNR 31.93 dB at `zeta=0.4`, 32.00 dB at `zeta=0.5`,
-  33.00 dB / SSIM 0.805 at `zeta=0.8`, and 33.26 dB / SSIM 0.803 at
-  `zeta=1.2`. The `zeta=0.8` and `zeta=1.2` results had public-reference SSIM
-  0.951 against the public-fork geometric reconstruction. Because `zeta=1.2`
-  still sits about 0.54 dB below the public-fork 33.81 dB anchor and improved
-  PSNR over `zeta=0.8`, a bounded `zeta=1.6` follow-up was launched on
-  2026-07-08. The final matrix should not yet treat 512 public-compatible DPS as
-  separately optimized until this gap is closed or explicitly reported.
+  was tuned against these single-slice anchors while retaining LION
+  fan-beam/FDK geometry. Completed LION runs with the paper geometric schedule
+  reached PSNR 31.93 dB at `zeta=0.4`, 32.00 dB at `zeta=0.5`,
+  33.00 dB / SSIM 0.805 at `zeta=0.8`, 33.26 dB / SSIM 0.803 at `zeta=1.2`,
+  and 33.58 dB / SSIM 0.800 at `zeta=1.6`. The `zeta=0.8`, `zeta=1.2`, and
+  `zeta=1.6` runs had public-reference SSIM 0.951, 0.951, and 0.946,
+  respectively, against the public-fork geometric parallel-beam reconstruction.
+  Against the geometry-matched public-fork LION-fanbeam anchor, the LION
+  public-compatible row is now in the same performance band: `zeta=1.2` has
+  slightly higher PSNR with essentially the same SSIM, while `zeta=0.8` has
+  slightly lower PSNR and slightly higher SSIM. The JSON reconstruction
+  defaults now include an exact `patch_lidc_512` / `ct_512_60` public-compatible
+  PaDIS-DPS record selecting `zeta=1.2`, `dps_epsilon=0.5`,
+  `patch_batch_size=1`, and patch activation checkpointing. Pure scalar `zeta`
+  tuning improves PSNR but starts to trade away SSIM and public-reference
+  agreement. The zeta `1.6` output is biased high in mean intensity; an affine
+  diagnostic would lift target PSNR to about 34.0 dB, so a sampler-level
+  `dps_epsilon` test was run rather than a post-hoc intensity correction.
+  Raising `dps_epsilon` from the public-compatible 0.5 to 0.75 at `zeta=1.6`
+  was rejected: PSNR fell to 33.21 dB and SSIM to 0.797. The final matrix
+  should report the parallel-beam public anchor and the LION-fanbeam public-fork
+  anchor separately because they are not the same CT operator.
+- The earlier 256-resolution LION-physics divergence had the same practical
+  resolution pattern: do not inherit the FDK-init/clipped public-style state for
+  the physical DPS row. The clean 256 default was fixed by using Gaussian
+  initialization, leaving the initial and final states unclipped, setting
+  `dps_epsilon=0.5`, and retuning `zeta` while keeping the paper geometric
+  schedule. Applying that same pattern to exact-model 512 PaDIS-DPS produced a
+  stable monotone bracket on the same validation slice used by the public-fork
+  references:
+
+  | Candidate | Initialization / clipping | PSNR | SSIM | MAE | Status |
+  |---|---|---:|---:|---:|---|
+  | `zeta=0.8`, `dps_epsilon=0.5` | Gaussian init, no initial/output clipping | 31.09 | 0.785 | 0.01701 | Stable but below public-compatible anchors. |
+  | `zeta=1.2`, `dps_epsilon=0.5` | Gaussian init, no initial/output clipping | 32.61 | 0.803 | 0.01519 | Comparable to the weaker public-compatible row. |
+  | `zeta=1.6`, `dps_epsilon=0.5` | Gaussian init, no initial/output clipping | 33.04 | 0.809 | 0.01465 | In the public-compatible quality band. |
+  | `zeta=2.0`, `dps_epsilon=0.5` | Gaussian init, no initial/output clipping | 34.13 | 0.817 | 0.01367 | Promoted exact-model 512 LION-physics default. |
+
+  The promoted `zeta=2.0` row beats the LION public-compatible `zeta=1.2`
+  reference on this slice (33.26 dB / 0.803 / 0.01483) and the public-compatible
+  `zeta=1.6` reference (33.58 dB / 0.800 / 0.01496), while retaining LION-native
+  fan-beam CT, FDK only as the analytic baseline/initialization option, the
+  least-squares data objective, operator-Lipschitz normalization, and the paper
+  geometric sigma schedule. This supersedes the previous "needs A100
+  confirmation" note for single-slice 512 quality, but the final 25-sample
+  matrix is still required for paper-facing aggregate metrics.
 - The target images retain high-frequency CT texture/noise that both public
   PaDIS and LION PaDIS smooth. Matching the public repo and exactly preserving
   all target texture are not simultaneously achievable with this sampler setup.

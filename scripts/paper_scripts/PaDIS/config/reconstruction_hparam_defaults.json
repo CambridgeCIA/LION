@@ -606,6 +606,56 @@
       "mean_psnr": 27.282698714083477,
       "mean_ssim": 0.6475354755371271,
       "mean_mae": 0.027730830013751984
+    },
+    {
+      "method": "padis_dps",
+      "implementation": "lion_physics",
+      "prior": "patch",
+      "model": "patch_lidc_512",
+      "experiment": "ct_512_60",
+      "args": [
+        "--zeta",
+        "2.0",
+        "--dps-epsilon",
+        "0.5",
+        "--initial-reconstruction",
+        "noise",
+        "--no-clip-initial",
+        "--no-clip-output",
+        "--patch-batch-size",
+        "1",
+        "--patch-checkpoint-denoiser",
+        "--no-fixed-overlap-checkpoint-denoiser"
+      ],
+      "candidate": "core_zeta_2__eps_0p5",
+      "candidate_group": "padis_dps__lion_physics__patch",
+      "run_name": "lion_physics_512_noiseinit_zeta20_full_20260709",
+      "mean_psnr": 34.133563776283715,
+      "mean_ssim": 0.8168376856921595,
+      "mean_mae": 0.013669426552951336
+    },
+    {
+      "method": "padis_dps",
+      "implementation": "public_repo",
+      "prior": "patch",
+      "model": "patch_lidc_512",
+      "experiment": "ct_512_60",
+      "args": [
+        "--zeta",
+        "1.2",
+        "--dps-epsilon",
+        "0.5",
+        "--patch-batch-size",
+        "1",
+        "--patch-checkpoint-denoiser",
+        "--no-fixed-overlap-checkpoint-denoiser"
+      ],
+      "candidate": "zeta_1p2__eps_0p5",
+      "candidate_group": "padis_dps__public_repo__patch",
+      "run_name": "lion_public_repo_512_geometric_zeta12_20260708",
+      "mean_psnr": 33.262328091843536,
+      "mean_ssim": 0.8027544753924369,
+      "mean_mae": 0.014828788116574287
     }
   ]
 }
