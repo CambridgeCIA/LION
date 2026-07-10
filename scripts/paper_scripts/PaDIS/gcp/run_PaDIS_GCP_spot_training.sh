@@ -1267,6 +1267,12 @@ prepare_reconstruction_matrix() {
                         --failed-dir "$FAILED_DIR"
                         --runtime-dir "$RUNTIME_DIR"
                 )
+                if [ -n "$PADIS_RECON_VALIDATE_SETTINGS_MATRIX_GROUPS" ]; then
+                        reconcile_args+=(
+                                --validate-settings-matrix-groups
+                                "$PADIS_RECON_VALIDATE_SETTINGS_MATRIX_GROUPS"
+                        )
+                fi
                 if [ "$PADIS_GCP_DRY_RUN" = "1" ]; then
                         reconcile_args+=(--skip-output-check)
                 fi
@@ -1627,6 +1633,7 @@ PADIS_RECON_HPARAM_RUN_GLOB="${PADIS_RECON_HPARAM_RUN_GLOB:-fixedval_*}"
 PADIS_RECON_ALLOW_MISSING_CHECKPOINTS="${PADIS_RECON_ALLOW_MISSING_CHECKPOINTS:-0}"
 PADIS_RECON_EXPECTED_JOBS_JSON="${PADIS_RECON_EXPECTED_JOBS_JSON:-$PADIS_RECON_ROOT/reconstruction_matrix_jobs.json}"
 PADIS_RECON_RECONCILE_MANIFEST="${PADIS_RECON_RECONCILE_MANIFEST:-1}"
+PADIS_RECON_VALIDATE_SETTINGS_MATRIX_GROUPS="${PADIS_RECON_VALIDATE_SETTINGS_MATRIX_GROUPS:-dataset_size_patch_full,dataset_size_whole_full}"
 PADIS_RECON_PNP_CHECKPOINT="${PADIS_RECON_PNP_CHECKPOINT:-${PADIS_PNP_CHECKPOINT:-$PADIS_PNP_ROOT/$PADIS_PNP_VALIDATION_NAME}}"
 PADIS_RECON_PNP_NOISE_COND_CHECKPOINT="${PADIS_RECON_PNP_NOISE_COND_CHECKPOINT:-${PADIS_PNP_NOISE_COND_CHECKPOINT:-$PADIS_PNP_NOISE_COND_ROOT/$PADIS_PNP_NOISE_COND_VALIDATION_NAME}}"
 PADIS_PNP_ITERATIONS="${PADIS_PNP_ITERATIONS:-20}"

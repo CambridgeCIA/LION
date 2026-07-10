@@ -35,6 +35,25 @@ IMPLEMENTED_FIGURES = (
     "figureA11_patch_assembly_generation",
 )
 
+PUBLICATION_DPI = 300
+PDF_IMAGE_DPI = 600
+LATEX_TEXT_WIDTH_PT = 437.46112
+LATEX_POINTS_PER_INCH = 72.27
+PUBLICATION_WIDTH_IN = LATEX_TEXT_WIDTH_PT / LATEX_POINTS_PER_INCH
+PANEL_HEADING_SIZE_PT = 7.5
+ROW_LABEL_SIZE_PT = 6.75
+SCALE_TEXT_SIZE_PT = 6.5
+COLOUR_SCALE_TEXT_SIZE_PT = 6.5
+GRID_DIVIDER_COLOUR = "0.45"
+GRID_DIVIDER_WIDTH_PT = 0.45
+HU_LOWER_PERCENTILE = 0.15
+HU_UPPER_PERCENTILE = 0.95
+MODEL_FIELD_OF_VIEW_MM = 300.0
+SCALE_BAR_MM = 50.0
+TWO_EXAMPLE_OFFSETS = (0, 5)
+PATCH_SIZE_EXAMPLE_OFFSETS = (0, 1, 5, 6)
+ADDITIONAL_EXAMPLE_OFFSETS = (1, 2, 3, 4, 6, 7, 8)
+
 
 @dataclass(frozen=True)
 class Panel:
@@ -55,6 +74,8 @@ class FigureSpec:
     panels: tuple[tuple[Panel, ...], ...]
     window: str = "soft_tissue"
     unsupported_note: str | None = None
+    field_of_view_mm: float = MODEL_FIELD_OF_VIEW_MM
+    scale_bar_mm: float = SCALE_BAR_MM
 
 
 def torch_load(path: pathlib.Path):
@@ -68,7 +89,12 @@ def normal_to_hu(image: torch.Tensor) -> torch.Tensor:
     return 3000.0 * image - 1000.0
 
 
-def display_image(image: torch.Tensor, *, window: str) -> torch.Tensor:
+def display_image(
+    image: torch.Tensor,
+    *,
+    window: str,
+    hu_range: tuple[float, float] | None = None,
+) -> torch.Tensor:
     image = image.detach().cpu().float()
     if image.ndim == 4:
         image = image[0]
@@ -76,16 +102,13 @@ def display_image(image: torch.Tensor, *, window: str) -> torch.Tensor:
         image = image[0] if image.shape[0] in (1, 3) else image.mean(dim=0)
     if window == "normal":
         return image.clamp(0.0, 1.0)
-    if window == "soft_tissue":
-        level = 40.0
-        width = 400.0
-    elif window == "bone":
-        level = 400.0
-        width = 1800.0
+    if window in {"soft_tissue", "bone"}:
+        if hu_range is None:
+            raise ValueError("HU display rows require an explicit percentile range.")
+        lower, upper = hu_range
     else:
         raise ValueError(f"Unknown display window: {window}")
-    lower = level - width / 2.0
-    return ((normal_to_hu(image) - lower) / width).clamp(0.0, 1.0)
+    return ((normal_to_hu(image) - lower) / (upper - lower)).clamp(0.0, 1.0)
 
 
 def tensor_from_payload(
@@ -129,7 +152,42 @@ def target_bbox(
     bottom = min(int(rows[-1]) + pad + 1, target_2d.shape[0])
     left = max(int(cols[0]) - pad, 0)
     right = min(int(cols[-1]) + pad + 1, target_2d.shape[1])
+    side = min(max(bottom - top, right - left), *target_2d.shape)
+    center_row = 0.5 * (top + bottom)
+    center_col = 0.5 * (left + right)
+    top = min(max(int(round(center_row - side / 2)), 0), target_2d.shape[0] - side)
+    left = min(max(int(round(center_col - side / 2)), 0), target_2d.shape[1] - side)
+    bottom = top + side
+    right = left + side
     return top, bottom, left, right
+
+
+def body_hu_percentile_range(
+    path: pathlib.Path,
+    sample_index: int,
+    *,
+    lower_quantile: float = HU_LOWER_PERCENTILE,
+    upper_quantile: float = HU_UPPER_PERCENTILE,
+) -> tuple[float, float]:
+    """Return robust HU limits from non-background ground-truth body pixels."""
+    target = tensor_from_payload(path, "targets", sample_index)
+    target_2d = target.squeeze().detach().cpu().float()
+    if target_2d.ndim != 2:
+        raise ValueError(f"Expected a 2-D target image in {path}.")
+    body_mask = target_2d > 0.02
+    if not torch.any(body_mask):
+        raise ValueError(f"No body pixels found in target image {path}.")
+    body_hu = normal_to_hu(target_2d)[body_mask]
+    limits = torch.quantile(
+        body_hu,
+        torch.tensor((lower_quantile, upper_quantile), dtype=body_hu.dtype),
+    )
+    lower, upper = (float(value) for value in limits)
+    if not math.isfinite(lower) or not math.isfinite(upper) or upper <= lower:
+        raise ValueError(
+            f"Invalid HU percentile range ({lower}, {upper}) for target {path}."
+        )
+    return lower, upper
 
 
 def crop(image: torch.Tensor, bbox: tuple[int, int, int, int] | None) -> torch.Tensor:
@@ -151,7 +209,20 @@ def recon_path(
     path = root / method / model / implementation / "lion" / experiment
     if group != "main":
         path = path / group
-    return path / "reconstructions.pt"
+    direct_path = path / "reconstructions.pt"
+    if direct_path.exists():
+        return direct_path
+
+    nested_root = path / experiment if group == "main" else path
+    nested_paths = tuple(nested_root.rglob("reconstructions.pt"))
+    if len(nested_paths) == 1:
+        return nested_paths[0]
+    if len(nested_paths) > 1:
+        raise RuntimeError(
+            f"Expected one reconstruction payload below {path}, found "
+            f"{len(nested_paths)}."
+        )
+    return direct_path
 
 
 def generation_path(root: pathlib.Path, preset: str) -> pathlib.Path:
@@ -289,7 +360,7 @@ def figure_specs(
             ),
         )
 
-    generation_columns = tuple(
+    generation_rows = tuple(
         tuple(
             generation_panel(
                 generation_root,
@@ -302,7 +373,8 @@ def figure_specs(
         )
         for row, preset in (
             ("Whole image", "paper-generation-whole"),
-            ("Independent patches", "paper-generation-naive-patch"),
+            ("Patch stitching", "paper-generation-patch-stitch"),
+            ("Patch averaging", "paper-generation-patch-average"),
             ("PaDIS", "paper-generation"),
         )
     )
@@ -311,7 +383,7 @@ def figure_specs(
         FigureSpec(
             "figure4_generation",
             "figure4_generation.png",
-            generation_columns,
+            generation_rows,
             window="normal",
         ),
         FigureSpec(
@@ -320,26 +392,26 @@ def figure_specs(
             (
                 standard_ct_row(
                     "ct_60",
-                    "60 views",
-                    panel_sample_index=sample_index,
+                    "60 views\n360° range\nSample 1",
+                    panel_sample_index=sample_index + TWO_EXAMPLE_OFFSETS[0],
                     window="soft_tissue",
                 ),
                 standard_ct_row(
                     "ct_60",
-                    "60 views",
-                    panel_sample_index=sample_index + 1,
+                    "60 views\n360° range\nSample 6",
+                    panel_sample_index=sample_index + TWO_EXAMPLE_OFFSETS[1],
                     window="soft_tissue",
                 ),
                 standard_ct_row(
                     "ct_20",
-                    "20 views",
-                    panel_sample_index=sample_index,
+                    "20 views\n360° range\nSample 1",
+                    panel_sample_index=sample_index + TWO_EXAMPLE_OFFSETS[0],
                     window="normal",
                 ),
                 standard_ct_row(
                     "ct_20",
-                    "20 views",
-                    panel_sample_index=sample_index + 1,
+                    "20 views\n360° range\nSample 6",
+                    panel_sample_index=sample_index + TWO_EXAMPLE_OFFSETS[1],
                     window="normal",
                 ),
             ),
@@ -352,7 +424,7 @@ def figure_specs(
                     recon_panel(
                         recon_root,
                         "FDK",
-                        "ct_512_60",
+                        "60 views\n360° range\n512 × 512",
                         method="baseline",
                         model="patch_lidc_512",
                         experiment="ct_512_60",
@@ -362,7 +434,7 @@ def figure_specs(
                     recon_panel(
                         recon_root,
                         "ADMM-TV",
-                        "ct_512_60",
+                        "60 views\n360° range\n512 × 512",
                         method="admm_tv",
                         model="patch_lidc_512",
                         experiment="ct_512_60",
@@ -372,7 +444,7 @@ def figure_specs(
                     recon_panel(
                         recon_root,
                         "PaDIS",
-                        "ct_512_60",
+                        "60 views\n360° range\n512 × 512",
                         method="padis_dps",
                         model="patch_lidc_512",
                         experiment="ct_512_60",
@@ -381,7 +453,7 @@ def figure_specs(
                     ),
                     target(
                         "Ground truth",
-                        "ct_512_60",
+                        "60 views\n360° range\n512 × 512",
                         "ct_512_60",
                         "patch_lidc_512",
                         panel_sample_index=sample_index,
@@ -396,11 +468,11 @@ def figure_specs(
             tuple(
                 standard_ct_row(
                     "ct_20",
-                    f"Slice {offset + 1}",
+                    f"20 views\n360° range\nSample {offset + 1}",
                     panel_sample_index=sample_index + offset,
                     window="normal",
                 )
-                for offset in range(7)
+                for offset in ADDITIONAL_EXAMPLE_OFFSETS
             ),
             window="normal",
         ),
@@ -410,11 +482,11 @@ def figure_specs(
             tuple(
                 standard_ct_row(
                     "ct_8",
-                    f"Slice {offset + 1}",
+                    f"8 views\n360° range\nSample {offset + 1}",
                     panel_sample_index=sample_index + offset,
                     window="normal",
                 )
-                for offset in range(7)
+                for offset in ADDITIONAL_EXAMPLE_OFFSETS
             ),
             window="normal",
         ),
@@ -425,8 +497,8 @@ def figure_specs(
                 tuple(
                     recon_panel(
                         recon_root,
-                        title,
-                        "Patch size",
+                        f"Sample {offset + 1}",
+                        patch_label,
                         method="padis_dps",
                         model=model,
                         experiment="ct_20",
@@ -434,24 +506,27 @@ def figure_specs(
                         sample_index=sample_index + offset,
                         window="normal",
                     )
-                    for title, model, group in (
-                        ("P=8", "patch_lidc_p8_default", "patch_size_p8"),
-                        ("P=16", "patch_lidc_p16_default", "patch_size_p16"),
-                        ("P=32", "patch_lidc_p32_default", "patch_size_p32"),
-                        ("P=56", "patch_lidc_default", "patch_size_p56"),
-                        ("P=96", "patch_lidc_p96_default", "patch_size_p96"),
-                    )
+                    for offset in PATCH_SIZE_EXAMPLE_OFFSETS
                 )
-                + (
+                for patch_label, model, group in (
+                    ("8 × 8 patches", "patch_lidc_p8_default", "patch_size_p8"),
+                    ("16 × 16 patches", "patch_lidc_p16_default", "patch_size_p16"),
+                    ("32 × 32 patches", "patch_lidc_p32_default", "patch_size_p32"),
+                    ("56 × 56 patches", "patch_lidc_default", "patch_size_p56"),
+                    ("96 × 96 patches", "patch_lidc_p96_default", "patch_size_p96"),
+                )
+            )
+            + (
+                tuple(
                     target(
+                        f"Sample {offset + 1}",
                         "Ground truth",
-                        f"Slice {offset + 1}",
                         "ct_20",
                         panel_sample_index=sample_index + offset,
                         window="normal",
-                    ),
-                )
-                for offset in range(2)
+                    )
+                    for offset in PATCH_SIZE_EXAMPLE_OFFSETS
+                ),
             ),
             window="normal",
         ),
@@ -462,7 +537,7 @@ def figure_specs(
                 (
                     recon_panel(
                         recon_root,
-                        "Default",
+                        "Training subset",
                         "PaDIS",
                         method="padis_dps",
                         model="patch_lidc_default",
@@ -472,7 +547,7 @@ def figure_specs(
                     ),
                     recon_panel(
                         recon_root,
-                        "Full LIDC",
+                        "Full LIDC–IDRI set",
                         "PaDIS",
                         method="padis_dps",
                         model="patch_lidc_full",
@@ -491,7 +566,7 @@ def figure_specs(
                 (
                     recon_panel(
                         recon_root,
-                        "Default",
+                        "Training subset",
                         "Whole image",
                         method="whole_image_diffusion",
                         model="whole_lidc_default",
@@ -501,7 +576,7 @@ def figure_specs(
                     ),
                     recon_panel(
                         recon_root,
-                        "Full LIDC",
+                        "Full LIDC–IDRI set",
                         "Whole image",
                         method="whole_image_diffusion",
                         model="whole_lidc_full",
@@ -527,8 +602,8 @@ def figure_specs(
                 (
                     recon_panel(
                         recon_root,
-                        "No position, noise",
-                        "Position",
+                        "No position\nNoise input",
+                        f"Sample {offset + 1}",
                         method="padis_dps",
                         model="patch_lidc_no_pos_default",
                         group="position_no_encoding_noise_init",
@@ -537,8 +612,8 @@ def figure_specs(
                     ),
                     recon_panel(
                         recon_root,
-                        "No position, FDK",
-                        "Position",
+                        "No position\nFDK input",
+                        f"Sample {offset + 1}",
                         method="padis_dps",
                         model="patch_lidc_no_pos_default",
                         group="position_no_encoding_fdk_init",
@@ -547,8 +622,8 @@ def figure_specs(
                     ),
                     recon_panel(
                         recon_root,
-                        "Position, noise",
-                        "Position",
+                        "Position\nNoise input",
+                        f"Sample {offset + 1}",
                         method="padis_dps",
                         model="patch_lidc_default",
                         group="position_with_encoding_noise_init",
@@ -557,8 +632,8 @@ def figure_specs(
                     ),
                     recon_panel(
                         recon_root,
-                        "Position, FDK",
-                        "Position",
+                        "Position\nFDK input",
+                        f"Sample {offset + 1}",
                         method="padis_dps",
                         model="patch_lidc_default",
                         group="position_with_encoding_fdk_init",
@@ -567,13 +642,13 @@ def figure_specs(
                     ),
                     target(
                         "Ground truth",
-                        f"Slice {offset + 1}",
+                        f"Sample {offset + 1}",
                         "ct_20",
                         panel_sample_index=sample_index + offset,
                         window="normal",
                     ),
                 )
-                for offset in range(2)
+                for offset in TWO_EXAMPLE_OFFSETS
             ),
             window="normal",
         ),
@@ -682,7 +757,7 @@ def figure_specs(
                     generation_panel(
                         generation_root,
                         f"Sample {index + 1}",
-                        "Langevin 300 NFE",
+                        "Langevin\n300 model evaluations",
                         preset="paper-generation-langevin-300nfe",
                         sample_index=index,
                     )
@@ -703,7 +778,7 @@ def figure_specs(
                     recon_panel(
                         recon_root,
                         "FDK",
-                        experiment,
+                        experiment_label,
                         method="baseline",
                         model="patch_lidc_default",
                         experiment=experiment,
@@ -713,7 +788,7 @@ def figure_specs(
                     recon_panel(
                         recon_root,
                         "ADMM-TV",
-                        experiment,
+                        experiment_label,
                         method="admm_tv",
                         model="patch_lidc_default",
                         experiment=experiment,
@@ -723,7 +798,7 @@ def figure_specs(
                     recon_panel(
                         recon_root,
                         "Whole image",
-                        experiment,
+                        experiment_label,
                         method="whole_image_diffusion",
                         model="whole_lidc_default",
                         experiment=experiment,
@@ -733,7 +808,7 @@ def figure_specs(
                     recon_panel(
                         recon_root,
                         "PaDIS",
-                        experiment,
+                        experiment_label,
                         method="padis_dps",
                         model="patch_lidc_default",
                         experiment=experiment,
@@ -742,13 +817,16 @@ def figure_specs(
                     ),
                     target(
                         "Ground truth",
-                        experiment,
+                        experiment_label,
                         experiment,
                         panel_sample_index=sample_index,
                         window="soft_tissue",
                     ),
                 )
-                for experiment in ("ct_60", "ct_fanbeam_180")
+                for experiment, experiment_label in (
+                    ("ct_60", "60 views\n360° range"),
+                    ("ct_fanbeam_180", "20 views\n120° range"),
+                )
             ),
             unsupported_note=(
                 "The heavy deblurring row from Figure A.10 is omitted because "
@@ -779,6 +857,164 @@ def figure_specs(
     )
 
 
+def should_show_panel_title(
+    panels: tuple[tuple[Panel, ...], ...], row_index: int, col_index: int
+) -> bool:
+    """Show a column heading only when its meaning changes from the row above."""
+    if row_index == 0:
+        return True
+    previous_row = panels[row_index - 1]
+    if col_index >= len(previous_row):
+        return True
+    return previous_row[col_index].title != panels[row_index][col_index].title
+
+
+def add_scale_bar(
+    axis,
+    image: torch.Tensor,
+    *,
+    source_width_pixels: int,
+    field_of_view_mm: float,
+    scale_bar_mm: float,
+) -> None:
+    """Draw a physical scale bar using the reconstruction model's field of view."""
+    import matplotlib.patheffects as path_effects
+
+    height, width = image.shape[-2:]
+    pixels_per_mm = float(source_width_pixels) / float(field_of_view_mm)
+    bar_pixels = float(scale_bar_mm) * pixels_per_mm
+    margin = max(0.045 * min(height, width), 3.0)
+    x_start = 1.5 * margin
+    x_end = x_start + bar_pixels
+    y = max(2.0 * margin, 0.08 * height)
+    if x_end >= width - margin:
+        raise ValueError(
+            f"{scale_bar_mm:g} mm scale bar does not fit in a {width}-pixel panel."
+        )
+    line = axis.plot(
+        (x_start, x_end),
+        (y, y),
+        color="white",
+        linewidth=2.2,
+        solid_capstyle="butt",
+        zorder=5,
+    )[0]
+    line.set_path_effects(
+        [path_effects.Stroke(linewidth=4.0, foreground="black"), path_effects.Normal()]
+    )
+    label = axis.text(
+        x_end + 0.025 * width,
+        y,
+        f"{scale_bar_mm:g} mm",
+        color="white",
+        fontsize=SCALE_TEXT_SIZE_PT,
+        fontweight="semibold",
+        ha="left",
+        va="center",
+        zorder=6,
+        clip_on=True,
+        bbox={
+            "boxstyle": "square,pad=0.12",
+            "facecolor": "black",
+            "edgecolor": "none",
+            "alpha": 0.78,
+        },
+    )
+    label.set_path_effects(
+        [path_effects.Stroke(linewidth=2.0, foreground="black"), path_effects.Normal()]
+    )
+
+
+def add_internal_grid_dividers(
+    axis, *, row_index: int, col_index: int, rows: int, cols: int
+) -> None:
+    """Draw each internal grid boundary once without opening a panel gutter."""
+    divider_kwargs = {
+        "color": GRID_DIVIDER_COLOUR,
+        "linewidth": GRID_DIVIDER_WIDTH_PT,
+        "transform": axis.transAxes,
+        "clip_on": False,
+        "solid_capstyle": "butt",
+        "zorder": 8,
+    }
+    if col_index < cols - 1:
+        axis.plot((1.0, 1.0), (0.0, 1.0), **divider_kwargs)
+    if row_index < rows - 1:
+        axis.plot((0.0, 1.0), (0.0, 0.0), **divider_kwargs)
+
+
+def assert_text_within_figure(fig) -> None:
+    """Fail before export if any visible text would be cropped by the PDF page."""
+    from matplotlib.axes import Axes
+
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    figure_bbox = fig.bbox
+    tolerance_pixels = 1.0
+    clipped = []
+    artists = list(fig.texts)
+    for axis in fig.findobj(match=Axes):
+        artists.extend(axis.texts)
+        artists.extend((axis.title, axis._left_title, axis._right_title))
+        if axis.axison:
+            artists.extend(axis.get_xticklabels())
+            artists.extend(axis.get_yticklabels())
+            artists.extend((axis.xaxis.label, axis.yaxis.label))
+    unique_artists = {id(artist): artist for artist in artists}.values()
+    for artist in unique_artists:
+        if not artist.get_visible() or not artist.get_text().strip():
+            continue
+        bounds = artist.get_window_extent(renderer=renderer)
+        if (
+            bounds.x0 < figure_bbox.x0 - tolerance_pixels
+            or bounds.y0 < figure_bbox.y0 - tolerance_pixels
+            or bounds.x1 > figure_bbox.x1 + tolerance_pixels
+            or bounds.y1 > figure_bbox.y1 + tolerance_pixels
+        ):
+            clipped.append(
+                f"{artist.get_text().replace(chr(10), ' / ')} "
+                f"[{bounds.x0:.1f}, {bounds.y0:.1f}, "
+                f"{bounds.x1:.1f}, {bounds.y1:.1f}]"
+            )
+    if clipped:
+        raise RuntimeError(
+            "Figure text extends beyond the export page: " + ", ".join(clipped)
+        )
+
+
+def add_row_intensity_colourbar(
+    fig,
+    colour_axis,
+    image_artist,
+    *,
+    window: str,
+    hu_range: tuple[float, float] | None,
+) -> None:
+    """Add one calibrated greyscale bar bounded by the image-row height."""
+    colour_axis.set_axis_off()
+    bounded_axis = colour_axis.inset_axes((0.0, 0.06, 1.0, 0.88))
+    colourbar = fig.colorbar(image_artist, cax=bounded_axis)
+    if window == "normal":
+        ticks = (0.0, 0.25, 0.5, 0.75, 1.0)
+        labels = ("0", "0.25", "0.5", "0.75", "1")
+        colourbar.set_label(
+            "Normalised\nintensity", fontsize=COLOUR_SCALE_TEXT_SIZE_PT, labelpad=3
+        )
+        colourbar.ax.yaxis.label.set_multialignment("center")
+    elif window in {"soft_tissue", "bone"}:
+        if hu_range is None:
+            raise ValueError("HU colour bars require an explicit percentile range.")
+        lower, upper = hu_range
+        ticks = (0.0, 0.25, 0.5, 0.75, 1.0)
+        hu_ticks = tuple(lower + tick * (upper - lower) for tick in ticks)
+        labels = tuple(str(int(round(value))).replace("-", "−") for value in hu_ticks)
+        colourbar.set_label("HU", fontsize=COLOUR_SCALE_TEXT_SIZE_PT, labelpad=3)
+    else:
+        raise ValueError(f"Unknown display window for intensity colour bar: {window}")
+    colourbar.set_ticks(ticks, labels=labels)
+    colourbar.ax.tick_params(labelsize=COLOUR_SCALE_TEXT_SIZE_PT, length=2, pad=1.5)
+
+
 def draw_figure(
     spec: FigureSpec,
     output_folder: pathlib.Path,
@@ -789,19 +1025,77 @@ def draw_figure(
 ) -> dict:
     import matplotlib.pyplot as plt
 
+    plt.rcParams["pdf.fonttype"] = 42
+    plt.rcParams["ps.fonttype"] = 42
     rows = len(spec.panels)
     cols = max(len(row) for row in spec.panels)
-    fig, axes = plt.subplots(
-        rows,
-        cols,
-        figsize=(2.35 * cols, 2.35 * rows),
-        squeeze=False,
-        constrained_layout=True,
+    left_margin_inches = 0.60
+    right_margin_inches = 0.68
+    maximum_heading_lines = max(
+        panel.title.count("\n") + 1
+        for row_index, row in enumerate(spec.panels)
+        for col_index, panel in enumerate(row)
+        if should_show_panel_title(spec.panels, row_index, col_index)
     )
+    top_margin_inches = 0.18 + 0.10 * (maximum_heading_lines - 1)
+    bottom_margin_inches = 0.03
+    colour_scale_width = 0.045
+    panel_width = (PUBLICATION_WIDTH_IN - left_margin_inches - right_margin_inches) / (
+        cols + colour_scale_width
+    )
+    figure_height = panel_width * rows + top_margin_inches + bottom_margin_inches
+    grid_left = left_margin_inches / PUBLICATION_WIDTH_IN
+    grid_right = 1.0 - right_margin_inches / PUBLICATION_WIDTH_IN
+    grid_bottom = bottom_margin_inches / figure_height
+    grid_top = 1.0 - top_margin_inches / figure_height
+    fig = plt.figure(figsize=(PUBLICATION_WIDTH_IN, figure_height))
+    grid = fig.add_gridspec(
+        rows,
+        cols + 1,
+        width_ratios=[1.0] * cols + [colour_scale_width],
+        left=grid_left,
+        right=grid_right,
+        bottom=grid_bottom,
+        top=grid_top,
+        wspace=0.0,
+        hspace=0.0,
+    )
+    axes = [
+        [fig.add_subplot(grid[row_index, col_index]) for col_index in range(cols)]
+        for row_index in range(rows)
+    ]
+    colour_axes = [fig.add_subplot(grid[row_index, cols]) for row_index in range(rows)]
     missing = []
     rendered = 0
+    row_hu_ranges = []
     for row_index, row in enumerate(spec.panels):
         bbox = None
+        row_image_artist = None
+        row_windows = {panel.window or spec.window for panel in row}
+        if len(row_windows) != 1:
+            raise ValueError(
+                f"Figure {spec.name} row {row_index} mixes display windows: "
+                f"{sorted(row_windows)}"
+            )
+        row_window = next(iter(row_windows))
+        row_hu_range = None
+        if row_window in {"soft_tissue", "bone"}:
+            reference_panel = next(
+                (panel for panel in row if panel.key == "targets"),
+                next(panel for panel in row if panel.source == "reconstruction"),
+            )
+            row_hu_range = body_hu_percentile_range(
+                reference_panel.path, reference_panel.sample_index
+            )
+            row_hu_ranges.append(
+                {
+                    "row": row[0].row.replace("\n", " "),
+                    "lower_hu": row_hu_range[0],
+                    "upper_hu": row_hu_range[1],
+                    "lower_percentile": 15,
+                    "upper_percentile": 95,
+                }
+            )
         if crop_body:
             for panel in row:
                 if panel.source == "reconstruction":
@@ -816,9 +1110,41 @@ def draw_figure(
             if col_index >= len(row):
                 continue
             panel = row[col_index]
-            axis.set_title(panel.title, fontsize=8)
+            if should_show_panel_title(spec.panels, row_index, col_index):
+                row_heading_lines = max(
+                    candidate.title.count("\n") + 1
+                    for candidate_col, candidate in enumerate(row)
+                    if should_show_panel_title(spec.panels, row_index, candidate_col)
+                )
+                panel_heading_lines = panel.title.count("\n") + 1
+                centred_title_pad = (
+                    2.0
+                    + 0.55
+                    * (row_heading_lines - panel_heading_lines)
+                    * PANEL_HEADING_SIZE_PT
+                )
+                axis.set_title(
+                    panel.title,
+                    fontsize=PANEL_HEADING_SIZE_PT,
+                    fontweight="semibold",
+                    pad=centred_title_pad,
+                    multialignment="center",
+                )
             if col_index == 0:
-                axis.set_ylabel(panel.row, fontsize=8)
+                row_label_lines = panel.row.count("\n") + 1
+                row_label_x = -0.045 - 0.065 * (row_label_lines - 1)
+                axis.text(
+                    row_label_x,
+                    0.5,
+                    panel.row,
+                    transform=axis.transAxes,
+                    fontsize=ROW_LABEL_SIZE_PT,
+                    fontweight="semibold",
+                    ha="center",
+                    va="center",
+                    rotation=90,
+                    clip_on=False,
+                )
             try:
                 image = tensor_from_payload(panel.path, panel.key, panel.sample_index)
             except (FileNotFoundError, KeyError, IndexError) as exc:
@@ -834,20 +1160,78 @@ def draw_figure(
                     raise
                 axis.text(0.5, 0.5, "missing", ha="center", va="center", fontsize=8)
                 continue
-            image_2d = display_image(image, window=panel.window or spec.window)
+            image_2d = display_image(
+                image,
+                window=panel.window or spec.window,
+                hu_range=row_hu_range,
+            )
+            source_width_pixels = int(image_2d.shape[-1])
             if crop_body and panel.crop_from_target:
                 image_2d = crop(image_2d, bbox)
-            axis.imshow(image_2d, cmap="gray", vmin=0.0, vmax=1.0)
+            row_image_artist = axis.imshow(
+                image_2d,
+                cmap="gray",
+                vmin=0.0,
+                vmax=1.0,
+                interpolation="none",
+            )
+            if col_index == len(row) - 1:
+                add_scale_bar(
+                    axis,
+                    image_2d,
+                    source_width_pixels=source_width_pixels,
+                    field_of_view_mm=spec.field_of_view_mm,
+                    scale_bar_mm=spec.scale_bar_mm,
+                )
+            add_internal_grid_dividers(
+                axis,
+                row_index=row_index,
+                col_index=col_index,
+                rows=rows,
+                cols=len(row),
+            )
             rendered += 1
+        if row_image_artist is not None:
+            add_row_intensity_colourbar(
+                fig,
+                colour_axes[row_index],
+                row_image_artist,
+                window=row_window,
+                hu_range=row_hu_range,
+            )
 
     output_folder.mkdir(parents=True, exist_ok=True)
     output_path = output_folder / spec.filename
+    pdf_path = output_path.with_suffix(".pdf")
     if rendered > 0:
-        fig.savefig(output_path, dpi=220)
+        assert_text_within_figure(fig)
+        save_kwargs = {"facecolor": "white"}
+        fig.savefig(output_path, dpi=PUBLICATION_DPI, **save_kwargs)
+        fig.savefig(pdf_path, dpi=PDF_IMAGE_DPI, **save_kwargs)
     plt.close(fig)
     return {
         "name": spec.name,
         "path": str(output_path),
+        "pdf_path": str(pdf_path),
+        "dpi": PUBLICATION_DPI,
+        "pdf_image_dpi": PDF_IMAGE_DPI,
+        "pdf_images": "native-resolution raster; vector text and annotations",
+        "hu_percentile_window": [15, 95],
+        "row_hu_ranges": row_hu_ranges,
+        "field_of_view_mm": spec.field_of_view_mm,
+        "scale_bar_mm": spec.scale_bar_mm,
+        "scale_bar_position": "upper left of rightmost panel",
+        "intensity_colourbar_per_row": True,
+        "internal_grid_dividers": {
+            "colour": GRID_DIVIDER_COLOUR,
+            "width_pt": GRID_DIVIDER_WIDTH_PT,
+        },
+        "row_label_alignment": "centre",
+        "text_bounds_validated": True,
+        "row_spacing": 0.0,
+        "square_crop": bool(crop_body),
+        "latex_text_width_pt": LATEX_TEXT_WIDTH_PT,
+        "publication_ready": not missing and spec.unsupported_note is None,
         "rendered_panels": rendered,
         "missing": missing,
         "unsupported_note": spec.unsupported_note,
@@ -938,6 +1322,20 @@ def main() -> None:
         "generation_root": str(generation_root),
         "output_folder": str(output_folder),
         "sample_index": int(args.sample_index),
+        "publication_dpi": PUBLICATION_DPI,
+        "scale_bar_basis": (
+            "Physical scale uses the configured 300 mm LION reconstruction-model "
+            "field of view, not patient-native DICOM pixel spacing."
+        ),
+        "representative_sample_indices": [
+            int(args.sample_index + offset) for offset in TWO_EXAMPLE_OFFSETS
+        ],
+        "patch_size_sample_indices": [
+            int(args.sample_index + offset) for offset in PATCH_SIZE_EXAMPLE_OFFSETS
+        ],
+        "additional_sample_indices": [
+            int(args.sample_index + offset) for offset in ADDITIONAL_EXAMPLE_OFFSETS
+        ],
         "figures": results,
     }
     output_folder.mkdir(parents=True, exist_ok=True)

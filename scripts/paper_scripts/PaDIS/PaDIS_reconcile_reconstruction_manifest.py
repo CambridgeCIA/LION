@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import datetime as _datetime
 import json
+import math
 from pathlib import Path
 import shutil
 
@@ -97,7 +98,36 @@ def expected_sample_count(job: dict) -> int | None:
         return None
 
 
-def completed_output_exists(job: dict) -> bool:
+def values_match(expected, actual) -> bool:
+    if isinstance(expected, bool):
+        return isinstance(actual, bool) and actual is expected
+    if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
+        return math.isclose(float(expected), float(actual), rel_tol=1e-6, abs_tol=1e-9)
+    return actual == expected
+
+
+def expected_mapping_matches(
+    payload: dict,
+    job: dict,
+    *,
+    expected_key: str,
+    payload_key: str,
+) -> bool:
+    expected = job.get(expected_key)
+    if expected is None:
+        return True
+    if not isinstance(expected, dict):
+        return False
+    actual = payload.get(payload_key)
+    if not isinstance(actual, dict):
+        return False
+    return all(
+        key in actual and values_match(value, actual[key])
+        for key, value in expected.items()
+    )
+
+
+def completed_output_exists(job: dict, *, validate_settings: bool = True) -> bool:
     metrics_path = metrics_path_for_job(job)
     if metrics_path is None or not metrics_path.is_file():
         return False
@@ -110,7 +140,21 @@ def completed_output_exists(job: dict) -> bool:
     except (OSError, json.JSONDecodeError):
         return False
     metrics = payload.get("metrics")
-    return isinstance(metrics, list) and len(metrics) >= expected_samples
+    if not isinstance(metrics, list) or len(metrics) < expected_samples:
+        return False
+    if not validate_settings:
+        return True
+    return expected_mapping_matches(
+        payload,
+        job,
+        expected_key="expected_sampler",
+        payload_key="sampler",
+    ) and expected_mapping_matches(
+        payload,
+        job,
+        expected_key="expected_method_settings",
+        payload_key="method_settings",
+    )
 
 
 def build_index_mapping(old_jobs: list[dict], new_jobs: list[dict]) -> dict[int, int]:
@@ -220,12 +264,21 @@ def synthesize_done_markers_from_completed_outputs(
     done_dir: Path,
     failed_dir: Path | None,
     skip_output_check: bool,
+    validate_settings_matrix_groups: set[str] | None,
 ) -> int:
     if skip_output_check:
         return 0
     created = 0
     for index, job in enumerate(jobs):
-        if completed_output_exists(job) and write_done_marker_from_output(
+        matrix_group = str(job.get("matrix_group", "main"))
+        validate_settings = (
+            validate_settings_matrix_groups is None
+            or matrix_group in validate_settings_matrix_groups
+        )
+        if completed_output_exists(
+            job,
+            validate_settings=validate_settings,
+        ) and write_done_marker_from_output(
             done_dir=done_dir,
             failed_dir=failed_dir,
             index=index,
@@ -237,6 +290,13 @@ def synthesize_done_markers_from_completed_outputs(
 
 def reconcile(args: argparse.Namespace) -> dict:
     new_jobs = load_manifest(args.new_json)
+    validate_settings_matrix_groups = None
+    if args.validate_settings_matrix_groups:
+        validate_settings_matrix_groups = {
+            item.strip()
+            for item in args.validate_settings_matrix_groups.split(",")
+            if item.strip()
+        }
     if not args.old_json.is_file():
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(args.new_json, args.output_json)
@@ -245,6 +305,7 @@ def reconcile(args: argparse.Namespace) -> dict:
             done_dir=args.done_dir,
             failed_dir=args.failed_dir,
             skip_output_check=args.skip_output_check,
+            validate_settings_matrix_groups=validate_settings_matrix_groups,
         )
         return {
             "old_manifest_found": False,
@@ -285,6 +346,7 @@ def reconcile(args: argparse.Namespace) -> dict:
         done_dir=args.done_dir,
         failed_dir=args.failed_dir,
         skip_output_check=args.skip_output_check,
+        validate_settings_matrix_groups=validate_settings_matrix_groups,
     )
     return {
         "old_manifest_found": True,
@@ -311,6 +373,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--skip-output-check",
         action="store_true",
         help="Migrate done markers without checking for completed metrics.json files.",
+    )
+    parser.add_argument(
+        "--validate-settings-matrix-groups",
+        default=None,
+        help=(
+            "Comma-separated matrix groups whose completed outputs must match "
+            "the current sampler and method settings. By default all groups "
+            "are validated."
+        ),
     )
     return parser
 

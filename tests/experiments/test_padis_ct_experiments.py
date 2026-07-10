@@ -446,6 +446,20 @@ def test_unconditional_generation_preset_uses_generation_engine(tmp_path):
     assert arguments[arguments.index("--noise-schedule") + 1] == "geometric"
 
 
+def test_generation_presets_use_separately_tuned_prior_settings():
+    patch_arguments = list(PRESETS["paper-generation"].arguments)
+    whole_arguments = list(PRESETS["paper-generation-whole"].arguments)
+
+    assert patch_arguments[patch_arguments.index("--generation-epsilon") + 1] == "0.8"
+    assert (
+        patch_arguments[patch_arguments.index("--langevin-noise-scale") + 1] == "0.85"
+    )
+    assert whole_arguments[whole_arguments.index("--generation-epsilon") + 1] == "0.75"
+    assert (
+        whole_arguments[whole_arguments.index("--langevin-noise-scale") + 1] == "0.75"
+    )
+
+
 def test_generation_figure_presets_cover_patch_assembly_methods():
     assert FIGURE_PRESET_GROUPS["paper-generation-figures"] == (
         "paper-generation-whole",

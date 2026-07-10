@@ -79,7 +79,11 @@ def _whole_image_ct_arguments(sigma_min: float) -> tuple[str, ...]:
     )
 
 
-def _paper_generation_arguments() -> tuple[str, ...]:
+def _paper_generation_arguments(
+    *,
+    generation_epsilon: float = 1.0,
+    langevin_noise_scale: float = 1.0,
+) -> tuple[str, ...]:
     return (
         "--num-steps",
         "300",
@@ -92,9 +96,9 @@ def _paper_generation_arguments() -> tuple[str, ...]:
         "--noise-schedule",
         "geometric",
         "--generation-epsilon",
-        "1",
+        str(generation_epsilon),
         "--langevin-noise-scale",
-        "1",
+        str(langevin_noise_scale),
     )
 
 
@@ -136,14 +140,20 @@ PRESETS = {
         implementation="lion-paper-protocol",
         experiment=None,
         description="PaDIS paper-style unconditional LIDC image generation.",
-        arguments=_paper_generation_arguments(),
+        arguments=_paper_generation_arguments(
+            generation_epsilon=0.8,
+            langevin_noise_scale=0.85,
+        ),
         engine="generation",
     ),
     "paper-generation-whole": ReconstructionPreset(
         implementation="lion-paper-protocol",
         experiment=None,
         description="Whole-image diffusion unconditional LIDC image generation.",
-        arguments=_paper_generation_arguments()
+        arguments=_paper_generation_arguments(
+            generation_epsilon=0.75,
+            langevin_noise_scale=0.75,
+        )
         + (
             "--prior-mode",
             "whole-image",

@@ -570,6 +570,12 @@ prepare_reconstruction_matrix() {
                         --done-dir "$DONE_DIR"
                         --failed-dir "$FAILED_DIR"
                 )
+                if [ -n "$PADIS_RECON_VALIDATE_SETTINGS_MATRIX_GROUPS" ]; then
+                        reconcile_args+=(
+                                --validate-settings-matrix-groups
+                                "$PADIS_RECON_VALIDATE_SETTINGS_MATRIX_GROUPS"
+                        )
+                fi
                 if [ "$PADIS_MANUAL_RECON_DRY_RUN" = "1" ]; then
                         reconcile_args+=(--skip-output-check)
                 fi
@@ -1021,6 +1027,7 @@ PADIS_RECON_HPARAM_RUN_GLOB="${PADIS_RECON_HPARAM_RUN_GLOB:-fixedval_*}"
 PADIS_RECON_ALLOW_MISSING_CHECKPOINTS="${PADIS_RECON_ALLOW_MISSING_CHECKPOINTS:-0}"
 PADIS_RECON_EXPECTED_JOBS_JSON="${PADIS_RECON_EXPECTED_JOBS_JSON:-$PADIS_RECON_ROOT/reconstruction_matrix_jobs.json}"
 PADIS_RECON_RECONCILE_MANIFEST="${PADIS_RECON_RECONCILE_MANIFEST:-1}"
+PADIS_RECON_VALIDATE_SETTINGS_MATRIX_GROUPS="${PADIS_RECON_VALIDATE_SETTINGS_MATRIX_GROUPS:-dataset_size_patch_full,dataset_size_whole_full}"
 PADIS_GENERATION_PHASE="${PADIS_GENERATION_PHASE:-1}"
 PADIS_GENERATION_ROOT="${PADIS_GENERATION_ROOT:-$LION_EXPERIMENTS_PATH/PaDIS/reconstruction_presets}"
 PADIS_GENERATION_PRESETS="${PADIS_GENERATION_PRESETS:-paper-generation-whole,paper-generation-naive-patch,paper-generation,paper-generation-langevin-300nfe,paper-generation-patch-stitch,paper-generation-patch-average}"
