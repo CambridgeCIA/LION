@@ -22,7 +22,7 @@ LION/
 │   ├── psnr.py (modified)
 │   └── ssim.py (modified)
 └── models/
-    └── score_inverse/ (new)
+    └── score_inverse/ (new, MAIN)
         ├── .gitignore
         ├── __init__.py
         ├── ema.py
@@ -35,7 +35,7 @@ LION/
         ├── sirt_adj.py
         └── utils.py
 scripts/
-└── score_inverse_scripts/ (new)
+└── score_inverse_scripts/ (new, MAIN)
     ├── configs.py
     ├── test.py
     ├── train.py
@@ -44,7 +44,44 @@ scripts/
 
 ---
 
-## Detailed File-by-File Changes
+## Main Changes
+
+
+### 1. `LION/models/score_inverse/` (new)
+
+* **`.gitignore`, `__init__.py`**
+  - Standard repository structure maintenance and exports.
+* **`ema.py`**
+  - Implemented the Exponential Moving Average (EMA) parameter tracker class for stabilizing model training and applying shadow weights during validation or inference.
+* **`fst.py`**
+  - Implemented direct and inverse parallel-beam Radon transforms using the Fourier Slice Theorem. Includes customizable k-space padding (expansion factor) to prevent interpolation errors.
+* **`layer.py`**
+  - Built convolutional layers, combine blocks for U-Net skip-connections, FIR up/down-samplers, and self-attention layers with choices between `einsum` and `bmm` computation.
+* **`loss.py`**
+  - Built the `SMLoss` class implementing Denoising Score Matching loss weighted across uniformly sampled time steps. Supports deterministic noise generation via custom PyTorch generators.
+* **`ncsnpp.py`**
+  - Built the Noise Conditional Score Network (NCSN++) architecture backbone, managing features across multi-resolution levels and conditioning them with Gaussian Fourier noise embeddings.
+* **`sampling.py`**
+  - Implemented Predictor-Corrector loops (`pc_sampler` and the JAX-equivalent `pc_sampler_new`), Tweedie denoising, conditional score modifications (`get_score_conditional`), and exact frequency-space or preconditioned right-inverse hijacking APIs (`get_hijack`, `get_hijack_new`).
+* **`sde.py`**
+  - Defined abstract SDEs, simple forward linear SDEs, simple reverse-time SDEs, and the Variance Exploding SDE (VESDE) transition distributions.
+* **`sirt_adj.py`**
+  - Implemented the `SIRTAdj` preconditioned adjoint backprojection operator ($x = C A^T R y$) using volume ($C$) and projection ($R$) scaling factors to serve as a stable pseudo-inverse for arbitrary projection operators.
+* **`utils.py`**
+  - Provided utilities for global random seed settings, checkpoint loading/applying for evaluation, and batch-wise application of projection operators.
+
+### 2. `scripts/score_inverse_scripts/` (new)
+
+* **`configs.py`**
+  - Declares sparse geometries (parallel & fan), simulated projection noise presets, SDE bounds, and reference checkpoint paths.
+* **`test.py`**
+  - A command-line evaluation runner that executes reconstructions on sinograms, sweeps over time steps ($N$) and hijacking weights ($\lambda$), and logs runtime execution speed and peak GPU/RSS memory usage.
+* **`train.py`**
+  - Orchestrates multi-GPU DistributedDataParallel (DDP) model training using Denoising Score Matching, EMA shadow updates, and checkpoint saving.
+* **`validation.py`**
+  - Executes seed-controlled deterministic validation sweeps on saved checkpoints to calculate loss metrics.
+
+## Side Changes
 
 ### 1. `LION/CTtools/`
 
@@ -84,36 +121,3 @@ scripts/
   - **Offset Correction**: Adjusted channel axis offset (`curr_channel_axis -= 1`) for squeezed batch elements to keep structural evaluations stable.
   - **Static Data Range**: Added support for an optional static `data_range` parameter.
 
-### 5. `LION/models/score_inverse/` (new)
-
-* **`.gitignore`, `__init__.py`**
-  - Standard repository structure maintenance and exports.
-* **`ema.py`**
-  - Implemented the Exponential Moving Average (EMA) parameter tracker class for stabilizing model training and applying shadow weights during validation or inference.
-* **`fst.py`**
-  - Implemented direct and inverse parallel-beam Radon transforms using the Fourier Slice Theorem. Includes customizable k-space padding (expansion factor) to prevent interpolation errors.
-* **`layer.py`**
-  - Built convolutional layers, combine blocks for U-Net skip-connections, FIR up/down-samplers, and self-attention layers with choices between `einsum` and `bmm` computation.
-* **`loss.py`**
-  - Built the `SMLoss` class implementing Denoising Score Matching loss weighted across uniformly sampled time steps. Supports deterministic noise generation via custom PyTorch generators.
-* **`ncsnpp.py`**
-  - Built the Noise Conditional Score Network (NCSN++) architecture backbone, managing features across multi-resolution levels and conditioning them with Gaussian Fourier noise embeddings.
-* **`sampling.py`**
-  - Implemented Predictor-Corrector loops (`pc_sampler` and the JAX-equivalent `pc_sampler_new`), Tweedie denoising, conditional score modifications (`get_score_conditional`), and exact frequency-space or preconditioned right-inverse hijacking APIs (`get_hijack`, `get_hijack_new`).
-* **`sde.py`**
-  - Defined abstract SDEs, simple forward linear SDEs, simple reverse-time SDEs, and the Variance Exploding SDE (VESDE) transition distributions.
-* **`sirt_adj.py`**
-  - Implemented the `SIRTAdj` preconditioned adjoint backprojection operator ($x = C A^T R y$) using volume ($C$) and projection ($R$) scaling factors to serve as a stable pseudo-inverse for arbitrary projection operators.
-* **`utils.py`**
-  - Provided utilities for global random seed settings, checkpoint loading/applying for evaluation, and batch-wise application of projection operators.
-
-### 6. `scripts/score_inverse_scripts/` (new)
-
-* **`configs.py`**
-  - Declares sparse geometries (parallel & fan), simulated projection noise presets, SDE bounds, and reference checkpoint paths.
-* **`test.py`**
-  - A command-line evaluation runner that executes reconstructions on sinograms, sweeps over time steps ($N$) and hijacking weights ($\lambda$), and logs runtime execution speed and peak GPU/RSS memory usage.
-* **`train.py`**
-  - Orchestrates multi-GPU DistributedDataParallel (DDP) model training using Denoising Score Matching, EMA shadow updates, and checkpoint saving.
-* **`validation.py`**
-  - Executes seed-controlled deterministic validation sweeps on saved checkpoints to calculate loss metrics.
