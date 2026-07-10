@@ -5,7 +5,10 @@ import sys
 
 import pytest
 
-from scripts.paper_scripts.PaDIS.PaDIS_hparam_defaults import build_defaults_payload
+from scripts.paper_scripts.PaDIS.PaDIS_hparam_defaults import (
+    HparamDefaults,
+    build_defaults_payload,
+)
 from scripts.paper_scripts.PaDIS.PaDIS_run_reconstruction_matrix import (
     build_arg_parser,
     build_jobs,
@@ -321,6 +324,55 @@ def test_hparam_defaults_can_be_generated_and_loaded_from_json(tmp_path):
     assert payload["hparam_default"]["run_name"] == "fixedval_test"
     assert payload["expected_sampler"]["zeta"] == 4.25
     assert payload["expected_sampler"]["dps_epsilon"] == 0.3
+
+
+def test_full_model_exact_experiment_does_not_leak_into_default_models(tmp_path):
+    run_root = tmp_path / "hparam_runs"
+    _write_hparam_record(
+        run_root,
+        run_name="default_consensus",
+        model="patch_lidc_default",
+        experiment="consensus",
+        candidate="default_candidate",
+        candidate_args=("--zeta", "4.25"),
+    )
+    _write_hparam_record(
+        run_root,
+        run_name="full_exact",
+        model="patch_lidc_full",
+        experiment="ct_20",
+        candidate="full_candidate",
+        candidate_args=("--zeta", "4.5"),
+    )
+    defaults = HparamDefaults.from_run_root(run_root, "*")
+
+    default_selection = defaults.select(
+        method="padis_dps",
+        implementation="lion_physics",
+        prior="patch",
+        model="patch_lidc_default",
+        experiment="ct_20",
+    )
+    variant_selection = defaults.select(
+        method="padis_dps",
+        implementation="lion_physics",
+        prior="patch",
+        model="patch_lidc_p8_default",
+        experiment="ct_20",
+    )
+    full_selection = defaults.select(
+        method="padis_dps",
+        implementation="lion_physics",
+        prior="patch",
+        model="patch_lidc_full",
+        experiment="ct_20",
+    )
+
+    assert default_selection.candidate == "default_candidate"
+    assert variant_selection.candidate == "default_candidate"
+    assert variant_selection.exact_model is False
+    assert full_selection.candidate == "full_candidate"
+    assert full_selection.exact_model is True
 
 
 def test_hparam_defaults_consensus_prefers_cross_experiment_candidate(tmp_path):

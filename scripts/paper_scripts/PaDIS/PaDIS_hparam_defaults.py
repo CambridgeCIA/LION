@@ -538,21 +538,35 @@ class HparamDefaults:
         model: str,
         experiment: str,
     ) -> HparamSelection | None:
-        for source_experiment in (
+        source_experiments = (
             experiment,
             *HIGH_VIEW_FALLBACKS.get(experiment, ()),
             CONSENSUS_EXPERIMENT,
-        ):
-            selection = self._select_for_experiment(
-                method=method,
-                implementation=implementation,
-                prior=prior,
-                model=model,
-                experiment=experiment,
-                source_experiment=source_experiment,
-            )
-            if selection is not None:
-                return selection
+        )
+        model_preferences = [model]
+        canonical_model = {
+            "patch": "patch_lidc_default",
+            "whole_image": "whole_lidc_default",
+        }.get(prior)
+        if canonical_model is not None and canonical_model != model:
+            model_preferences.append(canonical_model)
+
+        # Model identity takes precedence over experiment specificity. This
+        # prevents an exact-experiment record for a full-data model from
+        # leaking into default-data and trained-ablation model rows.
+        for preferred_model in model_preferences:
+            for source_experiment in source_experiments:
+                selection = self._select_for_experiment(
+                    method=method,
+                    implementation=implementation,
+                    prior=prior,
+                    model=model,
+                    experiment=experiment,
+                    source_experiment=source_experiment,
+                    required_model=preferred_model,
+                )
+                if selection is not None:
+                    return selection
         return None
 
     def _select_for_experiment(
@@ -564,6 +578,7 @@ class HparamDefaults:
         model: str,
         experiment: str,
         source_experiment: str,
+        required_model: str,
     ) -> HparamSelection | None:
         matches = [
             record
@@ -572,14 +587,11 @@ class HparamDefaults:
             and record.get("implementation") == implementation
             and record.get("prior") == prior
             and record.get("experiment") == source_experiment
+            and record.get("model") == required_model
         ]
         if not matches:
             return None
-        exact_model_matches = [
-            record for record in matches if record.get("model") == model
-        ]
-        narrowed = exact_model_matches or matches
-        record = max(narrowed, key=record_rank)
+        record = max(matches, key=record_rank)
         summary = record.get("summary") or {}
         return HparamSelection(
             args=candidate_args(record),
