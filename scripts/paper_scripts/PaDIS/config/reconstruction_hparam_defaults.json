@@ -192,6 +192,33 @@
     },
     {
       "method": "padis_dps",
+      "implementation": "lion_physics",
+      "prior": "patch",
+      "model": "patch_lidc_full",
+      "experiment": "ct_20",
+      "args": [
+        "--zeta",
+        "4.5",
+        "--dps-epsilon",
+        "0.5",
+        "--initial-reconstruction",
+        "noise",
+        "--no-clip-initial",
+        "--no-clip-output",
+        "--patch-batch-size",
+        "8",
+        "--patch-checkpoint-denoiser",
+        "--no-fixed-overlap-checkpoint-denoiser"
+      ],
+      "candidate": "core_zeta_4p5__eps_0p5",
+      "candidate_group": "padis_dps__lion_physics__any",
+      "run_name": "wandb_pulled_patch_dps_minintense_20260709",
+      "mean_psnr": 28.25241920078945,
+      "mean_ssim": 0.5783875201076866,
+      "mean_mae": 0.02748074382543564
+    },
+    {
+      "method": "padis_dps",
       "implementation": "paper",
       "prior": "patch",
       "model": "patch_lidc_default",
@@ -548,6 +575,25 @@
       ],
       "covered_expected_experiments": 2,
       "expected_experiments": 2
+    },
+    {
+      "method": "whole_image_diffusion",
+      "implementation": "lion_physics",
+      "prior": "whole_image",
+      "model": "whole_lidc_full",
+      "experiment": "ct_20",
+      "args": [
+        "--zeta",
+        "4.0",
+        "--dps-epsilon",
+        "0.5"
+      ],
+      "candidate": "core_zeta_4__eps_0p5",
+      "candidate_group": "whole_image_diffusion__lion_physics__any",
+      "run_name": "wandb_pulled_whole_minintense_20260709",
+      "mean_psnr": 34.38203256177716,
+      "mean_ssim": 0.8585140764217377,
+      "mean_mae": 0.012787969782948494
     },
     {
       "method": "whole_image_diffusion",
