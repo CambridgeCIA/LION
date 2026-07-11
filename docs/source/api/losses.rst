@@ -11,5 +11,10 @@ PaDIS loss
 🚧 Undocumented modules
 -----------------------
 
-- ``LION.losses.SURE``
-- ``LION.losses.SUREpgImage``
+.. automodule:: LION.losses.SURE
+   :members:
+   :show-inheritance:
+
+.. automodule:: LION.losses.SUREpgImage
+   :members:
+   :show-inheritance:

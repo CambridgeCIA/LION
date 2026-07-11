@@ -18,13 +18,22 @@ PaDIS solver
 🚧 Undocumented solver modules
 ------------------------------
 
-- ``AdversarialRegularizerSolver``
-- ``Equivariance2InverseSolver``
-- ``EquivariantSolver``
-- ``GaussianDenoiserSolver``
-- ``Noise2InverseSolver``
-- ``Noisier2Inverse``
-- ``Proj2ProjSolver``
-- ``SelfSupervisedSolver``
-- ``Sparse2InverseSolver``
-- ``SupervisedSolver``
+.. sourceautosummary:: LION.optimizers.AdversarialRegularizerSolver
+
+.. sourceautosummary:: LION.optimizers.Equivariance2InverseSolver
+
+.. sourceautosummary:: LION.optimizers.EquivariantSolver
+
+.. sourceautosummary:: LION.optimizers.GaussianDenoiserSolver
+
+.. sourceautosummary:: LION.optimizers.Noise2InverseSolver
+
+.. sourceautosummary:: LION.optimizers.Noisier2Inverse
+
+.. sourceautosummary:: LION.optimizers.Proj2ProjSolver
+
+.. sourceautosummary:: LION.optimizers.SelfSupervisedSolver
+
+.. sourceautosummary:: LION.optimizers.Sparse2InverseSolver
+
+.. sourceautosummary:: LION.optimizers.SupervisedSolver

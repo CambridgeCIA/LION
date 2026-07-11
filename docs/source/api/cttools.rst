@@ -19,3 +19,6 @@ CT utilities
 
 The legacy CT transform helpers are available but have not yet undergone the
 current documentation and example audit.
+
+.. automodule:: LION.CTtools.ct_transforms
+   :members:

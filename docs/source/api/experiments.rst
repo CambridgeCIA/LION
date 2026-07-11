@@ -11,5 +11,10 @@ CT experiments
 🚧 Undocumented modules
 -----------------------
 
-- ``LION.experiments.ct_2DeteCT_noise_experiments``
-- ``LION.experiments.ct_benchmarking_experiments``
+.. automodule:: LION.experiments.ct_2DeteCT_noise_experiments
+   :members:
+   :show-inheritance:
+
+.. automodule:: LION.experiments.ct_benchmarking_experiments
+   :members:
+   :show-inheritance:

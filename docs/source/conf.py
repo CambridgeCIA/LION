@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import ast
 import os
 from pathlib import Path
 import sys
+
+from docutils import nodes
+from docutils.parsers.rst import Directive
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -55,6 +59,74 @@ myst_heading_anchors = 3
 # outside the Sphinx source tree; those links remain useful on GitHub but
 # cannot be resolved as Sphinx cross-references.
 suppress_warnings = ["myst.xref_missing"]
+
+
+class SourceApiSummary(Directive):
+    """Render public Python symbols without importing the target module.
+
+    This complements autodoc for legacy modules whose import-time behaviour
+    requires optional packages, datasets, or a CUDA device. The summary is
+    generated from Python's abstract syntax tree, so it stays aligned with the
+    source while keeping documentation builds safe and deterministic.
+    """
+
+    required_arguments = 1
+    final_argument_whitespace = False
+    has_content = False
+
+    @staticmethod
+    def _signature(item: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+        prefix = "async " if isinstance(item, ast.AsyncFunctionDef) else ""
+        return f"{prefix}{item.name}({ast.unparse(item.args)})"
+
+    def run(self) -> list[nodes.Node]:
+        module = self.arguments[0].strip()
+        relative = Path(*module.split("."))
+        source = ROOT / relative.with_suffix(".py")
+        if not source.is_file():
+            source = ROOT / relative / "__init__.py"
+        tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
+
+        result: list[nodes.Node] = [nodes.rubric(text=module)]
+        entries = nodes.bullet_list()
+        for item in tree.body:
+            if (
+                item.name.startswith("_")
+                if isinstance(
+                    item, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+                )
+                else True
+            ):
+                continue
+            if isinstance(item, ast.ClassDef):
+                label = f"class {item.name}"
+                methods = [
+                    child
+                    for child in item.body
+                    if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and not child.name.startswith("_")
+                ]
+                if methods:
+                    label += ": " + ", ".join(
+                        self._signature(method) for method in methods
+                    )
+            else:
+                label = self._signature(item)
+            paragraph = nodes.paragraph()
+            paragraph += nodes.literal(text=label)
+            entries += nodes.list_item("", paragraph)
+        if entries.children:
+            result.append(entries)
+        else:
+            result.append(nodes.paragraph(text="No public symbols are defined."))
+        return result
+
+
+def setup(app):
+    """Register documentation helpers local to LION."""
+
+    app.add_directive("sourceautosummary", SourceApiSummary)
+
 
 html_theme = "furo"
 html_title = "LION Documentation"

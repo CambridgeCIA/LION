@@ -10,8 +10,19 @@ Configured paths
 🚧 Undocumented utility modules
 -------------------------------
 
-- ``LION.utils.math``
-- ``LION.utils.normaliser``
-- ``LION.utils.parameter``
-- ``LION.utils.test_model``
-- ``LION.utils.utils``
+.. automodule:: LION.utils.math
+   :members:
+
+.. automodule:: LION.utils.normaliser
+   :members:
+   :show-inheritance:
+
+.. automodule:: LION.utils.parameter
+   :members:
+   :show-inheritance:
+
+.. automodule:: LION.utils.test_model
+   :members:
+
+.. automodule:: LION.utils.utils
+   :members:

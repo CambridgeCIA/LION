@@ -22,6 +22,14 @@ SPGL1
 🚧 Undocumented modules
 -----------------------
 
-- ``LION.classical_algorithms.conjugate_gradient``
-- ``LION.classical_algorithms.fista``
-- ``LION.classical_algorithms.sirt``
+These modules lack complete narrative documentation, but their discoverable
+functions are included automatically.
+
+.. automodule:: LION.classical_algorithms.conjugate_gradient
+   :members:
+
+.. automodule:: LION.classical_algorithms.fista
+   :members:
+
+.. automodule:: LION.classical_algorithms.sirt
+   :members:

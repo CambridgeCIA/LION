@@ -1,11 +1,14 @@
 LION.metrics 🚧
 ===============
 
-The package currently provides PSNR, SSIM, and HaarPSI implementations:
-
-- ``LION.metrics.psnr``
-- ``LION.metrics.ssim``
-- ``LION.metrics.haarpsi``
-
 These modules are tested but still need dedicated usage guidance and a public
-API docstring audit.
+API docstring audit. Their currently discoverable functions are included.
+
+.. automodule:: LION.metrics.psnr
+   :members:
+
+.. automodule:: LION.metrics.ssim
+   :members:
+
+.. automodule:: LION.metrics.haarpsi
+   :members:
