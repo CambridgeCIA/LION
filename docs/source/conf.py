@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import ast
+import copy
 import os
 from pathlib import Path
+import re
 import sys
 
 from docutils import nodes
 from docutils.parsers.rst import Directive, directives
 from docutils.statemachine import StringList
+from sphinx.ext.napoleon.docstring import NumpyDocstring
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -80,25 +83,112 @@ class SourceApiSummary(Directive):
 
     @staticmethod
     def _signature(item: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
-        prefix = "async " if isinstance(item, ast.AsyncFunctionDef) else ""
-        return f"{prefix}{item.name}({ast.unparse(item.args)})"
+        signature = f"{item.name}({SourceApiSummary._safe_arguments(item.args)})"
+        if item.returns is not None:
+            signature += f" -> {ast.unparse(item.returns)}"
+        return signature
 
     @staticmethod
     def _description(item: ast.AST) -> str:
         """Return an object's docstring as safe display text."""
 
-        return ast.get_docstring(item, clean=True) or "No docstring is available."
+        description = (
+            ast.get_docstring(item, clean=True) or "No docstring is available."
+        )
+        return re.sub(r"\[([A-Za-z][\w-]*)\]_", r"[\1]", description)
 
-    def _symbol_item(self, item: ast.AST, label: str) -> nodes.list_item:
-        """Build one documented symbol entry."""
+    @staticmethod
+    def _safe_arguments(arguments: ast.arguments) -> str:
+        """Render arguments while replacing unparseable f-string defaults."""
 
-        entry = nodes.list_item()
-        signature = nodes.paragraph()
-        signature += nodes.literal(text=label)
-        entry += signature
-        for paragraph_text in self._description(item).split("\n\n"):
-            entry += nodes.paragraph(text=" ".join(paragraph_text.splitlines()))
-        return entry
+        safe = copy.deepcopy(arguments)
+        safe.defaults = [
+            ast.Constant(value=Ellipsis)
+            if any(isinstance(node, ast.JoinedStr) for node in ast.walk(default))
+            else default
+            for default in safe.defaults
+        ]
+        safe.kw_defaults = [
+            ast.Constant(value=Ellipsis)
+            if default is not None
+            and any(isinstance(node, ast.JoinedStr) for node in ast.walk(default))
+            else default
+            for default in safe.kw_defaults
+        ]
+        return ast.unparse(safe)
+
+    def _formatted_description(self, item: ast.AST, *, what: str) -> list[str]:
+        """Convert a source docstring with the same Napoleon rules as autodoc."""
+
+        description = self._description(item)
+        if not self._use_napoleon:
+            lines: list[str] = []
+            for paragraph in description.split("\n\n"):
+                lines.extend([" ".join(paragraph.splitlines()), ""])
+            return lines
+        environment = self.state.document.settings.env
+        rendered = str(
+            NumpyDocstring(
+                description,
+                config=environment.config,
+                app=environment.app,
+                what=what,
+            )
+        )
+        return rendered.splitlines()
+
+    def _append_description(
+        self,
+        lines: list[str],
+        item: ast.AST,
+        *,
+        indent: str = "",
+        what: str,
+    ) -> None:
+        """Append a Napoleon-formatted docstring as nested reStructuredText."""
+
+        lines.extend(
+            f"{indent}{line}" if line else ""
+            for line in self._formatted_description(item, what=what)
+        )
+        lines.append("")
+
+    @staticmethod
+    def _constructor_signature(item: ast.ClassDef) -> str:
+        """Return a class signature derived from its constructor."""
+
+        constructor = next(
+            (
+                child
+                for child in item.body
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and child.name == "__init__"
+            ),
+            None,
+        )
+        if constructor is None:
+            return item.name
+        arguments = SourceApiSummary._safe_arguments(constructor.args)
+        arguments = re.sub(r"^(self|cls)(,\s*)?", "", arguments)
+        return f"{item.name}({arguments})"
+
+    @staticmethod
+    def _public_assignments(tree: ast.Module) -> list[tuple[str, ast.AST]]:
+        """Return public module-level assignments."""
+
+        assignments: list[tuple[str, ast.AST]] = []
+        for item in tree.body:
+            if isinstance(item, ast.Assign):
+                for target in item.targets:
+                    if isinstance(target, ast.Name) and not target.id.startswith("_"):
+                        assignments.append((target.id, item))
+            elif (
+                isinstance(item, ast.AnnAssign)
+                and isinstance(item.target, ast.Name)
+                and not item.target.id.startswith("_")
+            ):
+                assignments.append((item.target.id, item))
+        return assignments
 
     def run(self) -> list[nodes.Node]:
         module = self.arguments[0].strip()
@@ -106,16 +196,29 @@ class SourceApiSummary(Directive):
         source = ROOT / relative.with_suffix(".py")
         if not source.is_file():
             source = ROOT / relative / "__init__.py"
+        source_parts = source.relative_to(ROOT).parts
+        self._use_napoleon = "PaDIS-Reproduction" in source_parts
         tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
 
-        result: list[nodes.Node] = [nodes.rubric(text=module.rsplit(".", 1)[-1])]
+        # Do not set ``py:currentmodule`` here. Sphinx viewcode treats that as
+        # permission to import the referenced file, which is unsafe for CLI,
+        # download, training, and test modules with import-time side effects.
+        lines: list[str] = []
         module_docstring = ast.get_docstring(tree, clean=True)
         if module_docstring:
-            for paragraph_text in module_docstring.split("\n\n"):
-                result.append(
-                    nodes.paragraph(text=" ".join(paragraph_text.splitlines()))
+            self._append_description(lines, tree, what="module")
+
+        for name, assignment in self._public_assignments(tree):
+            lines.extend([f".. py:data:: {name}", "   :no-index:", ""])
+            if (
+                isinstance(assignment, ast.AnnAssign)
+                and assignment.annotation is not None
+            ):
+                lines.extend(
+                    [f"   **Type:** ``{ast.unparse(assignment.annotation)}``", ""]
                 )
-        entries = nodes.bullet_list()
+
+        symbol_count = 0
         for item in tree.body:
             if (
                 item.name.startswith("_")
@@ -126,30 +229,46 @@ class SourceApiSummary(Directive):
             ):
                 continue
             if isinstance(item, ast.ClassDef):
-                label = f"class {item.name}"
+                symbol_count += 1
+                lines.extend(
+                    [
+                        f".. py:class:: {self._constructor_signature(item)}",
+                        "   :no-index:",
+                        "",
+                    ]
+                )
+                self._append_description(lines, item, indent="   ", what="class")
                 methods = [
                     child
                     for child in item.body
                     if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
                     and not child.name.startswith("_")
                 ]
-                entry = self._symbol_item(item, label)
-                if methods:
-                    method_entries = nodes.bullet_list()
-                    for method in methods:
-                        method_entries += self._symbol_item(
-                            method, self._signature(method)
-                        )
-                    entry += method_entries
+                for method in methods:
+                    lines.extend(
+                        [
+                            f".. py:method:: {item.name}.{self._signature(method)}",
+                            "   :no-index:",
+                            "",
+                        ]
+                    )
+                    self._append_description(lines, method, indent="   ", what="method")
             else:
-                label = self._signature(item)
-                entry = self._symbol_item(item, label)
-            entries += entry
-        if entries.children:
-            result.append(entries)
-        else:
-            result.append(nodes.paragraph(text="No public symbols are defined."))
-        return result
+                symbol_count += 1
+                lines.extend(
+                    [f".. py:function:: {self._signature(item)}", "   :no-index:"]
+                )
+                if isinstance(item, ast.AsyncFunctionDef):
+                    lines.append("   :async:")
+                lines.append("")
+                self._append_description(lines, item, indent="   ", what="function")
+
+        if not symbol_count and not self._public_assignments(tree):
+            lines.extend(["No public symbols are defined.", ""])
+
+        container = nodes.container(classes=["source-api-reference"])
+        self.state.nested_parse(StringList(lines), self.content_offset, container)
+        return [container]
 
 
 class ApiModule(Directive):
