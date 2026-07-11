@@ -1,15 +1,22 @@
 API Reference
 =============
 
-The API pages are generated from NumPy-style docstrings with Sphinx autodoc.
-PaDIS and its supporting CT/LIDC interfaces are the documented core of this
-release.
+The API follows the current top-level :mod:`LION` package structure. Pages are
+generated from NumPy-style docstrings with Sphinx autodoc. A 🚧 marker means
+that a module is indexed but has not yet received the same documentation audit
+as the PaDIS, CT, and LIDC-IDRI paths.
 
 .. toctree::
    :maxdepth: 2
 
-   padis
-   ct
-   lidc
+   cttools
+   classical_algorithms
+   data_loaders
    experiments
-   provisional
+   losses
+   models
+   optimizers
+   reconstructors
+   operators
+   metrics
+   utils

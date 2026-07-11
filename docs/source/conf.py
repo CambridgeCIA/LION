@@ -34,6 +34,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx_copybutton",
     "sphinx_design",
+    "myst_parser",
 ]
 
 templates_path = ["_templates"]
@@ -47,6 +48,13 @@ napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_use_param = True
 napoleon_use_rtype = True
+myst_heading_anchors = 3
+
+# Repository READMEs are included verbatim so that their GitHub-facing guides
+# remain the single source of truth.  Some contain links whose targets live
+# outside the Sphinx source tree; those links remain useful on GitHub but
+# cannot be resolved as Sphinx cross-references.
+suppress_warnings = ["myst.xref_missing"]
 
 html_theme = "furo"
 html_title = "LION Documentation"

@@ -65,6 +65,7 @@ Build this site locally with::
    testing
    documentation_status
    padis/index
+   readmes/index
 
 .. toctree::
    :maxdepth: 2
