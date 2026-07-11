@@ -48,6 +48,8 @@ EXTERNAL_MODEL_LINKS = {
 
 @dataclass(frozen=True)
 class Candidate:
+    """One named set of sampler arguments in a tuning sweep."""
+
     name: str
     method: str
     implementation: str
@@ -63,6 +65,8 @@ class Candidate:
 
 @dataclass(frozen=True)
 class RunRecord:
+    """Completed or failed tuning run and its recorded provenance."""
+
     candidate: Candidate
     job: matrix.ReconstructionJob
     command: tuple[str, ...]
@@ -1852,6 +1856,7 @@ def unique_candidates(candidates: Iterable[Candidate]) -> list[Candidate]:
 
 
 def candidate_set(name: str) -> list[Candidate]:
+    """Return the named reproducible candidate collection."""
     if name == "reproduction":
         return reproduction_candidates()
     if name == "smoke":
@@ -2299,6 +2304,7 @@ def build_runs(
 ) -> tuple[
     argparse.Namespace, list[tuple[Candidate, matrix.ReconstructionJob, list[str]]]
 ]:
+    """Resolve matrix jobs and candidate filters into executable tuning runs."""
     matrix_args = build_matrix_args(args)
     jobs = matrix.build_jobs(matrix_args)
     failures = matrix.input_check_failures(matrix_args, jobs)
@@ -2461,6 +2467,7 @@ def write_outputs(args: argparse.Namespace, records: list[dict]) -> None:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the reconstruction-tuning command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--external-model-root",
@@ -2575,6 +2582,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Execute selected fixed-validation tuning candidates."""
     args = build_arg_parser().parse_args()
     args.external_model_root = args.external_model_root.expanduser().resolve()
     args.training_root = args.training_root.expanduser().resolve()

@@ -577,6 +577,7 @@ def csv_to_latex_tables(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the table-generation command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--csv-path", type=Path, default=DEFAULT_INPUT_CSV)
     parser.add_argument("--tex-path", type=Path, default=DEFAULT_OUTPUT_TEX)
@@ -596,6 +597,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Generate decoded CSV and LaTeX tables from verified metrics."""
     args = build_arg_parser().parse_args()
     log_root = args.timing_log_root
     if log_root is None:

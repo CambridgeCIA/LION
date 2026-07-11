@@ -1,3 +1,5 @@
+"""Reusable CT experiment definitions for LION datasets."""
+
 # =============================================================================
 # This file is part of LION library
 # License : GPL-3
@@ -20,6 +22,12 @@ from LION.data_loaders.deteCT import deteCT
 
 
 class Experiment(ABC):
+    """Bind CT geometry, measurement noise, and dataset parameters.
+
+    Derived classes define :meth:`default_parameters`; instances then create
+    consistent training, validation, and testing datasets for that protocol.
+    """
+
     def __init__(
         self,
         experiment_params=None,
@@ -85,12 +93,15 @@ class Experiment(ABC):
         return dataloader
 
     def get_training_dataset(self):
+        """Construct the training split dataset."""
         return self.__get_dataset("train")
 
     def get_validation_dataset(self):
+        """Construct the validation split dataset."""
         return self.__get_dataset("validation")
 
     def get_testing_dataset(self):
+        """Construct the testing split dataset."""
         return self.__get_dataset("test")
 
     def __str__(self):
@@ -98,6 +109,7 @@ class Experiment(ABC):
 
     @staticmethod
     def get_dataset_parameters(dataset, geometry=None):
+        """Return default loader parameters for a supported dataset."""
         if dataset == "LIDC-IDRI":
             return LIDC_IDRI.default_parameters(geometry=geometry)
         if dataset == "2DeteCT":
@@ -155,18 +167,26 @@ class _PaDISFanBeamCTReconBase(Experiment):
 
 
 class PaDISFanBeam8CTRecon(_PaDISFanBeamCTReconBase):
+    """Noise-free eight-view full-angle LIDC fan-beam experiment."""
+
     view_count = 8
 
 
 class PaDISFanBeam20CTRecon(_PaDISFanBeamCTReconBase):
+    """Noise-free 20-view full-angle LIDC fan-beam experiment."""
+
     view_count = 20
 
 
 class PaDISFanBeam60CTRecon(_PaDISFanBeamCTReconBase):
+    """Noise-free 60-view full-angle LIDC fan-beam experiment."""
+
     view_count = 60
 
 
 class PaDISFanBeam120LimitedCTRecon(_PaDISFanBeamCTReconBase):
+    """Noise-free 20-view LIDC fan-beam experiment spanning 120 degrees."""
+
     view_count = 20
     angle_span = 2 * np.pi / 3
 

@@ -35,6 +35,8 @@ from LION.optimizers import PaDISSolver  # noqa: E402
 
 @dataclass
 class PaDISStepState:
+    """Captured tensors and scalar diagnostics for one sampler step."""
+
     loss: torch.Tensor
     seen_patches: int
     ema_state: dict[str, torch.Tensor]
@@ -712,6 +714,7 @@ def _compare_step(
 
 
 def run_check(args: argparse.Namespace) -> dict[str, object]:
+    """Compare a short seeded PaDIS run with its stored golden state."""
     args.resolved_device = _device_from_arg(args.device)
     top_k = int(getattr(args, "top_k", 0))
     run_forward_diagnostics = not bool(getattr(args, "no_forward_diagnostics", False))
@@ -825,6 +828,7 @@ def run_check(args: argparse.Namespace) -> dict[str, object]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Construct the short-run check command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--padis-root",
@@ -890,6 +894,7 @@ def _run_seed_matrix(args: argparse.Namespace) -> dict[str, object]:
 
 
 def main() -> None:
+    """Run short-run reproduction checks and write their report."""
     args = build_parser().parse_args()
     args.padis_root = args.padis_root.resolve()
     summary = _run_seed_matrix(args)

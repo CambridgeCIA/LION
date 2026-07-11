@@ -43,6 +43,8 @@ from LION.optimizers import PaDISSolver  # noqa: E402
 
 @dataclass(frozen=True)
 class ModeCheck:
+    """Named preflight mode and its pass/fail diagnostic payload."""
+
     name: str
     image_scaling: float
     patch_sizes: tuple[int, ...]
@@ -65,6 +67,8 @@ ABLATION_MODE_CHECKS = (
 
 
 class LimitedLoader:
+    """Bounded iterable view over an existing data loader."""
+
     def __init__(self, loader, max_batches: int | None):
         self.loader = loader
         self.max_batches = max_batches
@@ -255,6 +259,7 @@ def _make_solver(
 
 
 def check_environment(args: argparse.Namespace) -> dict[str, object]:
+    """Check Python, CUDA, paths, imports, and required external assets."""
     device = _device_from_arg(args.device)
     return {
         "python": sys.version,
@@ -654,6 +659,7 @@ def _derive_expected_pps(training_results: list[dict[str, object]]) -> float:
 
 
 def run_suite(args: argparse.Namespace) -> dict[str, object]:
+    """Run selected preflight modes and aggregate their reports."""
     args.output_dir.mkdir(parents=True, exist_ok=True)
     device = _device_from_arg(args.device)
     report = {
@@ -727,6 +733,7 @@ def run_suite(args: argparse.Namespace) -> dict[str, object]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Construct the machine-preflight command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device", default="cuda")
     parser.add_argument(
@@ -786,6 +793,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Execute PaDIS machine readiness checks."""
     args = build_parser().parse_args()
     if args.full_validation:
         args.validation_batches = None

@@ -224,6 +224,7 @@ def save_wandb_id(run_folder, wandb_run):
 
 
 def init_wandb(args, run_folder, preset):
+    """Initialise or resume W&B logging and persist its stable run identity."""
     if args.no_wandb or args.wandb_project is None:
         return None
     try:
@@ -359,6 +360,7 @@ def cache_path_for_dataset(dataset, mode, cache_folder):
 
 
 def stage_cache_from_source(mode, cache_path, source_cache_path):
+    """Stage a prepared dataset cache from a source directory."""
     if not source_cache_path.is_file():
         return False
     print(f"Staging {mode} image-prior cache from {source_cache_path} to {cache_path}")
@@ -369,6 +371,7 @@ def stage_cache_from_source(mode, cache_path, source_cache_path):
 
 
 def stage_cache_from_archive(mode, cache_path, archive_path):
+    """Restore a prepared dataset cache from an archive."""
     if not archive_path.is_file():
         return False
     zstd = shutil.which("zstd")
@@ -555,6 +558,7 @@ def log_wandb_outputs(wandb_run, run_folder, log_artifact=True):
 
 
 def build_arg_parser():
+    """Construct the 256-square PaDIS training command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--prior-mode",
@@ -769,6 +773,7 @@ def run_prefix_for_prior_mode(prior_mode: str) -> str:
 
 
 def main():
+    """Train or resume a 256-square patch or whole-image PaDIS prior."""
     args = build_arg_parser().parse_args()
     if args.max_slices_per_patient == 0 or args.max_slices_per_patient < -1:
         raise ValueError("--max-slices-per-patient must be positive or -1.")

@@ -40,6 +40,8 @@ from LION.utils.parameter import LIONParameter  # noqa: E402
 
 
 class ScaledIdentityOp(Operator):
+    """Identity test operator with configurable forward/adjoint scaling."""
+
     def __init__(self, scale: float = 1.0):
         super().__init__(device=torch.device("cpu"))
         self.scale = float(scale)
@@ -76,6 +78,8 @@ class ScaledIdentityOp(Operator):
 
 
 class CompatibleDenoiser(nn.Module):
+    """Deterministic denoiser matching the public PaDIS call convention."""
+
     """Deterministic denoiser with PaDIS-repo and LION call signatures."""
 
     def __init__(self, pad_width: int = 4, patch_size: int = 4):
@@ -125,6 +129,8 @@ class CompatibleDenoiser(nn.Module):
 
 
 class TrainableCompatibleDenoiser(LIONmodel):
+    """Minimal trainable LION denoiser used for equivalence checks."""
+
     """Tiny trainable denoiser for optimizer-step equivalence checks."""
 
     def __init__(self, pad_width: int = 0, patch_size: int = 8):
@@ -1461,6 +1467,7 @@ def _compare_golden_payloads(
 
 
 def run_check(args: argparse.Namespace) -> dict[str, object]:
+    """Run public-repository equivalence checks and collect diagnostics."""
     device = torch.device(args.device)
     if device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("CUDA was requested but is not available.")
@@ -1576,6 +1583,7 @@ def run_check(args: argparse.Namespace) -> dict[str, object]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Construct the equivalence-check command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     default_padis_root = pathlib.Path(__file__).resolve().parents[3] / "PaDIS"
     parser.add_argument("--padis-root", type=pathlib.Path, default=default_padis_root)
@@ -1589,6 +1597,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Execute equivalence checks and emit a machine-readable report."""
     args = build_parser().parse_args()
     args.padis_root = args.padis_root.resolve()
     if args.write_golden is not None:

@@ -1,3 +1,5 @@
+"""PyTorch dataset adapter for processed LIDC-IDRI axial CT slices."""
+
 # =============================================================================
 # This file is part of LION library
 # License : BSD-3
@@ -68,6 +70,25 @@ def create_consensus_annotation(
 
 
 class LIDC_IDRI(Dataset):
+    """Load LIDC-IDRI data for image-prior, reconstruction, or segmentation tasks.
+
+    Parameters
+    ----------
+    mode : {"train", "validation", "test"}
+        Dataset split.
+    geometry_parameters : Geometry, optional
+        Backward-compatible geometry argument.
+    parameters : LIONParameter, optional
+        Dataset settings returned by :meth:`default_parameters`.
+
+    Notes
+    -----
+    Processed slices are stored in HU.  Image-prior and reconstruction targets
+    are converted to LION normalised intensity.  Spatial resizing is performed
+    on CPU before the final device transfer to avoid retaining large 512-square
+    tensors on the GPU for patch training.
+    """
+
     def __init__(
         self,
         mode,
@@ -319,6 +340,7 @@ class LIDC_IDRI(Dataset):
 
     @staticmethod
     def default_parameters(geometry=None, task="reconstruction"):
+        """Return default LIDC-IDRI split, sampling, and task parameters."""
         param = LIONParameter()
         param.name = "LIDC-IDRI Data Loader"
         param.training_proportion = 0.8
@@ -480,6 +502,7 @@ class LIDC_IDRI(Dataset):
         return slice_index_to_patient_id_list
 
     def get_reconstruction_tensor(self, file_path: pathlib.Path) -> torch.Tensor:
+        """Load and resize one processed HU slice for reconstruction use."""
         loaded_tensor = torch.from_numpy(np.load(file_path)).cpu()
         if self.params.geometry.image_scaling != 1.0:
             loaded_tensor = torch.nn.functional.interpolate(
@@ -495,12 +518,15 @@ class LIDC_IDRI(Dataset):
         return loaded_tensor.to(self.device)
 
     def set_sinogram_transform(self, sinogram_transform):
+        """Set an optional transform applied to generated sinograms."""
         self.sinogram_transform = sinogram_transform
 
     def set_image_transform(self, image_transform):
+        """Set an optional transform applied to image targets."""
         self.image_transform = image_transform
 
     def compute_clean_sinogram(self, image=None) -> torch.Tensor:
+        """Forward-project an image with the dataset CT operator."""
 
         if self.operator is None:
             raise AttributeError("CT operator not know. Have you given a ct geometry?")
@@ -508,6 +534,7 @@ class LIDC_IDRI(Dataset):
         return sinogram
 
     def get_mask_tensor(self, patient_id: str, slice_index: int) -> torch.Tensor:
+        """Load the random or consensus nodule mask for one slice."""
         ## First, assess if the slice has a nodule
         try:
             mask = torch.zeros((512, 512), dtype=torch.bool)

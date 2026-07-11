@@ -34,7 +34,7 @@ If you would like to contribute to the development of LION, you can replace the 
 pip install -e ".[dev]"
 ```
 
-to make the installation editable (i.e. changes you make to the source will be visible when you restart the REPL or start a new Python process) and include additional development dependencies like `pre-commit`.
+to make the installation editable (i.e. changes you make to the source will be visible when you restart the REPL or start a new Python process) and install the development dependencies.
 Afterwards, install the pre-commit hooks. They run Black and the test suite before
 allowing a commit (see [.pre-commit-config.yaml](.pre-commit-config.yaml)). The
 test hook includes CUDA-marked tests when CUDA is available and otherwise runs
@@ -89,6 +89,22 @@ LION has been extended to work with more operators.
 ## Developers
 
 Read [`developers.md`](developers.md)
+
+## Documentation
+
+The Sphinx user guide and API reference live under [`docs/source`](docs/source).
+The standard development install includes everything required to build it;
+`pip install -e ".[docs]"` is available as a documentation-only alternative.
+Build the HTML site with:
+
+```bash
+conda activate lion
+make -C docs html
+```
+
+The generated site is written to `docs/_build/html`. PaDIS, LIDC-IDRI, and
+the CT interfaces used by the reproduction workflow are documented in detail;
+older package areas are currently presented as explicitly labelled stubs.
 
 ## Contributors
 

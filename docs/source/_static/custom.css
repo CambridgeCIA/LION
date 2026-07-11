@@ -1,0 +1,31 @@
+.lead {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--color-foreground-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.sd-card {
+  border-radius: 14px;
+  border: 1px solid var(--color-background-border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+.sd-card .sd-card-title {
+  font-weight: 650;
+}
+
+.highlight pre,
+.admonition {
+  border-radius: 12px;
+}
+
+table.docutils {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.coverage-status {
+  color: var(--color-foreground-secondary);
+  font-size: 0.92rem;
+}

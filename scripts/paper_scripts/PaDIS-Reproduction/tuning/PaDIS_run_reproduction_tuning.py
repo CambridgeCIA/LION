@@ -17,6 +17,8 @@ TUNER = HERE / "PaDIS_tune_reconstruction_hyperparameters.py"
 
 @dataclass(frozen=True)
 class Sweep:
+    """Named, reproducible subset of the reconstruction tuning design."""
+
     name: str
     models: str
     method: str
@@ -310,6 +312,7 @@ FAST_SMOKE_CANDIDATES = {
 
 
 def main() -> None:
+    """Run the documented tuning sweep collection sequentially."""
     default_output = pathlib.Path(
         os.environ.get(
             "PADIS_TUNING_ROOT", pathlib.Path.cwd() / "padis_tuning_reproduction"

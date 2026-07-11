@@ -289,6 +289,7 @@ def synthesize_done_markers_from_completed_outputs(
 
 
 def reconcile(args: argparse.Namespace) -> dict:
+    """Rebuild semantic marker mappings and synthesise completed-job markers."""
     new_jobs = load_manifest(args.new_json)
     validate_settings_matrix_groups = None
     if args.validate_settings_matrix_groups:
@@ -361,6 +362,7 @@ def reconcile(args: argparse.Namespace) -> dict:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the manifest-reconciliation command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--old-json", type=Path, required=True)
     parser.add_argument("--new-json", type=Path, required=True)
@@ -387,6 +389,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Reconcile an old runner manifest with a newly generated job list."""
     args = build_arg_parser().parse_args()
     summary = reconcile(args)
     print(json.dumps(summary, indent=2))

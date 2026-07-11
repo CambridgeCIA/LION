@@ -155,6 +155,7 @@ def discover_wandb_id(run_folder: pathlib.Path) -> str | None:
 
 
 def init_wandb(args, run_folder: pathlib.Path, config: dict):
+    """Initialise or resume W&B logging for DRUNet training."""
     if args.no_wandb or args.wandb_project is None:
         return None
     try:
@@ -316,6 +317,7 @@ def load_full_final_checkpoint_if_exists(
 
 
 def build_experiment(args):
+    """Construct the LIDC experiment and split datasets for PnP training."""
     experiment = ct_experiments.PaDISFanBeam20CTRecon(
         dataset="LIDC-IDRI",
         datafolder=args.data_folder,
@@ -379,6 +381,7 @@ def cache_path_for_dataset(dataset, mode, cache_folder):
 
 
 def stage_cache_from_source(mode, cache_path, source_cache_path):
+    """Stage a prepared dataset cache from a source directory."""
     if not source_cache_path.is_file():
         return False
     print(f"Staging {mode} image-prior cache from {source_cache_path} to {cache_path}")
@@ -389,6 +392,7 @@ def stage_cache_from_source(mode, cache_path, source_cache_path):
 
 
 def stage_cache_from_archive(mode, cache_path, archive_path):
+    """Restore a prepared dataset cache from an archive."""
     if not archive_path.is_file():
         return False
     zstd = shutil.which("zstd")
@@ -513,6 +517,7 @@ def build_cached_loaders(args, train_dataset, validation_dataset):
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the DRUNet training command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output-root",
@@ -722,6 +727,7 @@ def train_with_optional_time_limit(
     full_final_checkpoint_path: pathlib.Path | None = None,
     wandb_run=None,
 ) -> None:
+    """Train DRUNet until the epoch target or wall-clock deadline."""
     assert n_epochs > 0, "Number of epochs must be a positive integer"
     solver.check_training_ready()
 
@@ -776,6 +782,7 @@ def train_with_optional_time_limit(
 
 
 def main() -> None:
+    """Train or resume the LIDC DRUNet prior used by PnP-ADMM."""
     args = build_arg_parser().parse_args()
     validate_args(args)
 

@@ -20,6 +20,7 @@ def pytest_args(args: list[str], *, cuda_available: bool) -> list[str]:
 
 
 def main() -> int:
+    """Detect CUDA, invoke pytest, and return pytest's process status."""
     cuda_available = torch.cuda.is_available()
     mode = "full suite (CUDA available)" if cuda_available else "CPU suite"
     print(f"Running LION {mode}.", flush=True)

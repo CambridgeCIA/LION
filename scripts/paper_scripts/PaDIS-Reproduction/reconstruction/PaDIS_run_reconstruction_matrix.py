@@ -74,6 +74,8 @@ UNSUPPORTED_PADIS_GEOMETRY_MESSAGE = (
 
 @dataclass(frozen=True)
 class ModelTask:
+    """Checkpoint-bearing prior model used by reconstruction jobs."""
+
     name: str
     checkpoint_name: str
     prior_mode: str
@@ -83,6 +85,8 @@ class ModelTask:
 
 @dataclass(frozen=True)
 class MethodTask:
+    """Method implementation and its supported model/experiment defaults."""
+
     name: str
     default_model: str
     implementation: str
@@ -94,6 +98,8 @@ class MethodTask:
 
 @dataclass(frozen=True)
 class ReconstructionJob:
+    """Fully resolved semantic identity of one reconstruction run."""
+
     model: ModelTask
     method: MethodTask
     implementation: str
@@ -106,6 +112,8 @@ class ReconstructionJob:
 
 @dataclass(frozen=True)
 class AblationTask:
+    """Trained-model or sampler ablation appended to the core matrix."""
+
     name: str
     method: str
     model: str
@@ -812,6 +820,7 @@ def append_pnp_noise_conditioned_jobs(
 
 
 def build_jobs(args: argparse.Namespace) -> list[ReconstructionJob]:
+    """Expand CLI matrix selectors into validated reconstruction jobs."""
     methods = selected_method_tasks(args.methods)
     geometries = parse_csv(args.geometries, valid=GEOMETRIES, label="geometry")
     if any(geometry != "lion" for geometry in geometries):
@@ -897,6 +906,7 @@ def checkpoint_path(
     model: ModelTask,
     checkpoint_policy: str = "model_default",
 ) -> pathlib.Path:
+    """Resolve the checkpoint expected for a model and selection policy."""
     return (
         training_root
         / model.name
@@ -907,6 +917,7 @@ def checkpoint_path(
 def ordered_jobs(
     args: argparse.Namespace, jobs: list[ReconstructionJob]
 ) -> list[ReconstructionJob]:
+    """Return jobs in deterministic default or interruption-aware GCP order."""
     if args.job_order == "default":
         return jobs
     if args.job_order != "gcp_spot":
@@ -1376,6 +1387,7 @@ def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -
 
 
 def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[str]:
+    """Build the reconstruction-driver command for one resolved job."""
     checkpoint = checkpoint_path(args.training_root, job.model, args.checkpoint_policy)
     output_folder = (
         args.output_root
@@ -1464,6 +1476,7 @@ def max_samples_for_job(args: argparse.Namespace, job: ReconstructionJob) -> int
 
 
 def job_json(args: argparse.Namespace, job: ReconstructionJob) -> dict:
+    """Serialise a job, command, tuned defaults, and expected settings."""
     prior_mode = job_prior_mode(job)
     hparam_selection = hparam_selection_for_job(args, job)
     return {
@@ -1497,6 +1510,7 @@ def job_json(args: argparse.Namespace, job: ReconstructionJob) -> dict:
 def input_check_failures(
     args: argparse.Namespace, jobs: list[ReconstructionJob]
 ) -> list[str]:
+    """Report missing checkpoints and other non-runnable matrix inputs."""
     failures = []
     seen_model_checkpoints: set[pathlib.Path] = set()
     seen_pnp_checkpoints: set[pathlib.Path] = set()
@@ -1525,6 +1539,7 @@ def input_check_failures(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the reconstruction-matrix command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--training-root",
@@ -1783,6 +1798,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """List, validate, or execute the selected reconstruction matrix."""
     args = build_arg_parser().parse_args()
     if args.max_samples <= 0:
         raise ValueError("--max-samples must be positive.")

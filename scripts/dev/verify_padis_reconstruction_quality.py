@@ -47,6 +47,7 @@ def edge_ssim_value(image: np.ndarray, reference: np.ndarray) -> float:
 
 
 def image_metrics(image: np.ndarray, reference: np.ndarray) -> dict:
+    """Calculate image and edge similarity metrics against a reference."""
     error = np.abs(image - reference)
     mse = float(np.mean((image - reference) ** 2))
     return {
@@ -188,6 +189,7 @@ def fail_if_needed(args, summary: dict) -> None:
 
 
 def main() -> None:
+    """Evaluate reconstruction quality and enforce requested thresholds."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reconstructions", type=Path, required=True)
     parser.add_argument("--public-reference", type=Path, default=None)

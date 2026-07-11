@@ -24,6 +24,8 @@ from PaDIS_run_reconstruction_matrix import (
 
 @dataclass(frozen=True)
 class ReconstructionPreset:
+    """Named reconstruction/generation command fragment and result namespace."""
+
     implementation: str
     experiment: str | None
     description: str
@@ -531,6 +533,7 @@ FIGURE_PRESET_GROUPS = {
 
 
 def add_run_arguments(parser: argparse.ArgumentParser, *, include_preset: bool) -> None:
+    """Add shared run and checkpoint options to a subcommand parser."""
     if include_preset:
         parser.add_argument("preset", choices=tuple(PRESETS))
     else:
@@ -597,6 +600,7 @@ def add_run_arguments(parser: argparse.ArgumentParser, *, include_preset: bool) 
 
 
 def add_figure_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add shared figure-source and output options."""
     parser.add_argument(
         "--reconstruction-root",
         type=pathlib.Path,
@@ -624,6 +628,7 @@ def add_figure_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def apply_generation_checkpoint_defaults(args: argparse.Namespace) -> None:
+    """Resolve missing generation checkpoints from the selected training root."""
     if args.training_root is None and args.training_root_preset is None:
         return
     training_root = resolve_training_root(args)
@@ -638,6 +643,7 @@ def apply_generation_checkpoint_defaults(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Construct the named-experiment command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("list", help="List available reconstruction presets.")
@@ -658,6 +664,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def figure_command_for(args: argparse.Namespace) -> list[str]:
+    """Build the reporting command for a named figure selection."""
     engine = PADIS_SCRIPT_ROOT / "reporting" / "PaDIS_make_paper_figures.py"
     command = [
         sys.executable,
@@ -684,6 +691,7 @@ def figure_command_for(args: argparse.Namespace) -> list[str]:
 
 
 def command_for(args, passthrough: list[str]) -> tuple[list[str], pathlib.Path]:
+    """Build a preset command and return its isolated output directory."""
     preset = PRESETS[args.preset]
     if preset.engine == "reconstruction":
         engine = PADIS_SCRIPT_ROOT / "reconstruction" / "PaDIS_LIDC_reconstruction.py"
@@ -742,6 +750,7 @@ def command_for(args, passthrough: list[str]) -> tuple[list[str], pathlib.Path]:
 
 
 def main() -> None:
+    """List or execute a named PaDIS reconstruction/generation preset."""
     parser = build_parser()
     args, passthrough = parser.parse_known_args()
     if passthrough[:1] == ["--"]:

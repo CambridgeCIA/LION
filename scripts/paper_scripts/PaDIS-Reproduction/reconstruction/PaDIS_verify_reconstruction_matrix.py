@@ -413,6 +413,7 @@ def check_expected_mapping(
 
 
 def find_records(args) -> list[dict]:
+    """Discover and filter reconstruction metric records below a result root."""
     records = []
     methods = {canonical_method(value) for value in parse_csv(args.methods)}
     experiments = {canonical_experiment(value) for value in parse_csv(args.experiments)}
@@ -462,6 +463,7 @@ def write_records_csv(path: Path, records: list[dict]) -> None:
 
 
 def check_records(args, records: list[dict]) -> list[str]:
+    """Return completeness, settings, finiteness, and quality-gate failures."""
     failures = []
     if not records:
         return [f"No matching metrics.json files found under {args.root}."]
@@ -626,6 +628,7 @@ def check_records(args, records: list[dict]) -> list[str]:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the reconstruction-verification command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--output-json", type=Path, default=None)
@@ -736,6 +739,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Verify a reconstruction matrix and export JSON/CSV summaries."""
     args = build_arg_parser().parse_args()
     if args.bootstrap_resamples < 0:
         raise ValueError("--bootstrap-resamples must be non-negative.")

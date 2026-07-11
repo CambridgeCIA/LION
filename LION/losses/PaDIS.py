@@ -12,6 +12,22 @@ import torch.nn.functional as F
 def validate_patch_schedule(
     patch_sizes: Sequence[int], patch_probabilities: Sequence[float]
 ) -> None:
+    """Validate a discrete PaDIS patch-size distribution.
+
+    Parameters
+    ----------
+    patch_sizes : sequence of int
+        Candidate square patch widths.  Every size must be divisible by eight.
+    patch_probabilities : sequence of float
+        Sampling probability corresponding to each patch size.  Values must
+        sum to one within numerical tolerance.
+
+    Raises
+    ------
+    ValueError
+        If the schedule is empty, lengths differ, a size is incompatible with
+        NCSN++ downsampling, or probabilities do not sum to one.
+    """
     if len(patch_sizes) != len(patch_probabilities):
         raise ValueError("patch_sizes and patch_probabilities must have same length.")
     if not patch_sizes:
@@ -31,6 +47,25 @@ def build_position_grid(
     device: torch.device,
     dtype: torch.dtype,
 ) -> torch.Tensor:
+    """Create normalised ``(x, y)`` position channels for an image batch.
+
+    Parameters
+    ----------
+    batch_size : int
+        Number of grids to return.
+    height, width : int
+        Spatial grid dimensions.
+    device : torch.device
+        Device on which to allocate the grid.
+    dtype : torch.dtype
+        Floating-point type of the returned coordinates.
+
+    Returns
+    -------
+    torch.Tensor
+        Tensor of shape ``(batch_size, 2, height, width)`` spanning ``[-1, 1]``
+        in each spatial direction.
+    """
     y = torch.linspace(-1.0, 1.0, height, device=device, dtype=dtype)
     x = torch.linspace(-1.0, 1.0, width, device=device, dtype=dtype)
     yy, xx = torch.meshgrid(y, x, indexing="ij")
@@ -39,6 +74,21 @@ def build_position_grid(
 
 
 def zero_pad_images(images: torch.Tensor, pad_width: int) -> torch.Tensor:
+    """Pad images with zeros on every spatial boundary.
+
+    Parameters
+    ----------
+    images : torch.Tensor
+        Batched image tensor in ``NCHW`` layout.
+    pad_width : int
+        Number of pixels added to each boundary.
+
+    Returns
+    -------
+    torch.Tensor
+        The original tensor when ``pad_width`` is zero, otherwise a padded
+        tensor preserving batch and channel dimensions.
+    """
     if pad_width == 0:
         return images
     return F.pad(images, (pad_width, pad_width, pad_width, pad_width), mode="constant")
@@ -50,6 +100,7 @@ def sample_patch_size(
     *,
     device: torch.device,
 ) -> int:
+    """Draw one patch size from a validated categorical schedule."""
     probs = torch.as_tensor(patch_probabilities, device=device, dtype=torch.float32)
     index = torch.multinomial(probs, num_samples=1).item()
     return int(patch_sizes[index])
@@ -60,6 +111,21 @@ def sample_patch_pair(
     positions: torch.Tensor,
     patch_size: int,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Sample aligned image and position patches independently per batch item.
+
+    Parameters
+    ----------
+    images, positions : torch.Tensor
+        Aligned ``NCHW`` tensors with identical spatial dimensions.
+    patch_size : int
+        Width and height of each square crop.
+
+    Returns
+    -------
+    image_patch, position_patch : tuple of torch.Tensor
+        Batched crops sharing the same random top-left coordinate for each
+        input image.
+    """
     batch_size, _, height, width = images.shape
     if patch_size > height or patch_size > width:
         raise ValueError("patch_size cannot exceed padded image dimensions.")
@@ -81,6 +147,11 @@ def sample_image_patch_with_position_channels(
     images: torch.Tensor,
     patch_size: int,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Sample image patches and construct their absolute position channels.
+
+    Unlike :func:`sample_patch_pair`, this routine avoids materialising a full
+    position grid and derives coordinates only for sampled pixels.
+    """
     batch_size, _, height, width = images.shape
     if patch_size > height or patch_size > width:
         raise ValueError("patch_size cannot exceed padded image dimensions.")
@@ -105,6 +176,7 @@ def sample_image_patch(
     images: torch.Tensor,
     patch_size: int,
 ) -> torch.Tensor:
+    """Sample one independent square crop from every image in a batch."""
     batch_size, _, height, width = images.shape
     if patch_size > height or patch_size > width:
         raise ValueError("patch_size cannot exceed padded image dimensions.")
@@ -121,13 +193,35 @@ def sample_image_patch(
 def score_from_denoiser(
     noisy_image_patch: torch.Tensor, denoised_patch: torch.Tensor, sigma: torch.Tensor
 ) -> torch.Tensor:
+    """Convert denoiser predictions into a variance-exploding score estimate.
+
+    The returned score is ``(denoised - noisy) / sigma**2`` with ``sigma``
+    broadcast across non-batch dimensions.
+    """
     while sigma.ndim < noisy_image_patch.ndim:
         sigma = sigma.unsqueeze(-1)
     return (denoised_patch - noisy_image_patch) / sigma.square()
 
 
 class PaDISDenoisingLoss(nn.Module):
-    """PaDIS repository Patch_EDMLoss mechanics with paper-level parameters."""
+    """EDM-style denoising objective used to train PaDIS priors.
+
+    Parameters
+    ----------
+    sigma_min, sigma_max : float
+        Inclusive training-noise bounds.
+    sigma_distribution : {"edm_lognormal", "edm_lognormal_truncated", "log_uniform"}
+        Distribution used to sample per-image noise levels.
+    P_mean, P_std : float
+        Location and scale of the EDM log-normal distribution.
+    sigma_data : float
+        Assumed standard deviation of clean training data.
+    reduction : {"batch_mean_sum", "mean"}
+        Reduction compatible with the released PaDIS objective or a global
+        elementwise mean.
+    augment_pipe : torch.nn.Module, optional
+        Optional augmentation callable applied before corrupting images.
+    """
 
     def __init__(
         self,
@@ -166,6 +260,7 @@ class PaDISDenoisingLoss(nn.Module):
         self.augment_pipe = augment_pipe
 
     def sample_sigma(self, batch_size: int, device: torch.device) -> torch.Tensor:
+        """Sample a column vector of training noise levels."""
         if self.sigma_distribution in ("edm_lognormal", "edm_lognormal_truncated"):
             sigma = self._sample_edm_lognormal(batch_size, device)
             if self.sigma_distribution == "edm_lognormal":
@@ -204,6 +299,23 @@ class PaDISDenoisingLoss(nn.Module):
         position_patch: torch.Tensor | None = None,
         augment_pipe: nn.Module | None = None,
     ) -> torch.Tensor:
+        """Evaluate the weighted PaDIS denoising loss.
+
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Denoiser accepting noisy images, noise levels, and optional
+            position channels.
+        images : torch.Tensor
+            Clean image or patch batch in normalised-intensity units.
+        position_channels : torch.Tensor, optional
+            Position channels aligned with ``images``.
+
+        Returns
+        -------
+        torch.Tensor
+            Scalar reduced training loss.
+        """
         pipe = self.augment_pipe if augment_pipe is None else augment_pipe
         target_patch, augment_labels = (
             pipe(clean_patch) if pipe is not None else (clean_patch, None)

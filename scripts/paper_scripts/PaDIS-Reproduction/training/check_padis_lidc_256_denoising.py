@@ -67,6 +67,7 @@ def resolve_checkpoint_path(path: pathlib.Path) -> pathlib.Path:
 
 
 def load_model(checkpoint_path: pathlib.Path, device: torch.device, use_ema: bool):
+    """Load a PaDIS model and optional EMA weights from checkpoint sidecars."""
     json_path = checkpoint_path.with_suffix(".json")
     if json_path.is_file():
         options = LIONParameter()
@@ -269,6 +270,7 @@ def save_visual_grid(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the denoising-check command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=pathlib.Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
@@ -292,6 +294,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Run visual and numerical PaDIS denoising diagnostics."""
     args = build_arg_parser().parse_args()
     if args.num_examples <= 0:
         raise ValueError("--num-examples must be positive.")

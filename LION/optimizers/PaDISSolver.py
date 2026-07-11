@@ -72,7 +72,32 @@ def _split_position_suffix(mode: str) -> tuple[str, bool]:
 
 
 class PaDISSolver(LIONsolver):
-    """Train a PaDIS patch-based diffusion prior with LION's solver API."""
+    """Train a patch or whole-image PaDIS diffusion prior.
+
+    The solver adds patch scheduling, optional absolute-position channels,
+    gradient-accumulation microbatches, patch-count budgets, exponential moving
+    averages, validation-intensive selection, and resumable full-state
+    checkpoints to :class:`LIONsolver`.
+
+    Parameters
+    ----------
+    model : LIONmodel
+        NCSN++ denoiser to optimise.
+    optimizer : torch.optim.Optimizer
+        Parameter optimiser owned by the solver.
+    loss_fn : callable
+        PaDIS-compatible denoising loss.
+    geometry : Geometry, optional
+        Image geometry used by the base solver.
+    verbose : bool, optional
+        Display progress information.
+    device : torch.device, optional
+        Training device.
+    solver_params : SolverParams, optional
+        Settings returned by :meth:`default_parameters`.
+    save_folder : pathlib.Path, optional
+        Root for checkpoints, sidecars, and final state.
+    """
 
     def __init__(
         self,
@@ -145,6 +170,19 @@ class PaDISSolver(LIONsolver):
 
     @staticmethod
     def default_parameters(mode: str = "padis-paper-ct-256") -> SolverParams:
+        """Return training parameters for a PaDIS prior preset.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Patch/whole-image preset.  Patch ablations and ``-no-position``
+            variants are supported.
+
+        Returns
+        -------
+        SolverParams
+            Patch schedule, EDM bounds, EMA policy, and input convention.
+        """
         base_mode, no_position = _split_position_suffix(mode)
         params = SolverParams()
         params.paper_preset = mode
@@ -276,6 +314,7 @@ class PaDISSolver(LIONsolver):
     def mini_batch_step(
         self, sino_batch, target_batch, patch_size: int | None = None
     ) -> torch.Tensor:
+        """Evaluate one PaDIS denoising mini-batch without stepping the optimiser."""
         del sino_batch
         clean_images = target_batch.float()
         self._check_data_range(clean_images)
@@ -464,6 +503,7 @@ class PaDISSolver(LIONsolver):
         return total_loss
 
     def train_step(self):
+        """Train for one complete pass through the configured loader."""
         if self.train_loader is None:
             raise ValueError("Training dataloader not set: Please call set_training")
         self.model.train()
@@ -751,6 +791,20 @@ class PaDISSolver(LIONsolver):
         *,
         repeat_until_max_patches: bool = False,
     ):
+        """Evaluate EMA validation loss over a bounded patch sample.
+
+        Parameters
+        ----------
+        max_patches : int, optional
+            Maximum number of image patches evaluated.
+        repeat_until_max_patches : bool, optional
+            Restart a finite loader until ``max_patches`` is reached.
+
+        Returns
+        -------
+        float
+            Patch-weighted mean validation loss.
+        """
         if max_patches is not None and max_patches <= 0:
             raise ValueError("max_patches must be positive.")
         if repeat_until_max_patches and max_patches is None:
@@ -810,6 +864,7 @@ class PaDISSolver(LIONsolver):
         return validation_loss_total / validation_patches
 
     def set_checkpoint_retention(self, max_periodic_checkpoints: int | None) -> None:
+        """Configure how many ordinary periodic checkpoints are retained."""
         if max_periodic_checkpoints is not None and max_periodic_checkpoints <= 0:
             raise ValueError("max_periodic_checkpoints must be positive or None.")
         self.max_periodic_checkpoints = max_periodic_checkpoints
@@ -826,6 +881,7 @@ class PaDISSolver(LIONsolver):
     def prune_periodic_checkpoints(
         self, max_periodic_checkpoints: int | None = None
     ) -> None:
+        """Remove the oldest periodic checkpoints and their sidecars."""
         if max_periodic_checkpoints is None:
             return
         if max_periodic_checkpoints <= 0:
@@ -844,6 +900,7 @@ class PaDISSolver(LIONsolver):
                     path.unlink()
 
     def save_checkpoint(self, epoch):
+        """Save model, optimiser, EMA, and patch-counter checkpoint state."""
         super().save_checkpoint(epoch)
         if self.ema_state is not None and self.checkpoint_save_folder is not None:
             ema_fname = pathlib.Path(
@@ -892,6 +949,7 @@ class PaDISSolver(LIONsolver):
         torch.save(data, full_pt_path)
 
     def save_validation(self, epoch):
+        """Save validation-selected EMA weights and resumable state."""
         raw_state = self._apply_ema_weights()
         try:
             super().save_validation(epoch)
@@ -904,6 +962,7 @@ class PaDISSolver(LIONsolver):
         )
 
     def save_final_results(self, final_result_fname=None, save_folder=None, epoch=None):
+        """Save final EMA model weights and a full training-state sidecar."""
         raw_state = self._apply_ema_weights()
         try:
             super().save_final_results(final_result_fname, save_folder, epoch)
@@ -974,6 +1033,7 @@ class PaDISSolver(LIONsolver):
         return paths
 
     def load_checkpoint(self):
+        """Restore the newest compatible periodic or full-state checkpoint."""
         if self.checkpoint_save_folder is None or self.checkpoint_fname is None:
             return self.current_epoch
         checkpoints = sorted(

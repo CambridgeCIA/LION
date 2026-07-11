@@ -116,6 +116,7 @@ def save_grid(samples: torch.Tensor, path: pathlib.Path) -> None:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the unconditional-generation command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=pathlib.Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument(
@@ -182,6 +183,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Generate seeded samples and save their reproducibility manifest."""
     args = build_arg_parser().parse_args()
     if args.num_samples <= 0:
         raise ValueError("--num-samples must be positive.")

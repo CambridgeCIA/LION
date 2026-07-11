@@ -34,6 +34,8 @@ HIGH_VIEW_FALLBACKS = {
 
 @dataclass(frozen=True)
 class HparamSelection:
+    """Chosen reconstruction arguments and their validation provenance."""
+
     args: tuple[str, ...]
     method: str
     implementation: str
@@ -472,6 +474,7 @@ def build_defaults_payload(
     selection_scope: str = "per_experiment",
     expected_experiments: tuple[str, ...] = DEFAULT_CONSENSUS_EXPERIMENTS,
 ) -> dict:
+    """Select tuned records and construct the checked-in defaults schema."""
     run_root = pathlib.Path(run_root).expanduser()
     loaded_records = load_records(run_root, run_glob)
     if selection_scope == "per_experiment":
@@ -517,6 +520,8 @@ def build_defaults_payload(
 
 
 class HparamDefaults:
+    """Query tuned defaults with model-safe experiment fallback rules."""
+
     def __init__(self, records: Iterable[dict]):
         self.records = tuple(dedupe_records(records))
 
@@ -619,6 +624,7 @@ class HparamDefaults:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the hyperparameter-default export command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--run-root",
@@ -675,6 +681,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Export or inspect reconstruction hyperparameter defaults."""
     args = build_arg_parser().parse_args()
     expected_experiments = tuple(
         item.strip() for item in args.expected_experiments.split(",") if item.strip()

@@ -70,6 +70,8 @@ LIDC_EXPERIMENTS = {
 
 @dataclass(frozen=True)
 class PaperCTExperiment:
+    """Resolved acquisition settings for one study CT experiment."""
+
     key: str
     views: int
     paper_geometry: str
@@ -2412,6 +2414,7 @@ def enforce_quality_gates(args, summaries: list[dict]) -> None:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the PaDIS/LION reconstruction command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     experiment_choices = sorted(
         {
@@ -3148,6 +3151,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Run one configured reconstruction method over an LIDC split subset."""
     args = build_arg_parser().parse_args()
     args.method = canonical_method(args.method)
     if args.max_samples <= 0:

@@ -494,6 +494,7 @@ def print_top(rows: list[dict], top_k: int) -> None:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the tuning-summary command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--run-root", type=pathlib.Path, default=DEFAULT_TUNING_RUN_ROOT
@@ -538,6 +539,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Aggregate tuning JSONL records into ranked CSV summaries."""
     args = build_arg_parser().parse_args()
     run_names = parse_csv(args.run_names)
     expected_experiments = parse_csv(args.expected_experiments)

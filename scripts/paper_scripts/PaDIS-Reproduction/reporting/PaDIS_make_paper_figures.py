@@ -63,6 +63,8 @@ ADDITIONAL_EXAMPLE_OFFSETS = (1, 2, 3, 4, 6, 7, 8)
 
 @dataclass(frozen=True)
 class Panel:
+    """One image payload and its presentation metadata within a figure."""
+
     source: str
     title: str
     row: str
@@ -75,6 +77,8 @@ class Panel:
 
 @dataclass(frozen=True)
 class FigureSpec:
+    """Declarative layout and physical scale metadata for one paper figure."""
+
     name: str
     filename: str
     panels: tuple[tuple[Panel, ...], ...]
@@ -216,6 +220,7 @@ def recon_path(
     experiment: str,
     group: str = "main",
 ) -> pathlib.Path:
+    """Resolve canonical or legacy reconstruction payload paths."""
     canonical_path = None
     for stored_method in method_storage_names(method):
         for stored_experiment in experiment_storage_names(experiment):
@@ -306,6 +311,8 @@ def figure_specs(
     *,
     sample_index: int = 0,
 ) -> tuple[FigureSpec, ...]:
+    """Build all supported paper figure specifications."""
+
     def target(
         title: str,
         row: str,
@@ -1070,6 +1077,7 @@ def draw_figure(
     crop_body: bool,
     body_bbox_padding: int,
 ) -> dict:
+    """Render one figure specification and return manifest metadata."""
     import matplotlib.pyplot as plt
 
     plt.rcParams["pdf.fonttype"] = 42
@@ -1305,6 +1313,7 @@ def draw_figure(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the paper-figure command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--reconstruction-root",
@@ -1351,6 +1360,7 @@ def selected_figures(selection: str) -> tuple[str, ...]:
 
 
 def main() -> None:
+    """Render selected figures and write a reproducibility manifest."""
     args = build_arg_parser().parse_args()
     recon_root = args.reconstruction_root.expanduser().resolve()
     generation_root = args.generation_root.expanduser().resolve()
