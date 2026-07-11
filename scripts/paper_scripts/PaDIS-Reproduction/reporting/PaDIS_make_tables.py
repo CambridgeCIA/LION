@@ -106,13 +106,18 @@ def _metric_cells(row: dict[str, str] | None, prefix: str = "") -> dict[str, str
     }
 
 
-def _write_csv(path: Path, records: list[dict[str, str]]) -> None:
+def _write_csv(
+    path: Path, records: list[dict[str, str]], *, allow_missing: bool = False
+) -> bool:
     if not records:
+        if allow_missing:
+            return False
         raise ValueError(f"No records generated for {path.name}")
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(records[0]))
         writer.writeheader()
         writer.writerows(records)
+    return True
 
 
 def calculate_timing_rows(
@@ -176,7 +181,11 @@ def calculate_timing_rows(
 
 
 def export_table_csvs(
-    rows: list[dict[str, str]], output_dir: str | Path, *, timing_rows=None
+    rows: list[dict[str, str]],
+    output_dir: str | Path,
+    *,
+    timing_rows=None,
+    allow_missing: bool = False,
 ) -> list[Path]:
     """Write one decoded, human-readable CSV for each generated table."""
     output_dir = Path(output_dir).expanduser().resolve()
@@ -228,8 +237,8 @@ def export_table_csvs(
         record.update(_metric_cells(values.get("ct_8"), "8-View 360 Degrees "))
         table1.append(record)
     path = output_dir / "table_1_ct_reconstruction.csv"
-    _write_csv(path, table1)
-    written.append(path)
+    if _write_csv(path, table1, allow_missing=allow_missing):
+        written.append(path)
 
     extra_methods = {
         "baseline",
@@ -253,8 +262,8 @@ def export_table_csvs(
         record.update(_metric_cells(values["ct_fanbeam_180"], "20-View 120 Degrees "))
         table2.append(record)
     path = output_dir / "table_2_additional_geometries.csv"
-    _write_csv(path, table2)
-    written.append(path)
+    if _write_csv(path, table2, allow_missing=allow_missing):
+        written.append(path)
 
     table3: list[dict[str, str]] = []
     selected = [
@@ -280,8 +289,8 @@ def export_table_csvs(
         record.update(_metric_cells(row))
         table3.append(record)
     path = output_dir / "table_3_512_reconstruction.csv"
-    _write_csv(path, table3)
-    written.append(path)
+    if _write_csv(path, table3, allow_missing=allow_missing):
+        written.append(path)
 
     table4_rows = [
         row
@@ -318,8 +327,8 @@ def export_table_csvs(
         record.update(_metric_cells(row))
         table4.append(record)
     path = output_dir / "table_4_patch_size_ablation.csv"
-    _write_csv(path, table4)
-    written.append(path)
+    if _write_csv(path, table4, allow_missing=allow_missing):
+        written.append(path)
 
     table5_rows = [
         row
@@ -340,8 +349,8 @@ def export_table_csvs(
         record.update(_metric_cells(row))
         table5.append(record)
     path = output_dir / "table_5_dataset_size_ablation.csv"
-    _write_csv(path, table5)
-    written.append(path)
+    if _write_csv(path, table5, allow_missing=allow_missing):
+        written.append(path)
 
     table6_rows = [
         row
@@ -375,14 +384,14 @@ def export_table_csvs(
         record.update(_metric_cells(row))
         table6.append(record)
     path = output_dir / "table_6_padis_ablation.csv"
-    _write_csv(path, table6)
-    written.append(path)
+    if _write_csv(path, table6, allow_missing=allow_missing):
+        written.append(path)
 
     if not timing_rows:
         raise ValueError("Timing rows must be calculated from runner logs")
     path = output_dir / "table_7_timings.csv"
-    _write_csv(path, timing_rows)
-    written.append(path)
+    if _write_csv(path, timing_rows, allow_missing=allow_missing):
+        written.append(path)
     return written
 
 
@@ -496,6 +505,7 @@ def csv_to_latex_tables(
     generator_path: str | Path | None = None,
     csv_output_dir: str | Path | None = None,
     timing_rows: list[dict[str, str]] | None = None,
+    allow_missing: bool = False,
 ) -> Path:
     """Parse ``csv_path`` and write the complete LaTeX table document.
 
@@ -532,7 +542,10 @@ def csv_to_latex_tables(
     with csv_path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
     csv_paths = export_table_csvs(
-        rows, csv_output_dir or DEFAULT_CSV_OUTPUT_DIR, timing_rows=timing_rows
+        rows,
+        csv_output_dir or DEFAULT_CSV_OUTPUT_DIR,
+        timing_rows=timing_rows,
+        allow_missing=allow_missing,
     )
 
     if generator_path is None:
@@ -562,6 +575,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--timing-log-root", type=Path, default=None)
     parser.add_argument("--timing-jobs-json", type=Path, default=None)
+    parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        help="Generate only tables represented in a partial smoke-run CSV.",
+    )
     return parser
 
 
@@ -583,6 +601,7 @@ def main() -> None:
         generator_path=args.generator,
         csv_output_dir=args.csv_output_dir,
         timing_rows=timing_rows,
+        allow_missing=args.allow_missing,
     )
     print(f"Saved PaDIS tables to {output}")
 

@@ -312,6 +312,14 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--rerun-existing", action="store_true")
     parser.add_argument("--stop-on-failure", action="store_true")
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help=(
+            "Execute every tuning candidate with one diffusion outer step and "
+            "one TV/PnP iteration; outputs remain isolated under --output-root."
+        ),
+    )
     args = parser.parse_args()
     selected = None if args.only == "all" else set(args.only.split(","))
     unknown = set() if selected is None else selected - {s.name for s in SWEEPS}
@@ -362,6 +370,19 @@ def main() -> None:
         for flag in ("dry_run", "rerun_existing", "stop_on_failure"):
             if getattr(args, flag):
                 command.append("--" + flag.replace("_", "-"))
+        if args.smoke:
+            command += [
+                "--stop-after-outer-steps",
+                "1",
+                "--reconstruction-arg=--tv-iterations",
+                "--reconstruction-arg=1",
+                "--reconstruction-arg=--pnp-iterations",
+                "--reconstruction-arg=1",
+                "--reconstruction-arg=--pnp-cg-iterations",
+                "--reconstruction-arg=1",
+                "--reconstruction-arg=--patch-batch-size",
+                "--reconstruction-arg=1",
+            ]
         print(f"\n=== {sweep.name} ===", flush=True)
         subprocess.run(command, check=True)
 

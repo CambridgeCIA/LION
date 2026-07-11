@@ -7,6 +7,7 @@ import torch
 from torch import nn
 
 from LION.CTtools.ct_geometry import Geometry
+from LION.models.LIONmodel import LIONModelParameter
 from LION.operators import Operator
 from LION.utils.parameter import LIONParameter
 import PaDIS_LIDC_reconstruction as recon_script
@@ -529,6 +530,25 @@ def test_checkpoint_metadata_fallback_infers_whole_image_preset(tmp_path):
     assert model_params.largest_patch_size == 256
     assert model_params.pad_width == 0
     assert loaded_geometry.image_scaling == 0.5
+
+
+def test_checkpoint_sidecar_restores_model_parameter_type(tmp_path):
+    checkpoint = tmp_path / "whole_image_lidc_256.pt"
+    torch.save({"model_state_dict": {}}, checkpoint)
+    options = LIONParameter()
+    options.model_name = "NCSNpp"
+    options.model_parameters = LIONModelParameter(prior_mode="whole_image")
+    options.geometry = Geometry.default_parameters(image_scaling=0.5)
+    options.save(checkpoint.with_suffix(".json"))
+
+    model_params, _ = recon_script.load_checkpoint_metadata(
+        checkpoint,
+        image_scaling=1.0,
+        disable_position_channels=False,
+    )
+
+    assert isinstance(model_params, LIONModelParameter)
+    assert model_params.prior_mode == "whole_image"
 
 
 def test_checkpoint_metadata_fallback_infers_patch_ablation_without_position(tmp_path):

@@ -296,7 +296,13 @@ def checkpoint_model_metadata(
             warnings.warn(
                 f"{json_path} says model_name={options.model_name!r}; trying NCSNpp anyway."
             )
-        model_params = copy.deepcopy(options.model_parameters)
+        # LIONParameter.load() intentionally reconstructs nested JSON objects as
+        # generic LIONParameter instances. NCSNpp now enforces the more specific
+        # LIONModelParameter type, so restore that type at this serialization
+        # boundary while preserving every saved field.
+        model_params = LIONModelParameter(
+            **copy.deepcopy(vars(options.model_parameters))
+        )
         geometry = Geometry.init_from_parameter(options.geometry)
     else:
         if checkpoint is None:

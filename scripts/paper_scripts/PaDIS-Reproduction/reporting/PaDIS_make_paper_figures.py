@@ -1109,28 +1109,38 @@ def draw_figure(
         row_window = next(iter(row_windows))
         row_hu_range = None
         if row_window in {"soft_tissue", "bone"}:
-            reference_panel = next(
-                (panel for panel in row if panel.key == "targets"),
-                next(panel for panel in row if panel.source == "reconstruction"),
-            )
-            row_hu_range = body_hu_percentile_range(
-                reference_panel.path, reference_panel.sample_index
-            )
-            row_hu_ranges.append(
-                {
-                    "row": row[0].row.replace("\n", " "),
-                    "lower_hu": row_hu_range[0],
-                    "upper_hu": row_hu_range[1],
-                    "lower_percentile": 15,
-                    "upper_percentile": 95,
-                }
-            )
+            references = sorted(row, key=lambda panel: panel.key != "targets")
+            for reference_panel in references:
+                try:
+                    row_hu_range = body_hu_percentile_range(
+                        reference_panel.path, reference_panel.sample_index
+                    )
+                    break
+                except (FileNotFoundError, KeyError, IndexError):
+                    continue
+            if row_hu_range is not None:
+                row_hu_ranges.append(
+                    {
+                        "row": row[0].row.replace("\n", " "),
+                        "lower_hu": row_hu_range[0],
+                        "upper_hu": row_hu_range[1],
+                        "lower_percentile": 15,
+                        "upper_percentile": 95,
+                    }
+                )
+            elif not allow_missing:
+                raise FileNotFoundError(
+                    f"No target payload is available for {spec.name} row {row_index}."
+                )
         if crop_body:
             for panel in row:
                 if panel.source == "reconstruction":
-                    bbox = target_bbox(
-                        panel.path, panel.sample_index, pad=body_bbox_padding
-                    )
+                    try:
+                        bbox = target_bbox(
+                            panel.path, panel.sample_index, pad=body_bbox_padding
+                        )
+                    except (FileNotFoundError, KeyError, IndexError):
+                        continue
                     if bbox is not None:
                         break
         for col_index in range(cols):
@@ -1228,6 +1238,8 @@ def draw_figure(
                 window=row_window,
                 hu_range=row_hu_range,
             )
+        else:
+            colour_axes[row_index].set_axis_off()
 
     output_folder.mkdir(parents=True, exist_ok=True)
     output_path = output_folder / spec.filename

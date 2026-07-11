@@ -367,10 +367,10 @@ def _compare_dps_update(
     try:
         (
             lion_grad,
-            _raw,
+            lion_raw_grad,
             _residual,
             _normalizer,
-            _scale,
+            lion_scale,
             step,
         ) = reconstructor._dps_data_gradient(
             measurement, x_lion, lion_d, params, sigma=sigma
@@ -381,9 +381,10 @@ def _compare_dps_update(
     alpha = float(params.dps_epsilon) * sigma.square()
     oracle_score = (oracle_d - x_oracle) / sigma.square()
     lion_score = (lion_d - x_lion) / sigma.square()
+    oracle_scaled_grad = oracle_grad * float(lion_scale)
     oracle_next = (
         x_oracle
-        - float(params.zeta) * oracle_grad
+        - float(params.zeta) * oracle_scaled_grad
         + alpha / 2.0 * oracle_score
         + torch.sqrt(alpha) * noise
     )
@@ -394,19 +395,30 @@ def _compare_dps_update(
         + torch.sqrt(alpha) * noise.unsqueeze(0)
     )
 
-    gradient_max_abs = float(
-        torch.max(torch.abs(oracle_grad - lion_grad.squeeze(0))).detach().cpu()
+    raw_gradient_max_abs = float(
+        torch.max(torch.abs(oracle_grad - lion_raw_grad.squeeze(0))).detach().cpu()
+    )
+    scaled_gradient_max_abs = float(
+        torch.max(torch.abs(oracle_scaled_grad - lion_grad.squeeze(0))).detach().cpu()
     )
     update_max_abs = float(
         torch.max(torch.abs(oracle_next - lion_next.squeeze(0))).detach().cpu()
     )
-    if gradient_max_abs > tolerance or update_max_abs > tolerance:
+    if (
+        raw_gradient_max_abs > tolerance
+        or scaled_gradient_max_abs > tolerance
+        or update_max_abs > tolerance
+    ):
         raise AssertionError(
             "DPS update mismatch: "
-            f"gradient_max_abs={gradient_max_abs}, update_max_abs={update_max_abs}"
+            f"raw_gradient_max_abs={raw_gradient_max_abs}, "
+            f"scaled_gradient_max_abs={scaled_gradient_max_abs}, "
+            f"update_max_abs={update_max_abs}"
         )
     return {
-        "public_repo_dps_gradient_max_abs": gradient_max_abs,
+        "public_repo_dps_raw_gradient_max_abs": raw_gradient_max_abs,
+        "public_repo_dps_scaled_gradient_max_abs": scaled_gradient_max_abs,
+        "public_repo_dps_data_consistency_scale": float(lion_scale),
         "public_repo_dps_update_max_abs": update_max_abs,
     }
 
@@ -745,7 +757,7 @@ def _public_dps_trace(
             [list(index) for index in indices],
             t_goal=0,
         ).squeeze(0)
-        gradient = measurement_cond_fn(
+        raw_gradient = measurement_cond_fn(
             measurement,
             x,
             denoised,
@@ -753,6 +765,7 @@ def _public_dps_trace(
             pad=int(params.pad_width),
             w=8,
         )
+        gradient = raw_gradient * float(params.data_consistency_scale)
         score = (denoised - x) / sigma.square()
         update = (
             x
@@ -770,7 +783,7 @@ def _public_dps_trace(
         try:
             (
                 gradient,
-                _raw,
+                raw_gradient,
                 _residual,
                 _normalizer,
                 _scale,
@@ -784,10 +797,12 @@ def _public_dps_trace(
         alpha = float(params.dps_epsilon) * sigma.square()
         update = x - step * gradient + alpha / 2.0 * score + torch.sqrt(alpha) * noise
         gradient = gradient.squeeze(0)
+        raw_gradient = raw_gradient.squeeze(0)
         update = update.squeeze(0)
     else:
         raise ValueError(f"Unknown trace source: {source}")
     return {
+        "public_dps_raw_gradient": raw_gradient,
         "public_dps_gradient": gradient,
         "public_dps_update": update,
     }

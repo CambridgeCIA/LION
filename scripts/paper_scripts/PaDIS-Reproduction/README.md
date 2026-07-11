@@ -754,7 +754,9 @@ By default this reads
 `$LION_EXPERIMENTS_PATH/PaDIS/final_real_runs/PaDIS-Reproduction-GCP_reconstruction/reconstruction_matrix_verification.csv`
 and writes `reconstruction_tables.tex` plus seven decoded CSVs under
 `$LION_EXPERIMENTS_PATH/PaDIS/paper_tables`. Use `--csv-path`, `--tex-path`,
-and `--csv-output-dir` to override these locations.
+and `--csv-output-dir` to override these locations. `--allow-missing` writes
+only tables represented by a partial smoke-run CSV; do not use it for final
+publication output.
 
 The timing table is calculated from completed reconstruction progress logs; no
 timings are stored in the table generator. `--timing-mode gcp` (the default)
