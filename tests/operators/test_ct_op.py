@@ -8,6 +8,9 @@ from tests.helper import dotproduct_adjointness_test
 from tomosipo.torch_support import to_autograd
 
 
+pytestmark = pytest.mark.cuda
+
+
 def test_ct_autograd_op_forward_and_backward():
     """Check that to_autograd wraps the CT operator correctly and supports backprop."""
     geometry = Geometry.default_parameters()

@@ -9,14 +9,14 @@ README = (
 
 def test_padis_readme_warns_about_lion_native_method_substitutions():
     text = README.read_text()
-    warnings = text.split("## Notes And Warnings", 1)[1]
+    warnings = text.split("## Notes and limitations", 1)[1]
 
     assert "baseline" in warnings
     assert "FDK" in warnings
     assert "FBP" in warnings
-    assert "admm_tv" in warnings
+    assert "cp_tv" in warnings
     assert "Chambolle-Pock" in warnings
-    assert "not the paper's exact ADMM-TV" in warnings
+    assert "not the exact ADMM-TV algorithm described by Hu et al." in warnings
     assert "pnp_admm" in warnings
     assert "DRUNet denoiser" in warnings
     assert "LION-native DRUNet surrogate" in warnings
@@ -25,5 +25,4 @@ def test_padis_readme_warns_about_lion_native_method_substitutions():
     assert "no-PaDIS-prior" in warnings
     assert "empty" in warnings
     assert "checkpoint identity" in warnings
-    assert "A100/CUDA CT validation" in warnings
-    assert "public PaDIS repository only provides" in warnings
+    assert "Slurm A100 path is an equivalent reproduction" in warnings

@@ -37,7 +37,7 @@ SWEEPS = (
     Sweep(
         "cp",
         "patch_lidc_default",
-        "admm_tv",
+        "cp_tv",
         "lion_physics",
         "ct_20,ct_8",
         "admm_tv__lion_physics__any",
@@ -267,7 +267,7 @@ SWEEPS = (
     Sweep(
         "native512_cp",
         "patch_lidc_512",
-        "admm_tv",
+        "cp_tv",
         "lion_physics",
         "ct_512_60",
         "admm_tv__lion_physics__any",
@@ -293,6 +293,21 @@ SWEEPS = (
     ),
 )
 
+FAST_SMOKE_CANDIDATES = {
+    "cp": ("lambda_0p001",),
+    "pnp": ("eta_3e_05__iters_60",),
+    "dps_lion": ("zeta_4p25__eps_0p5",),
+    "dps_public": ("zeta_0p2__eps_0p5",),
+    "dps_paper": ("zeta_0p0075__eps_0p5",),
+    "langevin_lion_patch": ("zeta_4__eps_0p5",),
+    "pc_lion_patch": ("zeta_4p25__r_0p01",),
+    "veddnm_lion_physics": ("eps_0p1",),
+    "whole_dps_paper": ("zeta_0p01",),
+    "native512_lion": ("native512_zeta_2",),
+    "full_patch": ("full_patch_zeta_4p5",),
+    "full_whole": ("full_whole_zeta_4",),
+}
+
 
 def main() -> None:
     default_output = pathlib.Path(
@@ -312,12 +327,23 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--rerun-existing", action="store_true")
     parser.add_argument("--stop-on-failure", action="store_true")
-    parser.add_argument(
+    smoke_group = parser.add_mutually_exclusive_group()
+    smoke_group.add_argument(
         "--smoke",
         action="store_true",
         help=(
-            "Execute every tuning candidate with one diffusion outer step and "
-            "one TV/PnP iteration; outputs remain isolated under --output-root."
+            "Execute every tuning candidate with one sample, one diffusion outer "
+            "step, one inner denoiser evaluation, and one TV/PnP iteration on "
+            "the first configured experiment for each model; outputs remain "
+            "isolated under --output-root."
+        ),
+    )
+    smoke_group.add_argument(
+        "--fast-smoke",
+        action="store_true",
+        help=(
+            "Exercise a representative candidate from each major tuning family "
+            "with the same one-sample/one-experiment/one-NFE execution limits."
         ),
     )
     args = parser.parse_args()
@@ -329,6 +355,13 @@ def main() -> None:
     for sweep in SWEEPS:
         if selected is not None and sweep.name not in selected:
             continue
+        if args.fast_smoke and sweep.name not in FAST_SMOKE_CANDIDATES:
+            continue
+        smoke = args.smoke or args.fast_smoke
+        experiments = sweep.experiments.split(",", 1)[0] if smoke else sweep.experiments
+        candidates = (
+            FAST_SMOKE_CANDIDATES[sweep.name] if args.fast_smoke else sweep.candidates
+        )
         command = [
             sys.executable,
             "-u",
@@ -351,11 +384,11 @@ def main() -> None:
             "--implementations",
             sweep.implementation,
             "--experiments",
-            sweep.experiments,
+            experiments,
             "--only-groups",
             sweep.group,
             "--only-candidates",
-            ",".join(sweep.candidates),
+            ",".join(candidates),
             "--max-samples",
             str(args.max_samples),
             "--start-index",
@@ -370,10 +403,12 @@ def main() -> None:
         for flag in ("dry_run", "rerun_existing", "stop_on_failure"):
             if getattr(args, flag):
                 command.append("--" + flag.replace("_", "-"))
-        if args.smoke:
+        if smoke:
             command += [
                 "--stop-after-outer-steps",
                 "1",
+                "--reconstruction-arg=--inner-steps",
+                "--reconstruction-arg=1",
                 "--reconstruction-arg=--tv-iterations",
                 "--reconstruction-arg=1",
                 "--reconstruction-arg=--pnp-iterations",

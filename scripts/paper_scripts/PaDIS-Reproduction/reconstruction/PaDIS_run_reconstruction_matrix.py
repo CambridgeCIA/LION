@@ -11,6 +11,8 @@ import shlex
 import subprocess
 import sys
 
+from PaDIS_identifiers import canonical_experiment, canonical_method
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "tuning"))
 
 try:
@@ -30,7 +32,7 @@ except ModuleNotFoundError:
 TRAINING_ROOT_PRESETS = ("slurm", "gcp")
 IMPLEMENTATIONS = ("paper", "public_repo", "lion_physics", "lion_quality")
 GEOMETRIES = ("lion", "padis", "padis_parallel", "padis_fanbeam")
-EXPERIMENTS = ("ct_8", "ct_20", "ct_60", "ct_fanbeam_180", "ct_512_60")
+EXPERIMENTS = ("ct_8", "ct_20", "ct_60", "ct_20_limited_angle_120", "ct_512_60")
 ABLATIONS = ("schedule_init", "patch_size", "dataset_size", "position_encoding")
 CHECKPOINT_POLICIES = ("model_default", "min_val", "min_intense_val")
 JOB_ORDERS = ("default", "gcp_spot")
@@ -40,7 +42,7 @@ EXPENSIVE_SAMPLE_CAP_METHODS = {"patch_average", "patch_stitch"}
 EXPENSIVE_SAMPLE_CAP_EXPERIMENTS = {"ct_512_60"}
 METHODS = (
     "baseline",
-    "admm_tv",
+    "cp_tv",
     "pnp_admm",
     "whole_image_diffusion",
     "langevin",
@@ -50,7 +52,7 @@ METHODS = (
     "patch_stitch",
     "padis_dps",
 )
-NO_PADIS_PRIOR_METHODS = {"baseline", "admm_tv", "pnp_admm"}
+NO_PADIS_PRIOR_METHODS = {"baseline", "cp_tv", "pnp_admm"}
 PUBLIC_REPO_IMPLEMENTATION_METHODS = {
     "padis_dps",
     "langevin",
@@ -120,7 +122,7 @@ MODEL_TASKS = (
         "padis_lidc_256.pt",
         "auto",
         False,
-        ("ct_20", "ct_8", "ct_60", "ct_fanbeam_180"),
+        ("ct_20", "ct_8", "ct_60", "ct_20_limited_angle_120"),
     ),
     ModelTask(
         "patch_lidc_full",
@@ -169,7 +171,7 @@ MODEL_TASKS = (
         "whole_image_lidc_256_min_val.pt",
         "whole-image",
         False,
-        ("ct_20", "ct_8", "ct_60", "ct_fanbeam_180"),
+        ("ct_20", "ct_8", "ct_60", "ct_20_limited_angle_120"),
     ),
     ModelTask(
         "whole_lidc_full",
@@ -190,7 +192,7 @@ MODEL_TASKS = (
 MODEL_BY_NAME = {task.name: task for task in MODEL_TASKS}
 
 _MAIN_CT_EXPERIMENTS = ("ct_20", "ct_8")
-_EXTRA_CT_EXPERIMENTS = ("ct_60", "ct_fanbeam_180")
+_EXTRA_CT_EXPERIMENTS = ("ct_60", "ct_20_limited_angle_120")
 _NATIVE_512_EXPERIMENTS = ("ct_512_60",)
 _PATCH_CT_EXPERIMENTS = (
     *_MAIN_CT_EXPERIMENTS,
@@ -203,7 +205,7 @@ _WHOLE_IMAGE_SAMPLING_METHODS = ("langevin", "predictor_corrector", "ve_ddnm")
 _WHOLE_IMAGE_SAMPLING_EXPERIMENTS = ("ct_20",)
 _METHOD_DISPLAY_NAMES = {
     "baseline": "Baseline FDK",
-    "admm_tv": "ADMM-TV",
+    "cp_tv": "CP",
     "pnp_admm": "PnP-ADMM",
     "whole_image_diffusion": "Whole image - VE-DPS",
     "langevin": "Langevin",
@@ -216,7 +218,7 @@ _METHOD_DISPLAY_NAMES = {
 
 CORE_IMPLEMENTATIONS_BY_METHOD = {
     "baseline": ("lion_physics",),
-    "admm_tv": ("lion_physics",),
+    "cp_tv": ("lion_physics",),
     "pnp_admm": ("lion_physics",),
     "whole_image_diffusion": ("lion_physics", "paper"),
     "langevin": ("lion_physics", "public_repo", "paper"),
@@ -228,19 +230,19 @@ CORE_IMPLEMENTATIONS_BY_METHOD = {
 }
 
 DEFAULT_PAPER_MATRIX_RESTRICTED_EXPERIMENTS = frozenset(
-    {"ct_60", "ct_fanbeam_180", "ct_512_60"}
+    {"ct_60", "ct_20_limited_angle_120", "ct_512_60"}
 )
 DEFAULT_PAPER_MATRIX_RESTRICTED_MAIN_JOBS = frozenset(
     {
         ("baseline", "lion_physics"),
-        ("admm_tv", "lion_physics"),
+        ("cp_tv", "lion_physics"),
         ("whole_image_diffusion", "lion_physics"),
         ("padis_dps", "lion_physics"),
         ("padis_dps", "public_repo"),
     }
 )
 DEFAULT_PAPER_MATRIX_EXTRA_CT_VE_DDNM_EXPERIMENTS = frozenset(
-    {"ct_60", "ct_fanbeam_180"}
+    {"ct_60", "ct_20_limited_angle_120"}
 )
 
 METHOD_TASKS = (
@@ -253,7 +255,7 @@ METHOD_TASKS = (
         _PATCH_512_MODEL,
     ),
     MethodTask(
-        "admm_tv",
+        "cp_tv",
         "patch_lidc_default",
         "lion_physics",
         "dps_langevin",
@@ -530,7 +532,16 @@ def selected_model_tasks(selection: str) -> tuple[ModelTask, ...]:
 
 
 def selected_method_tasks(selection: str) -> tuple[MethodTask, ...]:
-    names = parse_csv(selection, valid=METHODS, label="method")
+    names = tuple(
+        dict.fromkeys(
+            canonical_method(name)
+            for name in parse_csv(
+                selection,
+                valid=(*METHODS, "admm_tv"),
+                label="method",
+            )
+        )
+    )
     return tuple(METHOD_BY_NAME[name] for name in names)
 
 
@@ -548,7 +559,16 @@ def selected_experiments(
         if method is not None:
             return method.default_experiments
         return model.default_experiments
-    return parse_csv(selection, valid=EXPERIMENTS, label="experiment")
+    return tuple(
+        dict.fromkeys(
+            canonical_experiment(name)
+            for name in parse_csv(
+                selection,
+                valid=(*EXPERIMENTS, "ct_fanbeam_180"),
+                label="experiment",
+            )
+        )
+    )
 
 
 def validate_paper_experiments(
@@ -565,10 +585,10 @@ def validate_paper_experiments(
     )
     if off_paper:
         raise ValueError(
-            f"{label} is not part of the paper reconstruction matrix for "
-            f"{', '.join(off_paper)}. Paper experiments for this task are: "
+            f"{label} is not part of Hu et al.'s reconstruction matrix for "
+            f"{', '.join(off_paper)}. Experiments from Hu et al. for this task are: "
             f"{', '.join(allowed)}. Use --allow-off-paper-experiments for "
-            "diagnostic or ablation runs outside the paper protocol."
+            "diagnostic or ablation runs outside the protocol of Hu et al."
         )
 
 
@@ -706,9 +726,14 @@ def append_trained_ablation_jobs(
     if args.experiments == "paper_matrix":
         selected_experiment_names = set(EXPERIMENTS)
     else:
-        selected_experiment_names = set(
-            parse_csv(args.experiments, valid=EXPERIMENTS, label="experiment")
-        )
+        selected_experiment_names = {
+            canonical_experiment(name)
+            for name in parse_csv(
+                args.experiments,
+                valid=(*EXPERIMENTS, "ct_fanbeam_180"),
+                label="experiment",
+            )
+        }
     selected_method_names = {method.name for method in methods}
     selected_ablation_type_names = set(ablation_types)
     seen = {job_identity(job) for job in jobs}
@@ -1316,13 +1341,8 @@ def pnp_noise_level_for_job(
 
 def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -> dict:
     if job.method.name == "baseline":
-        settings = {"baseline": "fdk"}
-        _, settings = apply_reconstruction_args_to_settings(
-            reconstruction_args=job_reconstruction_args(args, job),
-            method_settings=settings,
-        )
-        return settings
-    if job.method.name == "admm_tv":
+        return {"baseline": "fdk"}
+    if job.method.name == "cp_tv":
         settings = {
             "tv_lambda": float(args.tv_lambda),
             "tv_iterations": int(args.tv_iterations),
@@ -1333,7 +1353,7 @@ def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -
             reconstruction_args=job_reconstruction_args(args, job),
             method_settings=settings,
         )
-        return settings
+        return {key: value for key, value in settings.items() if key.startswith("tv_")}
     if job.method.name == "pnp_admm":
         pnp_noise_level = pnp_noise_level_for_job(args, job)
         settings = {
@@ -1351,12 +1371,8 @@ def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -
             reconstruction_args=job_reconstruction_args(args, job),
             method_settings=settings,
         )
-        return settings
-    _, settings = apply_reconstruction_args_to_settings(
-        reconstruction_args=job_reconstruction_args(args, job),
-        method_settings={},
-    )
-    return settings
+        return {key: value for key, value in settings.items() if key.startswith("pnp_")}
+    return {}
 
 
 def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[str]:
@@ -1408,7 +1424,7 @@ def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[st
         cmd.append("--no-position-channels")
     if job.method.requires_pnp:
         cmd.extend(["--pnp-checkpoint", str(pnp_checkpoint_for_job(args, job))])
-    if job.method.name == "admm_tv":
+    if job.method.name == "cp_tv":
         cmd.extend(["--tv-lambda", str(args.tv_lambda)])
         cmd.extend(["--tv-iterations", str(args.tv_iterations)])
     if job.method.name == "pnp_admm":
@@ -1624,7 +1640,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--experiments",
         default="paper_matrix",
         help=(
-            "paper_matrix for the paper-relevant experiment set per model, "
+            "paper_matrix for the experiment set from Hu et al. per model, "
             "or a comma-separated list from: " + ", ".join(EXPERIMENTS)
         ),
     )
@@ -1673,7 +1689,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--max-samples",
         type=int,
         default=25,
-        help="Number of test/validation slices per reconstruction job. Default 25 matches the paper CT evaluation budget.",
+        help="Number of test/validation slices per reconstruction job. Default 25 matches the CT evaluation budget of Hu et al.",
     )
     parser.add_argument(
         "--expensive-job-max-samples",

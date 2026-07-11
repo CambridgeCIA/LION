@@ -88,6 +88,22 @@ def _args(tmp_path, *extra):
     return args
 
 
+def test_legacy_method_and_experiment_aliases_build_canonical_jobs(tmp_path):
+    args = _args(
+        tmp_path,
+        "--methods",
+        "admm_tv",
+        "--experiments",
+        "ct_fanbeam_180",
+    )
+
+    jobs = build_jobs(args)
+
+    assert len(jobs) == 1
+    assert jobs[0].method.name == "cp_tv"
+    assert jobs[0].experiment == "ct_20_limited_angle_120"
+
+
 def test_training_root_preset_resolves_gcp_final_model_root(tmp_path):
     parser = build_arg_parser()
     args = parser.parse_args(
@@ -191,7 +207,7 @@ def test_method_default_matrix_uses_native_512_model_for_512_experiment(tmp_path
     args = _args(
         tmp_path,
         "--methods",
-        "baseline,admm_tv,padis_dps",
+        "baseline,cp_tv,padis_dps",
         "--experiments",
         "ct_512_60",
     )
@@ -562,7 +578,7 @@ def test_checked_in_hparam_defaults_cover_slurm_default_matrix(tmp_path):
             True,
         ),
         (
-            "admm_tv",
+            "cp_tv",
             "lion_physics",
             "patch_lidc_512",
             "ct_512_60",
@@ -765,7 +781,7 @@ def test_reconstruction_smoke_selector_has_six_expected_jobs(tmp_path):
     args = _args(
         tmp_path,
         "--methods",
-        "baseline,admm_tv,padis_dps,langevin,predictor_corrector,ve_ddnm",
+        "baseline,cp_tv,padis_dps,langevin,predictor_corrector,ve_ddnm",
         "--experiments",
         "ct_20",
         "--max-samples",
@@ -777,7 +793,7 @@ def test_reconstruction_smoke_selector_has_six_expected_jobs(tmp_path):
     assert len(jobs) == 14
     assert {(job.method.name, job.implementation) for job in jobs} == {
         ("baseline", "lion_physics"),
-        ("admm_tv", "lion_physics"),
+        ("cp_tv", "lion_physics"),
         ("padis_dps", "lion_physics"),
         ("padis_dps", "public_repo"),
         ("padis_dps", "paper"),
@@ -874,7 +890,7 @@ def test_whole_image_lion_physics_fanbeam_uses_stabilized_epsilon(tmp_path):
         "--methods",
         "whole_image_diffusion",
         "--experiments",
-        "ct_fanbeam_180",
+        "ct_20_limited_angle_120",
         "--implementations",
         "lion_physics",
     )
@@ -883,7 +899,7 @@ def test_whole_image_lion_physics_fanbeam_uses_stabilized_epsilon(tmp_path):
     sampler = payload["expected_sampler"]
 
     assert payload["implementation"] == "lion_physics"
-    assert payload["experiment"] == "ct_fanbeam_180"
+    assert payload["experiment"] == "ct_20_limited_angle_120"
     assert sampler["prior_mode"] == "whole_image"
     assert sampler["dps_epsilon"] == 0.5
     assert sampler["data_consistency_gradient"] == "least_squares"
@@ -1026,7 +1042,7 @@ def test_job_manifest_contains_expected_method_settings(tmp_path):
     args = _args(
         tmp_path,
         "--methods",
-        "baseline,admm_tv,pnp_admm",
+        "baseline,cp_tv,pnp_admm",
         "--experiments",
         "ct_20",
         "--tv-lambda",
@@ -1048,10 +1064,10 @@ def test_job_manifest_contains_expected_method_settings(tmp_path):
     payloads = {job.method.name: job_json(args, job) for job in build_jobs(args)}
 
     assert payloads["baseline"]["checkpoint"] == ""
-    assert payloads["admm_tv"]["checkpoint"] == ""
+    assert payloads["cp_tv"]["checkpoint"] == ""
     assert payloads["pnp_admm"]["checkpoint"] == ""
     assert payloads["baseline"]["expected_method_settings"] == {"baseline": "fdk"}
-    assert payloads["admm_tv"]["expected_method_settings"] == {
+    assert payloads["cp_tv"]["expected_method_settings"] == {
         "tv_lambda": 0.002,
         "tv_iterations": 250,
         "tv_lipschitz": None,
@@ -1081,7 +1097,7 @@ def test_full_method_default_matrix_has_requested_core_grid(tmp_path):
         )
     assert counts == {
         ("baseline", "lion_physics"): 5,
-        ("admm_tv", "lion_physics"): 5,
+        ("cp_tv", "lion_physics"): 5,
         ("pnp_admm", "lion_physics"): 4,
         ("whole_image_diffusion", "lion_physics"): 4,
         ("whole_image_diffusion", "paper"): 2,
@@ -1177,7 +1193,7 @@ def test_full_lion_physics_matrix_uses_lipschitz_scaled_data_updates(tmp_path):
     assert sigma_by_experiment["ct_8"] == 0.003
     assert sigma_by_experiment["ct_20"] == 0.002
     assert sigma_by_experiment["ct_60"] == 0.002
-    assert sigma_by_experiment["ct_fanbeam_180"] == 0.002
+    assert sigma_by_experiment["ct_20_limited_angle_120"] == 0.002
     assert sigma_by_experiment["ct_512_60"] == 0.002
 
 
@@ -1202,10 +1218,10 @@ def test_paper_matrix_uses_method_specific_experiment_sets(tmp_path):
         {job.experiment for job in jobs if job.method.name == "padis_dps"}
     ) == [
         "ct_20",
+        "ct_20_limited_angle_120",
         "ct_512_60",
         "ct_60",
         "ct_8",
-        "ct_fanbeam_180",
     ]
 
 
@@ -1220,7 +1236,7 @@ def test_method_default_matrix_excludes_whole_image_512_rows(tmp_path):
         "ct_20",
         "ct_60",
         "ct_8",
-        "ct_fanbeam_180",
+        "ct_20_limited_angle_120",
     }
     assert "ct_512_60" in {
         job.experiment for job in jobs if job.method.name == "padis_dps"
@@ -1235,7 +1251,7 @@ def test_paper_matrix_includes_8_view_rows_for_all_table1_methods(tmp_path):
 
     assert methods_with_ct8 == {
         "baseline",
-        "admm_tv",
+        "cp_tv",
         "pnp_admm",
         "whole_image_diffusion",
         "langevin",
@@ -1309,7 +1325,7 @@ def test_trained_ablation_matrix_appends_trained_checkpoint_families(tmp_path):
     assert {
         job.model.name
         for job in jobs
-        if job.method.name not in {"baseline", "admm_tv", "pnp_admm"}
+        if job.method.name not in {"baseline", "cp_tv", "pnp_admm"}
     } == {
         "patch_lidc_default",
         "patch_lidc_full",
@@ -1583,7 +1599,9 @@ def test_method_default_rejects_off_paper_experiment_selection(tmp_path):
         "ct_512_60",
     )
 
-    with pytest.raises(ValueError, match="not part of the paper reconstruction matrix"):
+    with pytest.raises(
+        ValueError, match="not part of Hu et al.'s reconstruction matrix"
+    ):
         build_jobs(args)
 
 

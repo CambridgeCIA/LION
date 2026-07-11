@@ -185,6 +185,23 @@ PADIS_RUN_STAMP=padis-reproduction \
   --backend slurm
 ```
 
+For a short local integration check using existing staged checkpoints, run:
+
+```bash
+export PADIS_FAST_SMOKE_TRAINING_ROOT=/path/to/matrix-compatible/training-root
+bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh \
+  --fast-smoke
+```
+
+`--fast-smoke` executes one sample, one experiment per selected model, one
+outer and one inner diffusion step, and one TV/PnP/CG iteration. It covers 12
+representative tuning families, a compact reconstruction matrix, patch and
+whole-image generation, verification, partial tables, and partial figures.
+Outputs go to a new `debug_runs/fast_smoke_*` folder by default. It checks the
+SHA256 of the committed hyperparameter registry before and after and fails if
+the settings change. The tuning launcher's broader `--smoke` mode retains all
+candidates while applying the same execution-depth limits.
+
 After the processed dataset exists, these entry points cover cache staging,
 diffusion and PnP training, intensive validation, checkpoint selection, the
 109-job reconstruction matrix, unconditional generation, verification,
@@ -418,8 +435,8 @@ unless `PADIS_NO_WANDB_ARTIFACT=1`; persistent checkpoints do not depend on W&B.
 
 ## Notes and limitations
 
-The historical `admm_tv` identifier executes LION's Chambolle-Pock solver and
-is not the paper's exact ADMM-TV algorithm. The `baseline` uses fan-beam FDK,
+The `cp_tv` implementation executes LION's Chambolle-Pock TV solver and is
+not the exact ADMM-TV algorithm described by Hu et al. The `baseline` uses fan-beam FDK,
 not parallel-beam FBP. `pnp_admm` uses a LION-native DRUNet surrogate as its
 DRUNet denoiser;
 the source description does not give enough optimizer, architecture, or
@@ -441,7 +458,7 @@ The matrix contains:
 | Method | Summary |
 |---|---|
 | `baseline` | Hann-filtered LION FDK baseline. |
-| `admm_tv` | TV reconstruction using LION's Chambolle-Pock solver. The historical matrix name is retained, but the solver is not ADMM. |
+| `cp_tv` | TV reconstruction using LION's Chambolle-Pock solver. |
 | `pnp_admm` | ADMM with conjugate-gradient data updates and DRUNet denoising. |
 | `whole_image_diffusion` | Whole-image VE-DPS prior. |
 | `langevin` | Data-consistency updates with patch or whole-image Langevin sampling. |
@@ -451,12 +468,12 @@ The matrix contains:
 | `patch_stitch` | Fixed overlapping patches written in order, with later patches overwriting overlaps. |
 | `padis_dps` | Randomly shifted PaDIS patch partitions inside VE-DPS. |
 
-`admm_tv` is a historical internal matrix identifier retained to preserve
-checkpoint, output-directory, manifest, and resume compatibility. The executed
-solver is Chambolle--Pock, not ADMM. Presentation code therefore labels this
-method **CP** in figures and reports it as sampler **CP** with prior **TV** in
-tables. The inference CLI, saved method field, and existing output paths remain
-`admm_tv`; consumers should translate that identifier only for display.
+New commands, manifests, saved metrics, and output directories use `cp_tv`.
+For backward compatibility, the inference and matrix CLIs also accept the old
+`admm_tv` alias; hyperparameter selection and verification canonicalise old
+saved method fields, and figure generation falls back to old `admm_tv` result
+directories. The executed solver is Chambolle-Pock, so presentation code
+labels it **CP** and tables report sampler **CP** with prior **TV**.
 
 Unless stated otherwise, diffusion reconstruction uses 100 geometrically
 spaced noise levels from `sigma_max=10` to `sigma_min=0.002`, with 10 inner
@@ -497,7 +514,7 @@ unbounded sparse-view fan-beam approximation otherwise becomes non-finite.
 | `ct_8` | 8 | 360 degrees | 256 x 256 |
 | `ct_20` | 20 | 360 degrees | 256 x 256 |
 | `ct_60` | 60 | 360 degrees | 256 x 256 |
-| `ct_fanbeam_180` | 20 | 120 degrees | 256 x 256 |
+| `ct_20_limited_angle_120` | 20 | 120 degrees | 256 x 256 |
 | `ct_512_60` | 60 | 360 degrees | 512 x 512 |
 
 Every experiment treats each axial slice independently using LION's 2D
@@ -509,8 +526,9 @@ Consequently these experiments isolate angular undersampling and limited
 coverage; they do not model photon noise, scatter, beam hardening, motion, or
 cone-beam effects.
 
-`ct_fanbeam_180` is a legacy identifier. It is the 20-view, 120-degree
-limited-angle experiment, not a 180-view acquisition.
+New outputs use the descriptive `ct_20_limited_angle_120` identifier. The old
+`ct_fanbeam_180` name remains an accepted CLI alias, and verification, tables,
+and figures can consume existing artefacts bearing that legacy name.
 
 With `method_default`, `paper_matrix`, all methods, and all trained ablations,
 the current manifest contains 109 reconstruction jobs: 65 core rows, 42

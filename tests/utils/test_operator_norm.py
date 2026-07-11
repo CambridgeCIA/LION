@@ -1,5 +1,6 @@
 """Tests for computing the operator norm of operators."""
 
+import pytest
 import torch
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
@@ -55,6 +56,7 @@ def test_matrix_op_operator_norm_torch():
     torch.testing.assert_close(op_norm_computed, op_norm_expected, atol=1e-6, rtol=1e-6)
 
 
+@pytest.mark.cuda
 def test_ct_operator_norm_torch():
     """Test with CT operator using default geometry."""
 

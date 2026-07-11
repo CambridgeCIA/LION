@@ -11,6 +11,9 @@ import pathlib
 import sys
 from typing import Iterable
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "reconstruction"))
+from PaDIS_identifiers import canonical_experiment, canonical_method
+
 
 SCHEMA_VERSION = 1
 CONSENSUS_EXPERIMENT = "consensus"
@@ -24,7 +27,7 @@ DEFAULT_RECONSTRUCTION_HPARAM_DEFAULTS_JSON = (
 )
 HIGH_VIEW_FALLBACKS = {
     "ct_60": ("ct_20",),
-    "ct_fanbeam_180": ("ct_20",),
+    "ct_20_limited_angle_120": ("ct_20",),
     "ct_512_60": ("ct_20",),
 }
 
@@ -538,6 +541,8 @@ class HparamDefaults:
         model: str,
         experiment: str,
     ) -> HparamSelection | None:
+        method = canonical_method(method)
+        experiment = canonical_experiment(experiment)
         source_experiments = (
             experiment,
             *HIGH_VIEW_FALLBACKS.get(experiment, ()),
@@ -583,10 +588,11 @@ class HparamDefaults:
         matches = [
             record
             for record in self.records
-            if record.get("method") == method
+            if canonical_method(str(record.get("method") or "")) == method
             and record.get("implementation") == implementation
             and record.get("prior") == prior
-            and record.get("experiment") == source_experiment
+            and canonical_experiment(str(record.get("experiment") or ""))
+            == source_experiment
             and record.get("model") == required_model
         ]
         if not matches:

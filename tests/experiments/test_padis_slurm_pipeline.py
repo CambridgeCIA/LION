@@ -96,7 +96,7 @@ def test_pipeline_preflight_rejects_off_paper_matrix_before_submission(tmp_path)
     )
 
     assert result.returncode == 1
-    assert "not part of the paper reconstruction matrix" in result.stderr
+    assert "not part of Hu et al.'s reconstruction matrix" in result.stderr
     assert sbatch_log == ""
 
 
@@ -131,7 +131,7 @@ def test_pipeline_can_submit_reconstruction_when_pnp_row_is_excluded(tmp_path):
         tmp_path,
         PADIS_SUBMIT_RECONSTRUCTION="1",
         PADIS_SUBMIT_PNP_TRAINING="0",
-        PADIS_RECON_METHODS="baseline,admm_tv",
+        PADIS_RECON_METHODS="baseline,cp_tv",
         PADIS_RECON_EXPERIMENTS="ct_20",
         PADIS_RECON_MAX_SAMPLES="1",
         PADIS_RECON_VERIFY="1",
@@ -257,7 +257,7 @@ def test_pipeline_full_default_reconstruction_matrix_waits_for_training_and_pnp(
     assert len(jobs) == 109
     assert Counter(job["method"] for job in jobs) == {
         "baseline": 5,
-        "admm_tv": 5,
+        "cp_tv": 5,
         "pnp_admm": 4,
         "whole_image_diffusion": 10,
         "langevin": 7,

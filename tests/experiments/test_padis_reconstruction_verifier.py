@@ -77,16 +77,16 @@ def test_parse_method_thresholds_requires_method_value_form():
 
 def test_verifier_finds_records_and_accepts_required_method_and_experiment(tmp_path):
     _write_metrics(tmp_path, method="baseline", experiment="ct_20")
-    _write_metrics(tmp_path, method="admm_tv", experiment="ct_20")
+    _write_metrics(tmp_path, method="cp_tv", experiment="ct_20")
     _write_metrics(tmp_path, method="padis_dps", experiment="ct_8")
     args = _args(
         tmp_path,
         "--methods",
-        "baseline,admm_tv",
+        "baseline,cp_tv",
         "--experiments",
         "ct_20",
         "--require-methods",
-        "baseline,admm_tv",
+        "baseline,cp_tv",
         "--require-experiments",
         "ct_20",
         "--min-mean-psnr",
@@ -99,8 +99,8 @@ def test_verifier_finds_records_and_accepts_required_method_and_experiment(tmp_p
     failures = check_records(args, records)
 
     assert [record["summary"]["method"] for record in records] == [
-        "admm_tv",
         "baseline",
+        "cp_tv",
     ]
     assert failures == []
 
@@ -203,7 +203,7 @@ def test_verifier_reports_expected_job_manifest_mismatch(tmp_path):
                     "checkpoint": "/tmp/checkpoint.pt",
                 },
                 {
-                    "method": "admm_tv",
+                    "method": "cp_tv",
                     "algorithm": "dps_langevin",
                     "prior_mode": "patch",
                     "experiment": "ct_20",
@@ -221,7 +221,7 @@ def test_verifier_reports_expected_job_manifest_mismatch(tmp_path):
     assert any(
         "Missing expected reconstruction record" in failure for failure in failures
     )
-    assert any("method=admm_tv" in failure for failure in failures)
+    assert any("method=cp_tv" in failure for failure in failures)
 
 
 def test_verifier_manifest_checkpoint_identity_resolves_symlinks(tmp_path):
@@ -491,7 +491,7 @@ def test_verifier_checks_expected_fixed_overlap_checkpoint_from_manifest(tmp_pat
 def test_verifier_checks_expected_method_settings_from_manifest(tmp_path):
     _write_metrics(
         tmp_path,
-        method="admm_tv",
+        method="cp_tv",
         method_settings={
             "tv_lambda": 0.01,
             "tv_iterations": 500,
@@ -504,7 +504,7 @@ def test_verifier_checks_expected_method_settings_from_manifest(tmp_path):
         json.dumps(
             [
                 {
-                    "method": "admm_tv",
+                    "method": "cp_tv",
                     "algorithm": "dps_langevin",
                     "prior_mode": "patch",
                     "experiment": "ct_20",

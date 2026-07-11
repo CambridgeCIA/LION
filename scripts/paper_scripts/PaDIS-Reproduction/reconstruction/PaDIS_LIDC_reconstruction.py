@@ -38,6 +38,8 @@ from LION.reconstructors.PnP import PnP
 from LION.utils.parameter import LIONParameter
 from LION.utils.paths import LION_EXPERIMENTS_PATH
 
+from PaDIS_identifiers import canonical_method
+
 
 DEFAULT_CHECKPOINT = pathlib.Path(
     "Data/experiments/PaDIS/LIDC_256/"
@@ -83,7 +85,7 @@ PAPER_CT_EXPERIMENTS = {
         paper_geometry="parallel",
         lion_experiment="PaDISFanBeam8CTRecon",
         paper_sampler_views=8,
-        description="8-view CT experiment from the paper.",
+        description="8-view CT experiment from Hu et al.",
     ),
     "ct_20": PaperCTExperiment(
         key="ct_20",
@@ -91,7 +93,7 @@ PAPER_CT_EXPERIMENTS = {
         paper_geometry="parallel",
         lion_experiment="PaDISFanBeam20CTRecon",
         paper_sampler_views=20,
-        description="20-view CT experiment from the paper.",
+        description="20-view CT experiment from Hu et al.",
     ),
     "ct_60": PaperCTExperiment(
         key="ct_60",
@@ -99,10 +101,10 @@ PAPER_CT_EXPERIMENTS = {
         paper_geometry="parallel",
         lion_experiment="PaDISFanBeam60CTRecon",
         paper_sampler_views=20,
-        description="60-view CT experiment from the paper extra experiments.",
+        description="60-view CT experiment from the extra experiments of Hu et al.",
     ),
-    "ct_fanbeam_180": PaperCTExperiment(
-        key="ct_fanbeam_180",
+    "ct_20_limited_angle_120": PaperCTExperiment(
+        key="ct_20_limited_angle_120",
         views=20,
         paper_geometry="fan",
         lion_experiment="PaDISFanBeam120LimitedCTRecon",
@@ -117,7 +119,7 @@ PAPER_CT_EXPERIMENTS = {
         paper_geometry="parallel",
         lion_experiment="PaDISFanBeam60CTRecon",
         paper_sampler_views=20,
-        description="512x512 60-view CT experiment from the paper.",
+        description="512x512 60-view CT experiment from Hu et al.",
     ),
 }
 
@@ -125,17 +127,18 @@ EXPERIMENT_ALIASES = {
     "8": "ct_8",
     "20": "ct_20",
     "60": "ct_60",
-    "180": "ct_fanbeam_180",
-    "fanbeam_180": "ct_fanbeam_180",
-    "ct_fan_180": "ct_fanbeam_180",
-    "fanbeam_120": "ct_fanbeam_180",
-    "ct_fan_120": "ct_fanbeam_180",
+    "180": "ct_20_limited_angle_120",
+    "fanbeam_180": "ct_20_limited_angle_120",
+    "ct_fan_180": "ct_20_limited_angle_120",
+    "ct_fanbeam_180": "ct_20_limited_angle_120",
+    "fanbeam_120": "ct_20_limited_angle_120",
+    "ct_fan_120": "ct_20_limited_angle_120",
     "512_60": "ct_512_60",
     "PaDISFanBeam8CTRecon": "ct_8",
     "PaDISFanBeam20CTRecon": "ct_20",
     "PaDISFanBeam60CTRecon": "ct_60",
-    "PaDISFanBeam120LimitedCTRecon": "ct_fanbeam_180",
-    "PaDISFanBeam180CTRecon": "ct_fanbeam_180",
+    "PaDISFanBeam120LimitedCTRecon": "ct_20_limited_angle_120",
+    "PaDISFanBeam180CTRecon": "ct_20_limited_angle_120",
 }
 
 IMPLEMENTATION_CHOICES = (
@@ -149,6 +152,7 @@ GEOMETRY_CHOICES = ("lion", "padis", "padis_parallel", "padis_fanbeam")
 RECONSTRUCTION_METHOD_CHOICES = (
     "padis_dps",
     "baseline",
+    "cp_tv",
     "admm_tv",
     "pnp_admm",
     "whole_image_diffusion",
@@ -167,7 +171,7 @@ DIFFUSION_RECONSTRUCTION_METHODS = {
     "patch_average",
     "patch_stitch",
 }
-NO_PADIS_PRIOR_METHODS = {"baseline", "admm_tv", "pnp_admm"}
+NO_PADIS_PRIOR_METHODS = {"baseline", "cp_tv", "pnp_admm"}
 PUBLIC_REPO_IMPLEMENTATION_METHODS = {
     "padis_dps",
     "langevin",
@@ -914,7 +918,7 @@ def effective_algorithm(args) -> str:
 def reconstruction_label(args, sampler_params) -> str:
     labels = {
         "baseline": "Baseline FDK",
-        "admm_tv": "TV",
+        "cp_tv": "TV",
         "pnp_admm": "PnP-ADMM",
         "whole_image_diffusion": "Whole-image diffusion",
         "langevin": "Langevin dynamics",
@@ -944,7 +948,7 @@ def reconstruction_label(args, sampler_params) -> str:
 def result_display_label(args, sampler_params) -> str:
     method_names = {
         "baseline": "Baseline FDK",
-        "admm_tv": "ADMM-TV",
+        "cp_tv": "CP",
         "pnp_admm": "PnP-ADMM",
         "whole_image_diffusion": "Whole image - VE-DPS",
         "padis_dps": "Patch - VE-DPS",
@@ -968,7 +972,7 @@ def result_display_label(args, sampler_params) -> str:
 def method_settings(args) -> dict:
     if args.method == "baseline":
         return {"baseline": "fdk"}
-    if args.method == "admm_tv":
+    if args.method == "cp_tv":
         return {
             "tv_lambda": float(args.tv_lambda),
             "tv_iterations": int(args.tv_iterations),
@@ -1639,7 +1643,7 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
         sampler_params.ve_ddnm_nfe_layout = ve_ddnm_layout
         if args.implementation in ("lion_physics", "lion_quality"):
             # LION fan-beam FDK pseudoinverses make strict paper VE-DDNM unstable;
-            # these presets keep the paper NFE layout but project the corrected
+            # these presets keep the NFE layout of Hu et al. but project the corrected
             # clean DDNM estimate back to the physically valid model support.
             sampler_params.initial_reconstruction = "noise"
             sampler_params.initial_fdk_filter_type = None
@@ -1902,7 +1906,7 @@ def run_reconstruction_variant(
         fdk_recon = fdk_baseline(sinogram, reconstructor, sampler_params)
         if args.method == "baseline":
             recon = fdk_recon
-        elif args.method == "admm_tv":
+        elif args.method == "cp_tv":
             recon = tv_reconstruction(sinogram, reconstructor, sampler_params, args)
         elif args.method == "pnp_admm":
             assert pnp_denoiser is not None
@@ -2440,7 +2444,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="none",
         help=(
             "Run a LION LIDC CT experiment. Paper aliases include ct_8, "
-            "ct_20, ct_60, ct_fanbeam_180, and ct_512_60. "
+            "ct_20, ct_60, ct_20_limited_angle_120, and ct_512_60. "
             "image_scaling is read from the PaDIS checkpoint geometry."
         ),
     )
@@ -2449,9 +2453,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
         choices=IMPLEMENTATION_CHOICES,
         default="custom",
         help=(
-            "Sampler preset. 'paper' uses the paper-described CT schedule and "
+            "Sampler preset. 'paper' uses the CT schedule described by Hu et al. and "
             "data step; 'public_repo' keeps the PaDIS README reconstruction "
-            "mechanics but uses the paper CT sigma schedule; "
+            "mechanics but uses the CT sigma schedule of Hu et al.; "
             "'lion_physics' uses LION CT operators with operator-normalized "
             "least-squares data updates and no public matching constants; "
             "'lion_quality' is the LION-native quality preset; 'custom' uses "
@@ -2489,7 +2493,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help=(
             "Paper-comparison reconstruction method. Diffusion methods reuse "
             "the PaDIS sampler with method-specific prior/algorithm settings; "
-            "baseline, ADMM-TV, and PnP-ADMM use LION-native reconstruction paths."
+            "baseline, CP-TV, and PnP-ADMM use LION-native reconstruction paths."
         ),
     )
     parser.add_argument(
@@ -2528,7 +2532,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--max-samples",
         type=int,
         default=25,
-        help="Number of test/validation slices to reconstruct. Default 25 matches the paper CT evaluation budget.",
+        help="Number of test/validation slices to reconstruct. Default 25 matches the CT evaluation budget of Hu et al.",
     )
     parser.add_argument("--start-index", type=int, default=0)
     parser.add_argument("--seed", type=int, default=33)
@@ -2556,7 +2560,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="paper",
         help=(
             "Sigma schedule for --implementation public_repo. Default 'paper' "
-            "uses the paper geometric CT schedule; 'readme' uses the literal "
+            "uses the geometric CT schedule of Hu et al.; 'readme' uses the literal "
             "public README/default EDM schedule for legacy comparisons."
         ),
     )
@@ -2597,7 +2601,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--noise-schedule",
         choices=("edm", "geometric"),
         default=None,
-        help="Sigma schedule. The paper text uses geometric; the public PaDIS script uses edm/rho.",
+        help="Sigma schedule. Hu et al. use geometric; the public PaDIS script uses edm/rho.",
     )
     parser.add_argument("--zeta", type=float, default=None)
     parser.add_argument(
@@ -2642,7 +2646,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         choices=("norm", "least_squares", "paper_squared_residual"),
         default=None,
         help=(
-            "DPS measurement gradient. The paper uses paper_squared_residual; "
+            "DPS measurement gradient. Hu et al. use paper_squared_residual; "
             "LION-physics uses least_squares; the public repo uses norm."
         ),
     )
@@ -2760,7 +2764,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_false",
         help=(
             "Disable clipping of the A^dagger A(D) VE-DDNM term. This is "
-            "closer to the paper/public formula but can be unstable with "
+            "closer to the formula of Hu et al. and the public implementation but can be unstable with "
             "LION fan-beam FDK."
         ),
     )
@@ -2771,7 +2775,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help=(
             "Clip the corrected VE-DDNM clean estimate "
             "A^dagger y + D - A^dagger A(D) before forming the score. "
-            "This is a LION-stability diagnostic, not the paper formula."
+            "This is a LION-stability diagnostic, not the formula of Hu et al."
         ),
     )
     parser.add_argument(
@@ -2808,7 +2812,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         choices=("paper_linear", "score_sde_squared"),
         default="paper_linear",
         help=(
-            "Predictor-corrector corrector step-size rule. The paper and "
+            "Predictor-corrector corrector step-size rule. Hu et al. and "
             "public PaDIS code use paper_linear; score_sde_squared is retained "
             "only as a diagnostic score-SDE variant."
         ),
@@ -2900,7 +2904,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--tv-lambda",
         type=float,
         default=0.001,
-        help="TV regularisation weight. The paper uses 0.001 for CT; fixed-validation also selected 0.001 for the LION TV substitute.",
+        help="TV regularisation weight. Hu et al. use 0.001 for CT; fixed-validation also selected 0.001 for the LION TV substitute.",
     )
     parser.add_argument("--tv-iterations", type=int, default=1000)
     parser.add_argument("--tv-lipschitz", type=float, default=None)
@@ -3145,6 +3149,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_arg_parser().parse_args()
+    args.method = canonical_method(args.method)
     if args.max_samples <= 0:
         raise ValueError("--max-samples must be positive.")
     if args.start_index < 0:

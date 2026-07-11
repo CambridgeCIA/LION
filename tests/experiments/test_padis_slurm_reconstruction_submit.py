@@ -112,22 +112,22 @@ def test_reconstruction_smoke_defaults_cover_validated_quality_rows(tmp_path):
     assert "PADIS_RECON_EXPECTED_SAMPLES=1" in sbatch_log
     assert (
         "PADIS_RECON_VERIFY_REQUIRE_METHOD_MEAN_BETTER_THAN_FDK="
-        "admm_tv,padis_dps,langevin,predictor_corrector,ve_ddnm"
+        "cp_tv,padis_dps,langevin,predictor_corrector,ve_ddnm"
     ) in sbatch_log
     assert (
         "PADIS_RECON_VERIFY_REQUIRE_METHOD_EACH_BETTER_THAN_FDK="
-        "admm_tv,padis_dps,langevin,predictor_corrector,ve_ddnm"
+        "cp_tv,padis_dps,langevin,predictor_corrector,ve_ddnm"
     ) in sbatch_log
     assert (
         "PADIS_RECON_VERIFY_MIN_METHOD_MEAN_PSNR="
-        "admm_tv=28 padis_dps=33 langevin=32 predictor_corrector=29 ve_ddnm=32"
+        "cp_tv=28 padis_dps=33 langevin=32 predictor_corrector=29 ve_ddnm=32"
     ) in sbatch_log
 
     manifest = tmp_path / "recon/reconstruction_matrix_jobs.json"
     jobs = json.loads(manifest.read_text())
     assert [job["method"] for job in jobs] == [
         "baseline",
-        "admm_tv",
+        "cp_tv",
         "padis_dps",
         "langevin",
         "predictor_corrector",
@@ -141,7 +141,7 @@ def test_standalone_reconstruction_submitter_writes_manifest_and_verifier_env(
 ):
     result, sbatch_log = _run_submitter(
         tmp_path,
-        PADIS_RECON_METHODS="baseline,admm_tv",
+        PADIS_RECON_METHODS="baseline,cp_tv",
         PADIS_RECON_EXPERIMENTS="ct_20",
         PADIS_RECON_MAX_SAMPLES="1",
         PADIS_RECON_VERIFY="1",
@@ -162,7 +162,7 @@ def test_standalone_reconstruction_submitter_writes_manifest_and_verifier_env(
     manifest = tmp_path / "recon/reconstruction_matrix_jobs.json"
     assert manifest.is_file()
     jobs = json.loads(manifest.read_text())
-    assert [job["method"] for job in jobs] == ["baseline", "admm_tv"]
+    assert [job["method"] for job in jobs] == ["baseline", "cp_tv"]
     assert {job["experiment"] for job in jobs} == {"ct_20"}
 
 
@@ -202,7 +202,7 @@ def test_standalone_reconstruction_submitter_full_default_matrix_with_checkpoint
     assert len(jobs) == 109
     assert Counter(job["method"] for job in jobs) == {
         "baseline": 5,
-        "admm_tv": 5,
+        "cp_tv": 5,
         "pnp_admm": 4,
         "whole_image_diffusion": 10,
         "langevin": 7,
@@ -229,7 +229,7 @@ def test_standalone_reconstruction_submitter_full_default_matrix_with_checkpoint
         "paper",
     }
     no_prior_jobs = [
-        job for job in jobs if job["method"] in {"baseline", "admm_tv", "pnp_admm"}
+        job for job in jobs if job["method"] in {"baseline", "cp_tv", "pnp_admm"}
     ]
     assert all(job["checkpoint"] == "" for job in no_prior_jobs)
     assert all("--checkpoint" not in job["command"] for job in no_prior_jobs)
@@ -397,7 +397,7 @@ def test_standalone_reconstruction_submitter_rejects_off_paper_matrix(tmp_path):
     )
 
     assert result.returncode == 1
-    assert "not part of the paper reconstruction matrix" in result.stderr
+    assert "not part of Hu et al.'s reconstruction matrix" in result.stderr
     assert "slurm_PaDIS_A100_reconstruction_array.sh" not in sbatch_log
 
 

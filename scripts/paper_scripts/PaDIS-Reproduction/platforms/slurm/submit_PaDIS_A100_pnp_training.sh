@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Submit the DRUNet denoiser training job required by the paper PnP-ADMM row.
+# Submit the DRUNet denoiser training job required by the PnP-ADMM row of Hu et al.
 
 set -euo pipefail
 

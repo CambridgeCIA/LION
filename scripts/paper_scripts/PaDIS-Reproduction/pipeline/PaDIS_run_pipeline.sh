@@ -6,10 +6,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 BACKEND="${PADIS_PIPELINE_BACKEND:-}"
 DRY_RUN="${PADIS_PIPELINE_DRY_RUN:-0}"
+FAST_SMOKE=0
 
 usage() {
         cat <<'EOF'
 Usage: PaDIS_run_pipeline.sh --backend gcp|slurm [--dry-run]
+       PaDIS_run_pipeline.sh --fast-smoke
 
 Selects the existing resumable backend pipeline while retaining all PADIS_*
 environment-variable overrides.
@@ -18,6 +20,8 @@ environment-variable overrides.
          synchronously on the current GCP machine.
   slurm  Submit checks, cache preparation, pilot and real training, both PnP
          trainings, reconstruction, and verification as dependent Slurm jobs.
+  --fast-smoke  Use existing checkpoints to exercise tuning, representative
+                reconstruction, generation, verification, tables, and figures.
 
 Examples:
   bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh --backend gcp
@@ -36,6 +40,10 @@ while [ "$#" -gt 0 ]; do
                         DRY_RUN=1
                         shift
                         ;;
+                --fast-smoke)
+                        FAST_SMOKE=1
+                        shift
+                        ;;
                 -h|--help)
                         usage
                         exit 0
@@ -47,6 +55,10 @@ while [ "$#" -gt 0 ]; do
                         ;;
         esac
 done
+
+if [ "$FAST_SMOKE" = "1" ]; then
+        exec bash "$SCRIPT_DIR/PaDIS_run_fast_smoke.sh"
+fi
 
 case "$BACKEND" in
         gcp)

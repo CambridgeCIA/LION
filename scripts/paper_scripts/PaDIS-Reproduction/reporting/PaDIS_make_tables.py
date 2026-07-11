@@ -13,8 +13,10 @@ import sys
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "reconstruction"))
 
 from LION.utils.paths import LION_EXPERIMENTS_PATH
+from PaDIS_identifiers import canonical_experiment, canonical_method
 
 DEFAULT_RECONSTRUCTION_ROOT = (
     LION_EXPERIMENTS_PATH
@@ -42,7 +44,7 @@ METHOD_ORDER = {
     for index, name in enumerate(
         (
             "baseline",
-            "admm_tv",
+            "cp_tv",
             "pnp_admm",
             "whole_image_diffusion",
             "langevin",
@@ -68,7 +70,7 @@ def _method_labels(row: dict[str, str]) -> tuple[str, str]:
     prior = "Whole-Image" if row["prior_mode"] == "whole_image" else "PaDIS"
     if method == "baseline":
         return "FDK", "--"
-    if method == "admm_tv":
+    if method == "cp_tv":
         return "CP", "TV"
     if method == "pnp_admm":
         conditioned = row["matrix_group"] == "pnp_noise_conditioned"
@@ -129,7 +131,7 @@ def calculate_timing_rows(
     grouped: dict[tuple[str, str], list[float]] = {}
     labels = {
         "baseline": "FDK",
-        "admm_tv": "CP",
+        "cp_tv": "CP",
         "pnp_admm": "PnP-ADMM",
         "whole_image_diffusion": "VE-DPS (Whole-Image)",
         "langevin": "Langevin",
@@ -188,6 +190,14 @@ def export_table_csvs(
     allow_missing: bool = False,
 ) -> list[Path]:
     """Write one decoded, human-readable CSV for each generated table."""
+    rows = [
+        {
+            **row,
+            "method": canonical_method(row["method"]),
+            "experiment": canonical_experiment(row["experiment"]),
+        }
+        for row in rows
+    ]
     output_dir = Path(output_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
@@ -242,14 +252,14 @@ def export_table_csvs(
 
     extra_methods = {
         "baseline",
-        "admm_tv",
+        "cp_tv",
         "whole_image_diffusion",
         "ve_ddnm",
         "padis_dps",
     }
     table2: list[dict[str, str]] = []
     for (implementation, _method, _variant), values in paired(
-        ("ct_60", "ct_fanbeam_180"), extra_methods
+        ("ct_60", "ct_20_limited_angle_120"), extra_methods
     ):
         source = values["ct_60"]
         sampler, prior = _method_labels(source)
@@ -259,7 +269,9 @@ def export_table_csvs(
             "Prior": prior,
         }
         record.update(_metric_cells(values["ct_60"], "60-View 360 Degrees "))
-        record.update(_metric_cells(values["ct_fanbeam_180"], "20-View 120 Degrees "))
+        record.update(
+            _metric_cells(values["ct_20_limited_angle_120"], "20-View 120 Degrees ")
+        )
         table2.append(record)
     path = output_dir / "table_2_additional_geometries.csv"
     if _write_csv(path, table2, allow_missing=allow_missing):
@@ -271,7 +283,7 @@ def export_table_csvs(
         for row in rows
         if row["matrix_group"] == "main"
         and row["experiment"] == "ct_512_60"
-        and row["method"] in {"baseline", "admm_tv", "padis_dps"}
+        and row["method"] in {"baseline", "cp_tv", "padis_dps"}
     ]
     for row in sorted(
         selected,
@@ -594,7 +606,12 @@ def main() -> None:
         args.timing_jobs_json
         or DEFAULT_RECONSTRUCTION_ROOT / "reconstruction_matrix_jobs.json"
     )
-    timing_rows = calculate_timing_rows(args.timing_mode, log_root, jobs_json)
+    try:
+        timing_rows = calculate_timing_rows(args.timing_mode, log_root, jobs_json)
+    except ValueError:
+        if not args.allow_missing:
+            raise
+        timing_rows = []
     output = csv_to_latex_tables(
         args.csv_path,
         args.tex_path,

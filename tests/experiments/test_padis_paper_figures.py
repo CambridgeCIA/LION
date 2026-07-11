@@ -8,10 +8,32 @@ from PaDIS_make_paper_figures import (
     body_hu_percentile_range,
     build_arg_parser,
     figure_specs,
+    recon_path,
     selected_figures,
     should_show_panel_title,
     target_bbox,
 )
+
+
+def test_recon_path_falls_back_to_legacy_identifiers(tmp_path):
+    legacy = (
+        tmp_path
+        / "admm_tv/patch_lidc_default/lion_physics/lion/ct_fanbeam_180"
+        / "reconstructions.pt"
+    )
+    legacy.parent.mkdir(parents=True)
+    legacy.touch()
+
+    assert (
+        recon_path(
+            tmp_path,
+            method="cp_tv",
+            model="patch_lidc_default",
+            implementation="lion_physics",
+            experiment="ct_20_limited_angle_120",
+        )
+        == legacy
+    )
 
 
 def test_paper_figure_builder_lists_requested_implemented_figures(tmp_path):
@@ -106,7 +128,7 @@ def test_paper_figure_specs_follow_multi_sample_ct_layouts(tmp_path):
             tmp_path
             / f"recon/baseline/patch_lidc_default/lion_physics/lion/{experiment}/reconstructions.pt",
             tmp_path
-            / f"recon/admm_tv/patch_lidc_default/lion_physics/lion/{experiment}/reconstructions.pt",
+            / f"recon/cp_tv/patch_lidc_default/lion_physics/lion/{experiment}/reconstructions.pt",
             tmp_path
             / f"recon/whole_image_diffusion/whole_lidc_default/lion_physics/lion/{experiment}/reconstructions.pt",
             tmp_path

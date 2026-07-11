@@ -8,7 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-export PADIS_RECON_METHODS="${PADIS_RECON_METHODS:-baseline,admm_tv,padis_dps,langevin,predictor_corrector,ve_ddnm}"
+export PADIS_RECON_METHODS="${PADIS_RECON_METHODS:-baseline,cp_tv,padis_dps,langevin,predictor_corrector,ve_ddnm}"
 export PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-method_default}"
 export PADIS_RECON_EXPERIMENTS="${PADIS_RECON_EXPERIMENTS:-ct_20}"
 export PADIS_RECON_ABLATIONS="${PADIS_RECON_ABLATIONS:-none}"
@@ -26,9 +26,9 @@ export PADIS_RECON_VERIFY="${PADIS_RECON_VERIFY:-1}"
 export PADIS_RECON_VERIFY_METHODS="${PADIS_RECON_VERIFY_METHODS:-$PADIS_RECON_METHODS}"
 export PADIS_RECON_VERIFY_EXPERIMENTS="${PADIS_RECON_VERIFY_EXPERIMENTS:-$PADIS_RECON_EXPERIMENTS}"
 export PADIS_RECON_VERIFY_GEOMETRIES="${PADIS_RECON_VERIFY_GEOMETRIES:-$PADIS_RECON_GEOMETRIES}"
-smoke_quality_methods="${PADIS_RECON_SMOKE_QUALITY_METHODS:-admm_tv,padis_dps,langevin,predictor_corrector,ve_ddnm}"
+smoke_quality_methods="${PADIS_RECON_SMOKE_QUALITY_METHODS:-cp_tv,padis_dps,langevin,predictor_corrector,ve_ddnm}"
 export PADIS_RECON_VERIFY_REQUIRE_METHOD_MEAN_BETTER_THAN_FDK="${PADIS_RECON_VERIFY_REQUIRE_METHOD_MEAN_BETTER_THAN_FDK:-$smoke_quality_methods}"
 export PADIS_RECON_VERIFY_REQUIRE_METHOD_EACH_BETTER_THAN_FDK="${PADIS_RECON_VERIFY_REQUIRE_METHOD_EACH_BETTER_THAN_FDK:-$smoke_quality_methods}"
-export PADIS_RECON_VERIFY_MIN_METHOD_MEAN_PSNR="${PADIS_RECON_VERIFY_MIN_METHOD_MEAN_PSNR:-admm_tv=28 padis_dps=33 langevin=32 predictor_corrector=29 ve_ddnm=32}"
+export PADIS_RECON_VERIFY_MIN_METHOD_MEAN_PSNR="${PADIS_RECON_VERIFY_MIN_METHOD_MEAN_PSNR:-cp_tv=28 padis_dps=33 langevin=32 predictor_corrector=29 ve_ddnm=32}"
 
 exec "$SCRIPT_DIR/submit_PaDIS_A100_reconstruction.sh"

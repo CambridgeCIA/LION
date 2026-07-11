@@ -11,6 +11,8 @@ import math
 from pathlib import Path
 import random
 
+from PaDIS_identifiers import canonical_experiment, canonical_method
+
 
 BOOTSTRAP_MEAN_METRICS = (
     "psnr",
@@ -49,7 +51,7 @@ def parse_method_thresholds(items: list[str]) -> dict[str, float]:
                 f"Expected method threshold in METHOD=VALUE form, got {item!r}."
             )
         method, value = item.split("=", 1)
-        method = method.strip()
+        method = canonical_method(method.strip())
         if not method:
             raise ValueError(f"Empty method name in threshold {item!r}.")
         thresholds[method] = float(value)
@@ -259,10 +261,10 @@ def load_record(path: Path) -> dict:
     summary = {
         "path": str(path),
         "checkpoint": str(payload.get("checkpoint", "")),
-        "method": payload.get("method", "unknown"),
+        "method": canonical_method(str(payload.get("method", "unknown"))),
         "algorithm": str(payload.get("algorithm", "")),
         "prior_mode": str(payload.get("prior_mode", "")),
-        "experiment": payload.get("experiment", "unknown"),
+        "experiment": canonical_experiment(str(payload.get("experiment", "unknown"))),
         "implementation": payload.get("implementation", "unknown"),
         "geometry": payload.get("geometry_tag", "unknown"),
         "matrix_group": payload.get("matrix_group", "main"),
@@ -310,10 +312,10 @@ def canonical_checkpoint(value) -> str:
 
 def identity_tuple(item: dict) -> tuple[str, str, str, str, str, str, str, str]:
     return (
-        str(item.get("method", "")),
+        canonical_method(str(item.get("method", ""))),
         str(item.get("algorithm", "")),
         str(item.get("prior_mode", "")),
-        str(item.get("experiment", "")),
+        canonical_experiment(str(item.get("experiment", ""))),
         str(item.get("implementation", "")),
         str(item.get("geometry", item.get("geometry_tag", ""))),
         str(item.get("matrix_group", "main")),
@@ -412,8 +414,8 @@ def check_expected_mapping(
 
 def find_records(args) -> list[dict]:
     records = []
-    methods = set(parse_csv(args.methods))
-    experiments = set(parse_csv(args.experiments))
+    methods = {canonical_method(value) for value in parse_csv(args.methods)}
+    experiments = {canonical_experiment(value) for value in parse_csv(args.experiments)}
     implementations = set(parse_csv(args.implementations))
     geometries = set(parse_csv(args.geometries))
 

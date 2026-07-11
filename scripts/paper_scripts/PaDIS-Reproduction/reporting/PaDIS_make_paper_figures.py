@@ -8,6 +8,7 @@ import json
 import math
 import os
 import pathlib
+import sys
 
 _CACHE_ROOT = pathlib.Path("/tmp") / "lion_matplotlib_cache"
 (_CACHE_ROOT / "mpl").mkdir(parents=True, exist_ok=True)
@@ -19,6 +20,9 @@ import torch
 
 from LION.CTtools import ct_utils as ct
 from LION.utils.paths import LION_EXPERIMENTS_PATH
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "reconstruction"))
+from PaDIS_identifiers import experiment_storage_names, method_storage_names
 
 
 IMPLEMENTED_FIGURES = (
@@ -212,23 +216,37 @@ def recon_path(
     experiment: str,
     group: str = "main",
 ) -> pathlib.Path:
-    path = root / method / model / implementation / "lion" / experiment
+    canonical_path = None
+    for stored_method in method_storage_names(method):
+        for stored_experiment in experiment_storage_names(experiment):
+            path = (
+                root
+                / stored_method
+                / model
+                / implementation
+                / "lion"
+                / stored_experiment
+            )
+            if canonical_path is None:
+                canonical_path = path
+            if group != "main":
+                path = path / group
+            direct_path = path / "reconstructions.pt"
+            if direct_path.exists():
+                return direct_path
+            nested_root = path / stored_experiment if group == "main" else path
+            nested_paths = tuple(nested_root.rglob("reconstructions.pt"))
+            if len(nested_paths) == 1:
+                return nested_paths[0]
+            if len(nested_paths) > 1:
+                raise RuntimeError(
+                    f"Expected one reconstruction payload below {path}, found "
+                    f"{len(nested_paths)}."
+                )
+    assert canonical_path is not None
     if group != "main":
-        path = path / group
-    direct_path = path / "reconstructions.pt"
-    if direct_path.exists():
-        return direct_path
-
-    nested_root = path / experiment if group == "main" else path
-    nested_paths = tuple(nested_root.rglob("reconstructions.pt"))
-    if len(nested_paths) == 1:
-        return nested_paths[0]
-    if len(nested_paths) > 1:
-        raise RuntimeError(
-            f"Expected one reconstruction payload below {path}, found "
-            f"{len(nested_paths)}."
-        )
-    return direct_path
+        canonical_path = canonical_path / group
+    return canonical_path / "reconstructions.pt"
 
 
 def generation_path(root: pathlib.Path, preset: str) -> pathlib.Path:
@@ -331,7 +349,7 @@ def figure_specs(
                 recon_root,
                 "CP",
                 row,
-                method="admm_tv",
+                method="cp_tv",
                 model="patch_lidc_default",
                 experiment=experiment,
                 sample_index=panel_sample_index,
@@ -441,7 +459,7 @@ def figure_specs(
                         recon_root,
                         "CP",
                         "60 views\n360° range\n512 × 512",
-                        method="admm_tv",
+                        method="cp_tv",
                         model="patch_lidc_512",
                         experiment="ct_512_60",
                         sample_index=sample_index,
@@ -795,7 +813,7 @@ def figure_specs(
                         recon_root,
                         "CP",
                         experiment_label,
-                        method="admm_tv",
+                        method="cp_tv",
                         model="patch_lidc_default",
                         experiment=experiment,
                         sample_index=sample_index,
@@ -831,7 +849,7 @@ def figure_specs(
                 )
                 for experiment, experiment_label in (
                     ("ct_60", "60 views\n360° range"),
-                    ("ct_fanbeam_180", "20 views\n120° range"),
+                    ("ct_20_limited_angle_120", "20 views\n120° range"),
                 )
             ),
             unsupported_note=(
