@@ -138,6 +138,17 @@
         "research",
         "design"
       ]
+    },
+    {
+      "login": "THartigan",
+      "name": "Thomas Hartigan",
+      "avatar_url": "https://avatars.githubusercontent.com/u/57837418?v=4",
+      "profile": "https://github.com/THartigan",
+      "contributions": [
+        "code",
+        "doc",
+        "research"
+      ]
     }
   ],
   "contributorsPerLine": 7,

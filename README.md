@@ -1,9 +1,10 @@
 # LION: AI tools for learned tomographic and other image reconstruction tasks
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-12-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-13-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 [![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](#black-code-style-)
+[![Tests](https://github.com/CambridgeCIA/LION/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/CambridgeCIA/LION/actions/workflows/tests.yml)
 
 University of Cambridge Computational Image Analysis (CIA) groups AI tools for image reconstruction (e.g. tomographic reconstruction), LION (Learned Iterative Optimization Networks)
 
@@ -34,11 +35,25 @@ pip install -e ".[dev]"
 ```
 
 to make the installation editable (i.e. changes you make to the source will be visible when you restart the REPL or start a new Python process) and include additional development dependencies like `pre-commit`.
-Afterwards, install the pre-commit hooks for auto-formating your commits. We use Black for code formatting (see [.pre-commit-config.yaml](.pre-commit-config.yaml)):
+Afterwards, install the pre-commit hooks. They run Black and the test suite before
+allowing a commit (see [.pre-commit-config.yaml](.pre-commit-config.yaml)). The
+test hook includes CUDA-marked tests when CUDA is available and otherwise runs
+the CPU-safe suite. The GitHub test workflow uses the same hardware detection,
+so routing it to a GPU-capable runner automatically enables CUDA tests:
 
 ```
 pre-commit install --hook-type pre-commit --hook-type post-merge
 ```
+
+GUI Git clients such as VS Code may not inherit an activated Conda environment.
+Configure the Python interpreter used by this checkout's test hook once:
+
+```bash
+git config --local lion.testPython "$CONDA_PREFIX/bin/python"
+```
+
+Run that command while the LION development environment is active. The setting
+is local to the checkout and is not committed.
 
 ## Datasets
 
@@ -97,16 +112,10 @@ Read [`developers.md`](developers.md)
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/cshoebridge"><img src="https://avatars.githubusercontent.com/u/74095041?v=4?s=100" width="100px;" alt="Charlie Shoebridge"/><br /><sub><b>Charlie Shoebridge</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=cshoebridge" title="Code">💻</a> <a href="#design-cshoebridge" title="Design">🎨</a> <a href="#ideas-cshoebridge" title="Ideas, Planning, & Feedback">🤔</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/AndreaSainz"><img src="https://avatars.githubusercontent.com/u/185353475?v=4?s=100" width="100px;" alt="Andrea Sainz Bear"/><br /><sub><b>Andrea Sainz Bear</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=AndreaSainz" title="Code">💻</a> <a href="https://github.com/CambridgeCIA/LION/issues?q=author%3AAndreaSainz" title="Bug reports">🐛</a> <a href="#research-AndreaSainz" title="Research">🔬</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/trung-vt"><img src="https://avatars.githubusercontent.com/u/65380717?v=4?s=100" width="100px;" alt="Thanh Trung Vu"/><br /><sub><b>Thanh Trung Vu</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=trung-vt" title="Code">💻</a> <a href="https://github.com/CambridgeCIA/LION/issues?q=author%3Atrung-vt" title="Bug reports">🐛</a> <a href="#research-trung-vt" title="Research">🔬</a> <a href="#design-trung-vt" title="Design">🎨</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/THartigan"><img src="https://avatars.githubusercontent.com/u/57837418?v=4?s=100" width="100px;" alt="Thomas Hartigan"/><br /><sub><b>Thomas Hartigan</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=THartigan" title="Code">💻</a> <a href="#doc-THartigan" title="Documentation">📖</a> <a href="#research-THartigan" title="Research">🔬</a></td>
     </tr>
   </tbody>
 </table>
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
 
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
