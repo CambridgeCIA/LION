@@ -15,7 +15,8 @@
 #   PADIS_CACHE_MEM=128G
 #   PADIS_CACHE_PREP_VARIANTS=256-default,256-full,512-default
 #   PADIS_PILOT_TIME=00:15:00
-#   PADIS_REAL_TIME=24:00:00
+#   PADIS_PATCH_REAL_TIME=12:30:00
+#   PADIS_WHOLE_REAL_TIME=24:30:00
 #   PADIS_PNP_TIME=24:00:00
 #   PADIS_SUBMIT_PNP_TRAINING=1
 #   PADIS_SUBMIT_RECONSTRUCTION=0
@@ -55,7 +56,8 @@ cache_cpus="${PADIS_CACHE_CPUS_PER_TASK:-8}"
 cache_mem="${PADIS_CACHE_MEM:-128G}"
 cache_variants="${PADIS_CACHE_PREP_VARIANTS:-256-default,256-full,512-default}"
 pilot_time="${PADIS_PILOT_TIME:-00:15:00}"
-real_time="${PADIS_REAL_TIME:-24:00:00}"
+patch_time="${PADIS_PATCH_REAL_TIME:-12:30:00}"
+whole_time="${PADIS_WHOLE_REAL_TIME:-${PADIS_REAL_TIME:-24:30:00}}"
 pnp_time="${PADIS_PNP_TIME:-24:00:00}"
 recon_time="${PADIS_RECON_TIME:-12:00:00}"
 recon_limit="${PADIS_RECON_ARRAY_LIMIT:-10}"
@@ -68,7 +70,8 @@ task_array="${PADIS_TASK_ARRAY:-0-${last_task}}"
 pilot_limit="${PADIS_PILOT_ARRAY_LIMIT:-10}"
 real_limit="${PADIS_REAL_ARRAY_LIMIT:-10}"
 pilot_array="${PADIS_PILOT_ARRAY:-${task_array}%${pilot_limit}}"
-real_array="${PADIS_REAL_ARRAY:-${task_array}%${real_limit}}"
+patch_array="${PADIS_PATCH_REAL_ARRAY:-0-6,9%${real_limit}}"
+whole_array="${PADIS_WHOLE_REAL_ARRAY:-7-8%${real_limit}}"
 run_root="$(padis_default_run_root)"
 run_stamp="${PADIS_RUN_STAMP:-$(date +%Y%m%d_%H%M%S)}"
 data_root="${LION_DATA_PATH:-/home/tjh200/rds/hpc-work/Datasets}"
@@ -225,20 +228,33 @@ pilot_job="$(
 )"
 echo "Submitted pilot array: $pilot_job after $cache_job"
 
-padis_configure_real_training_defaults "$real_time" "$run_stamp"
+padis_configure_real_training_defaults "$whole_time" "$run_stamp"
 
-real_job="$(
+patch_job="$(
         sbatch \
                 --parsable \
                 -A "$account" \
-                --time "$real_time" \
-                --array "$real_array" \
+                --time "$patch_time" \
+                --array "$patch_array" \
                 --dependency "afterok:$pilot_job" \
                 --export=ALL \
                 --output "$run_root/debug_runs/slurm_logs/%x-%A_%a.out" \
                 "$SCRIPT_DIR/slurm_PaDIS_A100_training_array.sh"
 )"
-echo "Submitted real training array: $real_job after $pilot_job"
+echo "Submitted 12-hour patch training array with 30-minute buffer: $patch_job after $pilot_job"
+
+whole_job="$(
+        sbatch \
+                --parsable \
+                -A "$account" \
+                --time "$whole_time" \
+                --array "$whole_array" \
+                --dependency "afterok:$pilot_job" \
+                --export=ALL \
+                --output "$run_root/debug_runs/slurm_logs/%x-%A_%a.out" \
+                "$SCRIPT_DIR/slurm_PaDIS_A100_training_array.sh"
+)"
+echo "Submitted 24-hour whole-image training array with 30-minute buffer: $whole_job after $pilot_job"
 
 pnp_job=""
 if [ "${PADIS_SUBMIT_PNP_TRAINING:-1}" = "1" ]; then
@@ -407,7 +423,7 @@ EOF
         export PADIS_RECON_EXPECTED_SAMPLES="${PADIS_RECON_EXPECTED_SAMPLES:-$PADIS_RECON_MAX_SAMPLES}"
         last_recon_task=$((recon_task_count - 1))
         recon_array="${PADIS_RECON_ARRAY:-0-${last_recon_task}%${recon_limit}}"
-        recon_dependency="afterok:$real_job"
+        recon_dependency="afterok:$patch_job:$whole_job"
         if [ -n "$pnp_job" ]; then
                 recon_dependency="$recon_dependency:$pnp_job"
         fi
@@ -471,15 +487,16 @@ Reconstruction: ${PADIS_RECON_ROOT:-not submitted}
 Checks: $checks_job
 Cache prep: $cache_job
 Pilots: $pilot_job
-Real training: $real_job
+Patch training: $patch_job
+Whole-image training: $whole_job
 PnP training: ${pnp_job:-not submitted}
 Reconstruction: ${recon_job:-not submitted}
 Verifier: ${verify_job:-not submitted}
 Finaliser: ${finalise_job:-not submitted}
 
 Monitor:
-  squeue -j $checks_job,$cache_job,$pilot_job,$real_job${pnp_job:+,$pnp_job}${recon_job:+,$recon_job}${verify_job:+,$verify_job}${finalise_job:+,$finalise_job}
+  squeue -j $checks_job,$cache_job,$pilot_job,$patch_job,$whole_job${pnp_job:+,$pnp_job}${recon_job:+,$recon_job}${verify_job:+,$verify_job}${finalise_job:+,$finalise_job}
 
 Cancel all:
-  scancel $checks_job $cache_job $pilot_job $real_job${pnp_job:+ $pnp_job}${recon_job:+ $recon_job}${verify_job:+ $verify_job}${finalise_job:+ $finalise_job}
+  scancel $checks_job $cache_job $pilot_job $patch_job $whole_job${pnp_job:+ $pnp_job}${recon_job:+ $recon_job}${verify_job:+ $verify_job}${finalise_job:+ $finalise_job}
 EOF

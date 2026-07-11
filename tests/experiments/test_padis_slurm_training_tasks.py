@@ -97,6 +97,26 @@ def test_a100_training_tasks_use_expected_engines_for_special_priors():
     assert "--no-position-channels" in tasks["patch_lidc_no_pos_default"]["arguments"]
 
 
+def test_a100_p96_batch_size_is_capped_at_96():
+    _, tasks = _read_training_tasks()
+    assert tasks["patch_lidc_p96_default"]["batch_size"] == 96
+
+    result = subprocess.run(
+        [
+            "bash",
+            "-lc",
+            f"source {COMMON!s}; PADIS_PATCH_BATCH_SIZE=256; "
+            "PADIS_P96_BATCH_SIZE=256; padis_init_training_tasks; "
+            'printf "%s\\n" "${PADIS_TASK_BATCH_SIZES[5]}"',
+        ],
+        cwd=LION_ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    assert result.stdout.strip() == "96"
+
+
 def test_a100_training_tasks_produce_matrix_checkpoint_filenames():
     _, tasks = _read_training_tasks()
 
@@ -144,6 +164,18 @@ def test_a100_training_array_keeps_wandb_artifacts_enabled_by_default():
     assert 'if [ "$NO_WANDB_ARTIFACT" = "1" ]; then' in script
     assert "wandb_args+=(--no-wandb-artifact)" in script
     assert script.count('CMD+=("${wandb_args[@]}")') >= 2
+
+
+def test_a100_training_array_runs_intensive_validation_for_final_six_hours():
+    script = TRAINING_ARRAY.read_text()
+
+    assert "PADIS_PATCH_BASE_TRAIN_SECONDS:-21600" in script
+    assert "PADIS_WHOLE_BASE_TRAIN_SECONDS:-64800" in script
+    assert "PADIS_VALIDATION_HEAVY_SECONDS:-21600" in script
+    assert "PADIS_PATCH_VALIDATION_HEAVY_INTERVAL_PATCHES:-20000" in script
+    assert "PADIS_WHOLE_VALIDATION_HEAVY_INTERVAL_PATCHES:-2500" in script
+    assert "--validation-repeat-until-max-patches" in script
+    assert "min_intense_validation_loss" in script
 
 
 def _install_fake_sbatch(tmp_path):
@@ -198,12 +230,20 @@ def test_all_training_submitter_launches_diffusion_array_and_pnp_denoiser(tmp_pa
     assert result.returncode == 0, result.stderr
     assert "slurm_PaDIS_A100_training_array.sh" in sbatch_log
     assert "slurm_PaDIS_A100_pnp_training.sh" in sbatch_log
-    assert "--array 0-9%10" in sbatch_log
+    assert "--time 12:30:00 --array 0-6,9%10" in sbatch_log
+    assert "--time 24:30:00 --array 7-8%10" in sbatch_log
     assert f"PADIS_TRAIN_ROOT={expected_train_root}" in sbatch_log
     assert f"PADIS_PNP_OUTPUT_ROOT={expected_train_root}" in sbatch_log
     assert "PADIS_PNP_RUN_NAME=pnp_lidc_drunet" in sbatch_log
-    assert "PaDIS diffusion training array: job101" in result.stdout
-    assert "PnP denoiser training: job102" in result.stdout
+    assert (
+        "PaDIS patch-prior training array (12 h + 30 min buffer): job101"
+        in result.stdout
+    )
+    assert (
+        "PaDIS whole-image training array (24 h + 30 min buffer): job102"
+        in result.stdout
+    )
+    assert "PnP denoiser training: job103" in result.stdout
     assert (
         f"Expected PnP checkpoint: {expected_train_root}/pnp_lidc_drunet/"
         "pnp_lidc_drunet.pt"

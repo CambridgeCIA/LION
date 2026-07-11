@@ -73,7 +73,7 @@ echo "Real training task: $TASK_ID $TASK_NAME ($TASK_ENGINE)"
 
 TARGET_PATCHES="${PADIS_TARGET_PATCHES:-400000000}"
 MAX_PERIODIC_CHECKPOINTS="${PADIS_MAX_PERIODIC_CHECKPOINTS:-5}"
-MAX_TRAIN_SECONDS="${PADIS_MAX_TRAIN_SECONDS:-}"
+VALIDATION_HEAVY_SECONDS="${PADIS_VALIDATION_HEAVY_SECONDS:-21600}"
 NUM_WORKERS="${PADIS_NUM_WORKERS:-16}"
 PREFETCH_FACTOR="${PADIS_PREFETCH_FACTOR:-4}"
 NO_WANDB_ARTIFACT="${PADIS_NO_WANDB_ARTIFACT:-0}"
@@ -84,16 +84,24 @@ PADIS_NO_WANDB="${PADIS_NO_WANDB:-0}"
 export PADIS_WANDB_PROJECT PADIS_WANDB_ENTITY PADIS_WANDB_MODE PADIS_NO_WANDB
 
 if [[ "$TASK_NAME" == whole_lidc_* ]]; then
+        BASE_TRAIN_SECONDS="${PADIS_WHOLE_BASE_TRAIN_SECONDS:-64800}"
         VALIDATION_INTERVAL="${PADIS_WHOLE_VALIDATION_INTERVAL_PATCHES:-${PADIS_VALIDATION_INTERVAL_PATCHES:-10000}}"
         VALIDATION_MAX_PATCHES="${PADIS_WHOLE_VALIDATION_MAX_PATCHES:-${PADIS_VALIDATION_MAX_PATCHES:-128}}"
         CHECKPOINT_INTERVAL="${PADIS_WHOLE_CHECKPOINT_INTERVAL_PATCHES:-${PADIS_CHECKPOINT_INTERVAL_PATCHES:-25000}}"
         LOG_INTERVAL="${PADIS_WHOLE_LOG_INTERVAL_PATCHES:-${PADIS_LOG_INTERVAL_PATCHES:-128}}"
 else
+        BASE_TRAIN_SECONDS="${PADIS_PATCH_BASE_TRAIN_SECONDS:-21600}"
         VALIDATION_INTERVAL="${PADIS_VALIDATION_INTERVAL_PATCHES:-200000}"
         VALIDATION_MAX_PATCHES="${PADIS_VALIDATION_MAX_PATCHES:-1000}"
         CHECKPOINT_INTERVAL="${PADIS_CHECKPOINT_INTERVAL_PATCHES:-1000000}"
         LOG_INTERVAL="${PADIS_LOG_INTERVAL_PATCHES:-128}"
 fi
+INTENSIVE_TRAIN_SECONDS="$VALIDATION_HEAVY_SECONDS"
+if [ "$INTENSIVE_TRAIN_SECONDS" -le 0 ]; then
+        echo "Validation-heavy duration must be positive." >&2
+        exit 2
+fi
+MAX_TRAIN_SECONDS="$BASE_TRAIN_SECONDS"
 
 wandb_args=()
 if [ "$PADIS_NO_WANDB" = "1" ]; then
@@ -117,6 +125,7 @@ echo "Target patches: $TARGET_PATCHES"
 echo "Validation interval patches: $VALIDATION_INTERVAL (max $VALIDATION_MAX_PATCHES)"
 echo "Checkpoint interval patches: $CHECKPOINT_INTERVAL (retain $MAX_PERIODIC_CHECKPOINTS periodic checkpoints)"
 echo "Max train seconds: ${MAX_TRAIN_SECONDS:-unset}"
+echo "Validation-heavy continuation seconds: $INTENSIVE_TRAIN_SECONDS"
 echo "WandB: project=${PADIS_WANDB_PROJECT:-unset} mode=${PADIS_WANDB_MODE:-unset} disabled=${PADIS_NO_WANDB}"
 
 if [ "$TASK_ENGINE" = "lidc256" ]; then
@@ -222,6 +231,46 @@ fi
 CMD+=("${TASK_ARGS[@]}")
 
 echo "Executing real training command:"
+printf '%q ' "${CMD[@]}"
+printf '\n'
+"${CMD[@]}"
+
+set_command_arg() {
+        local flag="$1" value="$2" index
+        for index in "${!CMD[@]}"; do
+                if [ "${CMD[$index]}" = "$flag" ]; then
+                        CMD[$((index + 1))]="$value"
+                        return 0
+                fi
+        done
+        CMD+=("$flag" "$value")
+}
+
+if [[ "$TASK_NAME" == whole_lidc_* ]]; then
+        INTENSIVE_VALIDATION_INTERVAL="${PADIS_WHOLE_VALIDATION_HEAVY_INTERVAL_PATCHES:-2500}"
+        INTENSIVE_VALIDATION_MAX="${PADIS_WHOLE_VALIDATION_HEAVY_MAX_PATCHES:-328}"
+        VALIDATION_NAME="whole_image_lidc_256_min_intense_val.pt"
+elif [ "$TASK_ENGINE" = "lidc512" ]; then
+        INTENSIVE_VALIDATION_INTERVAL="${PADIS_PATCH_VALIDATION_HEAVY_INTERVAL_PATCHES:-20000}"
+        INTENSIVE_VALIDATION_MAX="${PADIS_PATCH_VALIDATION_HEAVY_MAX_PATCHES:-4000}"
+        VALIDATION_NAME="padis_lidc_512_min_intense_val.pt"
+else
+        INTENSIVE_VALIDATION_INTERVAL="${PADIS_PATCH_VALIDATION_HEAVY_INTERVAL_PATCHES:-20000}"
+        INTENSIVE_VALIDATION_MAX="${PADIS_PATCH_VALIDATION_HEAVY_MAX_PATCHES:-4000}"
+        VALIDATION_NAME="padis_lidc_256_min_intense_val.pt"
+fi
+
+set_command_arg --validation-interval-patches "$INTENSIVE_VALIDATION_INTERVAL"
+set_command_arg --validation-max-patches "$INTENSIVE_VALIDATION_MAX"
+set_command_arg --max-train-seconds "$INTENSIVE_TRAIN_SECONDS"
+CMD+=(
+        --validation-name "$VALIDATION_NAME"
+        --validation-summary-key min_intense_validation_loss
+        --validation-checkpoint-summary-key min_intense_validation_checkpoint
+        --validation-repeat-until-max-patches
+)
+
+echo "Executing validation-heavy continuation command:"
 printf '%q ' "${CMD[@]}"
 printf '\n'
 "${CMD[@]}"

@@ -237,6 +237,17 @@ images every 2,500 seen images. The best EMA checkpoint in that phase is named
 `<prefix>_min_intense_val.pt` and is the diffusion checkpoint used by the
 reconstruction matrix.
 
+Slurm follows the same two-phase schedule within each job. Patch-prior tasks
+train normally for six hours and intensively validate for six hours; their
+Slurm allocation is 12 hours plus a 30-minute setup/final-save buffer.
+Whole-image tasks train normally for eighteen hours and intensively validate
+for the final six hours; their allocation is 24 hours plus the same buffer.
+The two task families are submitted as separate arrays so their scheduler time
+limits are accurate. `P=96` remains capped at batch size 96 on A100 by
+default, even if the general patch batch size is raised; lower it with
+`PADIS_P96_BATCH_SIZE` or change the explicit safety ceiling with
+`PADIS_P96_A100_BATCH_LIMIT` only after a memory check.
+
 ### PnP defaults
 
 Both DRUNets use 64 internal channels, four blocks per level, batch size 8,

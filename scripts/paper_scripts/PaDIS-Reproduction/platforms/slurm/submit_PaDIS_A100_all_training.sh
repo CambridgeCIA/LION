@@ -17,10 +17,12 @@ task_count="$(padis_training_task_count)"
 last_task=$((task_count - 1))
 
 account="${PADIS_SLURM_ACCOUNT:-MPHIL-DIS-SL2-GPU}"
-real_time="${PADIS_REAL_TIME:-24:00:00}"
+patch_time="${PADIS_PATCH_REAL_TIME:-12:30:00}"
+whole_time="${PADIS_WHOLE_REAL_TIME:-${PADIS_REAL_TIME:-24:30:00}}"
 pnp_time="${PADIS_PNP_TIME:-24:00:00}"
 real_limit="${PADIS_REAL_ARRAY_LIMIT:-10}"
-real_array="${PADIS_REAL_ARRAY:-0-${last_task}%${real_limit}}"
+patch_array="${PADIS_PATCH_REAL_ARRAY:-0-6,9%${real_limit}}"
+whole_array="${PADIS_WHOLE_REAL_ARRAY:-7-8%${real_limit}}"
 run_root="$(padis_default_run_root)"
 run_stamp="${PADIS_RUN_STAMP:-$(date +%Y%m%d_%H%M%S)}"
 
@@ -34,14 +36,24 @@ export PADIS_PNP_FINAL_NAME="${PADIS_PNP_FINAL_NAME:-pnp_lidc_drunet.pt}"
 
 mkdir -p "$run_root/debug_runs/slurm_logs" "$run_root/final_real_runs" "$PADIS_TRAIN_ROOT"
 
-padis_configure_real_training_defaults "$real_time" "$run_stamp"
+padis_configure_real_training_defaults "$whole_time" "$run_stamp"
 
-real_job="$(
+patch_job="$(
         sbatch \
                 --parsable \
                 -A "$account" \
-                --time "$real_time" \
-                --array "$real_array" \
+                --time "$patch_time" \
+                --array "$patch_array" \
+                --export=ALL \
+                --output "$run_root/debug_runs/slurm_logs/%x-%A_%a.out" \
+                "$SCRIPT_DIR/slurm_PaDIS_A100_training_array.sh"
+)"
+whole_job="$(
+        sbatch \
+                --parsable \
+                -A "$account" \
+                --time "$whole_time" \
+                --array "$whole_array" \
                 --export=ALL \
                 --output "$run_root/debug_runs/slurm_logs/%x-%A_%a.out" \
                 "$SCRIPT_DIR/slurm_PaDIS_A100_training_array.sh"
@@ -65,15 +77,16 @@ Submitted PaDIS all-training jobs.
 
 Run root: $run_root
 Run stamp: $run_stamp
-PaDIS diffusion training array: $real_job
+PaDIS patch-prior training array (12 h + 30 min buffer): $patch_job
+PaDIS whole-image training array (24 h + 30 min buffer): $whole_job
 PaDIS diffusion training root: $PADIS_TRAIN_ROOT
 PnP denoiser training: ${pnp_job:-skipped}
 Expected PnP checkpoint: $PADIS_PNP_OUTPUT_ROOT/$PADIS_PNP_RUN_NAME/$PADIS_PNP_FINAL_NAME
 Slurm logs: $run_root/debug_runs/slurm_logs
 
 Monitor:
-  squeue -j $real_job${pnp_job:+,$pnp_job}
+  squeue -j $patch_job,$whole_job${pnp_job:+,$pnp_job}
 
 Cancel:
-  scancel $real_job${pnp_job:+ $pnp_job}
+  scancel $patch_job $whole_job${pnp_job:+ $pnp_job}
 EOF

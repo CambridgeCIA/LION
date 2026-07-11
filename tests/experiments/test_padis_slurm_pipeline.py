@@ -221,7 +221,7 @@ def test_pipeline_reconstruction_waits_for_submitted_pnp_training(tmp_path):
     assert result.returncode == 0, result.stderr
     assert "slurm_PaDIS_A100_pnp_training.sh" in sbatch_log
     assert "slurm_PaDIS_A100_reconstruction_array.sh" in sbatch_log
-    assert "--dependency afterok:job104:job105" in sbatch_log
+    assert "--dependency afterok:job104:job105:job106" in sbatch_log
 
 
 def test_pipeline_full_default_reconstruction_matrix_waits_for_training_and_pnp(
@@ -235,12 +235,14 @@ def test_pipeline_full_default_reconstruction_matrix_waits_for_training_and_pnp(
 
     assert result.returncode == 0, result.stderr
     assert "slurm_PaDIS_A100_training_array.sh" in sbatch_log
+    assert "--time 12:30:00 --array 0-6,9%10" in sbatch_log
+    assert "--time 24:30:00 --array 7-8%10" in sbatch_log
     assert "slurm_PaDIS_A100_pnp_training.sh" in sbatch_log
     assert "slurm_PaDIS_A100_reconstruction_array.sh" in sbatch_log
     assert "slurm_PaDIS_A100_reconstruction_verify.sh" in sbatch_log
     assert "--array 0-108%10" in sbatch_log
-    assert "--dependency afterok:job104:job105" in sbatch_log
-    assert "--dependency afterok:job107" in sbatch_log
+    assert "--dependency afterok:job104:job105:job106" in sbatch_log
+    assert "--dependency afterok:job108" in sbatch_log
     assert (
         "slurm_PaDIS_A100_reconstruction_verify.sh | "
         "PADIS_RECON_EXPECTED_RECORDS=109 PADIS_RECON_EXPECTED_SAMPLES=25 "
