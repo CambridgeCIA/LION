@@ -355,7 +355,7 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
     dps_params = recon_script.build_sampler_params(
         dps_args, model=None, measurement_source="normal"
     )
-    assert dps_params.zeta == 4.5
+    assert dps_params.zeta == 4.25
     assert dps_params.dps_epsilon == 0.5
     assert dps_params.sampling_epsilon == 1.0
 
@@ -370,7 +370,7 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
     base_dps_params = recon_script.build_sampler_params(
         base_dps_args, model=None, measurement_source="normal"
     )
-    assert base_dps_params.zeta == 4.5
+    assert base_dps_params.zeta == 4.25
     assert base_dps_params.dps_epsilon == 0.5
 
     whole_fanbeam_args = parser.parse_args(
@@ -420,7 +420,7 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
         pc_args, model=None, measurement_source="normal"
     )
     assert pc_params.zeta == 4.25
-    assert pc_params.pc_snr == 0.04
+    assert pc_params.pc_snr == 0.01
     assert pc_params.sampling_epsilon == 1.0
 
     langevin_args = parser.parse_args(

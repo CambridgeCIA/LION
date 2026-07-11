@@ -243,7 +243,7 @@ def test_method_flags_set_expected_sampler_modes():
     assert ddnm_params.ddnm_pseudoinverse_clip is True
     assert ddnm_params.ddnm_projected_pseudoinverse_clip is True
     assert ddnm_params.ddnm_corrected_clip is False
-    assert ddnm_params.sampling_epsilon == 1.0
+    assert ddnm_params.sampling_epsilon == 0.1
 
     stable_ddnm_args = parser.parse_args(
         [
@@ -359,7 +359,7 @@ def test_method_flags_set_expected_sampler_modes():
         ]
     )
     pc_params = build_sampler_params(pc_args, None, measurement_source="normal")
-    assert pc_params.pc_snr == 0.16
+    assert pc_params.pc_snr == 0.08
     assert pc_params.pc_corrector_step_rule == "paper_linear"
     assert pc_params.pc_corrector_denoise_sigma == "next"
     assert pc_params.pc_reuse_predictor_layout is False

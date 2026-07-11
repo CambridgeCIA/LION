@@ -106,6 +106,8 @@ def test_gcp_manual_reconstruction_dry_run_uses_bucket_mount_paths(tmp_path):
         "PADIS_RECON_MAX_SAMPLES": "1",
         "PADIS_RECON_SAVE_PREVIEWS": "0",
         "PADIS_RECON_TASKS_PER_GPU": "1",
+        "PADIS_RECON_TRAIN_MISSING_CHECKPOINTS": "0",
+        "PADIS_GENERATION_PHASE": "0",
     }
 
     result = subprocess.run(
@@ -187,6 +189,7 @@ def test_gcp_spot_runner_default_order_runs_p96_immediately_after_pnp(tmp_path):
 
     expected_base_order = (
         "whole_lidc_full whole_lidc_default pnp_lidc_drunet "
+        "pnp_lidc_drunet_noise_cond "
         "patch_lidc_p96_default patch_lidc_full patch_lidc_512 "
         "patch_lidc_default patch_lidc_p32_default patch_lidc_p16_default "
         "patch_lidc_p8_default patch_lidc_no_pos_default"

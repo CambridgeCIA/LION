@@ -180,27 +180,33 @@ def test_standalone_reconstruction_submitter_full_default_matrix_with_checkpoint
     pnp_checkpoint = training_root / "pnp_lidc_drunet/pnp_lidc_drunet_min_val.pt"
     pnp_checkpoint.parent.mkdir(parents=True)
     pnp_checkpoint.write_text("placeholder")
+    noise_checkpoint = (
+        training_root
+        / "pnp_lidc_drunet_noise_cond/pnp_lidc_drunet_noise_cond_min_val.pt"
+    )
+    noise_checkpoint.parent.mkdir(parents=True)
+    noise_checkpoint.write_text("placeholder")
 
     result, sbatch_log = _run_submitter(tmp_path, PADIS_RECON_VERIFY="1")
 
     assert result.returncode == 0, result.stderr
     assert "slurm_PaDIS_A100_reconstruction_array.sh" in sbatch_log
     assert "slurm_PaDIS_A100_reconstruction_verify.sh" in sbatch_log
-    assert "--array 0-100%10" in sbatch_log
-    assert "PADIS_RECON_EXPECTED_RECORDS=101" in sbatch_log
+    assert "--array 0-108%10" in sbatch_log
+    assert "PADIS_RECON_EXPECTED_RECORDS=109" in sbatch_log
     assert "PADIS_RECON_EXPECTED_SAMPLES=25" in sbatch_log
 
     manifest = tmp_path / "recon/reconstruction_matrix_jobs.json"
     jobs = json.loads(manifest.read_text())
-    assert len(jobs) == 101
+    assert len(jobs) == 109
     assert Counter(job["method"] for job in jobs) == {
         "baseline": 5,
         "admm_tv": 5,
-        "pnp_admm": 2,
+        "pnp_admm": 4,
         "whole_image_diffusion": 10,
         "langevin": 7,
         "predictor_corrector": 7,
-        "ve_ddnm": 7,
+        "ve_ddnm": 13,
         "patch_average": 4,
         "patch_stitch": 4,
         "padis_dps": 50,
@@ -227,11 +233,12 @@ def test_standalone_reconstruction_submitter_full_default_matrix_with_checkpoint
     assert all(job["checkpoint"] == "" for job in no_prior_jobs)
     assert all("--checkpoint" not in job["command"] for job in no_prior_jobs)
     pnp_jobs = [job for job in jobs if job["method"] == "pnp_admm"]
-    assert len(pnp_jobs) == 2
+    assert len(pnp_jobs) == 4
+    standard_pnp_jobs = [job for job in pnp_jobs if job["matrix_group"] == "main"]
     assert all(
         job["command"][job["command"].index("--pnp-checkpoint") + 1]
         == str(pnp_checkpoint)
-        for job in pnp_jobs
+        for job in standard_pnp_jobs
     )
 
 

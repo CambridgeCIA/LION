@@ -81,6 +81,10 @@ def _args(tmp_path, *extra):
     args.output_root = args.output_root.expanduser().resolve()
     if args.pnp_root is None:
         args.pnp_root = args.training_root / "pnp_lidc_drunet"
+    if args.pnp_noise_conditioned_root is None:
+        args.pnp_noise_conditioned_root = (
+            args.training_root / "pnp_lidc_drunet_noise_cond"
+        )
     return args
 
 
@@ -524,9 +528,29 @@ def test_checked_in_hparam_defaults_cover_slurm_default_matrix(tmp_path):
         and payload["hparam_default"]["source_experiment"] != "consensus"
     ]
 
-    assert len(payloads) == 101
+    assert len(payloads) == 109
     assert missing == []
     assert non_consensus == [
+        (
+            "padis_dps",
+            "lion_physics",
+            "patch_lidc_full",
+            "ct_20",
+            "ct_20",
+            "core_zeta_4p5__eps_0p5",
+            True,
+            True,
+        ),
+        (
+            "whole_image_diffusion",
+            "lion_physics",
+            "whole_lidc_full",
+            "ct_20",
+            "ct_20",
+            "core_zeta_4__eps_0p5",
+            True,
+            True,
+        ),
         (
             "baseline",
             "lion_physics",
@@ -544,6 +568,26 @@ def test_checked_in_hparam_defaults_cover_slurm_default_matrix(tmp_path):
             "ct_512_60",
             "ct_512_60",
             "tv_lam_0p001__iters_1000",
+            True,
+            True,
+        ),
+        (
+            "padis_dps",
+            "lion_physics",
+            "patch_lidc_512",
+            "ct_512_60",
+            "ct_512_60",
+            "core_zeta_2__eps_0p5",
+            True,
+            True,
+        ),
+        (
+            "padis_dps",
+            "public_repo",
+            "patch_lidc_512",
+            "ct_512_60",
+            "ct_512_60",
+            "zeta_1p2__eps_0p5",
             True,
             True,
         ),
@@ -1029,7 +1073,7 @@ def test_full_method_default_matrix_has_requested_core_grid(tmp_path):
 
     jobs = build_jobs(args)
 
-    assert len(jobs) == 59
+    assert len(jobs) == 67
     counts = {}
     for job in jobs:
         counts[(job.method.name, job.implementation)] = (
@@ -1038,7 +1082,7 @@ def test_full_method_default_matrix_has_requested_core_grid(tmp_path):
     assert counts == {
         ("baseline", "lion_physics"): 5,
         ("admm_tv", "lion_physics"): 5,
-        ("pnp_admm", "lion_physics"): 2,
+        ("pnp_admm", "lion_physics"): 4,
         ("whole_image_diffusion", "lion_physics"): 4,
         ("whole_image_diffusion", "paper"): 2,
         ("langevin", "lion_physics"): 3,
@@ -1047,9 +1091,9 @@ def test_full_method_default_matrix_has_requested_core_grid(tmp_path):
         ("predictor_corrector", "lion_physics"): 3,
         ("predictor_corrector", "public_repo"): 2,
         ("predictor_corrector", "paper"): 2,
-        ("ve_ddnm", "lion_physics"): 3,
-        ("ve_ddnm", "public_repo"): 2,
-        ("ve_ddnm", "paper"): 2,
+        ("ve_ddnm", "lion_physics"): 5,
+        ("ve_ddnm", "public_repo"): 4,
+        ("ve_ddnm", "paper"): 4,
         ("patch_average", "lion_physics"): 2,
         ("patch_average", "public_repo"): 2,
         ("patch_stitch", "lion_physics"): 2,
@@ -1111,8 +1155,8 @@ def test_full_lion_physics_matrix_uses_lipschitz_scaled_data_updates(tmp_path):
         payload for payload in payloads if payload["method"] in diffusion_methods
     ]
 
-    assert len(payloads) == 34
-    assert len(diffusion_payloads) == 22
+    assert len(payloads) == 38
+    assert len(diffusion_payloads) == 24
     for payload in diffusion_payloads:
         sampler = payload["expected_sampler"]
         assert payload["implementation"] == "lion_physics"
@@ -1209,7 +1253,7 @@ def test_trained_ablation_matrix_appends_trained_checkpoint_families(tmp_path):
     jobs = build_jobs(args)
     ablation_jobs = [job for job in jobs if job.matrix_group != "main"]
 
-    assert len(jobs) == 101
+    assert len(jobs) == 109
     assert {
         (
             job.matrix_group,
@@ -1317,7 +1361,7 @@ def test_patch_and_dataset_ablation_selector_excludes_position_row(tmp_path):
     jobs = build_jobs(args)
     ablation_groups = {job.matrix_group for job in jobs if job.matrix_group != "main"}
 
-    assert len(jobs) == 77
+    assert len(jobs) == 85
     assert "position_no_encoding_noise_init" not in ablation_groups
     assert "position_no_encoding_fdk_init" not in ablation_groups
     assert "position_with_encoding_noise_init" not in ablation_groups
@@ -1604,5 +1648,5 @@ def test_dry_run_lists_full_matrix_without_existing_checkpoints(tmp_path):
     )
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout.count("Executing reconstruction job:") == 59
+    assert result.stdout.count("Executing reconstruction job:") == 67
     assert "--method pnp_admm" in result.stdout

@@ -31,6 +31,7 @@ import LION.experiments.ct_experiments as ct_experiments
 from LION.classical_algorithms.fdk import fdk
 from LION.classical_algorithms.tv_min import tv_min
 from LION.models.CNNs.drunet import DRUNet
+from LION.models.LIONmodel import LIONModelParameter
 from LION.models.diffusion import NCSNpp
 from LION.reconstructors import PaDIS
 from LION.reconstructors.PnP import PnP
@@ -447,7 +448,10 @@ def load_pnp_denoiser(
         raise ValueError(
             f"Only DRUNet PnP denoiser checkpoints are supported here; got {model_name!r}."
         )
-    model = DRUNet(options.model_parameters).to(device)
+    model_parameters = options.model_parameters
+    if not isinstance(model_parameters, LIONModelParameter):
+        model_parameters = LIONModelParameter(**model_parameters.serialize())
+    model = DRUNet(model_parameters).to(device)
     payload = torch_load(checkpoint_path, map_location=device)
     if not isinstance(payload, dict) or "model_state_dict" not in payload:
         raise KeyError(f"{checkpoint_path} does not contain a model_state_dict.")

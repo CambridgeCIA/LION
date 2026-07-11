@@ -234,11 +234,11 @@ def test_pipeline_full_default_reconstruction_matrix_waits_for_training_and_pnp(
     assert "slurm_PaDIS_A100_pnp_training.sh" in sbatch_log
     assert "slurm_PaDIS_A100_reconstruction_array.sh" in sbatch_log
     assert "slurm_PaDIS_A100_reconstruction_verify.sh" in sbatch_log
-    assert "--array 0-100%10" in sbatch_log
+    assert "--array 0-108%10" in sbatch_log
     assert "--dependency afterok:job104:job105" in sbatch_log
     assert (
         "slurm_PaDIS_A100_reconstruction_verify.sh | "
-        "PADIS_RECON_EXPECTED_RECORDS=101 PADIS_RECON_EXPECTED_SAMPLES=25 "
+        "PADIS_RECON_EXPECTED_RECORDS=109 PADIS_RECON_EXPECTED_SAMPLES=25 "
         "PADIS_RECON_EXPECTED_JOBS_JSON="
     ) in sbatch_log
 
@@ -247,15 +247,15 @@ def test_pipeline_full_default_reconstruction_matrix_waits_for_training_and_pnp(
         / "runs/final_real_runs/a100_reconstruction_pytest/reconstruction_matrix_jobs.json"
     )
     jobs = json.loads(manifest.read_text())
-    assert len(jobs) == 101
+    assert len(jobs) == 109
     assert Counter(job["method"] for job in jobs) == {
         "baseline": 5,
         "admm_tv": 5,
-        "pnp_admm": 2,
+        "pnp_admm": 4,
         "whole_image_diffusion": 10,
         "langevin": 7,
         "predictor_corrector": 7,
-        "ve_ddnm": 7,
+        "ve_ddnm": 13,
         "patch_average": 4,
         "patch_stitch": 4,
         "padis_dps": 50,
@@ -277,10 +277,11 @@ def test_pipeline_full_default_reconstruction_matrix_waits_for_training_and_pnp(
         tmp_path
         / "runs/final_real_runs/a100_training_pytest/pnp_lidc_drunet/pnp_lidc_drunet.pt"
     )
+    standard_pnp_jobs = [job for job in pnp_jobs if job["matrix_group"] == "main"]
     assert all(
         job["command"][job["command"].index("--pnp-checkpoint") + 1]
         == str(expected_pnp_checkpoint)
-        for job in pnp_jobs
+        for job in standard_pnp_jobs
     )
 
 

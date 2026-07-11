@@ -163,6 +163,17 @@ Rerunning the same command skips valid completed phases and resumes incomplete
 ones. W&B logging defaults to online mode and final artefacts are uploaded
 unless `PADIS_NO_WANDB_ARTIFACT=1`; persistent checkpoints do not depend on W&B.
 
+## Notes And Warnings
+
+The historical `admm_tv` identifier executes LION's Chambolle-Pock solver and
+is not the paper's exact ADMM-TV algorithm. The `baseline` uses fan-beam FDK,
+not parallel-beam FBP. `pnp_admm` uses a LION-native DRUNet surrogate as its
+DRUNet denoiser;
+the source description does not give enough optimizer, architecture, or
+stopping-rule detail for exact identity. A no-PaDIS-prior or empty checkpoint
+is never treated as checkpoint identity. Final claims require A100/CUDA CT validation
+because the public PaDIS repository only provides partial details.
+
 ## Reconstruction methods
 
 The matrix contains:
