@@ -1587,6 +1587,252 @@ def lion_physics_full_candidates() -> list[Candidate]:
     return unique_candidates(candidates)
 
 
+def reproduction_candidates() -> list[Candidate]:
+    """Compact union of the candidates used by the published tuning scheme."""
+    candidates: list[Candidate] = []
+
+    def add(
+        method: str, implementation: str, prior: str | None, name: str, *args: str
+    ) -> None:
+        candidates.append(Candidate(name, method, implementation, prior, tuple(args)))
+
+    for lam in (5e-4, 1e-3, 2e-3):
+        add(
+            "admm_tv",
+            "lion_physics",
+            None,
+            f"lambda_{safe_name(f'{lam:g}')}",
+            "--tv-lambda",
+            f"{lam:g}",
+            "--tv-iterations",
+            "1000",
+        )
+    for eta, iterations in (
+        (5e-6, 100),
+        (1e-5, 40),
+        (1e-5, 60),
+        (1e-5, 100),
+        (2e-5, 40),
+        (2e-5, 60),
+        (2e-5, 100),
+        (3e-5, 40),
+        (3e-5, 60),
+        (3e-5, 100),
+        (5e-5, 60),
+        (5e-5, 100),
+    ):
+        add(
+            "pnp_admm",
+            "lion_physics",
+            None,
+            f"eta_{safe_name(f'{eta:g}')}__iters_{iterations}",
+            "--pnp-eta",
+            f"{eta:g}",
+            "--pnp-iterations",
+            str(iterations),
+        )
+    for noise in (0.01, 0.03, 0.05):
+        add(
+            "pnp_admm",
+            "lion_physics",
+            None,
+            f"noise_{safe_name(f'{noise:g}')}",
+            "--pnp-eta",
+            "3e-5",
+            "--pnp-iterations",
+            "60",
+            "--pnp-noise-level",
+            f"{noise:g}",
+        )
+
+    for implementation, zetas, epsilons in (
+        ("lion_physics", (3.5, 3.75, 4.0, 4.25), (0.3, 0.5)),
+        ("public_repo", (0.15, 0.2), (0.5, 0.75)),
+        ("paper", (0.0075, 0.01, 0.015), (0.5, 1.0)),
+    ):
+        for zeta in zetas:
+            for eps in epsilons:
+                add(
+                    "padis_dps",
+                    implementation,
+                    None,
+                    f"zeta_{safe_name(f'{zeta:g}')}__eps_{safe_name(f'{eps:g}')}",
+                    "--zeta",
+                    f"{zeta:g}",
+                    "--dps-epsilon",
+                    f"{eps:g}",
+                    *(
+                        (
+                            "--initial-reconstruction",
+                            "noise",
+                            "--no-clip-initial",
+                            "--no-clip-output",
+                        )
+                        if implementation == "lion_physics"
+                        else ()
+                    ),
+                )
+
+    for implementation, zetas, epsilons in (
+        ("lion_physics", (3.5, 4.0, 4.5), (0.5, 0.75)),
+        ("public_repo", (0.2, 0.3), (0.5, 0.75)),
+        ("paper", (0.01, 0.03), (0.5, 0.75)),
+    ):
+        for prior in (
+            ("patch", "whole_image") if implementation == "lion_physics" else ("patch",)
+        ):
+            for zeta in zetas:
+                for eps in epsilons:
+                    add(
+                        "langevin",
+                        implementation,
+                        prior,
+                        f"zeta_{safe_name(f'{zeta:g}')}__eps_{safe_name(f'{eps:g}')}",
+                        "--zeta",
+                        f"{zeta:g}",
+                        "--sampling-epsilon",
+                        f"{eps:g}",
+                    )
+
+    for implementation, zetas, snrs in (
+        ("lion_physics", (3.75, 4.0, 4.25, 4.5, 4.75), (0.01, 0.015)),
+        ("public_repo", (0.5,), (0.08, 0.16)),
+        ("paper", (0.01, 0.02, 0.03), (0.04, 0.08, 0.16)),
+    ):
+        for prior in (
+            ("patch", "whole_image") if implementation == "lion_physics" else ("patch",)
+        ):
+            for zeta in zetas:
+                for snr in snrs:
+                    add(
+                        "predictor_corrector",
+                        implementation,
+                        prior,
+                        f"zeta_{safe_name(f'{zeta:g}')}__r_{safe_name(f'{snr:g}')}",
+                        "--zeta",
+                        f"{zeta:g}",
+                        "--pc-snr",
+                        f"{snr:g}",
+                    )
+
+    for implementation in ("lion_physics", "public_repo", "paper"):
+        for prior in (
+            ("patch", "whole_image") if implementation == "lion_physics" else ("patch",)
+        ):
+            for eps in (0.05, 0.1, 0.2):
+                add(
+                    "ve_ddnm",
+                    implementation,
+                    prior,
+                    f"eps_{safe_name(f'{eps:g}')}",
+                    "--sampling-epsilon",
+                    f"{eps:g}",
+                )
+    for scale in (0.0, 0.5, 1.5):
+        add(
+            "ve_ddnm",
+            "lion_physics",
+            "patch",
+            f"noise_scale_{safe_name(f'{scale:g}')}",
+            "--sampling-epsilon",
+            "0.1",
+            "--langevin-noise-scale",
+            f"{scale:g}",
+        )
+
+    for zeta in (3.5, 4.0):
+        add(
+            "patch_average",
+            "lion_physics",
+            None,
+            f"zeta_{safe_name(f'{zeta:g}')}",
+            "--zeta",
+            f"{zeta:g}",
+            "--dps-epsilon",
+            "0.5",
+        )
+    for zeta in (0.0075, 0.01, 0.015):
+        add(
+            "whole_image_diffusion",
+            "paper",
+            None,
+            f"zeta_{safe_name(f'{zeta:g}')}",
+            "--zeta",
+            f"{zeta:g}",
+            "--dps-epsilon",
+            "0.5",
+        )
+
+    # Native-512 and full-data brackets use the same final checkpoint policy as inference.
+    for implementation, zetas in (
+        ("public_repo", (0.4, 0.5, 0.8, 1.2, 1.6)),
+        ("lion_physics", (0.8, 1.2, 1.6, 2.0)),
+    ):
+        for zeta in zetas:
+            add(
+                "padis_dps",
+                implementation,
+                None,
+                f"native512_zeta_{safe_name(f'{zeta:g}')}",
+                "--zeta",
+                f"{zeta:g}",
+                "--dps-epsilon",
+                "0.5",
+                *(
+                    (
+                        "--initial-reconstruction",
+                        "noise",
+                        "--no-clip-initial",
+                        "--no-clip-output",
+                    )
+                    if implementation == "lion_physics"
+                    else (
+                        "--initial-reconstruction",
+                        "fdk",
+                        "--clip-initial",
+                        "--clip-output",
+                    )
+                ),
+            )
+    add(
+        "padis_dps",
+        "public_repo",
+        None,
+        "native512_zeta_1p6__eps_0p75",
+        "--zeta",
+        "1.6",
+        "--dps-epsilon",
+        "0.75",
+    )
+    for zeta in (2.0, 4.5, 4.75, 5.0):
+        add(
+            "padis_dps",
+            "lion_physics",
+            None,
+            f"full_patch_zeta_{safe_name(f'{zeta:g}')}",
+            "--zeta",
+            f"{zeta:g}",
+            "--dps-epsilon",
+            "0.5",
+            "--initial-reconstruction",
+            "noise",
+            "--no-clip-initial",
+            "--no-clip-output",
+        )
+    for zeta in (4.0, 5.0):
+        add(
+            "whole_image_diffusion",
+            "lion_physics",
+            None,
+            f"full_whole_zeta_{safe_name(f'{zeta:g}')}",
+            "--zeta",
+            f"{zeta:g}",
+            "--dps-epsilon",
+            "0.5",
+        )
+    return unique_candidates(candidates)
+
+
 def unique_candidates(candidates: Iterable[Candidate]) -> list[Candidate]:
     seen: set[tuple] = set()
     unique: list[Candidate] = []
@@ -1606,6 +1852,8 @@ def unique_candidates(candidates: Iterable[Candidate]) -> list[Candidate]:
 
 
 def candidate_set(name: str) -> list[Candidate]:
+    if name == "reproduction":
+        return reproduction_candidates()
     if name == "smoke":
         return current_default_candidates()
     if name == "pilot":
@@ -1718,6 +1966,8 @@ def build_matrix_args(args: argparse.Namespace) -> argparse.Namespace:
         str(args.seed),
         "--device",
         args.device,
+        "--checkpoint-policy",
+        args.checkpoint_policy,
         "--pnp-root",
         str(args.training_root / "pnp_lidc_drunet"),
         "--tv-lambda",
@@ -2079,10 +2329,11 @@ def command_line(command: list[str]) -> str:
 
 
 def run_tuning(args: argparse.Namespace) -> None:
-    ensure_staged_training_root(
-        external_model_root=args.external_model_root,
-        training_root=args.training_root,
-    )
+    if not args.use_existing_training_root:
+        ensure_staged_training_root(
+            external_model_root=args.external_model_root,
+            training_root=args.training_root,
+        )
     _, runs = build_runs(args)
     args.output_root.mkdir(parents=True, exist_ok=True)
 
@@ -2095,6 +2346,8 @@ def run_tuning(args: argparse.Namespace) -> None:
                 "run_name": args.run_name,
                 "training_root": str(args.training_root),
                 "external_model_root": str(args.external_model_root),
+                "checkpoint_policy": args.checkpoint_policy,
+                "use_existing_training_root": args.use_existing_training_root,
                 "split": "validation",
                 "max_samples": args.max_samples,
                 "start_index": args.start_index,
@@ -2222,6 +2475,20 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Staged matrix training-root layout. External checkpoints are symlinked here.",
     )
     parser.add_argument(
+        "--use-existing-training-root",
+        action="store_true",
+        help=(
+            "Use checkpoints already arranged as a reconstruction-matrix training "
+            "root instead of staging the historical external checkpoints."
+        ),
+    )
+    parser.add_argument(
+        "--checkpoint-policy",
+        choices=matrix.CHECKPOINT_POLICIES,
+        default="model_default",
+        help="Diffusion checkpoint family passed to the reconstruction matrix.",
+    )
+    parser.add_argument(
         "--output-root",
         type=pathlib.Path,
         default=DEFAULT_OUTPUT_ROOT,
@@ -2246,6 +2513,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "consensus_24h",
             "consensus_24h_no_defaults",
             "sampler_full",
+            "reproduction",
         ),
         default="pilot",
     )
@@ -2318,10 +2586,11 @@ def main() -> None:
     if args.stop_after_outer_steps is not None and args.stop_after_outer_steps <= 0:
         raise ValueError("--stop-after-outer-steps must be positive when set.")
 
-    ensure_staged_training_root(
-        external_model_root=args.external_model_root,
-        training_root=args.training_root,
-    )
+    if not args.use_existing_training_root:
+        ensure_staged_training_root(
+            external_model_root=args.external_model_root,
+            training_root=args.training_root,
+        )
 
     candidates = [
         candidate

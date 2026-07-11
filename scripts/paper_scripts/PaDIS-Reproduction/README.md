@@ -6,39 +6,39 @@ share one experiment definition and one repository-local hyperparameter
 registry, so the GCP, Colab, direct Python, and Slurm paths construct equivalent
 reconstruction jobs.
 
-The former development diary is retained in [`LOG_README.md`](LOG_README.md).
-It records pilots and historical decisions, but it is not the source of truth
-for current defaults. Current behaviour is defined by the scripts and
-[`config/reconstruction_hparam_defaults.json`](config/reconstruction_hparam_defaults.json).
+The validation-set search protocol, run sequence, selection rule and results
+are documented in [`tuning/TUNING.md`](tuning/TUNING.md). Current runtime
+behaviour is defined by the scripts, while
+[`config/reconstruction_hparam_defaults.json`](config/reconstruction_hparam_defaults.json)
+is the authoritative machine-readable reconstruction registry.
 
-## Workflow
+## Contents
 
-The complete pipeline is:
+- [Repository map](#repository-map)
+- [Reproduction procedure](#reproduction-procedure)
+  - [Install LION](#1-install-lion)
+  - [Download and process LIDC-IDRI](#2-download-and-process-lidc-idri)
+  - [Build training caches](#3-build-reusable-training-caches)
+  - [Run the complete pipeline](#4-run-training-through-final-reporting)
+  - [Check the outputs](#5-check-the-final-products)
+- [Backend requirements](#backend-requirements)
+- [Data layout and storage](#data-layout-and-storage)
+- [Training and checkpoints](#training-models-and-checkpoints)
+- [Methods and experiments](#reconstruction-methods)
+- [Tuned defaults](#tuned-reconstruction-defaults)
+- [Manual reconstruction and matrix inspection](#manual-reconstruction-and-matrix-inspection)
+- [Expected reconstruction runtimes](#expected-reconstruction-runtimes)
+- [Outputs, restart state, and reporting](#outputs-restart-state-and-reporting)
 
-1. Load processed LIDC-IDRI slices and, for training, stage matching compressed
-   tensor caches into a RAM disk.
-2. Train the required patch, whole-image, and PnP denoisers. Training is
-   resumable from full-state checkpoints.
-3. Continue each diffusion run through the validation-intensive phase and save
-   the `min_intense_val` exponential-moving-average checkpoint. PnP models save
-   their `min_val` checkpoint.
-4. Resolve validation-selected reconstruction parameters from the repository
-   JSON registry.
-5. Build a deterministic reconstruction manifest, check every required
-   checkpoint, and execute unfinished jobs.
-6. Run unconditional generation where requested.
-7. Verify saved metrics, calculate timing summaries, and produce the complete
-   publication table and figure set.
-
-The GCP spot runner performs steps 1-5 automatically. The Colab/manual runner
-checks for missing trainable inputs, runs the reconstruction matrix, and runs
-generation before the expensive fixed-overlap and 512-resolution tail jobs.
-
-## Main entry points
+## Repository map
 
 | File | Purpose |
 |---|---|
+| `LION/data_loaders/LIDC_IDRI/download_LIDC_IDRI.sh` | Download and resume the raw TCIA LIDC-IDRI collection. |
+| `LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py` | Convert raw DICOM scans into LION's processed slice dataset. |
+| `pipeline/run_prepare_lidc_cache.sh` | Build the default/full 256 and default 512 compressed training caches. |
 | `pipeline/PaDIS_run_pipeline.sh` | Unified complete training, inference, generation, table, and figure entry point for GCP or Slurm. |
+| `pipeline/PaDIS_finalise_pipeline.sh` | Re-run generation, verification, timing, table, and figure production. |
 | `training/PaDIS_LIDC_256.py` | Train 256-resolution patch or whole-image diffusion priors. |
 | `training/PaDIS_LIDC_512.py` | Train the native-resolution patch prior. |
 | `training/PaDIS_LIDC_PnP_denoiser.py` | Train unconditioned or noise-conditioned DRUNet models. |
@@ -46,8 +46,10 @@ generation before the expensive fixed-overlap and 512-resolution tail jobs.
 | `reconstruction/PaDIS_run_reconstruction_matrix.py` | Construct, list, validate, or run the experiment matrix. |
 | `reconstruction/PaDIS_LIDC_generation.py` | Generate unconditional whole-image or patch-assembled samples. |
 | `tuning/PaDIS_tune_reconstruction_hyperparameters.py` | Run reconstruction tuning candidates. |
+| `tuning/PaDIS_run_reproduction_tuning.py` | Re-run the complete validation tuning grid on the final inference checkpoints. |
 | `tuning/PaDIS_summarize_hparam_tuning.py` | Summarise completed tuning records. |
 | `tuning/PaDIS_hparam_defaults.py` | Export tuning results to the repository JSON registry. |
+| `tuning/TUNING.md` | Reproduce and audit the validation-set hyperparameter search. |
 | `reconstruction/PaDIS_reconcile_reconstruction_manifest.py` | Reconcile a rebuilt manifest with existing outputs. |
 | `reconstruction/PaDIS_verify_reconstruction_matrix.py` | Verify outputs and write result/uncertainty tables. |
 | `reporting/PaDIS_make_paper_figures.py` | Build figures from saved outputs. |
@@ -57,21 +59,164 @@ generation before the expensive fixed-overlap and 512-resolution tail jobs.
 | `platforms/gcp/PaDIS_Colab_manual_reconstruction.ipynb` | Colab setup, authentication, environment installation, and launch cells. |
 | `platforms/slurm/submit_PaDIS_A100_pipeline.sh` | Submit the equivalent training and reconstruction pipeline on Slurm. |
 
-The remaining directories are organised by responsibility: `core/` contains
-shared preset definitions and exploratory core code; `config/` contains the
-checked-in inference registry; `notebooks/` and `assets/` contain supporting
-material. Experiment outputs remain under `$LION_EXPERIMENTS_PATH/PaDIS`; this
-source-tree reorganisation does not rename or migrate saved data.
+The directory is organised by responsibility: `core/` contains shared preset
+definitions, `pipeline/` contains end-to-end orchestration, `platforms/`
+contains GCP and Slurm launchers, and `training/`, `reconstruction/`,
+`tuning/`, and `reporting/` contain the corresponding experiment stages.
+`config/` contains the checked-in inference registry. Experiment outputs
+remain under `$LION_EXPERIMENTS_PATH/PaDIS`; the source layout does not rename
+or migrate saved data.
 
 Run scripts from the LION repository root. Use each program's `--help` output
 for diagnostic options not documented here.
 
-### Unified pipeline entry point
+## Reproduction procedure
 
-#### Prerequisites and preflight
+This is the shortest complete reproduction path. The later sections document
+the models, matrix, restart behaviour, and platform controls in more detail.
 
-Run the unified script from the root of a current LION checkout. Before a real
-launch, the following must be true for either backend:
+### 1. Install LION
+
+Clone the repository at the revision being reproduced and initialise its
+submodules. The commands below follow LION's root installation instructions but
+name the environment `lion-dev`, which is the name used by the PaDIS launchers:
+
+```bash
+git clone https://github.com/CambridgeCIA/LION.git
+cd LION
+git submodule update --init --recursive
+conda env create --file env_base.yml --name lion-dev
+conda activate lion-dev
+python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+python -m pip install -e .
+```
+
+Match the PyTorch wheel and `cuda-version` in `env_base.yml` to the installed
+CUDA driver when CUDA 12.8 is unavailable. Record `git rev-parse HEAD` with the
+outputs: code revision, dataset split, checkpoint policy, and registry contents
+all affect reproducibility.
+
+Set persistent paths before importing LION:
+
+```bash
+export LION_DATA_PATH=/path/to/Datasets
+export LION_EXPERIMENTS_PATH="$LION_DATA_PATH/experiments"
+mkdir -p "$LION_DATA_PATH" "$LION_EXPERIMENTS_PATH"
+```
+
+### 2. Download and process LIDC-IDRI
+
+LION downloads the TCIA LIDC-IDRI collection using the repository's TCIA
+manifest and the NBIA Data Retriever CLI. The helper installs the retriever
+inside the data directory, downloads the diagnosis spreadsheet, verifies MD5
+checksums, and resumes interrupted downloads by requesting missing series:
+
+```bash
+bash LION/data_loaders/LIDC_IDRI/download_LIDC_IDRI.sh
+```
+
+Raw DICOM data will be under `$LION_DATA_PATH/raw/LIDC-IDRI`. NBIA license
+acceptance, Java/container alternatives, resume and redownload controls, and
+recovery from incomplete series are documented in
+[`LION/data_loaders/LIDC_IDRI/README.md`](../../../LION/data_loaders/LIDC_IDRI/README.md).
+
+Preprocessing has a separate environment because `pylidc` has specialised
+dependencies:
+
+```bash
+conda env create \
+  --file LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri_environment.yml
+conda run -n lidc_idri \
+  python LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py
+```
+
+This writes 512-by-512 slice arrays, masks, and metadata under
+`$LION_DATA_PATH/processed/LIDC-IDRI/LIDC-IDRI-*`. The preprocessor finishes
+with a completeness check; a complete current download has at least 1,010
+processed patient directories and 282,776 regular files. Do not start cache
+creation or training if that check reports missing patients, scan errors, or a
+short file count.
+
+### 3. Build reusable training caches
+
+Install `zstd`, activate `lion-dev`, and create the three cache archives used by
+the training pipelines:
+
+```bash
+conda activate lion-dev
+bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/run_prepare_lidc_cache.sh
+```
+
+The default variants are `256-default`, `256-full`, and `512-default`. They are
+written below:
+
+```text
+$LION_DATA_PATH/processed/LIDC-IDRI-cache/padis_256/archives/
+$LION_DATA_PATH/processed/LIDC-IDRI-cache/padis_512/archives/
+```
+
+Cache construction is deterministic for the processed data and seed. It can be
+rerun safely; set `PADIS_REBUILD_CACHE=1` only when the existing cache should be
+replaced. On Slurm, the complete pipeline submits its equivalent cache job, so
+this local command is optional if the compute nodes can read the processed
+dataset and write the cache root.
+
+### 4. Run training through final reporting
+
+Check the backend dispatch first:
+
+```bash
+bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh \
+  --backend gcp --dry-run
+bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh \
+  --backend slurm --dry-run
+```
+
+Then run one backend:
+
+```bash
+# Synchronous and resumable on the configured GCP machine:
+bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh \
+  --backend gcp
+
+# Or submit the dependency-linked Slurm pipeline:
+PADIS_RUN_STAMP=padis-reproduction \
+  bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh \
+  --backend slurm
+```
+
+After the processed dataset exists, these entry points cover cache staging,
+diffusion and PnP training, intensive validation, checkpoint selection, the
+109-job reconstruction matrix, unconditional generation, verification,
+timings, LaTeX/CSV tables, and PNG/PDF figures. They are resumable; retain the
+same GCP run name or Slurm run stamp when continuing an interrupted run.
+
+Exact reproduction uses the committed
+[`config/reconstruction_hparam_defaults.json`](config/reconstruction_hparam_defaults.json).
+Re-running the validation search is an optional audit of how those settings
+were selected, not a prerequisite for consuming the registry. After training,
+the complete search can be repeated as described in
+[`tuning/TUNING.md`](tuning/TUNING.md).
+
+### 5. Check the final products
+
+The default finaliser writes:
+
+```text
+$LION_EXPERIMENTS_PATH/PaDIS/reconstruction_presets/   unconditional samples
+$LION_EXPERIMENTS_PATH/PaDIS/paper_tables/             LaTeX and decoded CSV tables
+$LION_EXPERIMENTS_PATH/PaDIS/paper_figures/            PNG/PDF figures and manifest
+<reconstruction-root>/reconstruction_matrix_verification.{json,csv}
+```
+
+Treat a run as complete only when verification succeeds against
+`reconstruction_matrix_jobs.json`, rather than when scheduler or marker counts
+alone look complete. The figure manifest records missing panels and whether
+each generated figure is publication-ready.
+
+## Backend requirements
+
+Before a real launch, the following must be true:
 
 - `LION_DATA_PATH` identifies the persistent dataset root and contains the
   processed LIDC-IDRI patient folders plus the `256-default`, `256-full`, and
@@ -84,18 +229,8 @@ launch, the following must be true for either backend:
 - A CUDA GPU is visible to PyTorch and `nvidia-smi`.
 - W&B authentication is available when `PADIS_WANDB_MODE=online`; set
   `PADIS_WANDB_MODE=offline` deliberately when network logging is not wanted.
-- The persistent experiment root is writable and has enough space for full
-  checkpoints, reconstruction tensors, previews, logs, and cache archives.
-
-Use the wrapper dispatch check before launching expensive work:
-
-```bash
-bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh --backend gcp --dry-run
-bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh --backend slurm --dry-run
-```
-
-This validates backend selection only. The backend runners perform their own
-dataset, checkpoint, GPU, and scheduler checks during the real launch.
+- The persistent experiment root is writable and has the capacity described in
+  [Data layout and storage](#data-layout-and-storage).
 
 For **GCP**, use either the supported Colab notebook/startup hook, which mounts
 `padis-bucket` at `/mnt/data` and provisions the environment, or prepare an
@@ -130,37 +265,12 @@ test -d "$LION_DATA_PATH/processed/LIDC-IDRI-cache/padis_512/archives"
 conda run -n lion-dev python -c 'import torch; print(torch.cuda.is_available())'
 ```
 
-Run the complete synchronous GCP pipeline with:
+The unified wrapper delegates checkpointing and scheduling to the backend
+scripts. GCP finalises synchronously; Slurm submits verification and finalisation
+with scheduler dependencies. `PADIS_SUBMIT_FINALISE=0` deliberately omits
+generation and publication outputs.
 
-```bash
-bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh --backend gcp
-```
-
-Submit the equivalent dependency-linked Slurm pipeline with:
-
-```bash
-bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh --backend slurm
-```
-
-The wrapper deliberately delegates to the established backend scripts so their
-checkpointing, restart state, task arrays, and `PADIS_*` controls remain the
-source of truth. GCP enables both PnP tasks and reconstruction by default.
-Slurm enables both PnP submissions, the 109-job reconstruction array, the
-post-reconstruction verifier, and the finaliser by default. The finaliser waits
-for verification (or directly for reconstruction when verification is
-disabled), then generates unconditional samples and rebuilds every table and
-figure. Set the corresponding existing environment variable to `0` to omit a
-phase. Add `--dry-run` to inspect backend selection without running or
-submitting anything.
-
-The unified entry point covers training, validation-intensive continuation,
-both PnP models, reconstruction, unconditional generation, verification, all
-publication tables, and all implemented figures. GCP runs the finalisation
-phase synchronously after reconstruction. Slurm submits a dependent GPU
-finaliser after reconstruction/verification; set `PADIS_SUBMIT_FINALISE=0` only
-when generation and publication outputs should be omitted deliberately.
-
-## Data and persistent paths
+## Data layout and storage
 
 Set `LION_DATA_PATH` to the data root. On the GCP/Colab path it defaults to
 `/mnt/data/Datasets`, where `/mnt/data` is the mounted `padis-bucket`.
@@ -174,11 +284,41 @@ Set `LION_DATA_PATH` to the data root. On the GCP/Colab path it defaults to
 | GCP training root | `experiments/PaDIS/final_real_runs/PaDIS-Reproduction-GCP/` |
 | GCP reconstruction root | `experiments/PaDIS/final_real_runs/PaDIS-Reproduction-GCP_reconstruction/` |
 
-The dataset split is deterministic by sorted patient identifier: 80% train,
-10% validation, and 10% test. The default regime uses at most four slices per
-patient; `--full-lidc` selects every processed slice. Cache identity includes
-the split, resolution, and selection regime, preventing a cache for one setup
-from being reused silently for another.
+The completed local `Data` tree occupied approximately **504 GiB of allocated
+disk space** (`538,120,458,610` apparent bytes) when this README was updated.
+Provision at least 504 GiB for an equivalent reproduction and preferably
+600 GiB or more to accommodate temporary downloads, cache construction,
+checkpoint replacement, and filesystem overhead. Check the actual requirement
+and available capacity with:
+
+```bash
+du -sh "$LION_DATA_PATH"
+df -h "$LION_DATA_PATH"
+```
+
+Raw DICOM, processed NumPy slices, compressed caches, expanded RAM-disk caches,
+model checkpoints, and reconstruction tensors can coexist during the run. The
+RAM-disk copy is temporary but requires separate system memory or scratch
+capacity while training is active.
+
+The archived split assigns sorted patient-ID slots without patient leakage.
+The 1,012 slots include two empty slots retained to preserve that split, so
+they do not imply 1,012 contributing patients. The completed dataset counts
+are:
+
+| Split | Patient-ID slots | Four-slice regime | All-slice regime |
+|---|---:|---:|---:|
+| Train | 809 | 2,713 | 189,725 |
+| Validation | 101 | 328 | 27,426 |
+| Test | 102 | 326 | 25,719 |
+| Total | 1,012 | 3,367 | 242,870 |
+
+The default regime uses at most four slices per patient, capped by the smaller
+of the available nodule and non-nodule slice counts before balancing the two
+classes. A patient without an annotated nodule can therefore contribute no
+image. `--full-lidc` selects every processed slice. Cache identity includes the
+split, resolution, and selection regime, preventing a cache for one setup from
+being reused silently for another.
 
 Training scripts can load `.pt.zst` archives directly into a RAM-backed cache.
 Decompression uses `zstd -T0`, which uses all available CPU cores. The archive
@@ -217,7 +357,8 @@ receives only the image channel.
 
 Adam uses learning rate `2e-4`. Training noise is log-normal,
 `log(sigma) ~ N(-1.2, 1.2^2)`, truncated to `[0.002, 40]`, with
-`sigma_data=0.5`. Whole-image batches contain 8 slices. Patch effective batch
+`sigma_data=0.5`; the learning rate is ramped over the first ten million
+training images or patches. Whole-image batches contain 8 slices. Patch effective batch
 sizes are 128, 256, and 512 from largest to smallest patch. An EMA with a
 500,000-example half-life supplies validation and inference weights.
 
@@ -275,7 +416,7 @@ Rerunning the same command skips valid completed phases and resumes incomplete
 ones. W&B logging defaults to online mode and final artefacts are uploaded
 unless `PADIS_NO_WANDB_ARTIFACT=1`; persistent checkpoints do not depend on W&B.
 
-## Notes And Warnings
+## Notes and limitations
 
 The historical `admm_tv` identifier executes LION's Chambolle-Pock solver and
 is not the paper's exact ADMM-TV algorithm. The `baseline` uses fan-beam FDK,
@@ -283,8 +424,15 @@ not parallel-beam FBP. `pnp_admm` uses a LION-native DRUNet surrogate as its
 DRUNet denoiser;
 the source description does not give enough optimizer, architecture, or
 stopping-rule detail for exact identity. A no-PaDIS-prior or empty checkpoint
-is never treated as checkpoint identity. Final claims require A100/CUDA CT validation
-because the public PaDIS repository only provides partial details.
+is never treated as checkpoint identity. The completed final training and
+reconstruction used a Google-hosted NVIDIA RTX PRO 6000; fixed-validation
+tuning also used a GTX 1070. The Slurm A100 path is an equivalent reproduction
+backend, not the hardware on which the reported final results were obtained.
+
+The CP baseline retains the isotropic TV objective, uses `lambda=0.001` for
+1,000 iterations, and clips its output to `[0,1]` without imposing
+non-negativity inside the solver. It is therefore reported as CP, not as an
+exact reproduction of the original work's ADMM-TV baseline.
 
 ## Reconstruction methods
 
@@ -309,6 +457,14 @@ solver is Chambolle--Pock, not ADMM. Presentation code therefore labels this
 method **CP** in figures and reports it as sampler **CP** with prior **TV** in
 tables. The inference CLI, saved method field, and existing output paths remain
 `admm_tv`; consumers should translate that identifier only for display.
+
+Unless stated otherwise, diffusion reconstruction uses 100 geometrically
+spaced noise levels from `sigma_max=10` to `sigma_min=0.002`, with 10 inner
+updates per level. The 8-view experiment uses `sigma_min=0.003`.
+Predictor-corrector instead performs one predictor and one corrector update for
+each adjacent noise-level pair. Paper-style and LION-physics VE-DDNM use 1,000
+levels and one update per level; Public-compatible VE-DDNM follows the released
+implementation with 100 levels and 10 inner updates.
 
 Three implementation tracks are used while keeping the LIDC images and LION
 fan-beam geometry fixed:
@@ -344,6 +500,15 @@ unbounded sparse-view fan-beam approximation otherwise becomes non-finite.
 | `ct_fanbeam_180` | 20 | 120 degrees | 256 x 256 |
 | `ct_512_60` | 60 | 360 degrees | 512 x 512 |
 
+Every experiment treats each axial slice independently using LION's 2D
+tomosipo-based fan-beam operator and a 300 mm by 300 mm in-plane field of view.
+The detector has 900 bins across 900 mm, the source-to-origin distance is
+575 mm, and the source-to-detector distance is 1,050 mm. Measurements are
+noise-free projections of normalised intensity, not calibrated attenuation.
+Consequently these experiments isolate angular undersampling and limited
+coverage; they do not model photon noise, scatter, beam hardening, motion, or
+cone-beam effects.
+
 `ct_fanbeam_180` is a legacy identifier. It is the 20-view, 120-degree
 limited-angle experiment, not a 180-view acquisition.
 
@@ -363,14 +528,21 @@ The `gcp_spot` order is:
 
 The manual runner inserts unconditional generation after regular rows and
 before the fixed-overlap/512 tail. Generation uses four samples, seed 33, 300
-geometric levels from `sigma=10` to `0.002`, one inner step per level, and
-epsilon 1. It compares whole-image, naive patch, PaDIS, fixed-average, and
-fixed-stitch assembly.
+geometric levels from `sigma=10` to `0.002`, one inner step per level, and a
+common Langevin coefficient and noise scale of 1. The thesis's primary
+generation comparison contains four priors: whole-image, randomly shifted
+PaDIS, fixed patch averaging, and fixed patch stitching. The pipeline also
+generates naive-patch and 300-evaluation Langevin diagnostic presets needed by
+appendix figures. These settings were not tuned separately, so generation is a
+qualitative boundary-behaviour comparison rather than a distributional ranking.
 
 ## Tuned reconstruction defaults
 
 The authoritative registry is
 [`config/reconstruction_hparam_defaults.json`](config/reconstruction_hparam_defaults.json).
+The complete corrected-validation protocol, candidate matrix, inheritance
+rules, and command for reproducing every tuning row are recorded in
+[`tuning/TUNING.md`](tuning/TUNING.md).
 The matrix resolves an exact experiment/model record first, then any configured
 high-view fallback, then a consensus record, and finally the implementation
 default. Untuned 60-view and limited-angle rows therefore use an available
@@ -395,7 +567,7 @@ track defines the data update differently.
 | Patch averaging | Not implemented | `zeta=0.3`, `epsilon=0.5` | `zeta=4.0`, `epsilon=0.5` |
 | Patch stitching | Not implemented | `zeta=0.3`, `epsilon=0.5` | `zeta=3.0`, `epsilon=0.5` |
 | TV | Not implemented | Not implemented | `lambda=0.001`, 1000 iterations |
-| PnP-ADMM | Not implemented | Not implemented | `eta=3e-5`, 60 outer iterations, 100 CG iterations, tolerance `1e-7` |
+| PnP-ADMM | Not implemented | Not implemented | `eta=3e-5`, 60 outer iterations, at most 50 CG iterations, tolerance `1e-7` |
 
 Native 512 PaDIS-DPS uses `zeta=2.0`, `epsilon=0.5`, and Gaussian
 initialisation for LION-Physics; Public-Compatible uses `zeta=1.2`,
@@ -403,93 +575,35 @@ initialisation for LION-Physics; Public-Compatible uses `zeta=1.2`,
 activation checkpointing. FDK initialisation, where selected, uses a Hann
 filter with frequency scaling 0.3 and clips the initial image to `[0,1]`.
 
-### W&B pulled checkpoint tuning
+### Re-running the selection procedure
 
-On 2026-07-09 the final GCP W&B checkpoints were pulled with authenticated W&B
-API access into:
-
-```text
-/home/thomas/DiS/Project/Data/experiments/PaDIS/wandb_checkpoints/PaDIS-Reproduction
-```
-
-The matrix-compatible staged root is:
-
-```text
-/home/thomas/DiS/Project/Data/experiments/PaDIS/final_real_runs/PaDIS-Reproduction-GCP-wandb-pulled
-```
-
-The full `patch_lidc_full:v1` artifact download first failed with a transient
-`IncompleteRead`, so the final pull downloaded exact checkpoint entries from
-the artifacts. All required checkpoint files were pulled successfully.
-
-| Model row | W&B artifact | Checkpoint entry |
-|---|---|---|
-| Noise-conditioned PnP | `pnp_lidc_drunet_noise_cond:v0` | `pnp_lidc_drunet_noise_cond_min_val.pt` |
-| Full-data PaDIS-DPS | `patch_lidc_full:v1` | `padis_lidc_256_min_intense_val.pt` |
-| Full-data whole image | `whole_lidc_full:v1` | `whole_image_lidc_256_min_intense_val.pt` |
-| Default-data PaDIS-DPS | `patch_lidc_default:v1` | `padis_lidc_256_min_intense_val.pt` |
-| Default-data whole image | `whole_lidc_default:v1` | `whole_image_lidc_256_min_intense_val.pt` |
-
-Completed local validation on the pulled checkpoints selected full-data
-settings only. Default-data W&B checks are recorded as diagnostics; the
-main/default-data reconstruction defaults remain the pre-existing defaults in
-`reconstruction_hparam_defaults.json`.
-
-| Row | Validation experiments | Selected setting | Mean PSNR | Mean SSIM | Mean MAE | Notes |
-|---|---|---|---:|---:|---:|---|
-| Noise-conditioned PnP | `ct_20`, `ct_8` | `eta=3e-5`, 60 iterations, noise level `0.03` | 24.62 | 0.630 | 0.03514 | Noise level was effectively flat from `0.01` to `0.05`; 100 iterations worsened both views. |
-| Full-data whole image | `ct_20` | `zeta=4.0`, `epsilon=0.5` | 34.38 | 0.859 | 0.01279 | `zeta=5.0` diverged to non-finite output. |
-| Default-data whole image | `ct_20`, `ct_8` | Diagnostic only; not promoted over existing defaults | 32.08 | 0.825 | 0.01529 | Tested `zeta=4.0`, `epsilon=0.5`; default-data config remains `current_defaults`. |
-| Full-data PaDIS-DPS | `ct_20` | `zeta=4.5`, `epsilon=0.5`, noise init, no clipping, patch batch 8 | 28.25 | 0.578 | 0.02748 | `zeta=2.0` underfit; `4.75` exploded; `5.0` produced NaNs. |
-| Default-data PaDIS-DPS | `ct_20`, `ct_8` | Diagnostic only; not promoted over existing defaults | 28.45 | 0.627 | 0.02555 | Tested `zeta=4.25`, `epsilon=0.5`, noise init, no clipping, patch batch 8; default-data config keeps the earlier consensus setting without the patch-batch runtime override. |
-
-The PaDIS-DPS mechanics remain the same as the earlier LION-Physics patch-prior
-setting: paper geometric sigma schedule, Gaussian/noisy initialization,
-unclipped initial/output state, `epsilon=0.5`, LION-native CT operations, and
-operator-Lipschitz data normalization. The W&B-pulled full-data patch
-checkpoint changed the denoiser weights and the selected scalar `zeta`.
-`patch_batch_size=8` is used only for the promoted full-data PaDIS-DPS row; it
-is a runtime throughput setting and should not change the reconstruction values.
-
-### Exporting defaults from a sweep
-
-Tuning writes one `runs.jsonl` per sweep directory. Export consensus settings
-from completed finite `ct_20` and `ct_8` records with:
+The generic validation matrix and its inheritance rules are documented in
+[`tuning/TUNING.md`](tuning/TUNING.md). Run it against the completed training
+root used for inference:
 
 ```bash
-python -u scripts/paper_scripts/PaDIS-Reproduction/tuning/PaDIS_hparam_defaults.py \
-  --run-root "$PADIS_RUN_ROOT/hparam_tuning/runs" \
-  --run-glob 'fixedval_*' \
-  --selection-scope consensus \
-  --expected-experiments ct_20,ct_8 \
-  --require-records \
-  --output /tmp/reconstruction_hparam_defaults.json
+conda run -n lion-dev python -u \
+  scripts/paper_scripts/PaDIS-Reproduction/tuning/PaDIS_run_reproduction_tuning.py \
+  --training-root "$PADIS_TRAIN_ROOT" \
+  --output-root "$LION_EXPERIMENTS_PATH/PaDIS/hparam_tuning/reproduction"
 ```
 
-The exporter ranks finite completed candidates by mean PSNR, treats differences
-below 0.1 dB as ties, then uses SSIM within 0.01 and finally MAE. The promoted
-512 PaDIS-DPS defaults currently come from standalone validation runs under
-`debug_runs`, not the `fixedval_*` sweep logs. They intentionally supersede the
-older sweep-derived 512 candidate in the committed registry. Compare and merge
-the staged JSON rather than overwriting the registry until those standalone
-runs have been ingested into `runs.jsonl`.
+The launcher forces the `min_intense_val` diffusion checkpoint policy, uses
+the corrected validation split, and emits a manifest, exact command record,
+summary JSON/CSV, and logs for every sweep. Existing metrics are reused unless
+`--rerun-existing` is supplied. It is intentionally separate from the normal
+pipeline: the pipeline consumes the committed registry so a complete inference
+run cannot silently change merely because a tuning rerun produces a different
+finite-sample ordering.
 
-## Running the pipeline
+`PaDIS_hparam_defaults.py` remains available for inspecting or staging a
+registry from completed tuner records. Do not overwrite the committed registry
+without reviewing its exact-model and inheritance records; that JSON, rather
+than an automatically exported partial sweep, is the inference source of truth.
 
-### GCP spot runner
+## Manual reconstruction and matrix inspection
 
-After setting the data and environment paths, run:
-
-```bash
-bash scripts/paper_scripts/PaDIS-Reproduction/platforms/gcp/run_PaDIS_GCP_spot_training.sh
-```
-
-By default this stages caches, runs all missing base training, runs the
-validation-intensive continuation, checks inputs, reconciles the matrix, and
-runs inference. Reconstruction uses the JSON defaults and `min_intense_val`
-diffusion checkpoints. Rerun the same command after pre-emption.
-
-### Colab or manual GCP runner
+### Colab/manual GCP
 
 The supported Colab entry point is:
 
@@ -509,20 +623,9 @@ The manual runner defaults to two concurrent reconstruction workers per GPU.
 Set `PADIS_RECON_TASKS_PER_GPU` to override this. It checks all model inputs and
 trains missing supported models before inference. Training archives are
 decompressed into `/mnt/ram-disk`; the runner removes that temporary mount after
-training and syncs persistent outputs after each job.
-
-### Slurm
-
-Submit the complete dependency chain with:
-
-```bash
-bash scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/submit_PaDIS_A100_pipeline.sh
-```
-
-Training-only and reconstruction-only wrappers are available in `slurm/`.
-They use the same matrix builder, checkpoint policy, JSON defaults, and job
-order as GCP. Cluster account, array width, time limits, and roots are
-configured through the `PADIS_*` environment variables in those wrappers.
+training and syncs persistent outputs after each job. Use this path to run
+inference from existing checkpoints without resubmitting the complete training
+pipeline.
 
 ### Inspecting the matrix directly
 
@@ -541,7 +644,7 @@ python -u scripts/paper_scripts/PaDIS-Reproduction/reconstruction/PaDIS_run_reco
   --implementations method_default \
   --geometries lion \
   --job-order gcp_spot \
-  --pnp-cg-iterations 100 \
+  --pnp-cg-iterations 50 \
   --pnp-cg-tolerance 1e-7 \
   --list
 ```
@@ -551,7 +654,36 @@ validate, or execute one resolved job. The runners generate this list once,
 store it as `reconstruction_matrix_jobs.json`, and reconcile rebuilt manifests
 against valid existing outputs.
 
-## Outputs, restart state, and verification
+## Expected reconstruction runtimes
+
+The following estimates multiply the logged mean 20-view time per slice by the
+planned evaluation size. Standard rows use 25 slices; patch averaging and
+stitching use four. Each cell is the expected total followed by the measured
+mean per slice.
+
+| Reconstruction method | LION-physics | Paper | Public-compatible |
+|---|---:|---:|---:|
+| FDK | 2.0 min (4.71 s) | – | – |
+| CP | 3.4 min (8.13 s) | – | – |
+| Predictor-corrector | 5.9 min (14.11 s) | 5.9 min (14.16 s) | 5.8 min (14.02 s) |
+| PnP-ADMM | 11.1 min (26.63 s) | – | – |
+| Langevin | 21.5 min (51.49 s) | 23.5 min (56.42 s) | 23.6 min (56.55 s) |
+| VE-DDNM | 25.9 min (62.08 s) | 25.6 min (61.34 s) | 24.4 min (58.54 s) |
+| PaDIS-DPS | 49.5 min (118.85 s) | 50.2 min (120.45 s) | 49.7 min (119.22 s) |
+| Whole-image VE-DPS | 1.09 h (156.44 s) | 1.09 h (156.89 s) | – |
+| Patch stitching, four slices | 1.61 h (1,450.73 s) | – | 1.62 h (1,461.08 s) |
+| Patch averaging, four slices | 1.63 h (1,468.76 s) | – | 1.63 h (1,468.75 s) |
+
+These displayed 20-view rows sum to approximately 14.14 GPU-hours if executed
+serially. This is not the wall-clock duration of the complete 109-job matrix:
+jobs can share a GPU or run concurrently, other experiments have different
+view counts, and native-512 work is substantially more expensive. The values
+are planning estimates parsed from concurrent pipeline logs, not isolated
+benchmarks. Training adds approximately 12 hours per patch prior and 24 hours
+per whole-image prior, plus PnP training and scheduler/setup overhead; arrays
+reduce elapsed wall time when enough GPUs are available.
+
+## Outputs, restart state, and reporting
 
 Each reconstruction result directory contains at least `metrics.json` and
 `reconstructions.pt`; optional preview images and sampler traces are stored
@@ -574,7 +706,7 @@ Interrupted and failed jobs are therefore eligible for rerun, while valid
 completed jobs survive task reordering or manifest rebuilding. Existing sample
 files are also reusable when a resumed configuration requests fewer samples.
 
-Generate the final verification tables with:
+Generate the final verification JSON and CSV with:
 
 ```bash
 python -u scripts/paper_scripts/PaDIS-Reproduction/reconstruction/PaDIS_verify_reconstruction_matrix.py \
@@ -588,6 +720,29 @@ The default verifier performs 2,000 deterministic image-level bootstrap
 resamples at 95% confidence using seed 33. The CSV includes the aggregate
 metrics, bootstrap standard errors and confidence limits. Use the expected-jobs
 manifest to detect missing outputs rather than relying only on marker counts.
+Metrics are calculated in the shared normalised-intensity domain with data
+range one and without per-image rescaling. The bootstrap resamples images, not
+training runs, so its intervals describe slice variation and do not measure
+retraining uncertainty. Relative sinogram residual records measurement
+consistency separately from MAE, PSNR, and SSIM.
+
+To resume or repeat every post-inference stage in one command, set the roots
+created by the selected backend and run the same finaliser used by both
+pipelines:
+
+```bash
+export PADIS_RUN_ROOT="$LION_EXPERIMENTS_PATH/PaDIS"
+export PADIS_TRAIN_ROOT=/path/to/completed/training-root
+export PADIS_RECON_ROOT=/path/to/completed/reconstruction-root
+export PADIS_TIMING_MODE=gcp             # use slurm for a Slurm array
+export PADIS_TIMING_LOG_ROOT=/path/to/reconstruction/logs
+conda run -n lion-dev bash \
+  scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_finalise_pipeline.sh
+```
+
+This creates any missing unconditional samples, verifies the matrix, derives
+timings, and regenerates every table and figure. Existing `samples.pt` files
+are reused.
 
 Generate all publication tables using the standard experiment paths with:
 
@@ -619,6 +774,21 @@ slice. Timings are grouped by implementation and reconstruction method; where
 multiple prior rows exist for a combination, their per-slice timings are
 averaged.
 
+Generate all figures independently with:
+
+```bash
+conda run -n lion-dev python -u \
+  scripts/paper_scripts/PaDIS-Reproduction/reporting/PaDIS_make_paper_figures.py \
+  --reconstruction-root "$PADIS_RECON_ROOT" \
+  --generation-root "$PADIS_RUN_ROOT/reconstruction_presets" \
+  --output-folder "$PADIS_RUN_ROOT/paper_figures" \
+  --figures all
+```
+
+The command fails on missing required panels by default. Use `--allow-missing`
+only for diagnostic partial output, not for a completed reproduction. Each
+figure is written as PNG and PDF and described in the output manifest.
+
 Paper figures label the normalised-intensity colour scale as **NI**. CT panels
 use the tightest centre-symmetric crop that contains the target foreground;
 the default adds no border padding. This keeps anatomy centred consistently
@@ -630,3 +800,8 @@ vertically and has equal minimal margins outside the leftmost and rightmost
 image edges. The **NI** label is placed close to its corresponding intensity
 scale while remaining legible. All vertical scale labels, including **HU** and
 **NI**, use one fixed horizontal coordinate so they align across figure rows.
+Display limits are the 15th and 95th percentiles of non-background target
+pixels (`NI > 0.02`) and are shared by every reconstruction and target in a
+row. HU panels use LION's normalised-intensity-to-HU conversion, while metric
+calculation remains in NI. The 50 mm scale bars use the configured 300 mm field
+of view rather than patient-native DICOM spacing.
