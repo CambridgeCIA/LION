@@ -8,11 +8,11 @@ from LION.experiments.ct_experiments import (
     PaDISFanBeam120LimitedCTRecon,
     PaDISFanBeam180CTRecon,
 )
-from scripts.paper_scripts.PaDIS.PaDIS_LIDC_reconstruction import (
+from PaDIS_LIDC_reconstruction import (
     build_arg_parser,
     build_sampler_params,
 )
-from scripts.paper_scripts.PaDIS.PaDIS_experiments import (
+from PaDIS_experiments import (
     FIGURE_PRESET_GROUPS,
     PRESETS,
     apply_generation_checkpoint_defaults,

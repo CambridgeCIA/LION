@@ -6,16 +6,25 @@ import subprocess
 
 LION_ROOT = Path(__file__).resolve().parents[2]
 GCP_RUNNER = (
-    LION_ROOT / "scripts/paper_scripts/PaDIS/gcp/run_PaDIS_GCP_spot_training.sh"
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/gcp/run_PaDIS_GCP_spot_training.sh"
 )
 GCP_MANUAL_RECONSTRUCTION = (
-    LION_ROOT / "scripts/paper_scripts/PaDIS/gcp/run_PaDIS_GCP_manual_reconstruction.sh"
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/gcp/run_PaDIS_GCP_manual_reconstruction.sh"
 )
-GCP_STARTUP = LION_ROOT / "scripts/paper_scripts/PaDIS/gcp/padis_gcp_spot_startup.sh"
+GCP_STARTUP = (
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/gcp/padis_gcp_spot_startup.sh"
+)
 GCP_METADATA_STARTUP = (
-    LION_ROOT / "scripts/paper_scripts/PaDIS/gcp/padis_gcp_spot_metadata_startup.sh"
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/gcp/padis_gcp_spot_metadata_startup.sh"
 )
-GCP_SHUTDOWN = LION_ROOT / "scripts/paper_scripts/PaDIS/gcp/padis_gcp_spot_shutdown.sh"
+GCP_SHUTDOWN = (
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/gcp/padis_gcp_spot_shutdown.sh"
+)
 DEFAULT_GCP_RUN_NAME = "PaDIS-Reproduction-GCP"
 
 
@@ -367,13 +376,13 @@ def test_gcp_spot_runner_subtracts_previous_runtime_from_wall_budget(tmp_path):
     assert "--max-train-seconds 40" in whole_command
 
 
-def test_gcp_spot_runner_uses_finalize_window_when_budget_is_exhausted(tmp_path):
+def test_gcp_spot_runner_uses_finalise_window_when_budget_is_exhausted(tmp_path):
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "patch_lidc_default",
         extra_env={
             "PADIS_GCP_PATCH_TRAIN_TIME": "120",
-            "PADIS_GCP_FINALIZE_SECONDS": "17",
+            "PADIS_GCP_FINALISE_SECONDS": "17",
         },
         runtime_seconds={"patch_lidc_default": 130},
     )
@@ -426,7 +435,7 @@ def test_gcp_shutdown_hook_refreshes_active_runtime_ledger(tmp_path):
 def test_gcp_startup_hook_dry_run_prepares_env_and_runner_command(tmp_path):
     data_mount = tmp_path / "mnt_data"
     lion_root = data_mount / "LION"
-    runner_dir = lion_root / "scripts/paper_scripts/PaDIS/gcp"
+    runner_dir = lion_root / "scripts/paper_scripts/PaDIS-Reproduction/platforms/gcp"
     runner_dir.mkdir(parents=True)
     runner_path = runner_dir / "run_PaDIS_GCP_spot_training.sh"
     runner_path.symlink_to(GCP_RUNNER)
@@ -486,7 +495,7 @@ def test_gcp_startup_hook_dry_run_prepares_env_and_runner_command(tmp_path):
 def test_gcp_metadata_startup_bootstrap_delegates_after_data_mount(tmp_path):
     data_mount = tmp_path / "mnt_data"
     lion_root = data_mount / "LION"
-    startup_dir = lion_root / "scripts/paper_scripts/PaDIS/gcp"
+    startup_dir = lion_root / "scripts/paper_scripts/PaDIS-Reproduction/platforms/gcp"
     startup_dir.mkdir(parents=True)
     startup_hook = startup_dir / "padis_gcp_spot_startup.sh"
     startup_hook.write_text(

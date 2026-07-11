@@ -1,6 +1,6 @@
 import torch
 
-from scripts.paper_scripts.PaDIS.PaDIS_make_paper_figures import (
+from PaDIS_make_paper_figures import (
     ADDITIONAL_EXAMPLE_OFFSETS,
     IMPLEMENTED_FIGURES,
     PATCH_SIZE_EXAMPLE_OFFSETS,

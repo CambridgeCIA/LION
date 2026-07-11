@@ -1,6 +1,6 @@
 import json
 
-from scripts.paper_scripts.PaDIS.PaDIS_reconcile_reconstruction_manifest import (
+from PaDIS_reconcile_reconstruction_manifest import (
     completed_output_exists,
 )
 

@@ -121,7 +121,7 @@ On the Cambridge Slurm cluster, submit the cache preparation job from the LION r
 
 ```bash
 cd /home/tjh200/DiS/Project/LION
-scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_prepare_full_cache.sh
+scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/submit_PaDIS_A100_prepare_full_cache.sh
 ```
 
 By default this submits a CPU job on the `icelake` partition with 8 CPU cores and 128G memory. It builds zstd-compressed archives for:

@@ -9,7 +9,7 @@ from LION.CTtools.ct_geometry import Geometry
 from LION.models.CNNs.drunet import DRUNet
 from LION.reconstructors import PaDIS
 from LION.utils.parameter import LIONParameter
-from scripts.paper_scripts.PaDIS.PaDIS_LIDC_reconstruction import (
+from PaDIS_LIDC_reconstruction import (
     PnPDenoiser,
     fdk_baseline,
     load_pnp_denoiser,

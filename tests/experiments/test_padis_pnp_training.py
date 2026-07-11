@@ -9,8 +9,8 @@ warnings.filterwarnings(
     category=DeprecationWarning,
 )
 
-from scripts.paper_scripts.PaDIS.PaDIS_LIDC_256 import run_prefix_for_prior_mode
-from scripts.paper_scripts.PaDIS.PaDIS_LIDC_PnP_denoiser import (
+from PaDIS_LIDC_256 import run_prefix_for_prior_mode
+from PaDIS_LIDC_PnP_denoiser import (
     build_arg_parser,
     cuda_device_index,
     validate_args,

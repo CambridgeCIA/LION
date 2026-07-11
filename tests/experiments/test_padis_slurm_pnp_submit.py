@@ -5,7 +5,8 @@ import subprocess
 
 LION_ROOT = Path(__file__).resolve().parents[2]
 SUBMIT_PNP = (
-    LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_pnp_training.sh"
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/submit_PaDIS_A100_pnp_training.sh"
 )
 
 
@@ -91,7 +92,8 @@ def test_standalone_pnp_submitter_preserves_explicit_output_root_and_run_name(tm
 
 def test_pnp_slurm_job_forwards_training_cli_options():
     script = (
-        LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/slurm_PaDIS_A100_pnp_training.sh"
+        LION_ROOT
+        / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/slurm_PaDIS_A100_pnp_training.sh"
     ).read_text()
 
     expected_flags = {

@@ -12,9 +12,9 @@ warnings.filterwarnings(
     category=DeprecationWarning,
 )
 
-from scripts.paper_scripts.PaDIS import PaDIS_LIDC_256 as lidc256
-from scripts.paper_scripts.PaDIS import PaDIS_LIDC_512 as lidc512
-from scripts.paper_scripts.PaDIS import PaDIS_LIDC_PnP_denoiser as pnp
+import PaDIS_LIDC_256 as lidc256
+import PaDIS_LIDC_512 as lidc512
+import PaDIS_LIDC_PnP_denoiser as pnp
 
 
 class FakeRun:

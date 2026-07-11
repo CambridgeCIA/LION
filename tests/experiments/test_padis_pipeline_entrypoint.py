@@ -4,7 +4,9 @@ import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PIPELINE = ROOT / "scripts/paper_scripts/PaDIS/PaDIS_run_pipeline.sh"
+PIPELINE = (
+    ROOT / "scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh"
+)
 
 
 def _dry_run(backend: str):
@@ -54,7 +56,10 @@ def test_unified_pipeline_requires_a_backend():
 
 def test_unified_pipeline_finishes_with_generation_tables_and_figures():
     pipeline_text = PIPELINE.read_text()
-    finaliser = ROOT / "scripts/paper_scripts/PaDIS/PaDIS_finalise_pipeline.sh"
+    finaliser = (
+        ROOT
+        / "scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_finalise_pipeline.sh"
+    )
     finaliser_text = finaliser.read_text()
 
     assert "PaDIS_finalise_pipeline.sh" in pipeline_text

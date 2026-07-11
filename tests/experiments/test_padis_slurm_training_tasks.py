@@ -2,22 +2,29 @@ import os
 from pathlib import Path
 import subprocess
 
-from scripts.paper_scripts.PaDIS.PaDIS_run_reconstruction_matrix import MODEL_TASKS
+from PaDIS_run_reconstruction_matrix import MODEL_TASKS
 
 
 LION_ROOT = Path(__file__).resolve().parents[2]
-COMMON = LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/padis_a100_common.sh"
+COMMON = (
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/padis_a100_common.sh"
+)
 SUBMIT_ALL_TRAINING = (
-    LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_all_training.sh"
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/submit_PaDIS_A100_all_training.sh"
 )
 TRAINING_ARRAY = (
-    LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/slurm_PaDIS_A100_training_array.sh"
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/slurm_PaDIS_A100_training_array.sh"
 )
 LEGACY_LIDC_256 = (
-    LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/slurm_PaDIS_LIDC_256.sh"
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/slurm_PaDIS_LIDC_256.sh"
 )
 PNP_TRAINING = (
-    LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/slurm_PaDIS_A100_pnp_training.sh"
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/slurm_PaDIS_A100_pnp_training.sh"
 )
 
 

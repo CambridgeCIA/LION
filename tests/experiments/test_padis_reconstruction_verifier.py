@@ -1,6 +1,6 @@
 import json
 
-from scripts.paper_scripts.PaDIS.PaDIS_verify_reconstruction_matrix import (
+from PaDIS_verify_reconstruction_matrix import (
     build_arg_parser,
     check_records,
     find_records,

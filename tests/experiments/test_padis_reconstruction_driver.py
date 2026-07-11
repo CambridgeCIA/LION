@@ -9,8 +9,8 @@ from torch import nn
 from LION.CTtools.ct_geometry import Geometry
 from LION.operators import Operator
 from LION.utils.parameter import LIONParameter
-from scripts.paper_scripts.PaDIS import PaDIS_LIDC_reconstruction as recon_script
-from scripts.paper_scripts.PaDIS.PaDIS_LIDC_reconstruction import (
+import PaDIS_LIDC_reconstruction as recon_script
+from PaDIS_LIDC_reconstruction import (
     PnPDenoiser,
     run_reconstruction_variant,
     validate_public_repo_method,

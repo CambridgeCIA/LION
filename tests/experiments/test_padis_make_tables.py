@@ -1,7 +1,7 @@
 import csv
 import json
 
-from scripts.paper_scripts.PaDIS.PaDIS_make_tables import (
+from PaDIS_make_tables import (
     DEFAULT_CSV_OUTPUT_DIR,
     DEFAULT_INPUT_CSV,
     DEFAULT_OUTPUT_TEX,

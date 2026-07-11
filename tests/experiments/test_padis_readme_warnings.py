@@ -1,7 +1,10 @@
 from pathlib import Path
 
 
-README = Path(__file__).resolve().parents[2] / "scripts/paper_scripts/PaDIS/README.md"
+README = (
+    Path(__file__).resolve().parents[2]
+    / "scripts/paper_scripts/PaDIS-Reproduction/README.md"
+)
 
 
 def test_padis_readme_warns_about_lion_native_method_substitutions():

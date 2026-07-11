@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 from collections import Counter
 
-from scripts.paper_scripts.PaDIS.PaDIS_run_reconstruction_matrix import (
+from PaDIS_run_reconstruction_matrix import (
     MODEL_TASKS,
     checkpoint_name_for_policy,
 )
@@ -12,19 +12,20 @@ from scripts.paper_scripts.PaDIS.PaDIS_run_reconstruction_matrix import (
 
 LION_ROOT = Path(__file__).resolve().parents[2]
 SUBMIT_RECONSTRUCTION = (
-    LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_reconstruction.sh"
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/submit_PaDIS_A100_reconstruction.sh"
 )
 SMOKE_RECONSTRUCTION = (
     LION_ROOT
-    / "scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_reconstruction_smoke.sh"
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/submit_PaDIS_A100_reconstruction_smoke.sh"
 )
 RECONSTRUCTION_ARRAY = (
     LION_ROOT
-    / "scripts/paper_scripts/PaDIS/slurm/slurm_PaDIS_A100_reconstruction_array.sh"
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/slurm_PaDIS_A100_reconstruction_array.sh"
 )
 RECONSTRUCTION_VERIFY = (
     LION_ROOT
-    / "scripts/paper_scripts/PaDIS/slurm/slurm_PaDIS_A100_reconstruction_verify.sh"
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/slurm_PaDIS_A100_reconstruction_verify.sh"
 )
 
 

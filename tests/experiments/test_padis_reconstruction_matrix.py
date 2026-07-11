@@ -5,11 +5,11 @@ import sys
 
 import pytest
 
-from scripts.paper_scripts.PaDIS.PaDIS_hparam_defaults import (
+from PaDIS_hparam_defaults import (
     HparamDefaults,
     build_defaults_payload,
 )
-from scripts.paper_scripts.PaDIS.PaDIS_run_reconstruction_matrix import (
+from PaDIS_run_reconstruction_matrix import (
     build_arg_parser,
     build_jobs,
     checkpoint_name_for_policy,
@@ -19,10 +19,10 @@ from scripts.paper_scripts.PaDIS.PaDIS_run_reconstruction_matrix import (
     ordered_jobs,
     resolve_training_root,
 )
-from scripts.paper_scripts.PaDIS.PaDIS_summarize_hparam_tuning import sort_rows
+from PaDIS_summarize_hparam_tuning import sort_rows
 
 
-MATRIX_SCRIPT = "scripts/paper_scripts/PaDIS/PaDIS_run_reconstruction_matrix.py"
+MATRIX_SCRIPT = "scripts/paper_scripts/PaDIS-Reproduction/reconstruction/PaDIS_run_reconstruction_matrix.py"
 
 
 def _write_hparam_record(
@@ -471,7 +471,7 @@ def test_checked_in_hparam_defaults_cover_slurm_default_matrix(tmp_path):
         Path(__file__).parents[2]
         / "scripts"
         / "paper_scripts"
-        / "PaDIS"
+        / "PaDIS-Reproduction"
         / "config"
         / "reconstruction_hparam_defaults.json"
     )

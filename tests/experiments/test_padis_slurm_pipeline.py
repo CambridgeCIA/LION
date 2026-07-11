@@ -6,7 +6,10 @@ from collections import Counter
 
 
 LION_ROOT = Path(__file__).resolve().parents[2]
-PIPELINE = LION_ROOT / "scripts/paper_scripts/PaDIS/slurm/submit_PaDIS_A100_pipeline.sh"
+PIPELINE = (
+    LION_ROOT
+    / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/submit_PaDIS_A100_pipeline.sh"
+)
 
 
 def _install_fake_sbatch(tmp_path):
