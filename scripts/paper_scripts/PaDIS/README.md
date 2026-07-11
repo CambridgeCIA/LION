@@ -27,8 +27,8 @@ The complete pipeline is:
 5. Build a deterministic reconstruction manifest, check every required
    checkpoint, and execute unfinished jobs.
 6. Run unconditional generation where requested.
-7. Verify saved metrics and produce JSON/CSV result tables with bootstrap
-   uncertainty.
+7. Verify saved metrics, calculate timing summaries, and produce the complete
+   publication table and figure set.
 
 The GCP spot runner performs steps 1-5 automatically. The Colab/manual runner
 checks for missing trainable inputs, runs the reconstruction matrix, and runs
@@ -38,6 +38,7 @@ generation before the expensive fixed-overlap and 512-resolution tail jobs.
 
 | File | Purpose |
 |---|---|
+| `PaDIS_run_pipeline.sh` | Unified complete training, inference, generation, table, and figure entry point for GCP or Slurm. |
 | `PaDIS_LIDC_256.py` | Train 256-resolution patch or whole-image diffusion priors. |
 | `PaDIS_LIDC_512.py` | Train the native-resolution patch prior. |
 | `PaDIS_LIDC_PnP_denoiser.py` | Train unconditioned or noise-conditioned DRUNet models. |
@@ -58,6 +59,100 @@ generation before the expensive fixed-overlap and 512-resolution tail jobs.
 
 Run scripts from the LION repository root. Use each program's `--help` output
 for diagnostic options not documented here.
+
+### Unified pipeline entry point
+
+#### Prerequisites and preflight
+
+Run the unified script from the root of a current LION checkout. Before a real
+launch, the following must be true for either backend:
+
+- `LION_DATA_PATH` identifies the persistent dataset root and contains the
+  processed LIDC-IDRI patient folders plus the `256-default`, `256-full`, and
+  `512-default` cache archives listed below.
+- The checkout contains the committed
+  `config/reconstruction_hparam_defaults.json` used to build the 109-job
+  reconstruction manifest.
+- The `lion-dev` Conda/Mamba environment has been created from LION's current
+  environment specification and includes PyTorch, ASTRA, and tomosipo.
+- A CUDA GPU is visible to PyTorch and `nvidia-smi`.
+- W&B authentication is available when `PADIS_WANDB_MODE=online`; set
+  `PADIS_WANDB_MODE=offline` deliberately when network logging is not wanted.
+- The persistent experiment root is writable and has enough space for full
+  checkpoints, reconstruction tensors, previews, logs, and cache archives.
+
+Use the wrapper dispatch check before launching expensive work:
+
+```bash
+bash scripts/paper_scripts/PaDIS/PaDIS_run_pipeline.sh --backend gcp --dry-run
+bash scripts/paper_scripts/PaDIS/PaDIS_run_pipeline.sh --backend slurm --dry-run
+```
+
+This validates backend selection only. The backend runners perform their own
+dataset, checkpoint, GPU, and scheduler checks during the real launch.
+
+For **GCP**, use either the supported Colab notebook/startup hook, which mounts
+`padis-bucket` at `/mnt/data` and provisions the environment, or prepare an
+equivalent VM manually. The normal persistent layout is:
+
+```bash
+export LION_DATA_PATH=/mnt/data/Datasets
+export LION_EXPERIMENTS_PATH=/mnt/data/Datasets/experiments
+```
+
+The GCP runner stages expanded training caches under `/mnt/ram-disk`; the VM
+must have sufficient RAM and permission to create that temporary filesystem.
+The bucket mount must be active before launch. Spot pre-emption is supported:
+rerun the identical command with the same `PADIS_GCP_RUN_NAME` to resume.
+
+For **Slurm**, run on a login node with `sbatch`, `squeue`, and `scancel`
+available. The defaults target the Cambridge CSD3 Ampere setup and accounts
+shown in the Slurm scripts. On another cluster, set at least
+`PADIS_SLURM_ACCOUNT`, `PADIS_CACHE_SLURM_ACCOUNT`, relevant partitions, and
+`LION_DATA_PATH`. The compute nodes must see the same repository, dataset,
+cache, and experiment paths. The common Slurm helper activates `lion-dev`
+(falling back to `padis-dev`) through the cluster module/Mamba setup. Set a
+stable `PADIS_RUN_STAMP` when resubmitting or inspecting one run; otherwise a
+new timestamped training and reconstruction root is created.
+
+Common useful preflight commands are:
+
+```bash
+test -d "$LION_DATA_PATH/processed/LIDC-IDRI"
+test -d "$LION_DATA_PATH/processed/LIDC-IDRI-cache/padis_256/archives"
+test -d "$LION_DATA_PATH/processed/LIDC-IDRI-cache/padis_512/archives"
+conda run -n lion-dev python -c 'import torch; print(torch.cuda.is_available())'
+```
+
+Run the complete synchronous GCP pipeline with:
+
+```bash
+bash scripts/paper_scripts/PaDIS/PaDIS_run_pipeline.sh --backend gcp
+```
+
+Submit the equivalent dependency-linked Slurm pipeline with:
+
+```bash
+bash scripts/paper_scripts/PaDIS/PaDIS_run_pipeline.sh --backend slurm
+```
+
+The wrapper deliberately delegates to the established backend scripts so their
+checkpointing, restart state, task arrays, and `PADIS_*` controls remain the
+source of truth. GCP enables both PnP tasks and reconstruction by default.
+Slurm enables both PnP submissions, the 109-job reconstruction array, the
+post-reconstruction verifier, and the finaliser by default. The finaliser waits
+for verification (or directly for reconstruction when verification is
+disabled), then generates unconditional samples and rebuilds every table and
+figure. Set the corresponding existing environment variable to `0` to omit a
+phase. Add `--dry-run` to inspect backend selection without running or
+submitting anything.
+
+The unified entry point covers training, validation-intensive continuation,
+both PnP models, reconstruction, unconditional generation, verification, all
+publication tables, and all implemented figures. GCP runs the finalisation
+phase synchronously after reconstruction. Slurm submits a dependent GPU
+finaliser after reconstruction/verification; set `PADIS_SUBMIT_FINALISE=0` only
+when generation and publication outputs should be omitted deliberately.
 
 ## Data and persistent paths
 

@@ -415,7 +415,7 @@ remaining_budget_seconds() {
         elapsed="$(task_elapsed_seconds "$task_name")"
         remaining=$((budget - elapsed))
         if [ "$remaining" -le 0 ]; then
-                remaining="$PADIS_GCP_FINALIZE_SECONDS"
+                remaining="$PADIS_GCP_FINALISE_SECONDS"
         fi
         printf '%s\n' "$remaining"
 }
@@ -1536,7 +1536,7 @@ PADIS_DATA_FOLDER="${PADIS_DATA_FOLDER:-}"
 
 PATCH_TRAIN_SECONDS="$(time_to_seconds "${PADIS_GCP_PATCH_TRAIN_TIME:-06:00:00}")"
 WHOLE_TRAIN_SECONDS="$(time_to_seconds "${PADIS_GCP_WHOLE_TRAIN_TIME:-18:00:00}")"
-PADIS_GCP_FINALIZE_SECONDS="${PADIS_GCP_FINALIZE_SECONDS:-900}"
+PADIS_GCP_FINALISE_SECONDS="${PADIS_GCP_FINALISE_SECONDS:-900}"
 VALIDATION_HEAVY_SECONDS="$(time_to_seconds "${PADIS_GCP_VALIDATION_HEAVY_TIME:-06:00:00}")"
 PADIS_GCP_VALIDATION_HEAVY_PHASE="${PADIS_GCP_VALIDATION_HEAVY_PHASE:-1}"
 PADIS_GCP_VALIDATION_HEAVY_MAX_PATCHES="${PADIS_GCP_VALIDATION_HEAVY_MAX_PATCHES:-4000}"

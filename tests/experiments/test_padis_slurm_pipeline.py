@@ -138,6 +138,7 @@ def test_pipeline_can_submit_reconstruction_when_pnp_row_is_excluded(tmp_path):
     assert "slurm_PaDIS_A100_pnp_training.sh" not in sbatch_log
     assert "slurm_PaDIS_A100_reconstruction_array.sh" in sbatch_log
     assert "slurm_PaDIS_A100_reconstruction_verify.sh" in sbatch_log
+    assert "slurm_PaDIS_A100_finalise.sh" in sbatch_log
     assert "--array 0-1%10" in sbatch_log
     assert (
         "slurm_PaDIS_A100_reconstruction_verify.sh | "
@@ -236,6 +237,7 @@ def test_pipeline_full_default_reconstruction_matrix_waits_for_training_and_pnp(
     assert "slurm_PaDIS_A100_reconstruction_verify.sh" in sbatch_log
     assert "--array 0-108%10" in sbatch_log
     assert "--dependency afterok:job104:job105" in sbatch_log
+    assert "--dependency afterok:job107" in sbatch_log
     assert (
         "slurm_PaDIS_A100_reconstruction_verify.sh | "
         "PADIS_RECON_EXPECTED_RECORDS=109 PADIS_RECON_EXPECTED_SAMPLES=25 "

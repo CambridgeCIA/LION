@@ -259,6 +259,7 @@ fi
 
 recon_job=""
 verify_job=""
+finalise_job=""
 if [ "${PADIS_SUBMIT_RECONSTRUCTION:-0}" = "1" ]; then
         export PADIS_RECON_ROOT="${PADIS_RECON_ROOT:-$run_root/final_real_runs/a100_reconstruction_$run_stamp}"
         export PADIS_RECON_MODELS="${PADIS_RECON_MODELS:-method_default}"
@@ -439,6 +440,17 @@ EOF
                 )"
                 echo "Submitted reconstruction verifier: $verify_job after $recon_job"
         fi
+        if [ "${PADIS_SUBMIT_FINALISE:-1}" = "1" ]; then
+                finalise_predecessor="${verify_job:-$recon_job}"
+                finalise_dependency="afterok:$finalise_predecessor"
+                finalise_job="$(
+                        sbatch --parsable -A "$account" --time "${PADIS_FINALISE_TIME:-04:00:00}" \
+                                --dependency "$finalise_dependency" --export=ALL \
+                                --output "$run_root/debug_runs/slurm_logs/%x-%j.out" \
+                                "$SCRIPT_DIR/slurm_PaDIS_A100_finalise.sh"
+                )"
+                echo "Submitted generation/table/figure finaliser: $finalise_job after $finalise_predecessor"
+        fi
 else
         echo "Skipping reconstruction submission because PADIS_SUBMIT_RECONSTRUCTION=0"
 fi
@@ -463,10 +475,11 @@ Real training: $real_job
 PnP training: ${pnp_job:-not submitted}
 Reconstruction: ${recon_job:-not submitted}
 Verifier: ${verify_job:-not submitted}
+Finaliser: ${finalise_job:-not submitted}
 
 Monitor:
-  squeue -j $checks_job,$cache_job,$pilot_job,$real_job${pnp_job:+,$pnp_job}${recon_job:+,$recon_job}${verify_job:+,$verify_job}
+  squeue -j $checks_job,$cache_job,$pilot_job,$real_job${pnp_job:+,$pnp_job}${recon_job:+,$recon_job}${verify_job:+,$verify_job}${finalise_job:+,$finalise_job}
 
 Cancel all:
-  scancel $checks_job $cache_job $pilot_job $real_job${pnp_job:+ $pnp_job}${recon_job:+ $recon_job}${verify_job:+ $verify_job}
+  scancel $checks_job $cache_job $pilot_job $real_job${pnp_job:+ $pnp_job}${recon_job:+ $recon_job}${verify_job:+ $verify_job}${finalise_job:+ $finalise_job}
 EOF
