@@ -560,7 +560,7 @@ def build_arg_parser():
         "--prior-mode",
         choices=("patch", "whole-image"),
         default="patch",
-        help="Train the PaDIS patch prior or the paper's whole-image diffusion baseline.",
+        help="Train the PaDIS patch prior or Hu et al.'s whole-image diffusion baseline.",
     )
     parser.add_argument(
         "--patch-size-preset",

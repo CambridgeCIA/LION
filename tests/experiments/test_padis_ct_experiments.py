@@ -105,7 +105,7 @@ def test_public_repo_branch_uses_paper_sigma_schedule_with_public_mechanics():
         "ct_20": 0.002,
         "ct_8": 0.003,
         "ct_60": 0.002,
-        "ct_fanbeam_180": 0.002,
+        "ct_20_limited_angle_120": 0.002,
         "ct_512_60": 0.002,
     }
     parser = build_arg_parser()

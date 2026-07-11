@@ -135,7 +135,7 @@ def pilot_candidates() -> list[Candidate]:
     candidates.extend(
         Candidate(
             name=f"tv_lam_{safe_name(f'{lam:g}')}",
-            method="admm_tv",
+            method="cp_tv",
             implementation="lion_physics",
             prior=None,
             args=("--tv-lambda", f"{lam:g}", "--tv-iterations", "500"),
@@ -335,7 +335,7 @@ def broad_candidates() -> list[Candidate]:
     candidates.extend(
         Candidate(
             name=f"tv_lam_{safe_name(f'{lam:g}')}__iters_{iterations}",
-            method="admm_tv",
+            method="cp_tv",
             implementation="lion_physics",
             prior=None,
             args=(
@@ -356,7 +356,7 @@ def focused_candidates() -> list[Candidate]:
     candidates.extend(
         Candidate(
             name=f"tv_lam_{safe_name(f'{lam:g}')}",
-            method="admm_tv",
+            method="cp_tv",
             implementation="lion_physics",
             prior=None,
             args=("--tv-lambda", f"{lam:g}", "--tv-iterations", "500"),
@@ -461,7 +461,7 @@ def padis_dps_lion_full_candidates() -> list[Candidate]:
     """One-factor-plus-core-grid sweep for PaDIS DPS LION-physics settings.
 
     This intentionally excludes sigma_min and sigma_max so the CT noise range
-    remains the paper range for each experiment. It also keeps the LION-physics
+    remains the range used by Hu et al. for each experiment. It also keeps the LION-physics
     data objective, CT scaling, FDK filter, and patch geometry fixed, so the
     sweep focuses on sampler strength, schedule shape, NFE allocation,
     initialization, clipping, and Langevin noise scale.
@@ -526,7 +526,7 @@ def padis_dps_lion_full_candidates() -> list[Candidate]:
             str(num_steps),
             "--inner-steps",
             str(inner_steps),
-            notes="Change NFE allocation while keeping the paper sigma range.",
+            notes="Change NFE allocation while keeping the sigma range of Hu et al.",
         )
 
     for rho in (3, 5, 7, 10):
@@ -610,7 +610,7 @@ def padis_dps_lion_full_candidates() -> list[Candidate]:
             f"{scale:g}",
         )
 
-    # 512-specific stability diagnostics: keep the paper/LION sigma schedule
+    # 512-specific stability diagnostics: keep the Hu et al./LION sigma schedule
     # and default NFE allocation, but reduce stochasticity without disabling it.
     for zeta, eps, noise_scale in (
         (4.25, 0.5, 0.1),
@@ -1159,7 +1159,7 @@ def consensus_24h_candidates() -> list[Candidate]:
     """Compact validation grid for broad method coverage within a day locally.
 
     This set is intended for staged sweeps with --only-methods and
-    --only-implementations. It keeps the paper sigma endpoints, LION-physics
+    --only-implementations. It keeps the sigma endpoints of Hu et al., LION-physics
     data objective/scaling, FDK settings, and patch geometry fixed; only
     method-level solver and sampler strengths are varied.
     """
@@ -1167,7 +1167,7 @@ def consensus_24h_candidates() -> list[Candidate]:
 
     candidates.extend(
         lion_physics_candidate(
-            method="admm_tv",
+            method="cp_tv",
             name=f"tv_lam_{safe_name(f'{lam:g}')}__iters_{iterations}",
             args=("--tv-lambda", f"{lam:g}", "--tv-iterations", str(iterations)),
         )
@@ -1424,7 +1424,7 @@ def lion_physics_full_candidates() -> list[Candidate]:
 
     candidates.extend(
         lion_physics_candidate(
-            method="admm_tv",
+            method="cp_tv",
             name=f"tv_lam_{safe_name(f'{lam:g}')}__iters_{iterations}",
             args=("--tv-lambda", f"{lam:g}", "--tv-iterations", str(iterations)),
         )
@@ -1433,7 +1433,7 @@ def lion_physics_full_candidates() -> list[Candidate]:
     )
     candidates.append(
         lion_physics_candidate(
-            method="admm_tv",
+            method="cp_tv",
             name="tv_non_negative",
             args=("--tv-non-negativity",),
         )
@@ -1598,7 +1598,7 @@ def reproduction_candidates() -> list[Candidate]:
 
     for lam in (5e-4, 1e-3, 2e-3):
         add(
-            "admm_tv",
+            "cp_tv",
             "lion_physics",
             None,
             f"lambda_{safe_name(f'{lam:g}')}",

@@ -25,7 +25,7 @@ tuned variable.
 
 | Implementation | Method | Model/prior | Experiment | Attempted hyperparameter values |
 |---|---|---|---|---|
-| LION | CP (inference identifier `admm_tv`) | patch | `ct_20,ct_8` | `lambda={0.0005,0.001,0.002}`, 1000 iterations |
+| LION | CP (inference identifier `cp_tv`) | patch | `ct_20,ct_8` | `lambda={0.0005,0.001,0.002}`, 1000 iterations |
 | LION | PnP | patch | `ct_20,ct_8` | `(eta,iterations)={(5e-6,100),(1e-5,40),(1e-5,60),(1e-5,100),(2e-5,40),(2e-5,60),(2e-5,100),(3e-5,40),(3e-5,60),(3e-5,100),(5e-5,60),(5e-5,100)}`; then noise `{0.01,0.03,0.05}` at `eta=3e-5`, 60 iterations |
 | LION | PaDIS-DPS | patch/default | `ct_20,ct_8` | `zeta={3.5,3.75,4,4.25}`, `epsilon={0.3,0.5}`; initialization/clipping follow-up selected Gaussian initialization with no initial/output clipping |
 | Public-compatible | PaDIS-DPS | patch/default | `ct_20,ct_8` | `zeta={0.15,0.2}`, `epsilon={0.5,0.75}` |
@@ -46,7 +46,7 @@ tuned variable.
 | LION | VE-DDNM | whole/default | `ct_20` | sampling `epsilon={0.05,0.1,0.2}` |
 | Public-compatible | PaDIS-DPS | patch/native-512 | `ct_512_60` | `(zeta,epsilon)={(0.4,0.5),(0.5,0.5),(0.8,0.5),(1.2,0.5),(1.6,0.5),(1.6,0.75)}` |
 | LION | PaDIS-DPS | patch/native-512 | `ct_512_60` | `zeta={0.8,1.2,1.6,2}`, `epsilon=0.5` |
-| LION | CP (inference identifier `admm_tv`) | patch/native-512 | `ct_512_60` | `lambda={0.001,0.002}`, 1000 iterations |
+| LION | CP (inference identifier `cp_tv`) | patch/native-512 | `ct_512_60` | `lambda={0.001,0.002}`, 1000 iterations |
 | LION | PaDIS-DPS | patch/full | `ct_20` | `zeta={2,4.5,4.75,5}`, `epsilon=0.5`, Gaussian initialization, no clipping |
 | LION | DPS | whole/full | `ct_20` | `zeta={4,5}`, `epsilon=0.5` |
 

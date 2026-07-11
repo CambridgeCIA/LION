@@ -14,7 +14,7 @@
     "ct_60": [
       "ct_20"
     ],
-    "ct_fanbeam_180": [
+    "ct_20_limited_angle_120": [
       "ct_20"
     ],
     "ct_512_60": [
@@ -23,7 +23,7 @@
   },
   "defaults": [
     {
-      "method": "admm_tv",
+      "method": "cp_tv",
       "implementation": "lion_physics",
       "prior": "patch",
       "model": "patch_lidc_default",
@@ -621,7 +621,7 @@
       "expected_experiments": 2
     },
     {
-      "method": "admm_tv",
+      "method": "cp_tv",
       "implementation": "lion_physics",
       "prior": "patch",
       "model": "patch_lidc_512",

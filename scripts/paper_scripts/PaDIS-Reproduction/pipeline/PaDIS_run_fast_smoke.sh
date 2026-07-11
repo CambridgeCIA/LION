@@ -34,7 +34,7 @@ matrix=(
         --output-root "$PADIS_FAST_SMOKE_ROOT/reconstruction"
         --checkpoint-policy min_intense_val --hparam-defaults json
         --models method_default
-        --methods baseline,admm_tv,pnp_admm,whole_image_diffusion,padis_dps
+        --methods baseline,cp_tv,pnp_admm,whole_image_diffusion,padis_dps
         --experiments ct_20 --ablations none --implementations method_default
         --geometries lion --split test --max-samples 1 --start-index 0 --seed 33
         --device cuda --pnp-cg-iterations 50 --pnp-cg-tolerance 1e-7

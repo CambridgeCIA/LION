@@ -37,7 +37,7 @@ SWEEPS = (
     Sweep(
         "cp",
         "patch_lidc_default",
-        "admm_tv",
+        "cp_tv",
         "lion_physics",
         "ct_20,ct_8",
         "admm_tv__lion_physics__any",
@@ -267,7 +267,7 @@ SWEEPS = (
     Sweep(
         "native512_cp",
         "patch_lidc_512",
-        "admm_tv",
+        "cp_tv",
         "lion_physics",
         "ct_512_60",
         "admm_tv__lion_physics__any",

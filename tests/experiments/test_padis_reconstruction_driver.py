@@ -165,10 +165,10 @@ def test_admm_tv_driver_uses_lion_tv_path(monkeypatch, tmp_path):
 
     monkeypatch.setattr(recon_script, "tv_min", fake_tv_min)
 
-    summary = _run_driver(tmp_path, "admm_tv")
+    summary = _run_driver(tmp_path, "cp_tv")
 
     assert summary["mean_psnr"] == float("inf")
-    with open(tmp_path / "admm_tv" / "metrics.json") as f:
+    with open(tmp_path / "cp_tv" / "metrics.json") as f:
         payload = json.load(f)
     assert payload["method_settings"]["tv_lambda"] == 0.005
     assert payload["method_settings"]["tv_iterations"] == 1
@@ -381,7 +381,7 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
             "--implementation",
             "lion_physics",
             "--experiment",
-            "ct_fanbeam_180",
+            "ct_20_limited_angle_120",
         ]
     )
     whole_fanbeam_params = recon_script.build_sampler_params(

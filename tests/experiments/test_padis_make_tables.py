@@ -34,7 +34,7 @@ def test_fanbeam_analytic_baseline_is_labelled_fdk():
 def test_historical_admm_tv_identifier_is_presented_as_cp_with_tv_prior():
     assert _method_labels(
         {
-            "method": "admm_tv",
+            "method": "cp_tv",
             "prior_mode": "patch",
             "matrix_group": "main",
         }
@@ -69,7 +69,7 @@ def test_timing_calculation_supports_gcp_and_slurm_log_names(tmp_path):
     jobs = [
         {
             "implementation": "lion_physics",
-            "method": "admm_tv",
+            "method": "cp_tv",
             "experiment": "ct_20",
             "matrix_group": "main",
         }
