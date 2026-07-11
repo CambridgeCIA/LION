@@ -1,13 +1,18 @@
+"""Test tv min behaviour."""
+
 import importlib
 
 import torch
 
 
 class FakeOperator:
+    """Provide the fake operator test double used by this module."""
+
     domain_shape = (1, 2, 2)
 
 
 def test_tv_min_passes_each_sinogram_item_to_backend(monkeypatch):
+    """Verify that tv min passes each sinogram item to backend."""
     tv_module = importlib.import_module("LION.classical_algorithms.tv_min")
     seen = []
 
@@ -21,6 +26,7 @@ def test_tv_min_passes_each_sinogram_item_to_backend(monkeypatch):
         progress_bar=False,
         callbacks=(),
     ):
+        """Handle fake tv min2d for the PaDIS workflow."""
         del op, lam, num_iterations, L, non_negativity, progress_bar, callbacks
         seen.append(y.clone())
         return torch.full(FakeOperator.domain_shape, float(len(seen)))

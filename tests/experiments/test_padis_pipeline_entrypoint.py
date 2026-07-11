@@ -1,3 +1,5 @@
+"""Test padis pipeline entrypoint behaviour."""
+
 from pathlib import Path
 import os
 import subprocess
@@ -10,6 +12,7 @@ PIPELINE = (
 
 
 def _dry_run(backend: str):
+    """Create dry run test support data."""
     return subprocess.run(
         ["bash", str(PIPELINE), "--backend", backend, "--dry-run"],
         cwd=ROOT,
@@ -21,6 +24,7 @@ def _dry_run(backend: str):
 
 
 def test_unified_pipeline_dispatches_to_gcp_runner():
+    """Verify that unified pipeline dispatches to gcp runner."""
     result = _dry_run("gcp")
 
     assert result.returncode == 0, result.stderr
@@ -29,6 +33,7 @@ def test_unified_pipeline_dispatches_to_gcp_runner():
 
 
 def test_unified_pipeline_dispatches_to_slurm_submitter():
+    """Verify that unified pipeline dispatches to slurm submitter."""
     result = _dry_run("slurm")
 
     assert result.returncode == 0, result.stderr
@@ -37,6 +42,7 @@ def test_unified_pipeline_dispatches_to_slurm_submitter():
 
 
 def test_unified_pipeline_requires_a_backend():
+    """Verify that unified pipeline requires a backend."""
     result = subprocess.run(
         ["bash", str(PIPELINE), "--dry-run"],
         cwd=ROOT,
@@ -55,6 +61,7 @@ def test_unified_pipeline_requires_a_backend():
 
 
 def test_unified_pipeline_finishes_with_generation_tables_and_figures():
+    """Verify that unified pipeline finishes with generation tables and figures."""
     pipeline_text = PIPELINE.read_text()
     finaliser = (
         ROOT

@@ -14,6 +14,7 @@ MARKER_SUFFIXES = ("done", "failed", "seconds")
 
 
 def load_manifest(path: Path) -> list[dict]:
+    """Load manifest."""
     with open(path) as file:
         payload = json.load(file)
     if not isinstance(payload, list):
@@ -22,10 +23,12 @@ def load_manifest(path: Path) -> list[dict]:
 
 
 def stable_json(value) -> str:
+    """Return a stable json."""
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
 def command_option(command: list[str], name: str) -> str | None:
+    """Build the command for option."""
     for index, item in enumerate(command):
         if item == name and index + 1 < len(command):
             return command[index + 1]
@@ -33,6 +36,7 @@ def command_option(command: list[str], name: str) -> str | None:
 
 
 def job_key(job: dict) -> str:
+    """Return the job key."""
     command = [str(item) for item in job.get("command") or []]
     command_without_python = command[1:] if command else []
     fields = {
@@ -55,6 +59,7 @@ def job_key(job: dict) -> str:
 
 
 def unique_key_to_index(jobs: list[dict]) -> dict[str, int]:
+    """Return unique key to index."""
     key_to_indices: dict[str, list[int]] = {}
     for index, job in enumerate(jobs):
         key_to_indices.setdefault(job_key(job), []).append(index)
@@ -64,16 +69,19 @@ def unique_key_to_index(jobs: list[dict]) -> dict[str, int]:
 
 
 def marker_name(index: int, suffix: str) -> str:
+    """Handle marker name for the PaDIS workflow."""
     if suffix == "seconds":
         return f"reconstruction_{index:06d}.reconstruction.seconds"
     return f"reconstruction_{index:06d}.reconstruction.{suffix}"
 
 
 def marker_path(directory: Path, index: int, suffix: str) -> Path:
+    """Handle marker path for the PaDIS workflow."""
     return directory / marker_name(index, suffix)
 
 
 def metrics_path_for_job(job: dict) -> Path | None:
+    """Handle metrics path for job for the PaDIS workflow."""
     command = [str(item) for item in job.get("command") or []]
     output_folder = command_option(command, "--output-folder")
     experiment = command_option(command, "--experiment")
@@ -88,6 +96,7 @@ def metrics_path_for_job(job: dict) -> Path | None:
 
 
 def expected_sample_count(job: dict) -> int | None:
+    """Return the expected sample count."""
     command = [str(item) for item in job.get("command") or []]
     value = command_option(command, "--max-samples")
     if value is None:
@@ -99,6 +108,7 @@ def expected_sample_count(job: dict) -> int | None:
 
 
 def values_match(expected, actual) -> bool:
+    """Compare values for match."""
     if isinstance(expected, bool):
         return isinstance(actual, bool) and actual is expected
     if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
@@ -113,6 +123,7 @@ def expected_mapping_matches(
     expected_key: str,
     payload_key: str,
 ) -> bool:
+    """Return the expected mapping matches."""
     expected = job.get(expected_key)
     if expected is None:
         return True
@@ -128,6 +139,7 @@ def expected_mapping_matches(
 
 
 def completed_output_exists(job: dict, *, validate_settings: bool = True) -> bool:
+    """Check for completed output exists."""
     metrics_path = metrics_path_for_job(job)
     if metrics_path is None or not metrics_path.is_file():
         return False
@@ -158,6 +170,7 @@ def completed_output_exists(job: dict, *, validate_settings: bool = True) -> boo
 
 
 def build_index_mapping(old_jobs: list[dict], new_jobs: list[dict]) -> dict[int, int]:
+    """Build index mapping."""
     old_unique = unique_key_to_index(old_jobs)
     new_unique = unique_key_to_index(new_jobs)
     mapping = {}
@@ -169,6 +182,7 @@ def build_index_mapping(old_jobs: list[dict], new_jobs: list[dict]) -> dict[int,
 
 
 def move_marker_to_backup(path: Path, backup_dir: Path) -> Path:
+    """Move marker to backup."""
     backup_dir.mkdir(parents=True, exist_ok=True)
     target = backup_dir / path.name
     counter = 1
@@ -188,6 +202,7 @@ def migrate_marker_kind(
     index_mapping: dict[int, int],
     skip_output_check: bool,
 ) -> tuple[int, int]:
+    """Handle migrate marker kind for the PaDIS workflow."""
     if directory is None or not directory.is_dir():
         return (0, 0)
     pattern = "reconstruction_*.reconstruction.seconds"
@@ -237,6 +252,7 @@ def write_done_marker_from_output(
     index: int,
     job: dict,
 ) -> bool:
+    """Write done marker from output."""
     destination = marker_path(done_dir, index, "done")
     if destination.exists():
         return False
@@ -266,6 +282,7 @@ def synthesize_done_markers_from_completed_outputs(
     skip_output_check: bool,
     validate_settings_matrix_groups: set[str] | None,
 ) -> int:
+    """Synthesize done markers from completed outputs."""
     if skip_output_check:
         return 0
     created = 0

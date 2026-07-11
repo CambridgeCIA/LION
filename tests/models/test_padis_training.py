@@ -1,3 +1,5 @@
+"""Test padis training behaviour."""
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -14,6 +16,7 @@ from LION.optimizers import PaDISSolver
 
 
 def _tiny_padis_model(mode="padis-paper-ct-256"):
+    """Create tiny padis model test support data."""
     geometry = Geometry.default_parameters(image_scaling=0.5)
     params = NCSNpp.default_parameters(mode)
     params.model_channels = 8
@@ -23,6 +26,7 @@ def _tiny_padis_model(mode="padis-paper-ct-256"):
 
 
 def test_padis_paper_256_defaults():
+    """Verify that padis paper 256 defaults."""
     params = NCSNpp.default_parameters("padis-paper-ct-256")
     assert params.channel_mult == [1, 2, 2, 2]
     assert params.dropout == 0.05
@@ -39,6 +43,7 @@ def test_padis_paper_256_defaults():
 
 
 def test_padis_paper_512_defaults():
+    """Verify that padis paper 512 defaults."""
     params = NCSNpp.default_parameters("padis-paper-ct-512")
     assert params.patch_sizes == [16, 32, 64]
     assert params.pad_width == 64
@@ -47,6 +52,7 @@ def test_padis_paper_512_defaults():
 
 
 def test_padis_paper_whole_image_defaults():
+    """Verify that padis paper whole image defaults."""
     params = NCSNpp.default_parameters("padis-paper-whole-ct-256")
     assert params.channel_mult == [1, 2, 2, 4]
     assert params.patch_sizes == [256]
@@ -60,6 +66,7 @@ def test_padis_paper_whole_image_defaults():
 def test_padis_paper_model_parameter_counts():
     # The paper reports ~60M weights for patch-based PaDIS models. The ~110M
     # variant is the separate whole-image baseline with a wider fourth layer.
+    """Verify that padis paper model parameter counts."""
     expected_counts = {
         "padis-paper-ct-256": (0.5, 60_483_713),
         "padis-paper-ct-512": (1.0, 60_483_713),
@@ -77,6 +84,7 @@ def test_padis_paper_model_parameter_counts():
 
 
 def test_patch_utilities_shapes_and_ranges():
+    """Verify that patch utilities shapes and ranges."""
     images = torch.rand(2, 1, 256, 256)
     padded = zero_pad_images(images, 24)
     positions = build_position_grid(
@@ -92,6 +100,7 @@ def test_patch_utilities_shapes_and_ranges():
 
 
 def test_ncsnpp_patch_forward_shape():
+    """Verify that ncsnpp patch forward shape."""
     model, _ = _tiny_padis_model()
     x = torch.randn(2, 3, 16, 16)
     sigma = torch.ones(2)
@@ -99,6 +108,7 @@ def test_ncsnpp_patch_forward_shape():
 
 
 def test_padis_loss_backpropagates():
+    """Verify that padis loss backpropagates."""
     model, _ = _tiny_padis_model()
     clean = torch.rand(2, 1, 16, 16)
     positions = build_position_grid(2, 16, 16, device=clean.device, dtype=clean.dtype)
@@ -109,6 +119,7 @@ def test_padis_loss_backpropagates():
 
 
 def test_padis_loss_uses_edm_lognormal_by_default():
+    """Verify that padis loss uses edm lognormal by default."""
     loss = PaDISDenoisingLoss()
     assert loss.sigma_distribution == "edm_lognormal_truncated"
     assert loss.P_mean == -1.2
@@ -118,6 +129,7 @@ def test_padis_loss_uses_edm_lognormal_by_default():
 
 
 def test_padis_loss_truncated_edm_lognormal_respects_sigma_bounds():
+    """Verify that padis loss truncated edm lognormal respects sigma bounds."""
     loss = PaDISDenoisingLoss(
         sigma_min=0.2, sigma_max=0.4, sigma_distribution="edm_lognormal_truncated"
     )
@@ -127,6 +139,7 @@ def test_padis_loss_truncated_edm_lognormal_respects_sigma_bounds():
 
 
 def test_padis_no_position_defaults_disable_model_and_solver_position_channels():
+    """Verify that padis no position defaults disable model and solver position channels."""
     model_params = NCSNpp.default_parameters("padis-paper-ct-256-no-position")
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256-no-position")
     assert model_params.input_position_channels == 0
@@ -134,6 +147,7 @@ def test_padis_no_position_defaults_disable_model_and_solver_position_channels()
 
 
 def test_padis_solver_rejects_position_channel_mismatch():
+    """Verify that padis solver rejects position channel mismatch."""
     model, geometry = _tiny_padis_model("padis-paper-ct-256-no-position")
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -153,6 +167,7 @@ def test_padis_solver_rejects_position_channel_mismatch():
 
 
 def test_padis_patch_size_ablation_defaults():
+    """Verify that padis patch size ablation defaults."""
     expected = {
         "padis-paper-ct-p8": ([8], [1.0], 8, 8),
         "padis-paper-ct-p16": ([8, 16], [0.3, 0.7], 16, 16),
@@ -174,8 +189,13 @@ def test_padis_patch_size_ablation_defaults():
 
 
 def test_padis_loss_uses_patch_l2_norm_not_pixel_mean():
+    """Verify that padis loss uses patch l2 norm not pixel mean."""
+
     class ZeroModel(nn.Module):
+        """Provide the zero model test double used by this module."""
+
         def forward(self, x, time_cond):
+            """Apply the forward operation to the requested values."""
             return torch.zeros(x.shape[0], 1, x.shape[2], x.shape[3], device=x.device)
 
     clean = torch.zeros(1, 1, 8, 8)
@@ -188,6 +208,7 @@ def test_padis_loss_uses_patch_l2_norm_not_pixel_mean():
 
 
 def test_padis_solver_minibatch_and_ema():
+    """Verify that padis solver minibatch and ema."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -210,6 +231,7 @@ def test_padis_solver_minibatch_and_ema():
 
 
 def test_padis_solver_microbatch_accumulates_full_target_count():
+    """Verify that padis solver microbatch accumulates full target count."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -234,6 +256,7 @@ def test_padis_solver_microbatch_accumulates_full_target_count():
 
 
 def test_padis_solver_rejects_invalid_microbatch_size():
+    """Verify that padis solver rejects invalid microbatch size."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -254,6 +277,7 @@ def test_padis_solver_rejects_invalid_microbatch_size():
 
 
 def test_padis_solver_default_checkpoint_freq_is_safe_without_checkpointing():
+    """Verify that padis solver default checkpoint freq is safe without checkpointing."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -271,6 +295,7 @@ def test_padis_solver_default_checkpoint_freq_is_safe_without_checkpointing():
 
 
 def test_padis_solver_trains_to_patch_budget_across_loader_restarts():
+    """Verify that padis solver trains to patch budget across loader restarts."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -306,12 +331,18 @@ def test_padis_solver_trains_to_patch_budget_across_loader_restarts():
 
 
 def test_padis_validation_respects_max_patches():
+    """Verify that padis validation respects max patches."""
+
     class BatchSizeLoss(nn.Module):
+        """Provide the batch size loss test double used by this module."""
+
         def __init__(self):
+            """Initialize the instance."""
             super().__init__()
             self.batch_sizes = []
 
         def forward(self, model, clean_patch, position_patch=None):
+            """Apply the forward operation to the requested values."""
             del model, position_patch
             self.batch_sizes.append(clean_patch.shape[0])
             return clean_patch.new_tensor(float(clean_patch.shape[0]))
@@ -342,12 +373,18 @@ def test_padis_validation_respects_max_patches():
 
 
 def test_padis_validation_can_repeat_loader_until_max_patches():
+    """Verify that padis validation can repeat loader until max patches."""
+
     class BatchSizeLoss(nn.Module):
+        """Provide the batch size loss test double used by this module."""
+
         def __init__(self):
+            """Initialize the instance."""
             super().__init__()
             self.batch_sizes = []
 
         def forward(self, model, clean_patch, position_patch=None):
+            """Apply the forward operation to the requested values."""
             del model, position_patch
             self.batch_sizes.append(clean_patch.shape[0])
             return clean_patch.new_tensor(float(clean_patch.shape[0]))
@@ -381,6 +418,7 @@ def test_padis_validation_can_repeat_loader_until_max_patches():
 
 
 def test_padis_solver_uses_paper_relative_batch_multipliers():
+    """Verify that padis solver uses paper relative batch multipliers."""
     params = PaDISSolver.default_parameters("padis-paper-ct-256")
     assert params.patch_batch_multipliers == {16: 4, 32: 2, 56: 1}
     assert params.ema_rampup_ratio == 0.05
@@ -395,6 +433,7 @@ def test_padis_solver_uses_paper_relative_batch_multipliers():
 
 
 def test_whole_image_solver_minibatch_uses_full_image():
+    """Verify that whole image solver minibatch uses full image."""
     model, geometry = _tiny_padis_model("padis-paper-whole-ct-256")
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-whole-ct-256")
@@ -417,6 +456,7 @@ def test_whole_image_solver_minibatch_uses_full_image():
 
 
 def test_ema_weight_swap_restores_raw_weights():
+    """Verify that ema weight swap restores raw weights."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -438,6 +478,7 @@ def test_ema_weight_swap_restores_raw_weights():
 
 
 def test_save_validation_writes_ema_weights_and_restores_raw_model(tmp_path):
+    """Verify that save validation writes ema weights and restores raw model."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -475,6 +516,7 @@ def test_save_validation_writes_ema_weights_and_restores_raw_model(tmp_path):
 
 
 def test_train_for_patches_preserves_existing_min_validation_on_resume(tmp_path):
+    """Verify that train for patches preserves existing min validation on resume."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -534,6 +576,7 @@ def test_train_for_patches_preserves_existing_min_validation_on_resume(tmp_path)
 
 
 def test_save_final_results_writes_resumable_full_state(tmp_path):
+    """Verify that save final results writes resumable full state."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -570,6 +613,7 @@ def test_save_final_results_writes_resumable_full_state(tmp_path):
 
 
 def test_load_checkpoint_falls_back_to_full_final_state(tmp_path):
+    """Verify that load checkpoint falls back to full final state."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -617,6 +661,7 @@ def test_load_checkpoint_falls_back_to_full_final_state(tmp_path):
 
 
 def test_periodic_checkpoint_retention_keeps_latest_and_best_validation(tmp_path):
+    """Verify that periodic checkpoint retention keeps latest and best validation."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -672,6 +717,7 @@ def test_periodic_checkpoint_retention_keeps_latest_and_best_validation(tmp_path
 def test_load_checkpoint_loads_periodic_checkpoint_without_reconstructing_model(
     tmp_path,
 ):
+    """Verify that load checkpoint loads periodic checkpoint without reconstructing model."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -726,6 +772,7 @@ def test_load_checkpoint_loads_periodic_checkpoint_without_reconstructing_model(
 
 
 def test_first_ema_update_copies_model_like_padis_rampup():
+    """Verify that first ema update copies model like padis rampup."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")
@@ -745,6 +792,7 @@ def test_first_ema_update_copies_model_like_padis_rampup():
 
 
 def test_padis_solver_rejects_out_of_range_images():
+    """Verify that padis solver rejects out of range images."""
     model, geometry = _tiny_padis_model()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     solver_params = PaDISSolver.default_parameters("padis-paper-ct-256")

@@ -516,6 +516,7 @@ TRAINED_ABLATION_TASKS = (
 
 
 def parse_csv(value: str, *, valid: tuple[str, ...], label: str) -> tuple[str, ...]:
+    """Parse csv."""
     items = tuple(item.strip() for item in value.split(",") if item.strip())
     if not items:
         raise ValueError(f"{label} selection cannot be empty.")
@@ -531,6 +532,7 @@ def parse_csv(value: str, *, valid: tuple[str, ...], label: str) -> tuple[str, .
 
 
 def selected_model_tasks(selection: str) -> tuple[ModelTask, ...]:
+    """Return the selected model tasks."""
     names = parse_csv(
         selection,
         valid=tuple(MODEL_BY_NAME.keys()),
@@ -540,6 +542,7 @@ def selected_model_tasks(selection: str) -> tuple[ModelTask, ...]:
 
 
 def selected_method_tasks(selection: str) -> tuple[MethodTask, ...]:
+    """Return the selected method tasks."""
     names = tuple(
         dict.fromkeys(
             canonical_method(name)
@@ -554,6 +557,7 @@ def selected_method_tasks(selection: str) -> tuple[MethodTask, ...]:
 
 
 def selected_ablation_types(selection: str) -> tuple[str, ...]:
+    """Return the selected ablation types."""
     selection = selection.strip()
     if selection in ("", "none"):
         return ()
@@ -563,6 +567,7 @@ def selected_ablation_types(selection: str) -> tuple[str, ...]:
 def selected_experiments(
     selection: str, model: ModelTask, method: MethodTask | None = None
 ) -> tuple[str, ...]:
+    """Return the selected experiments."""
     if selection == "paper_matrix":
         if method is not None:
             return method.default_experiments
@@ -586,6 +591,7 @@ def validate_paper_experiments(
     label: str,
     allow_off_paper: bool,
 ) -> None:
+    """Validate paper experiments."""
     if allow_off_paper:
         return
     off_paper = tuple(
@@ -603,6 +609,7 @@ def validate_paper_experiments(
 def default_model_for_method_experiment(
     method: MethodTask, experiment: str
 ) -> ModelTask:
+    """Return the default model for method experiment."""
     model_name = method.default_model
     if method.model_by_experiment is not None:
         model_name = method.model_by_experiment.get(experiment, model_name)
@@ -610,6 +617,7 @@ def default_model_for_method_experiment(
 
 
 def validate_method_implementation(method: MethodTask, implementation: str) -> None:
+    """Validate method implementation."""
     if (
         implementation == "public_repo"
         and method.name not in PUBLIC_REPO_IMPLEMENTATION_METHODS
@@ -625,6 +633,7 @@ def validate_method_implementation(method: MethodTask, implementation: str) -> N
 def selected_implementations_for_method(
     method: MethodTask, selection: str
 ) -> tuple[str, ...]:
+    """Return the selected implementations for method."""
     if selection == "method_default":
         return CORE_IMPLEMENTATIONS_BY_METHOD[method.name]
     return parse_csv(selection, valid=IMPLEMENTATIONS, label="implementation")
@@ -633,6 +642,7 @@ def selected_implementations_for_method(
 def include_job_in_default_paper_matrix(
     args: argparse.Namespace, job: ReconstructionJob
 ) -> bool:
+    """Check whether to include job in default paper matrix."""
     if args.models != "method_default" or args.experiments != "paper_matrix":
         return True
     if job.experiment not in DEFAULT_PAPER_MATRIX_RESTRICTED_EXPERIMENTS:
@@ -651,6 +661,7 @@ def include_job_in_default_paper_matrix(
 
 
 def job_identity(job: ReconstructionJob) -> tuple:
+    """Return the job identity."""
     return (
         job.method.name,
         job.model.name,
@@ -663,6 +674,7 @@ def job_identity(job: ReconstructionJob) -> tuple:
 
 
 def job_prior_mode(job: ReconstructionJob) -> str:
+    """Return the job prior mode."""
     if job.model.prior_mode == "whole-image":
         return "whole_image"
     if job.method.name == "whole_image_diffusion":
@@ -671,6 +683,7 @@ def job_prior_mode(job: ReconstructionJob) -> str:
 
 
 def job_display_label(job: ReconstructionJob) -> str:
+    """Return the job display label."""
     method_label = _METHOD_DISPLAY_NAMES.get(job.method.name, job.method.name)
     if job.method.name == "pnp_admm" and job.matrix_group == "pnp_noise_conditioned":
         return "PnP-ADMM (noise-conditioned)"
@@ -686,6 +699,7 @@ def append_whole_image_sampling_jobs(
     methods: tuple[MethodTask, ...],
     geometries: tuple[str, ...],
 ) -> None:
+    """Append whole image sampling jobs."""
     if args.models != "method_default" or args.experiments != "paper_matrix":
         return
     if args.implementations == "method_default":
@@ -727,6 +741,7 @@ def append_trained_ablation_jobs(
     methods: tuple[MethodTask, ...],
     geometries: tuple[str, ...],
 ) -> None:
+    """Append trained ablation jobs."""
     ablation_types = selected_ablation_types(args.ablations)
     if not ablation_types or args.models != "method_default":
         return
@@ -791,6 +806,7 @@ def append_pnp_noise_conditioned_jobs(
     methods: tuple[MethodTask, ...],
     geometries: tuple[str, ...],
 ) -> None:
+    """Append pnp noise conditioned jobs."""
     if args.models != "method_default" or args.experiments != "paper_matrix":
         return
     if "pnp_admm" not in {method.name for method in methods}:
@@ -885,6 +901,7 @@ def build_jobs(args: argparse.Namespace) -> list[ReconstructionJob]:
 
 
 def checkpoint_name_for_policy(model: ModelTask, policy: str) -> str:
+    """Handle checkpoint name for policy for the PaDIS workflow."""
     if policy == "model_default":
         return model.checkpoint_name
     if policy not in CHECKPOINT_POLICIES:
@@ -927,6 +944,7 @@ def ordered_jobs(
         )
 
     def sort_key(item: tuple[int, ReconstructionJob]) -> tuple[int, int, int, int]:
+        """Return the sort key for key."""
         index, job = item
         fixed_overlap_rank = {
             "patch_average": 0,
@@ -949,6 +967,7 @@ def ordered_jobs(
 
 
 def default_run_root() -> pathlib.Path:
+    """Return the default run root."""
     if os.environ.get("PADIS_RUN_ROOT"):
         return pathlib.Path(os.environ["PADIS_RUN_ROOT"]).expanduser().resolve()
     if os.environ.get("LION_EXPERIMENTS_PATH"):
@@ -967,12 +986,14 @@ def default_run_root() -> pathlib.Path:
 
 
 def resolve_run_root(run_root: pathlib.Path | None) -> pathlib.Path:
+    """Resolve run root."""
     if run_root is not None:
         return run_root.expanduser().resolve()
     return default_run_root()
 
 
 def default_hparam_run_root(args: argparse.Namespace) -> pathlib.Path:
+    """Return the default hparam run root."""
     if os.environ.get("PADIS_HPARAM_RUN_ROOT"):
         return pathlib.Path(os.environ["PADIS_HPARAM_RUN_ROOT"]).expanduser().resolve()
     if os.environ.get("PADIS_HPARAM_TUNING_RUN_ROOT"):
@@ -985,6 +1006,7 @@ def default_hparam_run_root(args: argparse.Namespace) -> pathlib.Path:
 
 
 def resolve_hparam_run_root(args: argparse.Namespace) -> pathlib.Path | None:
+    """Resolve hparam run root."""
     if args.hparam_defaults in {"none", "json"}:
         return None
     if args.hparam_run_root is not None:
@@ -993,12 +1015,14 @@ def resolve_hparam_run_root(args: argparse.Namespace) -> pathlib.Path | None:
 
 
 def resolve_hparam_defaults_json(args: argparse.Namespace) -> pathlib.Path:
+    """Resolve hparam defaults json."""
     if args.hparam_defaults_json is not None:
         return args.hparam_defaults_json.expanduser().resolve()
     return DEFAULT_RECONSTRUCTION_HPARAM_DEFAULTS_JSON
 
 
 def hparam_defaults_for_args(args: argparse.Namespace) -> HparamDefaults:
+    """Resolve hyperparameter defaults for args."""
     cached = getattr(args, "_hparam_defaults_cache", None)
     if cached is not None:
         return cached
@@ -1021,6 +1045,7 @@ def hparam_defaults_for_args(args: argparse.Namespace) -> HparamDefaults:
 
 
 def hparam_selection_for_job(args: argparse.Namespace, job: ReconstructionJob):
+    """Resolve hyperparameter selection for job."""
     if args.hparam_defaults == "none":
         return None
     return hparam_defaults_for_args(args).select(
@@ -1035,6 +1060,7 @@ def hparam_selection_for_job(args: argparse.Namespace, job: ReconstructionJob):
 def hparam_args_for_job(
     args: argparse.Namespace, job: ReconstructionJob
 ) -> tuple[str, ...]:
+    """Resolve hyperparameter args for job."""
     selection = hparam_selection_for_job(args, job)
     if selection is None:
         return ()
@@ -1042,6 +1068,7 @@ def hparam_args_for_job(
 
 
 def latest_slurm_training_root(run_root: pathlib.Path) -> pathlib.Path | None:
+    """Return the latest slurm training root."""
     final_real_runs = run_root / "final_real_runs"
     if not final_real_runs.is_dir():
         return None
@@ -1054,6 +1081,7 @@ def latest_slurm_training_root(run_root: pathlib.Path) -> pathlib.Path | None:
 
 
 def slurm_training_root(run_root: pathlib.Path, run_stamp: str | None) -> pathlib.Path:
+    """Handle slurm training root for the PaDIS workflow."""
     if run_stamp:
         folder_name = (
             run_stamp
@@ -1072,12 +1100,14 @@ def slurm_training_root(run_root: pathlib.Path, run_stamp: str | None) -> pathli
 
 
 def gcp_training_root(run_root: pathlib.Path, gcp_run_name: str) -> pathlib.Path:
+    """Handle gcp training root for the PaDIS workflow."""
     if not gcp_run_name:
         raise ValueError("--gcp-run-name cannot be empty for the gcp preset.")
     return (run_root / "final_real_runs" / gcp_run_name).resolve()
 
 
 def resolve_training_root(args: argparse.Namespace) -> pathlib.Path:
+    """Resolve training root."""
     if args.training_root is not None:
         return args.training_root.expanduser().resolve()
     if args.training_root_preset is None:
@@ -1097,18 +1127,21 @@ def resolve_training_root(args: argparse.Namespace) -> pathlib.Path:
 
 
 def paper_sampler_views(experiment: str) -> int:
+    """Handle paper sampler views for the PaDIS workflow."""
     if experiment == "ct_8":
         return 8
     return 20
 
 
 def expected_sigma_min(experiment: str) -> float:
+    """Return the expected sigma min."""
     return 0.003 if paper_sampler_views(experiment) == 8 else 0.002
 
 
 def job_reconstruction_args(
     args: argparse.Namespace, job: ReconstructionJob
 ) -> tuple[str, ...]:
+    """Return the job reconstruction args."""
     return (
         *hparam_args_for_job(args, job),
         *job.extra_reconstruction_args,
@@ -1117,6 +1150,7 @@ def job_reconstruction_args(
 
 
 def expected_sampler_settings(args: argparse.Namespace, job: ReconstructionJob) -> dict:
+    """Return the expected sampler settings."""
     sigma_min = expected_sigma_min(job.experiment)
     settings = {
         "num_steps": 100,
@@ -1321,6 +1355,7 @@ def expected_sampler_settings(args: argparse.Namespace, job: ReconstructionJob) 
 
 
 def pnp_checkpoint_for_args(args: argparse.Namespace) -> pathlib.Path:
+    """Return PnP checkpoint for args."""
     if args.pnp_checkpoint is not None:
         return args.pnp_checkpoint
     return args.pnp_root / "pnp_lidc_drunet_min_val.pt"
@@ -1329,6 +1364,7 @@ def pnp_checkpoint_for_args(args: argparse.Namespace) -> pathlib.Path:
 def pnp_noise_conditioned_checkpoint_for_args(
     args: argparse.Namespace,
 ) -> pathlib.Path:
+    """Return PnP noise conditioned checkpoint for args."""
     if args.pnp_noise_conditioned_checkpoint is not None:
         return args.pnp_noise_conditioned_checkpoint
     return args.pnp_noise_conditioned_root / "pnp_lidc_drunet_noise_cond_min_val.pt"
@@ -1337,6 +1373,7 @@ def pnp_noise_conditioned_checkpoint_for_args(
 def pnp_checkpoint_for_job(
     args: argparse.Namespace, job: ReconstructionJob
 ) -> pathlib.Path:
+    """Return PnP checkpoint for job."""
     if job.matrix_group == "pnp_noise_conditioned":
         return pnp_noise_conditioned_checkpoint_for_args(args)
     return pnp_checkpoint_for_args(args)
@@ -1345,12 +1382,14 @@ def pnp_checkpoint_for_job(
 def pnp_noise_level_for_job(
     args: argparse.Namespace, job: ReconstructionJob
 ) -> float | None:
+    """Return PnP noise level for job."""
     if job.matrix_group == "pnp_noise_conditioned":
         return args.pnp_noise_conditioned_noise_level
     return args.pnp_noise_level
 
 
 def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -> dict:
+    """Return the expected method settings."""
     if job.method.name == "baseline":
         return {"baseline": "fdk"}
     if job.method.name == "cp_tv":
@@ -1465,6 +1504,7 @@ def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[st
 
 
 def max_samples_for_job(args: argparse.Namespace, job: ReconstructionJob) -> int:
+    """Return the maximum samples for job."""
     max_samples = int(args.max_samples)
     expensive_cap = getattr(args, "expensive_job_max_samples", None)
     if expensive_cap is not None and (

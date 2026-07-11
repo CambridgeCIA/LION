@@ -66,6 +66,7 @@ METRICS = (
 
 
 def _method_labels(row: dict[str, str]) -> tuple[str, str]:
+    """Handle method labels for the PaDIS workflow."""
     method = row["method"]
     prior = "Whole-Image" if row["prior_mode"] == "whole_image" else "PaDIS"
     if method == "baseline":
@@ -91,6 +92,7 @@ def _method_labels(row: dict[str, str]) -> tuple[str, str]:
 
 
 def _display_metric(row: dict[str, str], stem: str, decimals: int) -> str:
+    """Return display-ready metric."""
     mean = float(row[f"mean_{stem}"])
     low = float(row[f"mean_{stem}_bootstrap_ci_low"])
     high = float(row[f"mean_{stem}_bootstrap_ci_high"])
@@ -100,6 +102,7 @@ def _display_metric(row: dict[str, str], stem: str, decimals: int) -> str:
 
 
 def _metric_cells(row: dict[str, str] | None, prefix: str = "") -> dict[str, str]:
+    """Return metric cells."""
     if row is None:
         return {f"{prefix}{label}": "--" for _stem, label, _decimals in METRICS}
     return {
@@ -111,6 +114,7 @@ def _metric_cells(row: dict[str, str] | None, prefix: str = "") -> dict[str, str
 def _write_csv(
     path: Path, records: list[dict[str, str]], *, allow_missing: bool = False
 ) -> bool:
+    """Write csv."""
     if not records:
         if allow_missing:
             return False
@@ -203,6 +207,7 @@ def export_table_csvs(
     written: list[Path] = []
 
     def paired(experiments: tuple[str, ...], methods: set[str], partial: bool = False):
+        """Provide the paired callback used by the enclosing operation."""
         grouped: dict[tuple[str, str, str], dict[str, dict[str, str]]] = {}
         for row in rows:
             if row["matrix_group"] not in {"main", "pnp_noise_conditioned"}:
@@ -319,6 +324,7 @@ def export_table_csvs(
     table4: list[dict[str, str]] = []
 
     def patch_size(row: dict[str, str]) -> str:
+        """Handle patch size for the PaDIS workflow."""
         return (
             "P=256 (Whole-Image)"
             if row["method"] == "whole_image_diffusion"
@@ -376,6 +382,7 @@ def export_table_csvs(
     table6: list[dict[str, str]] = []
 
     def settings(row: dict[str, str]) -> tuple[str, str, str]:
+        """Provide the settings callback used by the enclosing operation."""
         group = row["matrix_group"]
         position = "No" if group.startswith("position_no_encoding_") else "Yes"
         initialization = "FDK" if group.endswith("fdk_init") else "Noise"
@@ -447,6 +454,7 @@ TABLE_METADATA = (
 
 
 def _latex_escape(value: str) -> str:
+    """Handle latex escape for the PaDIS workflow."""
     replacements = {
         "\\": r"\textbackslash{}",
         "&": r"\&",

@@ -212,6 +212,7 @@ class PNGImagePriorDataset(torch.utils.data.Dataset):
     """Image-prior dataset backed by PaDIS-style PNG slices."""
 
     def __init__(self, image_dir: pathlib.Path, channels: int):
+        """Initialize the instance."""
         self.image_dir = pathlib.Path(image_dir).expanduser()
         if not self.image_dir.is_dir():
             raise FileNotFoundError(f"PNG image directory not found: {self.image_dir}")
@@ -223,9 +224,11 @@ class PNGImagePriorDataset(torch.utils.data.Dataset):
             raise FileNotFoundError(f"No PNG files found in {self.image_dir}")
 
     def __len__(self):
+        """Return the number of available items."""
         return len(self.files)
 
     def __getitem__(self, index):
+        """Return the item at the requested index."""
         image = np.asarray(PIL.Image.open(self.files[index]), dtype=np.float32) / 255.0
         if self.channels == 1:
             if image.ndim == 3:
@@ -241,10 +244,12 @@ class PNGImagePriorDataset(torch.utils.data.Dataset):
 
 
 def project_root() -> pathlib.Path:
+    """Return the project root."""
     return pathlib.Path(__file__).resolve().parents[3]
 
 
 def torch_load(path: pathlib.Path, map_location):
+    """Load a PyTorch payload from load."""
     try:
         return torch.load(path, map_location=map_location, weights_only=False)
     except TypeError:
@@ -252,12 +257,14 @@ def torch_load(path: pathlib.Path, map_location):
 
 
 def _checkpoint_geometry(checkpoint, *, image_scaling: float) -> Geometry:
+    """Handle checkpoint geometry for the PaDIS workflow."""
     if isinstance(checkpoint, dict) and "geometry" in checkpoint:
         return Geometry.init_from_parameter(checkpoint["geometry"])
     return Geometry.default_parameters(image_scaling=image_scaling)
 
 
 def _checkpoint_paper_preset(checkpoint) -> str | None:
+    """Handle checkpoint paper preset for the PaDIS workflow."""
     if not isinstance(checkpoint, dict):
         return None
     training_params = checkpoint.get("training_params")
@@ -294,6 +301,7 @@ def checkpoint_model_metadata(
     disable_position_channels: bool,
     checkpoint=None,
 ):
+    """Handle checkpoint model metadata for the PaDIS workflow."""
     json_path = checkpoint_path.with_suffix(".json")
     if json_path.is_file():
         options = LIONParameter()
@@ -333,6 +341,7 @@ def checkpoint_model_metadata(
 
 
 def resolve_checkpoint_path(path: pathlib.Path) -> pathlib.Path:
+    """Resolve checkpoint path."""
     path = path.expanduser()
     candidates = [path]
     if not path.is_absolute():
@@ -365,6 +374,7 @@ def load_model(
     use_ema: bool,
     disable_position_channels: bool,
 ):
+    """Load model."""
     checkpoint = torch_load(checkpoint_path, map_location=device)
     model_params, geometry, checkpoint = checkpoint_model_metadata(
         checkpoint_path,
@@ -398,6 +408,7 @@ def load_checkpoint_metadata(
     image_scaling: float,
     disable_position_channels: bool,
 ):
+    """Load checkpoint metadata."""
     model_params, geometry, _ = checkpoint_model_metadata(
         checkpoint_path,
         map_location="cpu",
@@ -413,6 +424,7 @@ def fallback_metadata(
     disable_position_channels: bool,
     paper_preset: str = "padis-paper-ct-256",
 ):
+    """Build fallback metadata."""
     model_params = NCSNpp.default_parameters(paper_preset)
     if disable_position_channels:
         model_params.input_position_channels = 0
@@ -423,11 +435,13 @@ class PnPDenoiser(torch.nn.Module):
     """Batch/dataset-normalising wrapper for LION image denoisers used by PnP."""
 
     def __init__(self, model: torch.nn.Module, noise_level: float | None = None):
+        """Initialize the instance."""
         super().__init__()
         self.model = model
         self.noise_level = noise_level
 
     def forward(self, image: torch.Tensor) -> torch.Tensor:
+        """Apply the forward operation to the requested values."""
         squeeze_batch = image.dim() == 3
         if squeeze_batch:
             image = image.unsqueeze(0)
@@ -451,6 +465,7 @@ def load_pnp_denoiser(
     *,
     noise_level: float | None,
 ) -> PnPDenoiser:
+    """Load pnp denoiser."""
     checkpoint_path = pathlib.Path(checkpoint_path)
     checkpoint_path = resolve_checkpoint_path(checkpoint_path)
     options = LIONParameter()
@@ -473,6 +488,7 @@ def load_pnp_denoiser(
 
 
 def build_dataset(args, geometry):
+    """Build dataset."""
     task = "image_prior" if args.measurement_source == "normal" else "reconstruction"
     data_params = LIDC_IDRI.default_parameters(geometry=geometry, task=task)
     data_params.device = torch.device("cpu")
@@ -482,10 +498,12 @@ def build_dataset(args, geometry):
 
 
 def canonical_experiment_name(name: str) -> str:
+    """Return the canonical experiment name."""
     return EXPERIMENT_ALIASES.get(name, name)
 
 
 def validate_public_repo_method(implementation: str, method: str) -> None:
+    """Validate public repo method."""
     if (
         implementation == "public_repo"
         and method not in PUBLIC_REPO_IMPLEMENTATION_METHODS
@@ -500,6 +518,7 @@ def validate_public_repo_method(implementation: str, method: str) -> None:
 
 
 def experiment_spec_from_args(args) -> PaperCTExperiment | None:
+    """Handle experiment spec from args for the PaDIS workflow."""
     canonical = canonical_experiment_name(args.experiment)
     return PAPER_CT_EXPERIMENTS.get(canonical)
 
@@ -508,6 +527,7 @@ def experiment_class_for_geometry(
     spec: PaperCTExperiment,
     geometry_tag: str,
 ) -> type:
+    """Handle experiment class for geometry for the PaDIS workflow."""
     if geometry_tag == "lion":
         return LIDC_EXPERIMENTS[spec.lion_experiment]
     if geometry_tag in ("padis", "padis_parallel", "padis_fanbeam"):
@@ -516,6 +536,7 @@ def experiment_class_for_geometry(
 
 
 def build_experiment_dataset(args, checkpoint_geometry):
+    """Build experiment dataset."""
     image_scaling = float(getattr(checkpoint_geometry, "image_scaling", 1.0))
     spec = experiment_spec_from_args(args)
     if spec is None:
@@ -537,6 +558,7 @@ def build_experiment_dataset(args, checkpoint_geometry):
 
 
 def mu_to_lidc_normal(image: torch.Tensor) -> torch.Tensor:
+    """Handle mu to lidc normal for the PaDIS workflow."""
     return ((image - LIDC_NORMAL_TO_MU_OFFSET) / LIDC_NORMAL_TO_MU_SCALE).clamp(
         0.0, 1.0
     )
@@ -552,6 +574,7 @@ def make_measurement(
     from_experiment,
     experiment_measurement_source,
 ):
+    """Create measurement."""
     sample = dataset[index]
     if from_experiment:
         if experiment_measurement_source == "normal":
@@ -585,6 +608,7 @@ def make_measurement(
 
 
 def psnr(recon: torch.Tensor, target: torch.Tensor, data_range: float) -> float:
+    """Handle psnr for the PaDIS workflow."""
     mse = torch.mean((recon - target).square()).item()
     if mse == 0:
         return float("inf")
@@ -592,12 +616,14 @@ def psnr(recon: torch.Tensor, target: torch.Tensor, data_range: float) -> float:
 
 
 def psnr_from_mse(mse: float, data_range: float) -> float:
+    """Handle psnr from mse for the PaDIS workflow."""
     if mse == 0:
         return float("inf")
     return float(20.0 * math.log10(data_range) - 10.0 * math.log10(mse))
 
 
 def mean_metric(metrics: list[dict], key: str):
+    """Return the mean metric."""
     values = [item[key] for item in metrics if key in item]
     if not values:
         return None
@@ -605,6 +631,7 @@ def mean_metric(metrics: list[dict], key: str):
 
 
 def min_metric(metrics: list[dict], key: str):
+    """Return the minimum metric."""
     values = [item[key] for item in metrics if key in item]
     if not values:
         return None
@@ -612,6 +639,7 @@ def min_metric(metrics: list[dict], key: str):
 
 
 def masked_mse(recon: torch.Tensor, target: torch.Tensor, mask: torch.Tensor):
+    """Handle masked mse for the PaDIS workflow."""
     mask = mask.to(device=recon.device, dtype=torch.bool)
     if not torch.any(mask):
         return None
@@ -619,6 +647,7 @@ def masked_mse(recon: torch.Tensor, target: torch.Tensor, mask: torch.Tensor):
 
 
 def masked_mae(recon: torch.Tensor, target: torch.Tensor, mask: torch.Tensor):
+    """Handle masked mae for the PaDIS workflow."""
     mask = mask.to(device=recon.device, dtype=torch.bool)
     if not torch.any(mask):
         return None
@@ -626,6 +655,7 @@ def masked_mae(recon: torch.Tensor, target: torch.Tensor, mask: torch.Tensor):
 
 
 def ssim_or_none(recon: torch.Tensor, target: torch.Tensor, data_range: float):
+    """Calculate SSIM for or none."""
     try:
         from skimage.metrics import structural_similarity
     except ImportError:
@@ -636,15 +666,18 @@ def ssim_or_none(recon: torch.Tensor, target: torch.Tensor, data_range: float):
 
 
 def normal_to_hu(image: torch.Tensor) -> torch.Tensor:
+    """Convert normalised intensity to to hu."""
     return 3000.0 * image - 1000.0
 
 
 def hu_window(image: torch.Tensor, *, level: float, width: float) -> torch.Tensor:
+    """Handle hu window for the PaDIS workflow."""
     lower = level - width / 2.0
     return ((normal_to_hu(image) - lower) / width).clamp(0.0, 1.0)
 
 
 def mask_bbox(mask: torch.Tensor, pad: int = 8):
+    """Return the mask bbox."""
     mask_2d = mask.detach().cpu().squeeze().bool()
     if not torch.any(mask_2d):
         return None
@@ -658,6 +691,7 @@ def mask_bbox(mask: torch.Tensor, pad: int = 8):
 
 
 def crop_bbox(image: torch.Tensor, bbox):
+    """Crop bbox."""
     if bbox is None:
         return image
     top, bottom, left, right = bbox
@@ -670,10 +704,12 @@ def ssim_on_bbox_or_none(
     data_range: float,
     bbox,
 ):
+    """Calculate SSIM for on bbox or none."""
     return ssim_or_none(crop_bbox(recon, bbox), crop_bbox(target, bbox), data_range)
 
 
 def edge_ssim_or_none(recon: torch.Tensor, target: torch.Tensor):
+    """Handle edge ssim or none for the PaDIS workflow."""
     try:
         from skimage.filters import sobel
         from skimage.metrics import structural_similarity
@@ -700,6 +736,7 @@ def add_image_similarity_metrics(
     reference: torch.Tensor,
     data_range: float,
 ) -> None:
+    """Add image similarity metrics."""
     key = "" if prefix == "" else f"{prefix}_"
     abs_error = torch.abs(image - reference)
     mse = float(torch.mean((image - reference).square()).item())
@@ -722,6 +759,7 @@ def add_image_similarity_metrics(
 
 
 def image_tensor_from_array(array) -> torch.Tensor:
+    """Return the image tensor from array."""
     tensor = torch.as_tensor(array).detach().cpu().float()
     if tensor.ndim == 2:
         tensor = tensor.unsqueeze(0)
@@ -742,6 +780,7 @@ def image_tensor_from_array(array) -> torch.Tensor:
 
 
 def load_reference_reconstructions(path: pathlib.Path | None):
+    """Load reference reconstructions."""
     if path is None:
         return None
     path = pathlib.Path(path).expanduser()
@@ -799,6 +838,7 @@ def load_reference_reconstructions(path: pathlib.Path | None):
 
 
 def measurement_image_to_sampler_domain(image: torch.Tensor, params) -> torch.Tensor:
+    """Handle measurement image to sampler domain for the PaDIS workflow."""
     scale = float(params.measurement_scale)
     if scale == 0:
         raise ValueError("measurement_scale must be non-zero.")
@@ -808,6 +848,7 @@ def measurement_image_to_sampler_domain(image: torch.Tensor, params) -> torch.Te
 def sampler_payload_with_runtime_scaling(
     params, reconstructor: PaDIS, device: torch.device
 ) -> dict:
+    """Handle sampler payload with runtime scaling for the PaDIS workflow."""
     payload = {
         key: value for key, value in params.__dict__.items() if not key.startswith("_")
     }
@@ -845,6 +886,7 @@ def sampler_payload_with_runtime_scaling(
 
 
 def fdk_baseline(sinogram: torch.Tensor, reconstructor: PaDIS, params) -> torch.Tensor:
+    """Handle fdk baseline for the PaDIS workflow."""
     with torch.no_grad():
         if reconstructor.geometry is None:
             reconstruction = reconstructor.op.inverse(sinogram)
@@ -872,6 +914,7 @@ def tv_reconstruction(
     params,
     args,
 ) -> torch.Tensor:
+    """Handle tv reconstruction for the PaDIS workflow."""
     with torch.no_grad():
         reconstruction = tv_min(
             sinogram.unsqueeze(0),
@@ -893,6 +936,7 @@ def pnp_reconstruction(
     params,
     args,
 ) -> torch.Tensor:
+    """Return PnP reconstruction."""
     reconstructor = PnP(reconstruction_geometry, denoiser, algorithm="ADMM")
     with torch.no_grad():
         reconstruction = reconstructor.reconstruct_sample(
@@ -910,6 +954,7 @@ def pnp_reconstruction(
 
 
 def effective_algorithm(args) -> str:
+    """Return the effective algorithm."""
     if args.method in ("langevin", "ve_ddnm"):
         return "langevin"
     if args.method == "predictor_corrector":
@@ -918,6 +963,7 @@ def effective_algorithm(args) -> str:
 
 
 def reconstruction_label(args, sampler_params) -> str:
+    """Return the reconstruction label."""
     labels = {
         "baseline": "Baseline FDK",
         "cp_tv": "TV",
@@ -948,6 +994,7 @@ def reconstruction_label(args, sampler_params) -> str:
 
 
 def result_display_label(args, sampler_params) -> str:
+    """Handle result display label for the PaDIS workflow."""
     method_names = {
         "baseline": "Baseline FDK",
         "cp_tv": "CP",
@@ -972,6 +1019,7 @@ def result_display_label(args, sampler_params) -> str:
 
 
 def method_settings(args) -> dict:
+    """Handle method settings for the PaDIS workflow."""
     if args.method == "baseline":
         return {"baseline": "fdk"}
     if args.method == "cp_tv":
@@ -1003,6 +1051,7 @@ def forward_project_normal_image(
     reconstructor: PaDIS,
     params,
 ) -> torch.Tensor:
+    """Apply the forward operation to project normal image."""
     measurement_image = float(params.measurement_scale) * image + float(
         params.measurement_offset
     )
@@ -1015,6 +1064,7 @@ def relative_sinogram_residual(
     reconstructor: PaDIS,
     params,
 ) -> float:
+    """Calculate the relative sinogram residual."""
     with torch.no_grad():
         predicted = forward_project_normal_image(image, reconstructor, params)
         residual = predicted.to(dtype=sinogram.dtype) - sinogram
@@ -1039,6 +1089,7 @@ def add_reconstruction_metrics(
     body_bbox,
     data_range: float,
 ) -> None:
+    """Add reconstruction metrics."""
     key = "" if prefix == "" else f"{prefix}_"
     abs_error = torch.abs(recon - target)
     mse = float(torch.mean((recon - target).square()).item())
@@ -1202,6 +1253,7 @@ def save_preview(
     error_vmax: float,
     recon_label: str,
 ) -> None:
+    """Save preview."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -1271,6 +1323,7 @@ def save_visual_comparison(
     image_vmax: float,
     recon_label: str,
 ) -> None:
+    """Save visual comparison."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -1339,6 +1392,7 @@ def save_tensor_image(
     vmin: float | None = None,
     vmax: float | None = None,
 ) -> None:
+    """Save tensor image."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -1358,6 +1412,7 @@ def save_trace_images(
     sample_index: int,
     snapshots: list[dict],
 ) -> dict | None:
+    """Save trace images."""
     if not snapshots:
         return None
 
@@ -1431,6 +1486,7 @@ def save_trace_images(
 
 
 def set_run_seed(seed: int) -> None:
+    """Set run seed."""
     os.environ.setdefault("PYTHONHASHSEED", str(seed))
     random.seed(seed)
     np.random.seed(seed)
@@ -1442,6 +1498,7 @@ def set_run_seed(seed: int) -> None:
 
 
 def build_sampler_params(args, model, *, measurement_source: str) -> LIONParameter:
+    """Build sampler params."""
     paper_views = args.paper_ct_views
     spec = experiment_spec_from_args(args)
     if spec is not None:
@@ -1814,6 +1871,7 @@ def build_sampler_params(args, model, *, measurement_source: str) -> LIONParamet
 
 
 def clone_parameters(params: LIONParameter) -> LIONParameter:
+    """Clone parameters."""
     copied = LIONParameter()
     for key, value in params.__dict__.items():
         if not key.startswith("_"):
@@ -1840,6 +1898,7 @@ def run_reconstruction_variant(
     experiment_measurement_source: str,
     reference_reconstructions: torch.Tensor | None,
 ) -> dict:
+    """Run reconstruction variant."""
     set_run_seed(args.seed)
     sampler_params = clone_parameters(base_params)
     for key, value in variant_overrides.items():
@@ -2247,6 +2306,7 @@ def run_reconstruction_variant(
 
 
 def enforce_quality_gates(args, summaries: list[dict]) -> None:
+    """Enforce quality gates."""
     failures = []
     for summary in summaries:
         name = summary["name"]

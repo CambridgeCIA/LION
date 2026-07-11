@@ -29,7 +29,10 @@ class Sweep:
 
 
 def names(prefix: str, values: tuple[float, ...], suffix: str = "") -> tuple[str, ...]:
+    """Handle names for the PaDIS workflow."""
+
     def safe(value: float) -> str:
+        """Return a filesystem-safe the requested values."""
         return f"{value:g}".replace("-", "_").replace(".", "p")
 
     return tuple(f"{prefix}{safe(value)}{suffix}" for value in values)

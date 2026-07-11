@@ -1,3 +1,5 @@
+"""Test wht behaviour."""
+
 import torch
 from LION.operators.Operator import Operator
 from spyrit.core.torch import fwht, ifwht
@@ -11,10 +13,14 @@ def test_wht_adjointness():
     y = torch.rand(n)
 
     class WhtOp(Operator):
+        """Provide the wht op test double used by this module."""
+
         def __call__(self, x: torch.Tensor) -> torch.Tensor:
+            """Apply the callable operation."""
             return fwht(x, dim=0)
 
         def adjoint(self, y: torch.Tensor) -> torch.Tensor:
+            """Handle adjoint for the PaDIS workflow."""
             return fwht(y, dim=0)
 
     operator = WhtOp()

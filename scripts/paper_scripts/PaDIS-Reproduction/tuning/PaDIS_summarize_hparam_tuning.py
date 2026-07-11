@@ -27,6 +27,7 @@ RANK_SSIM_TOLERANCE = 0.01
 
 
 def parse_csv(value: str) -> tuple[str, ...] | None:
+    """Parse csv."""
     value = value.strip()
     if value in ("", "all"):
         return None
@@ -34,6 +35,7 @@ def parse_csv(value: str) -> tuple[str, ...] | None:
 
 
 def finite_float(value: object) -> float | None:
+    """Return finite float."""
     if value is None:
         return None
     try:
@@ -46,6 +48,7 @@ def finite_float(value: object) -> float | None:
 
 
 def mean_or_none(values: Iterable[float | None]) -> float | None:
+    """Return the mean or none."""
     finite = [value for value in values if value is not None and math.isfinite(value)]
     if not finite:
         return None
@@ -53,6 +56,7 @@ def mean_or_none(values: Iterable[float | None]) -> float | None:
 
 
 def min_or_none(values: Iterable[float | None]) -> float | None:
+    """Return the minimum or none."""
     finite = [value for value in values if value is not None and math.isfinite(value)]
     if not finite:
         return None
@@ -62,6 +66,7 @@ def min_or_none(values: Iterable[float | None]) -> float | None:
 def load_records(
     run_root: pathlib.Path, run_names: tuple[str, ...] | None
 ) -> list[dict]:
+    """Load records."""
     records: list[dict] = []
     paths = sorted(
         run_root.glob("*/runs.jsonl"),
@@ -86,6 +91,7 @@ def load_records(
 
 
 def candidate_identity(record: dict) -> tuple:
+    """Handle candidate identity for the PaDIS workflow."""
     candidate_args = list(record.get("candidate_args") or ())
     for extra_arg in command_extra_reconstruction_args(record.get("command") or []):
         if extra_arg not in candidate_args:
@@ -102,6 +108,7 @@ def candidate_identity(record: dict) -> tuple:
 
 
 def command_extra_reconstruction_args(command: list[str]) -> list[str]:
+    """Build the command for extra reconstruction args."""
     extras: list[str] = []
     index = 0
     while index < len(command):
@@ -123,6 +130,7 @@ def command_extra_reconstruction_args(command: list[str]) -> list[str]:
 
 
 def target_identity(record: dict) -> tuple:
+    """Return the target identity."""
     return (
         record.get("method"),
         record.get("implementation"),
@@ -132,10 +140,12 @@ def target_identity(record: dict) -> tuple:
 
 
 def record_metric(record: dict, name: str) -> float | None:
+    """Build a record for metric."""
     return finite_float((record.get("summary") or {}).get(name))
 
 
 def record_sample_count(record: dict) -> int:
+    """Build a record for sample count."""
     value = (record.get("summary") or {}).get("sample_count")
     try:
         count = int(value)
@@ -145,6 +155,7 @@ def record_sample_count(record: dict) -> int:
 
 
 def usable_record(record: dict) -> bool:
+    """Handle usable record for the PaDIS workflow."""
     if record.get("status") != "completed":
         return False
     summary = record.get("summary") or {}
@@ -190,6 +201,7 @@ def dedupe_records(records: Iterable[dict]) -> list[dict]:
 def aggregate(
     records: list[dict], expected_experiments: tuple[str, ...] | None
 ) -> list[dict]:
+    """Aggregate the requested values."""
     grouped: dict[tuple, list[dict]] = {}
     for record in records:
         grouped.setdefault(candidate_identity(record), []).append(record)
@@ -251,6 +263,7 @@ def aggregate(
 
 
 def row_float(row: dict, key: str) -> float | None:
+    """Handle row float for the PaDIS workflow."""
     value = row.get(key)
     if value is None:
         return None
@@ -264,12 +277,14 @@ def row_float(row: dict, key: str) -> float | None:
 
 
 def reference_key(row: dict, implementation: str) -> tuple | None:
+    """Handle reference key for the PaDIS workflow."""
     if row.get("implementation") != implementation:
         return None
     return (row.get("method"), row.get("prior"), row.get("model"))
 
 
 def reference_sort_key(row: dict) -> tuple:
+    """Handle reference sort key for the PaDIS workflow."""
     coverage = row.get("covered_expected_experiments")
     if coverage is None:
         coverage = row.get("completed_jobs") or 0
@@ -313,6 +328,7 @@ def add_reference_columns(
         references.setdefault(key, []).append(row)
 
     def select_reference(candidates: list[dict], target: dict) -> dict:
+        """Select reference."""
         experiment_matched = [
             candidate
             for candidate in candidates
@@ -381,7 +397,10 @@ def add_reference_columns(
 
 
 def sort_rows(rows: list[dict]) -> list[dict]:
+    """Return the sort key for rows."""
+
     def key(row: dict) -> tuple:
+        """Provide the key callback used by the enclosing operation."""
         coverage = row["covered_expected_experiments"]
         if coverage is None:
             coverage = row["completed_jobs"]
@@ -408,6 +427,7 @@ def sort_rows(rows: list[dict]) -> list[dict]:
 
 
 def write_csv(path: pathlib.Path, rows: list[dict]) -> None:
+    """Write csv."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "method",
@@ -449,6 +469,7 @@ def write_csv(path: pathlib.Path, rows: list[dict]) -> None:
 
 
 def print_top(rows: list[dict], top_k: int) -> None:
+    """Print top."""
     current_target: tuple | None = None
     emitted = 0
     for row in rows:

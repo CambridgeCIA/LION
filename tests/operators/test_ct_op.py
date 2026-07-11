@@ -97,6 +97,7 @@ def test_ct_op_adjointness():
 
 
 def test_ct_op_backward_compatibility_with_tomosipo():
+    """Verify that ct op backward compatibility with tomosipo."""
     geometry = Geometry.default_parameters()
     operator = make_operator(geometry=geometry)
 

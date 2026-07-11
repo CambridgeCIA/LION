@@ -1,3 +1,5 @@
+"""Test padis make tables behaviour."""
+
 import csv
 import json
 
@@ -13,6 +15,7 @@ from PaDIS_make_tables import (
 
 
 def test_table_cli_uses_standard_padis_paths():
+    """Verify that table cli uses standard padis paths."""
     args = build_arg_parser().parse_args([])
 
     assert args.csv_path == DEFAULT_INPUT_CSV
@@ -22,6 +25,7 @@ def test_table_cli_uses_standard_padis_paths():
 
 
 def test_fanbeam_analytic_baseline_is_labelled_fdk():
+    """Verify that fanbeam analytic baseline is labelled fdk."""
     assert _method_labels(
         {
             "method": "baseline",
@@ -32,6 +36,7 @@ def test_fanbeam_analytic_baseline_is_labelled_fdk():
 
 
 def test_historical_admm_tv_identifier_is_presented_as_cp_with_tv_prior():
+    """Verify that historical admm tv identifier is presented as cp with tv prior."""
     assert _method_labels(
         {
             "method": "cp_tv",
@@ -42,6 +47,7 @@ def test_historical_admm_tv_identifier_is_presented_as_cp_with_tv_prior():
 
 
 def test_integrated_latex_writer_creates_table_fragment(tmp_path):
+    """Verify that integrated latex writer creates table fragment."""
     csv_path = tmp_path / "table_7_timings.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
@@ -66,6 +72,7 @@ def test_integrated_latex_writer_creates_table_fragment(tmp_path):
 
 
 def test_timing_calculation_supports_gcp_and_slurm_log_names(tmp_path):
+    """Verify that timing calculation supports gcp and slurm log names."""
     jobs = [
         {
             "implementation": "lion_physics",

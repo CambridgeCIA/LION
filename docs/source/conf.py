@@ -83,6 +83,23 @@ class SourceApiSummary(Directive):
         prefix = "async " if isinstance(item, ast.AsyncFunctionDef) else ""
         return f"{prefix}{item.name}({ast.unparse(item.args)})"
 
+    @staticmethod
+    def _description(item: ast.AST) -> str:
+        """Return an object's docstring as safe display text."""
+
+        return ast.get_docstring(item, clean=True) or "No docstring is available."
+
+    def _symbol_item(self, item: ast.AST, label: str) -> nodes.list_item:
+        """Build one documented symbol entry."""
+
+        entry = nodes.list_item()
+        signature = nodes.paragraph()
+        signature += nodes.literal(text=label)
+        entry += signature
+        for paragraph_text in self._description(item).split("\n\n"):
+            entry += nodes.paragraph(text=" ".join(paragraph_text.splitlines()))
+        return entry
+
     def run(self) -> list[nodes.Node]:
         module = self.arguments[0].strip()
         relative = Path(*module.split("."))
@@ -92,6 +109,12 @@ class SourceApiSummary(Directive):
         tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
 
         result: list[nodes.Node] = [nodes.rubric(text=module.rsplit(".", 1)[-1])]
+        module_docstring = ast.get_docstring(tree, clean=True)
+        if module_docstring:
+            for paragraph_text in module_docstring.split("\n\n"):
+                result.append(
+                    nodes.paragraph(text=" ".join(paragraph_text.splitlines()))
+                )
         entries = nodes.bullet_list()
         for item in tree.body:
             if (
@@ -110,15 +133,18 @@ class SourceApiSummary(Directive):
                     if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
                     and not child.name.startswith("_")
                 ]
+                entry = self._symbol_item(item, label)
                 if methods:
-                    label += ": " + ", ".join(
-                        self._signature(method) for method in methods
-                    )
+                    method_entries = nodes.bullet_list()
+                    for method in methods:
+                        method_entries += self._symbol_item(
+                            method, self._signature(method)
+                        )
+                    entry += method_entries
             else:
                 label = self._signature(item)
-            paragraph = nodes.paragraph()
-            paragraph += nodes.literal(text=label)
-            entries += nodes.list_item("", paragraph)
+                entry = self._symbol_item(item, label)
+            entries += entry
         if entries.children:
             result.append(entries)
         else:

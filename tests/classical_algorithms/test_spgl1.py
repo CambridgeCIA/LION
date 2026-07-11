@@ -6,6 +6,7 @@ from LION.operators import CompositeOp, PhotocurrentMapOp, Subsampler, Wavelet2D
 
 
 def test_spgl1() -> None:
+    """Verify that spgl1."""
     device = "cpu"
     # Image size
     J = 4  # 16x16 images

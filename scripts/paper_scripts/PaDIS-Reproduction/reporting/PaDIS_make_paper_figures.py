@@ -89,6 +89,7 @@ class FigureSpec:
 
 
 def torch_load(path: pathlib.Path):
+    """Load a PyTorch payload from load."""
     try:
         return torch.load(path, map_location="cpu", weights_only=False)
     except TypeError:
@@ -101,6 +102,7 @@ def display_image(
     window: str,
     hu_range: tuple[float, float] | None = None,
 ) -> torch.Tensor:
+    """Return display-ready image."""
     image = image.detach().cpu().float()
     if image.ndim == 4:
         image = image[0]
@@ -120,6 +122,7 @@ def display_image(
 def tensor_from_payload(
     path: pathlib.Path, key: str, sample_index: int
 ) -> torch.Tensor:
+    """Handle tensor from payload for the PaDIS workflow."""
     payload = torch_load(path)
     if not isinstance(payload, dict):
         if key != "samples":
@@ -142,6 +145,7 @@ def tensor_from_payload(
 def target_bbox(
     path: pathlib.Path, sample_index: int, *, pad: int
 ) -> tuple[int, int, int, int] | None:
+    """Return the target bbox."""
     try:
         target = tensor_from_payload(path, "targets", sample_index)
     except (FileNotFoundError, KeyError, IndexError):
@@ -205,6 +209,7 @@ def body_hu_percentile_range(
 
 
 def crop(image: torch.Tensor, bbox: tuple[int, int, int, int] | None) -> torch.Tensor:
+    """Crop the requested values."""
     if bbox is None:
         return image
     top, bottom, left, right = bbox
@@ -255,6 +260,7 @@ def recon_path(
 
 
 def generation_path(root: pathlib.Path, preset: str) -> pathlib.Path:
+    """Return the generation path."""
     return root / "lion-paper-protocol" / preset / "samples.pt"
 
 
@@ -272,6 +278,7 @@ def recon_panel(
     sample_index: int = 0,
     window: str | None = None,
 ) -> Panel:
+    """Handle recon panel for the PaDIS workflow."""
     return Panel(
         source="reconstruction",
         title=title,
@@ -293,6 +300,7 @@ def recon_panel(
 def generation_panel(
     root: pathlib.Path, title: str, row: str, *, preset: str, sample_index: int
 ) -> Panel:
+    """Return the generation panel."""
     return Panel(
         source="generation",
         title=title,
@@ -322,6 +330,7 @@ def figure_specs(
         panel_sample_index: int = sample_index,
         window: str | None = None,
     ):
+        """Return the target the requested values."""
         return recon_panel(
             recon_root,
             title,
@@ -341,6 +350,7 @@ def figure_specs(
         panel_sample_index: int,
         window: str | None = None,
     ) -> tuple[Panel, ...]:
+        """Handle standard ct row for the PaDIS workflow."""
         return (
             recon_panel(
                 recon_root,
@@ -1347,6 +1357,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def selected_figures(selection: str) -> tuple[str, ...]:
+    """Return the selected figures."""
     if selection == "all":
         return IMPLEMENTED_FIGURES
     names = tuple(item.strip() for item in selection.split(",") if item.strip())

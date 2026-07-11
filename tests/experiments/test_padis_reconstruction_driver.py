@@ -1,3 +1,5 @@
+"""Test padis reconstruction driver behaviour."""
+
 import json
 import math
 from types import SimpleNamespace
@@ -19,39 +21,52 @@ from PaDIS_LIDC_reconstruction import (
 
 
 class IdentityOp(Operator):
+    """Provide the identity op test double used by this module."""
+
     @property
     def domain_shape(self):
+        """Handle domain shape for the PaDIS workflow."""
         return (1, 8, 8)
 
     @property
     def range_shape(self):
+        """Handle range shape for the PaDIS workflow."""
         return (1, 8, 8)
 
     def __call__(self, x, out=None):
+        """Apply the callable operation."""
         del out
         return x
 
     def forward(self, x):
+        """Apply the forward operation to the requested values."""
         return x
 
     def adjoint(self, y):
+        """Handle adjoint for the PaDIS workflow."""
         return y
 
     def inverse(self, y):
+        """Handle inverse for the PaDIS workflow."""
         return y
 
 
 class TinyDataset:
+    """Provide the tiny dataset test double used by this module."""
+
     def __len__(self):
+        """Return the number of available items."""
         return 1
 
     def __getitem__(self, index):
+        """Return the item at the requested index."""
         del index
         target = torch.linspace(0.0, 1.0, 64, dtype=torch.float32).reshape(1, 8, 8)
         return None, target
 
 
 def _args(method: str):
+    """Create args test support data."""
     return SimpleNamespace(
         seed=0,
         method=method,
@@ -91,6 +106,7 @@ def _args(method: str):
 
 
 def _params():
+    """Create params test support data."""
     params = LIONParameter()
     params.measurement_scale = 1.0
     params.measurement_offset = 0.0
@@ -104,12 +120,14 @@ def _params():
 
 
 def _model_params():
+    """Create model params test support data."""
     params = LIONParameter()
     params.largest_patch_size = 56
     return params
 
 
 def _run_driver(tmp_path, method):
+    """Create run driver test support data."""
     return run_reconstruction_variant(
         args=_args(method),
         dataset=TinyDataset(),
@@ -131,6 +149,7 @@ def _run_driver(tmp_path, method):
 
 
 def test_baseline_driver_writes_metrics_and_tensors(tmp_path):
+    """Verify that baseline driver writes metrics and tensors."""
     summary = _run_driver(tmp_path, "baseline")
 
     with open(tmp_path / "baseline" / "metrics.json") as f:
@@ -145,6 +164,7 @@ def test_baseline_driver_writes_metrics_and_tensors(tmp_path):
 
 
 def test_result_display_label_distinguishes_patch_and_whole_image_sampling():
+    """Verify that result display label distinguishes patch and whole image sampling."""
     args = SimpleNamespace(method="langevin")
     patch_params = SimpleNamespace(prior_mode="patch")
     whole_params = SimpleNamespace(prior_mode="whole_image")
@@ -157,9 +177,11 @@ def test_result_display_label_distinguishes_patch_and_whole_image_sampling():
 
 
 def test_admm_tv_driver_uses_lion_tv_path(monkeypatch, tmp_path):
+    """Verify that admm tv driver uses lion tv path."""
     calls = []
 
     def fake_tv_min(sinogram, op, **kwargs):
+        """Handle fake tv min for the PaDIS workflow."""
         calls.append((sinogram.clone(), op, kwargs))
         return sinogram.clone()
 
@@ -178,6 +200,7 @@ def test_admm_tv_driver_uses_lion_tv_path(monkeypatch, tmp_path):
 
 
 def test_pnp_admm_driver_uses_lion_pnp_path(monkeypatch, tmp_path):
+    """Verify that pnp admm driver uses lion pnp path."""
     monkeypatch.setattr(
         recon_script,
         "load_pnp_denoiser",
@@ -198,6 +221,7 @@ def test_pnp_admm_driver_uses_lion_pnp_path(monkeypatch, tmp_path):
 
 
 def test_driver_can_record_ddnm_pseudoinverse_diagnostics(tmp_path):
+    """Verify that driver can record ddnm pseudoinverse diagnostics."""
     args = _args("baseline")
     args.diagnose_ddnm_pseudoinverse = True
     summary = run_reconstruction_variant(
@@ -228,6 +252,7 @@ def test_driver_can_record_ddnm_pseudoinverse_diagnostics(tmp_path):
 
 
 def test_sampler_payload_records_effective_lipschitz_scaling():
+    """Verify that sampler payload records effective lipschitz scaling."""
     params = _params()
     params.data_consistency_normalization = "operator_lipschitz"
     params.operator_norm = None
@@ -248,6 +273,7 @@ def test_sampler_payload_records_effective_lipschitz_scaling():
 
 
 def test_sampler_payload_falls_back_to_matching_device_type_cache_entry():
+    """Verify that sampler payload falls back to matching device type cache entry."""
     params = _params()
     params.data_consistency_normalization = "operator_lipschitz"
     params.operator_norm = None
@@ -264,6 +290,7 @@ def test_sampler_payload_falls_back_to_matching_device_type_cache_entry():
 
 
 def test_reconstruction_cli_validation_rejects_public_repo_for_methods_without_public_analogue():
+    """Verify that reconstruction cli validation rejects public repo for methods without public analogue."""
     with pytest.raises(ValueError, match="no runnable public-repo equivalent"):
         validate_public_repo_method("public_repo", "baseline")
 
@@ -273,6 +300,7 @@ def test_reconstruction_cli_validation_rejects_public_repo_for_methods_without_p
 
 
 def test_public_repo_helper_initialization_is_opt_in_for_helper_methods():
+    """Verify that public repo helper initialization is opt in for helper methods."""
     parser = recon_script.build_arg_parser()
 
     dps_args = parser.parse_args(
@@ -341,6 +369,7 @@ def test_public_repo_helper_initialization_is_opt_in_for_helper_methods():
 
 
 def test_lion_physics_method_specific_sampler_defaults_are_applied():
+    """Verify that lion physics method specific sampler defaults are applied."""
     parser = recon_script.build_arg_parser()
 
     dps_args = parser.parse_args(
@@ -510,6 +539,7 @@ def test_lion_physics_method_specific_sampler_defaults_are_applied():
 
 
 def test_checkpoint_metadata_fallback_infers_whole_image_preset(tmp_path):
+    """Verify that checkpoint metadata fallback infers whole image preset."""
     training = LIONParameter()
     training.paper_preset = "padis-paper-whole-ct-256"
     geometry = Geometry.default_parameters(image_scaling=0.5)
@@ -533,6 +563,7 @@ def test_checkpoint_metadata_fallback_infers_whole_image_preset(tmp_path):
 
 
 def test_checkpoint_sidecar_restores_model_parameter_type(tmp_path):
+    """Verify that checkpoint sidecar restores model parameter type."""
     checkpoint = tmp_path / "whole_image_lidc_256.pt"
     torch.save({"model_state_dict": {}}, checkpoint)
     options = LIONParameter()
@@ -552,6 +583,7 @@ def test_checkpoint_sidecar_restores_model_parameter_type(tmp_path):
 
 
 def test_checkpoint_metadata_fallback_infers_patch_ablation_without_position(tmp_path):
+    """Verify that checkpoint metadata fallback infers patch ablation without position."""
     training = LIONParameter()
     training.paper_preset = "padis-paper-ct-p96-no-position"
     checkpoint = tmp_path / "padis_lidc_256.pt"

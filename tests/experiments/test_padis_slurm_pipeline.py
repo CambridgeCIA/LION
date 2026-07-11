@@ -1,3 +1,5 @@
+"""Test padis slurm pipeline behaviour."""
+
 import json
 import os
 from pathlib import Path
@@ -13,6 +15,7 @@ PIPELINE = (
 
 
 def _install_fake_sbatch(tmp_path):
+    """Create install fake sbatch test support data."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     log_path = tmp_path / "sbatch.log"
@@ -36,6 +39,7 @@ printf 'job%s\\n' "$count"
 
 
 def _run_pipeline(tmp_path, **extra_env):
+    """Create run pipeline test support data."""
     bin_dir, log_path = _install_fake_sbatch(tmp_path)
     env = os.environ.copy()
     env.update(
@@ -60,6 +64,7 @@ def _run_pipeline(tmp_path, **extra_env):
 
 
 def test_pipeline_guard_blocks_pnp_reconstruction_without_denoiser(tmp_path):
+    """Verify that pipeline guard blocks pnp reconstruction without denoiser."""
     result, sbatch_log = _run_pipeline(
         tmp_path,
         PADIS_SUBMIT_RECONSTRUCTION="1",
@@ -73,6 +78,7 @@ def test_pipeline_guard_blocks_pnp_reconstruction_without_denoiser(tmp_path):
 
 
 def test_pipeline_guard_blocks_spaced_pnp_reconstruction_without_denoiser(tmp_path):
+    """Verify that pipeline guard blocks spaced pnp reconstruction without denoiser."""
     result, sbatch_log = _run_pipeline(
         tmp_path,
         PADIS_SUBMIT_RECONSTRUCTION="1",
@@ -87,6 +93,7 @@ def test_pipeline_guard_blocks_spaced_pnp_reconstruction_without_denoiser(tmp_pa
 
 
 def test_pipeline_preflight_rejects_off_paper_matrix_before_submission(tmp_path):
+    """Verify that pipeline preflight rejects off paper matrix before submission."""
     result, sbatch_log = _run_pipeline(
         tmp_path,
         PADIS_SUBMIT_RECONSTRUCTION="1",
@@ -101,6 +108,7 @@ def test_pipeline_preflight_rejects_off_paper_matrix_before_submission(tmp_path)
 
 
 def test_pipeline_can_submit_explicitly_allowed_off_paper_matrix(tmp_path):
+    """Verify that pipeline can submit explicitly allowed off paper matrix."""
     result, sbatch_log = _run_pipeline(
         tmp_path,
         PADIS_SUBMIT_RECONSTRUCTION="1",
@@ -127,6 +135,7 @@ def test_pipeline_can_submit_explicitly_allowed_off_paper_matrix(tmp_path):
 
 
 def test_pipeline_can_submit_reconstruction_when_pnp_row_is_excluded(tmp_path):
+    """Verify that pipeline can submit reconstruction when pnp row is excluded."""
     result, sbatch_log = _run_pipeline(
         tmp_path,
         PADIS_SUBMIT_RECONSTRUCTION="1",
@@ -155,6 +164,7 @@ def test_pipeline_can_submit_reconstruction_when_pnp_row_is_excluded(tmp_path):
 
 
 def test_pipeline_reconstruction_manifest_records_extra_args(tmp_path):
+    """Verify that pipeline reconstruction manifest records extra args."""
     result, sbatch_log = _run_pipeline(
         tmp_path,
         PADIS_SUBMIT_RECONSTRUCTION="1",
@@ -179,6 +189,7 @@ def test_pipeline_reconstruction_manifest_records_extra_args(tmp_path):
 
 
 def test_pipeline_can_use_existing_pnp_checkpoint_when_training_is_disabled(tmp_path):
+    """Verify that pipeline can use existing pnp checkpoint when training is disabled."""
     checkpoint = tmp_path / "existing_pnp.pt"
     checkpoint.write_text("placeholder")
 
@@ -209,6 +220,7 @@ def test_pipeline_can_use_existing_pnp_checkpoint_when_training_is_disabled(tmp_
 
 
 def test_pipeline_reconstruction_waits_for_submitted_pnp_training(tmp_path):
+    """Verify that pipeline reconstruction waits for submitted pnp training."""
     result, sbatch_log = _run_pipeline(
         tmp_path,
         PADIS_SUBMIT_RECONSTRUCTION="1",
@@ -227,6 +239,7 @@ def test_pipeline_reconstruction_waits_for_submitted_pnp_training(tmp_path):
 def test_pipeline_full_default_reconstruction_matrix_waits_for_training_and_pnp(
     tmp_path,
 ):
+    """Verify that pipeline full default reconstruction matrix waits for training and pnp."""
     result, sbatch_log = _run_pipeline(
         tmp_path,
         PADIS_SUBMIT_RECONSTRUCTION="1",
@@ -293,6 +306,7 @@ def test_pipeline_full_default_reconstruction_matrix_waits_for_training_and_pnp(
 
 
 def test_pipeline_uses_custom_pnp_training_checkpoint_for_reconstruction(tmp_path):
+    """Verify that pipeline uses custom pnp training checkpoint for reconstruction."""
     pnp_root = tmp_path / "custom_pnp"
     expected_checkpoint = pnp_root / "denoiser_run/final_denoiser.pt"
 

@@ -36,6 +36,7 @@ class ReconstructionPreset:
 def _paper_ct_arguments(
     sigma_min: float, *, initial_reconstruction: str = "noise"
 ) -> tuple[str, ...]:
+    """Handle paper ct arguments for the PaDIS workflow."""
     return (
         "--num-steps",
         "100",
@@ -70,10 +71,12 @@ def _paper_ct_arguments(
 
 
 def _lion_compatible_ct_arguments(sigma_min: float) -> tuple[str, ...]:
+    """Handle lion compatible ct arguments for the PaDIS workflow."""
     return _paper_ct_arguments(sigma_min)
 
 
 def _whole_image_ct_arguments(sigma_min: float) -> tuple[str, ...]:
+    """Handle whole image ct arguments for the PaDIS workflow."""
     return _paper_ct_arguments(sigma_min) + (
         "--prior-mode",
         "whole-image",
@@ -89,6 +92,7 @@ def _paper_generation_arguments(
     generation_epsilon: float = 1.0,
     langevin_noise_scale: float = 1.0,
 ) -> tuple[str, ...]:
+    """Handle paper generation arguments for the PaDIS workflow."""
     return (
         "--num-steps",
         "300",
@@ -110,6 +114,7 @@ def _paper_generation_arguments(
 def _with_sampler(
     arguments: tuple[str, ...], algorithm: str, *, ddnm: bool = False
 ) -> tuple[str, ...]:
+    """Handle with sampler for the PaDIS workflow."""
     sampler_arguments = arguments + ("--algorithm", algorithm)
     if ddnm:
         sampler_arguments += ("--langevin-ddnm",)
@@ -117,6 +122,7 @@ def _with_sampler(
 
 
 def _with_patch_size(patch_size: int, pad_width: int) -> tuple[str, ...]:
+    """Handle with patch size for the PaDIS workflow."""
     return _paper_ct_arguments(0.002) + (
         "--patch-size",
         str(patch_size),
@@ -132,6 +138,7 @@ def _training_arguments(
     full_lidc: bool = False,
     run_name: str,
 ) -> tuple[str, ...]:
+    """Handle training arguments for the PaDIS workflow."""
     arguments = ("--prior-mode", prior_mode, "--run-name", run_name)
     if full_lidc:
         arguments += ("--full-lidc",)

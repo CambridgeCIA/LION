@@ -1,3 +1,5 @@
+"""Test padis slurm training tasks behaviour."""
+
 import os
 from pathlib import Path
 import subprocess
@@ -29,6 +31,7 @@ PNP_TRAINING = (
 
 
 def _read_training_tasks():
+    """Create read training tasks test support data."""
     script = f"""
 set -euo pipefail
 source {COMMON!s}
@@ -68,6 +71,7 @@ done
 
 
 def test_a100_training_tasks_cover_reconstruction_model_families():
+    """Verify that a100 training tasks cover reconstruction model families."""
     count, tasks = _read_training_tasks()
     model_names = {task.name for task in MODEL_TASKS}
 
@@ -80,6 +84,7 @@ def test_a100_training_tasks_cover_reconstruction_model_families():
 
 
 def test_a100_training_tasks_use_expected_engines_for_special_priors():
+    """Verify that a100 training tasks use expected engines for special priors."""
     _, tasks = _read_training_tasks()
 
     assert tasks["patch_lidc_512"]["engine"] == "lidc512"
@@ -98,6 +103,7 @@ def test_a100_training_tasks_use_expected_engines_for_special_priors():
 
 
 def test_a100_p96_batch_size_is_capped_at_96():
+    """Verify that a100 p96 batch size is capped at 96."""
     _, tasks = _read_training_tasks()
     assert tasks["patch_lidc_p96_default"]["batch_size"] == 96
 
@@ -118,6 +124,7 @@ def test_a100_p96_batch_size_is_capped_at_96():
 
 
 def test_a100_training_tasks_produce_matrix_checkpoint_filenames():
+    """Verify that a100 training tasks produce matrix checkpoint filenames."""
     _, tasks = _read_training_tasks()
 
     for model_task in MODEL_TASKS:
@@ -134,6 +141,7 @@ def test_a100_training_tasks_produce_matrix_checkpoint_filenames():
 
 
 def test_pnp_training_default_final_checkpoint_matches_reconstruction_matrix():
+    """Verify that pnp training default final checkpoint matches reconstruction matrix."""
     script = PNP_TRAINING.read_text()
 
     assert 'PADIS_PNP_RUN_NAME="${PADIS_PNP_RUN_NAME:-pnp_lidc_drunet}"' in script
@@ -144,6 +152,7 @@ def test_pnp_training_default_final_checkpoint_matches_reconstruction_matrix():
 
 
 def test_slurm_training_defaults_to_lion_dev_with_padis_dev_fallback():
+    """Verify that slurm training defaults to lion dev with padis dev fallback."""
     common = COMMON.read_text()
     legacy_lidc_256 = LEGACY_LIDC_256.read_text()
 
@@ -156,6 +165,7 @@ def test_slurm_training_defaults_to_lion_dev_with_padis_dev_fallback():
 
 
 def test_a100_training_array_keeps_wandb_artifacts_enabled_by_default():
+    """Verify that a100 training array keeps wandb artifacts enabled by default."""
     script = TRAINING_ARRAY.read_text()
 
     assert 'PADIS_WANDB_MODE="${PADIS_WANDB_MODE:-online}"' in script
@@ -167,6 +177,7 @@ def test_a100_training_array_keeps_wandb_artifacts_enabled_by_default():
 
 
 def test_a100_training_array_runs_intensive_validation_for_final_six_hours():
+    """Verify that a100 training array runs intensive validation for final six hours."""
     script = TRAINING_ARRAY.read_text()
 
     assert "PADIS_PATCH_BASE_TRAIN_SECONDS:-21600" in script
@@ -179,6 +190,7 @@ def test_a100_training_array_runs_intensive_validation_for_final_six_hours():
 
 
 def _install_fake_sbatch(tmp_path):
+    """Create install fake sbatch test support data."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     log_path = tmp_path / "sbatch.log"
@@ -202,6 +214,7 @@ printf 'job%s\\n' "$count"
 
 
 def _run_all_training_submitter(tmp_path, **extra_env):
+    """Create run all training submitter test support data."""
     bin_dir, log_path = _install_fake_sbatch(tmp_path)
     env = {
         **os.environ,
@@ -224,6 +237,7 @@ def _run_all_training_submitter(tmp_path, **extra_env):
 
 
 def test_all_training_submitter_launches_diffusion_array_and_pnp_denoiser(tmp_path):
+    """Verify that all training submitter launches diffusion array and pnp denoiser."""
     result, sbatch_log = _run_all_training_submitter(tmp_path)
 
     expected_train_root = tmp_path / "runs/final_real_runs/a100_training_pytest"
@@ -251,10 +265,12 @@ def test_all_training_submitter_launches_diffusion_array_and_pnp_denoiser(tmp_pa
 
 
 def test_all_training_submitter_is_executable():
+    """Verify that all training submitter is executable."""
     assert SUBMIT_ALL_TRAINING.stat().st_mode & 0o111
 
 
 def test_all_training_submitter_can_skip_pnp_training(tmp_path):
+    """Verify that all training submitter can skip pnp training."""
     result, sbatch_log = _run_all_training_submitter(
         tmp_path,
         PADIS_SUBMIT_PNP_TRAINING="0",

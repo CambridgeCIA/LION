@@ -1,3 +1,5 @@
+"""Test ct utils hu behaviour."""
+
 import numpy as np
 import torch
 
@@ -5,6 +7,7 @@ from LION.CTtools import ct_utils as ct
 
 
 def test_normal_hu_conversion_round_trips_torch_values():
+    """Verify that normal hu conversion round trips torch values."""
     hu = torch.tensor((-1000.0, -500.0, 0.0, 1000.0, 2000.0))
 
     recovered = ct.from_normal_to_HU(ct.from_HU_to_normal(hu))
@@ -13,6 +16,7 @@ def test_normal_hu_conversion_round_trips_torch_values():
 
 
 def test_normal_hu_conversion_round_trips_numpy_values():
+    """Verify that normal hu conversion round trips numpy values."""
     hu = np.asarray((-1000.0, -500.0, 0.0, 1000.0, 2000.0))
 
     recovered = ct.from_normal_to_HU(ct.from_HU_to_normal(hu))
@@ -21,6 +25,7 @@ def test_normal_hu_conversion_round_trips_numpy_values():
 
 
 def test_normal_to_hu_does_not_hide_reconstruction_overshoot():
+    """Verify that normal to hu does not hide reconstruction overshoot."""
     normal = torch.tensor((-0.1, 1.1))
 
     converted = ct.from_normal_to_HU(normal)

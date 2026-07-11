@@ -1,3 +1,5 @@
+"""Test padis reconstruction reconcile behaviour."""
+
 import json
 
 from PaDIS_reconcile_reconstruction_manifest import (
@@ -6,6 +8,7 @@ from PaDIS_reconcile_reconstruction_manifest import (
 
 
 def _job(tmp_path, *, expected_sampler=None, expected_method_settings=None):
+    """Create job test support data."""
     output = tmp_path / "output"
     job = {
         "command": [
@@ -33,6 +36,7 @@ def _job(tmp_path, *, expected_sampler=None, expected_method_settings=None):
 
 
 def _write_metrics(path, *, sampler=None, method_settings=None):
+    """Create write metrics test support data."""
     path.write_text(
         json.dumps(
             {
@@ -45,6 +49,7 @@ def _write_metrics(path, *, sampler=None, method_settings=None):
 
 
 def test_completed_output_reused_when_recorded_settings_match(tmp_path):
+    """Verify that completed output reused when recorded settings match."""
     job, path = _job(
         tmp_path,
         expected_sampler={"zeta": 4.5, "patch_checkpoint_denoiser": True},
@@ -60,6 +65,7 @@ def test_completed_output_reused_when_recorded_settings_match(tmp_path):
 
 
 def test_completed_output_invalidated_when_sampler_hyperparameter_changes(tmp_path):
+    """Verify that completed output invalidated when sampler hyperparameter changes."""
     job, path = _job(tmp_path, expected_sampler={"zeta": 4.5})
     _write_metrics(path, sampler={"zeta": 4.25})
 
@@ -67,6 +73,7 @@ def test_completed_output_invalidated_when_sampler_hyperparameter_changes(tmp_pa
 
 
 def test_completed_output_can_be_reused_outside_selected_validation_scope(tmp_path):
+    """Verify that completed output can be reused outside selected validation scope."""
     job, path = _job(tmp_path, expected_sampler={"zeta": 4.5})
     _write_metrics(path, sampler={"zeta": 4.25})
 
@@ -74,6 +81,7 @@ def test_completed_output_can_be_reused_outside_selected_validation_scope(tmp_pa
 
 
 def test_completed_output_invalidated_when_expected_setting_is_missing(tmp_path):
+    """Verify that completed output invalidated when expected setting is missing."""
     job, path = _job(
         tmp_path,
         expected_sampler={"patch_batch_size": 8},
@@ -84,6 +92,7 @@ def test_completed_output_invalidated_when_expected_setting_is_missing(tmp_path)
 
 
 def test_completed_output_invalidated_when_method_setting_changes(tmp_path):
+    """Verify that completed output invalidated when method setting changes."""
     job, path = _job(
         tmp_path,
         expected_method_settings={"iterations": 20},
