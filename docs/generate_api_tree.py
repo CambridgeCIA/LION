@@ -12,10 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_ROOT = ROOT / "docs" / "source" / "api" / "tree"
 SOURCE_DIRECTORIES = ["LION", "scripts", "utils", "tests", "demos"]
 
-# These modules have received the current documentation audit and import safely
-# on a CPU-only documentation builder. All other modules remain discoverable
-# through source inspection and carry an explicit warning.
-AUDITED_MODULES = {
+# These audited modules also import safely on a CPU-only documentation builder,
+# so Sphinx can use autodoc for them. Audit status and import safety are kept
+# separate: executable scripts and tests are source-rendered even when their
+# documentation has been audited.
+AUTODOC_MODULES = {
     "LION.CTtools.ct_geometry",
     "LION.CTtools.ct_utils",
     "LION.classical_algorithms.fdk",
@@ -32,6 +33,11 @@ AUDITED_MODULES = {
     "LION.reconstructors.PaDIS",
     "LION.reconstructors.PnP",
     "LION.utils.paths",
+}
+
+AUDITED_SOURCE_ROOTS = {
+    Path("scripts/paper_scripts/PaDIS-Reproduction"),
+    Path("tests"),
 }
 
 README_MAP = {
@@ -90,11 +96,21 @@ def relative_include(page: Path, readme: Path) -> str:
     return Path(os.path.relpath(readme, page.parent)).as_posix()
 
 
+def documentation_audited(source: Path, module: str) -> bool:
+    """Return whether a source file has completed the documentation audit."""
+
+    if module in AUTODOC_MODULES:
+        return True
+    relative = source.relative_to(ROOT)
+    return any(relative.is_relative_to(root) for root in AUDITED_SOURCE_ROOTS)
+
+
 def write_module_page(source: Path, destination: Path) -> None:
     """Write one leaf page with immediately visible API documentation."""
 
     module = module_name(source)
-    audited = module in AUDITED_MODULES
+    audited = documentation_audited(source, module)
+    use_autodoc = module in AUTODOC_MODULES
     title = source.name if audited else f"{source.name} 🚧"
     lines = heading(title)
     lines.extend(
@@ -103,7 +119,7 @@ def write_module_page(source: Path, destination: Path) -> None:
             "",
         ]
     )
-    if audited:
+    if use_autodoc:
         lines.extend(
             [
                 f".. automodule:: {module}",
@@ -111,6 +127,8 @@ def write_module_page(source: Path, destination: Path) -> None:
                 "   :show-inheritance:",
             ]
         )
+    elif audited:
+        lines.append(f".. sourceautosummary:: {module}")
     else:
         lines.extend(
             [
