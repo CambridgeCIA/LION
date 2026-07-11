@@ -56,6 +56,7 @@ def test_paper_figure_specs_follow_multi_sample_ct_layouts(tmp_path):
 
     figure5 = specs["figure5_ct_reconstruction"]
     assert len(figure5.panels) == 4
+    assert all(row[0].title == "FDK" for row in figure5.panels)
     assert [row[0].row for row in figure5.panels] == [
         "60 views\n360° range\nSample 1",
         "60 views\n360° range\nSample 6",

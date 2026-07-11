@@ -313,7 +313,7 @@ def figure_specs(
         return (
             recon_panel(
                 recon_root,
-                "FBP",
+                "FDK",
                 row,
                 method="baseline",
                 model="patch_lidc_default",

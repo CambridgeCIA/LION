@@ -50,6 +50,7 @@ generation before the expensive fixed-overlap and 512-resolution tail jobs.
 | `PaDIS_reconcile_reconstruction_manifest.py` | Reconcile a rebuilt manifest with existing outputs. |
 | `PaDIS_verify_reconstruction_matrix.py` | Verify outputs and write result/uncertainty tables. |
 | `PaDIS_make_paper_figures.py` | Build figures from saved outputs. |
+| `PaDIS_make_tables.py` | Build publication LaTeX tables and decoded table CSVs from the verification CSV. |
 | `gcp/run_PaDIS_GCP_spot_training.sh` | Automatic GCP training, intensive validation, and inference. |
 | `gcp/run_PaDIS_GCP_manual_reconstruction.sh` | Resumable GCP/Colab inference and generation. |
 | `gcp/PaDIS_Colab_manual_reconstruction.ipynb` | Colab setup, authentication, environment installation, and launch cells. |
@@ -457,3 +458,15 @@ The default verifier performs 2,000 deterministic image-level bootstrap
 resamples at 95% confidence using seed 33. The CSV includes the aggregate
 metrics, bootstrap standard errors and confidence limits. Use the expected-jobs
 manifest to detect missing outputs rather than relying only on marker counts.
+
+Generate all publication tables using the standard experiment paths with:
+
+```bash
+python -u scripts/paper_scripts/PaDIS/PaDIS_make_tables.py
+```
+
+By default this reads
+`$LION_EXPERIMENTS_PATH/PaDIS/final_real_runs/PaDIS-Reproduction-GCP_reconstruction/reconstruction_matrix_verification.csv`
+and writes `reconstruction_tables.tex` plus seven decoded CSVs under
+`$LION_EXPERIMENTS_PATH/PaDIS/paper_tables`. Use `--csv-path`, `--tex-path`,
+and `--csv-output-dir` to override these locations.
