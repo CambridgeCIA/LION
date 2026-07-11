@@ -91,7 +91,7 @@ class SourceApiSummary(Directive):
             source = ROOT / relative / "__init__.py"
         tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
 
-        result: list[nodes.Node] = [nodes.rubric(text=module)]
+        result: list[nodes.Node] = [nodes.rubric(text=module.rsplit(".", 1)[-1])]
         entries = nodes.bullet_list()
         for item in tree.body:
             if (

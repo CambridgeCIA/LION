@@ -9,8 +9,8 @@ import shutil
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PACKAGE_ROOT = ROOT / "LION"
 OUTPUT_ROOT = ROOT / "docs" / "source" / "api" / "tree"
+SOURCE_DIRECTORIES = ["LION", "scripts", "utils", "tests", "demos"]
 
 # These modules have received the current documentation audit and import safely
 # on a CPU-only documentation builder. All other modules remain discoverable
@@ -35,13 +35,38 @@ AUDITED_MODULES = {
 }
 
 README_MAP = {
-    Path("data_loaders"): PACKAGE_ROOT / "data_loaders" / "README.md",
-    Path("data_loaders/LIDC_IDRI"): PACKAGE_ROOT
+    Path("."): ROOT / "README.md",
+    Path("LION/data_loaders"): ROOT / "LION" / "data_loaders" / "README.md",
+    Path("LION/data_loaders/LIDC_IDRI"): ROOT
+    / "LION"
     / "data_loaders"
     / "LIDC_IDRI"
     / "README.md",
-    Path("data_loaders/LUNA16"): PACKAGE_ROOT / "data_loaders" / "LUNA16" / "README.md",
-    Path("models"): PACKAGE_ROOT / "models" / "README.md",
+    Path("LION/data_loaders/LUNA16"): ROOT
+    / "LION"
+    / "data_loaders"
+    / "LUNA16"
+    / "README.md",
+    Path("LION/models"): ROOT / "LION" / "models" / "README.md",
+    Path("demos"): ROOT / "demos" / "README.md",
+    Path("scripts"): ROOT / "scripts" / "README.md",
+    Path("scripts/example_scripts"): ROOT / "scripts" / "example_scripts" / "README.md",
+    Path("scripts/paper_scripts"): ROOT / "scripts" / "paper_scripts" / "README.md",
+    Path("scripts/paper_scripts/Continuous_Learned_Primal_Dual"): ROOT
+    / "scripts"
+    / "paper_scripts"
+    / "Continuous_Learned_Primal_Dual"
+    / "README.md",
+    Path("scripts/paper_scripts/PaDIS-Reproduction"): ROOT
+    / "scripts"
+    / "paper_scripts"
+    / "PaDIS-Reproduction"
+    / "README.md",
+    Path("scripts/hackathon_scripts/synerby26"): ROOT
+    / "scripts"
+    / "hackathon_scripts"
+    / "synerby26"
+    / "README.md",
 }
 
 
@@ -66,15 +91,37 @@ def relative_include(page: Path, readme: Path) -> str:
 
 
 def write_module_page(source: Path, destination: Path) -> None:
-    """Write one leaf module page."""
+    """Write one leaf page with immediately visible API documentation."""
 
     module = module_name(source)
     audited = module in AUDITED_MODULES
-    title = module if audited else f"{module} 🚧"
+    title = source.name if audited else f"{source.name} 🚧"
     lines = heading(title)
-    lines.append(f".. apimodule:: {module}")
-    if not audited:
-        lines.extend(["   :source:", "   :warning:"])
+    lines.extend(
+        [
+            f"**Source:** ``{source.relative_to(ROOT).as_posix()}``",
+            "",
+        ]
+    )
+    if audited:
+        lines.extend(
+            [
+                f".. automodule:: {module}",
+                "   :members:",
+                "   :show-inheritance:",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                ".. warning::",
+                "",
+                "   This file has not yet received a complete narrative and docstring audit.",
+                "   Its public source-level API is listed automatically below.",
+                "",
+                f".. sourceautosummary:: {module}",
+            ]
+        )
     lines.append("")
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text("\n".join(lines), encoding="utf-8")
@@ -83,6 +130,8 @@ def write_module_page(source: Path, destination: Path) -> None:
 def child_directories(directory: Path) -> list[Path]:
     """Return child directories that contain Python sources."""
 
+    if directory == ROOT:
+        return [ROOT / name for name in SOURCE_DIRECTORIES if (ROOT / name).is_dir()]
     return sorted(
         child
         for child in directory.iterdir()
@@ -90,12 +139,12 @@ def child_directories(directory: Path) -> list[Path]:
     )
 
 
-def write_package_page(directory: Path, destination: Path) -> None:
+def write_directory_page(directory: Path, destination: Path) -> None:
     """Write a package/directory index and its nested toctree."""
 
-    relative = directory.relative_to(PACKAGE_ROOT)
-    dotted = "LION" + (f".{'.'.join(relative.parts)}" if relative.parts else "")
-    lines = heading(dotted)
+    relative = directory.relative_to(ROOT)
+    title = "Repository Python API" if not relative.parts else relative.as_posix() + "/"
+    lines = heading(title)
 
     readme = README_MAP.get(relative)
     if readme is not None:
@@ -111,9 +160,7 @@ def write_package_page(directory: Path, destination: Path) -> None:
         )
 
     children = child_directories(directory)
-    modules = sorted(
-        path for path in directory.glob("*.py") if path.name != "__init__.py"
-    )
+    modules = sorted(directory.glob("*.py"))
     if children or modules:
         lines.extend(
             [
@@ -149,14 +196,16 @@ def generate() -> None:
     if OUTPUT_ROOT.exists():
         shutil.rmtree(OUTPUT_ROOT)
 
-    directories = [PACKAGE_ROOT, *child_directories_recursive(PACKAGE_ROOT)]
+    directories = [ROOT]
+    for name in SOURCE_DIRECTORIES:
+        source_root = ROOT / name
+        directories.extend([source_root, *child_directories_recursive(source_root)])
     for directory in directories:
-        relative = directory.relative_to(PACKAGE_ROOT)
+        relative = directory.relative_to(ROOT)
         output_directory = OUTPUT_ROOT / relative
-        write_package_page(directory, output_directory / "index.rst")
+        write_directory_page(directory, output_directory / "index.rst")
         for source in sorted(directory.glob("*.py")):
-            if source.name != "__init__.py":
-                write_module_page(source, output_directory / f"{source.stem}.rst")
+            write_module_page(source, output_directory / f"{source.stem}.rst")
 
 
 def child_directories_recursive(directory: Path) -> list[Path]:

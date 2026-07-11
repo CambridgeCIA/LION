@@ -1,35 +1,29 @@
-LION
-====
+Repository Python API
+=====================
+
+Directory README
+----------------
+
+.. include:: ../../../../README.md
+   :parser: myst_parser.sphinx_
 
 Directory entries
 -----------------
 
-- :doc:`CTtools/ <CTtools/index>`
-- :doc:`classical_algorithms/ <classical_algorithms/index>`
-- :doc:`data_loaders/ <data_loaders/index>`
-- :doc:`exceptions/ <exceptions/index>`
-- :doc:`experiments/ <experiments/index>`
-- :doc:`losses/ <losses/index>`
-- :doc:`metrics/ <metrics/index>`
-- :doc:`models/ <models/index>`
-- :doc:`operators/ <operators/index>`
-- :doc:`optimizers/ <optimizers/index>`
-- :doc:`reconstructors/ <reconstructors/index>`
+- :doc:`LION/ <LION/index>`
+- :doc:`scripts/ <scripts/index>`
 - :doc:`utils/ <utils/index>`
+- :doc:`tests/ <tests/index>`
+- :doc:`demos/ <demos/index>`
+- :doc:`setup.py <setup>`
 
 .. toctree::
    :maxdepth: 20
    :hidden:
 
-   CTtools/ <CTtools/index>
-   classical_algorithms/ <classical_algorithms/index>
-   data_loaders/ <data_loaders/index>
-   exceptions/ <exceptions/index>
-   experiments/ <experiments/index>
-   losses/ <losses/index>
-   metrics/ <metrics/index>
-   models/ <models/index>
-   operators/ <operators/index>
-   optimizers/ <optimizers/index>
-   reconstructors/ <reconstructors/index>
+   LION/ <LION/index>
+   scripts/ <scripts/index>
    utils/ <utils/index>
+   tests/ <tests/index>
+   demos/ <demos/index>
+   setup.py <setup>

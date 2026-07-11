@@ -9,4 +9,4 @@ as the PaDIS, CT, and LIDC-IDRI paths.
 .. toctree::
    :maxdepth: 20
 
-   LION <tree/index>
+   Repository Python API <tree/index>

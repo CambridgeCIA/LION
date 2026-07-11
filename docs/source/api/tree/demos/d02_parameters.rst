@@ -1,0 +1,11 @@
+d02_parameters.py 🚧
+====================
+
+**Source:** ``demos/d02_parameters.py``
+
+.. warning::
+
+   This file has not yet received a complete narrative and docstring audit.
+   Its public source-level API is listed automatically below.
+
+.. sourceautosummary:: demos.d02_parameters
