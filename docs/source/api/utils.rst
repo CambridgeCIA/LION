@@ -1,28 +1,22 @@
 LION.utils
 ==========
 
-Configured paths
-----------------
-
-.. automodule:: LION.utils.paths
-   :members:
+.. apimodule:: LION.utils.paths
 
 🚧 Undocumented utility modules
 -------------------------------
 
-.. automodule:: LION.utils.math
-   :members:
+.. apimodule:: LION.utils.math
+   :warning:
 
-.. automodule:: LION.utils.normaliser
-   :members:
-   :show-inheritance:
+.. apimodule:: LION.utils.normaliser
+   :warning:
 
-.. automodule:: LION.utils.parameter
-   :members:
-   :show-inheritance:
+.. apimodule:: LION.utils.parameter
+   :warning:
 
-.. automodule:: LION.utils.test_model
-   :members:
+.. apimodule:: LION.utils.test_model
+   :warning:
 
-.. automodule:: LION.utils.utils
-   :members:
+.. apimodule:: LION.utils.utils
+   :warning:

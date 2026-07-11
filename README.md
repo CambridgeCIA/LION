@@ -106,6 +106,13 @@ The generated site is written to `docs/_build/html`. PaDIS, LIDC-IDRI, and
 the CT interfaces used by the reproduction workflow are documented in detail;
 older package areas are currently presented as explicitly labelled stubs.
 
+The repository is ready for versioned hosting on Read the Docs through
+[`.readthedocs.yaml`](.readthedocs.yaml). A repository administrator must
+import `THartigan/LION` into Read the Docs once; GitHub webhooks then build
+enabled branches, tags, and optional pull-request previews automatically. See
+the [publishing guide](docs/source/readthedocs.rst) for the exact dashboard
+settings and badge setup.
+
 ## Contributors
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->

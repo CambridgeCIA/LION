@@ -1,23 +1,11 @@
 LION.classical_algorithms
 =========================
 
-Filtered backprojection
------------------------
+.. apimodule:: LION.classical_algorithms.fdk
 
-.. automodule:: LION.classical_algorithms.fdk
-   :members:
+.. apimodule:: LION.classical_algorithms.tv_min
 
-Total variation
----------------
-
-.. automodule:: LION.classical_algorithms.tv_min
-   :members:
-
-SPGL1
------
-
-.. automodule:: LION.classical_algorithms.spgl1_torch
-   :members:
+.. apimodule:: LION.classical_algorithms.spgl1_torch
 
 🚧 Undocumented modules
 -----------------------
@@ -25,11 +13,11 @@ SPGL1
 These modules lack complete narrative documentation, but their discoverable
 functions are included automatically.
 
-.. automodule:: LION.classical_algorithms.conjugate_gradient
-   :members:
+.. apimodule:: LION.classical_algorithms.conjugate_gradient
+   :warning:
 
-.. automodule:: LION.classical_algorithms.fista
-   :members:
+.. apimodule:: LION.classical_algorithms.fista
+   :warning:
 
-.. automodule:: LION.classical_algorithms.sirt
-   :members:
+.. apimodule:: LION.classical_algorithms.sirt
+   :warning:

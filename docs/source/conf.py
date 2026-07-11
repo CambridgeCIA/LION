@@ -8,7 +8,8 @@ from pathlib import Path
 import sys
 
 from docutils import nodes
-from docutils.parsers.rst import Directive
+from docutils.parsers.rst import Directive, directives
+from docutils.statemachine import StringList
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -48,6 +49,9 @@ autosummary_generate = True
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 autodoc_preserve_defaults = True
+# Object entries remain searchable and linkable inside expandable API panels,
+# but do not flood Furo's page-level table of contents while panels are closed.
+toc_object_entries = False
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_use_param = True
@@ -122,10 +126,54 @@ class SourceApiSummary(Directive):
         return result
 
 
+class ApiModule(Directive):
+    """Render one module in a consistent, expandable API panel."""
+
+    required_arguments = 1
+    final_argument_whitespace = False
+    has_content = False
+    option_spec = {
+        "source": directives.flag,
+        "warning": directives.flag,
+        "open": directives.flag,
+    }
+
+    def run(self) -> list[nodes.Node]:
+        module = self.arguments[0].strip()
+        warning = "🚧 " if "warning" in self.options else ""
+        lines = [f".. dropdown:: {warning}``{module}``"]
+        if "open" in self.options:
+            lines.append("   :open:")
+        lines.extend(["", "   .. rst-class:: api-module-status", ""])
+        if "warning" in self.options:
+            lines.extend(
+                [
+                    "      This module has not yet received a complete narrative and "
+                    "docstring audit.",
+                    "",
+                ]
+            )
+        if "source" in self.options:
+            lines.append(f"   .. sourceautosummary:: {module}")
+        else:
+            lines.extend(
+                [
+                    f"   .. automodule:: {module}",
+                    "      :members:",
+                    "      :show-inheritance:",
+                ]
+            )
+
+        container = nodes.container(classes=["api-module-wrapper"])
+        self.state.nested_parse(StringList(lines), self.content_offset, container)
+        return [container]
+
+
 def setup(app):
     """Register documentation helpers local to LION."""
 
     app.add_directive("sourceautosummary", SourceApiSummary)
+    app.add_directive("apimodule", ApiModule)
 
 
 html_theme = "furo"
@@ -136,7 +184,7 @@ html_theme_options = {
     "sidebar_hide_name": False,
     "navigation_with_keys": True,
     "top_of_page_button": "edit",
-    "source_repository": "https://github.com/CambridgeCIA/LION/",
+    "source_repository": "https://github.com/THartigan/LION/",
     "source_branch": "main",
     "source_directory": "docs/source/",
 }

@@ -1,26 +1,11 @@
 LION.reconstructors
 ===================
 
-Base reconstructor
-------------------
+.. apimodule:: LION.reconstructors.LIONreconstructor
 
-.. automodule:: LION.reconstructors.LIONreconstructor
-   :members:
-   :show-inheritance:
+.. apimodule:: LION.reconstructors.PaDIS
 
-PaDIS
------
-
-.. automodule:: LION.reconstructors.PaDIS
-   :members:
-   :show-inheritance:
-
-PnP
----
-
-.. automodule:: LION.reconstructors.PnP
-   :members:
-   :show-inheritance:
+.. apimodule:: LION.reconstructors.PnP
 
 The PnP interface is used by the PaDIS comparison pipeline, but some inherited
 implementation details remain less extensively documented than PaDIS itself.

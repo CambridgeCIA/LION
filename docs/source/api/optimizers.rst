@@ -1,39 +1,49 @@
 LION.optimizers
 ===============
 
-Base solver
------------
+.. apimodule:: LION.optimizers.LIONsolver
 
-.. automodule:: LION.optimizers.LIONsolver
-   :members:
-   :show-inheritance:
-
-PaDIS solver
-------------
-
-.. automodule:: LION.optimizers.PaDISSolver
-   :members:
-   :show-inheritance:
+.. apimodule:: LION.optimizers.PaDISSolver
 
 🚧 Undocumented solver modules
 ------------------------------
 
-.. sourceautosummary:: LION.optimizers.AdversarialRegularizerSolver
+.. apimodule:: LION.optimizers.AdversarialRegularizerSolver
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.optimizers.Equivariance2InverseSolver
+.. apimodule:: LION.optimizers.Equivariance2InverseSolver
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.optimizers.EquivariantSolver
+.. apimodule:: LION.optimizers.EquivariantSolver
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.optimizers.GaussianDenoiserSolver
+.. apimodule:: LION.optimizers.GaussianDenoiserSolver
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.optimizers.Noise2InverseSolver
+.. apimodule:: LION.optimizers.Noise2InverseSolver
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.optimizers.Noisier2Inverse
+.. apimodule:: LION.optimizers.Noisier2Inverse
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.optimizers.Proj2ProjSolver
+.. apimodule:: LION.optimizers.Proj2ProjSolver
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.optimizers.SelfSupervisedSolver
+.. apimodule:: LION.optimizers.SelfSupervisedSolver
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.optimizers.Sparse2InverseSolver
+.. apimodule:: LION.optimizers.Sparse2InverseSolver
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.optimizers.SupervisedSolver
+.. apimodule:: LION.optimizers.SupervisedSolver
+   :source:
+   :warning:

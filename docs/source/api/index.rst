@@ -7,7 +7,7 @@ that a module is indexed but has not yet received the same documentation audit
 as the PaDIS, CT, and LIDC-IDRI paths.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    cttools
    classical_algorithms

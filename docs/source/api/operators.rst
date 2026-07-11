@@ -9,16 +9,30 @@ LION.operators 🚧
 Current API
 -----------
 
-.. sourceautosummary:: LION.operators.Operator
+.. apimodule:: LION.operators.Operator
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.operators.CTProjectionOp
+.. apimodule:: LION.operators.CTProjectionOp
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.operators.CompositeOp
+.. apimodule:: LION.operators.CompositeOp
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.operators.DebiasOp
+.. apimodule:: LION.operators.DebiasOp
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.operators.PhotocurrentMapOp
+.. apimodule:: LION.operators.PhotocurrentMapOp
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.operators.WalshHadamard2D
+.. apimodule:: LION.operators.WalshHadamard2D
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.operators.Wavelet2D
+.. apimodule:: LION.operators.Wavelet2D
+   :source:
+   :warning:

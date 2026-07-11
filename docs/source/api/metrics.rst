@@ -4,11 +4,11 @@ LION.metrics 🚧
 These modules are tested but still need dedicated usage guidance and a public
 API docstring audit. Their currently discoverable functions are included.
 
-.. automodule:: LION.metrics.psnr
-   :members:
+.. apimodule:: LION.metrics.psnr
+   :warning:
 
-.. automodule:: LION.metrics.ssim
-   :members:
+.. apimodule:: LION.metrics.ssim
+   :warning:
 
-.. automodule:: LION.metrics.haarpsi
-   :members:
+.. apimodule:: LION.metrics.haarpsi
+   :warning:

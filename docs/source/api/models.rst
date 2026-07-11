@@ -4,22 +4,17 @@ LION.models
 Package guidance
 ----------------
 
+`Skip to the expandable module API <#module-api>`_.
+
 .. include:: ../../../LION/models/README.md
    :parser: myst_parser.sphinx_
 
-Model base classes
-------------------
+Module API
+----------
 
-.. automodule:: LION.models.LIONmodel
-   :members:
-   :show-inheritance:
+.. apimodule:: LION.models.LIONmodel
 
-NCSN++ diffusion model
-----------------------
-
-.. automodule:: LION.models.diffusion.NCSNpp
-   :members:
-   :show-inheritance:
+.. apimodule:: LION.models.diffusion.NCSNpp
 
 🚧 Undocumented model families
 ------------------------------
@@ -36,40 +31,78 @@ These families are indexed by their present package locations. Dedicated
 architecture guides and complete public-member docstrings remain future work;
 their currently discoverable classes and functions are still included below.
 
-.. sourceautosummary:: LION.models.CNNs.MSDNet
+.. apimodule:: LION.models.CNNs.MSDNet
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.CNNs.MSD_pytorch
+.. apimodule:: LION.models.CNNs.MSD_pytorch
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.CNNs.dncnn
+.. apimodule:: LION.models.CNNs.dncnn
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.CNNs.drunet
+.. apimodule:: LION.models.CNNs.drunet
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.PnP.gradient_step_denoiser
+.. apimodule:: LION.models.PnP.gradient_step_denoiser
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.PnP.gs_drunet
+.. apimodule:: LION.models.PnP.gs_drunet
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.iterative_unrolled.ItNet
+.. apimodule:: LION.models.iterative_unrolled.ItNet
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.iterative_unrolled.LG
+.. apimodule:: LION.models.iterative_unrolled.LG
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.iterative_unrolled.LPD
+.. apimodule:: LION.models.iterative_unrolled.LPD
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.iterative_unrolled.cLPD
+.. apimodule:: LION.models.iterative_unrolled.cLPD
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.learned_fbp.DeepFBP
+.. apimodule:: LION.models.learned_fbp.DeepFBP
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.learned_fbp.DeepFusionBP
+.. apimodule:: LION.models.learned_fbp.DeepFusionBP
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.learned_fbp.FusionFBP
+.. apimodule:: LION.models.learned_fbp.FusionFBP
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.learned_regularizer.ACR
+.. apimodule:: LION.models.learned_regularizer.ACR
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.learned_regularizer.AR
+.. apimodule:: LION.models.learned_regularizer.AR
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.post_processing.FBPConvNet
+.. apimodule:: LION.models.post_processing.FBPConvNet
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.post_processing.FBPConvNetImage
+.. apimodule:: LION.models.post_processing.FBPConvNetImage
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.post_processing.FBPMSDNet
+.. apimodule:: LION.models.post_processing.FBPMSDNet
+   :source:
+   :warning:
 
-.. sourceautosummary:: LION.models.post_processing.cFBPConvNet
+.. apimodule:: LION.models.post_processing.cFBPConvNet
+   :source:
+   :warning:

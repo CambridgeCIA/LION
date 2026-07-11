@@ -29,3 +29,23 @@ table.docutils {
   color: var(--color-foreground-secondary);
   font-size: 0.92rem;
 }
+
+.api-module-wrapper .sd-dropdown {
+  margin-bottom: 0.85rem;
+}
+
+.api-module-wrapper .sd-summary-title {
+  font-weight: 650;
+}
+
+.api-module-wrapper .sig,
+.api-module-wrapper pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+@media (max-width: 46rem) {
+  .api-module-wrapper .sd-card-body {
+    padding-inline: 0.8rem;
+  }
+}

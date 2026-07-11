@@ -1,20 +1,13 @@
 LION.losses
 ===========
 
-PaDIS loss
-----------
-
-.. automodule:: LION.losses.PaDIS
-   :members:
-   :show-inheritance:
+.. apimodule:: LION.losses.PaDIS
 
 🚧 Undocumented modules
 -----------------------
 
-.. automodule:: LION.losses.SURE
-   :members:
-   :show-inheritance:
+.. apimodule:: LION.losses.SURE
+   :warning:
 
-.. automodule:: LION.losses.SUREpgImage
-   :members:
-   :show-inheritance:
+.. apimodule:: LION.losses.SUREpgImage
+   :warning:
