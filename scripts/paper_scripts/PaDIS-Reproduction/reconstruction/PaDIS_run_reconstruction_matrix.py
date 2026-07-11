@@ -1316,12 +1316,7 @@ def pnp_noise_level_for_job(
 
 def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -> dict:
     if job.method.name == "baseline":
-        settings = {"baseline": "fdk"}
-        _, settings = apply_reconstruction_args_to_settings(
-            reconstruction_args=job_reconstruction_args(args, job),
-            method_settings=settings,
-        )
-        return settings
+        return {"baseline": "fdk"}
     if job.method.name == "admm_tv":
         settings = {
             "tv_lambda": float(args.tv_lambda),
@@ -1333,7 +1328,7 @@ def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -
             reconstruction_args=job_reconstruction_args(args, job),
             method_settings=settings,
         )
-        return settings
+        return {key: value for key, value in settings.items() if key.startswith("tv_")}
     if job.method.name == "pnp_admm":
         pnp_noise_level = pnp_noise_level_for_job(args, job)
         settings = {
@@ -1351,12 +1346,8 @@ def expected_method_settings(args: argparse.Namespace, job: ReconstructionJob) -
             reconstruction_args=job_reconstruction_args(args, job),
             method_settings=settings,
         )
-        return settings
-    _, settings = apply_reconstruction_args_to_settings(
-        reconstruction_args=job_reconstruction_args(args, job),
-        method_settings={},
-    )
-    return settings
+        return {key: value for key, value in settings.items() if key.startswith("pnp_")}
+    return {}
 
 
 def command_for_job(args: argparse.Namespace, job: ReconstructionJob) -> list[str]:

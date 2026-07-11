@@ -185,6 +185,23 @@ PADIS_RUN_STAMP=padis-reproduction \
   --backend slurm
 ```
 
+For a short local integration check using existing staged checkpoints, run:
+
+```bash
+export PADIS_FAST_SMOKE_TRAINING_ROOT=/path/to/matrix-compatible/training-root
+bash scripts/paper_scripts/PaDIS-Reproduction/pipeline/PaDIS_run_pipeline.sh \
+  --fast-smoke
+```
+
+`--fast-smoke` executes one sample, one experiment per selected model, one
+outer and one inner diffusion step, and one TV/PnP/CG iteration. It covers 12
+representative tuning families, a compact reconstruction matrix, patch and
+whole-image generation, verification, partial tables, and partial figures.
+Outputs go to a new `debug_runs/fast_smoke_*` folder by default. It checks the
+SHA256 of the committed hyperparameter registry before and after and fails if
+the settings change. The tuning launcher's broader `--smoke` mode retains all
+candidates while applying the same execution-depth limits.
+
 After the processed dataset exists, these entry points cover cache staging,
 diffusion and PnP training, intensive validation, checkpoint selection, the
 109-job reconstruction matrix, unconditional generation, verification,

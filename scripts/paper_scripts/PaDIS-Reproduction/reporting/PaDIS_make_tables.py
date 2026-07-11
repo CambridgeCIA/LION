@@ -594,7 +594,12 @@ def main() -> None:
         args.timing_jobs_json
         or DEFAULT_RECONSTRUCTION_ROOT / "reconstruction_matrix_jobs.json"
     )
-    timing_rows = calculate_timing_rows(args.timing_mode, log_root, jobs_json)
+    try:
+        timing_rows = calculate_timing_rows(args.timing_mode, log_root, jobs_json)
+    except ValueError:
+        if not args.allow_missing:
+            raise
+        timing_rows = []
     output = csv_to_latex_tables(
         args.csv_path,
         args.tex_path,
