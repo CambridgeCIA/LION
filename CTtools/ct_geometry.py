@@ -1,3 +1,5 @@
+"""Geometry parameter objects for fan- and parallel-beam CT."""
+
 # =============================================================================
 # This file is part of LION library
 # License : BSD-3
@@ -16,8 +18,12 @@ from LION.utils.parameter import LIONParameter
 
 
 class Geometry(LIONParameter):
-    """
-    Class holding a CT geometry
+    """Describe a discretised CT image, detector, and acquisition trajectory.
+
+    Geometry instances are serialisable :class:`LIONParameter` objects.  They
+    retain native image dimensions alongside optionally scaled reconstruction
+    dimensions, allowing datasets and checkpoints to preserve the physical
+    field of view while changing numerical resolution.
     """
 
     def __init__(self, **kwargs):
@@ -74,6 +80,7 @@ class Geometry(LIONParameter):
     # PLEASE SOMEONE FIND A SMARTER WAY TO DO THIS
     @classmethod
     def init_from_parameter(cls, parameter: LIONParameter):
+        """Construct a geometry from a serialised LION parameter object."""
         if hasattr(parameter, "native_image_shape"):
             native_image_shape = parameter.native_image_shape
         else:
@@ -102,6 +109,7 @@ class Geometry(LIONParameter):
 
     @staticmethod
     def default_parameters(image_scaling=1.0):
+        """Return the default LIDC-style fan-beam geometry."""
         native_image_shape = [1, 512, 512]
         native_image_size = [300.0 / 512.0, 300, 300]
         return Geometry(
@@ -131,6 +139,7 @@ class Geometry(LIONParameter):
 
     @staticmethod
     def sparse_view_parameters(image_scaling=1.0):
+        """Return the default fan-beam geometry with sparse angular views."""
         native_image_shape = [1, 512, 512]
         native_image_size = [300.0 / 512.0, 300, 300]
         return Geometry(
@@ -160,6 +169,7 @@ class Geometry(LIONParameter):
 
     @staticmethod
     def sparse_angle_parameters(image_scaling=1.0):
+        """Return the default fan-beam geometry with limited angular span."""
         native_image_shape = [1, 512, 512]
         native_image_size = [300.0 / 512.0, 300, 300]
         return Geometry(
@@ -189,6 +199,7 @@ class Geometry(LIONParameter):
 
     @staticmethod
     def padis_fan_beam_parameters(image_scaling=1.0):
+        """Return the public-PaDIS fan-beam coordinate convention."""
         """Return the 180-view, 180-degree fan-beam geometry used by PaDIS."""
         native_image_shape = [1, 512, 512]
         native_image_size = [40.0 / 512.0, 40.0, 40.0]
@@ -217,6 +228,7 @@ class Geometry(LIONParameter):
 
     @staticmethod
     def parallel_default_parameters(image_shape=None, image_scaling=1.0):
+        """Return a full-angle parallel-beam geometry."""
         if image_shape is None:
             native_image_shape = [1, 512, 512]
             image_shape = np.array(
@@ -247,6 +259,7 @@ class Geometry(LIONParameter):
 
     @staticmethod
     def parallel_sparse_view_parameters(image_shape=None, image_scaling=1.0):
+        """Return a sparse-view parallel-beam geometry."""
         if image_shape is None:
             native_image_shape = [1, 512, 512]
             image_shape = np.array(
@@ -278,6 +291,7 @@ class Geometry(LIONParameter):
     staticmethod
 
     def parallel_sparse_angle_parameters(image_shape=None, image_scaling=1.0):
+        """Return a limited-angle parallel-beam geometry."""
         if image_shape is None:
             native_image_shape = [1, 512, 512]
             image_shape = np.array(
@@ -307,6 +321,7 @@ class Geometry(LIONParameter):
         )
 
     def default_geo(self):
+        """Populate this instance with the default fan-beam geometry."""
         _native_image_shape = ([1, 512, 512],)
         _native_image_size = ([300.0 / 512.0, 300, 300],)
         _image_scaling = (1.0,)

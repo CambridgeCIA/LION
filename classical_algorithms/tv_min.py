@@ -1,3 +1,5 @@
+"""Chambolle--Pock total-variation reconstruction."""
+
 from __future__ import annotations
 from typing import Callable, Optional
 import torch
@@ -19,8 +21,31 @@ def tv_min(
     progress_bar: bool = False,
     callbacks: list[Callable] = [],
 ) -> torch.Tensor:
-    """Computes the total-variation minimization using Chambolle-Pock on a batched input.\n
-    See ts_algorithms.tv_min2d for more details.
+    """Minimise a TV-regularised CT objective with Chambolle--Pock.
+
+    Parameters
+    ----------
+    sino : torch.Tensor
+        Batched sinograms in ``NCHW``-like projection layout.
+    op : tomosipo.Operator or Geometry
+        Forward projection operator or source geometry.
+    lam : float
+        TV regularisation weight.
+    num_iterations : int, optional
+        Chambolle--Pock iterations.
+    L : float, optional
+        Precomputed operator norm used by the backend.
+    non_negativity : bool, optional
+        Constrain reconstruction values to be non-negative.
+    progress_bar : bool, optional
+        Display backend progress.
+    callbacks : list of callable, optional
+        Iteration callbacks passed to ``ts_algorithms.tv_min2d``.
+
+    Returns
+    -------
+    torch.Tensor
+        Batched TV reconstructions.
     """
     B, _, _, _ = sino.shape
     if B == 0:

@@ -1,3 +1,9 @@
+"""Resolve configured LION dataset and experiment roots.
+
+Set ``LION_DATA_PATH`` before importing this module.  Experiment outputs
+default to its ``experiments`` child unless ``LION_EXPERIMENTS_PATH`` is set.
+"""
+
 import pathlib
 import os
 

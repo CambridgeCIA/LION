@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 # math/science imports
+"""CT operator, noise, and attenuation-unit utilities."""
+
 import numpy as np
 import tomosipo as ts
 import torch
@@ -173,6 +175,18 @@ def from_HU_to_material_id(img):
 
 
 def make_operator(geometry: Geometry) -> CTProjectionOp:
+    """Construct a differentiable LION CT projection operator.
+
+    Parameters
+    ----------
+    geometry : Geometry
+        Fan- or parallel-beam acquisition geometry.
+
+    Returns
+    -------
+    CTProjectionOp
+        LION wrapper around the matching tomosipo operator.
+    """
     if not isinstance(geometry, Geometry):
         raise ValueError(
             "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"
