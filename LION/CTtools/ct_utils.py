@@ -12,6 +12,7 @@ from __future__ import annotations
 import numpy as np
 import tomosipo as ts
 import torch
+import torchvision.transforms.functional as TF
 
 # AItomotools imports
 from LION.CTtools.ct_geometry import Geometry
@@ -68,7 +69,8 @@ def sinogram_add_noise(
     proj,
     I0=1000,
     sigma=5,
-    cross_talk=0.05,
+    sigma_blur=0.3015,
+    ks_value=3,
     flat_field=None,
     dark_field=None,
     enable_gradients=False,
@@ -77,17 +79,25 @@ def sinogram_add_noise(
     Wraper for _sinogram_add_noise to support gradients
     """
     if enable_gradients:
-        sino = _sinogram_add_noise(proj, I0, sigma, cross_talk, flat_field, dark_field)
+        sino = _sinogram_add_noise(
+            proj, I0, sigma, sigma_blur, ks_value, flat_field, dark_field
+        )
     else:
         with torch.no_grad():
             sino = _sinogram_add_noise(
-                proj.detach(), I0, sigma, cross_talk, flat_field, dark_field
+                proj.detach(), I0, sigma, sigma_blur, ks_value, flat_field, dark_field
             )
     return sino
 
 
 def _sinogram_add_noise(
-    proj, I0=1000, sigma=5, cross_talk=0.05, flat_field=None, dark_field=None
+    proj,
+    I0=1000,
+    sigma=5,
+    sigma_blur=0.3015,
+    ks_value=3,
+    flat_field=None,
+    dark_field=None,
 ):
     """
     Adds realistic noise to sinograms.
@@ -115,7 +125,8 @@ def _sinogram_add_noise(
     max_val = torch.amax(
         proj
     )  # alternatively the highest power of 2 close to this value, but lets leave it as is.
-
+    if max_val <= 0:
+        max_val = 1.0
     Im = I0 * torch.exp(-proj / max_val)
 
     # Uncorrect the flat fields
@@ -125,17 +136,11 @@ def _sinogram_add_noise(
     Im = torch.poisson(Im)
 
     # Detector cross talk
+    ks = int(sigma_blur * ks_value) * 2 + 1
+    if ks < 3:
+        ks = 3
+    Im = TF.gaussian_blur(Im, kernel_size=[ks, ks], sigma=[sigma_blur, sigma_blur])
 
-    kernel = torch.tensor(
-        [[0.0, 0.0, 0.0], [cross_talk, 1, cross_talk], [0.0, 0.0, 0.0]]
-    ).view(1, 1, 3, 3).repeat(1, 1, 1, 1) / (1 + 2 * cross_talk)
-
-    conv = torch.nn.Conv2d(1, 1, 3, bias=False, padding="same")
-    with torch.no_grad():
-        conv.weight = torch.nn.Parameter(kernel)
-    conv = conv.to(dev)
-
-    Im = conv(Im.unsqueeze(0))[0]
     # Electronic noise:
     Im = Im + sigma * torch.randn(Im.shape, device=dev)
 

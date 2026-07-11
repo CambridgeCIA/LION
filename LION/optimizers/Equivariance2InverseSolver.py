@@ -1,7 +1,5 @@
 from typing import Callable, Optional
-import warnings
 import numpy as np
-from tqdm import tqdm
 from LION.CTtools.ct_geometry import Geometry
 from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
@@ -13,9 +11,11 @@ from LION.utils.parameter import LIONParameter
 import tomosipo as ts
 import LION.CTtools.ct_utils as ct_utils
 from tomosipo.torch_support import to_autograd
+import random
+import torchvision.transforms as TT
 
 
-class Proj2ProjSolver(LIONsolver):
+class Equivariance2InverseSolver(LIONsolver):
     def __init__(
         self,
         model: LIONmodel,
@@ -42,60 +42,56 @@ class Proj2ProjSolver(LIONsolver):
         self.model.operator = self.operator
         self.projector = to_autograd(self.operator, num_extra_dims=1)
         self.recon_fn = self.solver_params.recon_fn
-        self.global_step = 0
-
-    def get_mask(self, shape, step):
-        # shape: (B, C, H, W)
-        mask = torch.ones(shape, device=self.device)
-        grid = self.solver_params.grid_size
-
-        for b in range(shape[0]):
-            idx = (step + b) % (grid * grid)
-            r = idx // grid
-            c = idx % grid
-
-            mask[b, :, r::grid, c::grid] = 0
-        return mask
-
-    def fill_mean(self, sinos, mask):
-        kernel = (
-            torch.tensor(
-                [[0, 1, 0], [1, 0, 1], [0, 1, 0]],
-                dtype=torch.float32,
-                device=self.device,
-            )
-            / 4.0
-        )
-
-        kernel = kernel.view(1, 1, 3, 3)
-        local_mean_sino = F.conv2d(sinos, kernel, padding=1)
-
-        filled_sinos = (sinos * mask) + (local_mean_sino * (1 - mask))
-        return filled_sinos
 
     @staticmethod
     def default_parameters() -> LIONParameter:
         params = LIONParameter()
-        params.grid_size = 4
         params.recon_fn = fdk
+        params.I0 = 500
+        params.sigma = (50) ** (0.5)
+        params.sigma_blur = 0.8
         return params
 
     def mini_batch_step(self, sinos, targets):
-        mask = self.get_mask(sinos.shape, self.global_step)
-        self.global_step += sinos.shape[0]
-        input_sino = self.fill_mean(sinos, mask)
+        # masking
+        NP = sinos.shape[2]
+        YJ_num = torch.randint(0, NP, (1,)).item()
+        YJ = sinos[:, :, YJ_num, :]
 
-        input_recon = self.recon_fn(input_sino, self.model.operator)
-        output_recon = self.model(input_recon)
-        output_sino = self.projector(output_recon)
+        YJc = sinos.clone()
+        YJc[:, :, YJ_num, :] = 0
 
-        output_sino_mask = output_sino * (1 - mask)
-        target_sino = sinos * (1 - mask)
+        weight = NP / (NP - 1)
+        RJc = self.recon_fn(YJc * weight, self.model.operator)
+        output_recon_1 = self.model(RJc)
 
-        batch_loss = ((output_sino_mask - target_sino) ** 2).mean()
+        output_sino_1 = self.projector(output_recon_1)
+        AJ = output_sino_1[:, :, YJ_num, :]
+        batch_loss = ((AJ - YJ) ** 2).mean()
+
+        angle = random.uniform(0, 360)
+        rotated_output_recon_1 = TT.functional.rotate(
+            output_recon_1, angle, interpolation=TT.InterpolationMode.BILINEAR
+        )
+        rotated_output_recon_1 = torch.clamp(rotated_output_recon_1, min=0.0)
+        rotated_sinogram = self.projector(rotated_output_recon_1)
+        rotated_sinogram = torch.clamp(rotated_sinogram, min=0.0)
+        rotated_sinogram_noisy = ct_utils.sinogram_add_noise(
+            rotated_sinogram,
+            I0=self.solver_params.I0,
+            sigma=self.solver_params.sigma,
+            sigma_blur=self.solver_params.sigma_blur,
+            ks_value=3,
+            flat_field=None,
+            dark_field=None,
+        )
+
+        rotated_noisy_image = self.recon_fn(rotated_sinogram_noisy, self.model.operator)
+        output_recon_2 = self.model(rotated_noisy_image)
+        batch_loss += ((output_recon_2 - rotated_output_recon_1) ** 2).mean()
         return batch_loss
 
-    # No validation in Proj2Proj
+    # No validation in E2I
     def validate(self):
         return 0
 

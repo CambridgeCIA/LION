@@ -43,6 +43,7 @@ from abc import ABC, abstractmethod, ABCMeta
 # Some other imports
 import warnings
 from pathlib import Path
+import inspect
 
 
 class ModelInputType(int, Enum):
@@ -76,6 +77,18 @@ class LIONmodel(nn.Module, ABC):
     ):
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
+
+        if geometry is not None and not isinstance(geometry, ct.Geometry):
+            raise TypeError(
+                f"Expected geometry to be of type Geometry or None, but got {type(geometry).__name__}. "
+                "If you passed positional arguments to the model, please verify their order matches the model's __init__ signature."
+            )
+        
+        if model_parameters is not None and not isinstance(model_parameters, LIONModelParameter):
+            raise TypeError(
+                f"Expected model_parameters to be of type LIONModelParameter or None, but got {type(model_parameters).__name__}. "
+                "Ensure you are not accidentally passing a Geometry object as model_parameters."
+            )
 
         if model_parameters is None:
             model_parameters = self.default_parameters()
@@ -354,7 +367,8 @@ class LIONmodel(nn.Module, ABC):
         )
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
-        if hasattr(options, "geometry"):
+        sig = inspect.signature(cls.__init__)
+        if hasattr(options, "geometry") and "geometry" in sig.parameters:
             model = cls(
                 model_parameters=options.model_parameters,
                 geometry=options.geometry,
@@ -384,7 +398,8 @@ class LIONmodel(nn.Module, ABC):
         data = LIONmodel._load_data(fname, supress_warnings=True)
         # Some models need geometry, some others not.
         # This initializes the model itself (cls)
-        if hasattr(options, "geometry"):
+        sig = inspect.signature(cls.__init__)
+        if hasattr(options, "geometry") and "geometry" in sig.parameters:
             model = cls(
                 model_parameters=options.model_parameters,
                 geometry=options.geometry,
