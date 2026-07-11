@@ -1,4 +1,5 @@
 import csv
+import json
 
 from scripts.paper_scripts.PaDIS.PaDIS_make_tables import (
     DEFAULT_CSV_OUTPUT_DIR,
@@ -6,6 +7,7 @@ from scripts.paper_scripts.PaDIS.PaDIS_make_tables import (
     DEFAULT_OUTPUT_TEX,
     _method_labels,
     build_arg_parser,
+    calculate_timing_rows,
     write_latex_tables,
 )
 
@@ -27,6 +29,16 @@ def test_fanbeam_analytic_baseline_is_labelled_fdk():
             "matrix_group": "main",
         }
     ) == ("FDK", "--")
+
+
+def test_historical_admm_tv_identifier_is_presented_as_cp_with_tv_prior():
+    assert _method_labels(
+        {
+            "method": "admm_tv",
+            "prior_mode": "patch",
+            "matrix_group": "main",
+        }
+    ) == ("CP", "TV")
 
 
 def test_integrated_latex_writer_creates_table_fragment(tmp_path):
@@ -51,3 +63,32 @@ def test_integrated_latex_writer_creates_table_fragment(tmp_path):
     assert "LION-physics" in text
     assert r"FDK \& baseline" in text
     assert "tab:reconstruction-timings" in text
+
+
+def test_timing_calculation_supports_gcp_and_slurm_log_names(tmp_path):
+    jobs = [
+        {
+            "implementation": "lion_physics",
+            "method": "admm_tv",
+            "experiment": "ct_20",
+            "matrix_group": "main",
+        }
+    ]
+    manifest = tmp_path / "jobs.json"
+    manifest.write_text(json.dumps(jobs), encoding="utf-8")
+    progress = "LIDC test run: 100%|##########| 25/25 [01:00<00:00, 2.50s/it]\n"
+    gcp = tmp_path / "gcp"
+    gcp.mkdir()
+    (gcp / "reconstruction_000000.reconstruction.gpu0.slot1.log").write_text(progress)
+    slurm = tmp_path / "slurm"
+    slurm.mkdir()
+    (slurm / "slurm-PaDIS_recon-123_0.out").write_text(progress)
+
+    for mode, root in (("gcp", gcp), ("colab", gcp), ("slurm", slurm)):
+        assert calculate_timing_rows(mode, root, manifest) == [
+            {
+                "Implementation": "LION-physics",
+                "Reconstruction method": "CP",
+                "Mean time per slice": "2.50 s",
+            }
+        ]

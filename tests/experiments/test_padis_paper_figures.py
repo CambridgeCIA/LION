@@ -6,6 +6,7 @@ from scripts.paper_scripts.PaDIS.PaDIS_make_paper_figures import (
     PATCH_SIZE_EXAMPLE_OFFSETS,
     TWO_EXAMPLE_OFFSETS,
     body_hu_percentile_range,
+    build_arg_parser,
     figure_specs,
     selected_figures,
     should_show_panel_title,
@@ -57,6 +58,13 @@ def test_paper_figure_specs_follow_multi_sample_ct_layouts(tmp_path):
     figure5 = specs["figure5_ct_reconstruction"]
     assert len(figure5.panels) == 4
     assert all(row[0].title == "FDK" for row in figure5.panels)
+    assert all(row[1].title == "CP" for row in figure5.panels)
+    assert not any(
+        panel.title == "ADMM-TV"
+        for spec in specs.values()
+        for row in spec.panels
+        for panel in row
+    )
     assert [row[0].row for row in figure5.panels] == [
         "60 views\n360° range\nSample 1",
         "60 views\n360° range\nSample 6",
@@ -180,8 +188,26 @@ def test_body_crop_is_square_for_consistent_row_layout(tmp_path):
     top, bottom, left, right = target_bbox(path, 0, pad=3)
 
     assert bottom - top == right - left
+    assert top == 64 - bottom
+    assert left == 64 - right
     assert top <= 10 and bottom >= 42
     assert left <= 20 and right >= 50
+
+
+def test_body_crop_default_has_no_extra_padding():
+    parser = build_arg_parser()
+
+    assert (
+        parser.parse_args(
+            [
+                "--reconstruction-root",
+                "/tmp/recon",
+                "--output-folder",
+                "/tmp/figures",
+            ]
+        ).body_bbox_padding
+        == 0
+    )
 
 
 def test_hu_display_range_uses_body_15th_and_95th_percentiles(tmp_path):

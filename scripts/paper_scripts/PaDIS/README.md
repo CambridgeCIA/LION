@@ -180,6 +180,13 @@ The matrix contains:
 | `patch_stitch` | Fixed overlapping patches written in order, with later patches overwriting overlaps. |
 | `padis_dps` | Randomly shifted PaDIS patch partitions inside VE-DPS. |
 
+`admm_tv` is a historical internal matrix identifier retained to preserve
+checkpoint, output-directory, manifest, and resume compatibility. The executed
+solver is Chambolle--Pock, not ADMM. Presentation code therefore labels this
+method **CP** in figures and reports it as sampler **CP** with prior **TV** in
+tables. The inference CLI, saved method field, and existing output paths remain
+`admm_tv`; consumers should translate that identifier only for display.
+
 Three implementation tracks are used while keeping the LIDC images and LION
 fan-beam geometry fixed:
 
@@ -470,3 +477,33 @@ By default this reads
 and writes `reconstruction_tables.tex` plus seven decoded CSVs under
 `$LION_EXPERIMENTS_PATH/PaDIS/paper_tables`. Use `--csv-path`, `--tex-path`,
 and `--csv-output-dir` to override these locations.
+
+The timing table is calculated from completed reconstruction progress logs; no
+timings are stored in the table generator. `--timing-mode gcp` (the default)
+and `--timing-mode colab` read the manual-runner log naming convention from the
+standard GCP reconstruction root. For a Slurm reconstruction array, use:
+
+```bash
+python -u scripts/paper_scripts/PaDIS/PaDIS_make_tables.py \
+  --timing-mode slurm \
+  --timing-log-root /path/to/slurm/output/files \
+  --timing-jobs-json /path/to/reconstruction_matrix_jobs.json
+```
+
+The parser uses the final completed `LIDC test run` progress record, whose
+seconds-per-iteration value is already the mean wall time per reconstructed
+slice. Timings are grouped by implementation and reconstruction method; where
+multiple prior rows exist for a combination, their per-slice timings are
+averaged.
+
+Paper figures label the normalised-intensity colour scale as **NI**. CT panels
+use the tightest centre-symmetric crop that contains the target foreground;
+the default adds no border padding. This keeps anatomy centred consistently
+between methods without retaining avoidable outer background. Pass
+`--body-bbox-padding N` only when an explicit pixel border is required, or
+`--no-body-crop` to retain the complete reconstruction field of view. PNG and
+PDF exports additionally use a zero-padding page bounding box that is tight
+vertically and has equal minimal margins outside the leftmost and rightmost
+image edges. The **NI** label is placed close to its corresponding intensity
+scale while remaining legible. All vertical scale labels, including **HU** and
+**NI**, use one fixed horizontal coordinate so they align across figure rows.

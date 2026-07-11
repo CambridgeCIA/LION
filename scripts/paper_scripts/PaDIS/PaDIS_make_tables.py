@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -26,6 +28,9 @@ DEFAULT_INPUT_CSV = (
 DEFAULT_OUTPUT_DIR = LION_EXPERIMENTS_PATH / "PaDIS" / "paper_tables"
 DEFAULT_OUTPUT_TEX = DEFAULT_OUTPUT_DIR / "reconstruction_tables.tex"
 DEFAULT_CSV_OUTPUT_DIR = DEFAULT_OUTPUT_DIR / "csv"
+DEFAULT_GCP_LOG_ROOT = (
+    DEFAULT_RECONSTRUCTION_ROOT / ".manual_gcp_reconstruction" / "logs"
+)
 
 IMPLEMENTATION = {
     "paper": "Paper",
@@ -64,7 +69,7 @@ def _method_labels(row: dict[str, str]) -> tuple[str, str]:
     if method == "baseline":
         return "FDK", "--"
     if method == "admm_tv":
-        return "ADMM", "TV"
+        return "CP", "TV"
     if method == "pnp_admm":
         conditioned = row["matrix_group"] == "pnp_noise_conditioned"
         return "PnP-ADMM", "DRUnet (cond)" if conditioned else "DRUnet"
@@ -110,7 +115,69 @@ def _write_csv(path: Path, records: list[dict[str, str]]) -> None:
         writer.writerows(records)
 
 
-def export_table_csvs(rows: list[dict[str, str]], output_dir: str | Path) -> list[Path]:
+def calculate_timing_rows(
+    mode: str, log_root: Path, jobs_json: Path
+) -> list[dict[str, str]]:
+    """Calculate mean seconds per reconstructed slice from runner progress logs."""
+    jobs = json.loads(jobs_json.read_text(encoding="utf-8"))
+    pattern = "reconstruction_*.log" if mode in {"gcp", "colab"} else "slurm-*.out"
+    grouped: dict[tuple[str, str], list[float]] = {}
+    labels = {
+        "baseline": "FDK",
+        "admm_tv": "CP",
+        "pnp_admm": "PnP-ADMM",
+        "whole_image_diffusion": "VE-DPS (Whole-Image)",
+        "langevin": "Langevin",
+        "predictor_corrector": "Predictor-corrector",
+        "ve_ddnm": "VE-DDNM",
+        "patch_average": "Patch average",
+        "patch_stitch": "Patch stitch",
+        "padis_dps": "PaDIS-DPS",
+    }
+    for path in log_root.rglob(pattern):
+        index_match = re.search(
+            r"reconstruction_(\d+)" if mode in {"gcp", "colab"} else r"_(\d+)\.out$",
+            path.name,
+        )
+        elapsed_matches = re.findall(
+            r"LIDC test run:\s*100%\|[^\r\n]*?\d+/\d+ \[[^\r\n]*?,\s*([0-9.]+)s/it\]",
+            path.read_text(encoding="utf-8", errors="ignore"),
+        )
+        if not index_match or not elapsed_matches:
+            continue
+        index = int(index_match.group(1))
+        if index >= len(jobs):
+            continue
+        job = jobs[index]
+        if (
+            job.get("experiment") != "ct_20"
+            or job.get("matrix_group", "main") != "main"
+        ):
+            continue
+        grouped.setdefault((job["implementation"], job["method"]), []).append(
+            float(elapsed_matches[-1])
+        )
+    if not grouped:
+        raise ValueError(f"No completed ct_20 timing records found below {log_root}")
+    return [
+        {
+            "Implementation": IMPLEMENTATION[implementation],
+            "Reconstruction method": labels[method],
+            "Mean time per slice": f"{sum(values) / len(values):.2f} s",
+        }
+        for (implementation, method), values in sorted(
+            grouped.items(),
+            key=lambda item: (
+                IMPLEMENTATION_ORDER[item[0][0]],
+                METHOD_ORDER[item[0][1]],
+            ),
+        )
+    ]
+
+
+def export_table_csvs(
+    rows: list[dict[str, str]], output_dir: str | Path, *, timing_rows=None
+) -> list[Path]:
     """Write one decoded, human-readable CSV for each generated table."""
     output_dir = Path(output_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -311,39 +378,10 @@ def export_table_csvs(rows: list[dict[str, str]], output_dir: str | Path) -> lis
     _write_csv(path, table6)
     written.append(path)
 
-    timing = [
-        ("LION-physics", "Baseline", "4.71 s"),
-        ("LION-physics", "ADMM-TV", "8.13 s"),
-        ("LION-physics", "Predictor-corrector", "14.11 s"),
-        ("LION-physics", "PnP-ADMM", "26.63 s"),
-        ("LION-physics", "Langevin", "51.49 s"),
-        ("LION-physics", "VE-DDNM", "62.08 s"),
-        ("LION-physics", "PaDIS-DPS", "118.85 s"),
-        ("LION-physics", "VE-DPS (Whole-Image)", "156.44 s"),
-        ("LION-physics", "Patch stitch", "1,450.73 s (24.18 min)"),
-        ("LION-physics", "Patch average", "1,468.76 s (24.48 min)"),
-        ("Paper", "Predictor-corrector", "14.16 s"),
-        ("Paper", "Langevin", "56.42 s"),
-        ("Paper", "VE-DDNM", "61.34 s"),
-        ("Paper", "PaDIS-DPS", "120.45 s"),
-        ("Paper", "VE-DPS (Whole-Image)", "156.89 s"),
-        ("Public-compatible", "Predictor-corrector", "14.02 s"),
-        ("Public-compatible", "Langevin", "56.55 s"),
-        ("Public-compatible", "VE-DDNM", "58.54 s"),
-        ("Public-compatible", "PaDIS-DPS", "119.22 s"),
-        ("Public-compatible", "Patch stitch", "1,461.08 s (24.35 min)"),
-        ("Public-compatible", "Patch average", "1,468.75 s (24.48 min)"),
-    ]
-    table7 = [
-        {
-            "Implementation": implementation,
-            "Reconstruction method": method,
-            "Mean time per slice": elapsed,
-        }
-        for implementation, method, elapsed in timing
-    ]
+    if not timing_rows:
+        raise ValueError("Timing rows must be calculated from runner logs")
     path = output_dir / "table_7_timings.csv"
-    _write_csv(path, table7)
+    _write_csv(path, timing_rows)
     written.append(path)
     return written
 
@@ -457,6 +495,7 @@ def csv_to_latex_tables(
     *,
     generator_path: str | Path | None = None,
     csv_output_dir: str | Path | None = None,
+    timing_rows: list[dict[str, str]] | None = None,
 ) -> Path:
     """Parse ``csv_path`` and write the complete LaTeX table document.
 
@@ -492,7 +531,9 @@ def csv_to_latex_tables(
     tex_path.parent.mkdir(parents=True, exist_ok=True)
     with csv_path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
-    csv_paths = export_table_csvs(rows, csv_output_dir or DEFAULT_CSV_OUTPUT_DIR)
+    csv_paths = export_table_csvs(
+        rows, csv_output_dir or DEFAULT_CSV_OUTPUT_DIR, timing_rows=timing_rows
+    )
 
     if generator_path is None:
         write_latex_tables(csv_paths, tex_path)
@@ -516,16 +557,32 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tex-path", type=Path, default=DEFAULT_OUTPUT_TEX)
     parser.add_argument("--csv-output-dir", type=Path, default=DEFAULT_CSV_OUTPUT_DIR)
     parser.add_argument("--generator", type=Path, default=None)
+    parser.add_argument(
+        "--timing-mode", choices=("gcp", "colab", "slurm"), default="gcp"
+    )
+    parser.add_argument("--timing-log-root", type=Path, default=None)
+    parser.add_argument("--timing-jobs-json", type=Path, default=None)
     return parser
 
 
 def main() -> None:
     args = build_arg_parser().parse_args()
+    log_root = args.timing_log_root
+    if log_root is None:
+        log_root = (
+            DEFAULT_GCP_LOG_ROOT if args.timing_mode in {"gcp", "colab"} else Path.cwd()
+        )
+    jobs_json = (
+        args.timing_jobs_json
+        or DEFAULT_RECONSTRUCTION_ROOT / "reconstruction_matrix_jobs.json"
+    )
+    timing_rows = calculate_timing_rows(args.timing_mode, log_root, jobs_json)
     output = csv_to_latex_tables(
         args.csv_path,
         args.tex_path,
         generator_path=args.generator,
         csv_output_dir=args.csv_output_dir,
+        timing_rows=timing_rows,
     )
     print(f"Saved PaDIS tables to {output}")
 

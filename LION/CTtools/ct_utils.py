@@ -31,6 +31,20 @@ def from_HU_to_normal(img):
         raise NotImplementedError
 
 
+def from_normal_to_HU(img):
+    """Convert a LION-normalised CT image in ``[0, 1]`` to HU.
+
+    This is the inverse of :func:`from_HU_to_normal` on its represented
+    Hounsfield-unit interval, mapping 0 to -1000 HU and 1 to 2000 HU.
+    Values are not clipped so reconstruction overshoots remain visible.
+    """
+    if isinstance(img, np.ndarray):
+        return 3000 * img.astype(np.float32) - 1000
+    if isinstance(img, torch.Tensor):
+        return 3000 * img.float() - 1000
+    raise NotImplementedError
+
+
 def from_HU_to_mu(img):
     """
     Converts image in Hounsfield Units (air-> -1000, bone->500) into linear attenuation coefficient (air-> 0.0012,

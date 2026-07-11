@@ -17,6 +17,7 @@ os.environ.setdefault("XDG_CACHE_HOME", str(_CACHE_ROOT / "xdg"))
 
 import torch
 
+from LION.CTtools import ct_utils as ct
 from LION.utils.paths import LION_EXPERIMENTS_PATH
 
 
@@ -44,6 +45,7 @@ PANEL_HEADING_SIZE_PT = 7.5
 ROW_LABEL_SIZE_PT = 6.75
 SCALE_TEXT_SIZE_PT = 6.5
 COLOUR_SCALE_TEXT_SIZE_PT = 6.5
+COLOUR_SCALE_LABEL_X = 8.0
 GRID_DIVIDER_COLOUR = "0.45"
 GRID_DIVIDER_WIDTH_PT = 0.45
 HU_LOWER_PERCENTILE = 0.15
@@ -85,10 +87,6 @@ def torch_load(path: pathlib.Path):
         return torch.load(path, map_location="cpu")
 
 
-def normal_to_hu(image: torch.Tensor) -> torch.Tensor:
-    return 3000.0 * image - 1000.0
-
-
 def display_image(
     image: torch.Tensor,
     *,
@@ -108,7 +106,7 @@ def display_image(
         lower, upper = hu_range
     else:
         raise ValueError(f"Unknown display window: {window}")
-    return ((normal_to_hu(image) - lower) / (upper - lower)).clamp(0.0, 1.0)
+    return ((ct.from_normal_to_HU(image) - lower) / (upper - lower)).clamp(0.0, 1.0)
 
 
 def tensor_from_payload(
@@ -148,18 +146,26 @@ def target_bbox(
         return None
     rows = torch.where(torch.any(mask, dim=1))[0]
     cols = torch.where(torch.any(mask, dim=0))[0]
-    top = max(int(rows[0]) - pad, 0)
-    bottom = min(int(rows[-1]) + pad + 1, target_2d.shape[0])
-    left = max(int(cols[0]) - pad, 0)
-    right = min(int(cols[-1]) + pad + 1, target_2d.shape[1])
-    side = min(max(bottom - top, right - left), *target_2d.shape)
-    center_row = 0.5 * (top + bottom)
-    center_col = 0.5 * (left + right)
-    top = min(max(int(round(center_row - side / 2)), 0), target_2d.shape[0] - side)
-    left = min(max(int(round(center_col - side / 2)), 0), target_2d.shape[1] - side)
-    bottom = top + side
-    right = left + side
-    return top, bottom, left, right
+    height, width = (int(value) for value in target_2d.shape)
+    content_top = max(int(rows[0]) - pad, 0)
+    content_bottom = min(int(rows[-1]) + pad + 1, height)
+    content_left = max(int(cols[0]) - pad, 0)
+    content_right = min(int(cols[-1]) + pad + 1, width)
+
+    # Remove the largest equal border possible from all four sides. The result
+    # is the tightest square crop centred on the original image centre that
+    # still contains every foreground pixel (and any explicitly requested
+    # padding). This avoids shifting anatomy to follow an asymmetric body mask.
+    inset = max(
+        min(
+            content_top,
+            height - content_bottom,
+            content_left,
+            width - content_right,
+        ),
+        0,
+    )
+    return inset, height - inset, inset, width - inset
 
 
 def body_hu_percentile_range(
@@ -177,7 +183,7 @@ def body_hu_percentile_range(
     body_mask = target_2d > 0.02
     if not torch.any(body_mask):
         raise ValueError(f"No body pixels found in target image {path}.")
-    body_hu = normal_to_hu(target_2d)[body_mask]
+    body_hu = ct.from_normal_to_HU(target_2d)[body_mask]
     limits = torch.quantile(
         body_hu,
         torch.tensor((lower_quantile, upper_quantile), dtype=body_hu.dtype),
@@ -323,7 +329,7 @@ def figure_specs(
             ),
             recon_panel(
                 recon_root,
-                "ADMM-TV",
+                "CP",
                 row,
                 method="admm_tv",
                 model="patch_lidc_default",
@@ -433,7 +439,7 @@ def figure_specs(
                     ),
                     recon_panel(
                         recon_root,
-                        "ADMM-TV",
+                        "CP",
                         "60 views\n360° range\n512 × 512",
                         method="admm_tv",
                         model="patch_lidc_512",
@@ -787,7 +793,7 @@ def figure_specs(
                     ),
                     recon_panel(
                         recon_root,
-                        "ADMM-TV",
+                        "CP",
                         experiment_label,
                         method="admm_tv",
                         model="patch_lidc_default",
@@ -982,6 +988,30 @@ def assert_text_within_figure(fig) -> None:
         )
 
 
+def symmetric_horizontal_tight_bbox(fig, axes):
+    """Return the minimal tight page symmetric about the image-grid edges."""
+    from matplotlib.transforms import Bbox
+
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    tight_bbox = fig.get_tightbbox(renderer)
+    image_left_px = min(row[0].get_window_extent(renderer).x0 for row in axes)
+    image_right_px = max(row[-1].get_window_extent(renderer).x1 for row in axes)
+    image_left = image_left_px / fig.dpi
+    image_right = image_right_px / fig.dpi
+    symmetric_margin = max(
+        image_left - tight_bbox.x0,
+        tight_bbox.x1 - image_right,
+        0.0,
+    )
+    return Bbox.from_extents(
+        image_left - symmetric_margin,
+        tight_bbox.y0,
+        image_right + symmetric_margin,
+        tight_bbox.y1,
+    )
+
+
 def add_row_intensity_colourbar(
     fig,
     colour_axis,
@@ -997,9 +1027,7 @@ def add_row_intensity_colourbar(
     if window == "normal":
         ticks = (0.0, 0.25, 0.5, 0.75, 1.0)
         labels = ("0", "0.25", "0.5", "0.75", "1")
-        colourbar.set_label(
-            "Normalised\nintensity", fontsize=COLOUR_SCALE_TEXT_SIZE_PT, labelpad=3
-        )
+        colourbar.set_label("NI", fontsize=COLOUR_SCALE_TEXT_SIZE_PT)
         colourbar.ax.yaxis.label.set_multialignment("center")
     elif window in {"soft_tissue", "bone"}:
         if hu_range is None:
@@ -1013,6 +1041,7 @@ def add_row_intensity_colourbar(
         raise ValueError(f"Unknown display window for intensity colour bar: {window}")
     colourbar.set_ticks(ticks, labels=labels)
     colourbar.ax.tick_params(labelsize=COLOUR_SCALE_TEXT_SIZE_PT, length=2, pad=1.5)
+    colourbar.ax.yaxis.set_label_coords(COLOUR_SCALE_LABEL_X, 0.5)
 
 
 def draw_figure(
@@ -1205,7 +1234,12 @@ def draw_figure(
     pdf_path = output_path.with_suffix(".pdf")
     if rendered > 0:
         assert_text_within_figure(fig)
-        save_kwargs = {"facecolor": "white"}
+        export_bbox = symmetric_horizontal_tight_bbox(fig, axes)
+        save_kwargs = {
+            "facecolor": "white",
+            "bbox_inches": export_bbox,
+            "pad_inches": 0,
+        }
         fig.savefig(output_path, dpi=PUBLICATION_DPI, **save_kwargs)
         fig.savefig(pdf_path, dpi=PDF_IMAGE_DPI, **save_kwargs)
     plt.close(fig)
@@ -1230,6 +1264,8 @@ def draw_figure(
         "text_bounds_validated": True,
         "row_spacing": 0.0,
         "square_crop": bool(crop_body),
+        "crop_alignment": "symmetric about the source-image centre",
+        "page_crop": "tight vertically; minimal symmetric margins about image grid",
         "latex_text_width_pt": LATEX_TEXT_WIDTH_PT,
         "publication_ready": not missing and spec.unsupported_note is None,
         "rendered_panels": rendered,
@@ -1264,7 +1300,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="all or comma-separated figure keys: " + ", ".join(IMPLEMENTED_FIGURES),
     )
     parser.add_argument("--sample-index", type=int, default=0)
-    parser.add_argument("--body-bbox-padding", type=int, default=8)
+    parser.add_argument("--body-bbox-padding", type=int, default=0)
     parser.add_argument("--no-body-crop", action="store_true")
     parser.add_argument("--allow-missing", action="store_true")
     parser.add_argument("--list", action="store_true")
