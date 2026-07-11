@@ -4,7 +4,7 @@
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 [![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](#black-code-style-)
-[![Tests](https://github.com/CambridgeCIA/LION/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/CambridgeCIA/LION/actions/workflows/tests.yml)
+[![Tests](https://github.com/THartigan/LION/actions/workflows/tests.yml/badge.svg)](https://github.com/THartigan/LION/actions/workflows/tests.yml)
 
 University of Cambridge Computational Image Analysis (CIA) groups AI tools for image reconstruction (e.g. tomographic reconstruction), LION (Learned Iterative Optimization Networks)
 
