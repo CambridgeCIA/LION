@@ -63,7 +63,6 @@ Build this site locally with::
    getting_started
    architecture
    testing
-   readthedocs
    documentation_status
    padis/index
    readmes/index

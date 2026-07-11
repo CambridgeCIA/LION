@@ -1,22 +1,19 @@
-Project READMEs
-===============
+Project README
+==============
 
 These pages include the repository READMEs directly from their maintained
 locations. Changes to a README therefore appear in the next Sphinx build
 without a second documentation copy becoming stale.
 
-.. toctree::
-   :maxdepth: 2
+.. include:: ../../../README.md
+   :parser: myst_parser.sphinx_
 
-   project
-   datasets
-   lidc
-   luna16
-   models
+Repository structure
+--------------------
+
+.. toctree::
+   :maxdepth: 20
+
+   lion/index
    demos
-   scripts
-   example_scripts
-   paper_scripts
-   padis_reproduction
-   continuous_lpd
-   synergy_hackathon
+   scripts/index

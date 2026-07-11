@@ -109,9 +109,9 @@ older package areas are currently presented as explicitly labelled stubs.
 The repository is ready for versioned hosting on Read the Docs through
 [`.readthedocs.yaml`](.readthedocs.yaml). A repository administrator must
 import `THartigan/LION` into Read the Docs once; GitHub webhooks then build
-enabled branches, tags, and optional pull-request previews automatically. See
-the [publishing guide](docs/source/readthedocs.rst) for the exact dashboard
-settings and badge setup.
+enabled branches, tags, and optional pull-request previews automatically. Set
+the desired publishing branch as `latest` in the Read the Docs project and use
+its generated project slug when adding a documentation badge.
 
 ## Contributors
 

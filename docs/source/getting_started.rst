@@ -63,3 +63,12 @@ The source lives under ``docs/source``.  Build the HTML site with::
    make html
 
 The result is written to ``docs/_build/html/index.html``.
+
+Hosted documentation
+--------------------
+
+The repository's ``.readthedocs.yaml`` builds the same strict Sphinx target
+with Python 3.12 and the ``docs`` dependency extra. After importing the GitHub
+repository into Read the Docs, select the branch to publish as ``latest`` and
+optionally enable pull-request previews. The GitHub documentation workflow
+also builds and uploads the HTML site on pushes and pull requests.
