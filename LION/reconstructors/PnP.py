@@ -17,6 +17,36 @@ from LION.utils.math import power_method
 
 
 class PnP(LIONReconstructor):
+    @staticmethod
+    def cite(cite_format: str = "MLA") -> None:
+        """Print the Plug-and-Play ADMM citation."""
+        if cite_format == "MLA":
+            print(
+                "Chan, Stanley H., Xiran Wang, and Omar A. Elgendy. "
+                '"Plug-and-Play ADMM for Image Restoration: Fixed-Point '
+                'Convergence and Applications." IEEE Transactions on '
+                "Computational Imaging, vol. 3, no. 1, pp. 84-98, 2017. "
+                "doi:10.1109/TCI.2016.2629286."
+            )
+        elif cite_format == "bib":
+            print(
+                """@article{chan_plug-and-play_2017,
+  title = {Plug-and-Play ADMM for Image Restoration: Fixed-Point Convergence and Applications},
+  author = {Chan, Stanley H. and Wang, Xiran and Elgendy, Omar A.},
+  year = {2017},
+  journal = {IEEE Transactions on Computational Imaging},
+  volume = {3},
+  number = {1},
+  pages = {84--98},
+  doi = {10.1109/TCI.2016.2629286}
+}"""
+            )
+        else:
+            raise ValueError(
+                f'`cite_format` "{cite_format}" is not understood, only "MLA" '
+                'and "bib" are supported'
+            )
+
     def __init__(
         self,
         physics: Geometry | Operator,
