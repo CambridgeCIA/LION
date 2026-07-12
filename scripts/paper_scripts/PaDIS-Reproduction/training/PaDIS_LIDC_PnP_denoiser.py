@@ -42,6 +42,7 @@ class CachedImagePriorBatchLoader(DataLoader):
     """Small batch loader for cached LIDC image-prior tensors."""
 
     def __init__(self, images, batch_size, shuffle, name):
+        """Initialize the instance."""
         if images.ndim != 4:
             raise ValueError(
                 f"Expected cached images shaped [N, C, H, W], got {images.shape}."
@@ -54,15 +55,18 @@ class CachedImagePriorBatchLoader(DataLoader):
         self.name = name
 
     def __len__(self):
+        """Return the number of available items."""
         return math.ceil(self.images.shape[0] / self.batch_size)
 
     def _new_order(self):
+        """Handle new order for the PaDIS workflow."""
         n_images = self.images.shape[0]
         if self.shuffle:
             return torch.randperm(n_images)
         return torch.arange(n_images)
 
     def __iter__(self):
+        """Return an iterator over the available items."""
         order = self._new_order()
         for start in range(0, self.images.shape[0], self.batch_size):
             indices = order[start : start + self.batch_size]
@@ -71,6 +75,7 @@ class CachedImagePriorBatchLoader(DataLoader):
 
 
 def set_run_seed(seed: int) -> None:
+    """Set run seed."""
     os.environ.setdefault("PYTHONHASHSEED", str(seed))
     random.seed(seed)
     np.random.seed(seed)
@@ -82,9 +87,11 @@ def set_run_seed(seed: int) -> None:
 
 
 def install_termination_handler():
+    """Install termination handler."""
     previous_handler = signal.getsignal(signal.SIGTERM)
 
     def request_stop(signum, _frame):
+        """Request stop."""
         signal.signal(signum, signal.SIG_IGN)
         raise TerminationRequested(f"Received signal {signum}")
 
@@ -93,12 +100,14 @@ def install_termination_handler():
 
 
 def cuda_device_index(device: torch.device) -> int:
+    """Handle cuda device index for the PaDIS workflow."""
     if device.type != "cuda":
         raise ValueError("cuda_device_index expects a CUDA device.")
     return 0 if device.index is None else int(device.index)
 
 
 def jsonable(value):
+    """Convert values into JSON-serializable objects."""
     if isinstance(value, pathlib.Path):
         return str(value)
     if isinstance(value, torch.device):
@@ -109,6 +118,7 @@ def jsonable(value):
 
 
 def save_loss_plots(solver, save_folder: pathlib.Path) -> None:
+    """Save loss plots."""
     plt.figure()
     train_loss = (
         solver.train_loss[1:] if len(solver.train_loss) > 1 else solver.train_loss
@@ -125,10 +135,12 @@ def save_loss_plots(solver, save_folder: pathlib.Path) -> None:
 
 
 def wandb_id_file(run_folder: pathlib.Path) -> pathlib.Path:
+    """Return the W&B id file."""
     return run_folder / "wandb_run.json"
 
 
 def discover_wandb_id(run_folder: pathlib.Path) -> str | None:
+    """Discover wandb id."""
     id_path = wandb_id_file(run_folder)
     if id_path.is_file():
         try:
@@ -155,6 +167,7 @@ def discover_wandb_id(run_folder: pathlib.Path) -> str | None:
 
 
 def init_wandb(args, run_folder: pathlib.Path, config: dict):
+    """Initialise or resume W&B logging for DRUNet training."""
     if args.no_wandb or args.wandb_project is None:
         return None
     try:
@@ -186,6 +199,7 @@ def init_wandb(args, run_folder: pathlib.Path, config: dict):
 
 
 def log_epoch_to_wandb(wandb_run, solver, epoch_index: int) -> None:
+    """Log epoch to wandb."""
     if wandb_run is None:
         return
     metrics = {
@@ -200,6 +214,7 @@ def log_epoch_to_wandb(wandb_run, solver, epoch_index: int) -> None:
 
 
 def log_wandb_outputs(wandb_run, run_folder: pathlib.Path, log_artifact=True) -> None:
+    """Log wandb outputs."""
     if wandb_run is None:
         return
     import wandb
@@ -228,12 +243,14 @@ def log_wandb_outputs(wandb_run, run_folder: pathlib.Path, log_artifact=True) ->
 
 
 def ensure_loss_capacity(loss: np.ndarray, n_epochs: int) -> np.ndarray:
+    """Ensure loss capacity."""
     if len(loss) >= n_epochs:
         return loss
     return np.append(loss, np.zeros(n_epochs - len(loss)))
 
 
 def periodic_checkpoint_sidecars(checkpoint_path: pathlib.Path) -> list[pathlib.Path]:
+    """Return periodic checkpoint sidecars."""
     return [
         checkpoint_path.with_suffix(".pt"),
         checkpoint_path.with_suffix(".json"),
@@ -242,12 +259,14 @@ def periodic_checkpoint_sidecars(checkpoint_path: pathlib.Path) -> list[pathlib.
 
 
 def full_final_name(final_name: str) -> str:
+    """Handle full final name for the PaDIS workflow."""
     final_path = pathlib.Path(final_name)
     suffix = final_path.suffix or ".pt"
     return str(final_path.with_name(f"{final_path.stem}_full{suffix}"))
 
 
 def prune_periodic_checkpoints(solver, max_periodic_checkpoints: int | None) -> None:
+    """Prune periodic checkpoints."""
     if max_periodic_checkpoints is None:
         return
     if max_periodic_checkpoints < 0:
@@ -275,11 +294,13 @@ def save_checkpoint_with_retention(
     epoch: int,
     max_periodic_checkpoints: int | None,
 ) -> None:
+    """Save checkpoint with retention."""
     solver.save_checkpoint(epoch)
     prune_periodic_checkpoints(solver, max_periodic_checkpoints)
 
 
 def save_interruption_checkpoint(solver, max_periodic_checkpoints: int | None) -> None:
+    """Save interruption checkpoint."""
     if solver.checkpoint_save_folder is None or solver.checkpoint_fname is None:
         return
     if getattr(solver, "train_loss", None) is None:
@@ -296,6 +317,7 @@ def load_full_final_checkpoint_if_exists(
     solver,
     full_final_path: pathlib.Path,
 ) -> bool:
+    """Load full final checkpoint if exists."""
     if not full_final_path.with_suffix(".pt").is_file():
         return False
 
@@ -316,6 +338,7 @@ def load_full_final_checkpoint_if_exists(
 
 
 def build_experiment(args):
+    """Construct the LIDC experiment and split datasets for PnP training."""
     experiment = ct_experiments.PaDISFanBeam20CTRecon(
         dataset="LIDC-IDRI",
         datafolder=args.data_folder,
@@ -335,6 +358,7 @@ def build_experiment(args):
 
 
 def default_cache_folder():
+    """Return the default cache folder."""
     ramdisk_root = pathlib.Path("/ramdisks")
     if ramdisk_root.is_dir():
         return ramdisk_root / getpass.getuser() / "lion_lidc_cache"
@@ -342,6 +366,7 @@ def default_cache_folder():
 
 
 def normalized_slices_to_load(dataset):
+    """Return normalized slices to load."""
     return {
         str(patient_id): [int(slice_index) for slice_index in slice_indices]
         for patient_id, slice_indices in dataset.slices_to_load.items()
@@ -349,6 +374,7 @@ def normalized_slices_to_load(dataset):
 
 
 def dataset_cache_metadata(dataset, mode):
+    """Handle dataset cache metadata for the PaDIS workflow."""
     params = dataset.params
     geometry = params.geometry
     return {
@@ -369,6 +395,7 @@ def dataset_cache_metadata(dataset, mode):
 
 
 def cache_path_for_dataset(dataset, mode, cache_folder):
+    """Handle cache path for dataset for the PaDIS workflow."""
     metadata = dataset_cache_metadata(dataset, mode)
     digest = hashlib.sha256(
         json.dumps(metadata, sort_keys=True).encode("utf-8")
@@ -379,6 +406,7 @@ def cache_path_for_dataset(dataset, mode, cache_folder):
 
 
 def stage_cache_from_source(mode, cache_path, source_cache_path):
+    """Stage a prepared dataset cache from a source directory."""
     if not source_cache_path.is_file():
         return False
     print(f"Staging {mode} image-prior cache from {source_cache_path} to {cache_path}")
@@ -389,6 +417,7 @@ def stage_cache_from_source(mode, cache_path, source_cache_path):
 
 
 def stage_cache_from_archive(mode, cache_path, archive_path):
+    """Restore a prepared dataset cache from an archive."""
     if not archive_path.is_file():
         return False
     zstd = shutil.which("zstd")
@@ -419,6 +448,7 @@ def materialize_image_prior_dataset(
     cache_archive_folder=None,
     require_cache_hit=False,
 ):
+    """Materialize image prior dataset."""
     cache_path, metadata = cache_path_for_dataset(dataset, mode, cache_folder)
     cache_folder.mkdir(parents=True, exist_ok=True)
     if (
@@ -478,6 +508,7 @@ def materialize_image_prior_dataset(
 
 
 def build_cached_loaders(args, train_dataset, validation_dataset):
+    """Build cached loaders."""
     cache_folder = args.cache_folder or default_cache_folder()
     train_images = materialize_image_prior_dataset(
         train_dataset,
@@ -513,6 +544,7 @@ def build_cached_loaders(args, train_dataset, validation_dataset):
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the DRUNet training command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output-root",
@@ -648,6 +680,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def validate_args(args: argparse.Namespace) -> None:
+    """Validate args."""
     if args.batch_size <= 0:
         raise ValueError("--batch-size must be positive.")
     if args.epochs <= 0:
@@ -722,6 +755,7 @@ def train_with_optional_time_limit(
     full_final_checkpoint_path: pathlib.Path | None = None,
     wandb_run=None,
 ) -> None:
+    """Train DRUNet until the epoch target or wall-clock deadline."""
     assert n_epochs > 0, "Number of epochs must be a positive integer"
     solver.check_training_ready()
 
@@ -776,6 +810,7 @@ def train_with_optional_time_limit(
 
 
 def main() -> None:
+    """Train or resume the LIDC DRUNet prior used by PnP-ADMM."""
     args = build_arg_parser().parse_args()
     validate_args(args)
 

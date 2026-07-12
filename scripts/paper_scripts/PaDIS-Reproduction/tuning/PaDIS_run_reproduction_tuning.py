@@ -17,6 +17,8 @@ TUNER = HERE / "PaDIS_tune_reconstruction_hyperparameters.py"
 
 @dataclass(frozen=True)
 class Sweep:
+    """Named, reproducible subset of the reconstruction tuning design."""
+
     name: str
     models: str
     method: str
@@ -27,7 +29,10 @@ class Sweep:
 
 
 def names(prefix: str, values: tuple[float, ...], suffix: str = "") -> tuple[str, ...]:
+    """Handle names for the PaDIS workflow."""
+
     def safe(value: float) -> str:
+        """Return a filesystem-safe the requested values."""
         return f"{value:g}".replace("-", "_").replace(".", "p")
 
     return tuple(f"{prefix}{safe(value)}{suffix}" for value in values)
@@ -310,6 +315,7 @@ FAST_SMOKE_CANDIDATES = {
 
 
 def main() -> None:
+    """Run the documented tuning sweep collection sequentially."""
     default_output = pathlib.Path(
         os.environ.get(
             "PADIS_TUNING_ROOT", pathlib.Path.cwd() / "padis_tuning_reproduction"

@@ -24,6 +24,8 @@ from LION.utils.parameter import LIONParameter  # noqa: E402
 
 
 class PublicStyleDenoiser(torch.nn.Module):
+    """Analytic denoiser exposing the public PaDIS model interface."""
+
     def forward(self, x, sigma, x_pos=None, class_labels=None):
         del class_labels
         sigma_view = torch.as_tensor(sigma, device=x.device, dtype=x.dtype).reshape(
@@ -39,6 +41,8 @@ class PublicStyleDenoiser(torch.nn.Module):
 
 
 class RawEDMModel(torch.nn.Module):
+    """Wrap an analytic denoiser with raw EDM preconditioning semantics."""
+
     def __init__(self, *, pad_width=2, patch_size=5):
         super().__init__()
         self.model_parameters = LIONParameter()
@@ -73,6 +77,8 @@ class RawEDMModel(torch.nn.Module):
 
 
 class IdentityOperator(Operator):
+    """Small identity forward model used to isolate sampler mechanics."""
+
     def __init__(self, shape):
         super().__init__(device=torch.device("cpu"))
         self._shape = tuple(shape)
@@ -235,6 +241,7 @@ def test_dps_loop_identity_operator():
 
 
 def main():
+    """Run deterministic public/LION sampler-alignment assertions."""
     test_noise_schedule()
     test_patch_layout_and_denoising()
     test_dps_loop_identity_operator()

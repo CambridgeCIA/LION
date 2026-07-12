@@ -1,3 +1,5 @@
+"""Test padis gcp spot training behaviour."""
+
 import json
 import os
 from pathlib import Path
@@ -35,6 +37,7 @@ def _run_gcp_dry_run(
     runtime_seconds=None,
     done_tasks=None,
 ):
+    """Create run gcp dry run test support data."""
     data_root = tmp_path / "Datasets"
     run_root = data_root / "experiments/PaDIS"
     run_name = (extra_env or {}).get("PADIS_GCP_RUN_NAME", DEFAULT_GCP_RUN_NAME)
@@ -80,17 +83,20 @@ def _run_gcp_dry_run(
 
 
 def _command_text(train_root, task_name, phase=None):
+    """Create command text test support data."""
     key = task_name if phase in (None, "base") else f"{task_name}.{phase}"
     command_path = train_root / ".gcp_spot_dry_run/logs" / f"{key}.command.txt"
     return command_path.read_text()
 
 
 def _command_path(train_root, task_name, phase=None):
+    """Create command path test support data."""
     key = task_name if phase in (None, "base") else f"{task_name}.{phase}"
     return train_root / ".gcp_spot_dry_run/logs" / f"{key}.command.txt"
 
 
 def test_gcp_spot_runner_is_executable():
+    """Verify that gcp spot runner is executable."""
     assert GCP_RUNNER.stat().st_mode & 0o111
     assert GCP_MANUAL_RECONSTRUCTION.stat().st_mode & 0o111
     assert GCP_STARTUP.stat().st_mode & 0o111
@@ -99,6 +105,7 @@ def test_gcp_spot_runner_is_executable():
 
 
 def test_gcp_manual_reconstruction_dry_run_uses_bucket_mount_paths(tmp_path):
+    """Verify that gcp manual reconstruction dry run uses bucket mount paths."""
     data_mount = tmp_path / "mnt_data"
     env = {
         **os.environ,
@@ -163,6 +170,7 @@ def test_gcp_manual_reconstruction_dry_run_uses_bucket_mount_paths(tmp_path):
 
 
 def test_gcp_spot_runner_dry_run_builds_expected_training_commands(tmp_path):
+    """Verify that gcp spot runner dry run builds expected training commands."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "whole_lidc_default,patch_lidc_default,pnp_lidc_drunet",
@@ -192,6 +200,7 @@ def test_gcp_spot_runner_dry_run_builds_expected_training_commands(tmp_path):
 
 
 def test_gcp_spot_runner_default_order_runs_p96_immediately_after_pnp(tmp_path):
+    """Verify that gcp spot runner default order runs p96 immediately after pnp."""
     result, train_root = _run_gcp_dry_run(tmp_path, None)
 
     assert result.returncode == 0, result.stderr
@@ -219,6 +228,7 @@ def test_gcp_spot_runner_default_order_runs_p96_immediately_after_pnp(tmp_path):
 
 
 def test_gcp_spot_runner_adds_validation_heavy_continuation_phase(tmp_path):
+    """Verify that gcp spot runner adds validation heavy continuation phase."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "whole_lidc_default,patch_lidc_default,patch_lidc_512,pnp_lidc_drunet",
@@ -274,6 +284,7 @@ def test_gcp_spot_runner_adds_validation_heavy_continuation_phase(tmp_path):
 
 
 def test_gcp_spot_runner_validation_phase_resumes_base_done_tasks(tmp_path):
+    """Verify that gcp spot runner validation phase resumes base done tasks."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "patch_lidc_default",
@@ -296,6 +307,7 @@ def test_gcp_spot_runner_validation_phase_resumes_base_done_tasks(tmp_path):
 
 
 def test_gcp_spot_runner_validation_phase_uses_separate_runtime_ledger(tmp_path):
+    """Verify that gcp spot runner validation phase uses separate runtime ledger."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "patch_lidc_default",
@@ -316,6 +328,7 @@ def test_gcp_spot_runner_validation_phase_uses_separate_runtime_ledger(tmp_path)
 
 
 def test_gcp_spot_runner_default_run_name_and_wandb_prefix(tmp_path):
+    """Verify that gcp spot runner default run name and wandb prefix."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "patch_lidc_default",
@@ -332,6 +345,7 @@ def test_gcp_spot_runner_default_run_name_and_wandb_prefix(tmp_path):
 
 
 def test_gcp_spot_runner_defaults_to_one_gpu(tmp_path):
+    """Verify that gcp spot runner defaults to one gpu."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "patch_lidc_default,patch_lidc_512",
@@ -343,6 +357,7 @@ def test_gcp_spot_runner_defaults_to_one_gpu(tmp_path):
 
 
 def test_gcp_spot_runner_uses_128_batch_for_p96_by_default(tmp_path):
+    """Verify that gcp spot runner uses 128 batch for p96 by default."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "patch_lidc_p96_default",
@@ -355,6 +370,7 @@ def test_gcp_spot_runner_uses_128_batch_for_p96_by_default(tmp_path):
 
 
 def test_gcp_spot_runner_subtracts_previous_runtime_from_wall_budget(tmp_path):
+    """Verify that gcp spot runner subtracts previous runtime from wall budget."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "patch_lidc_default,whole_lidc_default",
@@ -377,6 +393,7 @@ def test_gcp_spot_runner_subtracts_previous_runtime_from_wall_budget(tmp_path):
 
 
 def test_gcp_spot_runner_uses_finalise_window_when_budget_is_exhausted(tmp_path):
+    """Verify that gcp spot runner uses finalise window when budget is exhausted."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "patch_lidc_default",
@@ -394,6 +411,7 @@ def test_gcp_spot_runner_uses_finalise_window_when_budget_is_exhausted(tmp_path)
 
 
 def test_gcp_shutdown_hook_refreshes_active_runtime_ledger(tmp_path):
+    """Verify that gcp shutdown hook refreshes active runtime ledger."""
     state_dir = tmp_path / "state"
     running_dir = state_dir / "running"
     runtime_dir = state_dir / "runtime"
@@ -433,6 +451,7 @@ def test_gcp_shutdown_hook_refreshes_active_runtime_ledger(tmp_path):
 
 
 def test_gcp_startup_hook_dry_run_prepares_env_and_runner_command(tmp_path):
+    """Verify that gcp startup hook dry run prepares env and runner command."""
     data_mount = tmp_path / "mnt_data"
     lion_root = data_mount / "LION"
     runner_dir = lion_root / "scripts/paper_scripts/PaDIS-Reproduction/platforms/gcp"
@@ -493,6 +512,7 @@ def test_gcp_startup_hook_dry_run_prepares_env_and_runner_command(tmp_path):
 
 
 def test_gcp_metadata_startup_bootstrap_delegates_after_data_mount(tmp_path):
+    """Verify that gcp metadata startup bootstrap delegates after data mount."""
     data_mount = tmp_path / "mnt_data"
     lion_root = data_mount / "LION"
     startup_dir = lion_root / "scripts/paper_scripts/PaDIS-Reproduction/platforms/gcp"
@@ -527,6 +547,7 @@ def test_gcp_metadata_startup_bootstrap_delegates_after_data_mount(tmp_path):
 
 
 def test_gcp_spot_runner_records_final_and_full_checkpoints(tmp_path):
+    """Verify that gcp spot runner records final and full checkpoints."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "patch_lidc_512,pnp_lidc_drunet",
@@ -544,6 +565,7 @@ def test_gcp_spot_runner_records_final_and_full_checkpoints(tmp_path):
 
 
 def test_gcp_spot_runner_runs_resumable_reconstruction_phase(tmp_path):
+    """Verify that gcp spot runner runs resumable reconstruction phase."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "patch_lidc_default",
@@ -611,6 +633,7 @@ def test_gcp_spot_runner_runs_resumable_reconstruction_phase(tmp_path):
 
 
 def test_gcp_spot_runner_allows_multiple_reconstruction_slots_per_gpu(tmp_path):
+    """Verify that gcp spot runner allows multiple reconstruction slots per gpu."""
     result, train_root = _run_gcp_dry_run(
         tmp_path,
         "patch_lidc_default",
@@ -647,6 +670,7 @@ def test_gcp_spot_runner_allows_multiple_reconstruction_slots_per_gpu(tmp_path):
 
 
 def test_gcp_spot_runner_auto_uses_three_reconstruction_slots_on_large_gpu(tmp_path):
+    """Verify that gcp spot runner auto uses three reconstruction slots on large gpu."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     nvidia_smi = bin_dir / "nvidia-smi"

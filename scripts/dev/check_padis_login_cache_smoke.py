@@ -107,6 +107,7 @@ def _archive_details(
 
 
 def run(args: argparse.Namespace) -> dict[str, object]:
+    """Exercise login-node cache discovery without starting GPU training."""
     start = time.perf_counter()
     padis_lidc256 = _load_lidc256_module()
     train_dataset = _dataset(args, "train")
@@ -178,6 +179,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Construct the cache-smoke command-line parser."""
     data_root = pathlib.Path(
         os.environ.get("LION_DATA_PATH", "/home/tjh200/rds/hpc-work/Datasets")
     )
@@ -205,6 +207,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Run the cache smoke check and print its JSON report."""
     args = build_parser().parse_args()
     summary = run(args)
     text = json.dumps(_jsonable(summary), indent=2, sort_keys=True)

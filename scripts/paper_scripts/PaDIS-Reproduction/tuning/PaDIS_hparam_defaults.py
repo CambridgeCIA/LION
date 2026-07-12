@@ -34,6 +34,8 @@ HIGH_VIEW_FALLBACKS = {
 
 @dataclass(frozen=True)
 class HparamSelection:
+    """Chosen reconstruction arguments and their validation provenance."""
+
     args: tuple[str, ...]
     method: str
     implementation: str
@@ -51,6 +53,7 @@ class HparamSelection:
     exact_model: bool
 
     def to_json(self) -> dict:
+        """Handle to json for the PaDIS workflow."""
         return {
             "args": list(self.args),
             "method": self.method,
@@ -71,6 +74,7 @@ class HparamSelection:
 
 
 def finite_float(value: object) -> float | None:
+    """Return finite float."""
     if value is None:
         return None
     try:
@@ -83,6 +87,7 @@ def finite_float(value: object) -> float | None:
 
 
 def completed_finite_record(record: dict) -> bool:
+    """Check for completed finite record."""
     if record.get("status") != "completed":
         return False
     summary = record.get("summary") or {}
@@ -95,6 +100,7 @@ def completed_finite_record(record: dict) -> bool:
 
 
 def mean_metric(records: Iterable[dict], metric: str) -> float | None:
+    """Return the mean metric."""
     values = [
         finite_float((record.get("summary") or {}).get(metric)) for record in records
     ]
@@ -105,6 +111,7 @@ def mean_metric(records: Iterable[dict], metric: str) -> float | None:
 
 
 def sample_count(record: dict) -> int:
+    """Sample count."""
     value = (record.get("summary") or {}).get("sample_count")
     try:
         return max(int(value), 0)
@@ -113,6 +120,7 @@ def sample_count(record: dict) -> int:
 
 
 def command_extra_reconstruction_args(command: list[str]) -> list[str]:
+    """Build the command for extra reconstruction args."""
     extras: list[str] = []
     index = 0
     while index < len(command):
@@ -141,6 +149,7 @@ def command_extra_reconstruction_args(command: list[str]) -> list[str]:
 
 
 def candidate_args(record: dict) -> tuple[str, ...]:
+    """Handle candidate args for the PaDIS workflow."""
     args = list(record.get("candidate_args") or ())
     for extra_arg in command_extra_reconstruction_args(record.get("command") or []):
         if extra_arg not in args:
@@ -149,6 +158,7 @@ def candidate_args(record: dict) -> tuple[str, ...]:
 
 
 def record_identity(record: dict) -> tuple:
+    """Build a record for identity."""
     return (
         record.get("method"),
         record.get("implementation"),
@@ -163,6 +173,7 @@ def record_identity(record: dict) -> tuple:
 
 
 def record_rank(record: dict) -> tuple:
+    """Build a record for rank."""
     summary = record.get("summary") or {}
     return (
         finite_float(summary.get("mean_psnr")) or -1.0e18,
@@ -174,6 +185,7 @@ def record_rank(record: dict) -> tuple:
 
 
 def parse_globs(value: str) -> tuple[str, ...]:
+    """Parse globs."""
     items = tuple(item.strip() for item in value.split(",") if item.strip())
     if not items or items == ("all",):
         return ("*",)
@@ -181,6 +193,7 @@ def parse_globs(value: str) -> tuple[str, ...]:
 
 
 def load_records(run_root: pathlib.Path, run_glob: str = "fixedval_*") -> list[dict]:
+    """Load records."""
     run_root = pathlib.Path(run_root).expanduser()
     if not run_root.is_dir():
         return []
@@ -208,6 +221,7 @@ def load_records(run_root: pathlib.Path, run_glob: str = "fixedval_*") -> list[d
 
 
 def json_entry_record(entry: dict, *, line_index: int, source_name: str) -> dict:
+    """Handle json entry record for the PaDIS workflow."""
     summary = dict(entry.get("summary") or {})
     for key in ("mean_psnr", "mean_ssim", "mean_mae"):
         if key in entry:
@@ -243,6 +257,7 @@ def json_entry_record(entry: dict, *, line_index: int, source_name: str) -> dict
 
 
 def load_json_records(path: pathlib.Path) -> list[dict]:
+    """Load json records."""
     path = pathlib.Path(path).expanduser()
     with open(path) as file:
         payload = json.load(file)
@@ -280,6 +295,7 @@ def load_json_records(path: pathlib.Path) -> list[dict]:
 
 
 def dedupe_records(records: Iterable[dict]) -> list[dict]:
+    """Handle dedupe records for the PaDIS workflow."""
     by_key: dict[tuple, dict] = {}
     for record in records:
         if not completed_finite_record(record):
@@ -294,6 +310,7 @@ def dedupe_records(records: Iterable[dict]) -> list[dict]:
 
 
 def default_record_key(record: dict) -> tuple[str, str, str, str, str]:
+    """Return the default record key."""
     return (
         str(record.get("method") or ""),
         str(record.get("implementation") or ""),
@@ -304,6 +321,7 @@ def default_record_key(record: dict) -> tuple[str, str, str, str, str]:
 
 
 def selected_default_records(records: Iterable[dict]) -> list[dict]:
+    """Return the selected default records."""
     by_key: dict[tuple[str, str, str, str, str], dict] = {}
     for record in dedupe_records(records):
         key = default_record_key(record)
@@ -314,6 +332,7 @@ def selected_default_records(records: Iterable[dict]) -> list[dict]:
 
 
 def consensus_candidate_key(record: dict) -> tuple:
+    """Handle consensus candidate key for the PaDIS workflow."""
     return (
         record.get("method"),
         record.get("implementation"),
@@ -326,6 +345,7 @@ def consensus_candidate_key(record: dict) -> tuple:
 
 
 def consensus_target_key(record: dict) -> tuple[str, str, str, str]:
+    """Handle consensus target key for the PaDIS workflow."""
     return (
         str(record.get("method") or ""),
         str(record.get("implementation") or ""),
@@ -339,6 +359,7 @@ def aggregate_consensus_record(
     *,
     expected_experiments: tuple[str, ...],
 ) -> dict:
+    """Aggregate consensus record."""
     first = group[0]
     experiments = sorted({str(record.get("experiment") or "") for record in group})
     expected = set(expected_experiments)
@@ -376,6 +397,7 @@ def aggregate_consensus_record(
 
 
 def consensus_rank(record: dict) -> tuple:
+    """Handle consensus rank for the PaDIS workflow."""
     summary = record.get("summary") or {}
     covered = int(summary.get("covered_expected_experiments") or 0)
     expected = int(summary.get("expected_experiments") or 0)
@@ -405,6 +427,7 @@ def selected_consensus_records(
     *,
     expected_experiments: tuple[str, ...] = DEFAULT_CONSENSUS_EXPERIMENTS,
 ) -> list[dict]:
+    """Return the selected consensus records."""
     expected = set(expected_experiments)
     grouped: dict[tuple, list[dict]] = {}
     for record in dedupe_records(records):
@@ -441,6 +464,7 @@ def selected_consensus_records(
 
 
 def record_json_entry(record: dict) -> dict:
+    """Build a record for json entry."""
     summary = record.get("summary") or {}
     entry = {
         "method": str(record.get("method") or ""),
@@ -472,6 +496,7 @@ def build_defaults_payload(
     selection_scope: str = "per_experiment",
     expected_experiments: tuple[str, ...] = DEFAULT_CONSENSUS_EXPERIMENTS,
 ) -> dict:
+    """Select tuned records and construct the checked-in defaults schema."""
     run_root = pathlib.Path(run_root).expanduser()
     loaded_records = load_records(run_root, run_glob)
     if selection_scope == "per_experiment":
@@ -517,19 +542,24 @@ def build_defaults_payload(
 
 
 class HparamDefaults:
+    """Query tuned defaults with model-safe experiment fallback rules."""
+
     def __init__(self, records: Iterable[dict]):
+        """Initialize the instance."""
         self.records = tuple(dedupe_records(records))
 
     @classmethod
     def from_run_root(
         cls, run_root: pathlib.Path | None, run_glob: str = "fixedval_*"
     ) -> "HparamDefaults":
+        """Handle from run root for the PaDIS workflow."""
         if run_root is None:
             return cls(())
         return cls(load_records(run_root, run_glob))
 
     @classmethod
     def from_json(cls, path: pathlib.Path) -> "HparamDefaults":
+        """Handle from json for the PaDIS workflow."""
         return cls(load_json_records(path))
 
     def select(
@@ -541,6 +571,7 @@ class HparamDefaults:
         model: str,
         experiment: str,
     ) -> HparamSelection | None:
+        """Select the requested values."""
         method = canonical_method(method)
         experiment = canonical_experiment(experiment)
         source_experiments = (
@@ -585,6 +616,7 @@ class HparamDefaults:
         source_experiment: str,
         required_model: str,
     ) -> HparamSelection | None:
+        """Select for experiment."""
         matches = [
             record
             for record in self.records
@@ -619,6 +651,7 @@ class HparamDefaults:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the hyperparameter-default export command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--run-root",
@@ -675,6 +708,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Export or inspect reconstruction hyperparameter defaults."""
     args = build_arg_parser().parse_args()
     expected_experiments = tuple(
         item.strip() for item in args.expected_experiments.split(",") if item.strip()
@@ -704,6 +738,7 @@ def main() -> None:
 
 
 def _value(args: tuple[str, ...], index: int, flag: str) -> tuple[str, int]:
+    """Handle value for the PaDIS workflow."""
     if index + 1 >= len(args):
         raise ValueError(f"{flag} requires a value.")
     return args[index + 1], index + 2
@@ -715,6 +750,7 @@ def apply_reconstruction_args_to_settings(
     sampler_settings: dict | None = None,
     method_settings: dict | None = None,
 ) -> tuple[dict, dict]:
+    """Apply reconstruction args to settings."""
     sampler = dict(sampler_settings or {})
     method = dict(method_settings or {})
     args = tuple(str(item) for item in reconstruction_args)

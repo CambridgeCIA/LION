@@ -1,3 +1,11 @@
+"""NCSN++ diffusion denoiser adapted for LION and PaDIS.
+
+The network originates from the score-SDE NCSN++ implementation by Song et
+al.  LION adds geometry-aware channel selection, PaDIS position channels,
+paper-compatible embedding/attention behaviour, and model presets used by the
+reproduction pipeline.
+"""
+
 # coding=utf-8
 # Copyright 2020 The Google Research Authors.
 #
@@ -44,6 +52,7 @@ default_initializer = layers.default_init
 def score_from_denoiser(
     noisy_image_patch: torch.Tensor, denoised_patch: torch.Tensor, sigma: torch.Tensor
 ) -> torch.Tensor:
+    """Convert a denoised prediction into a VE score estimate."""
     while sigma.ndim < noisy_image_patch.ndim:
         sigma = sigma.unsqueeze(-1)
     return (denoised_patch - noisy_image_patch) / sigma.square()
@@ -66,10 +75,37 @@ def _split_position_suffix(mode: str) -> tuple[str, bool]:
 
 
 class NCSNpp(LIONmodel):
-    """NCSN++ model"""
+    """Geometry-aware NCSN++ denoiser used by PaDIS.
+
+    Parameters
+    ----------
+    params : LIONModelParameter
+        Architecture and PaDIS compatibility settings.  Use
+        :meth:`default_parameters` to construct a supported preset.
+    geometry : LION.CTtools.ct_geometry.Geometry
+        Geometry providing image channels and spatial dimensions.
+
+    Notes
+    -----
+    The network predicts a denoised image.  Score conversion is kept separate
+    so training and reconstruction can use the same output convention.
+    """
 
     @staticmethod
     def default_parameters(mode="padis-paper-ct-256") -> LIONModelParameter:
+        """Return model parameters for a supported PaDIS prior preset.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Patch, whole-image, resolution, or patch-size-ablation preset.  A
+            ``-no-position`` suffix disables absolute position channels.
+
+        Returns
+        -------
+        LIONModelParameter
+            Fully populated NCSN++ architecture settings.
+        """
         model_params = LIONModelParameter()
         base_mode, no_position = _split_position_suffix(mode)
 
@@ -435,6 +471,23 @@ class NCSNpp(LIONmodel):
         self.all_modules = nn.ModuleList(modules)
 
     def forward(self, x, time_cond, class_labels=None, augment_labels=None):
+        """Evaluate the denoiser at one or more continuous noise levels.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Noisy ``NCHW`` inputs, including position channels when configured.
+        time_cond : torch.Tensor
+            Per-sample sigma values or discrete scale indices.
+        class_labels, augment_labels : optional
+            Reserved compatibility arguments; PaDIS does not condition on
+            class labels.
+
+        Returns
+        -------
+        torch.Tensor
+            Denoised image channels in the same spatial layout as ``x``.
+        """
         # timestep/noise_level embedding; only for continuous training
         params = self.params
         modules = self.all_modules

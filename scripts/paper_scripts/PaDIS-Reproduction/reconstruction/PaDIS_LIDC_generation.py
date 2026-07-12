@@ -28,6 +28,7 @@ from PaDIS_LIDC_reconstruction import (
 
 
 def jsonable(value):
+    """Convert values into JSON-serializable objects."""
     if isinstance(value, LIONParameter):
         return {
             key: jsonable(item)
@@ -48,6 +49,7 @@ def jsonable(value):
 
 
 def build_generation_params(args, model) -> LIONParameter:
+    """Build generation params."""
     params = PaDIS.default_parameters(model)
     params.num_steps = args.num_steps
     params.inner_steps = args.inner_steps
@@ -82,6 +84,7 @@ def build_generation_params(args, model) -> LIONParameter:
 
 
 def image_shape_from_args(args, geometry) -> tuple[int, int, int]:
+    """Return the image shape from args."""
     channels = int(geometry.image_shape[0])
     height = int(geometry.image_shape[1])
     width = int(geometry.image_shape[2])
@@ -91,6 +94,7 @@ def image_shape_from_args(args, geometry) -> tuple[int, int, int]:
 
 
 def save_grid(samples: torch.Tensor, path: pathlib.Path) -> None:
+    """Save grid."""
     import matplotlib.pyplot as plt
     import numpy as np
 
@@ -116,6 +120,7 @@ def save_grid(samples: torch.Tensor, path: pathlib.Path) -> None:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the unconditional-generation command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=pathlib.Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument(
@@ -182,6 +187,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Generate seeded samples and save their reproducibility manifest."""
     args = build_arg_parser().parse_args()
     if args.num_samples <= 0:
         raise ValueError("--num-samples must be positive.")

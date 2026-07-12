@@ -1,3 +1,5 @@
+"""Test padis reconstruction verifier behaviour."""
+
 import json
 
 from PaDIS_verify_reconstruction_matrix import (
@@ -24,6 +26,7 @@ def _write_metrics(
     sampler=None,
     method_settings=None,
 ):
+    """Create write metrics test support data."""
     folder = root / method / experiment / implementation / geometry
     folder.mkdir(parents=True)
     path = folder / "metrics.json"
@@ -64,11 +67,13 @@ def _write_metrics(
 
 
 def _args(tmp_path, *extra):
+    """Create args test support data."""
     parser = build_arg_parser()
     return parser.parse_args(["--root", str(tmp_path), *extra])
 
 
 def test_parse_method_thresholds_requires_method_value_form():
+    """Verify that parse method thresholds requires method value form."""
     assert parse_method_thresholds(["baseline=28", "padis_dps=31.5"]) == {
         "baseline": 28.0,
         "padis_dps": 31.5,
@@ -76,6 +81,7 @@ def test_parse_method_thresholds_requires_method_value_form():
 
 
 def test_verifier_finds_records_and_accepts_required_method_and_experiment(tmp_path):
+    """Verify that verifier finds records and accepts required method and experiment."""
     _write_metrics(tmp_path, method="baseline", experiment="ct_20")
     _write_metrics(tmp_path, method="cp_tv", experiment="ct_20")
     _write_metrics(tmp_path, method="padis_dps", experiment="ct_8")
@@ -106,6 +112,7 @@ def test_verifier_finds_records_and_accepts_required_method_and_experiment(tmp_p
 
 
 def test_verifier_reports_missing_required_method(tmp_path):
+    """Verify that verifier reports missing required method."""
     _write_metrics(tmp_path, method="baseline", experiment="ct_20")
     args = _args(tmp_path, "--require-methods", "baseline,padis_dps")
 
@@ -115,6 +122,7 @@ def test_verifier_reports_missing_required_method(tmp_path):
 
 
 def test_verifier_reports_method_specific_threshold_failure(tmp_path):
+    """Verify that verifier reports method specific threshold failure."""
     _write_metrics(tmp_path, method="baseline", experiment="ct_20", psnr=25.0)
     args = _args(tmp_path, "--min-method-mean-psnr", "baseline=30")
 
@@ -127,6 +135,7 @@ def test_verifier_reports_method_specific_threshold_failure(tmp_path):
 
 
 def test_verifier_method_fdk_gate_checks_only_selected_methods(tmp_path):
+    """Verify that verifier method fdk gate checks only selected methods."""
     _write_metrics(tmp_path, method="baseline", experiment="ct_20", psnr=28.0)
     _write_metrics(tmp_path, method="padis_dps", experiment="ct_20", psnr=27.0)
     args = _args(
@@ -146,6 +155,7 @@ def test_verifier_method_fdk_gate_checks_only_selected_methods(tmp_path):
 
 
 def test_verifier_method_each_sample_fdk_gate_uses_min_margin(tmp_path):
+    """Verify that verifier method each sample fdk gate uses min margin."""
     _write_metrics(tmp_path, method="padis_dps", experiment="ct_20", psnr=27.0)
     args = _args(
         tmp_path,
@@ -161,6 +171,7 @@ def test_verifier_method_each_sample_fdk_gate_uses_min_margin(tmp_path):
 
 
 def test_verifier_global_fdk_gate_applies_to_baseline_too(tmp_path):
+    """Verify that verifier global fdk gate applies to baseline too."""
     _write_metrics(tmp_path, method="baseline", experiment="ct_20", psnr=28.0)
     args = _args(tmp_path, "--require-mean-better-than-fdk")
 
@@ -170,6 +181,7 @@ def test_verifier_global_fdk_gate_applies_to_baseline_too(tmp_path):
 
 
 def test_verifier_reports_expected_record_count_mismatch(tmp_path):
+    """Verify that verifier reports expected record count mismatch."""
     _write_metrics(tmp_path, method="baseline", experiment="ct_20")
     args = _args(tmp_path, "--expected-records", "2")
 
@@ -179,6 +191,7 @@ def test_verifier_reports_expected_record_count_mismatch(tmp_path):
 
 
 def test_verifier_reports_expected_sample_count_mismatch(tmp_path):
+    """Verify that verifier reports expected sample count mismatch."""
     _write_metrics(tmp_path, method="baseline", experiment="ct_20")
     args = _args(tmp_path, "--expected-samples", "2")
 
@@ -188,6 +201,7 @@ def test_verifier_reports_expected_sample_count_mismatch(tmp_path):
 
 
 def test_verifier_reports_expected_job_manifest_mismatch(tmp_path):
+    """Verify that verifier reports expected job manifest mismatch."""
     _write_metrics(tmp_path, method="baseline", experiment="ct_20")
     manifest = tmp_path / "jobs.json"
     manifest.write_text(
@@ -225,6 +239,7 @@ def test_verifier_reports_expected_job_manifest_mismatch(tmp_path):
 
 
 def test_verifier_manifest_checkpoint_identity_resolves_symlinks(tmp_path):
+    """Verify that verifier manifest checkpoint identity resolves symlinks."""
     real_checkpoint = tmp_path / "real_checkpoint.pt"
     real_checkpoint.write_bytes(b"checkpoint")
     linked_checkpoint = tmp_path / "linked_checkpoint.pt"
@@ -259,6 +274,7 @@ def test_verifier_manifest_checkpoint_identity_resolves_symlinks(tmp_path):
 
 
 def test_verifier_reports_unexpected_job_not_in_manifest(tmp_path):
+    """Verify that verifier reports unexpected job not in manifest."""
     _write_metrics(tmp_path, method="baseline", experiment="ct_20")
     manifest = tmp_path / "jobs.json"
     manifest.write_text(json.dumps([]))
@@ -271,6 +287,7 @@ def test_verifier_reports_unexpected_job_not_in_manifest(tmp_path):
 
 
 def test_verifier_manifest_identity_includes_algorithm(tmp_path):
+    """Verify that verifier manifest identity includes algorithm."""
     _write_metrics(tmp_path, method="langevin", algorithm="dps_langevin")
     manifest = tmp_path / "jobs.json"
     manifest.write_text(
@@ -301,6 +318,7 @@ def test_verifier_manifest_identity_includes_algorithm(tmp_path):
 
 
 def test_verifier_manifest_identity_includes_prior_mode(tmp_path):
+    """Verify that verifier manifest identity includes prior mode."""
     _write_metrics(tmp_path, method="whole_image_diffusion", prior_mode="patch")
     manifest = tmp_path / "jobs.json"
     manifest.write_text(
@@ -331,6 +349,7 @@ def test_verifier_manifest_identity_includes_prior_mode(tmp_path):
 
 
 def test_verifier_checks_expected_sampler_settings_from_manifest(tmp_path):
+    """Verify that verifier checks expected sampler settings from manifest."""
     _write_metrics(
         tmp_path,
         method="padis_dps",
@@ -379,6 +398,7 @@ def test_verifier_checks_expected_sampler_settings_from_manifest(tmp_path):
 
 
 def test_verifier_checks_expected_ve_ddnm_layout_from_manifest(tmp_path):
+    """Verify that verifier checks expected ve ddnm layout from manifest."""
     _write_metrics(
         tmp_path,
         method="ve_ddnm",
@@ -440,6 +460,7 @@ def test_verifier_checks_expected_ve_ddnm_layout_from_manifest(tmp_path):
 
 
 def test_verifier_checks_expected_fixed_overlap_checkpoint_from_manifest(tmp_path):
+    """Verify that verifier checks expected fixed overlap checkpoint from manifest."""
     _write_metrics(
         tmp_path,
         method="patch_average",
@@ -489,6 +510,7 @@ def test_verifier_checks_expected_fixed_overlap_checkpoint_from_manifest(tmp_pat
 
 
 def test_verifier_checks_expected_method_settings_from_manifest(tmp_path):
+    """Verify that verifier checks expected method settings from manifest."""
     _write_metrics(
         tmp_path,
         method="cp_tv",
@@ -532,6 +554,7 @@ def test_verifier_checks_expected_method_settings_from_manifest(tmp_path):
 
 
 def test_verifier_checks_expected_pnp_checkpoint_from_manifest(tmp_path):
+    """Verify that verifier checks expected pnp checkpoint from manifest."""
     _write_metrics(
         tmp_path,
         method="pnp_admm",

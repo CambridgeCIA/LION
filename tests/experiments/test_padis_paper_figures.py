@@ -1,3 +1,5 @@
+"""Test padis paper figures behaviour."""
+
 import torch
 
 from PaDIS_make_paper_figures import (
@@ -16,6 +18,7 @@ from PaDIS_make_paper_figures import (
 
 
 def test_recon_path_falls_back_to_legacy_identifiers(tmp_path):
+    """Verify that recon path falls back to legacy identifiers."""
     legacy = (
         tmp_path
         / "admm_tv/patch_lidc_default/lion_physics/lion/ct_fanbeam_180"
@@ -37,6 +40,7 @@ def test_recon_path_falls_back_to_legacy_identifiers(tmp_path):
 
 
 def test_paper_figure_builder_lists_requested_implemented_figures(tmp_path):
+    """Verify that paper figure builder lists requested implemented figures."""
     specs = {
         spec.name: spec for spec in figure_specs(tmp_path / "recon", tmp_path / "gen")
     }
@@ -68,6 +72,7 @@ def test_paper_figure_builder_lists_requested_implemented_figures(tmp_path):
 
 
 def test_paper_figure_specs_follow_multi_sample_ct_layouts(tmp_path):
+    """Verify that paper figure specs follow multi sample ct layouts."""
     specs = {
         spec.name: spec
         for spec in figure_specs(
@@ -137,6 +142,7 @@ def test_paper_figure_specs_follow_multi_sample_ct_layouts(tmp_path):
 
 
 def test_patch_size_figure_is_vertical_and_uses_four_samples(tmp_path):
+    """Verify that patch size figure is vertical and uses four samples."""
     specs = {
         spec.name: spec
         for spec in figure_specs(
@@ -163,6 +169,7 @@ def test_patch_size_figure_is_vertical_and_uses_four_samples(tmp_path):
 
 
 def test_position_figure_uses_two_example_samples(tmp_path):
+    """Verify that position figure uses two example samples."""
     specs = {
         spec.name: spec
         for spec in figure_specs(
@@ -180,12 +187,14 @@ def test_position_figure_uses_two_example_samples(tmp_path):
 
 
 def test_representative_and_additional_examples_are_disjoint():
+    """Verify that representative and additional examples are disjoint."""
     assert TWO_EXAMPLE_OFFSETS == (0, 5)
     assert len(ADDITIONAL_EXAMPLE_OFFSETS) == 7
     assert set(TWO_EXAMPLE_OFFSETS).isdisjoint(ADDITIONAL_EXAMPLE_OFFSETS)
 
 
 def test_repeated_column_headings_are_only_shown_once(tmp_path):
+    """Verify that repeated column headings are only shown once."""
     specs = {
         spec.name: spec for spec in figure_specs(tmp_path / "recon", tmp_path / "gen")
     }
@@ -202,6 +211,7 @@ def test_repeated_column_headings_are_only_shown_once(tmp_path):
 
 
 def test_body_crop_is_square_for_consistent_row_layout(tmp_path):
+    """Verify that body crop is square for consistent row layout."""
     path = tmp_path / "reconstructions.pt"
     target = torch.zeros(1, 1, 64, 64)
     target[..., 10:42, 20:50] = 1.0
@@ -217,6 +227,7 @@ def test_body_crop_is_square_for_consistent_row_layout(tmp_path):
 
 
 def test_body_crop_default_has_no_extra_padding():
+    """Verify that body crop default has no extra padding."""
     parser = build_arg_parser()
 
     assert (
@@ -233,6 +244,7 @@ def test_body_crop_default_has_no_extra_padding():
 
 
 def test_hu_display_range_uses_body_15th_and_95th_percentiles(tmp_path):
+    """Verify that hu display range uses body 15th and 95th percentiles."""
     path = tmp_path / "reconstructions.pt"
     hu_values = torch.tensor((-800.0, -400.0, 0.0, 400.0, 800.0))
     normalised_values = (hu_values + 1000.0) / 3000.0

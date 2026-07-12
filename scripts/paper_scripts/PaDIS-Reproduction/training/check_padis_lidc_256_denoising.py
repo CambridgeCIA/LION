@@ -28,6 +28,7 @@ DEFAULT_CHECKPOINT = pathlib.Path(
 
 
 def torch_load(path: pathlib.Path, map_location):
+    """Load a PyTorch payload from load."""
     try:
         return torch.load(path, map_location=map_location, weights_only=False)
     except TypeError:
@@ -35,10 +36,12 @@ def torch_load(path: pathlib.Path, map_location):
 
 
 def project_root() -> pathlib.Path:
+    """Return the project root."""
     return pathlib.Path(__file__).resolve().parents[3]
 
 
 def resolve_checkpoint_path(path: pathlib.Path) -> pathlib.Path:
+    """Resolve checkpoint path."""
     path = path.expanduser()
     candidates = [path]
     if not path.is_absolute():
@@ -67,6 +70,7 @@ def resolve_checkpoint_path(path: pathlib.Path) -> pathlib.Path:
 
 
 def load_model(checkpoint_path: pathlib.Path, device: torch.device, use_ema: bool):
+    """Load a PaDIS model and optional EMA weights from checkpoint sidecars."""
     json_path = checkpoint_path.with_suffix(".json")
     if json_path.is_file():
         options = LIONParameter()
@@ -109,6 +113,7 @@ def load_model(checkpoint_path: pathlib.Path, device: torch.device, use_ema: boo
 def make_synthetic_images(
     num_examples: int, image_size: int, seed: int
 ) -> torch.Tensor:
+    """Create synthetic images."""
     generator = torch.Generator(device="cpu").manual_seed(seed)
     coords = torch.linspace(-1.0, 1.0, image_size)
     yy, xx = torch.meshgrid(coords, coords, indexing="ij")
@@ -129,6 +134,7 @@ def make_synthetic_images(
 
 
 def load_lidc_images(args, geometry) -> torch.Tensor:
+    """Load lidc images."""
     from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 
     data_params = LIDC_IDRI.default_parameters(geometry=geometry, task="image_prior")
@@ -152,6 +158,7 @@ def load_lidc_images(args, geometry) -> torch.Tensor:
 
 
 def load_example_images(args, geometry) -> tuple[torch.Tensor, str]:
+    """Load example images."""
     if args.source in ("auto", "lidc"):
         try:
             return load_lidc_images(args, geometry), "LIDC-IDRI"
@@ -172,6 +179,7 @@ def make_denoising_inputs(
     seed: int,
     device: torch.device,
 ):
+    """Create denoising inputs."""
     torch.manual_seed(seed)
     pad_width = int(getattr(model_params, "pad_width", 24))
     clean_padded = zero_pad_images(clean_images.float(), pad_width)
@@ -189,6 +197,7 @@ def make_denoising_inputs(
 
 @torch.inference_mode()
 def denoise_patches(model, clean_patch, noisy_patch, position_patch, sigma_tensor):
+    """Handle denoise patches for the PaDIS workflow."""
     sigma_data = torch.as_tensor(
         0.5, device=noisy_patch.device, dtype=noisy_patch.dtype
     )
@@ -219,6 +228,7 @@ def save_visual_grid(
     sigma: float,
     show: bool,
 ) -> None:
+    """Save visual grid."""
     import matplotlib
 
     if not show:
@@ -269,6 +279,7 @@ def save_visual_grid(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the denoising-check command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=pathlib.Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
@@ -292,6 +303,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Run visual and numerical PaDIS denoising diagnostics."""
     args = build_arg_parser().parse_args()
     if args.num_examples <= 0:
         raise ValueError("--num-examples must be positive.")

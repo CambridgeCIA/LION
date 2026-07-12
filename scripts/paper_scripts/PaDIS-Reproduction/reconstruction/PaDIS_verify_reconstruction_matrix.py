@@ -38,12 +38,14 @@ CORE_CSV_FIELDS = (
 
 
 def parse_csv(value: str | None) -> tuple[str, ...]:
+    """Parse csv."""
     if value is None or value == "":
         return ()
     return tuple(item.strip() for item in value.split(",") if item.strip())
 
 
 def parse_method_thresholds(items: list[str]) -> dict[str, float]:
+    """Parse method thresholds."""
     thresholds: dict[str, float] = {}
     for item in items:
         if "=" not in item:
@@ -59,6 +61,7 @@ def parse_method_thresholds(items: list[str]) -> dict[str, float]:
 
 
 def parse_multi_csv(items: list[str]) -> set[str]:
+    """Parse multi csv."""
     values: set[str] = set()
     for item in items:
         values.update(parse_csv(item))
@@ -66,24 +69,28 @@ def parse_multi_csv(items: list[str]) -> set[str]:
 
 
 def mean(values: list[float]) -> float | None:
+    """Return the mean the requested values."""
     if not values:
         return None
     return float(sum(values) / len(values))
 
 
 def minimum(values: list[float]) -> float | None:
+    """Handle minimum for the PaDIS workflow."""
     if not values:
         return None
     return float(min(values))
 
 
 def maximum(values: list[float]) -> float | None:
+    """Handle maximum for the PaDIS workflow."""
     if not values:
         return None
     return float(max(values))
 
 
 def finite_float(value) -> float | None:
+    """Return finite float."""
     if not isinstance(value, (int, float)):
         return None
     value = float(value)
@@ -93,6 +100,7 @@ def finite_float(value) -> float | None:
 
 
 def sample_standard_deviation(values: list[float]) -> float | None:
+    """Sample standard deviation."""
     if not values:
         return None
     if len(values) == 1:
@@ -103,6 +111,7 @@ def sample_standard_deviation(values: list[float]) -> float | None:
 
 
 def percentile(sorted_values: list[float], probability: float) -> float | None:
+    """Calculate the percentile of the requested values."""
     if not sorted_values:
         return None
     if len(sorted_values) == 1:
@@ -126,6 +135,7 @@ def bootstrap_mean_summary(
     confidence: float,
     rng: random.Random,
 ) -> dict[str, float | int | None]:
+    """Bootstrap mean summary."""
     if not values:
         return {
             "n": 0,
@@ -171,6 +181,7 @@ def bootstrap_mean_summary(
 
 
 def metric_values(metrics: list[dict], key: str) -> list[float]:
+    """Return metric values."""
     values = []
     for item in metrics:
         value = finite_float(item.get(key))
@@ -180,6 +191,7 @@ def metric_values(metrics: list[dict], key: str) -> list[float]:
 
 
 def fdk_margin_values(metrics: list[dict]) -> list[float]:
+    """Handle fdk margin values for the PaDIS workflow."""
     values = []
     for item in metrics:
         psnr = finite_float(item.get("psnr"))
@@ -190,6 +202,7 @@ def fdk_margin_values(metrics: list[dict]) -> list[float]:
 
 
 def bootstrap_values_for_metric(metrics: list[dict], name: str) -> list[float]:
+    """Bootstrap values for metric."""
     if name == "fdk_margin":
         return fdk_margin_values(metrics)
     if name == "relative_sinogram_residual":
@@ -198,6 +211,7 @@ def bootstrap_values_for_metric(metrics: list[dict], name: str) -> list[float]:
 
 
 def stable_record_seed(summary: dict, seed: int) -> int:
+    """Return a stable record seed."""
     material = "|".join(
         [
             str(seed),
@@ -224,6 +238,7 @@ def add_bootstrap_uncertainty(
     confidence: float,
     seed: int,
 ) -> None:
+    """Add bootstrap uncertainty."""
     summary["bootstrap_resamples"] = int(resamples)
     summary["bootstrap_confidence"] = float(confidence)
     rng = random.Random(stable_record_seed(summary, seed))
@@ -244,6 +259,7 @@ def add_bootstrap_uncertainty(
 
 
 def finite_or_infinite_psnr(key: str, value) -> bool:
+    """Return finite or infinite psnr."""
     if not isinstance(value, (int, float)):
         return False
     if math.isfinite(float(value)):
@@ -252,6 +268,7 @@ def finite_or_infinite_psnr(key: str, value) -> bool:
 
 
 def load_record(path: Path) -> dict:
+    """Load record."""
     with open(path) as f:
         payload = json.load(f)
     metrics = payload.get("metrics", [])
@@ -304,6 +321,7 @@ def load_record(path: Path) -> dict:
 
 
 def canonical_checkpoint(value) -> str:
+    """Return the canonical checkpoint."""
     path_text = str(value or "")
     if not path_text:
         return ""
@@ -311,6 +329,7 @@ def canonical_checkpoint(value) -> str:
 
 
 def identity_tuple(item: dict) -> tuple[str, str, str, str, str, str, str, str]:
+    """Return the identity for tuple."""
     return (
         canonical_method(str(item.get("method", ""))),
         str(item.get("algorithm", "")),
@@ -324,6 +343,7 @@ def identity_tuple(item: dict) -> tuple[str, str, str, str, str, str, str, str]:
 
 
 def identity_label(identity: tuple[str, str, str, str, str, str, str, str]) -> str:
+    """Return the identity for label."""
     (
         method,
         algorithm,
@@ -342,6 +362,7 @@ def identity_label(identity: tuple[str, str, str, str, str, str, str, str]) -> s
 
 
 def load_expected_jobs(path: Path | None) -> list[dict]:
+    """Load expected jobs."""
     if path is None:
         return []
     with open(path) as f:
@@ -352,10 +373,12 @@ def load_expected_jobs(path: Path | None) -> list[dict]:
 
 
 def expected_job_identities(jobs: list[dict]) -> Counter:
+    """Return the expected job identities."""
     return Counter(identity_tuple(item) for item in jobs)
 
 
 def expected_samplers_by_identity(jobs: list[dict]) -> dict:
+    """Return the expected samplers by identity."""
     samplers = {}
     for item in jobs:
         expected_sampler = item.get("expected_sampler")
@@ -365,6 +388,7 @@ def expected_samplers_by_identity(jobs: list[dict]) -> dict:
 
 
 def expected_method_settings_by_identity(jobs: list[dict]) -> dict:
+    """Return the expected method settings by identity."""
     settings = {}
     for item in jobs:
         expected_settings = item.get("expected_method_settings")
@@ -374,6 +398,7 @@ def expected_method_settings_by_identity(jobs: list[dict]) -> dict:
 
 
 def values_match(expected, actual) -> bool:
+    """Compare values for match."""
     if isinstance(expected, bool):
         return isinstance(actual, bool) and actual is expected
     if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
@@ -389,6 +414,7 @@ def check_expected_mapping(
     expected: dict,
     setting_label: str,
 ) -> list[str]:
+    """Check expected mapping."""
     failures = []
     actual_settings = payload.get(payload_key, {})
     label = (
@@ -413,6 +439,7 @@ def check_expected_mapping(
 
 
 def find_records(args) -> list[dict]:
+    """Discover and filter reconstruction metric records below a result root."""
     records = []
     methods = {canonical_method(value) for value in parse_csv(args.methods)}
     experiments = {canonical_experiment(value) for value in parse_csv(args.experiments)}
@@ -442,6 +469,7 @@ def find_records(args) -> list[dict]:
 
 
 def output_csv_path(args: argparse.Namespace) -> Path | None:
+    """Return the output csv path."""
     if args.output_csv is not None:
         return args.output_csv
     if args.output_json is not None:
@@ -450,6 +478,7 @@ def output_csv_path(args: argparse.Namespace) -> Path | None:
 
 
 def write_records_csv(path: Path, records: list[dict]) -> None:
+    """Write records csv."""
     rows = [record["summary"] for record in records]
     fieldnames = list(CORE_CSV_FIELDS)
     extras = sorted({key for row in rows for key in row} - set(fieldnames))
@@ -462,6 +491,7 @@ def write_records_csv(path: Path, records: list[dict]) -> None:
 
 
 def check_records(args, records: list[dict]) -> list[str]:
+    """Return completeness, settings, finiteness, and quality-gate failures."""
     failures = []
     if not records:
         return [f"No matching metrics.json files found under {args.root}."]
@@ -626,6 +656,7 @@ def check_records(args, records: list[dict]) -> list[str]:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the reconstruction-verification command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--output-json", type=Path, default=None)
@@ -736,6 +767,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Verify a reconstruction matrix and export JSON/CSV summaries."""
     args = build_arg_parser().parse_args()
     if args.bootstrap_resamples < 0:
         raise ValueError("--bootstrap-resamples must be non-negative.")

@@ -1,3 +1,5 @@
+"""Test padis wandb resume behaviour."""
+
 import json
 import sys
 import warnings
@@ -18,7 +20,10 @@ import PaDIS_LIDC_PnP_denoiser as pnp
 
 
 class FakeRun:
+    """Provide the fake run test double used by this module."""
+
     def __init__(self):
+        """Initialize the instance."""
         self.id = "new-run-id"
         self.name = "new-run-name"
         self.summary = {}
@@ -27,40 +32,54 @@ class FakeRun:
         self.artifacts = []
 
     def define_metric(self, *args, **kwargs):
+        """Handle define metric for the PaDIS workflow."""
         self.defined_metrics.append((args, kwargs))
 
     def log(self, metrics, step=None, **kwargs):
+        """Log the requested values."""
         self.logs.append({"metrics": metrics, "step": step, "kwargs": kwargs})
 
     def log_artifact(self, artifact):
+        """Log artifact."""
         self.artifacts.append(artifact)
 
 
 class FakeArtifact:
+    """Provide the fake artifact test double used by this module."""
+
     def __init__(self, name, type):
+        """Initialize the instance."""
         self.name = name
         self.type = type
         self.files = []
 
     def add_file(self, path):
+        """Add file."""
         self.files.append(path)
 
 
 class FakeWandb:
+    """Provide the fake wandb test double used by this module."""
+
     Image = str
     Artifact = FakeArtifact
 
     def __init__(self):
+        """Initialize the instance."""
         self.run = FakeRun()
         self.init_kwargs = None
 
     def init(self, **kwargs):
+        """Handle init for the PaDIS workflow."""
         self.init_kwargs = kwargs
         return self.run
 
 
 class FakeCheckpointSolver:
+    """Provide the fake checkpoint solver test double used by this module."""
+
     def __init__(self, folder, pattern, current_epoch=0):
+        """Initialize the instance."""
         self.checkpoint_save_folder = folder
         self.checkpoint_fname = pattern
         self.train_loss = []
@@ -68,6 +87,7 @@ class FakeCheckpointSolver:
         self.saved_epochs = []
 
     def save_checkpoint(self, epoch):
+        """Save checkpoint."""
         self.saved_epochs.append(epoch)
         filename = self.checkpoint_fname.replace("*", f"{epoch + 1:04d}")
         (self.checkpoint_save_folder / filename).write_text("checkpoint")
@@ -75,6 +95,7 @@ class FakeCheckpointSolver:
 
 @pytest.fixture
 def fake_wandb(monkeypatch):
+    """Handle fake wandb for the PaDIS workflow."""
     fake = FakeWandb()
     monkeypatch.setitem(sys.modules, "wandb", fake)
     return fake
@@ -84,6 +105,7 @@ def fake_wandb(monkeypatch):
 def test_diffusion_wandb_resume_reuses_saved_run_id_without_manual_step(
     module, tmp_path, fake_wandb
 ):
+    """Verify that diffusion wandb resume reuses saved run id without manual step."""
     run_folder = tmp_path / "diffusion_run"
     run_folder.mkdir()
     (run_folder / "wandb_run.json").write_text(
@@ -109,6 +131,7 @@ def test_diffusion_wandb_resume_reuses_saved_run_id_without_manual_step(
 
 
 def test_pnp_wandb_resume_reuses_saved_run_id_without_manual_step(tmp_path, fake_wandb):
+    """Verify that pnp wandb resume reuses saved run id without manual step."""
     run_folder = tmp_path / "pnp_run"
     run_folder.mkdir()
     (run_folder / "wandb_run.json").write_text(
@@ -141,6 +164,7 @@ def test_pnp_wandb_resume_reuses_saved_run_id_without_manual_step(tmp_path, fake
 def test_wandb_output_artifact_matches_padis_run_folder_contract(
     module, tmp_path, fake_wandb
 ):
+    """Verify that wandb output artifact matches padis run folder contract."""
     run_folder = tmp_path / "artifact_run"
     run_folder.mkdir()
     for filename in (
@@ -169,6 +193,7 @@ def test_wandb_output_artifact_matches_padis_run_folder_contract(
 
 @pytest.mark.parametrize("module", [lidc256, lidc512])
 def test_diffusion_interruption_checkpoint_uses_next_periodic_index(module, tmp_path):
+    """Verify that diffusion interruption checkpoint uses next periodic index."""
     pattern = "padis_checkpoint_*.pt"
     (tmp_path / "padis_checkpoint_0001.pt").write_text("old")
     (tmp_path / "padis_checkpoint_0002.pt").write_text("old")
@@ -182,6 +207,7 @@ def test_diffusion_interruption_checkpoint_uses_next_periodic_index(module, tmp_
 
 
 def test_pnp_interruption_checkpoint_saves_current_epoch_with_retention(tmp_path):
+    """Verify that pnp interruption checkpoint saves current epoch with retention."""
     pattern = "pnp_check_*.pt"
     (tmp_path / "pnp_check_0007.pt").write_text("old")
     solver = FakeCheckpointSolver(tmp_path, pattern, current_epoch=7)

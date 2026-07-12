@@ -1,3 +1,11 @@
+"""Download recovery and preprocessing utilities for LIDC-IDRI.
+
+The script converts patient DICOM volumes and pylidc annotations into the
+per-slice NumPy layout consumed by :class:`LION.data_loaders.LIDC_IDRI`.  It can
+resume interrupted downloads, verify expected patient/file counts, and remove
+raw patients only after their processed outputs are complete.
+"""
+
 # =============================================================================
 # This file is part of LION library
 # License : BSD-3
@@ -40,6 +48,7 @@ from utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH, LIDC_IDRI_PATH
 
 
 def configure_pylidc(path_to_raw_dataset: pathlib.Path) -> None:
+    """Write pylidc's user configuration for the selected raw DICOM root."""
     config_path = pathlib.Path.home().joinpath(".pylidcrc")
     dicom_path = path_to_raw_dataset.joinpath("LIDC-IDRI").resolve()
     with open(config_path, "w") as config_file:
@@ -56,6 +65,7 @@ def format_index(index: int) -> str:
 
 
 def iter_lidc_patient_indices():
+    """Return the canonical one-based LIDC-IDRI patient index range."""
     return range(1, LIDC_IDRI_PATIENT_COUNT + 1)
 
 
@@ -77,6 +87,7 @@ def get_nodule_boundaries(
 
 
 def process_patient_mask(scan, path_to_processed_volume_folder: pathlib.Path) -> Dict:
+    """Rasterise all pylidc nodule annotations for one scan."""
     patient_nodules_dict = {}
 
     ## Fetching n_slices for the volume
@@ -118,6 +129,7 @@ def process_patient_mask(scan, path_to_processed_volume_folder: pathlib.Path) ->
 
 
 def process_volume(scan: pl.Scan, path_to_processed_volume_folder: pathlib.Path):
+    """Save one DICOM scan as indexed axial HU slices."""
     volume = scan.to_volume()
     n_slices = volume.shape[-1]
     for slice_index in range(n_slices):

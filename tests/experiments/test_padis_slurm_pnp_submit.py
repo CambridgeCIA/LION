@@ -1,3 +1,5 @@
+"""Test padis slurm pnp submit behaviour."""
+
 import os
 from pathlib import Path
 import subprocess
@@ -11,6 +13,7 @@ SUBMIT_PNP = (
 
 
 def _install_fake_sbatch(tmp_path):
+    """Create install fake sbatch test support data."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     log_path = tmp_path / "sbatch.log"
@@ -34,6 +37,7 @@ printf 'job%s\\n' "$count"
 
 
 def _run_submitter(tmp_path, **extra_env):
+    """Create run submitter test support data."""
     bin_dir, log_path = _install_fake_sbatch(tmp_path)
     env = os.environ.copy()
     env.update(
@@ -58,6 +62,7 @@ def _run_submitter(tmp_path, **extra_env):
 
 
 def test_standalone_pnp_submitter_uses_training_root_defaults(tmp_path):
+    """Verify that standalone pnp submitter uses training root defaults."""
     result, sbatch_log = _run_submitter(tmp_path)
 
     assert result.returncode == 0, result.stderr
@@ -73,6 +78,7 @@ def test_standalone_pnp_submitter_uses_training_root_defaults(tmp_path):
 
 
 def test_standalone_pnp_submitter_preserves_explicit_output_root_and_run_name(tmp_path):
+    """Verify that standalone pnp submitter preserves explicit output root and run name."""
     output_root = tmp_path / "custom_pnp"
 
     result, sbatch_log = _run_submitter(
@@ -91,6 +97,7 @@ def test_standalone_pnp_submitter_preserves_explicit_output_root_and_run_name(tm
 
 
 def test_pnp_slurm_job_forwards_training_cli_options():
+    """Verify that pnp slurm job forwards training cli options."""
     script = (
         LION_ROOT
         / "scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/slurm_PaDIS_A100_pnp_training.sh"

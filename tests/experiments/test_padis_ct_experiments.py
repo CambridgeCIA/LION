@@ -1,3 +1,5 @@
+"""Test padis ct experiments behaviour."""
+
 import numpy as np
 from types import SimpleNamespace
 
@@ -23,6 +25,7 @@ from PaDIS_experiments import (
 
 
 def test_padis_fan_beam_experiments_use_lidc_default_geometry():
+    """Verify that padis fan beam experiments use lidc default geometry."""
     expected = (
         (PaDISFanBeam8CTRecon, 8, 2 * np.pi),
         (PaDISFanBeam20CTRecon, 20, 2 * np.pi),
@@ -48,6 +51,7 @@ def test_padis_fan_beam_experiments_use_lidc_default_geometry():
 
 
 def test_padis_fanbeam_extra_row_is_120_degree_limited_angle():
+    """Verify that padis fanbeam extra row is 120 degree limited angle."""
     experiment = PaDISFanBeam120LimitedCTRecon(image_scaling=0.5)
     geometry = experiment.param.geometry
 
@@ -59,6 +63,7 @@ def test_padis_fanbeam_extra_row_is_120_degree_limited_angle():
 
 
 def test_padis_fan_beam_experiment_is_noise_free_and_model_domain():
+    """Verify that padis fan beam experiment is noise free and model domain."""
     experiment = PaDISFanBeam180CTRecon(image_scaling=0.5)
 
     assert experiment.sino_fun is None
@@ -68,6 +73,7 @@ def test_padis_fan_beam_experiment_is_noise_free_and_model_domain():
 
 
 def test_paper_fan_presets_use_requested_views_and_paper_ct_hyperparameters():
+    """Verify that paper fan presets use requested views and paper ct hyperparameters."""
     expected = {
         "paper-fan-8": ("PaDISFanBeam8CTRecon", "0.003"),
         "paper-fan-20": ("PaDISFanBeam20CTRecon", "0.002"),
@@ -101,6 +107,7 @@ def test_paper_fan_presets_use_requested_views_and_paper_ct_hyperparameters():
 
 
 def test_public_repo_branch_uses_paper_sigma_schedule_with_public_mechanics():
+    """Verify that public repo branch uses paper sigma schedule with public mechanics."""
     expected = {
         "ct_20": 0.002,
         "ct_8": 0.003,
@@ -127,6 +134,7 @@ def test_public_repo_branch_uses_paper_sigma_schedule_with_public_mechanics():
 
 
 def test_public_repo_branch_can_use_literal_readme_sigma_schedule():
+    """Verify that public repo branch can use literal readme sigma schedule."""
     args = build_arg_parser().parse_args(
         [
             "--implementation",
@@ -147,6 +155,7 @@ def test_public_repo_branch_can_use_literal_readme_sigma_schedule():
 
 
 def test_method_flags_set_expected_sampler_modes():
+    """Verify that method flags set expected sampler modes."""
     parser = build_arg_parser()
 
     average_args = parser.parse_args(
@@ -398,6 +407,7 @@ def test_method_flags_set_expected_sampler_modes():
 
 
 def test_reconstruction_parser_defaults_to_paper_ct_test_count():
+    """Verify that reconstruction parser defaults to paper ct test count."""
     args = build_arg_parser().parse_args([])
 
     assert args.split == "test"
@@ -405,6 +415,7 @@ def test_reconstruction_parser_defaults_to_paper_ct_test_count():
 
 
 def test_20_view_no_position_ablation_presets():
+    """Verify that 20 view no position ablation presets."""
     no_pos_args = list(PRESETS["paper-fan-20-no-pos"].arguments)
     no_pos_fdk_args = list(PRESETS["paper-fan-20-no-pos-fdk"].arguments)
 
@@ -419,6 +430,7 @@ def test_20_view_no_position_ablation_presets():
 
 
 def test_unconditional_generation_preset_uses_generation_engine(tmp_path):
+    """Verify that unconditional generation preset uses generation engine."""
     args = SimpleNamespace(
         preset="paper-generation",
         output_root=tmp_path,
@@ -447,6 +459,7 @@ def test_unconditional_generation_preset_uses_generation_engine(tmp_path):
 
 
 def test_generation_presets_use_separately_tuned_prior_settings():
+    """Verify that generation presets use separately tuned prior settings."""
     patch_arguments = list(PRESETS["paper-generation"].arguments)
     whole_arguments = list(PRESETS["paper-generation-whole"].arguments)
 
@@ -461,6 +474,7 @@ def test_generation_presets_use_separately_tuned_prior_settings():
 
 
 def test_generation_figure_presets_cover_patch_assembly_methods():
+    """Verify that generation figure presets cover patch assembly methods."""
     assert FIGURE_PRESET_GROUPS["paper-generation-figures"] == (
         "paper-generation-whole",
         "paper-generation-naive-patch",
@@ -484,6 +498,7 @@ def test_generation_figure_presets_cover_patch_assembly_methods():
 
 
 def test_generation_group_can_default_checkpoints_from_gcp_training_root(tmp_path):
+    """Verify that generation group can default checkpoints from gcp training root."""
     parser = build_experiments_parser()
     args, passthrough = parser.parse_known_args(
         [
@@ -525,6 +540,7 @@ def test_generation_group_can_default_checkpoints_from_gcp_training_root(tmp_pat
 
 
 def test_experiments_entrypoint_can_render_paper_figures(tmp_path):
+    """Verify that experiments entrypoint can render paper figures."""
     parser = build_experiments_parser()
     args, passthrough = parser.parse_known_args(
         [
@@ -563,6 +579,7 @@ def test_experiments_entrypoint_can_render_paper_figures(tmp_path):
 
 
 def test_compatible_lion_presets_are_separate_and_use_closest_ct_hyperparameters():
+    """Verify that compatible lion presets are separate and use closest ct hyperparameters."""
     expected = {
         "lion-compatible-clinical": "clinicalCTRecon",
         "lion-compatible-low-dose": "LowDoseCTRecon",
@@ -594,6 +611,7 @@ def test_compatible_lion_presets_are_separate_and_use_closest_ct_hyperparameters
 
 
 def test_removed_padis_presets_do_not_reappear():
+    """Verify that removed padis presets do not reappear."""
     removed = {
         "whole-paper-fan-180",
         "lion-clinical",
@@ -606,6 +624,7 @@ def test_removed_padis_presets_do_not_reappear():
 
 
 def test_paper_fan_preset_is_separated_and_overrideable(tmp_path):
+    """Verify that paper fan preset is separated and overrideable."""
     args = SimpleNamespace(
         preset="paper-fan-180",
         output_root=tmp_path,
@@ -625,6 +644,7 @@ def test_paper_fan_preset_is_separated_and_overrideable(tmp_path):
 
 
 def test_lion_compatible_preset_has_own_namespace(tmp_path):
+    """Verify that lion compatible preset has own namespace."""
     args = SimpleNamespace(
         preset="lion-compatible-sparse-50",
         output_root=tmp_path,

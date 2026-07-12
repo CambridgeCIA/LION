@@ -1,3 +1,5 @@
+"""Test lidc idri slice selection behaviour."""
+
 import json
 
 import torch
@@ -7,6 +9,7 @@ from LION.utils.parameter import LIONParameter
 
 
 def test_lidc_minus_one_uses_all_slices_without_nodule_balancing():
+    """Verify that lidc minus one uses all slices without nodule balancing."""
     patient_list = ["LIDC-IDRI-0001"]
     all_slices = {"LIDC-IDRI-0001": [0, 1, 2, 3, 4, 5, 6]}
     non_nodule = {"LIDC-IDRI-0001": [0, 2, 4, 6]}
@@ -26,6 +29,7 @@ def test_lidc_minus_one_uses_all_slices_without_nodule_balancing():
 
 
 def test_lidc_subset_selection_keeps_existing_balanced_behavior():
+    """Verify that lidc subset selection keeps existing balanced behavior."""
     patient_list = ["LIDC-IDRI-0001"]
     all_slices = {"LIDC-IDRI-0001": list(range(10))}
     non_nodule = {"LIDC-IDRI-0001": [0, 2, 4, 6, 8]}
@@ -49,6 +53,7 @@ def test_lidc_subset_selection_keeps_existing_balanced_behavior():
 
 
 def test_lidc_initialization_uses_processed_patient_folders(tmp_path):
+    """Verify that lidc initialization uses processed patient folders."""
     for patient_id in ("LIDC-IDRI-0001", "LIDC-IDRI-0003"):
         patient_folder = tmp_path / patient_id
         patient_folder.mkdir()

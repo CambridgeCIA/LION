@@ -48,6 +48,8 @@ EXTERNAL_MODEL_LINKS = {
 
 @dataclass(frozen=True)
 class Candidate:
+    """One named set of sampler arguments in a tuning sweep."""
+
     name: str
     method: str
     implementation: str
@@ -57,12 +59,15 @@ class Candidate:
 
     @property
     def group(self) -> str:
+        """Handle group for the PaDIS workflow."""
         prior = self.prior if self.prior is not None else "any"
         return f"{self.method}__{self.implementation}__{prior}"
 
 
 @dataclass(frozen=True)
 class RunRecord:
+    """Completed or failed tuning run and its recorded provenance."""
+
     candidate: Candidate
     job: matrix.ReconstructionJob
     command: tuple[str, ...]
@@ -75,6 +80,7 @@ class RunRecord:
 
 
 def safe_name(value: str) -> str:
+    """Return a filesystem-safe name."""
     return (
         value.replace("-", "_")
         .replace(".", "p")
@@ -85,6 +91,7 @@ def safe_name(value: str) -> str:
 
 
 def flag_value_args(flag: str, values: Iterable[object]) -> tuple[tuple[str, ...], ...]:
+    """Handle flag value args for the PaDIS workflow."""
     return tuple((flag, str(value)) for value in values)
 
 
@@ -96,6 +103,7 @@ def zeta_candidates(
     values: Iterable[float],
     prefix: str = "zeta",
 ) -> list[Candidate]:
+    """Handle zeta candidates for the PaDIS workflow."""
     return [
         Candidate(
             name=f"{prefix}_{safe_name(f'{value:g}')}",
@@ -109,6 +117,7 @@ def zeta_candidates(
 
 
 def current_default_candidates() -> list[Candidate]:
+    """Handle current default candidates for the PaDIS workflow."""
     candidates: list[Candidate] = []
     for method, implementations in matrix.CORE_IMPLEMENTATIONS_BY_METHOD.items():
         for implementation in implementations:
@@ -130,6 +139,7 @@ def current_default_candidates() -> list[Candidate]:
 
 
 def pilot_candidates() -> list[Candidate]:
+    """Handle pilot candidates for the PaDIS workflow."""
     candidates = current_default_candidates()
 
     candidates.extend(
@@ -298,6 +308,7 @@ def pilot_candidates() -> list[Candidate]:
 
 
 def broad_candidates() -> list[Candidate]:
+    """Handle broad candidates for the PaDIS workflow."""
     candidates = pilot_candidates()
     candidates.extend(
         zeta_candidates(
@@ -352,6 +363,7 @@ def broad_candidates() -> list[Candidate]:
 
 
 def focused_candidates() -> list[Candidate]:
+    """Handle focused candidates for the PaDIS workflow."""
     candidates = current_default_candidates()
     candidates.extend(
         Candidate(
@@ -428,6 +440,7 @@ def lion_physics_candidate(
     prior: str | None = None,
     notes: str = "",
 ) -> Candidate:
+    """Handle lion physics candidate for the PaDIS workflow."""
     return Candidate(
         name=name,
         method=method,
@@ -447,6 +460,7 @@ def sampler_candidate(
     prior: str | None = None,
     notes: str = "",
 ) -> Candidate:
+    """Handle sampler candidate for the PaDIS workflow."""
     return Candidate(
         name=name,
         method=method,
@@ -476,6 +490,7 @@ def padis_dps_lion_full_candidates() -> list[Candidate]:
     ]
 
     def add(name: str, *args: str, notes: str = "") -> None:
+        """Provide the add callback used by the enclosing operation."""
         candidates.append(
             lion_physics_candidate(
                 method="padis_dps",
@@ -688,6 +703,7 @@ def public_paper_sampler_candidates() -> list[Candidate]:
         prior: str | None = None,
         notes: str = "",
     ) -> None:
+        """Provide the add callback used by the enclosing operation."""
         candidates.append(
             sampler_candidate(
                 method=method,
@@ -816,6 +832,7 @@ def paper_full_candidates() -> list[Candidate]:
         prior: str | None = None,
         notes: str = "",
     ) -> None:
+        """Provide the add callback used by the enclosing operation."""
         candidates.append(
             sampler_candidate(
                 method=method,
@@ -849,6 +866,7 @@ def paper_full_candidates() -> list[Candidate]:
     )
 
     def add_common_sampler_controls(method: str, *, prior: str | None = None) -> None:
+        """Add common sampler controls."""
         for num_steps, inner_steps in (
             (50, 20),
             (100, 5),
@@ -1001,6 +1019,7 @@ def public_repo_full_candidates() -> list[Candidate]:
         prior: str | None = None,
         notes: str = "",
     ) -> None:
+        """Provide the add callback used by the enclosing operation."""
         candidates.append(
             sampler_candidate(
                 method=method,
@@ -1028,6 +1047,7 @@ def public_repo_full_candidates() -> list[Candidate]:
     )
 
     def add_common_sampler_controls(method: str, *, prior: str | None = None) -> None:
+        """Add common sampler controls."""
         for num_steps, inner_steps in (
             (50, 20),
             (100, 5),
@@ -1405,6 +1425,7 @@ def lion_physics_pc_public_gap_candidates() -> list[Candidate]:
 
 
 def sampler_full_candidates() -> list[Candidate]:
+    """Handle sampler full candidates for the PaDIS workflow."""
     candidates = lion_physics_full_candidates()
     candidates.extend(public_paper_sampler_candidates())
     candidates.extend(public_repo_full_candidates())
@@ -1481,6 +1502,7 @@ def lion_physics_full_candidates() -> list[Candidate]:
         prior: str | None = None,
         notes: str = "",
     ) -> None:
+        """Add dps like."""
         candidates.append(
             lion_physics_candidate(
                 method=method,
@@ -1594,6 +1616,7 @@ def reproduction_candidates() -> list[Candidate]:
     def add(
         method: str, implementation: str, prior: str | None, name: str, *args: str
     ) -> None:
+        """Provide the add callback used by the enclosing operation."""
         candidates.append(Candidate(name, method, implementation, prior, tuple(args)))
 
     for lam in (5e-4, 1e-3, 2e-3):
@@ -1834,6 +1857,7 @@ def reproduction_candidates() -> list[Candidate]:
 
 
 def unique_candidates(candidates: Iterable[Candidate]) -> list[Candidate]:
+    """Return unique candidates."""
     seen: set[tuple] = set()
     unique: list[Candidate] = []
     for candidate in candidates:
@@ -1852,6 +1876,7 @@ def unique_candidates(candidates: Iterable[Candidate]) -> list[Candidate]:
 
 
 def candidate_set(name: str) -> list[Candidate]:
+    """Return the named reproducible candidate collection."""
     if name == "reproduction":
         return reproduction_candidates()
     if name == "smoke":
@@ -1886,6 +1911,7 @@ def ensure_staged_training_root(
     external_model_root: pathlib.Path,
     training_root: pathlib.Path,
 ) -> None:
+    """Ensure staged training root."""
     external_model_root = external_model_root.expanduser().resolve()
     training_root = training_root.expanduser().resolve()
     for relative_link, source_name in EXTERNAL_MODEL_LINKS.items():
@@ -1905,6 +1931,7 @@ def ensure_staged_training_root(
 
 
 def parse_csv_selection(value: str) -> set[str] | None:
+    """Parse csv selection."""
     value = value.strip()
     if value in ("", "all"):
         return None
@@ -1912,6 +1939,7 @@ def parse_csv_selection(value: str) -> set[str] | None:
 
 
 def job_matches_candidate(job: matrix.ReconstructionJob, candidate: Candidate) -> bool:
+    """Return the job matches candidate."""
     if job.method.name != candidate.method:
         return False
     if job.implementation != candidate.implementation:
@@ -1922,6 +1950,7 @@ def job_matches_candidate(job: matrix.ReconstructionJob, candidate: Candidate) -
 
 
 def candidate_matches_filters(candidate: Candidate, args: argparse.Namespace) -> bool:
+    """Handle candidate matches filters for the PaDIS workflow."""
     methods = parse_csv_selection(args.only_methods)
     implementations = parse_csv_selection(args.only_implementations)
     groups = parse_csv_selection(args.only_groups)
@@ -1938,6 +1967,7 @@ def candidate_matches_filters(candidate: Candidate, args: argparse.Namespace) ->
 
 
 def build_matrix_args(args: argparse.Namespace) -> argparse.Namespace:
+    """Build matrix args."""
     parser = matrix.build_arg_parser()
     raw = [
         "--training-root",
@@ -2005,6 +2035,7 @@ def build_matrix_args(args: argparse.Namespace) -> argparse.Namespace:
 def candidate_output_root(
     args: argparse.Namespace, candidate: Candidate
 ) -> pathlib.Path:
+    """Handle candidate output root for the PaDIS workflow."""
     return (
         args.output_root
         / args.run_name
@@ -2015,7 +2046,10 @@ def candidate_output_root(
 
 
 def command_metrics_path(command: list[str]) -> pathlib.Path:
+    """Build the command for metrics path."""
+
     def value_after(flag: str) -> str:
+        """Handle value after for the PaDIS workflow."""
         try:
             return command[command.index(flag) + 1]
         except ValueError as exc:
@@ -2035,6 +2069,7 @@ def command_for_candidate(
     candidate: Candidate,
     args: argparse.Namespace,
 ) -> list[str]:
+    """Build the command for for candidate."""
     run_matrix_args = argparse.Namespace(**vars(matrix_args))
     run_matrix_args.output_root = candidate_output_root(args, candidate)
     command = matrix.command_for_job(run_matrix_args, job)
@@ -2047,6 +2082,7 @@ def command_for_candidate(
 
 
 def finite_values(values: Iterable[float | None]) -> list[float]:
+    """Return finite values."""
     return [
         float(value)
         for value in values
@@ -2055,6 +2091,7 @@ def finite_values(values: Iterable[float | None]) -> list[float]:
 
 
 def mean_or_none(values: Iterable[float | None]) -> float | None:
+    """Return the mean or none."""
     finite = finite_values(values)
     if not finite:
         return None
@@ -2062,6 +2099,7 @@ def mean_or_none(values: Iterable[float | None]) -> float | None:
 
 
 def min_or_none(values: Iterable[float | None]) -> float | None:
+    """Return the minimum or none."""
     finite = finite_values(values)
     if not finite:
         return None
@@ -2069,6 +2107,7 @@ def min_or_none(values: Iterable[float | None]) -> float | None:
 
 
 def max_or_none(values: Iterable[float | None]) -> float | None:
+    """Return the maximum or none."""
     finite = finite_values(values)
     if not finite:
         return None
@@ -2076,6 +2115,7 @@ def max_or_none(values: Iterable[float | None]) -> float | None:
 
 
 def summarize_metrics(metrics_path: pathlib.Path) -> dict:
+    """Summarize metrics."""
     with open(metrics_path) as file:
         payload = json.load(file)
     metrics = payload.get("metrics", [])
@@ -2126,6 +2166,7 @@ def summarize_metrics(metrics_path: pathlib.Path) -> dict:
 def run_command(
     command: list[str], log_path: pathlib.Path
 ) -> tuple[str, float, str | None]:
+    """Run command."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     with open(log_path, "w", buffering=1) as log_file:
@@ -2154,6 +2195,7 @@ def record_for_run(
     summary: dict,
     error: str | None = None,
 ) -> dict:
+    """Build a record for for run."""
     candidate_args = list(candidate.args)
     for extra_arg in command_extra_reconstruction_args(command):
         if extra_arg not in candidate_args:
@@ -2209,6 +2251,7 @@ def command_extra_reconstruction_args(command: list[str]) -> list[str]:
 
 
 def write_jsonl(path: pathlib.Path, records: Iterable[dict]) -> None:
+    """Write jsonl."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as file:
         for record in records:
@@ -2216,6 +2259,7 @@ def write_jsonl(path: pathlib.Path, records: Iterable[dict]) -> None:
 
 
 def aggregate_records(records: list[dict]) -> list[dict]:
+    """Aggregate records."""
     groups: dict[tuple[str, str], list[dict]] = {}
     for record in records:
         if record["status"] not in ("completed", "nonfinite"):
@@ -2270,6 +2314,7 @@ def aggregate_records(records: list[dict]) -> list[dict]:
 
 
 def write_csv(path: pathlib.Path, rows: list[dict]) -> None:
+    """Write csv."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "candidate_group",
@@ -2299,6 +2344,7 @@ def build_runs(
 ) -> tuple[
     argparse.Namespace, list[tuple[Candidate, matrix.ReconstructionJob, list[str]]]
 ]:
+    """Resolve matrix jobs and candidate filters into executable tuning runs."""
     matrix_args = build_matrix_args(args)
     jobs = matrix.build_jobs(matrix_args)
     failures = matrix.input_check_failures(matrix_args, jobs)
@@ -2325,10 +2371,12 @@ def build_runs(
 
 
 def command_line(command: list[str]) -> str:
+    """Build the command for line."""
     return " ".join(shlex.quote(part) for part in command)
 
 
 def run_tuning(args: argparse.Namespace) -> None:
+    """Run tuning."""
     if not args.use_existing_training_root:
         ensure_staged_training_root(
             external_model_root=args.external_model_root,
@@ -2452,6 +2500,7 @@ def run_tuning(args: argparse.Namespace) -> None:
 
 
 def write_outputs(args: argparse.Namespace, records: list[dict]) -> None:
+    """Write outputs."""
     run_root = args.output_root / args.run_name
     write_jsonl(run_root / "runs.jsonl", records)
     summary_rows = aggregate_records(records)
@@ -2461,6 +2510,7 @@ def write_outputs(args: argparse.Namespace, records: list[dict]) -> None:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the reconstruction-tuning command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--external-model-root",
@@ -2575,6 +2625,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Execute selected fixed-validation tuning candidates."""
     args = build_arg_parser().parse_args()
     args.external_model_root = args.external_model_root.expanduser().resolve()
     args.training_root = args.training_root.expanduser().resolve()

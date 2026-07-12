@@ -1,3 +1,5 @@
+"""Test padis readme warnings behaviour."""
+
 from pathlib import Path
 
 
@@ -8,6 +10,7 @@ README = (
 
 
 def test_padis_readme_warns_about_lion_native_method_substitutions():
+    """Verify that padis readme warns about lion native method substitutions."""
     text = README.read_text()
     warnings = text.split("## Notes and limitations", 1)[1]
 

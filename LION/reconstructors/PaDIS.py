@@ -65,6 +65,11 @@ class PaDIS(LIONReconstructor):
 
     @staticmethod
     def default_parameters(model: NCSNpp | None = None) -> LIONParameter:
+        """Return conservative generic sampler parameters.
+
+        Study-specific reconstruction should normally start from one of the CT
+        preset constructors rather than these diagnostic defaults.
+        """
         params = LIONParameter()
         model_params = getattr(model, "model_parameters", None)
         params.num_steps = 18
@@ -267,6 +272,27 @@ class PaDIS(LIONReconstructor):
         generator: torch.Generator | None = None,
         **kwargs,
     ) -> torch.Tensor:
+        """Reconstruct one image from a channel-first sinogram.
+
+        Parameters
+        ----------
+        sino : torch.Tensor
+            Measurement tensor with shape ``(channels, angles, detector)``.
+        algorithm : {"dps_langevin", "dps", "langevin", "pc"}, optional
+            Per-call algorithm override.
+        prog_bar : bool, optional
+            Display outer sampler progress.
+        generator : torch.Generator, optional
+            Random generator controlling initialisation, patch offsets, and
+            stochastic sampler updates.
+        **kwargs
+            Temporary overrides of sampler parameters.
+
+        Returns
+        -------
+        torch.Tensor
+            Reconstructed image in normalised-intensity units.
+        """
         if not isinstance(sino, torch.Tensor):
             raise TypeError("Sinogram must be a torch.Tensor.")
         if sino.dim() != 3:

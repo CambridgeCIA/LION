@@ -63,6 +63,8 @@ ADDITIONAL_EXAMPLE_OFFSETS = (1, 2, 3, 4, 6, 7, 8)
 
 @dataclass(frozen=True)
 class Panel:
+    """One image payload and its presentation metadata within a figure."""
+
     source: str
     title: str
     row: str
@@ -75,6 +77,8 @@ class Panel:
 
 @dataclass(frozen=True)
 class FigureSpec:
+    """Declarative layout and physical scale metadata for one paper figure."""
+
     name: str
     filename: str
     panels: tuple[tuple[Panel, ...], ...]
@@ -85,6 +89,7 @@ class FigureSpec:
 
 
 def torch_load(path: pathlib.Path):
+    """Load a PyTorch payload from load."""
     try:
         return torch.load(path, map_location="cpu", weights_only=False)
     except TypeError:
@@ -97,6 +102,7 @@ def display_image(
     window: str,
     hu_range: tuple[float, float] | None = None,
 ) -> torch.Tensor:
+    """Return display-ready image."""
     image = image.detach().cpu().float()
     if image.ndim == 4:
         image = image[0]
@@ -116,6 +122,7 @@ def display_image(
 def tensor_from_payload(
     path: pathlib.Path, key: str, sample_index: int
 ) -> torch.Tensor:
+    """Handle tensor from payload for the PaDIS workflow."""
     payload = torch_load(path)
     if not isinstance(payload, dict):
         if key != "samples":
@@ -138,6 +145,7 @@ def tensor_from_payload(
 def target_bbox(
     path: pathlib.Path, sample_index: int, *, pad: int
 ) -> tuple[int, int, int, int] | None:
+    """Return the target bbox."""
     try:
         target = tensor_from_payload(path, "targets", sample_index)
     except (FileNotFoundError, KeyError, IndexError):
@@ -201,6 +209,7 @@ def body_hu_percentile_range(
 
 
 def crop(image: torch.Tensor, bbox: tuple[int, int, int, int] | None) -> torch.Tensor:
+    """Crop the requested values."""
     if bbox is None:
         return image
     top, bottom, left, right = bbox
@@ -216,6 +225,7 @@ def recon_path(
     experiment: str,
     group: str = "main",
 ) -> pathlib.Path:
+    """Resolve canonical or legacy reconstruction payload paths."""
     canonical_path = None
     for stored_method in method_storage_names(method):
         for stored_experiment in experiment_storage_names(experiment):
@@ -250,6 +260,7 @@ def recon_path(
 
 
 def generation_path(root: pathlib.Path, preset: str) -> pathlib.Path:
+    """Return the generation path."""
     return root / "lion-paper-protocol" / preset / "samples.pt"
 
 
@@ -267,6 +278,7 @@ def recon_panel(
     sample_index: int = 0,
     window: str | None = None,
 ) -> Panel:
+    """Handle recon panel for the PaDIS workflow."""
     return Panel(
         source="reconstruction",
         title=title,
@@ -288,6 +300,7 @@ def recon_panel(
 def generation_panel(
     root: pathlib.Path, title: str, row: str, *, preset: str, sample_index: int
 ) -> Panel:
+    """Return the generation panel."""
     return Panel(
         source="generation",
         title=title,
@@ -306,6 +319,8 @@ def figure_specs(
     *,
     sample_index: int = 0,
 ) -> tuple[FigureSpec, ...]:
+    """Build all supported paper figure specifications."""
+
     def target(
         title: str,
         row: str,
@@ -315,6 +330,7 @@ def figure_specs(
         panel_sample_index: int = sample_index,
         window: str | None = None,
     ):
+        """Return the target the requested values."""
         return recon_panel(
             recon_root,
             title,
@@ -334,6 +350,7 @@ def figure_specs(
         panel_sample_index: int,
         window: str | None = None,
     ) -> tuple[Panel, ...]:
+        """Handle standard ct row for the PaDIS workflow."""
         return (
             recon_panel(
                 recon_root,
@@ -1070,6 +1087,7 @@ def draw_figure(
     crop_body: bool,
     body_bbox_padding: int,
 ) -> dict:
+    """Render one figure specification and return manifest metadata."""
     import matplotlib.pyplot as plt
 
     plt.rcParams["pdf.fonttype"] = 42
@@ -1305,6 +1323,7 @@ def draw_figure(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Construct the paper-figure command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--reconstruction-root",
@@ -1338,6 +1357,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def selected_figures(selection: str) -> tuple[str, ...]:
+    """Return the selected figures."""
     if selection == "all":
         return IMPLEMENTED_FIGURES
     names = tuple(item.strip() for item in selection.split(",") if item.strip())
@@ -1351,6 +1371,7 @@ def selected_figures(selection: str) -> tuple[str, ...]:
 
 
 def main() -> None:
+    """Render selected figures and write a reproducibility manifest."""
     args = build_arg_parser().parse_args()
     recon_root = args.reconstruction_root.expanduser().resolve()
     generation_root = args.generation_root.expanduser().resolve()

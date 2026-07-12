@@ -1,3 +1,5 @@
+"""Test padis slurm reconstruction submit behaviour."""
+
 import json
 import os
 from pathlib import Path
@@ -30,6 +32,7 @@ RECONSTRUCTION_VERIFY = (
 
 
 def _install_fake_sbatch(tmp_path):
+    """Create install fake sbatch test support data."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     log_path = tmp_path / "sbatch.log"
@@ -53,6 +56,7 @@ printf 'job%s\\n' "$count"
 
 
 def _run_submitter(tmp_path, script=SUBMIT_RECONSTRUCTION, **extra_env):
+    """Create run submitter test support data."""
     bin_dir, log_path = _install_fake_sbatch(tmp_path)
     env = os.environ.copy()
     env.update(
@@ -79,6 +83,7 @@ def _run_submitter(tmp_path, script=SUBMIT_RECONSTRUCTION, **extra_env):
 
 
 def test_reconstruction_verify_script_supports_explicit_mean_gate_env_names():
+    """Verify that reconstruction verify script supports explicit mean gate env names."""
     text = RECONSTRUCTION_VERIFY.read_text()
 
     assert (
@@ -96,6 +101,7 @@ def test_reconstruction_verify_script_supports_explicit_mean_gate_env_names():
 
 
 def test_reconstruction_smoke_defaults_cover_validated_quality_rows(tmp_path):
+    """Verify that reconstruction smoke defaults cover validated quality rows."""
     checkpoint = (
         tmp_path / "training/patch_lidc_default/padis_lidc_256_min_intense_val.pt"
     )
@@ -139,6 +145,7 @@ def test_reconstruction_smoke_defaults_cover_validated_quality_rows(tmp_path):
 def test_standalone_reconstruction_submitter_writes_manifest_and_verifier_env(
     tmp_path,
 ):
+    """Verify that standalone reconstruction submitter writes manifest and verifier env."""
     result, sbatch_log = _run_submitter(
         tmp_path,
         PADIS_RECON_METHODS="baseline,cp_tv",
@@ -169,6 +176,7 @@ def test_standalone_reconstruction_submitter_writes_manifest_and_verifier_env(
 def test_standalone_reconstruction_submitter_full_default_matrix_with_checkpoints(
     tmp_path,
 ):
+    """Verify that standalone reconstruction submitter full default matrix with checkpoints."""
     training_root = tmp_path / "training"
     for model_task in MODEL_TASKS:
         checkpoint = (
@@ -244,12 +252,14 @@ def test_standalone_reconstruction_submitter_full_default_matrix_with_checkpoint
 
 
 def test_reconstruction_array_passes_dash_prefixed_extra_args_with_equals():
+    """Verify that reconstruction array passes dash prefixed extra args with equals."""
     text = RECONSTRUCTION_ARRAY.read_text()
 
     assert 'CMD+=("--reconstruction-arg=$item")' in text
 
 
 def test_reconstruction_array_defaults_to_fragmentation_resistant_cuda_allocator():
+    """Verify that reconstruction array defaults to fragmentation resistant cuda allocator."""
     text = RECONSTRUCTION_ARRAY.read_text()
 
     assert (
@@ -262,6 +272,7 @@ def test_reconstruction_array_defaults_to_fragmentation_resistant_cuda_allocator
 def test_standalone_reconstruction_submitter_records_extra_reconstruction_args(
     tmp_path,
 ):
+    """Verify that standalone reconstruction submitter records extra reconstruction args."""
     result, sbatch_log = _run_submitter(
         tmp_path,
         PADIS_RECON_METHODS="baseline",
@@ -282,6 +293,7 @@ def test_standalone_reconstruction_submitter_records_extra_reconstruction_args(
 
 
 def test_standalone_reconstruction_submitter_can_skip_verifier(tmp_path):
+    """Verify that standalone reconstruction submitter can skip verifier."""
     result, sbatch_log = _run_submitter(
         tmp_path,
         PADIS_RECON_METHODS="baseline",
@@ -297,6 +309,7 @@ def test_standalone_reconstruction_submitter_can_skip_verifier(tmp_path):
 
 
 def test_standalone_reconstruction_submitter_blocks_pnp_without_denoiser(tmp_path):
+    """Verify that standalone reconstruction submitter blocks pnp without denoiser."""
     result, sbatch_log = _run_submitter(
         tmp_path,
         PADIS_RECON_METHODS="pnp_admm",
@@ -312,6 +325,7 @@ def test_standalone_reconstruction_submitter_blocks_pnp_without_denoiser(tmp_pat
 def test_standalone_reconstruction_submitter_blocks_missing_diffusion_checkpoint(
     tmp_path,
 ):
+    """Verify that standalone reconstruction submitter blocks missing diffusion checkpoint."""
     result, sbatch_log = _run_submitter(
         tmp_path,
         PADIS_RECON_METHODS="padis_dps",
@@ -325,6 +339,7 @@ def test_standalone_reconstruction_submitter_blocks_missing_diffusion_checkpoint
 
 
 def test_standalone_reconstruction_submitter_blocks_spaced_pnp_selection(tmp_path):
+    """Verify that standalone reconstruction submitter blocks spaced pnp selection."""
     result, sbatch_log = _run_submitter(
         tmp_path,
         PADIS_RECON_METHODS="baseline, pnp_admm",
@@ -338,6 +353,7 @@ def test_standalone_reconstruction_submitter_blocks_spaced_pnp_selection(tmp_pat
 
 
 def test_standalone_reconstruction_submitter_records_pnp_overrides(tmp_path):
+    """Verify that standalone reconstruction submitter records pnp overrides."""
     checkpoint = tmp_path / "existing_pnp.pt"
     checkpoint.write_text("placeholder")
 
@@ -363,6 +379,7 @@ def test_standalone_reconstruction_submitter_records_pnp_overrides(tmp_path):
 
 
 def test_standalone_reconstruction_submitter_derives_custom_pnp_checkpoint(tmp_path):
+    """Verify that standalone reconstruction submitter derives custom pnp checkpoint."""
     pnp_output_root = tmp_path / "custom_pnp"
     checkpoint = pnp_output_root / "denoiser_run/final_denoiser.pt"
     checkpoint.parent.mkdir(parents=True)
@@ -389,6 +406,7 @@ def test_standalone_reconstruction_submitter_derives_custom_pnp_checkpoint(tmp_p
 
 
 def test_standalone_reconstruction_submitter_rejects_off_paper_matrix(tmp_path):
+    """Verify that standalone reconstruction submitter rejects off paper matrix."""
     result, sbatch_log = _run_submitter(
         tmp_path,
         PADIS_RECON_METHODS="whole_image_diffusion",
@@ -402,6 +420,7 @@ def test_standalone_reconstruction_submitter_rejects_off_paper_matrix(tmp_path):
 
 
 def test_standalone_reconstruction_submitter_can_allow_off_paper_matrix(tmp_path):
+    """Verify that standalone reconstruction submitter can allow off paper matrix."""
     checkpoint = (
         tmp_path / "training/whole_lidc_default/whole_image_lidc_256_min_intense_val.pt"
     )
@@ -429,6 +448,7 @@ def test_standalone_reconstruction_submitter_can_allow_off_paper_matrix(tmp_path
 
 
 def test_reconstruction_array_derives_custom_pnp_checkpoint_before_command():
+    """Verify that reconstruction array derives custom pnp checkpoint before command."""
     script = RECONSTRUCTION_ARRAY.read_text()
 
     assert "PADIS_PNP_OUTPUT_ROOT" in script

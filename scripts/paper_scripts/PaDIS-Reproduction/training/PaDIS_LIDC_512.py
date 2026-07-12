@@ -34,6 +34,7 @@ class TerminationRequested(Exception):
 
 
 def make_run_folder(save_root, run_name, prefix):
+    """Create run folder."""
     if run_name is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         run_name = f"{prefix}_{timestamp}_{uuid.uuid4().hex[:8]}"
@@ -48,6 +49,7 @@ def make_run_folder(save_root, run_name, prefix):
 
 
 def save_loss_plots(solver, save_folder):
+    """Save loss plots."""
     plt.figure()
     train_loss = (
         solver.train_loss[1:] if len(solver.train_loss) > 1 else solver.train_loss
@@ -64,6 +66,7 @@ def save_loss_plots(solver, save_folder):
 
 
 def serializable_config(args, run_folder, preset):
+    """Convert configuration values into serializable objects."""
     config = {}
     for key, value in vars(args).items():
         config[key] = str(value) if isinstance(value, pathlib.Path) else value
@@ -73,6 +76,7 @@ def serializable_config(args, run_folder, preset):
 
 
 def set_run_seed(seed: int) -> None:
+    """Set run seed."""
     os.environ.setdefault("PYTHONHASHSEED", str(seed))
     random.seed(seed)
     np.random.seed(seed)
@@ -84,9 +88,11 @@ def set_run_seed(seed: int) -> None:
 
 
 def install_termination_handler():
+    """Install termination handler."""
     previous_handler = signal.getsignal(signal.SIGTERM)
 
     def request_stop(signum, _frame):
+        """Request stop."""
         signal.signal(signum, signal.SIG_IGN)
         raise TerminationRequested(f"Received signal {signum}")
 
@@ -95,6 +101,7 @@ def install_termination_handler():
 
 
 def save_interruption_checkpoint(solver):
+    """Save interruption checkpoint."""
     if solver.checkpoint_save_folder is None or solver.checkpoint_fname is None:
         return
     if getattr(solver, "train_loss", None) is None:
@@ -115,15 +122,18 @@ def save_interruption_checkpoint(solver):
 
 
 def wandb_id_file(run_folder):
+    """Return the W&B id file."""
     return run_folder / "wandb_run.json"
 
 
 def extract_wandb_id(path):
+    """Extract wandb id."""
     match = re.search(r"(?:offline-run|run)-\d+_\d+-([A-Za-z0-9]+)$", path.name)
     return match.group(1) if match is not None else None
 
 
 def discover_wandb_id(run_folder):
+    """Discover wandb id."""
     metadata_path = wandb_id_file(run_folder)
     if metadata_path.is_file():
         with open(metadata_path) as f:
@@ -151,6 +161,7 @@ def discover_wandb_id(run_folder):
 
 
 def save_wandb_id(run_folder, wandb_run):
+    """Save wandb id."""
     if wandb_run is None:
         return
     with open(wandb_id_file(run_folder), "w") as f:
@@ -158,6 +169,7 @@ def save_wandb_id(run_folder, wandb_run):
 
 
 def init_wandb(args, run_folder, preset):
+    """Initialise or resume W&B logging and persist its stable run identity."""
     if args.no_wandb or args.wandb_project is None:
         return None
     try:
@@ -193,16 +205,19 @@ def init_wandb(args, run_folder, preset):
 
 
 def min_validation_loss(solver):
+    """Return the minimum validation loss."""
     if solver.validation_loss is None or len(solver.validation_loss) == 0:
         return None
     return float(min(solver.validation_loss))
 
 
 def wandb_log_fn(wandb_run):
+    """Return the W&B log fn."""
     if wandb_run is None:
         return None
 
     def log_fn(metrics, step):
+        """Provide the log fn callback used by the enclosing operation."""
         _ = step
         wandb_run.log(metrics)
 
@@ -210,6 +225,7 @@ def wandb_log_fn(wandb_run):
 
 
 def data_loader_kwargs(args, device, batch_size):
+    """Handle data loader kwargs for the PaDIS workflow."""
     kwargs = {
         "batch_size": batch_size,
         "num_workers": args.num_workers,
@@ -226,6 +242,7 @@ class CachedImagePriorBatchLoader(DataLoader):
     """Small batch loader for cached PaDIS image-prior tensors."""
 
     def __init__(self, images, batch_size, shuffle, name):
+        """Initialize the instance."""
         if images.ndim != 4:
             raise ValueError(
                 f"Expected cached images shaped [N, C, H, W], got {images.shape}."
@@ -240,15 +257,18 @@ class CachedImagePriorBatchLoader(DataLoader):
         self._cursor = 0
 
     def __len__(self):
+        """Return the number of available items."""
         return math.ceil(self.images.shape[0] / self.batch_size)
 
     def _new_order(self):
+        """Handle new order for the PaDIS workflow."""
         n_images = self.images.shape[0]
         if self.shuffle:
             return torch.randperm(n_images)
         return torch.arange(n_images)
 
     def sample_batch(self, batch_size):
+        """Sample batch."""
         indices = []
         remaining = int(batch_size)
         while remaining > 0:
@@ -263,6 +283,7 @@ class CachedImagePriorBatchLoader(DataLoader):
         return self.images.index_select(0, torch.cat(indices))
 
     def __iter__(self):
+        """Return an iterator over the available items."""
         order = self._new_order()
         for start in range(0, self.images.shape[0], self.batch_size):
             indices = order[start : start + self.batch_size]
@@ -271,6 +292,7 @@ class CachedImagePriorBatchLoader(DataLoader):
 
 
 def default_cache_folder():
+    """Return the default cache folder."""
     ramdisk_root = pathlib.Path("/ramdisks")
     if ramdisk_root.is_dir():
         return ramdisk_root / getpass.getuser() / "lion_lidc_cache_512"
@@ -278,6 +300,7 @@ def default_cache_folder():
 
 
 def normalized_slices_to_load(dataset):
+    """Return normalized slices to load."""
     return {
         str(patient_id): [int(slice_index) for slice_index in slice_indices]
         for patient_id, slice_indices in dataset.slices_to_load.items()
@@ -285,6 +308,7 @@ def normalized_slices_to_load(dataset):
 
 
 def dataset_cache_metadata(dataset, mode):
+    """Handle dataset cache metadata for the PaDIS workflow."""
     params = dataset.params
     geometry = params.geometry
     return {
@@ -305,6 +329,7 @@ def dataset_cache_metadata(dataset, mode):
 
 
 def cache_path_for_dataset(dataset, mode, cache_folder):
+    """Handle cache path for dataset for the PaDIS workflow."""
     metadata = dataset_cache_metadata(dataset, mode)
     digest = hashlib.sha256(
         json.dumps(metadata, sort_keys=True).encode("utf-8")
@@ -315,6 +340,7 @@ def cache_path_for_dataset(dataset, mode, cache_folder):
 
 
 def stage_cache_from_source(mode, cache_path, source_cache_path):
+    """Stage a prepared dataset cache from a source directory."""
     if not source_cache_path.is_file():
         return False
     print(f"Staging {mode} image-prior cache from {source_cache_path} to {cache_path}")
@@ -325,6 +351,7 @@ def stage_cache_from_source(mode, cache_path, source_cache_path):
 
 
 def stage_cache_from_archive(mode, cache_path, archive_path):
+    """Restore a prepared dataset cache from an archive."""
     if not archive_path.is_file():
         return False
     zstd = shutil.which("zstd")
@@ -347,6 +374,7 @@ def stage_cache_from_archive(mode, cache_path, archive_path):
 
 
 def write_cache_archive(cache_path, archive_folder, overwrite=False):
+    """Write cache archive."""
     zstd = shutil.which("zstd")
     if zstd is None:
         raise RuntimeError("Cannot write compressed cache archive: zstd was not found.")
@@ -377,6 +405,7 @@ def materialize_image_prior_dataset(
     write_archive=False,
     require_cache_hit=False,
 ):
+    """Materialize image prior dataset."""
     cache_path, metadata = cache_path_for_dataset(dataset, mode, cache_folder)
     cache_folder.mkdir(parents=True, exist_ok=True)
     if (
@@ -446,6 +475,7 @@ def materialize_image_prior_dataset(
 
 
 def build_cached_loaders(args, train_dataset, validation_dataset, train_batch_size):
+    """Build cached loaders."""
     cache_folder = args.cache_folder or default_cache_folder()
     train_images = materialize_image_prior_dataset(
         train_dataset,
@@ -483,6 +513,7 @@ def build_cached_loaders(args, train_dataset, validation_dataset, train_batch_si
 
 
 def log_wandb_outputs(wandb_run, run_folder, log_artifact=True):
+    """Log wandb outputs."""
     if wandb_run is None:
         return
     import wandb
@@ -511,6 +542,7 @@ def log_wandb_outputs(wandb_run, run_folder, log_artifact=True):
 
 
 def build_arg_parser():
+    """Construct the native-512 PaDIS training command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-folder", type=pathlib.Path, default=None)
     parser.add_argument(
@@ -694,6 +726,7 @@ def build_arg_parser():
 
 
 def main():
+    """Train or resume the native-512 PaDIS prior."""
     args = build_arg_parser().parse_args()
     if args.max_slices_per_patient == 0 or args.max_slices_per_patient < -1:
         raise ValueError("--max-slices-per-patient must be positive or -1.")

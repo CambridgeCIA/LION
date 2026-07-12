@@ -1,0 +1,28 @@
+name: Documentation
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: pip
+    - name: Install LION and documentation dependencies
+      run: python -m pip install -e ".[docs]"
+    - name: Build documentation with warnings as errors
+      run: make -C docs html
+    - uses: actions/upload-artifact@v4
+      with:
+        name: lion-html-documentation
+        path: docs/_build/html

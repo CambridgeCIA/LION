@@ -1,3 +1,5 @@
+"""Test padis reconstructor behaviour."""
+
 from types import SimpleNamespace
 import importlib
 
@@ -18,52 +20,71 @@ from PaDIS_LIDC_reconstruction import (
 
 
 class IdentityOp(Operator):
+    """Provide the identity op test double used by this module."""
+
     @property
     def domain_shape(self):
+        """Handle domain shape for the PaDIS workflow."""
         return (1, 8, 8)
 
     @property
     def range_shape(self):
+        """Handle range shape for the PaDIS workflow."""
         return (1, 8, 8)
 
     def __call__(self, x, out=None):
+        """Apply the callable operation."""
         return x
 
     def forward(self, x):
+        """Apply the forward operation to the requested values."""
         return x
 
     def adjoint(self, y):
+        """Handle adjoint for the PaDIS workflow."""
         return y
 
     def inverse(self, y):
+        """Handle inverse for the PaDIS workflow."""
         return y
 
 
 class ScaledIdentityOp(IdentityOp):
+    """Provide the scaled identity op test double used by this module."""
+
     def __init__(self, scale):
+        """Initialize the instance."""
         self.scale = scale
 
     def __call__(self, x, out=None):
+        """Apply the callable operation."""
         return self.scale * x
 
     def forward(self, x):
+        """Apply the forward operation to the requested values."""
         return self.scale * x
 
     def adjoint(self, y):
+        """Handle adjoint for the PaDIS workflow."""
         return self.scale * y
 
     def inverse(self, y):
+        """Handle inverse for the PaDIS workflow."""
         return y / self.scale
 
 
 class ZeroPatchModel(nn.Module):
+    """Provide the zero patch model test double used by this module."""
+
     def __init__(self):
+        """Initialize the instance."""
         super().__init__()
         self.model_parameters = LIONParameter()
         self.model_parameters.pad_width = 2
         self.model_parameters.largest_patch_size = 4
 
     def forward(self, x, time_cond):
+        """Apply the forward operation to the requested values."""
         del time_cond
         return torch.zeros(
             x.shape[0], 1, x.shape[-2], x.shape[-1], device=x.device, dtype=x.dtype
@@ -71,17 +92,24 @@ class ZeroPatchModel(nn.Module):
 
 
 class GradModePatchModel(ZeroPatchModel):
+    """Provide the grad mode patch model test double used by this module."""
+
     def __init__(self):
+        """Initialize the instance."""
         super().__init__()
         self.grad_enabled_calls = []
 
     def forward(self, x, time_cond):
+        """Apply the forward operation to the requested values."""
         self.grad_enabled_calls.append(torch.is_grad_enabled())
         return super().forward(x, time_cond)
 
 
 class ZeroWholeImageModel(ZeroPatchModel):
+    """Provide the zero whole image model test double used by this module."""
+
     def __init__(self):
+        """Initialize the instance."""
         super().__init__()
         self.model_parameters.pad_width = 0
         self.model_parameters.largest_patch_size = 8
@@ -90,20 +118,26 @@ class ZeroWholeImageModel(ZeroPatchModel):
 
 
 class AffineDenoiserModel(nn.Module):
+    """Provide the affine denoiser model test double used by this module."""
+
     def __init__(self, *, use_noise_level=False):
+        """Initialize the instance."""
         super().__init__()
         self.model_parameters = LIONParameter()
         self.model_parameters.use_noise_level = use_noise_level
         self.last_noise_level = None
 
     def normalise(self, x):
+        """Handle normalise for the PaDIS workflow."""
         return 2.0 * x
 
     def unnormalise(self, x, target=None):
+        """Handle unnormalise for the PaDIS workflow."""
         del target
         return 0.5 * x
 
     def forward(self, x, noise_level=None):
+        """Apply the forward operation to the requested values."""
         self.last_noise_level = noise_level
         if noise_level is None:
             return x + 2.0
@@ -111,6 +145,7 @@ class AffineDenoiserModel(nn.Module):
 
 
 def _sampler_params(model):
+    """Create sampler params test support data."""
     params = PaDIS.default_parameters(model)
     params.num_steps = 1
     params.inner_steps = 1
@@ -123,6 +158,7 @@ def _sampler_params(model):
 
 
 def _prior_free_params():
+    """Create prior free params test support data."""
     params = LIONParameter()
     params.measurement_scale = 2.0
     params.measurement_offset = 0.1
@@ -135,6 +171,7 @@ def _prior_free_params():
 
 
 def _whole_image_sampler_params(model):
+    """Create whole image sampler params test support data."""
     params = _sampler_params(model)
     params.prior_mode = "whole_image"
     params.patch_size = 8
@@ -143,6 +180,7 @@ def _whole_image_sampler_params(model):
 
 
 def test_padis_dps_langevin_reconstructor_smoke():
+    """Verify that padis dps langevin reconstructor smoke."""
     torch.manual_seed(0)
     model = ZeroPatchModel()
     reconstructor = PaDIS(
@@ -155,6 +193,7 @@ def test_padis_dps_langevin_reconstructor_smoke():
 
 
 def test_padis_dps_disable_data_consistency_denoises_without_grad():
+    """Verify that padis dps disable data consistency denoises without grad."""
     torch.manual_seed(0)
     model = GradModePatchModel()
     params = _sampler_params(model)
@@ -170,6 +209,7 @@ def test_padis_dps_disable_data_consistency_denoises_without_grad():
 
 
 def test_fdk_baseline_uses_inverse_and_measurement_domain_conversion():
+    """Verify that fdk baseline uses inverse and measurement domain conversion."""
     model = ZeroPatchModel()
     params = _prior_free_params()
     reconstructor = PaDIS(IdentityOp(), model, _sampler_params(model))
@@ -181,6 +221,7 @@ def test_fdk_baseline_uses_inverse_and_measurement_domain_conversion():
 
 
 def test_pnp_denoiser_wraps_normalisation_and_optional_noise_level():
+    """Verify that pnp denoiser wraps normalisation and optional noise level."""
     image = torch.ones(1, 8, 8)
 
     denoiser = PnPDenoiser(AffineDenoiserModel(), noise_level=None)
@@ -196,6 +237,7 @@ def test_pnp_denoiser_wraps_normalisation_and_optional_noise_level():
 
 
 def test_load_pnp_denoiser_accepts_string_path(tmp_path):
+    """Verify that load pnp denoiser accepts string path."""
     params = DRUNet.default_parameters()
     params.int_channels = 8
     params.n_blocks = 1
@@ -217,6 +259,7 @@ def test_load_pnp_denoiser_accepts_string_path(tmp_path):
 
 
 def test_pnp_reconstruction_runs_with_lion_operator_without_ct_backend():
+    """Verify that pnp reconstruction runs with lion operator without ct backend."""
     params = _prior_free_params()
     params.measurement_scale = 1.0
     params.measurement_offset = 0.0
@@ -238,6 +281,7 @@ def test_pnp_reconstruction_runs_with_lion_operator_without_ct_backend():
 
 
 def test_whole_image_diffusion_reconstructor_smoke():
+    """Verify that whole image diffusion reconstructor smoke."""
     torch.manual_seed(0)
     model = ZeroWholeImageModel()
     reconstructor = PaDIS(
@@ -253,12 +297,14 @@ def test_whole_image_diffusion_reconstructor_smoke():
 
 
 def test_padis_dps_alias_maps_to_dps_langevin():
+    """Verify that padis dps alias maps to dps langevin."""
     model = ZeroPatchModel()
     reconstructor = PaDIS(IdentityOp(), model, _sampler_params(model), algorithm="dps")
     assert reconstructor.algorithm == "dps_langevin"
 
 
 def test_padis_paper_ct_sampling_preset():
+    """Verify that padis paper ct sampling preset."""
     model = ZeroPatchModel()
     params = PaDIS.paper_ct_parameters(model)
     assert params.num_steps == 100
@@ -278,6 +324,7 @@ def test_padis_paper_ct_sampling_preset():
 
 
 def test_padis_public_repo_ct_sampling_preset():
+    """Verify that padis public repo ct sampling preset."""
     model = ZeroPatchModel()
     params = PaDIS.padis_repo_ct_parameters(model)
     assert params.num_steps == 100
@@ -298,6 +345,7 @@ def test_padis_public_repo_ct_sampling_preset():
 
 
 def test_padis_default_sampling_uses_unscaled_data_step_like_original_repo():
+    """Verify that padis default sampling uses unscaled data step like original repo."""
     model = ZeroPatchModel()
     params = PaDIS.default_parameters(model)
     assert params.noise_schedule == "edm"
@@ -306,6 +354,7 @@ def test_padis_default_sampling_uses_unscaled_data_step_like_original_repo():
 
 
 def test_padis_lion_physics_sampling_uses_lipschitz_scaled_least_squares():
+    """Verify that padis lion physics sampling uses lipschitz scaled least squares."""
     model = ZeroPatchModel()
     params = PaDIS.lion_physics_ct_parameters(model, views=20)
     assert params.noise_schedule == "geometric"
@@ -323,6 +372,7 @@ def test_padis_lion_physics_sampling_uses_lipschitz_scaled_least_squares():
 
 
 def test_padis_noise_schedule_modes():
+    """Verify that padis noise schedule modes."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
@@ -344,6 +394,7 @@ def test_padis_noise_schedule_modes():
 
 
 def test_padis_data_consistency_scale_schedule():
+    """Verify that padis data consistency scale schedule."""
     model = ZeroPatchModel()
     params = PaDIS.default_parameters(model)
     params.data_consistency_scale = 4.0
@@ -362,6 +413,7 @@ def test_padis_data_consistency_scale_schedule():
 
 
 def test_padis_adjoint_data_consistency_scale_can_differ_from_dps_scale():
+    """Verify that padis adjoint data consistency scale can differ from dps scale."""
     model = ZeroPatchModel()
     params = PaDIS.default_parameters(model)
     params.data_consistency_scale = 0.04
@@ -380,6 +432,7 @@ def test_padis_adjoint_data_consistency_scale_can_differ_from_dps_scale():
 
 
 def test_padis_langevin_reconstructor_smoke():
+    """Verify that padis langevin reconstructor smoke."""
     torch.manual_seed(0)
     model = ZeroPatchModel()
     reconstructor = PaDIS(
@@ -392,6 +445,7 @@ def test_padis_langevin_reconstructor_smoke():
 
 
 def test_padis_ddnm_pseudoinverse_is_not_noise_initial_state():
+    """Verify that padis ddnm pseudoinverse is not noise initial state."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.initial_reconstruction = "noise"
@@ -406,6 +460,7 @@ def test_padis_ddnm_pseudoinverse_is_not_noise_initial_state():
 
 
 def test_padis_ddnm_pseudoinverse_clip_can_be_overridden_per_term():
+    """Verify that padis ddnm pseudoinverse clip can be overridden per term."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.ddnm_pseudoinverse_clip = True
@@ -424,6 +479,7 @@ def test_padis_ddnm_pseudoinverse_clip_can_be_overridden_per_term():
 
 
 def test_padis_ddnm_corrected_clip_clamps_score_target(monkeypatch):
+    """Verify that padis ddnm corrected clip clamps score target."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.pad_width = 0
@@ -438,10 +494,12 @@ def test_padis_ddnm_corrected_clip_clamps_score_target(monkeypatch):
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="langevin")
 
     def denoise_prior(x, sigma, params, image_shape, generator=None):
+        """Handle denoise prior for the PaDIS workflow."""
         del sigma, params, image_shape, generator
         return torch.full_like(x, 2.0)
 
     def pseudoinverse(measurement, params, *, clip=None):
+        """Handle pseudoinverse for the PaDIS workflow."""
         del params, clip
         if torch.allclose(measurement, torch.full_like(measurement, 0.25)):
             return torch.full_like(measurement, 0.25)
@@ -459,6 +517,7 @@ def test_padis_ddnm_corrected_clip_clamps_score_target(monkeypatch):
 
 
 def test_padis_langevin_honours_stop_after_outer_steps(monkeypatch):
+    """Verify that padis langevin honours stop after outer steps."""
     torch.manual_seed(0)
     model = ZeroPatchModel()
     params = _sampler_params(model)
@@ -470,6 +529,7 @@ def test_padis_langevin_honours_stop_after_outer_steps(monkeypatch):
     denoise_calls = 0
 
     def counting_denoise(*args, **kwargs):
+        """Handle counting denoise for the PaDIS workflow."""
         nonlocal denoise_calls
         denoise_calls += 1
         return original_denoise(*args, **kwargs)
@@ -484,6 +544,7 @@ def test_padis_langevin_honours_stop_after_outer_steps(monkeypatch):
 
 
 def test_padis_predictor_corrector_reconstructor_smoke():
+    """Verify that padis predictor corrector reconstructor smoke."""
     torch.manual_seed(0)
     model = ZeroPatchModel()
     params = _sampler_params(model)
@@ -496,6 +557,7 @@ def test_padis_predictor_corrector_reconstructor_smoke():
 
 
 def test_padis_predictor_corrector_uses_paper_linear_step_size_by_default():
+    """Verify that padis predictor corrector uses paper linear step size by default."""
     noise = torch.tensor([3.0, 4.0])
     score = torch.tensor([6.0, 8.0])
 
@@ -505,6 +567,7 @@ def test_padis_predictor_corrector_uses_paper_linear_step_size_by_default():
 
 
 def test_padis_predictor_corrector_keeps_score_sde_squared_step_size_option():
+    """Verify that padis predictor corrector keeps score sde squared step size option."""
     noise = torch.tensor([3.0, 4.0])
     score = torch.tensor([6.0, 8.0])
 
@@ -516,6 +579,7 @@ def test_padis_predictor_corrector_keeps_score_sde_squared_step_size_option():
 
 
 def test_padis_predictor_corrector_denoises_corrector_at_next_sigma(monkeypatch):
+    """Verify that padis predictor corrector denoises corrector at next sigma."""
     torch.manual_seed(0)
     model = ZeroPatchModel()
     params = _sampler_params(model)
@@ -528,6 +592,7 @@ def test_padis_predictor_corrector_denoises_corrector_at_next_sigma(monkeypatch)
     sigmas = []
 
     def recording_denoise(x, sigma, params, image_shape, generator=None):
+        """Handle recording denoise for the PaDIS workflow."""
         sigmas.append(float(sigma.item()))
         return original_denoise(x, sigma, params, image_shape, generator)
 
@@ -542,6 +607,7 @@ def test_padis_predictor_corrector_denoises_corrector_at_next_sigma(monkeypatch)
 def test_padis_predictor_corrector_public_compat_denoises_corrector_at_current_sigma(
     monkeypatch,
 ):
+    """Verify that padis predictor corrector public compat denoises corrector at current sigma."""
     torch.manual_seed(0)
     model = ZeroPatchModel()
     params = _sampler_params(model)
@@ -555,6 +621,7 @@ def test_padis_predictor_corrector_public_compat_denoises_corrector_at_current_s
     sigmas = []
 
     def recording_denoise(x, sigma, params, image_shape, generator=None):
+        """Handle recording denoise for the PaDIS workflow."""
         sigmas.append(float(sigma.item()))
         return original_denoise(x, sigma, params, image_shape, generator)
 
@@ -567,6 +634,7 @@ def test_padis_predictor_corrector_public_compat_denoises_corrector_at_current_s
 
 
 def test_padis_predictor_corrector_can_reuse_predictor_patch_layout(monkeypatch):
+    """Verify that padis predictor corrector can reuse predictor patch layout."""
     torch.manual_seed(0)
     model = ZeroPatchModel()
     params = _sampler_params(model)
@@ -580,6 +648,7 @@ def test_padis_predictor_corrector_can_reuse_predictor_patch_layout(monkeypatch)
     layouts = []
 
     def recording_patch_layout(*args, **kwargs):
+        """Handle recording patch layout for the PaDIS workflow."""
         layout = original_patch_layout(*args, **kwargs)
         layouts.append(layout)
         return layout
@@ -593,6 +662,7 @@ def test_padis_predictor_corrector_can_reuse_predictor_patch_layout(monkeypatch)
 
 
 def test_padis_predictor_corrector_honours_stop_after_outer_steps(monkeypatch):
+    """Verify that padis predictor corrector honours stop after outer steps."""
     torch.manual_seed(0)
     model = ZeroPatchModel()
     params = _sampler_params(model)
@@ -603,6 +673,7 @@ def test_padis_predictor_corrector_honours_stop_after_outer_steps(monkeypatch):
     denoise_calls = 0
 
     def counting_denoise(*args, **kwargs):
+        """Handle counting denoise for the PaDIS workflow."""
         nonlocal denoise_calls
         denoise_calls += 1
         return original_denoise(*args, **kwargs)
@@ -617,6 +688,7 @@ def test_padis_predictor_corrector_honours_stop_after_outer_steps(monkeypatch):
 
 
 def test_padis_patch_denoising_zeroes_padding_border():
+    """Verify that padis patch denoising zeroes padding border."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
@@ -631,6 +703,7 @@ def test_padis_patch_denoising_zeroes_padding_border():
 
 
 def test_fixed_overlap_patch_layout_uses_paper_overlap():
+    """Verify that fixed overlap patch layout uses paper overlap."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.patch_size = 4
@@ -654,6 +727,7 @@ def test_fixed_overlap_patch_layout_uses_paper_overlap():
 
 
 def test_fixed_overlap_patch_layout_covers_full_central_image():
+    """Verify that fixed overlap patch layout covers full central image."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.patch_size = 4
@@ -674,6 +748,7 @@ def test_fixed_overlap_patch_layout_covers_full_central_image():
 
 
 def test_fixed_overlap_public_helper_layouts_match_public_repo_starts():
+    """Verify that fixed overlap public helper layouts match public repo starts."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.patch_size = 56
@@ -693,6 +768,7 @@ def test_fixed_overlap_public_helper_layouts_match_public_repo_starts():
 
 
 def test_fixed_overlap_patch_average_and_stitch_smoke():
+    """Verify that fixed overlap patch average and stitch smoke."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.patch_size = 4
@@ -720,6 +796,7 @@ def test_fixed_overlap_patch_average_and_stitch_smoke():
 
 
 def test_fixed_overlap_patch_average_and_stitch_overlap_semantics(monkeypatch):
+    """Verify that fixed overlap patch average and stitch overlap semantics."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.patch_size = 4
@@ -732,6 +809,7 @@ def test_fixed_overlap_patch_average_and_stitch_overlap_semantics(monkeypatch):
     layout = reconstructor._fixed_overlap_patch_layout((8, 8), params)
 
     def indexed_denoise(image_batch, position_batch, sigma, params, **kwargs):
+        """Handle indexed denoise for the PaDIS workflow."""
         del position_batch, sigma, params, kwargs
         values = torch.arange(
             1,
@@ -759,6 +837,7 @@ def test_fixed_overlap_patch_average_and_stitch_overlap_semantics(monkeypatch):
 
 
 def test_fixed_overlap_patch_denoising_respects_patch_batch_size(monkeypatch):
+    """Verify that fixed overlap patch denoising respects patch batch size."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.patch_size = 4
@@ -772,6 +851,7 @@ def test_fixed_overlap_patch_denoising_respects_patch_batch_size(monkeypatch):
     chunk_sizes = []
 
     def chunked_denoise(image_batch, position_batch, sigma, params, **kwargs):
+        """Handle chunked denoise for the PaDIS workflow."""
         del position_batch, sigma, params, kwargs
         chunk_sizes.append(image_batch.shape[0])
         return torch.ones_like(image_batch)
@@ -789,6 +869,7 @@ def test_fixed_overlap_patch_denoising_respects_patch_batch_size(monkeypatch):
 
 
 def test_regular_patch_denoising_respects_patch_batch_size(monkeypatch):
+    """Verify that regular patch denoising respects patch batch size."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.patch_size = 4
@@ -804,6 +885,7 @@ def test_regular_patch_denoising_respects_patch_batch_size(monkeypatch):
     checkpoint_flags = []
 
     def chunked_denoise(image_batch, position_batch, sigma, params, **kwargs):
+        """Handle chunked denoise for the PaDIS workflow."""
         del position_batch, sigma, params
         chunk_sizes.append(image_batch.shape[0])
         checkpoint_flags.append(kwargs.get("use_checkpoint"))
@@ -821,6 +903,7 @@ def test_regular_patch_denoising_respects_patch_batch_size(monkeypatch):
 
 
 def test_regular_patch_denoising_honours_legacy_checkpoint_alias(monkeypatch):
+    """Verify that regular patch denoising honours legacy checkpoint alias."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.patch_size = 4
@@ -835,6 +918,7 @@ def test_regular_patch_denoising_honours_legacy_checkpoint_alias(monkeypatch):
     checkpoint_flags = []
 
     def chunked_denoise(image_batch, position_batch, sigma, params, **kwargs):
+        """Handle chunked denoise for the PaDIS workflow."""
         del position_batch, sigma, params
         checkpoint_flags.append(kwargs.get("use_checkpoint"))
         return torch.ones_like(image_batch)
@@ -849,10 +933,12 @@ def test_regular_patch_denoising_honours_legacy_checkpoint_alias(monkeypatch):
 
 
 def test_fixed_overlap_patch_denoising_can_checkpoint_batches(monkeypatch):
+    """Verify that fixed overlap patch denoising can checkpoint batches."""
     padis_module = importlib.import_module("LION.reconstructors.PaDIS")
     checkpoint_calls = []
 
     def fake_checkpoint(function, *args, use_reentrant=None):
+        """Handle fake checkpoint for the PaDIS workflow."""
         checkpoint_calls.append({"num_args": len(args), "use_reentrant": use_reentrant})
         return function(*args)
 
@@ -880,6 +966,7 @@ def test_fixed_overlap_patch_denoising_can_checkpoint_batches(monkeypatch):
 
 
 def test_padis_patch_layout_uses_supplied_generator():
+    """Verify that padis patch layout uses supplied generator."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.pad_width = 24
@@ -899,6 +986,7 @@ def test_padis_patch_layout_uses_supplied_generator():
 
 
 def test_padis_paper_squared_residual_gradient_matches_formula():
+    """Verify that padis paper squared residual gradient matches formula."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.pad_width = 0
@@ -928,6 +1016,7 @@ def test_padis_paper_squared_residual_gradient_matches_formula():
 
 
 def test_padis_least_squares_gradient_uses_lipschitz_step_form():
+    """Verify that padis least squares gradient uses lipschitz step form."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.pad_width = 0
@@ -961,6 +1050,7 @@ def test_padis_least_squares_gradient_uses_lipschitz_step_form():
 
 
 def test_padis_norm_gradient_matches_public_repo_formula():
+    """Verify that padis norm gradient matches public repo formula."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.pad_width = 0
@@ -990,6 +1080,7 @@ def test_padis_norm_gradient_matches_public_repo_formula():
 
 
 def test_padis_scaled_identity_paper_gradient_matches_closed_form():
+    """Verify that padis scaled identity paper gradient matches closed form."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.pad_width = 0
@@ -1020,6 +1111,7 @@ def test_padis_scaled_identity_paper_gradient_matches_closed_form():
 
 
 def test_padis_adjoint_correction_matches_scaled_identity_closed_form():
+    """Verify that padis adjoint correction matches scaled identity closed form."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.pad_width = 0
@@ -1049,6 +1141,7 @@ def test_padis_adjoint_correction_matches_scaled_identity_closed_form():
 
 
 def test_padis_adjoint_data_step_schedule_matches_paper_and_public_repo():
+    """Verify that padis adjoint data step schedule matches paper and public repo."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.zeta = 0.3
@@ -1071,6 +1164,7 @@ def test_padis_adjoint_data_step_schedule_matches_paper_and_public_repo():
 
 
 def test_padis_least_squares_adjoint_step_uses_lipschitz_form():
+    """Verify that padis least squares adjoint step uses lipschitz form."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.pad_width = 0
@@ -1103,6 +1197,7 @@ def test_padis_least_squares_adjoint_step_uses_lipschitz_form():
 
 
 def test_padis_data_gradient_normalization_uses_measurement_operator_norm():
+    """Verify that padis data gradient normalization uses measurement operator norm."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.measurement_scale = 3.0
@@ -1119,6 +1214,7 @@ def test_padis_data_gradient_normalization_uses_measurement_operator_norm():
 
 
 def test_padis_data_gradient_normalization_uses_measurement_lipschitz_constant():
+    """Verify that padis data gradient normalization uses measurement lipschitz constant."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.measurement_scale = 3.0
@@ -1136,6 +1232,7 @@ def test_padis_data_gradient_normalization_uses_measurement_lipschitz_constant()
 
 
 def test_padis_data_gradient_normalization_can_be_disabled():
+    """Verify that padis data gradient normalization can be disabled."""
     model = ZeroPatchModel()
     params = _sampler_params(model)
     params.operator_norm = 5.0

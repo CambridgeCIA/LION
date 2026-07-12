@@ -1,3 +1,5 @@
+"""Test padis reconstruction matrix behaviour."""
+
 import json
 from pathlib import Path
 import subprocess
@@ -40,6 +42,7 @@ def _write_hparam_record(
     mean_ssim=0.8,
     mean_mae=0.02,
 ):
+    """Create write hparam record test support data."""
     path = run_root / run_name / "runs.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
     record = {
@@ -67,6 +70,7 @@ def _write_hparam_record(
 
 
 def _args(tmp_path, *extra):
+    """Create args test support data."""
     parser = build_arg_parser()
     args = parser.parse_args(
         [
@@ -89,6 +93,7 @@ def _args(tmp_path, *extra):
 
 
 def test_legacy_method_and_experiment_aliases_build_canonical_jobs(tmp_path):
+    """Verify that legacy method and experiment aliases build canonical jobs."""
     args = _args(
         tmp_path,
         "--methods",
@@ -105,6 +110,7 @@ def test_legacy_method_and_experiment_aliases_build_canonical_jobs(tmp_path):
 
 
 def test_training_root_preset_resolves_gcp_final_model_root(tmp_path):
+    """Verify that training root preset resolves gcp final model root."""
     parser = build_arg_parser()
     args = parser.parse_args(
         [
@@ -128,6 +134,7 @@ def test_training_root_preset_resolves_gcp_final_model_root(tmp_path):
 
 
 def test_training_root_preset_resolves_slurm_final_model_root_from_stamp(tmp_path):
+    """Verify that training root preset resolves slurm final model root from stamp."""
     parser = build_arg_parser()
     args = parser.parse_args(
         [
@@ -151,6 +158,7 @@ def test_training_root_preset_resolves_slurm_final_model_root_from_stamp(tmp_pat
 
 
 def test_explicit_training_root_overrides_preset(tmp_path):
+    """Verify that explicit training root overrides preset."""
     parser = build_arg_parser()
     args = parser.parse_args(
         [
@@ -171,6 +179,7 @@ def test_explicit_training_root_overrides_preset(tmp_path):
 
 
 def test_method_default_matrix_uses_method_specific_models(tmp_path):
+    """Verify that method default matrix uses method specific models."""
     args = _args(
         tmp_path,
         "--methods",
@@ -204,6 +213,7 @@ def test_method_default_matrix_uses_method_specific_models(tmp_path):
 
 
 def test_method_default_matrix_uses_native_512_model_for_512_experiment(tmp_path):
+    """Verify that method default matrix uses native 512 model for 512 experiment."""
     args = _args(
         tmp_path,
         "--methods",
@@ -234,6 +244,7 @@ def test_method_default_matrix_uses_native_512_model_for_512_experiment(tmp_path
 
 
 def test_min_intense_checkpoint_policy_selects_validation_intensive_models(tmp_path):
+    """Verify that min intense checkpoint policy selects validation intensive models."""
     args = _args(
         tmp_path,
         "--methods",
@@ -268,6 +279,7 @@ def test_min_intense_checkpoint_policy_selects_validation_intensive_models(tmp_p
 
 
 def test_hparam_defaults_apply_best_fixedval_candidate_args(tmp_path):
+    """Verify that hparam defaults apply best fixedval candidate args."""
     run_root = tmp_path / "hparam_runs"
     _write_hparam_record(
         run_root,
@@ -307,6 +319,7 @@ def test_hparam_defaults_apply_best_fixedval_candidate_args(tmp_path):
 
 
 def test_hparam_defaults_can_be_generated_and_loaded_from_json(tmp_path):
+    """Verify that hparam defaults can be generated and loaded from json."""
     run_root = tmp_path / "hparam_runs"
     _write_hparam_record(
         run_root,
@@ -347,6 +360,7 @@ def test_hparam_defaults_can_be_generated_and_loaded_from_json(tmp_path):
 
 
 def test_full_model_exact_experiment_does_not_leak_into_default_models(tmp_path):
+    """Verify that full model exact experiment does not leak into default models."""
     run_root = tmp_path / "hparam_runs"
     _write_hparam_record(
         run_root,
@@ -396,6 +410,7 @@ def test_full_model_exact_experiment_does_not_leak_into_default_models(tmp_path)
 
 
 def test_hparam_defaults_consensus_prefers_cross_experiment_candidate(tmp_path):
+    """Verify that hparam defaults consensus prefers cross experiment candidate."""
     run_root = tmp_path / "hparam_runs"
     _write_hparam_record(
         run_root,
@@ -434,6 +449,7 @@ def test_hparam_defaults_consensus_prefers_cross_experiment_candidate(tmp_path):
 
 
 def test_hparam_consensus_json_applies_to_all_experiments(tmp_path):
+    """Verify that hparam consensus json applies to all experiments."""
     run_root = tmp_path / "hparam_runs"
     _write_hparam_record(
         run_root,
@@ -483,6 +499,7 @@ def test_hparam_consensus_json_applies_to_all_experiments(tmp_path):
 
 
 def test_checked_in_hparam_defaults_cover_slurm_default_matrix(tmp_path):
+    """Verify that checked in hparam defaults cover slurm default matrix."""
     defaults_path = (
         Path(__file__).parents[2]
         / "scripts"
@@ -624,6 +641,7 @@ def test_checked_in_hparam_defaults_cover_slurm_default_matrix(tmp_path):
 
 
 def test_slurm_and_gcp_matrix_launchers_pass_hparam_defaults():
+    """Verify that slurm and gcp matrix launchers pass hparam defaults."""
     root = Path(__file__).parents[2]
     launcher_paths = sorted(
         [
@@ -649,6 +667,7 @@ def test_slurm_and_gcp_matrix_launchers_pass_hparam_defaults():
 
 
 def test_hparam_summary_ranking_prefers_ssim_mae_over_tiny_psnr_gain():
+    """Verify that hparam summary ranking prefers ssim mae over tiny psnr gain."""
     rows = [
         {
             "method": "padis_dps",
@@ -682,6 +701,7 @@ def test_hparam_summary_ranking_prefers_ssim_mae_over_tiny_psnr_gain():
 
 
 def test_external_model_staging_links_default_pnp_checkpoint_name(tmp_path):
+    """Verify that external model staging links default pnp checkpoint name."""
     padis_script_dir = Path(__file__).parents[2] / "scripts" / "paper_scripts" / "PaDIS"
     sys.path.insert(0, str(padis_script_dir))
     from PaDIS_tune_reconstruction_hyperparameters import (  # type: ignore[import-not-found]
@@ -709,6 +729,7 @@ def test_external_model_staging_links_default_pnp_checkpoint_name(tmp_path):
 
 
 def test_hparam_defaults_fall_back_to_ct20_for_higher_view_experiments(tmp_path):
+    """Verify that hparam defaults fall back to ct20 for higher view experiments."""
     run_root = tmp_path / "hparam_runs"
     _write_hparam_record(
         run_root,
@@ -741,6 +762,7 @@ def test_hparam_defaults_fall_back_to_ct20_for_higher_view_experiments(tmp_path)
 
 
 def test_gcp_spot_job_order_defers_512_until_after_fixed_overlap_rows(tmp_path):
+    """Verify that gcp spot job order defers 512 until after fixed overlap rows."""
     args = _args(
         tmp_path,
         "--methods",
@@ -778,6 +800,7 @@ def test_gcp_spot_job_order_defers_512_until_after_fixed_overlap_rows(tmp_path):
 
 
 def test_reconstruction_smoke_selector_has_six_expected_jobs(tmp_path):
+    """Verify that reconstruction smoke selector has six expected jobs."""
     args = _args(
         tmp_path,
         "--methods",
@@ -811,6 +834,7 @@ def test_reconstruction_smoke_selector_has_six_expected_jobs(tmp_path):
 
 
 def test_method_command_contains_method_and_expected_checkpoint_family(tmp_path):
+    """Verify that method command contains method and expected checkpoint family."""
     args = _args(tmp_path, "--methods", "pnp_admm", "--experiments", "ct_20")
     job = build_jobs(args)[0]
 
@@ -826,6 +850,7 @@ def test_method_command_contains_method_and_expected_checkpoint_family(tmp_path)
 
 
 def test_input_check_reports_missing_required_checkpoints_once(tmp_path):
+    """Verify that input check reports missing required checkpoints once."""
     args = _args(
         tmp_path,
         "--methods",
@@ -843,6 +868,7 @@ def test_input_check_reports_missing_required_checkpoints_once(tmp_path):
 
 
 def test_job_manifest_contains_verifier_identity_fields(tmp_path):
+    """Verify that job manifest contains verifier identity fields."""
     args = _args(
         tmp_path,
         "--methods",
@@ -885,6 +911,7 @@ def test_job_manifest_contains_verifier_identity_fields(tmp_path):
 
 
 def test_whole_image_lion_physics_fanbeam_uses_stabilized_epsilon(tmp_path):
+    """Verify that whole image lion physics fanbeam uses stabilized epsilon."""
     args = _args(
         tmp_path,
         "--methods",
@@ -907,6 +934,7 @@ def test_whole_image_lion_physics_fanbeam_uses_stabilized_epsilon(tmp_path):
 
 
 def test_job_manifest_contains_expected_sampler_settings(tmp_path):
+    """Verify that job manifest contains expected sampler settings."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1006,6 +1034,7 @@ def test_job_manifest_contains_expected_sampler_settings(tmp_path):
 
 
 def test_public_repo_manifest_contains_public_sampler_settings(tmp_path):
+    """Verify that public repo manifest contains public sampler settings."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1039,6 +1068,7 @@ def test_public_repo_manifest_contains_public_sampler_settings(tmp_path):
 
 
 def test_job_manifest_contains_expected_method_settings(tmp_path):
+    """Verify that job manifest contains expected method settings."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1085,6 +1115,7 @@ def test_job_manifest_contains_expected_method_settings(tmp_path):
 
 
 def test_full_method_default_matrix_has_requested_core_grid(tmp_path):
+    """Verify that full method default matrix has requested core grid."""
     args = _args(tmp_path, "--methods", "all")
 
     jobs = build_jobs(args)
@@ -1147,6 +1178,7 @@ def test_full_method_default_matrix_has_requested_core_grid(tmp_path):
 
 
 def test_full_lion_physics_matrix_uses_lipschitz_scaled_data_updates(tmp_path):
+    """Verify that full lion physics matrix uses lipschitz scaled data updates."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1198,6 +1230,7 @@ def test_full_lion_physics_matrix_uses_lipschitz_scaled_data_updates(tmp_path):
 
 
 def test_paper_matrix_uses_method_specific_experiment_sets(tmp_path):
+    """Verify that paper matrix uses method specific experiment sets."""
     args = _args(tmp_path, "--methods", "pnp_admm,langevin,padis_dps")
 
     jobs = build_jobs(args)
@@ -1226,6 +1259,7 @@ def test_paper_matrix_uses_method_specific_experiment_sets(tmp_path):
 
 
 def test_method_default_matrix_excludes_whole_image_512_rows(tmp_path):
+    """Verify that method default matrix excludes whole image 512 rows."""
     args = _args(tmp_path, "--methods", "whole_image_diffusion,padis_dps")
 
     jobs = build_jobs(args)
@@ -1244,6 +1278,7 @@ def test_method_default_matrix_excludes_whole_image_512_rows(tmp_path):
 
 
 def test_paper_matrix_includes_8_view_rows_for_all_table1_methods(tmp_path):
+    """Verify that paper matrix includes 8 view rows for all table1 methods."""
     args = _args(tmp_path, "--methods", "all")
 
     jobs = build_jobs(args)
@@ -1264,6 +1299,7 @@ def test_paper_matrix_includes_8_view_rows_for_all_table1_methods(tmp_path):
 
 
 def test_trained_ablation_matrix_appends_trained_checkpoint_families(tmp_path):
+    """Verify that trained ablation matrix appends trained checkpoint families."""
     args = _args(tmp_path, "--methods", "all", "--ablations", "all")
 
     jobs = build_jobs(args)
@@ -1341,6 +1377,7 @@ def test_trained_ablation_matrix_appends_trained_checkpoint_families(tmp_path):
 
 
 def test_schedule_init_grid_covers_256_experiments_for_lion_and_public(tmp_path):
+    """Verify that schedule init grid covers 256 experiments for lion and public."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1366,6 +1403,7 @@ def test_schedule_init_grid_covers_256_experiments_for_lion_and_public(tmp_path)
 
 
 def test_patch_and_dataset_ablation_selector_excludes_position_row(tmp_path):
+    """Verify that patch and dataset ablation selector excludes position row."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1385,6 +1423,7 @@ def test_patch_and_dataset_ablation_selector_excludes_position_row(tmp_path):
 
 
 def test_position_ablation_includes_noise_and_fdk_initialization_rows(tmp_path):
+    """Verify that position ablation includes noise and fdk initialization rows."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1456,6 +1495,7 @@ def test_position_ablation_includes_noise_and_fdk_initialization_rows(tmp_path):
 
 
 def test_ablations_do_not_expand_explicit_model_selection(tmp_path):
+    """Verify that ablations do not expand explicit model selection."""
     args = _args(
         tmp_path,
         "--models",
@@ -1479,6 +1519,7 @@ def test_ablations_do_not_expand_explicit_model_selection(tmp_path):
 
 
 def test_public_repo_implementation_is_restricted_to_public_sampler_methods(tmp_path):
+    """Verify that public repo implementation is restricted to public sampler methods."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1494,6 +1535,7 @@ def test_public_repo_implementation_is_restricted_to_public_sampler_methods(tmp_
 
 
 def test_public_repo_implementation_allows_public_sampler_methods(tmp_path):
+    """Verify that public repo implementation allows public sampler methods."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1511,6 +1553,7 @@ def test_public_repo_implementation_allows_public_sampler_methods(tmp_path):
 
 
 def test_lion_quality_implementation_can_be_selected_for_stabilized_rows(tmp_path):
+    """Verify that lion quality implementation can be selected for stabilized rows."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1531,6 +1574,7 @@ def test_lion_quality_implementation_can_be_selected_for_stabilized_rows(tmp_pat
 
 
 def test_lion_physics_implementation_uses_operator_normalized_settings(tmp_path):
+    """Verify that lion physics implementation uses operator normalized settings."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1591,6 +1635,7 @@ def test_lion_physics_implementation_uses_operator_normalized_settings(tmp_path)
 
 
 def test_method_default_rejects_off_paper_experiment_selection(tmp_path):
+    """Verify that method default rejects off paper experiment selection."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1606,6 +1651,7 @@ def test_method_default_rejects_off_paper_experiment_selection(tmp_path):
 
 
 def test_method_default_can_allow_off_paper_experiment_selection(tmp_path):
+    """Verify that method default can allow off paper experiment selection."""
     args = _args(
         tmp_path,
         "--methods",
@@ -1624,6 +1670,7 @@ def test_method_default_can_allow_off_paper_experiment_selection(tmp_path):
 
 
 def test_explicit_model_rejects_off_paper_experiment_selection(tmp_path):
+    """Verify that explicit model rejects off paper experiment selection."""
     args = _args(
         tmp_path,
         "--models",
@@ -1639,6 +1686,7 @@ def test_explicit_model_rejects_off_paper_experiment_selection(tmp_path):
 
 
 def test_dry_run_lists_full_matrix_without_existing_checkpoints(tmp_path):
+    """Verify that dry run lists full matrix without existing checkpoints."""
     result = subprocess.run(
         [
             sys.executable,

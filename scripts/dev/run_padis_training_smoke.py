@@ -130,6 +130,7 @@ def _configure_solver_params(args: argparse.Namespace) -> object:
 
 
 def run_smoke(args: argparse.Namespace) -> dict[str, object]:
+    """Run a bounded PaDIS training/checkpoint smoke test."""
     _set_seed(args.seed)
     device = _device_from_arg(args.device)
     geometry = Geometry.default_parameters(image_scaling=args.image_scaling)
@@ -235,6 +236,7 @@ def run_smoke(args: argparse.Namespace) -> dict[str, object]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Construct the training-smoke command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device", default="cpu", help="cpu, cuda, cuda:0, or auto.")
     parser.add_argument("--model-mode", default="padis-paper-ct-256")
@@ -259,6 +261,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Execute the training smoke test and emit its JSON report."""
     args = build_parser().parse_args()
     summary = run_smoke(args)
     text = json.dumps(summary, indent=2, sort_keys=True)

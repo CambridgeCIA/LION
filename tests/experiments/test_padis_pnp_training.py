@@ -1,3 +1,5 @@
+"""Test padis pnp training behaviour."""
+
 import warnings
 
 import pytest
@@ -18,6 +20,7 @@ from PaDIS_LIDC_PnP_denoiser import (
 
 
 def test_pnp_training_defaults_match_paper_matrix_expectations():
+    """Verify that pnp training defaults match paper matrix expectations."""
     args = build_arg_parser().parse_args([])
 
     assert args.run_name == "pnp_lidc_drunet"
@@ -38,6 +41,7 @@ def test_pnp_training_defaults_match_paper_matrix_expectations():
 
 
 def test_lidc_256_training_prefixes_match_reconstruction_checkpoint_names():
+    """Verify that lidc 256 training prefixes match reconstruction checkpoint names."""
     assert run_prefix_for_prior_mode("patch") == "padis_lidc_256"
     assert run_prefix_for_prior_mode("whole-image") == "whole_image_lidc_256"
 
@@ -70,6 +74,7 @@ def test_lidc_256_training_prefixes_match_reconstruction_checkpoint_names():
     ],
 )
 def test_pnp_training_validation_rejects_invalid_values(flag, value, message):
+    """Verify that pnp training validation rejects invalid values."""
     args = build_arg_parser().parse_args([flag, value])
 
     with pytest.raises(ValueError, match=message):
@@ -77,6 +82,7 @@ def test_pnp_training_validation_rejects_invalid_values(flag, value, message):
 
 
 def test_pnp_training_validation_rejects_inverted_noise_range():
+    """Verify that pnp training validation rejects inverted noise range."""
     args = build_arg_parser().parse_args(["--noise-min", "0.2", "--noise-max", "0.1"])
 
     with pytest.raises(ValueError, match="--noise-min/--noise-max"):
@@ -84,6 +90,7 @@ def test_pnp_training_validation_rejects_inverted_noise_range():
 
 
 def test_pnp_training_validation_allows_full_lidc_without_slice_limit():
+    """Verify that pnp training validation allows full lidc without slice limit."""
     args = build_arg_parser().parse_args(
         ["--full-lidc", "--max-slices-per-patient", "0"]
     )
@@ -92,6 +99,7 @@ def test_pnp_training_validation_allows_full_lidc_without_slice_limit():
 
 
 def test_cuda_device_index_defaults_bare_cuda_to_zero():
+    """Verify that cuda device index defaults bare cuda to zero."""
     assert cuda_device_index(torch.device("cuda")) == 0
     assert cuda_device_index(torch.device("cuda:2")) == 2
     with pytest.raises(ValueError, match="CUDA device"):
