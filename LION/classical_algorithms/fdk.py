@@ -1,14 +1,43 @@
 """Filtered backprojection utilities for LION CT operators."""
 
 from __future__ import annotations
+
+import tomosipo as ts
 import torch
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
 from ts_algorithms import fdk as ts_fdk
 from ts_algorithms.fbp import ram_lak
-import tomosipo as ts
 
+from LION.CTtools.ct_geometry import Geometry
+from LION.CTtools.ct_utils import make_operator
 from LION.exceptions.exceptions import NoDataException
+
+
+def cite(cite_format: str = "MLA") -> None:
+    """Print the Feldkamp-Davis-Kress reconstruction citation."""
+    if cite_format == "MLA":
+        print(
+            "Feldkamp, L. A., L. C. Davis, and J. W. Kress. "
+            '"Practical Cone-Beam Algorithm." JOSA A, vol. 1, no. 6, '
+            "pp. 612-619, 1984. doi:10.1364/JOSAA.1.000612."
+        )
+    elif cite_format == "bib":
+        print(
+            """@article{feldkamp_practical_1984,
+  title = {Practical Cone-Beam Algorithm},
+  author = {Feldkamp, L. A. and Davis, L. C. and Kress, J. W.},
+  year = {1984},
+  journal = {JOSA A},
+  volume = {1},
+  number = {6},
+  pages = {612--619},
+  doi = {10.1364/JOSAA.1.000612}
+}"""
+        )
+    else:
+        raise ValueError(
+            f'`cite_format` "{cite_format}" is not understood, only "MLA" '
+            'and "bib" are supported'
+        )
 
 
 def make_fdk_filter(
@@ -146,3 +175,6 @@ def fdk(
     if remove_batch:
         recon = recon.squeeze(0)
     return recon
+
+
+setattr(fdk, "cite", cite)

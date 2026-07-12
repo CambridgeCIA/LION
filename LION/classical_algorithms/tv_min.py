@@ -1,14 +1,46 @@
 """Chambolle--Pock total-variation reconstruction."""
 
 from __future__ import annotations
+
 from typing import Callable, Optional
+
+import tomosipo as ts
 import torch
+from ts_algorithms import tv_min2d as ts_tv_min
+
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
-from ts_algorithms import tv_min2d as ts_tv_min
-import tomosipo as ts
-
 from LION.exceptions.exceptions import NoDataException
+
+
+def cite(cite_format: str = "MLA") -> None:
+    """Print the Chambolle-Pock primal-dual citation."""
+    if cite_format == "MLA":
+        print(
+            "Chambolle, Antonin, and Thomas Pock. "
+            '"A First-Order Primal-Dual Algorithm for Convex Problems with '
+            'Applications to Imaging." Journal of Mathematical Imaging and '
+            "Vision, vol. 40, no. 1, pp. 120-145, 2011. "
+            "doi:10.1007/s10851-010-0251-1."
+        )
+    elif cite_format == "bib":
+        print(
+            """@article{chambolle_first-order_2011,
+  title = {A First-Order Primal-Dual Algorithm for Convex Problems with Applications to Imaging},
+  author = {Chambolle, Antonin and Pock, Thomas},
+  year = {2011},
+  journal = {Journal of Mathematical Imaging and Vision},
+  volume = {40},
+  number = {1},
+  pages = {120--145},
+  doi = {10.1007/s10851-010-0251-1}
+}"""
+        )
+    else:
+        raise ValueError(
+            f'`cite_format` "{cite_format}" is not understood, only "MLA" '
+            'and "bib" are supported'
+        )
 
 
 def tv_min(
@@ -66,3 +98,6 @@ def tv_min(
         )
         recon[i] = sub_recon
     return recon
+
+
+setattr(tv_min, "cite", cite)
