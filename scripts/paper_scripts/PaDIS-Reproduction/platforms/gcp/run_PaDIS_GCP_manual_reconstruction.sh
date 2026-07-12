@@ -793,65 +793,48 @@ build_generation_command() {
         local preset="$1"
         local checkpoint="$PADIS_GENERATION_PATCH_CHECKPOINT"
         local num_steps="$PADIS_GENERATION_NUM_STEPS"
+        case "$preset" in
+                paper-generation-whole)
+                        checkpoint="$PADIS_GENERATION_WHOLE_CHECKPOINT"
+                        ;;
+                paper-generation-naive-patch|paper-generation) ;;
+                paper-generation-langevin-300nfe)
+                        num_steps="$PADIS_GENERATION_LANGEVIN_NUM_STEPS"
+                        ;;
+                paper-generation-patch-stitch|paper-generation-patch-average) ;;
+                *)
+                        die "Unknown PaDIS generation preset: $preset"
+                        ;;
+        esac
         GEN_CMD=(
-                python -u scripts/paper_scripts/PaDIS-Reproduction/reconstruction/PaDIS_LIDC_generation.py
+                python -u scripts/paper_scripts/PaDIS-Reproduction/core/PaDIS_experiments.py
+                run "$preset"
+                --output-root "$PADIS_GENERATION_ROOT"
+                --skip-current
                 --checkpoint "$checkpoint"
-                --output-folder "$(generation_output_folder "$preset")"
                 --device "$PADIS_GENERATION_DEVICE"
-                --num-samples "$PADIS_GENERATION_NUM_SAMPLES"
+                --max-samples "$PADIS_GENERATION_NUM_SAMPLES"
                 --seed "$PADIS_GENERATION_SEED"
+                --
                 --num-steps "$num_steps"
                 --inner-steps "$PADIS_GENERATION_INNER_STEPS"
                 --sigma-min "$PADIS_GENERATION_SIGMA_MIN"
                 --sigma-max "$PADIS_GENERATION_SIGMA_MAX"
                 --noise-schedule "$PADIS_GENERATION_NOISE_SCHEDULE"
                 --rho "$PADIS_GENERATION_RHO"
-                --generation-epsilon "$PADIS_GENERATION_EPSILON"
         )
+        if [ -n "$PADIS_GENERATION_EPSILON" ]; then
+                GEN_CMD+=(--generation-epsilon "$PADIS_GENERATION_EPSILON")
+        fi
+        if [ -n "$PADIS_GENERATION_NOISE_SCALE" ]; then
+                GEN_CMD+=(--langevin-noise-scale "$PADIS_GENERATION_NOISE_SCALE")
+        fi
         if [ -n "$PADIS_GENERATION_PATCH_BATCH_SIZE" ]; then
                 GEN_CMD+=(--patch-batch-size "$PADIS_GENERATION_PATCH_BATCH_SIZE")
         fi
         if [ "$PADIS_GENERATION_PROG_BAR" = "1" ]; then
                 GEN_CMD+=(--prog-bar)
         fi
-
-        case "$preset" in
-                paper-generation-whole)
-                        GEN_CMD[4]="$PADIS_GENERATION_WHOLE_CHECKPOINT"
-                        GEN_CMD+=(--prior-mode whole-image)
-                        ;;
-                paper-generation-naive-patch)
-                        GEN_CMD+=(--prior-mode patch --generation-mode naive-patch)
-                        ;;
-                paper-generation)
-                        GEN_CMD+=(--prior-mode patch --generation-mode padis)
-                        ;;
-                paper-generation-langevin-300nfe)
-                        GEN_CMD+=(--prior-mode patch --generation-mode padis)
-                        GEN_CMD[14]="$PADIS_GENERATION_LANGEVIN_NUM_STEPS"
-                        ;;
-                paper-generation-patch-stitch)
-                        GEN_CMD+=(
-                                --prior-mode patch
-                                --generation-mode padis
-                                --patch-assembly fixed_stitch
-                                --fixed-overlap-layout public_tile
-                                --fixed-overlap-checkpoint-denoiser
-                        )
-                        ;;
-                paper-generation-patch-average)
-                        GEN_CMD+=(
-                                --prior-mode patch
-                                --generation-mode padis
-                                --patch-assembly fixed_average
-                                --fixed-overlap-layout public_overlap
-                                --fixed-overlap-checkpoint-denoiser
-                        )
-                        ;;
-                *)
-                        die "Unknown PaDIS generation preset: $preset"
-                        ;;
-        esac
 }
 
 run_generation_task() {
@@ -863,17 +846,6 @@ run_generation_task() {
         failed_marker="$(generation_failed_marker "$preset")"
         log_path="$LOG_DIR/generation_${preset}.log"
 
-        if [ -f "$samples_path" ]; then
-                {
-                        printf 'completed=%s\n' "$(date --iso-8601=seconds)"
-                        printf 'phase=generation\n'
-                        printf 'preset=%s\n' "$preset"
-                        printf 'samples_path=%s\n' "$samples_path"
-                } > "$done_marker"
-                rm -f "$running_marker" "$failed_marker"
-                log "Generation preset $preset already has samples at $samples_path."
-                return 0
-        fi
         rm -f "$done_marker"
 
         build_generation_command "$preset"
@@ -968,7 +940,8 @@ write_manifest() {
                 printf 'generation_sigma_min=%s\n' "$PADIS_GENERATION_SIGMA_MIN"
                 printf 'generation_sigma_max=%s\n' "$PADIS_GENERATION_SIGMA_MAX"
                 printf 'generation_noise_schedule=%s\n' "$PADIS_GENERATION_NOISE_SCHEDULE"
-                printf 'generation_epsilon=%s\n' "$PADIS_GENERATION_EPSILON"
+                printf 'generation_epsilon_override=%s\n' "$PADIS_GENERATION_EPSILON"
+                printf 'generation_noise_scale_override=%s\n' "$PADIS_GENERATION_NOISE_SCALE"
                 printf 'sync_after_job=%s\n' "${PADIS_RECON_SYNC_AFTER_JOB:-1}"
                 printf 'dry_run=%s\n' "$PADIS_MANUAL_RECON_DRY_RUN"
         } > "$manifest"
@@ -1043,7 +1016,8 @@ PADIS_GENERATION_SIGMA_MIN="${PADIS_GENERATION_SIGMA_MIN:-0.002}"
 PADIS_GENERATION_SIGMA_MAX="${PADIS_GENERATION_SIGMA_MAX:-10.0}"
 PADIS_GENERATION_NOISE_SCHEDULE="${PADIS_GENERATION_NOISE_SCHEDULE:-geometric}"
 PADIS_GENERATION_RHO="${PADIS_GENERATION_RHO:-7.0}"
-PADIS_GENERATION_EPSILON="${PADIS_GENERATION_EPSILON:-1.0}"
+PADIS_GENERATION_EPSILON="${PADIS_GENERATION_EPSILON:-}"
+PADIS_GENERATION_NOISE_SCALE="${PADIS_GENERATION_NOISE_SCALE:-}"
 PADIS_GENERATION_PATCH_BATCH_SIZE="${PADIS_GENERATION_PATCH_BATCH_SIZE:-}"
 PADIS_GENERATION_PROG_BAR="${PADIS_GENERATION_PROG_BAR:-$PADIS_RECON_PROG_BAR}"
 PADIS_PNP_OUTPUT_ROOT="${PADIS_PNP_OUTPUT_ROOT:-$PADIS_TRAIN_ROOT}"

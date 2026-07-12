@@ -28,40 +28,43 @@ mkdir -p "$PADIS_GENERATION_ROOT" "$PADIS_PAPER_FIGURE_ROOT" "$PADIS_PAPER_TABLE
 
 for preset in ${presets//,/ }; do
         output="$PADIS_GENERATION_ROOT/lion-paper-protocol/$preset"
-        [ -f "$output/samples.pt" ] && continue
         checkpoint="$patch_checkpoint"
         num_steps="${PADIS_GENERATION_NUM_STEPS:-300}"
-        extra=(--prior-mode patch --generation-mode padis)
         case "$preset" in
-                paper-generation-whole) checkpoint="$whole_checkpoint"; extra=(--prior-mode whole-image) ;;
-                paper-generation-naive-patch) extra=(--prior-mode patch --generation-mode naive-patch) ;;
-                paper-generation) ;;
+                paper-generation-whole) checkpoint="$whole_checkpoint" ;;
+                paper-generation-naive-patch|paper-generation) ;;
                 paper-generation-langevin-300nfe) num_steps="${PADIS_GENERATION_LANGEVIN_NUM_STEPS:-300}" ;;
-                paper-generation-patch-stitch) extra+=(--patch-assembly fixed_stitch --fixed-overlap-layout public_tile --fixed-overlap-checkpoint-denoiser) ;;
-                paper-generation-patch-average) extra+=(--patch-assembly fixed_average --fixed-overlap-layout public_overlap --fixed-overlap-checkpoint-denoiser) ;;
+                paper-generation-patch-stitch|paper-generation-patch-average) ;;
                 *) echo "Unknown generation preset: $preset" >&2; exit 2 ;;
         esac
-        generation_optional_args=()
+        generation_overrides=(
+                --num-steps "$num_steps"
+                --inner-steps "${PADIS_GENERATION_INNER_STEPS:-1}"
+                --sigma-min "${PADIS_GENERATION_SIGMA_MIN:-0.002}"
+                --sigma-max "${PADIS_GENERATION_SIGMA_MAX:-10.0}"
+                --noise-schedule "${PADIS_GENERATION_NOISE_SCHEDULE:-geometric}"
+                --rho "${PADIS_GENERATION_RHO:-7.0}"
+        )
+        if [ -n "${PADIS_GENERATION_EPSILON:-}" ]; then
+                generation_overrides+=(--generation-epsilon "$PADIS_GENERATION_EPSILON")
+        fi
+        if [ -n "${PADIS_GENERATION_NOISE_SCALE:-}" ]; then
+                generation_overrides+=(--langevin-noise-scale "$PADIS_GENERATION_NOISE_SCALE")
+        fi
         if [ -n "${PADIS_GENERATION_PATCH_BATCH_SIZE:-}" ]; then
-                generation_optional_args+=(--patch-batch-size "$PADIS_GENERATION_PATCH_BATCH_SIZE")
+                generation_overrides+=(--patch-batch-size "$PADIS_GENERATION_PATCH_BATCH_SIZE")
         fi
         if [ "${PADIS_GENERATION_PROG_BAR:-0}" = "1" ]; then
-                generation_optional_args+=(--prog-bar)
+                generation_overrides+=(--prog-bar)
         fi
-        python -u scripts/paper_scripts/PaDIS-Reproduction/reconstruction/PaDIS_LIDC_generation.py \
-                --checkpoint "$checkpoint" --output-folder "$output" \
+        python -u scripts/paper_scripts/PaDIS-Reproduction/core/PaDIS_experiments.py \
+                run "$preset" --output-root "$PADIS_GENERATION_ROOT" \
+                --skip-current \
+                --checkpoint "$checkpoint" \
                 --device "${PADIS_GENERATION_DEVICE:-cuda}" \
-                --num-samples "${PADIS_GENERATION_NUM_SAMPLES:-4}" \
+                --max-samples "${PADIS_GENERATION_NUM_SAMPLES:-4}" \
                 --seed "${PADIS_GENERATION_SEED:-33}" \
-                --num-steps "$num_steps" \
-                --inner-steps "${PADIS_GENERATION_INNER_STEPS:-1}" \
-                --sigma-min "${PADIS_GENERATION_SIGMA_MIN:-0.002}" \
-                --sigma-max "${PADIS_GENERATION_SIGMA_MAX:-10.0}" \
-                --noise-schedule "${PADIS_GENERATION_NOISE_SCHEDULE:-geometric}" \
-                --rho "${PADIS_GENERATION_RHO:-7.0}" \
-                --generation-epsilon "${PADIS_GENERATION_EPSILON:-1.0}" \
-                "${generation_optional_args[@]}" \
-                "${extra[@]}"
+                -- "${generation_overrides[@]}"
 done
 
 python -u scripts/paper_scripts/PaDIS-Reproduction/reconstruction/PaDIS_verify_reconstruction_matrix.py \

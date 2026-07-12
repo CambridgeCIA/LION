@@ -547,12 +547,15 @@ The `gcp_spot` order is:
 The manual runner inserts unconditional generation after regular rows and
 before the fixed-overlap/512 tail. Generation uses four samples, seed 33, 300
 geometric levels from `sigma=10` to `0.002`, one inner step per level, and a
-common Langevin coefficient and noise scale of 1. The thesis's primary
-generation comparison contains four priors: whole-image, randomly shifted
-PaDIS, fixed patch averaging, and fixed patch stitching. The pipeline also
-generates naive-patch and 300-evaluation Langevin diagnostic presets needed by
-appendix figures. These settings were not tuned separately, so generation is a
-qualitative boundary-behaviour comparison rather than a distributional ranking.
+separately tuned Langevin coefficient and noise scale for each primary prior:
+whole-image uses `(epsilon, gamma)=(0.75, 0.75)`, randomly shifted PaDIS uses
+`(0.8, 0.85)`, and fixed patch averaging and stitching use `(1, 1)`. The
+pipeline also generates naive-patch and 300-evaluation Langevin diagnostic
+presets needed by appendix figures. Both the GCP generation phase and the
+cross-platform finaliser execute the authoritative named presets in
+`core/PaDIS_experiments.py`; they do not duplicate these hyperparameters.
+`PADIS_GENERATION_EPSILON` and `PADIS_GENERATION_NOISE_SCALE` may be set to
+apply an explicit global diagnostic override, but are unset by default.
 
 ## Tuned reconstruction defaults
 

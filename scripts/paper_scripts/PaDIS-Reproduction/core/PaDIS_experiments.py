@@ -604,6 +604,14 @@ def add_run_arguments(parser: argparse.ArgumentParser, *, include_preset: bool) 
     parser.add_argument("--seed", type=int, default=33)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--skip-current",
+        action="store_true",
+        help=(
+            "Reuse a completed output only when its launcher manifest exactly "
+            "matches the command and current named-preset definition."
+        ),
+    )
 
 
 def add_figure_arguments(parser: argparse.ArgumentParser) -> None:
@@ -756,6 +764,30 @@ def command_for(args, passthrough: list[str]) -> tuple[list[str], pathlib.Path]:
     return command, output_folder
 
 
+def generation_output_is_current(
+    output_folder: pathlib.Path,
+    *,
+    preset_name: str,
+    command: list[str],
+) -> bool:
+    """Return whether a completed generation output matches its current preset."""
+
+    samples_path = output_folder / "samples.pt"
+    manifest_path = output_folder / "launcher_manifest.json"
+    if not samples_path.is_file() or not manifest_path.is_file():
+        return False
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    expected_config = json.loads(json.dumps(asdict(PRESETS[preset_name])))
+    return (
+        manifest.get("preset") == preset_name
+        and manifest.get("preset_config") == expected_config
+        and manifest.get("command") == command
+    )
+
+
 def main() -> None:
     """List or execute a named PaDIS reconstruction/generation preset."""
     parser = build_parser()
@@ -832,6 +864,11 @@ def main() -> None:
     command, output_folder = command_for(args, passthrough)
     print("Running:", " ".join(command))
     if args.dry_run:
+        return
+    if args.skip_current and generation_output_is_current(
+        output_folder, preset_name=args.preset, command=command
+    ):
+        print(f"Skipping current completed generation output: {output_folder}")
         return
 
     output_folder.mkdir(parents=True, exist_ok=True)

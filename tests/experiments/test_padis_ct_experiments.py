@@ -1,5 +1,8 @@
 """Test padis ct experiments behaviour."""
 
+from dataclasses import asdict
+import json
+
 import numpy as np
 from types import SimpleNamespace
 
@@ -21,6 +24,7 @@ from PaDIS_experiments import (
     build_parser as build_experiments_parser,
     command_for,
     figure_command_for,
+    generation_output_is_current,
 )
 
 
@@ -470,6 +474,36 @@ def test_generation_presets_use_separately_tuned_prior_settings():
     assert whole_arguments[whole_arguments.index("--generation-epsilon") + 1] == "0.75"
     assert (
         whole_arguments[whole_arguments.index("--langevin-noise-scale") + 1] == "0.75"
+    )
+
+
+def test_generation_completion_requires_current_named_preset_manifest(tmp_path):
+    """Reject legacy or stale samples when deciding whether generation is done."""
+
+    preset_name = "paper-generation"
+    output_folder = tmp_path / "lion-paper-protocol" / preset_name
+    output_folder.mkdir(parents=True)
+    (output_folder / "samples.pt").write_bytes(b"placeholder")
+    command = ["python", "generation.py", "--generation-epsilon", "0.8"]
+
+    assert not generation_output_is_current(
+        output_folder, preset_name=preset_name, command=command
+    )
+
+    manifest = {
+        "preset": preset_name,
+        "preset_config": asdict(PRESETS[preset_name]),
+        "command": command.copy(),
+    }
+    (output_folder / "launcher_manifest.json").write_text(json.dumps(manifest))
+    assert generation_output_is_current(
+        output_folder, preset_name=preset_name, command=command
+    )
+
+    manifest["command"][-1] = "1.0"
+    (output_folder / "launcher_manifest.json").write_text(json.dumps(manifest))
+    assert not generation_output_is_current(
+        output_folder, preset_name=preset_name, command=command
     )
 
 
