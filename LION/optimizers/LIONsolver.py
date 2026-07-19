@@ -57,6 +57,12 @@ class SolverParams(LIONParameter):
 
 
 class LIONsolver(ABC, metaclass=ABCMeta):
+    @staticmethod
+    def _default_device() -> torch.device:
+        if torch.cuda.is_available():
+            return torch.device("cuda", torch.cuda.current_device())
+        return torch.device("cpu")
+
     def __init__(
         self,
         model: LIONmodel,
@@ -93,7 +99,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         self.loss_fn = loss_fn
         if device is None:
-            device = torch.device(torch.cuda.current_device())
+            device = self._default_device()
         self.device = device
         self.model.to(self.device)
 
@@ -236,7 +242,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             error=False,
             autofill=autofill,
             verbose=verbose,
-            default=torch.device(torch.cuda.current_device()),
+            default=self._default_device(),
         )
 
         # Test 2: is the model set? if not, raise error or warn
@@ -281,7 +287,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             expected_type=str,
             error=False,
             autofill=False,
-            verbose=True,
+            verbose=verbose,
         )
 
         return return_code

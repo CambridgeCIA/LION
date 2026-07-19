@@ -1,5 +1,6 @@
 """Tests for computing the operator norm of operators."""
 
+import pytest
 import torch
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
@@ -30,24 +31,32 @@ def test_matrix_op_operator_norm_torch():
     torch.testing.assert_close(op_2_norm, op_norm_expected, atol=1e-6, rtol=1e-6)
 
     class MatrixOperatorTorch(Operator):
+        """Provide the matrix operator torch test double used by this module."""
+
         def __init__(self, matrix: torch.Tensor):
+            """Initialize the instance."""
             self.matrix = matrix
 
         def __call__(self, x: torch.Tensor, out=None) -> torch.Tensor:
+            """Apply the callable operation."""
             return self.forward(x)
 
         def forward(self, x: torch.Tensor, out=None) -> torch.Tensor:
+            """Apply the forward operation to the requested values."""
             return self.matrix @ x
 
         def adjoint(self, y: torch.Tensor, out=None) -> torch.Tensor:
+            """Handle adjoint for the PaDIS workflow."""
             return self.matrix.T @ y
 
         @property
         def domain_shape(self):
+            """Handle domain shape for the PaDIS workflow."""
             return (self.matrix.shape[1],)
 
         @property
         def range_shape(self):
+            """Handle range shape for the PaDIS workflow."""
             return (self.matrix.shape[0],)
 
     matrix_op = MatrixOperatorTorch(A)
@@ -55,6 +64,7 @@ def test_matrix_op_operator_norm_torch():
     torch.testing.assert_close(op_norm_computed, op_norm_expected, atol=1e-6, rtol=1e-6)
 
 
+@pytest.mark.cuda
 def test_ct_operator_norm_torch():
     """Test with CT operator using default geometry."""
 

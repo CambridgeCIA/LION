@@ -8,6 +8,31 @@ from spgl1 import spgl1
 from LION.operators.Operator import Operator
 
 
+class _RealLinearOperator(LinearOperator):
+    """Linear operator with stable NumPy real-valued introspection.
+
+    SPGL1 0.0.3 calls ``np.isreal(A).all()``.  Some NumPy/SciPy combinations
+    return a Python ``bool`` for an abstract ``LinearOperator``, which lacks
+    ``.all``.  A scalar array representation keeps that dependency check
+    version-independent without materialising the operator matrix.
+    """
+
+    def __init__(self, *, shape, matvec, rmatvec, dtype):
+        super().__init__(dtype=np.dtype(dtype), shape=shape)
+        self._matvec_callback = matvec
+        self._rmatvec_callback = rmatvec
+
+    def _matvec(self, value):
+        return self._matvec_callback(value)
+
+    def _rmatvec(self, value):
+        return self._rmatvec_callback(value)
+
+    def __array__(self, dtype=None, copy=None):
+        del copy
+        return np.asarray(0.0, dtype=dtype or self.dtype)
+
+
 def spgl1_torch(op: Operator, y: torch.Tensor, **spgl1_kwargs) -> torch.Tensor:
     r"""Solve an l1 sparse reconstruction using SPGL1, wrapping torch operators.
 
@@ -67,7 +92,7 @@ def spgl1_torch(op: Operator, y: torch.Tensor, **spgl1_kwargs) -> torch.Tensor:
         g_t = op.adjoint(r_t)
         return g_t.detach().cpu().numpy().ravel()
 
-    A_linop = LinearOperator(
+    A_linop = _RealLinearOperator(
         shape=(n_y, n_w),
         matvec=matvec,
         rmatvec=rmatvec,

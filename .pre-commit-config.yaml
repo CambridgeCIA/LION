@@ -1,6 +1,15 @@
 repos:
 -   repo: https://github.com/psf/black
+    # Keep in sync with the black requirement in pyproject.toml's ci extra.
     rev: 22.10.0
     hooks:
     -   id: black
-
+-   repo: local
+    hooks:
+    -   id: pytest
+        name: pytest
+        entry: bash scripts/run_tests.sh -q
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

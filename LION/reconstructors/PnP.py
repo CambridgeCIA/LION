@@ -17,6 +17,36 @@ from LION.utils.math import power_method
 
 
 class PnP(LIONReconstructor):
+    @staticmethod
+    def cite(cite_format: str = "MLA") -> None:
+        """Print the Plug-and-Play ADMM citation."""
+        if cite_format == "MLA":
+            print(
+                "Chan, Stanley H., Xiran Wang, and Omar A. Elgendy. "
+                '"Plug-and-Play ADMM for Image Restoration: Fixed-Point '
+                'Convergence and Applications." IEEE Transactions on '
+                "Computational Imaging, vol. 3, no. 1, pp. 84-98, 2017. "
+                "doi:10.1109/TCI.2016.2629286."
+            )
+        elif cite_format == "bib":
+            print(
+                """@article{chan_plug-and-play_2017,
+  title = {Plug-and-Play ADMM for Image Restoration: Fixed-Point Convergence and Applications},
+  author = {Chan, Stanley H. and Wang, Xiran and Elgendy, Omar A.},
+  year = {2017},
+  journal = {IEEE Transactions on Computational Imaging},
+  volume = {3},
+  number = {1},
+  pages = {84--98},
+  doi = {10.1109/TCI.2016.2629286}
+}"""
+            )
+        else:
+            raise ValueError(
+                f'`cite_format` "{cite_format}" is not understood, only "MLA" '
+                'and "bib" are supported'
+            )
+
     def __init__(
         self,
         physics: Geometry | Operator,
@@ -186,11 +216,18 @@ class PnP(LIONReconstructor):
         max_iter: int = 10,
         cg_max_iter: int = 100,
         cg_tol: float = 1e-7,
+        clip_min: float | None = None,
+        clip_max: float | None = None,
         prog_bar: bool = False,
     ) -> torch.Tensor:
         x = torch.zeros(self.op.domain_shape, device=measurement.device)
         v = torch.zeros(self.op.domain_shape, device=measurement.device)
         u = torch.zeros(self.op.domain_shape, device=measurement.device)
+
+        def clip_image(image: torch.Tensor) -> torch.Tensor:
+            if clip_min is None and clip_max is None:
+                return image
+            return image.clamp(min=clip_min, max=clip_max)
 
         def matmul_closure(x: torch.Tensor) -> torch.Tensor:
             return self.op.adjoint(self.op(x)) + eta * x
@@ -204,6 +241,7 @@ class PnP(LIONReconstructor):
             x = conjugate_gradient(
                 matmul_closure, d, x, max_iter=cg_max_iter, tol=cg_tol
             )
-            v = self.model(x + u)
+            x = clip_image(x)
+            v = clip_image(self.model(clip_image(x + u)))
             u = u + (x - v)
         return x

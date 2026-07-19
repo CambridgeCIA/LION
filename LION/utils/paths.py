@@ -1,3 +1,9 @@
+"""Resolve configured LION dataset and experiment roots.
+
+Set ``LION_DATA_PATH`` before importing this module.  Experiment outputs
+default to its ``experiments`` child unless ``LION_EXPERIMENTS_PATH`` is set.
+"""
+
 import pathlib
 import os
 
@@ -12,6 +18,12 @@ if _lion_data_path is None:
     )
 
 LION_DATA_PATH = pathlib.Path(_lion_data_path).expanduser().resolve()
+
+_lion_experiments_path = os.environ.get("LION_EXPERIMENTS_PATH")
+if _lion_experiments_path is None:
+    LION_EXPERIMENTS_PATH = LION_DATA_PATH.joinpath("experiments")
+else:
+    LION_EXPERIMENTS_PATH = pathlib.Path(_lion_experiments_path).expanduser().resolve()
 
 LUNA_DATASET_PATH = LION_DATA_PATH.joinpath("raw/LUNA16")
 WALNUT_DATASET_PATH = LION_DATA_PATH.joinpath("raw/walnuts")

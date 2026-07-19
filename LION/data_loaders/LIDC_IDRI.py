@@ -1,3 +1,5 @@
+"""PyTorch dataset adapter for processed LIDC-IDRI axial CT slices."""
+
 # =============================================================================
 # This file is part of LION library
 # License : BSD-3
@@ -11,6 +13,7 @@ from typing import List, Dict
 import pathlib
 import random
 import math
+import re
 
 import torch
 import numpy as np
@@ -35,7 +38,8 @@ def format_index(index: int) -> str:
 def load_json(file_path: pathlib.Path):
     if not file_path.is_file():
         raise FileNotFoundError(f"No file found at {file_path}")
-    return json.load(open(file_path))
+    with open(file_path) as file:
+        return json.load(file)
 
 
 def choose_random_annotation(
@@ -66,6 +70,25 @@ def create_consensus_annotation(
 
 
 class LIDC_IDRI(Dataset):
+    """Load LIDC-IDRI data for image-prior, reconstruction, or segmentation tasks.
+
+    Parameters
+    ----------
+    mode : {"train", "validation", "test"}
+        Dataset split.
+    geometry_parameters : Geometry, optional
+        Backward-compatible geometry argument.
+    parameters : LIONParameter, optional
+        Dataset settings returned by :meth:`default_parameters`.
+
+    Notes
+    -----
+    Processed slices are stored in HU.  Image-prior and reconstruction targets
+    are converted to LION normalised intensity.  Spatial resizing is performed
+    on CPU before the final device transfer to avoid retaining large 512-square
+    tensors on the GPU for patch training.
+    """
+
     def __init__(
         self,
         mode,
@@ -81,6 +104,7 @@ class LIDC_IDRI(Dataset):
                           Dataset will return, for each task:
                           "segmentation"    -> (image, segmentation_label)
                           "reconstruction"  -> (sinogram, image_label)
+                          "image_prior"     -> (image, image)
                           "diagnostic"      -> (segmented_nodule, diagnostic_label)
                           "joint"           -> ?????
                           "end_to_end"      -> ?????
@@ -88,7 +112,7 @@ class LIDC_IDRI(Dataset):
             - mode (str): Defines "train", "validation" or "test" mode.
             - Task (str): Defines what task is the Dataset being used for. "segmentation" (default) returns (gt_image,segmentation) pairs while "reconstruction" returns (sinogram, gt_image) pairs
             - annotation (str): Defines what annotation mode to use. Distinguish between "random" and "consensus". Default "consensus"
-            - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. Default is -1, which takes all slices we have of each patient and pcg_slices_nodule gets ignored.
+            - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. Default is 4. Use -1 to take all slices and ignore pcg_slices_nodule.
             - pcg_slices_nodule (float): Defines percentage of slices with nodule in dataset. 0 meaning "no nodules at all" and 1 meaning "just take slices that contain annotated nodules". Only used if max_num_slices_per_patient != -1. Default is 0.5.
             - clevel (float): Defines consensus level if annotation=consensus. Value between 0-1. Default is 0.5.
             - geometry: Geometry() type, if sinograms are requied (e.g. fo "reconstruction")
@@ -112,10 +136,11 @@ class LIDC_IDRI(Dataset):
             "end_to_end",
             "segmentation",
             "reconstruction",
+            "image_prior",
             "diagnostic",
-        ], f'task argument {task} not in ["joint", "end_to_end", "segmentation", "reconstruction", "diagnostic"]'
+        ], f'task argument {task} not in ["joint", "end_to_end", "segmentation", "reconstruction", "image_prior", "diagnostic"]'
 
-        if task not in ["segmentation", "reconstruction", "end_to_end"]:
+        if task not in ["segmentation", "reconstruction", "image_prior", "end_to_end"]:
             raise NotImplementedError(f"task {task} not implemented yet")
 
         if (
@@ -130,8 +155,10 @@ class LIDC_IDRI(Dataset):
         self.image_transform = None
         self.device = self.params.device
 
-        if task in ["reconstruction"]:
-            self.image_transform = ct.from_HU_to_mu
+        if task in ["reconstruction", "image_prior"]:
+            self.image_transform = (
+                ct.from_HU_to_normal if task == "image_prior" else ct.from_HU_to_mu
+            )
         if task in ["segmentation"]:
             self.image_transform = ct.from_HU_to_normal
 
@@ -147,16 +174,29 @@ class LIDC_IDRI(Dataset):
             self.path_to_processed_dataset.joinpath("patients_masks.json")
         )
 
-        # Add patients without masks, for now hardcoded, find a solution in preprocessing
-        self.patients_masks_dictionary["LIDC-IDRI-0238"] = {}
-        self.patients_masks_dictionary["LIDC-IDRI-0585"] = {}
-
         self.patients_diagnosis_dictionary = load_json(
             self.path_to_processed_dataset.joinpath("patient_id_to_diagnosis.json")
         )
-        self.total_patients = (
-            len(list(self.path_to_processed_dataset.glob("LIDC-IDRI-*"))) + 1
-        )
+        patient_id_pattern = re.compile(r"^LIDC-IDRI-(\d+)$")
+        patient_entries = []
+        for patient_folder in self.path_to_processed_dataset.glob("LIDC-IDRI-*"):
+            if not patient_folder.is_dir():
+                continue
+            match = patient_id_pattern.match(patient_folder.name)
+            if match is None:
+                continue
+            patient_entries.append((int(match.group(1)), patient_folder.name))
+        self.patient_ids = [
+            patient_id
+            for _, patient_id in sorted(patient_entries, key=lambda item: item[0])
+        ]
+        if len(self.patient_ids) == 0:
+            raise FileNotFoundError(
+                f"No processed LIDC-IDRI patient folders found in {self.path_to_processed_dataset}"
+            )
+        for patient_id in self.patient_ids:
+            self.patients_masks_dictionary.setdefault(patient_id, {})
+        self.total_patients = len(self.patient_ids)
         self.num_slices_per_patient = self.params.max_num_slices_per_patient
         self.pcg_slices_nodule = self.params.pcg_slices_nodule
         self.annotation = self.params.annotation
@@ -164,60 +204,46 @@ class LIDC_IDRI(Dataset):
             self.params.clevel
         )  # consensus level, only used if annotation == consensus
         self.patient_index_to_n_slices_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": len(
+            patient_id: len(
                 list(
-                    self.path_to_processed_dataset.joinpath(
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ).glob("slice_*.npy")
+                    self.path_to_processed_dataset.joinpath(patient_id).glob(
+                        "slice_*.npy"
+                    )
                 )
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids
         }
 
         # Dict with all slices of each patient
         self.patient_index_to_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": list(
+            patient_id: list(
                 np.arange(
                     0,
-                    self.patient_index_to_n_slices_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ],
+                    self.patient_index_to_n_slices_dict[patient_id],
                     1,
                 )
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids
         }
 
         # Dict with all nodule slices of each patient
         # Converts the keys from self.patients_masks_dictionary to integer
         self.patient_index_to_nodule_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": [
+            patient_id: [
                 int(item)
-                for item in list(
-                    self.patients_masks_dictionary[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ].keys()
-                )
+                for item in list(self.patients_masks_dictionary[patient_id].keys())
             ]
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids
         }
 
         # Dict with all non-nodule slices of each patient
         # Computes as difference of all slices dict and dict with nodules
         self.patient_index_to_non_nodule_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": list(
-                set(
-                    self.patient_index_to_slices_index_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ]
-                )
-                - set(
-                    self.patient_index_to_nodule_slices_index_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ]
-                )
+            patient_id: list(
+                set(self.patient_index_to_slices_index_dict[patient_id])
+                - set(self.patient_index_to_nodule_slices_index_dict[patient_id])
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids
         }
 
         # Corrupted data handling
@@ -238,15 +264,11 @@ class LIDC_IDRI(Dataset):
                         break
 
         self.patient_index_to_nodule_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": list(
-                set(
-                    self.patient_index_to_nodule_slices_index_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ]
-                )
-                - set(self.removed_slices[f"LIDC-IDRI-{format_index(index)}"])
+            patient_id: list(
+                set(self.patient_index_to_nodule_slices_index_dict[patient_id])
+                - set(self.removed_slices[patient_id])
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids
         }
 
         ##% Divide dataset in training/validation/testing
@@ -273,7 +295,6 @@ class LIDC_IDRI(Dataset):
         )
 
         # Get patient IDs for each
-        self.patient_ids = list(self.patient_index_to_n_slices_dict.keys())
         self.training_patients_list = self.patient_ids[: self.n_patients_training]
         self.validation_patients_list = self.patient_ids[
             self.n_patients_training : self.n_patients_training
@@ -306,6 +327,7 @@ class LIDC_IDRI(Dataset):
             self.patient_index_to_nodule_slices_index_dict,
             self.num_slices_per_patient,
             self.pcg_slices_nodule,
+            self.patient_index_to_slices_index_dict,
         )
         self.slice_index_to_patient_id_list = self.get_slice_index_to_patient_id_list(
             self.slices_to_load
@@ -318,6 +340,7 @@ class LIDC_IDRI(Dataset):
 
     @staticmethod
     def default_parameters(geometry=None, task="reconstruction"):
+        """Return default LIDC-IDRI split, sampling, and task parameters."""
         param = LIONParameter()
         param.name = "LIDC-IDRI Data Loader"
         param.training_proportion = 0.8
@@ -325,7 +348,7 @@ class LIDC_IDRI(Dataset):
         param.testing_proportion = (
             1 - param.training_proportion - param.validation_proportion
         )  # not used, but for metadata
-        param.max_num_slices_per_patient = 5
+        param.max_num_slices_per_patient = 4
         param.pcg_slices_nodule = 0.5
         param.task = task
         param.folder = LIDC_IDRI_PROCESSED_DATASET_PATH
@@ -337,7 +360,11 @@ class LIDC_IDRI(Dataset):
         # segmentation specific
         param.clevel = 0.5
         param.annotation = "consensus"
-        param.device = torch.cuda.current_device()
+        param.device = (
+            torch.device("cuda", torch.cuda.current_device())
+            if torch.cuda.is_available()
+            else torch.device("cpu")
+        )
         param.geometry = geometry
         return param
 
@@ -348,6 +375,7 @@ class LIDC_IDRI(Dataset):
         nodule_slices_dict: Dict,
         num_slices_per_patient: int,
         pcg_slices_nodule: float,
+        all_slices_dict: Dict | None = None,
     ):
         """
         Returns a dictionary that contains patient_id's as keys and list of slices to load as values for each patient.
@@ -367,7 +395,20 @@ class LIDC_IDRI(Dataset):
         )  # Empty dict which should contain patient id as key and slice ids as array of values
 
         if num_slices_per_patient == -1:
-            num_slices_per_patient = 1000
+            source_slices_dict = all_slices_dict
+            if source_slices_dict is None:
+                source_slices_dict = {
+                    patient_id: sorted(
+                        set(non_nodule_slices_dict[patient_id]).union(
+                            nodule_slices_dict[patient_id]
+                        )
+                    )
+                    for patient_id in patient_list
+                }
+            return {
+                patient_id: list(source_slices_dict[patient_id])
+                for patient_id in patient_list
+            }
 
         for patient_id in patient_list:  # Loop over every patient
             number_of_slices = min(
@@ -461,16 +502,31 @@ class LIDC_IDRI(Dataset):
         return slice_index_to_patient_id_list
 
     def get_reconstruction_tensor(self, file_path: pathlib.Path) -> torch.Tensor:
-        tensor = torch.from_numpy(np.load(file_path)).unsqueeze(0).to(self.device)
-        return tensor
+        """Load and resize one processed HU slice for reconstruction use."""
+        loaded_tensor = torch.from_numpy(np.load(file_path)).cpu()
+        if self.params.geometry.image_scaling != 1.0:
+            loaded_tensor = torch.nn.functional.interpolate(
+                loaded_tensor.unsqueeze(0).unsqueeze(0).float(),
+                size=tuple(self.params.geometry.image_shape[1:]),
+                mode="bilinear",
+                align_corners=False,
+            ).squeeze(0)
+        else:
+            loaded_tensor = loaded_tensor.unsqueeze(0)
+        # Keep scaled LIDC data memory-efficient: resize on CPU first, then transfer
+        # only the final tensor to the dataset device.
+        return loaded_tensor.to(self.device)
 
     def set_sinogram_transform(self, sinogram_transform):
+        """Set an optional transform applied to generated sinograms."""
         self.sinogram_transform = sinogram_transform
 
     def set_image_transform(self, image_transform):
+        """Set an optional transform applied to image targets."""
         self.image_transform = image_transform
 
     def compute_clean_sinogram(self, image=None) -> torch.Tensor:
+        """Forward-project an image with the dataset CT operator."""
 
         if self.operator is None:
             raise AttributeError("CT operator not know. Have you given a ct geometry?")
@@ -478,6 +534,7 @@ class LIDC_IDRI(Dataset):
         return sinogram
 
     def get_mask_tensor(self, patient_id: str, slice_index: int) -> torch.Tensor:
+        """Load the random or consensus nodule mask for one slice."""
         ## First, assess if the slice has a nodule
         try:
             mask = torch.zeros((512, 512), dtype=torch.bool)
@@ -524,6 +581,16 @@ class LIDC_IDRI(Dataset):
 
         except KeyError:
             mask = torch.zeros((512, 512), dtype=torch.bool)
+
+        if self.params.geometry.image_scaling != 1.0:
+            mask = resize(
+                mask,
+                (
+                    self.params.geometry.image_shape[1],
+                    self.params.geometry.image_shape[2],
+                ),
+                order=0,
+            ).astype(bool)
         # byte inversion
         background = ~mask
         return torch.stack((background, mask))
@@ -558,6 +625,7 @@ class LIDC_IDRI(Dataset):
             "end_to_end",
             "segmentation",
             "reconstruction",
+            "image_prior",
         ]:
             reconstruction_tensor = self.get_reconstruction_tensor(file_path)
             if self.image_transform is not None:
@@ -573,6 +641,9 @@ class LIDC_IDRI(Dataset):
             if self.sinogram_transform is not None:
                 sinogram = self.sinogram_transform(sinogram)
             return sinogram, reconstruction_tensor
+
+        elif self.params.task == "image_prior":
+            return reconstruction_tensor, reconstruction_tensor
 
         elif self.params.task == "diagnostic":
             return self.patients_diagnosis_dictionary[patient_id]

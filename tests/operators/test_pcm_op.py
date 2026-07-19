@@ -6,6 +6,7 @@ from tests.helper import dotproduct_adjointness_test
 
 
 def test_pcm_autograd_op_forward_and_backward():
+    """Verify that pcm autograd op forward and backward."""
     J = 4  # 16x16 images
     N = 1 << J
     subsampler = Subsampler(n=N * N, delta=0.25, coarseJ=J - 1)

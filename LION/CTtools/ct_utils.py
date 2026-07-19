@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 # math/science imports
+"""CT operator, noise, and attenuation-unit utilities."""
+
 import numpy as np
 import tomosipo as ts
 import torch
@@ -30,6 +32,20 @@ def from_HU_to_normal(img):
         return torch.clip((img.float() + 1000) / 3000, min=0, max=1)
     else:
         raise NotImplementedError
+
+
+def from_normal_to_HU(img):
+    """Convert a LION-normalised CT image in ``[0, 1]`` to HU.
+
+    This is the inverse of :func:`from_HU_to_normal` on its represented
+    Hounsfield-unit interval, mapping 0 to -1000 HU and 1 to 2000 HU.
+    Values are not clipped so reconstruction overshoots remain visible.
+    """
+    if isinstance(img, np.ndarray):
+        return 3000 * img.astype(np.float32) - 1000
+    if isinstance(img, torch.Tensor):
+        return 3000 * img.float() - 1000
+    raise NotImplementedError
 
 
 def from_HU_to_mu(img):
@@ -159,6 +175,18 @@ def from_HU_to_material_id(img):
 
 
 def make_operator(geometry: Geometry) -> CTProjectionOp:
+    """Construct a differentiable LION CT projection operator.
+
+    Parameters
+    ----------
+    geometry : Geometry
+        Fan- or parallel-beam acquisition geometry.
+
+    Returns
+    -------
+    CTProjectionOp
+        LION wrapper around the matching tomosipo operator.
+    """
     if not isinstance(geometry, Geometry):
         raise ValueError(
             "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"

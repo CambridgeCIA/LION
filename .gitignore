@@ -7,6 +7,7 @@ nohup.out
 **/__pycache__
 *~
 build/*
+docs/_build/
 .vscode
 
 LION.egg-info
@@ -18,3 +19,6 @@ example.py
 wandb
 
 **/results
+
+*.out
+machine.*

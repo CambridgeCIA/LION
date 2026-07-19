@@ -81,8 +81,62 @@ conda activate lidc_idri
 python pre_process_lidc_idri.py
 ```
 
+The preprocessing run finishes with a completeness check. On the current
+downloaded dataset, the complete processed output contains at least `282,776`
+regular files and `1,010` processed patient directories. If the count is short,
+rerun the downloader with `NBIA_RESUME_CHOICE=M ./download_LIDC_IDRI.sh` to fetch
+missing series, or use `NBIA_RESUME_CHOICE=A ./download_LIDC_IDRI.sh` if the
+NBIA retriever needs to redownload all series.
+
 The preprocessing script automatically writes the `pylidc` DICOM location to `~/.pylidcrc` using `LIDC_IDRI_PATH` from `LION/utils/paths.py`. With the default download layout, this points `pylidc` at:
 
 ```text
 LION_DATA_PATH/raw/LIDC-IDRI/LIDC-IDRI
+```
+
+If disk space is limited, the preprocessing script can remove each per-patient
+raw DICOM folder after the matching processed folder has been written:
+
+```bash
+python pre_process_lidc_idri.py --delete-raw-after-processing
+```
+
+To reduce deletion frequency, remove raw folders in completed blocks:
+
+```bash
+python pre_process_lidc_idri.py --delete-raw-after-processing --raw-delete-block-size 10
+```
+
+Use a dry run first to inspect the patient folders that would be deleted:
+
+```bash
+python pre_process_lidc_idri.py --dry-run-raw-delete --raw-delete-block-size 10
+```
+
+## Optional PaDIS Cache Preparation
+
+The PaDIS paper scripts can use reusable tensor caches derived from the processed LIDC-IDRI slices. This avoids repeatedly walking many small `slice_*.npy` files when launching PaDIS training jobs. Run this only after `pre_process_lidc_idri.py` has produced `LION_DATA_PATH/processed/LIDC-IDRI`.
+
+On the Cambridge Slurm cluster, submit the cache preparation job from the LION repository root:
+
+```bash
+cd /home/tjh200/DiS/Project/LION
+scripts/paper_scripts/PaDIS-Reproduction/platforms/slurm/submit_PaDIS_A100_prepare_full_cache.sh
+```
+
+By default this submits a CPU job on the `icelake` partition with 8 CPU cores and 128G memory. It builds zstd-compressed archives for:
+
+```text
+256-default
+256-full
+512-default
+```
+
+The full 512x512 LIDC cache is intentionally not built by this helper because it would be much larger. The PaDIS Slurm training, pilot, and profiling scripts stage these prepared archives into `/ramdisks/$USER` by default and fail fast if the matching archive has not been prepared.
+
+Default archive locations are:
+
+```text
+LION_DATA_PATH/processed/LIDC-IDRI-cache/padis_256/archives
+LION_DATA_PATH/processed/LIDC-IDRI-cache/padis_512/archives
 ```

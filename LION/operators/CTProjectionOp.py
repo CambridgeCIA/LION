@@ -21,6 +21,56 @@ class CTProjectionOp(Operator):
         default device.
     """
 
+    @staticmethod
+    def cite(cite_format: str = "MLA") -> None:
+        """Print citations for the tomosipo and ASTRA projection backends."""
+        if cite_format == "MLA":
+            print(
+                'Hendriksen, Allard A., et al. "Tomosipo: Fast, Flexible, and '
+                "Convenient 3D Tomography for Complex Scanning Geometries in "
+                'Python." Optics Express, vol. 29, no. 24, article 40494, 2021. '
+                "doi:10.1364/OE.439909."
+            )
+            print()
+            print(
+                'Van Aarle, Wim, et al. "Fast and Flexible X-Ray Tomography '
+                'Using the ASTRA Toolbox." Optics Express, vol. 24, no. 22, '
+                "article 25129, 2016. doi:10.1364/OE.24.025129."
+            )
+        elif cite_format == "bib":
+            print(
+                r"""@article{hendriksen_tomosipo_2021,
+  title = {Tomosipo: Fast, Flexible, and Convenient 3D Tomography for Complex Scanning Geometries in Python},
+  author = {Hendriksen, Allard A. and Schut, Dirk and Palenstijn, Willem Jan and
+    Vigan{\'o}, Nicola and Kim, Jisoo and Pelt, Dani{\"e}l M. and
+    Van Leeuwen, Tristan and Batenburg, K. Joost},
+  year = {2021},
+  journal = {Optics Express},
+  volume = {29},
+  number = {24},
+  pages = {40494},
+  doi = {10.1364/OE.439909}
+}
+
+@article{van_aarle_fast_2016,
+  title = {Fast and Flexible X-Ray Tomography Using the ASTRA Toolbox},
+  author = {Van Aarle, Wim and Palenstijn, Willem Jan and Cant, Jeroen and
+    Janssens, Eline and Bleichrodt, Folkert and Dabravolski, Andrei and
+    De Beenhouwer, Jan and Batenburg, K. Joost and Sijbers, Jan},
+  year = {2016},
+  journal = {Optics Express},
+  volume = {24},
+  number = {22},
+  pages = {25129},
+  doi = {10.1364/OE.24.025129}
+}"""
+            )
+        else:
+            raise ValueError(
+                f'`cite_format` "{cite_format}" is not understood, only "MLA" '
+                'and "bib" are supported'
+            )
+
     def __init__(
         self,
         ts_operator: ts.Operator.Operator,
