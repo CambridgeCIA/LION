@@ -98,6 +98,7 @@ notebooks = [
     "cmap",
 ]
 ci = [
+    "black==22.10.0",  # Keep in sync with the Black rev in .pre-commit-config.yaml.
     "pre-commit",
 ]
 dev = ["LION[tests, docs, ci]"]

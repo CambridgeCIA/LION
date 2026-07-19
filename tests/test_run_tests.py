@@ -1,6 +1,29 @@
-"""Tests for the hardware-aware local test launcher."""
+"""Tests for local development and test tooling."""
+
+import re
+from pathlib import Path
 
 from scripts.run_tests import pytest_args
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_black_dependency_matches_pre_commit_hook_revision():
+    """Keep fresh development installs aligned with the formatting hook."""
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    pre_commit = (ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+
+    dependency = re.search(r'"black==([^"]+)"', pyproject)
+    hook = re.search(
+        r"repo: https://github\.com/psf/black\s+.*?rev: (\S+)",
+        pre_commit,
+        flags=re.DOTALL,
+    )
+
+    assert dependency is not None
+    assert hook is not None
+    assert dependency.group(1) == hook.group(1)
 
 
 def test_pytest_args_runs_full_suite_when_cuda_is_available():
