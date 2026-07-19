@@ -39,7 +39,7 @@ constructs an LIDC-IDRI image-prior dataset.  A
 levels, evaluates :class:`~LION.losses.PaDIS.PaDISDenoisingLoss`, updates the
 NCSN++ model, and maintains exponential-moving-average checkpoints.
 
-At inference time :class:`~LION.reconstructors.PaDIS.PaDIS` assembles a
+At inference time :class:`~LION.reconstructors.diffusion.PaDIS.PaDIS` assembles a
 whole-image score from patches and combines it with CT data consistency.  The
 reproduction scripts select the sampler convention, tuned hyperparameters,
 checkpoint, and experiment matrix without duplicating the underlying solver.

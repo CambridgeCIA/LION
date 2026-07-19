@@ -381,14 +381,14 @@ def test_padis_noise_schedule_modes():
     params.sigma_max = 8.0
     params.sigma_min = 1.0
     params.noise_schedule = "geometric"
-    geometric = reconstructor._noise_schedule(params, torch.device("cpu"))[:-1]
+    geometric = reconstructor.noise_schedule(params, torch.device("cpu"))[:-1]
     ratios = geometric[:-1] / geometric[1:]
     assert torch.allclose(ratios, torch.full_like(ratios, ratios[0]))
     assert torch.allclose(geometric[[0, -1]], torch.tensor([8.0, 1.0]))
 
     params.noise_schedule = "edm"
     params.rho = 1.0
-    edm = reconstructor._noise_schedule(params, torch.device("cpu"))[:-1]
+    edm = reconstructor.noise_schedule(params, torch.device("cpu"))[:-1]
     expected = torch.linspace(8.0, 1.0, 4)
     assert torch.allclose(edm, expected)
 
@@ -402,10 +402,10 @@ def test_padis_data_consistency_scale_schedule():
     params.data_consistency_scale_power = 1.0
     params.sigma_data = 0.5
     reconstructor = PaDIS(IdentityOp(), model, params)
-    high_sigma = reconstructor._scheduled_data_consistency_scale(
+    high_sigma = reconstructor.scheduled_data_consistency_scale(
         params, torch.tensor(10.0), torch.device("cpu")
     )
-    low_sigma = reconstructor._scheduled_data_consistency_scale(
+    low_sigma = reconstructor.scheduled_data_consistency_scale(
         params, torch.tensor(0.003), torch.device("cpu")
     )
     assert high_sigma < low_sigma
@@ -420,10 +420,10 @@ def test_padis_adjoint_data_consistency_scale_can_differ_from_dps_scale():
     params.adjoint_data_consistency_scale = 0.1
     reconstructor = PaDIS(IdentityOp(), model, params)
 
-    dps_scale = reconstructor._scheduled_data_consistency_scale(
+    dps_scale = reconstructor.scheduled_data_consistency_scale(
         params, torch.tensor(0.02), torch.device("cpu")
     )
-    adjoint_scale = reconstructor._scheduled_adjoint_data_consistency_scale(
+    adjoint_scale = reconstructor.scheduled_adjoint_data_consistency_scale(
         params, torch.tensor(0.02), torch.device("cpu")
     )
 
@@ -452,8 +452,8 @@ def test_padis_ddnm_pseudoinverse_is_not_noise_initial_state():
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="langevin")
     measurement = torch.full((1, 8, 8), 0.25)
 
-    initial = reconstructor._initial_reconstruction(measurement, params)
-    pseudoinverse = reconstructor._pseudoinverse_reconstruction(measurement, params)
+    initial = reconstructor.initial_reconstruction(measurement, params)
+    pseudoinverse = reconstructor.pseudoinverse_reconstruction(measurement, params)
 
     assert torch.count_nonzero(initial) == 0
     assert torch.allclose(pseudoinverse, measurement)
@@ -467,8 +467,8 @@ def test_padis_ddnm_pseudoinverse_clip_can_be_overridden_per_term():
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="langevin")
     measurement = torch.tensor([[[-0.5, 0.25], [1.25, 2.0]]])
 
-    clipped = reconstructor._pseudoinverse_reconstruction(measurement, params)
-    unclipped = reconstructor._pseudoinverse_reconstruction(
+    clipped = reconstructor.pseudoinverse_reconstruction(measurement, params)
+    unclipped = reconstructor.pseudoinverse_reconstruction(
         measurement,
         params,
         clip=False,
@@ -505,8 +505,8 @@ def test_padis_ddnm_corrected_clip_clamps_score_target(monkeypatch):
             return torch.full_like(measurement, 0.25)
         return torch.full_like(measurement, 3.0)
 
-    monkeypatch.setattr(reconstructor, "_denoise_prior", denoise_prior)
-    monkeypatch.setattr(reconstructor, "_pseudoinverse_reconstruction", pseudoinverse)
+    monkeypatch.setattr(reconstructor, "denoise_prior", denoise_prior)
+    monkeypatch.setattr(reconstructor, "pseudoinverse_reconstruction", pseudoinverse)
     measurement = torch.full((1, 8, 8), 0.25)
 
     reconstructor.reconstruct_sample(measurement)
@@ -525,7 +525,7 @@ def test_padis_langevin_honours_stop_after_outer_steps(monkeypatch):
     params.inner_steps = 1
     params.stop_after_outer_steps = 1
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="langevin")
-    original_denoise = reconstructor._denoise_prior
+    original_denoise = reconstructor.denoise_prior
     denoise_calls = 0
 
     def counting_denoise(*args, **kwargs):
@@ -534,7 +534,7 @@ def test_padis_langevin_honours_stop_after_outer_steps(monkeypatch):
         denoise_calls += 1
         return original_denoise(*args, **kwargs)
 
-    monkeypatch.setattr(reconstructor, "_denoise_prior", counting_denoise)
+    monkeypatch.setattr(reconstructor, "denoise_prior", counting_denoise)
     measurement = torch.rand(1, 8, 8)
 
     recon = reconstructor.reconstruct_sample(measurement)
@@ -561,7 +561,7 @@ def test_padis_predictor_corrector_uses_paper_linear_step_size_by_default():
     noise = torch.tensor([3.0, 4.0])
     score = torch.tensor([6.0, 8.0])
 
-    step_size = PaDIS._pc_corrector_step_size(noise, score, snr=0.2)
+    step_size = PaDIS.pc_corrector_step_size(noise, score, snr=0.2)
 
     assert torch.allclose(step_size, torch.tensor(0.2))
 
@@ -571,7 +571,7 @@ def test_padis_predictor_corrector_keeps_score_sde_squared_step_size_option():
     noise = torch.tensor([3.0, 4.0])
     score = torch.tensor([6.0, 8.0])
 
-    step_size = PaDIS._pc_corrector_step_size(
+    step_size = PaDIS.pc_corrector_step_size(
         noise, score, snr=0.2, rule="score_sde_squared"
     )
 
@@ -588,7 +588,7 @@ def test_padis_predictor_corrector_denoises_corrector_at_next_sigma(monkeypatch)
     params.sigma_min = 0.02
     params.noise_schedule = "geometric"
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="pc")
-    original_denoise = reconstructor._denoise_prior
+    original_denoise = reconstructor.denoise_prior
     sigmas = []
 
     def recording_denoise(x, sigma, params, image_shape, generator=None):
@@ -596,7 +596,7 @@ def test_padis_predictor_corrector_denoises_corrector_at_next_sigma(monkeypatch)
         sigmas.append(float(sigma.item()))
         return original_denoise(x, sigma, params, image_shape, generator)
 
-    monkeypatch.setattr(reconstructor, "_denoise_prior", recording_denoise)
+    monkeypatch.setattr(reconstructor, "denoise_prior", recording_denoise)
     measurement = torch.rand(1, 8, 8)
 
     reconstructor.reconstruct_sample(measurement)
@@ -617,7 +617,7 @@ def test_padis_predictor_corrector_public_compat_denoises_corrector_at_current_s
     params.noise_schedule = "geometric"
     params.pc_corrector_denoise_sigma = "current"
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="pc")
-    original_denoise = reconstructor._denoise_prior
+    original_denoise = reconstructor.denoise_prior
     sigmas = []
 
     def recording_denoise(x, sigma, params, image_shape, generator=None):
@@ -625,7 +625,7 @@ def test_padis_predictor_corrector_public_compat_denoises_corrector_at_current_s
         sigmas.append(float(sigma.item()))
         return original_denoise(x, sigma, params, image_shape, generator)
 
-    monkeypatch.setattr(reconstructor, "_denoise_prior", recording_denoise)
+    monkeypatch.setattr(reconstructor, "denoise_prior", recording_denoise)
     measurement = torch.rand(1, 8, 8)
 
     reconstructor.reconstruct_sample(measurement)
@@ -644,7 +644,7 @@ def test_padis_predictor_corrector_can_reuse_predictor_patch_layout(monkeypatch)
     params.noise_schedule = "geometric"
     params.pc_reuse_predictor_layout = True
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="pc")
-    original_patch_layout = reconstructor._patch_layout
+    original_patch_layout = reconstructor.patch_layout
     layouts = []
 
     def recording_patch_layout(*args, **kwargs):
@@ -653,7 +653,7 @@ def test_padis_predictor_corrector_can_reuse_predictor_patch_layout(monkeypatch)
         layouts.append(layout)
         return layout
 
-    monkeypatch.setattr(reconstructor, "_patch_layout", recording_patch_layout)
+    monkeypatch.setattr(reconstructor, "patch_layout", recording_patch_layout)
     measurement = torch.rand(1, 8, 8)
 
     reconstructor.reconstruct_sample(measurement)
@@ -669,7 +669,7 @@ def test_padis_predictor_corrector_honours_stop_after_outer_steps(monkeypatch):
     params.num_steps = 4
     params.stop_after_outer_steps = 1
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="pc")
-    original_denoise = reconstructor._denoise_prior
+    original_denoise = reconstructor.denoise_prior
     denoise_calls = 0
 
     def counting_denoise(*args, **kwargs):
@@ -678,7 +678,7 @@ def test_padis_predictor_corrector_honours_stop_after_outer_steps(monkeypatch):
         denoise_calls += 1
         return original_denoise(*args, **kwargs)
 
-    monkeypatch.setattr(reconstructor, "_denoise_prior", counting_denoise)
+    monkeypatch.setattr(reconstructor, "denoise_prior", counting_denoise)
     measurement = torch.rand(1, 8, 8)
 
     recon = reconstructor.reconstruct_sample(measurement)
@@ -693,8 +693,8 @@ def test_padis_patch_denoising_zeroes_padding_border():
     params = _sampler_params(model)
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
     x = torch.ones(1, 1, 12, 12)
-    layout = reconstructor._patch_layout((8, 8), params, x.device)
-    denoised = reconstructor._denoise_patches(x, torch.tensor([0.02]), layout, params)
+    layout = reconstructor.patch_layout((8, 8), params, x.device)
+    denoised = reconstructor.denoise_patches(x, torch.tensor([0.02]), layout, params)
     pad = params.pad_width
     assert torch.count_nonzero(denoised[:, :, :pad]) == 0
     assert torch.count_nonzero(denoised[:, :, -pad:]) == 0
@@ -711,7 +711,7 @@ def test_fixed_overlap_patch_layout_uses_paper_overlap():
     params.patch_overlap = 1
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
 
-    layout = reconstructor._fixed_overlap_patch_layout((8, 8), params)
+    layout = reconstructor.fixed_overlap_patch_layout((8, 8), params)
 
     assert layout.indices == [
         (2, 6, 2, 6),
@@ -735,7 +735,7 @@ def test_fixed_overlap_patch_layout_covers_full_central_image():
     params.patch_overlap = 1
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
 
-    layout = reconstructor._fixed_overlap_patch_layout((8, 8), params)
+    layout = reconstructor.fixed_overlap_patch_layout((8, 8), params)
     coverage = torch.zeros(1, 1, 12, 12)
     for top, bottom, left, right in layout.indices:
         coverage[:, :, top:bottom, left:right] += 1
@@ -757,12 +757,12 @@ def test_fixed_overlap_public_helper_layouts_match_public_repo_starts():
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
 
     params.fixed_overlap_layout = "public_overlap"
-    overlap_layout = reconstructor._fixed_overlap_patch_layout((256, 256), params)
+    overlap_layout = reconstructor.fixed_overlap_patch_layout((256, 256), params)
     overlap_starts = sorted({top for top, _, _, _ in overlap_layout.indices})
     assert overlap_starts == [24, 72, 120, 168, 216, 248]
 
     params.fixed_overlap_layout = "public_tile"
-    tile_layout = reconstructor._fixed_overlap_patch_layout((256, 256), params)
+    tile_layout = reconstructor.fixed_overlap_patch_layout((256, 256), params)
     tile_starts = sorted({top for top, _, _, _ in tile_layout.indices})
     assert tile_starts == [4, 52, 100, 148, 196, 244]
 
@@ -777,12 +777,12 @@ def test_fixed_overlap_patch_average_and_stitch_smoke():
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
     x = torch.ones(1, 1, 12, 12)
     sigma = torch.tensor([0.02])
-    layout = reconstructor._fixed_overlap_patch_layout((8, 8), params)
+    layout = reconstructor.fixed_overlap_patch_layout((8, 8), params)
 
-    average = reconstructor._denoise_fixed_overlap_patches(
+    average = reconstructor.denoise_fixed_overlap_patches(
         x, sigma, layout, params, assembly="fixed_average"
     )
-    stitch = reconstructor._denoise_fixed_overlap_patches(
+    stitch = reconstructor.denoise_fixed_overlap_patches(
         x, sigma, layout, params, assembly="fixed_stitch"
     )
 
@@ -806,7 +806,7 @@ def test_fixed_overlap_patch_average_and_stitch_overlap_semantics(monkeypatch):
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
     x = torch.zeros(1, 1, 12, 12)
     sigma = torch.tensor([0.02])
-    layout = reconstructor._fixed_overlap_patch_layout((8, 8), params)
+    layout = reconstructor.fixed_overlap_patch_layout((8, 8), params)
 
     def indexed_denoise(image_batch, position_batch, sigma, params, **kwargs):
         """Handle indexed denoise for the PaDIS workflow."""
@@ -819,12 +819,12 @@ def test_fixed_overlap_patch_average_and_stitch_overlap_semantics(monkeypatch):
         ).reshape(-1, 1, 1, 1)
         return values.expand_as(image_batch)
 
-    monkeypatch.setattr(reconstructor, "_edm_denoise_batch", indexed_denoise)
+    monkeypatch.setattr(reconstructor, "edm_denoise_batch", indexed_denoise)
 
-    average = reconstructor._denoise_fixed_overlap_patches(
+    average = reconstructor.denoise_fixed_overlap_patches(
         x, sigma, layout, params, assembly="fixed_average"
     )
-    stitch = reconstructor._denoise_fixed_overlap_patches(
+    stitch = reconstructor.denoise_fixed_overlap_patches(
         x, sigma, layout, params, assembly="fixed_stitch"
     )
 
@@ -847,7 +847,7 @@ def test_fixed_overlap_patch_denoising_respects_patch_batch_size(monkeypatch):
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
     x = torch.zeros(1, 1, 12, 12)
     sigma = torch.tensor([0.02])
-    layout = reconstructor._fixed_overlap_patch_layout((8, 8), params)
+    layout = reconstructor.fixed_overlap_patch_layout((8, 8), params)
     chunk_sizes = []
 
     def chunked_denoise(image_batch, position_batch, sigma, params, **kwargs):
@@ -856,9 +856,9 @@ def test_fixed_overlap_patch_denoising_respects_patch_batch_size(monkeypatch):
         chunk_sizes.append(image_batch.shape[0])
         return torch.ones_like(image_batch)
 
-    monkeypatch.setattr(reconstructor, "_edm_denoise_batch", chunked_denoise)
+    monkeypatch.setattr(reconstructor, "edm_denoise_batch", chunked_denoise)
 
-    output = reconstructor._denoise_fixed_overlap_patches(
+    output = reconstructor.denoise_fixed_overlap_patches(
         x, sigma, layout, params, assembly="fixed_average"
     )
 
@@ -880,7 +880,7 @@ def test_regular_patch_denoising_respects_patch_batch_size(monkeypatch):
     x = torch.zeros(1, 1, 12, 12)
     sigma = torch.tensor([0.02])
     generator = torch.Generator().manual_seed(1)
-    layout = reconstructor._patch_layout((8, 8), params, torch.device("cpu"), generator)
+    layout = reconstructor.patch_layout((8, 8), params, torch.device("cpu"), generator)
     chunk_sizes = []
     checkpoint_flags = []
 
@@ -891,9 +891,9 @@ def test_regular_patch_denoising_respects_patch_batch_size(monkeypatch):
         checkpoint_flags.append(kwargs.get("use_checkpoint"))
         return torch.ones_like(image_batch)
 
-    monkeypatch.setattr(reconstructor, "_edm_denoise_batch", chunked_denoise)
+    monkeypatch.setattr(reconstructor, "edm_denoise_batch", chunked_denoise)
 
-    output = reconstructor._denoise_patches(x, sigma, layout, params)
+    output = reconstructor.denoise_patches(x, sigma, layout, params)
 
     assert output.shape == x.shape
     assert chunk_sizes
@@ -914,7 +914,7 @@ def test_regular_patch_denoising_honours_legacy_checkpoint_alias(monkeypatch):
     x = torch.zeros(1, 1, 12, 12)
     sigma = torch.tensor([0.02])
     generator = torch.Generator().manual_seed(1)
-    layout = reconstructor._patch_layout((8, 8), params, torch.device("cpu"), generator)
+    layout = reconstructor.patch_layout((8, 8), params, torch.device("cpu"), generator)
     checkpoint_flags = []
 
     def chunked_denoise(image_batch, position_batch, sigma, params, **kwargs):
@@ -923,9 +923,9 @@ def test_regular_patch_denoising_honours_legacy_checkpoint_alias(monkeypatch):
         checkpoint_flags.append(kwargs.get("use_checkpoint"))
         return torch.ones_like(image_batch)
 
-    monkeypatch.setattr(reconstructor, "_edm_denoise_batch", chunked_denoise)
+    monkeypatch.setattr(reconstructor, "edm_denoise_batch", chunked_denoise)
 
-    output = reconstructor._denoise_patches(x, sigma, layout, params)
+    output = reconstructor.denoise_patches(x, sigma, layout, params)
 
     assert output.shape == x.shape
     assert checkpoint_flags
@@ -934,7 +934,7 @@ def test_regular_patch_denoising_honours_legacy_checkpoint_alias(monkeypatch):
 
 def test_fixed_overlap_patch_denoising_can_checkpoint_batches(monkeypatch):
     """Verify that fixed overlap patch denoising can checkpoint batches."""
-    padis_module = importlib.import_module("LION.reconstructors.PaDIS")
+    padis_module = importlib.import_module("LION.reconstructors.diffusion.PaDIS")
     checkpoint_calls = []
 
     def fake_checkpoint(function, *args, use_reentrant=None):
@@ -954,9 +954,9 @@ def test_fixed_overlap_patch_denoising_can_checkpoint_batches(monkeypatch):
     reconstructor = PaDIS(IdentityOp(), model, params, algorithm="dps_langevin")
     x = torch.ones(1, 1, 12, 12, requires_grad=True)
     sigma = torch.tensor([0.02])
-    layout = reconstructor._fixed_overlap_patch_layout((8, 8), params)
+    layout = reconstructor.fixed_overlap_patch_layout((8, 8), params)
 
-    output = reconstructor._denoise_fixed_overlap_patches(
+    output = reconstructor.denoise_fixed_overlap_patches(
         x, sigma, layout, params, assembly="fixed_average"
     )
 
@@ -975,10 +975,10 @@ def test_padis_patch_layout_uses_supplied_generator():
     generator_a = torch.Generator().manual_seed(123)
     generator_b = torch.Generator().manual_seed(123)
 
-    layout_a = reconstructor._patch_layout(
+    layout_a = reconstructor.patch_layout(
         (8, 8), params, torch.device("cpu"), generator_a
     )
-    layout_b = reconstructor._patch_layout(
+    layout_b = reconstructor.patch_layout(
         (8, 8), params, torch.device("cpu"), generator_b
     )
 
@@ -1005,7 +1005,7 @@ def test_padis_paper_squared_residual_gradient_matches_formula():
         _,
         _,
         step_size,
-    ) = reconstructor._dps_data_gradient(
+    ) = reconstructor.dps_data_gradient(
         measurement, x, denoised, params, sigma=torch.tensor(0.02)
     )
 
@@ -1038,7 +1038,7 @@ def test_padis_least_squares_gradient_uses_lipschitz_step_form():
         normalizer,
         data_scale,
         step_size,
-    ) = reconstructor._dps_data_gradient(
+    ) = reconstructor.dps_data_gradient(
         measurement, x, x, params, sigma=torch.tensor(0.02)
     )
 
@@ -1068,7 +1068,7 @@ def test_padis_norm_gradient_matches_public_repo_formula():
         _,
         _,
         step_size,
-    ) = reconstructor._dps_data_gradient(
+    ) = reconstructor.dps_data_gradient(
         measurement, x, x, params, sigma=torch.tensor(0.02)
     )
 
@@ -1100,7 +1100,7 @@ def test_padis_scaled_identity_paper_gradient_matches_closed_form():
         _,
         _,
         step_size,
-    ) = reconstructor._dps_data_gradient(
+    ) = reconstructor.dps_data_gradient(
         measurement, x, x, params, sigma=torch.tensor(0.02)
     )
 
@@ -1127,7 +1127,7 @@ def test_padis_adjoint_correction_matches_scaled_identity_closed_form():
         raw_correction,
         normalizer,
         data_scale,
-    ) = reconstructor._apply_adjoint_correction(
+    ) = reconstructor.apply_adjoint_correction(
         x, residual, torch.tensor(0.5), params, torch.tensor(0.02)
     )
 
@@ -1151,13 +1151,13 @@ def test_padis_adjoint_data_step_schedule_matches_paper_and_public_repo():
     base_step = params.zeta / torch.linalg.norm(residual)
 
     params.adjoint_data_step_schedule = "paper"
-    paper_step = reconstructor._adjoint_data_step_size(
+    paper_step = reconstructor.adjoint_data_step_size(
         residual, sigma, params, public_repo_multiplier=True
     )
     assert torch.allclose(paper_step, base_step)
 
     params.adjoint_data_step_schedule = "public_repo"
-    public_step = reconstructor._adjoint_data_step_size(
+    public_step = reconstructor.adjoint_data_step_size(
         residual, sigma, params, public_repo_multiplier=True
     )
     assert torch.allclose(public_step, base_step * 4.0)
@@ -1177,7 +1177,7 @@ def test_padis_least_squares_adjoint_step_uses_lipschitz_form():
     x = torch.zeros(1, 1, 8, 8)
     residual = torch.ones(1, 8, 8)
     sigma = torch.tensor(0.02)
-    step = reconstructor._adjoint_data_step_size(
+    step = reconstructor.adjoint_data_step_size(
         residual, sigma, params, public_repo_multiplier=True
     )
     (
@@ -1186,7 +1186,7 @@ def test_padis_least_squares_adjoint_step_uses_lipschitz_form():
         raw_correction,
         normalizer,
         data_scale,
-    ) = reconstructor._apply_adjoint_correction(x, residual, step, params, sigma)
+    ) = reconstructor.apply_adjoint_correction(x, residual, step, params, sigma)
 
     assert torch.allclose(step, torch.tensor(3.0))
     assert normalizer == 4.0
@@ -1206,7 +1206,7 @@ def test_padis_data_gradient_normalization_uses_measurement_operator_norm():
     reconstructor = PaDIS(ScaledIdentityOp(5.0), model, params)
 
     gradient = torch.full((1, 1, 12, 12), 30.0)
-    scaled, normalizer, scale = reconstructor._normalise_data_gradient(gradient, params)
+    scaled, normalizer, scale = reconstructor.normalise_data_gradient(gradient, params)
 
     assert normalizer == 15.0
     assert scale == 1.0
@@ -1224,7 +1224,7 @@ def test_padis_data_gradient_normalization_uses_measurement_lipschitz_constant()
     reconstructor = PaDIS(ScaledIdentityOp(5.0), model, params)
 
     gradient = torch.full((1, 1, 12, 12), 450.0)
-    scaled, normalizer, scale = reconstructor._normalise_data_gradient(gradient, params)
+    scaled, normalizer, scale = reconstructor.normalise_data_gradient(gradient, params)
 
     assert normalizer == 225.0
     assert scale == 1.0
@@ -1240,7 +1240,7 @@ def test_padis_data_gradient_normalization_can_be_disabled():
     reconstructor = PaDIS(ScaledIdentityOp(5.0), model, params)
 
     gradient = torch.full((1, 1, 12, 12), 30.0)
-    scaled, normalizer, scale = reconstructor._normalise_data_gradient(gradient, params)
+    scaled, normalizer, scale = reconstructor.normalise_data_gradient(gradient, params)
 
     assert normalizer == 1.0
     assert scale == 1.0

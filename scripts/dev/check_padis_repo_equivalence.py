@@ -35,7 +35,7 @@ from LION.losses.PaDIS import (  # noqa: E402
 )
 from LION.optimizers import PaDISSolver  # noqa: E402
 from LION.reconstructors import PaDIS  # noqa: E402
-from LION.reconstructors.PaDIS import _PatchLayout  # noqa: E402
+from LION.reconstructors.diffusion.padis import PatchLayout  # noqa: E402
 from LION.utils.parameter import LIONParameter  # noqa: E402
 
 
@@ -306,7 +306,7 @@ def _compare_patch_assembly(
     sigma = torch.tensor(0.02, device=device, dtype=dtype)
     indices = _fixed_indices(8, 4, offset=(1, 2))
     latents_pos = reconstructor._position_grid(padded)
-    layout = _PatchLayout(indices=indices, image_height=8, image_width=8)
+    layout = PatchLayout(indices=indices, image_height=8, image_width=8)
 
     oracle = denoised_from_patches(
         reconstructor.model,
@@ -317,7 +317,7 @@ def _compare_patch_assembly(
         [list(index) for index in indices],
         t_goal=0,
     )
-    lion = reconstructor._denoise_patches(padded, sigma.reshape(1), layout, params)
+    lion = reconstructor.denoise_patches(padded, sigma.reshape(1), layout, params)
     max_abs = float(torch.max(torch.abs(oracle - lion)).detach().cpu())
     if max_abs > tolerance:
         raise AssertionError(f"Patch assembly mismatch: max_abs={max_abs}")
@@ -343,7 +343,7 @@ def _compare_dps_update(
     sigma = torch.tensor(0.02, device=device, dtype=dtype)
     indices = _fixed_indices(8, 4, offset=(2, 1))
     latents_pos = reconstructor._position_grid(padded)
-    layout = _PatchLayout(indices=indices, image_height=8, image_width=8)
+    layout = PatchLayout(indices=indices, image_height=8, image_width=8)
     measurement = torch.linspace(0.2, 0.8, 64, device=device, dtype=dtype).reshape(
         1, 8, 8
     )
@@ -359,7 +359,7 @@ def _compare_dps_update(
         [list(index) for index in indices],
         t_goal=0,
     ).squeeze(0)
-    lion_d = reconstructor._denoise_patches(x_lion, sigma.reshape(1), layout, params)
+    lion_d = reconstructor.denoise_patches(x_lion, sigma.reshape(1), layout, params)
     oracle_grad = measurement_cond_fn(
         measurement,
         x_oracle,
@@ -378,7 +378,7 @@ def _compare_dps_update(
             _normalizer,
             lion_scale,
             step,
-        ) = reconstructor._dps_data_gradient(
+        ) = reconstructor.dps_data_gradient(
             measurement, x_lion, lion_d, params, sigma=sigma
         )
     finally:
@@ -442,7 +442,7 @@ def _compare_paper_dps_update(
     x = F.pad(central, (4, 4, 4, 4), mode="constant", value=0.0)
     x = x.clone().detach().requires_grad_(True)
     sigma = torch.tensor(0.02, device=device, dtype=dtype)
-    layout = _PatchLayout(
+    layout = PatchLayout(
         indices=_fixed_indices(8, 4, offset=(2, 1)),
         image_height=8,
         image_width=8,
@@ -456,8 +456,8 @@ def _compare_paper_dps_update(
     previous_params = getattr(reconstructor, "_active_params", None)
     reconstructor._active_params = params
     try:
-        denoised = reconstructor._denoise_patches(x, sigma.reshape(1), layout, params)
-        predicted = reconstructor._forward_project(
+        denoised = reconstructor.denoise_patches(x, sigma.reshape(1), layout, params)
+        predicted = reconstructor.forward_project(
             reconstructor._crop(denoised, params).squeeze(0)
         )
         expected_residual = measurement - predicted.to(dtype=measurement.dtype)
@@ -472,7 +472,7 @@ def _compare_paper_dps_update(
             _normalizer,
             _scale,
             step,
-        ) = reconstructor._dps_data_gradient(
+        ) = reconstructor.dps_data_gradient(
             measurement, x, denoised, params, sigma=sigma
         )
     finally:
@@ -706,7 +706,7 @@ def _patch_assembly_trace(
     padded = F.pad(central, (4, 4, 4, 4), mode="constant", value=0.0)
     sigma = torch.tensor(0.02, device=device, dtype=dtype)
     indices = _fixed_indices(8, 4, offset=(1, 2))
-    layout = _PatchLayout(indices=indices, image_height=8, image_width=8)
+    layout = PatchLayout(indices=indices, image_height=8, image_width=8)
     if source == "oracle":
         denoised_from_patches = oracle_functions["denoisedFromPatches"]
         latents_pos = reconstructor._position_grid(padded)
@@ -720,7 +720,7 @@ def _patch_assembly_trace(
             t_goal=0,
         )
     elif source == "lion":
-        denoised = reconstructor._denoise_patches(
+        denoised = reconstructor.denoise_patches(
             padded, sigma.reshape(1), layout, params
         )
     else:
@@ -742,7 +742,7 @@ def _public_dps_trace(
     padded = F.pad(central, (4, 4, 4, 4), mode="constant", value=0.0)
     sigma = torch.tensor(0.02, device=device, dtype=dtype)
     indices = _fixed_indices(8, 4, offset=(2, 1))
-    layout = _PatchLayout(indices=indices, image_height=8, image_width=8)
+    layout = PatchLayout(indices=indices, image_height=8, image_width=8)
     measurement = torch.linspace(0.2, 0.8, 64, device=device, dtype=dtype).reshape(
         1, 8, 8
     )
@@ -783,7 +783,7 @@ def _public_dps_trace(
         x = padded.clone().detach().requires_grad_(True)
         noise = torch.linspace(-0.2, 0.2, x.numel(), device=device, dtype=dtype)
         noise = noise.reshape_as(x)
-        denoised = reconstructor._denoise_patches(x, sigma.reshape(1), layout, params)
+        denoised = reconstructor.denoise_patches(x, sigma.reshape(1), layout, params)
         previous_params = getattr(reconstructor, "_active_params", None)
         reconstructor._active_params = params
         try:
@@ -794,7 +794,7 @@ def _public_dps_trace(
                 _normalizer,
                 _scale,
                 step,
-            ) = reconstructor._dps_data_gradient(
+            ) = reconstructor.dps_data_gradient(
                 measurement, x, denoised, params, sigma=sigma
             )
         finally:
@@ -827,7 +827,7 @@ def _paper_dps_trace(
     x = F.pad(central, (4, 4, 4, 4), mode="constant", value=0.0)
     x = x.clone().detach().requires_grad_(True)
     sigma = torch.tensor(0.02, device=device, dtype=dtype)
-    layout = _PatchLayout(
+    layout = PatchLayout(
         indices=_fixed_indices(8, 4, offset=(2, 1)),
         image_height=8,
         image_width=8,
@@ -841,9 +841,9 @@ def _paper_dps_trace(
     previous_params = getattr(reconstructor, "_active_params", None)
     reconstructor._active_params = params
     try:
-        denoised = reconstructor._denoise_patches(x, sigma.reshape(1), layout, params)
+        denoised = reconstructor.denoise_patches(x, sigma.reshape(1), layout, params)
         if source == "paper":
-            predicted = reconstructor._forward_project(
+            predicted = reconstructor.forward_project(
                 reconstructor._crop(denoised, params).squeeze(0)
             )
             residual = measurement - predicted.to(dtype=measurement.dtype)
@@ -860,7 +860,7 @@ def _paper_dps_trace(
                 _normalizer,
                 _scale,
                 step,
-            ) = reconstructor._dps_data_gradient(
+            ) = reconstructor.dps_data_gradient(
                 measurement, x, denoised, params, sigma=sigma
             )
         else:

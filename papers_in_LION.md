@@ -61,7 +61,7 @@ Problems." Advances in Neural Information Processing Systems 37 (2024):
 1625-1660.
 [https://doi.org/10.52202/079017-0052](https://doi.org/10.52202/079017-0052)
 
-`LION/reconstructors/PaDIS.py` assembles the whole-image patch score and provides
+`LION/reconstructors/diffusion/PaDIS.py` assembles the whole-image patch score and provides
 the reconstruction samplers. `LION/losses/PaDIS.py` and
 `LION/optimizers/PaDISSolver.py` implement patch training.
 
@@ -73,7 +73,7 @@ Problems." The Eleventh International Conference on Learning Representations
 (2023).
 [Official conference listing](https://openreview.net/forum?id=OnD9zGAGT0k)
 
-`LION/reconstructors/PaDIS.py` implements DPS measurement conditioning for
+`LION/reconstructors/diffusion/PaDIS.py` implements DPS measurement conditioning for
 patch and whole-image diffusion priors.
 
 #### Annealed Langevin dynamics
@@ -83,7 +83,7 @@ the Data Distribution." Advances in Neural Information Processing Systems 32
 (2019).
 [Official NeurIPS listing](https://proceedings.neurips.cc/paper/2019/hash/3001ef257407d5a371a96dcd947c7d93-Abstract.html)
 
-`LION/reconstructors/PaDIS.py` implements Langevin prior updates and the
+`LION/reconstructors/diffusion/PaDIS.py` implements Langevin prior updates and the
 PaDIS-DPS/Langevin sampler.
 
 #### Predictor-corrector sampling
@@ -92,7 +92,7 @@ The predictor-corrector framework is attributed to Song et al.'s score-SDE
 paper above. The PaDIS-specific patch-layout and CT sampling conventions are
 additionally attributed to Hu et al.'s PaDIS publication.
 
-`LION/reconstructors/PaDIS.py`
+`LION/reconstructors/diffusion/PaDIS.py`
 
 #### Denoising Diffusion Null-Space Model (DDNM)
 
@@ -101,7 +101,7 @@ Denoising Diffusion Null-Space Model." The Eleventh International Conference
 on Learning Representations (2023).
 [Official conference listing](https://openreview.net/forum?id=mRieQgMtNTQ)
 
-`LION/reconstructors/PaDIS.py` implements the VE-DDNM correction used with the
+`LION/reconstructors/diffusion/PaDIS.py` implements the VE-DDNM correction used with the
 PaDIS and whole-image scores.
 
 #### EDM preconditioning and noise schedules
@@ -112,7 +112,7 @@ Information Processing Systems 35 (2022): 26565-26577.
 [https://doi.org/10.52202/068431-1926](https://doi.org/10.52202/068431-1926)
 
 `LION/models/diffusion/NCSNpp.py`, `LION/losses/PaDIS.py`,
-`LION/optimizers/PaDISSolver.py`, and `LION/reconstructors/PaDIS.py`
+`LION/optimizers/PaDISSolver.py`, and `LION/reconstructors/diffusion/PaDIS.py`
 
 ## Classical and plug-and-play reconstruction
 

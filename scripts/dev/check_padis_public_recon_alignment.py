@@ -150,7 +150,7 @@ def assert_close(name, got, expected, atol=2e-5, rtol=2e-5):
 def test_noise_schedule():
     reconstructor = make_lion_reconstructor()
     params = reconstructor.parameters
-    schedule = reconstructor._noise_schedule(params, torch.device("cpu"))
+    schedule = reconstructor.noise_schedule(params, torch.device("cpu"))
     step_indices = torch.arange(params.num_steps, dtype=torch.float64)
     expected = (
         params.sigma_max ** (1 / params.rho)
@@ -174,7 +174,7 @@ def test_patch_layout_and_denoising():
     random.seed(1234)
     public_indices = getIndices(spaced, patches, 2, 5)
     random.seed(1234)
-    lion_layout = reconstructor._patch_layout((8, 8), params, device)
+    lion_layout = reconstructor.patch_layout((8, 8), params, device)
     if [list(index) for index in lion_layout.indices] != public_indices:
         raise AssertionError("patch layout mismatch")
 
@@ -188,7 +188,7 @@ def test_patch_layout_and_denoising():
         public_indices,
         t_goal=0,
     )
-    lion = reconstructor._denoise_patches(x, sigma, lion_layout, params)
+    lion = reconstructor.denoise_patches(x, sigma, lion_layout, params)
     assert_close("patch denoising assembly", lion, public, atol=3e-5, rtol=3e-5)
 
 
