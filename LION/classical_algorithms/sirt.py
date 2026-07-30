@@ -21,10 +21,17 @@ def sirt(
     progress_bar: bool = False,
     callbacks: list[Callable] = [],
 ) -> torch.Tensor:
-    """Computes the total-variation minimization using Chambolle-Pock on a batched input.\n
-    See ts_algorithms.tv_min2d for more details.
+    """Compute SIRT reconstructions on a batched input.
+
+    See ts_algorithms.sirt for more details.
     """
-    B, _, _, _ = sino.shape
+    if sino.dim() == 4:
+        B, _, _, _ = sino.shape
+        remove_batch = False
+    elif sino.dim() == 3:
+        B = 1
+        sino = sino.unsqueeze(0)
+        remove_batch = True
     if B == 0:
         raise NoDataException("Given 0 batches, no data to operate on!")
     if isinstance(op, Geometry):
@@ -33,7 +40,7 @@ def sirt(
     for i in range(B):
         sub_recon = ts_sirt(
             op,
-            sino,
+            sino[i],
             num_iterations,
             min_constraint,
             max_constraint,
@@ -44,4 +51,6 @@ def sirt(
             callbacks,
         )
         recon[i] = sub_recon
+    if remove_batch:
+        recon = recon.squeeze(0)
     return recon

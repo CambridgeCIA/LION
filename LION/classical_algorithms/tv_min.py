@@ -19,10 +19,17 @@ def tv_min(
     progress_bar: bool = False,
     callbacks: list[Callable] = [],
 ) -> torch.Tensor:
-    """Computes the total-variation minimization using Chambolle-Pock on a batched input.\n
+    """Compute TV-minimization reconstructions on a batched input.
+
     See ts_algorithms.tv_min2d for more details.
     """
-    B, _, _, _ = sino.shape
+    if sino.dim() == 4:
+        B, _, _, _ = sino.shape
+        remove_batch = False
+    elif sino.dim() == 3:
+        B = 1
+        sino = sino.unsqueeze(0)
+        remove_batch = True
     if B == 0:
         raise NoDataException("Given 0 batches, no data to operate on!")
     if isinstance(op, Geometry):
@@ -30,7 +37,9 @@ def tv_min(
     recon = sino.new_zeros(B, *op.domain_shape)
     for i in range(B):
         sub_recon = ts_tv_min(
-            op, sino, lam, num_iterations, L, non_negativity, progress_bar, callbacks
+            op, sino[i], lam, num_iterations, L, non_negativity, progress_bar, callbacks
         )
         recon[i] = sub_recon
+    if remove_batch:
+        recon = recon.squeeze(0)
     return recon
