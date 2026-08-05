@@ -24,7 +24,11 @@ class PSNR(nn.Module):
     """
 
     def forward(
-        self, x: torch.Tensor, target: torch.Tensor, reduce=str | None, batched=True
+        self,
+        x: torch.Tensor,
+        target: torch.Tensor,
+        reduce: str | None = None,
+        batched=True,
     ) -> torch.Tensor:
         if x.shape != target.shape:
             raise ShapeMismatchException(
@@ -49,5 +53,5 @@ class PSNR(nn.Module):
                 )
         else:
             return torch.tensor(
-                skim_psnr(x, target, data_range=target_.max() - target_.min())
+                skim_psnr(x_, target_, data_range=target_.max() - target_.min())
             )

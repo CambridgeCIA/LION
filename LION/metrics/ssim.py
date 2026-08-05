@@ -28,9 +28,9 @@ class SSIM(nn.Module):
         self,
         x: torch.Tensor,
         target: torch.Tensor,
-        reduce=str | None,
+        reduce: str | None = None,
         batched=True,
-        channel_axis: int | None = 1,
+        channel_axis: int | None = None,
     ) -> torch.Tensor:
         if x.shape != target.shape:
             raise ShapeMismatchException(
@@ -38,16 +38,22 @@ class SSIM(nn.Module):
             )
         x_ = x.detach().cpu().numpy().squeeze()
         target_ = target.detach().cpu().numpy().squeeze()
+        # LION is channels-first, so a 3D sample means (C, W, H) -> channel axis 0
         if batched:
             # shape either B, C, W, H, ... or B, W, H, ...
             # if it's not, then that's your fault not mine, you told me it was batched
             vals = torch.empty((x.shape[0]))
             for i in range(x.shape[0]):
-                vals[i] = skim_ssim(
-                    x_[i],
-                    target_[i],
-                    data_range=target_[i].max() - target_[i].min(),
-                    channel_axis=channel_axis,
+                sample_axis = channel_axis
+                if sample_axis is None:
+                    sample_axis = 0 if x_[i].ndim >= 3 else None
+                vals[i] = torch.tensor(
+                    skim_ssim(
+                        x_[i],
+                        target_[i],
+                        data_range=target_[i].max() - target_[i].min(),
+                        channel_axis=sample_axis,
+                    )
                 )
 
             if reduce is None:
@@ -59,10 +65,12 @@ class SSIM(nn.Module):
                     f"expected one of 'mean' or None for parameter 'reduce', got {reduce}"
                 )
         else:
+            if channel_axis is None:
+                channel_axis = 0 if x_.ndim >= 3 else None
             return torch.tensor(
                 skim_ssim(
-                    x,
-                    target,
+                    x_,
+                    target_,
                     data_range=target_.max() - target_.min(),
                     channel_axis=channel_axis,
                 )
