@@ -66,9 +66,7 @@ class MockOp:
 def mock_ts_tv_min():
     """Replace the real ts_algorithms.tv_min2d with a deterministic mock."""
     _tv_mod.ts_tv_min = MagicMock()
-    _tv_mod.ts_tv_min.side_effect = lambda op, y, *a, **kw: torch.zeros(
-        op.domain_shape
-    )
+    _tv_mod.ts_tv_min.side_effect = lambda op, y, *a, **kw: torch.zeros(op.domain_shape)
     yield
     _tv_mod.ts_tv_min = ts_tv_min
 

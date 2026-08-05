@@ -19,6 +19,7 @@ sys.modules["ts_algorithms"] = MagicMock()
 
 class Geometry:
     """Minimal Geometry stub for isinstance checks."""
+
     pass
 
 
@@ -35,6 +36,7 @@ sys.modules["LION.operators.CTProjectionOp"] = MagicMock()
 
 class NoDataException(Exception):
     """Stub matching LION.exceptions.exceptions.NoDataException."""
+
     pass
 
 
@@ -62,6 +64,7 @@ import pytest
 
 class MockOp:
     """Minimal operator stub matching tomosipo's interface."""
+
     def __init__(self, domain_shape=(1, 16, 16), range_shape=(1, 20, 20)):
         self.domain_shape = domain_shape
         self.range_shape = range_shape
@@ -71,9 +74,7 @@ class MockOp:
 def mock_ts_sirt():
     """Replace the real ts_algorithms.sirt with a deterministic mock."""
     _sirt_mod.ts_sirt = MagicMock()
-    _sirt_mod.ts_sirt.side_effect = lambda op, y, *a, **kw: torch.zeros(
-        op.domain_shape
-    )
+    _sirt_mod.ts_sirt.side_effect = lambda op, y, *a, **kw: torch.zeros(op.domain_shape)
     yield
     _sirt_mod.ts_sirt = ts_sirt  # restore
 
