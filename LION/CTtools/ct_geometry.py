@@ -125,8 +125,7 @@ class Geometry(LIONParameter):
             angles=np.linspace(0, 2 * np.pi, 50, endpoint=False),
         )
 
-    staticmethod
-
+    @staticmethod
     def parallel_sparse_angle_parameters(image_shape=None):
         if image_shape is None:
             image_shape = [1, 512, 512]

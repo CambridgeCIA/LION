@@ -50,7 +50,7 @@ class LIONParameter:
         if isinstance(fname, str):
             fname = Path(fname)
         if fname.suffix != ".json":
-            fname.joinpath(".json")
+            fname = fname.with_suffix(".json")
         with open(fname, "w", encoding="utf-8") as f:
             json.dump(
                 self.serialize(), f, ensure_ascii=False, indent=4, cls=JSONParamEncoder

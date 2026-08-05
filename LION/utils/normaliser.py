@@ -53,8 +53,8 @@ class Normalisation:
         # assume x is a torch tensor
         if self.type == "sample":
             # normalize each sample in batch separately
-            self.last_max = x.max(dim=(2, 3), keepdim=True)[0]
-            self.last_min = x.min(dim=(2, 3), keepdim=True)[0]
+            self.last_max = x.amax(dim=(2, 3), keepdim=True)
+            self.last_min = x.amin(dim=(2, 3), keepdim=True)
             return (x - self.last_min) / (self.last_max - self.last_min)
         if self.type == "dataset" or self.type == "custom":
             return (x - self.xmin) / (self.xmax - self.xmin)
@@ -69,7 +69,11 @@ class Normalisation:
                 return (x * (self.last_max - self.last_min)) + self.last_min
             else:
                 return (
-                    x * (target.max() - target.min(dim=(2, 3), keepdim=True)[0])
-                ) + target.min(dim=(2, 3), keepdim=True)[0]
+                    x
+                    * (
+                        target.amax(dim=(2, 3), keepdim=True)
+                        - target.amin(dim=(2, 3), keepdim=True)
+                    )
+                ) + target.amin(dim=(2, 3), keepdim=True)
         if self.type == "none":
             return x
