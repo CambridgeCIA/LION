@@ -83,8 +83,10 @@ class LIONmodel(nn.Module, ABC):
                 f"Expected geometry to be of type Geometry or None, but got {type(geometry).__name__}. "
                 "If you passed positional arguments to the model, please verify their order matches the model's __init__ signature."
             )
-        
-        if model_parameters is not None and not isinstance(model_parameters, LIONModelParameter):
+
+        if model_parameters is not None and not isinstance(
+            model_parameters, LIONModelParameter
+        ):
             raise TypeError(
                 f"Expected model_parameters to be of type LIONModelParameter or None, but got {type(model_parameters).__name__}. "
                 "Ensure you are not accidentally passing a Geometry object as model_parameters."
