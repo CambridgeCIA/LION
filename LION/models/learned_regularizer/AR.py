@@ -5,13 +5,13 @@
 # Modifications: Ander Biguri, Zakhar Shumaylov, Charlie Shoebridge
 # =============================================================================
 import torch.nn as nn
-from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
+from LION.models.LIONmodel import LIONmodel, ModelInputType, LIONModelParameter
 import LION.CTtools.ct_geometry as ct
 
 
 class AR(LIONmodel):
     def __init__(
-        self, model_parameters: LIONParameter, geometry_parametrs: ct.Geometry
+        self, model_parameters: LIONModelParameter, geometry_parametrs: ct.Geometry
     ):
         super().__init__(model_parameters, geometry_parametrs)
 

@@ -9,7 +9,7 @@
 from typing import Optional
 import torch
 import torch.nn as nn
-from LION.models.LIONmodel import LIONmodel, ModelInputType, ModelParams
+from LION.models.LIONmodel import LIONmodel, ModelInputType, LIONModelParameter
 import LION.CTtools.ct_geometry as ct
 import torch.nn.utils.parametrize as P
 from LION.utils.math import power_method
@@ -77,7 +77,7 @@ class ACR(LIONmodel):
     def __init__(
         self,
         geometry_parameters: ct.Geometry,
-        model_parameters: Optional[ACRParams] = None,
+        model_parameters: Optional[LIONModelParameter] = None,
     ):
 
         super().__init__(model_parameters, geometry_parameters)
@@ -180,7 +180,7 @@ class ACR(LIONmodel):
         params.stride = 1
         params.relu_type = "LeakyReLU"
         params.layers = 5
-        params.input_type = ModelInputType.IMAGE
+        params.model_input_type = ModelInputType.IMAGE
         return params
 
     @staticmethod
