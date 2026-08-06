@@ -189,13 +189,17 @@ class LPD(LIONmodel):
                     ]
                 )
         else:
-            self.lambda_dual = (
+            self.register_buffer(
+                "lambda_dual",
                 torch.ones(self.model_parameters.n_iters)
-                * self.model_parameters.step_size
+                * self.model_parameters.step_size,
+                persistent=False,
             )
-            self.lambda_primal = (
+            self.register_buffer(
+                "lambda_primal",
                 torch.ones(self.model_parameters.n_iters)
-                * self.model_parameters.step_size
+                * self.model_parameters.step_size,
+                persistent=False,
             )
 
     @staticmethod

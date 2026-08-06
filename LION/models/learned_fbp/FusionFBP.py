@@ -307,11 +307,10 @@ class FusionFBPNetwork(LIONmodel):
         self.interpolator_conv = Conv1d(1, 1, kernel_size=3, padding=1, bias=False)
 
         # Tomosipo normalization map (1s projection)
-        sinogram_ones = torch.ones(
-            (1, 1, self.num_angles_, self.num_detectors),
-            device=torch.cuda.current_device(),
+        sinogram_ones = torch.ones((1, 1, self.num_angles_, self.num_detectors))
+        self.register_buffer(
+            "tomosipo_normalizer", self.AT(sinogram_ones) + 1e-6, persistent=False
         )
-        self.tomosipo_normalizer = self.AT(sinogram_ones) + 1e-6
 
         # Denoising blocks
         self.denoiser = DenoisingBlock()

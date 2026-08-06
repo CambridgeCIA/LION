@@ -382,13 +382,17 @@ class cLPD(LIONmodel):
                     ]
                 )
         else:
-            self.lambda_dual = (
+            self.register_buffer(
+                "lambda_dual",
                 torch.ones(self.model_parameters.n_iters)
-                * self.model_parameters.step_size
+                * self.model_parameters.step_size,
+                persistent=False,
             )
-            self.lambda_primal = (
+            self.register_buffer(
+                "lambda_primal",
                 torch.ones(self.model_parameters.n_iters)
-                * self.model_parameters.step_size
+                * self.model_parameters.step_size,
+                persistent=False,
             )
 
     @staticmethod
@@ -413,7 +417,7 @@ class cLPD(LIONmodel):
         params.data_channels = [7, 32, 32, 32, 5]
         params.reg_channels = [6, 32, 32, 32, 5]
         params.learned_step = True
-        params.step_size = True
+        params.step_size = None
         params.step_positive = False
         params.mode = "ct"
         params.do_secon_order = False
