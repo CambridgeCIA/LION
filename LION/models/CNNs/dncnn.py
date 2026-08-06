@@ -17,6 +17,8 @@ class DnCNN(LIONmodel):
     def __init__(self, model_parameters: LIONParameter = None):
         super().__init__(model_parameters)
 
+        model_parameters = self.model_parameters
+
         if model_parameters.act.lower() in dict(
             getmembers(torch.nn.functional, isfunction)
         ):

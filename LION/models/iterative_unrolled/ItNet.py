@@ -22,7 +22,7 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.models.CNNs.UNets.Unet import UNet
 
 
-class ItNet(LIONmodel.LIONmodel):
+class ItNet(LIONmodel):
     def __init__(self, geometry: ct.Geometry, model_parameters: LIONParameter = None):
         if geometry is None:
             raise ValueError("Geometry parameters required. ")

@@ -31,7 +31,7 @@ class AR(LIONmodel):
             self.leaky_relu,
         )
 
-        size = self.geo.image_shape[-1]
+        size = self.geometry.image_shape[-1]
         self.fc = nn.Sequential(
             nn.Linear(128 * (size // 2**4) ** 2, 256),
             self.leaky_relu,
