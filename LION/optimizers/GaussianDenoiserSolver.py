@@ -47,9 +47,9 @@ class GaussianDenoiserSolver(LIONsolver):
         self.patch = None
 
         # Make range of noise levels if noise_level is a single value
-        if noise_level.ndim == 1 and noise_level.size(0) == 1:
+        if noise_level.ndim == 1 and noise_level.shape[0] == 1:
             noise_level = np.array([noise_level[0], noise_level[0]])
-        elif noise_level.ndim != 1 or noise_level.size(0) != 2:
+        elif noise_level.ndim != 1 or noise_level.shape[0] != 2:
             raise LIONSolverException(
                 "noise_level must be a numpy array of length 2, or a single value."
             )

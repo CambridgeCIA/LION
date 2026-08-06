@@ -45,7 +45,7 @@ class LGblock(nn.Module):
         return self.block(x)
 
 
-class LG(LIONmodel.LIONmodel):
+class LG(LIONmodel):
     def __init__(self, geometry: ct.Geometry, model_parameters: LIONParameter = None):
         super().__init__(model_parameters, geometry)
         self.geometry = geometry

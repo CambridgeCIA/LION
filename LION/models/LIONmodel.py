@@ -22,6 +22,7 @@ from LION.utils.parameter import LIONParameter
 # We will need utilities
 import LION.utils.utils as ai_utils
 from LION.utils.normaliser import Normalisation
+from LION.exceptions.exceptions import NoDataException
 
 # (optional) Given this is a tomography library, it is likely that you will want to load geometries of the tomogprahic problem you are solving, e.g. a ct_geometry
 import LION.CTtools.ct_geometry as ct

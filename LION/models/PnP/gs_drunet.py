@@ -5,7 +5,7 @@
 # Modifications: -
 # =============================================================================
 
-from .drunet import DRUNet
+from ..CNNs.drunet import DRUNet
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 
