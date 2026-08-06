@@ -46,7 +46,9 @@ class EquivariantSolver(LIONsolver):
         assert 360 % cardinality == 0
         angle_increment = 360 / cardinality
 
-        return [lambda x: TF.rotate(x, i * angle_increment) for i in range(cardinality)]
+        return [
+            lambda x, i=i: TF.rotate(x, i * angle_increment) for i in range(cardinality)
+        ]
 
     @staticmethod
     def default_parameters() -> LIONParameter:
