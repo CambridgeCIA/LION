@@ -236,7 +236,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             error=False,
             autofill=autofill,
             verbose=verbose,
-            default=torch.device(torch.cuda.current_device()),
+            default=torch.device(
+                torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
+            ),
         )
 
         # Test 2: is the model set? if not, raise error or warn
