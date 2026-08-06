@@ -206,7 +206,7 @@ class Up(nn.Module):
         return self.block(x)
 
 
-class cFBPConvNet(LIONmodel.LIONmodel):
+class cFBPConvNet(LIONmodel):
     def __init__(
         self,
         geometry_parameters: ct.Geometry,
@@ -442,7 +442,7 @@ class cFBPConvNet(LIONmodel.LIONmodel):
     @staticmethod
     def default_parameters():
         params = LIONModelParameter()
-        params = ModelInputType.IMAGE
+        params.model_input_type = ModelInputType.IMAGE
         params.down_1_channels = [64, 64, 64, 64]
         params.down_2_channels = [128, 128, 128]
         params.down_3_channels = [256, 256, 256]
