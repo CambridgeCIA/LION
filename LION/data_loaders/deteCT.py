@@ -274,15 +274,15 @@ class deteCT(Dataset):
             warnings.warn(
                 f"Raw data detector_shape[1] must be 956, it is {geometry.detector_shape[1]}. Interpolation will be used, but note that you are not using exactly the raw data"
             )
-        if geometry.detector_size != default_geo.detector_size:
+        if not np.array_equal(geometry.detector_size, default_geo.detector_size):
             raise ValueError(f"detector_size must be {default_geo.detector_size}")
-        if geometry.image_shape != default_geo.image_shape:
+        if not np.array_equal(geometry.image_shape, default_geo.image_shape):
             warnings.warn(
                 f"image_shape must be {default_geo.image_shape}, it is {geometry.image_shape}. Interpolation will be used, but note that you are not using exactly the raw data"
             )
-        if geometry.image_size[1:] != default_geo.image_size[1:]:
+        if not np.array_equal(geometry.image_size[1:], default_geo.image_size[1:]):
             raise ValueError(f"image_size must be {default_geo.image_size}")
-        if geometry.image_pos != default_geo.image_pos:
+        if not np.array_equal(geometry.image_pos, default_geo.image_pos):
             raise ValueError(f"image_pos must be {default_geo.image_pos}")
 
         full_angles = self.get_default_geometry().angles
@@ -291,7 +291,12 @@ class deteCT(Dataset):
 
             for angle in geometry.angles:
                 index = next(
-                    i for i, _ in enumerate(full_angles) if np.isclose(_, angle, 10e-4)
+                    (
+                        i
+                        for i, _ in enumerate(full_angles)
+                        if np.isclose(_, angle, 10e-4)
+                    ),
+                    None,
                 )
                 if index is None:
                     raise ValueError(
@@ -466,7 +471,7 @@ class deteCT(Dataset):
             # Even if input is recon, we may want to actually do it ourselves.
             if self.do_recon:
                 sinogram = self.__load_and_preprocess_sinogram__(index, self.input_mode)
-                op = deteCT.get_operator()
+                op = self.get_operator()
                 if self.recon_algo == "nag_ls":
                     input = nag_ls(op, sinogram, 100, min_constraint=0)
                 elif self.recon_algo == "fdk":
@@ -495,7 +500,7 @@ class deteCT(Dataset):
                 )
                 self.add_noise = noise
 
-                op = deteCT.get_operator()
+                op = self.get_operator()
                 if self.recon_algo == "nag_ls":
                     target = nag_ls(op, sinogram, 100, min_constraint=0)
                 elif self.recon_algo == "fdk":
