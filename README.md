@@ -1,6 +1,6 @@
 # LION: AI tools for learned tomographic and other image reconstruction tasks
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-12-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-13-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 [![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](#black-code-style-)
@@ -97,6 +97,7 @@ Read [`developers.md`](developers.md)
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/cshoebridge"><img src="https://avatars.githubusercontent.com/u/74095041?v=4?s=100" width="100px;" alt="Charlie Shoebridge"/><br /><sub><b>Charlie Shoebridge</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=cshoebridge" title="Code">💻</a> <a href="#design-cshoebridge" title="Design">🎨</a> <a href="#ideas-cshoebridge" title="Ideas, Planning, & Feedback">🤔</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/AndreaSainz"><img src="https://avatars.githubusercontent.com/u/185353475?v=4?s=100" width="100px;" alt="Andrea Sainz Bear"/><br /><sub><b>Andrea Sainz Bear</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=AndreaSainz" title="Code">💻</a> <a href="https://github.com/CambridgeCIA/LION/issues?q=author%3AAndreaSainz" title="Bug reports">🐛</a> <a href="#research-AndreaSainz" title="Research">🔬</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/trung-vt"><img src="https://avatars.githubusercontent.com/u/65380717?v=4?s=100" width="100px;" alt="Thanh Trung Vu"/><br /><sub><b>Thanh Trung Vu</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=trung-vt" title="Code">💻</a> <a href="https://github.com/CambridgeCIA/LION/issues?q=author%3Atrung-vt" title="Bug reports">🐛</a> <a href="#research-trung-vt" title="Research">🔬</a> <a href="#design-trung-vt" title="Design">🎨</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/cslht"><img src="https://avatars.githubusercontent.com/u/263871389?v=4?s=100" width="100px;" alt="cslht"/><br /><sub><b>cslht</b></sub></a><br /><a href="https://github.com/CambridgeCIA/LION/commits?author=cslht" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
