@@ -491,7 +491,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                     warnings.warn(f"Attribute {attr} is not callable")
                     return 2
         # just standrad type chekcking, error or warn, depends of settings
-        elif isinstance(getattr(self, attr), type):
+        elif not isinstance(getattr(self, attr), expected_type):
             if error:
                 raise ValueError(
                     f"Attribute {attr} is not of type {expected_type}, its {type(getattr(self, attr))}"
@@ -599,7 +599,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                     data = fdk(data, self.op)
                 output = self.model(data.to(self.device))
                 test_loss = np.append(
-                    test_loss, self.testing_fn(output, target.to(self.device))
+                    test_loss,
+                    self.testing_fn(output, target.to(self.device)).cpu().numpy(),
                 )
 
         if self.verbose:
