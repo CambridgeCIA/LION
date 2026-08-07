@@ -27,6 +27,7 @@ class SupervisedSolver(LIONsolver):
         model_regularization=None,
         device: torch.device = None,
         save_folder: str = None,
+        image_initializer=None,
     ):
 
         super().__init__(
@@ -42,6 +43,7 @@ class SupervisedSolver(LIONsolver):
         if verbose:
             print("Supervised solver training on device: ", device)
         self.op = make_operator(self.geometry)
+        self.image_initializer = image_initializer
 
     def mini_batch_step(self, sino, target):
         """
@@ -50,7 +52,11 @@ class SupervisedSolver(LIONsolver):
         """
         # Forward pass
         if self.model.get_input_type() == ModelInputType.IMAGE:
-            data = fdk(sino, self.op)
+            if self.image_initializer is not None:
+                data = self.image_initializer(sino, self.op)
+            else:
+                data = fdk(sino, self.op)
+            
             if self.do_normalise:
                 data = self.model.normalise.normalise(data)
                 target = self.model.normalise.normalise(target)
