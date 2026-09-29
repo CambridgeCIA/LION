@@ -49,7 +49,6 @@ import inspect
 
 class ModelInputType(int, Enum):
     SINOGRAM = 0
-    NOISY_RECON = 1
     IMAGE = 1
 
 
