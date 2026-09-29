@@ -56,9 +56,11 @@ class ModelInputType(int, Enum):
 # Class for Model parameters that should be true for all models
 class LIONModelParameter(LIONParameter):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        # Set defaults before applying kwargs, so values passed in (e.g. when
+        # loading from file) are not overwritten.
         self.model_input_type = None
         self.normalisator = None
+        super().__init__(**kwargs)
 
 
 class LIONmodel(nn.Module, ABC):
@@ -305,7 +307,9 @@ class LIONmodel(nn.Module, ABC):
         # Load the actual pythorch saved data
         data = torch.load(
             fname,
-            map_location=torch.device(torch.cuda.current_device()),
+            map_location=torch.device(
+                torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
+            ),
             weights_only=weights_only,
         )
         if len(data) > 1 and not supress_warnings:
@@ -321,6 +325,16 @@ class LIONmodel(nn.Module, ABC):
         ##############################
         options = LIONParameter()
         options.load(fname.with_suffix(".json"))
+        # JSON loads nested parameters back as plain LIONParameter, but models
+        # require a LIONModelParameter.
+        if isinstance(getattr(options, "model_parameters", None), LIONParameter):
+            options.model_parameters = LIONModelParameter(
+                **vars(options.model_parameters)
+            )
+            if options.model_parameters.model_input_type is not None:
+                options.model_parameters.model_input_type = ModelInputType(
+                    options.model_parameters.model_input_type
+                )
         if hasattr(options, "geometry"):
             options.geometry = ct.Geometry.init_from_parameter(options.geometry)
         # Error check
@@ -380,7 +394,7 @@ class LIONmodel(nn.Module, ABC):
             model = cls(model_parameters=options.model_parameters)
 
         # Load the data into the model we created.
-        model.to(torch.cuda.current_device())
+        model.to(torch.cuda.current_device() if torch.cuda.is_available() else "cpu")
         model.load_state_dict(data.pop("model_state_dict"))
 
         return model, options, data
@@ -410,7 +424,7 @@ class LIONmodel(nn.Module, ABC):
         else:
             model = cls(model_parameters=options.model_parameters)
         # Load the data into the model we created.
-        model.to(torch.cuda.current_device())
+        model.to(torch.cuda.current_device() if torch.cuda.is_available() else "cpu")
         model.load_state_dict(data.pop("model_state_dict"))
 
         return model, options.unpack(), data
