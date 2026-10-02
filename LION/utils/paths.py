@@ -15,6 +15,7 @@ LION_DATA_PATH = pathlib.Path(_lion_data_path).expanduser().resolve()
 
 LUNA_DATASET_PATH = LION_DATA_PATH.joinpath("raw/LUNA16")
 WALNUT_DATASET_PATH = LION_DATA_PATH.joinpath("raw/walnuts")
+PHOTONCT_WALNUTS_DATASET_PATH = LION_DATA_PATH.joinpath("raw/photonct_walnuts")
 LIDC_IDRI_PATH = LION_DATA_PATH.joinpath("raw/LIDC-IDRI")
 DETECT_PATH = LION_DATA_PATH.joinpath("raw/2detect")
 
