@@ -100,5 +100,4 @@ class CompositeOp(Operator):
     @property
     def range_shape(self) -> tuple[int, ...]:
         """Return the shape of the measurement range."""
-        # Opposite of domain_shape of wavelet since wavelet is Psi^{-1}
-        return self.wavelet.domain_shape
+        return self.phi.range_shape
