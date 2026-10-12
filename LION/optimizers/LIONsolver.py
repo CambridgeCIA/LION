@@ -93,7 +93,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         self.loss_fn = loss_fn
         if device is None:
-            device = torch.device(torch.cuda.current_device())
+            device = torch.device(
+                torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
+            )
         self.device = device
         self.model.to(self.device)
 
@@ -230,60 +232,78 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return_code = 0
 
         # Test 1: is the device set? if not, set it if autofill is True
-        return_code = self.__check_attribute(
-            "device",
-            expected_type=torch.device,
-            error=False,
-            autofill=autofill,
-            verbose=verbose,
-            default=torch.device(
-                torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "device",
+                expected_type=torch.device,
+                error=False,
+                autofill=autofill,
+                verbose=verbose,
+                default=torch.device(
+                    torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
+                ),
             ),
         )
 
         # Test 2: is the model set? if not, raise error or warn
-        return_code = self.__check_attribute(
-            "model",
-            expected_type=LIONmodel,
-            error=error,
-            autofill=False,
-            verbose=verbose,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "model",
+                expected_type=LIONmodel,
+                error=error,
+                autofill=False,
+                verbose=verbose,
+            ),
         )
 
         # Test 3: is the optimizer set? if not, raise error or warn
-        return_code = self.__check_attribute(
-            "optimizer",
-            expected_type=Optimizer,
-            error=error,
-            autofill=False,
-            verbose=verbose,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "optimizer",
+                expected_type=Optimizer,
+                error=error,
+                autofill=False,
+                verbose=verbose,
+            ),
         )
 
         # Test 4: is the loss_fn set? if not, raise error or warn
-        return_code = self.__check_attribute(
-            "loss_fn",
-            expected_type=callable,
-            error=error,
-            autofill=False,
-            verbose=verbose,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "loss_fn",
+                expected_type=callable,
+                error=error,
+                autofill=False,
+                verbose=verbose,
+            ),
         )
 
         # Test 7: is the training loader set? if not, raise error or warn
-        return_code = self.__check_attribute(
-            "train_loader",
-            expected_type=DataLoader,
-            error=error,
-            autofill=False,
-            verbose=verbose,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "train_loader",
+                expected_type=DataLoader,
+                error=error,
+                autofill=False,
+                verbose=verbose,
+            ),
         )
 
         # Test 12: is the final result filename set? if not, raise error or warn or autofill
-        return_code = self.__check_attribute(
-            "final_result_fname",
-            expected_type=str,
-            error=False,
-            autofill=False,
-            verbose=True,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "final_result_fname",
+                expected_type=str,
+                error=False,
+                autofill=False,
+                verbose=True,
+            ),
         )
 
         return return_code
@@ -292,40 +312,52 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return_code = 0
 
         # Test 8: is the validation loader set? if not, raise error or warn
-        return_code = self.__check_attribute(
-            "validation_loader",
-            expected_type=DataLoader,
-            error=False,
-            autofill=False,
-            verbose=True,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "validation_loader",
+                expected_type=DataLoader,
+                error=False,
+                autofill=False,
+                verbose=True,
+            ),
         )
 
         # Test 9: is the validation function set? if not, raise error or warn or autofill
-        return_code = self.__check_attribute(
-            "validation_fn",
-            expected_type=callable,
-            error=False,
-            autofill=self.validation_loader is not None,
-            verbose=verbose,
-            default=self.loss_fn,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "validation_fn",
+                expected_type=callable,
+                error=False,
+                autofill=self.validation_loader is not None,
+                verbose=verbose,
+                default=self.loss_fn,
+            ),
         )
         # Test 10: is the validation frequency set? if not, raise error or warn or autofill
-        return_code = self.__check_attribute(
-            "validation_freq",
-            expected_type=int,
-            error=False,
-            autofill=self.validation_loader is not None,
-            verbose=verbose,
-            default=10,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "validation_freq",
+                expected_type=int,
+                error=False,
+                autofill=self.validation_loader is not None,
+                verbose=verbose,
+                default=10,
+            ),
         )
 
-        return_code = self.__check_attribute(
-            "validation_save_folder",
-            expected_type=pathlib.Path,
-            error=False,
-            autofill=True,
-            verbose=True,
-            default=self.save_folder,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "validation_save_folder",
+                expected_type=pathlib.Path,
+                error=False,
+                autofill=True,
+                verbose=True,
+                default=self.save_folder,
+            ),
         )
 
         # Test 14: is the validation filename set? if not, raise error or warn or autofill
@@ -336,13 +368,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             default_validation_fname = f"{self.final_result_fname}_min_val.pt"
         else:
             default_validation_fname = None
-        return_code = self.__check_attribute(
-            "validation_fname",
-            expected_type=str,
-            error=False,
-            autofill=True,
-            verbose=False,
-            default=default_validation_fname,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "validation_fname",
+                expected_type=str,
+                error=False,
+                autofill=True,
+                verbose=False,
+                default=default_validation_fname,
+            ),
         )
 
         return return_code
@@ -351,20 +386,26 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return_code = 0
 
         # Test 5: is the testing loader set? if not, raise error or warn
-        return_code = self.__check_attribute(
-            "test_loader",
-            expected_type=DataLoader,
-            error=error,
-            autofill=False,
-            verbose=verbose,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "test_loader",
+                expected_type=DataLoader,
+                error=error,
+                autofill=False,
+                verbose=verbose,
+            ),
         )
         # Test 6: is the testing function set? if not, raise error or warn or autofill
-        return_code = self.__check_attribute(
-            "testing_fn",
-            expected_type=callable,
-            error=error,
-            autofill=False,
-            verbose=verbose,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "testing_fn",
+                expected_type=callable,
+                error=error,
+                autofill=False,
+                verbose=verbose,
+            ),
         )
 
         return return_code
@@ -372,13 +413,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     def check_checkpointing_ready(self, autofill=True, verbose=True):
         return_code = 0
 
-        return_code = self.__check_attribute(
-            "checkpoint_save_folder",
-            expected_type=pathlib.Path,
-            error=False,
-            autofill=True,
-            verbose=True,
-            default=self.save_folder,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "checkpoint_save_folder",
+                expected_type=pathlib.Path,
+                error=False,
+                autofill=True,
+                verbose=True,
+                default=self.save_folder,
+            ),
         )
 
         # Test 13: is the checkpoint filename filename set? if not, raise error or warn or autofill
@@ -389,33 +433,42 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             default_checkpoint_fname = f"{self.final_result_fname}_checkpoint_*.pt"
         else:
             default_checkpoint_fname = None
-        return_code = self.__check_attribute(
-            "checkpoint_fname",
-            expected_type=str,
-            error=False,
-            autofill=True,
-            verbose=False,
-            default=default_checkpoint_fname,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "checkpoint_fname",
+                expected_type=str,
+                error=False,
+                autofill=True,
+                verbose=False,
+                default=default_checkpoint_fname,
+            ),
         )
 
         # Test 15: is the checkpoint frequency set? if not, raise error or warn or autofill
-        return_code = self.__check_attribute(
-            "checkpoint_freq",
-            expected_type=int,
-            error=False,
-            autofill=autofill,
-            verbose=verbose,
-            default=10,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "checkpoint_freq",
+                expected_type=int,
+                error=False,
+                autofill=autofill,
+                verbose=verbose,
+                default=10,
+            ),
         )
 
         # Test 16: is the load checkpoint set? if not, raise error or warn or autofill
-        return_code = self.__check_attribute(
-            "load_checkpoint",
-            expected_type=bool,
-            error=False,
-            autofill=True,
-            verbose=verbose,
-            default=True,
+        return_code = max(
+            return_code,
+            self.__check_attribute(
+                "do_load_checkpoint",
+                expected_type=bool,
+                error=False,
+                autofill=True,
+                verbose=verbose,
+                default=True,
+            ),
         )
 
         return return_code
@@ -445,15 +498,19 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             verbose = True
             self.verbose = verbose
 
-        return_code = self.check_training_ready(error, autofill, verbose)
+        return_code = max(
+            return_code, self.check_training_ready(error, autofill, verbose)
+        )
 
-        return_code = self.check_testing_ready(error, verbose)
+        return_code = max(return_code, self.check_testing_ready(error, verbose))
 
-        return_code = self.check_saving_ready()
+        return_code = max(return_code, self.check_saving_ready())
 
-        return_code = self.check_validation_ready(error, autofill)
+        return_code = max(return_code, self.check_validation_ready(autofill, verbose))
 
-        return_code = self.check_checkpointing_ready(autofill, verbose)
+        return_code = max(
+            return_code, self.check_checkpointing_ready(autofill, verbose)
+        )
 
         self.verbose = verbose
 
@@ -480,29 +537,30 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             else:
                 if error:
                     raise ValueError(f"Attribute {attr} not set")
-                elif verbose:
+                if verbose:
                     warnings.warn(f"Attribute {attr} not set")
-                    return 1
+                # the return code must not depend on verbosity
+                return 1
 
         # if the type we want to check against is a function, we need to treat it differently
         if expected_type is callable:
             if not callable(getattr(self, attr)):
                 if error:
                     raise ValueError(f"Attribute {attr} is not callable")
-                elif verbose:
+                if verbose:
                     warnings.warn(f"Attribute {attr} is not callable")
-                    return 2
+                return 2
         # just standrad type chekcking, error or warn, depends of settings
         elif not isinstance(getattr(self, attr), expected_type):
             if error:
                 raise ValueError(
                     f"Attribute {attr} is not of type {expected_type}, its {type(getattr(self, attr))}"
                 )
-            elif verbose:
+            if verbose:
                 warnings.warn(
                     f"Attribute {attr} is not of type {expected_type}, its {type(getattr(self, attr))}"
                 )
-                return 2
+            return 2
         return 0
 
     def save_checkpoint(self, epoch):
