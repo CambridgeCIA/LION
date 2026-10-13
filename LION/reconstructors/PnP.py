@@ -8,10 +8,6 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
-from LION.classical_algorithms.fdk import fdk
-from LION.CTtools.ct_geometry import Geometry
-from LION.operators import Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
 
@@ -19,53 +15,47 @@ from LION.utils.math import power_method
 class PnP(LIONReconstructor):
     def __init__(
         self,
-        physics: Geometry | Operator,
+        physics,
         prior_fn: Callable[[torch.Tensor], torch.Tensor],
-        algorithm: Literal["ADMM", "HQS", "FBS"] = "ADMM",
+        default_algorithm: Literal["ADMM", "HQS", "FBS"] = "ADMM",
     ):
-        """
-        Plug-and-Play Reconstructor using a denoiser as prior.
+        """Plug-and-Play Reconstructor using a denoiser as prior.
 
-        Parameters
-        ----------
-        physics : Geometry or Operator
-            The physics of the imaging system.
-            This can be either a CT Geometry object or a pre-defined Operator.
-            If a Geometry is provided, the corresponding CT operator will be created.
-        prior_fn : Callable[[torch.Tensor], torch.Tensor]
-            The prior for plug-and-play, for example, a pre-trained denoiser model.
-        algorithm : Literal["ADMM", "HQS", "FBS"], optional
-            The reconstruction algorithm to use. See the options in the notes below. Default is "ADMM".
+        Args:
+            physics: The physics of the imaging system.
+                This can be either a CT Geometry object or a pre-defined Operator.
+                If a Geometry is provided, the corresponding CT operator will be created.
+            prior_fn: The prior for plug-and-play, for example, a pre-trained denoiser model.
+            default_algorithm: The reconstruction algorithm to use. See the options in the notes below. Default is "ADMM".
 
-        Notes
-        -----
-        The following algorithms are implemented:
-        - "ADMM": Alternating Direction Method of Multipliers
-        - "HQS": Half Quadratic Splitting
-        - "FBS": Forward-Backward Splitting
+        Notes:
+            The following algorithms are implemented:
+            - "ADMM": Alternating Direction Method of Multipliers
+            - "HQS": Half Quadratic Splitting
+            - "FBS": Forward-Backward Splitting
         """
         super().__init__(physics)
         self.model = prior_fn
 
-        if algorithm == "HQS":
+        if default_algorithm == "HQS":
             # Half Quadratic Splitting, as from the paper "Plug-and-Play Image Restoration with Deep Denoiser Prior"
-            self.algorithm = "HQS"  # Half Quadratic Splitting
-        elif algorithm == "FBS" or algorithm == "ForwardBackwardSplitting":
-            self.algorithm = "FBS"  # Forward-Backward Splitting
-        elif algorithm == "ADMM":
-            self.algorithm = "ADMM"  # Alternating Direction Method of Multipliers
+            self.default_algorithm = "HQS"  # Half Quadratic Splitting
+        elif (
+            default_algorithm == "FBS"
+            or default_algorithm == "ForwardBackwardSplitting"
+        ):
+            self.default_algorithm = "FBS"  # Forward-Backward Splitting
+        elif default_algorithm == "ADMM":
+            self.default_algorithm = (
+                "ADMM"  # Alternating Direction Method of Multipliers
+            )
         else:
-            raise ValueError(f"Unknown algorithm: {algorithm}")
+            raise ValueError(f"Unknown algorithm: {default_algorithm}")
 
     def reconstruct_sample(
-        self,
-        sino,
-        *,
-        prog_bar: bool = False,
-        **kwargs,
-    ):
-        """
-        Reconstruct the sinogram using the model and geometry.
+        self, sino, *, prog_bar: bool = False, **kwargs
+    ) -> torch.Tensor:
+        """Reconstruct the sinogram using the model and geometry.
 
         :param sino: Sinogram tensor.
         :return: Reconstructed image tensor.
@@ -77,18 +67,18 @@ class PnP(LIONReconstructor):
                 f"Sinogram must be a 3D tensor (batch_size, num_angles, num_detectors), but got {sino.dim()}"
             )
         # Apply the reconstruction algorithm
-        if self.algorithm == "HQS":
+        if self.default_algorithm == "HQS":
             # Implement the Half Quadratic Splitting algorithm here
             # This is a placeholder for the actual implementation
             recon = self.hqs_algorithm(sino, prog_bar=prog_bar, **kwargs)
-        elif self.algorithm == "FBS":
+        elif self.default_algorithm == "FBS":
             # Implement the Forward-Backward Splitting algorithm here
             # This is a placeholder for the actual implementation
             recon = self.forward_backward_splitting(sino, prog_bar=prog_bar, **kwargs)
-        elif self.algorithm == "ADMM":
+        elif self.default_algorithm == "ADMM":
             recon = self.admm_algorithm(sino, prog_bar=prog_bar, **kwargs)
         else:
-            raise ValueError(f"Unknown algorithm: {self.algorithm}")
+            raise ValueError(f"Unknown algorithm: {self.default_algorithm}")
 
         return recon
 
@@ -102,8 +92,7 @@ class PnP(LIONReconstructor):
         noise_level=None,
         prog_bar: bool = False,
     ):
-        """
-        Placeholder for the Half Quadratic Splitting algorithm implementation.
+        """Placeholder for the Half Quadratic Splitting algorithm implementation.
 
         :param sino: Sinogram tensor.
         :param lambda: Regularization parameter.
@@ -111,6 +100,8 @@ class PnP(LIONReconstructor):
         :param max_iter: Maximum number of iterations.
         :return: Reconstructed image tensor.
         """
+        from LION.classical_algorithms.fdk import fdk
+
         if noise_level is not None:
             print("Warning: ignoring value of mu, estimating from noise_level")
             sigma = noise_level
@@ -148,14 +139,12 @@ class PnP(LIONReconstructor):
         noise_level=None,
         prog_bar: bool = False,
     ):
-        """
-        Forward-Backward Splitting algorithm implementation.
-        """
+        """Forward-Backward Splitting algorithm implementation."""
         if step_size is None:
             op_norm = power_method(self.op)
             step_size = 1.0 / (op_norm**2)
 
-        x = fdk(sino, self.op)
+        x = fdk(sino, self.op)  # TODO: Make user pass initial guess if not CT
         iterator = range(max_iter)
         if prog_bar:
             iterator = tqdm(iterator, desc="FBS iterations")
@@ -177,33 +166,4 @@ class PnP(LIONReconstructor):
                 x = self.model(step.unsqueeze(0)).squeeze(0)
                 x = self.model.unnormalise(x)
 
-        return x
-
-    def admm_algorithm(
-        self,
-        measurement: torch.Tensor,
-        eta: float = 1e-4,
-        max_iter: int = 10,
-        cg_max_iter: int = 100,
-        cg_tol: float = 1e-7,
-        prog_bar: bool = False,
-    ) -> torch.Tensor:
-        x = torch.zeros(self.op.domain_shape, device=measurement.device)
-        v = torch.zeros(self.op.domain_shape, device=measurement.device)
-        u = torch.zeros(self.op.domain_shape, device=measurement.device)
-
-        def matmul_closure(x: torch.Tensor) -> torch.Tensor:
-            return self.op.adjoint(self.op(x)) + eta * x
-
-        AT_y = self.op.adjoint(measurement)
-        iterator = range(max_iter)
-        if prog_bar:
-            iterator = tqdm(iterator, desc="ADMM iterations")
-        for _ in iterator:
-            d = AT_y + eta * (v - u)
-            x = conjugate_gradient(
-                matmul_closure, d, x, max_iter=cg_max_iter, tol=cg_tol
-            )
-            v = self.model(x + u)
-            u = u + (x - v)
         return x
