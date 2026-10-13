@@ -92,16 +92,14 @@ def _sinogram_add_noise(
     - Detector crosstalk in % of the signal of adjacent pixels.
     - Add a flat_field to add even more realistic noise (computed at non-corrected flat fields)
     """
-    dev = torch.cuda.current_device()
+    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if torch.is_tensor(proj):
         istorch = True
-        dev = proj.get_device()
-        if dev == -1:
-            dev = torch.device("cpu")
+        dev = proj.device
     elif isinstance(proj, np.ndarray):
         # all good
         istorch = False
-        proj = torch.from_numpy(proj).cuda(dev)
+        proj = torch.from_numpy(proj).to(dev)
     else:
         raise ValueError("numpy or torch tensor expected")
     if dark_field is None:
@@ -205,7 +203,7 @@ def forward_projection(
     # You can add other backends here
     import tomosipo as ts
 
-    device = torch.cuda.current_device()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if isinstance(image, np.ndarray):
         image = torch.from_numpy(image).float().to(device)
