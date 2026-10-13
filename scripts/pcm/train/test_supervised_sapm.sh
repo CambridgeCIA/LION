@@ -1,0 +1,20 @@
+export MPLBACKEND="agg"
+export CUDA_DEVICE_ORDER="PCI_BUS_ID"
+# export CUDA_VISIBLE_DEVICES="0"
+export CUDA_VISIBLE_DEVICES="1"
+# export CUDA_VISIBLE_DEVICES="-1"
+
+ROOT="/store/LION/ttv22/pcm/results/pcm/pcm_supervised"
+# EXPERIMENT="20260915_185847_TV"
+# EXPERIMENT="20260915_211553_TV"
+# EXPERIMENT="20260916_000644_TV"
+# EXPERIMENT="20260920_021902_TV"
+EXPERIMENT="20260920_183158_TV_supervised"
+
+python scripts/pcm/train/pcm_supervised_sapm_test.py \
+    --epochs "best_val_loss_s0.20_cJ6" \
+    --root "$ROOT" --experiment "$EXPERIMENT"
+    # --categories CIGS Organic Perovskite Reference Silicone \
+    # --sampling-ratios 0.2 \
+    # --coarse-j-values 6 \
+    # --sample-ids 8 11 14 21 31 44 45 55 65 66 68 79 95 98 116 126 129 141 147 158 187 188 190 196 199 218 225 232 249 254 260 268 275 279 283 287 288 292 294 301 304 307 313 331 333 346 357 364 370 376 377 381 396 404 414 470 477 483 501 507 518 524 527 530 558 562 586 589 606 608 610 611 617 623 681 702 710 711 727 733 739 762 767 768 786 793 805 807 818 821 862 873 899 909 917 933 935 939 946 968 \
