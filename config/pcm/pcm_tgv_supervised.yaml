@@ -1,0 +1,104 @@
+reproduce:
+  base_seed: 2026
+  random_seed: 1833050840
+  torch_seed: 1780232887
+  numpy_seed: 2276429979
+  rng_seed: 4034612189
+
+data:
+  categories: [CIGS, Organic, Perovskite, Reference, Silicone]
+  samples:
+    total_samples: 1000
+    perm: 5678
+  data_type: image
+  j_order: 8
+
+  train_perm_range: [1, 800]
+  val_perm_range: [801, 900]
+  test_perm_range: [901, 1000]
+
+sampling:
+  randomising_scheme: multilevel
+  sampling_ratios: [0.2, 0.5]
+  coarse_j_values: [1, 6]
+
+uses_normalized_op: true
+
+model:
+  name: TGV
+  input_image: adjoint
+  initial_image: adjoint
+  n_iters: 96
+
+  use_checkpoint: true
+  checkpoint_chunk_size: 2
+  checkpoint_use_reentrant: false
+
+  pdhg:
+    regularisation: TGV
+    primal_stepsize: 0.5
+    dual_stepsize: 0.5
+    initial_scale_factor_raw: 0.0
+    scale_factor_softplus_beta: 1.0
+    lambda_softplus_beta: 1.0
+    fd_pad_mode: [zeros, zeros]
+    fd_dim: [-2, -1]
+
+  cnn:
+    uses_simple_cnn: false
+    uses_new_unet: true
+    init_filters: 16
+    n_blocks: 2
+    padding_mode: zeros
+    bias: true
+    dim: 2
+    in_channels: 1
+    out_channels: 2
+    n_convs_per_block: 2
+    kernel_size: 3
+    downsampling_kernel: 2
+
+optim:
+  name: Adam
+  learning_rate: 0.0002
+  weight_decay: 0.00001
+  scale_factors_raw_learning_rate: 0.0002
+  scale_factors_raw_weight_decay: 0.00001
+
+train:
+  num_epochs: 100
+  batch_size: 1
+  device: auto
+
+log:
+  exp_code: pcm_supervised
+  results_dir: /store/LION/ttv22/pcm/results
+  log_mlflow: true
+  log_csv: true
+
+  log_train_loss_every_epochs: 1
+  log_train_params_every_epochs: 1
+  log_val_loss_every_epochs: 1
+  log_val_metrics_every_epochs: 1
+
+  log_train_loss_every_n_steps: -1
+  log_train_params_every_n_steps: -1
+  log_val_loss_every_n_steps: -1
+  log_val_metrics_every_n_steps: -1
+
+  val_before_start: true
+
+  ckpt:
+    every_n_epochs: 10
+    start_epoch: 0
+    end_epoch: null
+
+    every_n_steps: -1
+    start_step: 0
+    end_step: null
+
+    log_best: true
+    log_cur: true
+    log_final: true
+    local: true
+    mlflow: false

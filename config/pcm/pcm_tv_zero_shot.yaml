@@ -1,0 +1,177 @@
+reproduce:
+  base_seed: 2026
+  random_seed: 1833050840
+  torch_seed: 1780232887
+  numpy_seed: 2276429979
+  rng_seed: 4034612189
+
+data:
+  categories: [CIGS, Organic, Perovskite, Reference, Silicone]
+  samples:
+    ids: [5]
+    # perm: 5678
+  data_type: image
+  j_order: 8
+
+  p_target_train: 0.1
+  # p_target_train: 0.02
+  p_target_val: 0.1
+  # p_target_val: 0.02
+  base_train_partition_seed: 5678
+  base_val_partition_seed: 1234
+
+sampling:
+  randomising_scheme: multilevel
+  sampling_ratios: [0.2]
+  coarse_j_values: [6]
+
+uses_normalized_op: true
+
+noise:
+  preset: npl_default
+  current_to_model_scale: 28571428.57142857  # 1 / 3.5e-8
+  n_repeat_acquisitions: 1
+
+model:
+  name: TV_zero_shot
+  input_image: cg
+  # input_image: spgl1
+  # input_image: adjoint
+  initial_image: zeros
+  # n_iters: 128
+  n_iters: 256
+
+  # use_checkpoint: true
+  # checkpoint_chunk_size: 2
+  use_checkpoint: false
+  checkpoint_chunk_size: null
+  checkpoint_use_reentrant: false
+
+  pdhg:
+    regularisation: TV
+    primal_stepsize: 0.333
+    dual_stepsize: 0.333
+    # primal_stepsize: 0.277
+    # dual_stepsize: 0.277
+    initial_scale_factor_raw: 0.1
+    # initial_scale_factor_raw: 0.0
+    # initial_scale_factor_raw: 0.5
+    scale_factor_softplus_beta: 1.0
+    lambda_softplus_beta: 1.0
+    fd_pad_mode: [zeros, zeros]
+    fd_dim: [-2, -1]
+
+  cnn:
+    uses_simple_cnn: false
+    uses_new_unet: true
+    # init_filters: 128
+    # init_filters: 16
+    init_filters: 8
+    # n_blocks: 3
+    n_blocks: 2
+    padding_mode: zeros
+    # bias: true
+    bias: false
+    dim: 2
+    in_channels: 1
+    out_channels: 1
+    n_convs_per_block: 2
+    kernel_size: 3
+    downsampling_kernel: 2
+
+  cg:
+    implicit_backward: false
+    tolerance: 0.0001
+    max_iters: 20
+    initial_value: zeros
+
+optim:
+  name: Adam
+  learning_rate: 0.0002
+  # learning_rate: 0.0001
+  # learning_rate: 0.001
+  # weight_decay: 0.00001
+  weight_decay: 0.0
+  # scale_factors_raw_learning_rate: 0.0002
+  scale_factors_raw_learning_rate: 0.002
+  # scale_factors_raw_weight_decay: 0.00001
+  scale_factors_raw_weight_decay: 0.0
+
+train:
+  num_epochs: 100
+  batch_size: 1
+  device: auto
+
+log:
+  exp_code: pcm_zero_shot
+  results_dir: /store/LION/ttv22/pcm/results
+  log_mlflow: true
+  log_csv: true
+
+  log_train_loss_every_epochs: 1
+  log_train_metrics_every_epochs: -1
+  log_train_params_every_epochs: 1
+  log_val_loss_every_epochs: 1
+  # log_val_metrics_every_epochs: -1
+  log_val_metrics_every_epochs: 1
+  # log_test_metrics_every_epochs: -1
+  log_test_metrics_every_epochs: 1
+
+  val_before_start: true
+
+  final_result:
+    render_reconstruction: true
+    save_lambda_maps_tensor: true
+    display_interactively: false
+    render_histograms: true
+    image_formats: [pdf]
+
+    reconstruction:
+      cmap: afmhot
+      # cmap_max: 0.8
+      cmap_max: 1.0
+      vmin: 0.0
+      vmax: 1.0
+    absolute_error:
+      cmap: viridis
+      cmap_max: 1.0
+      vmin: 0.0
+      vmax: 0.5
+    input_image:
+      cmap: afmhot
+      # cmap_max: 0.8
+      cmap_max: 1.0
+      vmin: 0.0
+      vmax: 1.0
+    initial_image:
+      cmap: afmhot
+      # cmap_max: 0.8
+      cmap_max: 1.0
+      vmin: 0.0
+      vmax: 1.0
+
+    colorbar:
+      figsize: [2.0, 0.3]
+
+    sapm:
+      map_indices: [0]
+      map_names: [spatial]
+
+      lambda_map_render_configs:
+        - linear: [0.0, 0.2, magma, '.1f', false, true]
+
+  ckpt:
+    every_n_epochs: 10
+    start_epoch: 0
+    end_epoch: null
+
+    every_n_steps: -1
+    start_step: 0
+    end_step: null
+
+    log_best: true
+    log_cur: true
+    log_final: true
+    best_checkpoint_epoch_block_size: null
+    local: true
+    mlflow: false
