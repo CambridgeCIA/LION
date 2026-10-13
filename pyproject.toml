@@ -69,6 +69,9 @@ dependencies = [
     "LION[codestyle]",
 ]
 
+[project.scripts]
+lion-pcm-gui = "LION.pcm.gui.app:main"
+
 [project.optional-dependencies]
 codestyle = [
     "jaxtyping",
@@ -102,7 +105,14 @@ notebooks = [
 ci = [
     "pre-commit",
 ]
-dev = ["LION[tests, docs, ci]"]
+gui = [
+    # "PySide6",
+    "matplotlib",
+    "nuitka",
+    "ordered-set",
+    "zstandard"
+]
+dev = ["LION[tests, docs, ci, gui]"]
 
 # PyTest section
 [tool.pytest.ini_options]
