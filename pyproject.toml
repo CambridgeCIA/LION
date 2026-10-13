@@ -106,17 +106,20 @@ dev = ["LION[tests, docs, ci]"]
 
 # PyTest section
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["pytests"]
 filterwarnings = [
     "error",
     "ignore:Anomaly Detection has been enabled:UserWarning",                   # torch.autograd
     "ignore:.*In the future, this object will be coerced as if it was first converted using.*:FutureWarning", # numpy 1.2
     "ignore:pkg_resources is deprecated as an API:UserWarning",  # ignore warning when importing pytorch_wavelets (if not tests will fail)
     "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",  # ignore warning when importing pytorch_wavelets (if not tests will fail)
+    "ignore:invalid escape sequence.*:SyntaxWarning",  # ignore warning when importing pytorch_wavelets (if not tests will fail)
 ]
 addopts = "-n auto --dist loadfile --maxprocesses=8"
 markers = [
-    "cuda : Tests only to be run when cuda device is available"  # Add argument `-m "not cuda"` to the `pytest` command line to skip tests with this marker
+    "cuda : Tests only to be run when cuda device is available",  # Add argument `-m "not cuda"` to the `pytest` command line to skip tests with this marker
+    "tomosipo : Tests only to be run when tomosipo is available",  # Add argument `-m "not tomosipo"` to the `pytest` command line to skip tests with this marker
+    # We can exclude multiple markers. E.g.  use `-m "not (cuda or tomosipo)"` or `-m "not cuda and not tomosipo"` to skip tests with either marker
 ]
 
 # MyPy section
