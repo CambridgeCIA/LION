@@ -2,67 +2,53 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+
 import torch
+from mrpro.operators.LinearOperator import LinearOperator
+
+from LION.utils.common_primitives import DeviceLikeType
 
 
-class Operator:
-    """
-    Base class for operators in LION.
+class Operator(torch.nn.Module, ABC):
+    """Base class for operators in LION.
 
-    Operators represent mathematical operations that can be applied to data,
-    such as forward and backward projections in imaging.
+    Operators represent forward and backward projections, mapping one tensor to another tensor.
 
-    The main purpose of this class is to define a common interface for all
-    operators in LION. The most important API for algorithms includes
+    This class defines a common interface for all operators in LION. The most important API includes
     ``forward``, ``adjoint``, and ``domain_shape`` / ``range_shape``.
 
     This class should be subclassed to implement specific operators.
 
-    Parameters
-    ----------
-    device : torch.device | str | None, optional
-        Device for computations. If None, computations are done on the
-        default device.
+    Attributes:
+        device : Device for computations. If None, computations are done on the default device.
     """
 
-    def __init__(self, device: torch.device | str | None = None):
+    def __init__(self, device: DeviceLikeType | None = None):
         """Initialize the Operator."""
+        super().__init__()
         self.device = device
 
+    @abstractmethod
     def __call__(self, x: torch.Tensor, out=None) -> torch.Tensor:
-        """
-        Apply the forward operation of the operator.
+        """Apply the forward operation of the operator.
 
         .. note::
-            Usually this is just a wrapper for the ``forward`` method:
-            ``return self.forward(x)``.
-            We want the user to write this explicitly in their subclasses
-            so that they can add the docstring in the ``__call__`` method
-            instead of the ``forward`` method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
+            Usually this is just a wrapper for the ``forward`` method: ``return self.forward(x)``.
+            Users should write this explicitly in their subclasses so that they can add the docstring
+            in the ``__call__`` method instead of the ``forward`` method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
 
-        Parameters
-        ----------
-        x : torch.Tensor
-            Input to which the operator is applied.
-        out : torch.Tensor | None, optional
-            Optional output tensor to store the result.
-            Most subclasses may ignore this parameter, except for tomosipo-based operators
-            which need it for the ``to_autograd`` functionality.
+        Args:
+            x: Input to which the operator is applied.
+            out: Optional output tensor to store the result. Most subclasses may ignore this parameter,
+                except for tomosipo-based operators which need it for the ``to_autograd`` functionality.
 
-        Returns
-        -------
-        torch.Tensor
+        Returns:
             Result of applying the forward operation.
         """
-        raise NotImplementedError(
-            "__call__ must be implemented by subclasses with docstring. "
-            "Usually this is just a wrapper for the forward method: "
-            "return self.forward(x)"
-        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Apply the forward operation of Operator.
+        """Apply the forward operation of Operator.
 
         .. note::
             Prefer calling the instance of the Operator operator as ``operator(x)`` over
@@ -71,17 +57,12 @@ class Operator:
         raise NotImplementedError("Forward method must be implemented by subclasses.")
 
     def adjoint(self, y: torch.Tensor) -> torch.Tensor:
-        """
-        Apply the adjoint (backward) operation of the operator.
+        """Apply the adjoint (backward) operation of the operator.
 
-        Parameters
-        ----------
-        y : torch.Tensor
-            Input to which the adjoint operator is applied.
+        Args:
+            y: Input to which the adjoint operator is applied.
 
-        Returns
-        -------
-        torch.Tensor
+        Returns:
             Result of applying the adjoint operation.
         """
         raise NotImplementedError("Adjoint method must be implemented by subclasses.")
@@ -101,14 +82,10 @@ class Operator:
 
         This method should only be implemented by subclasses that have a well-defined inverse.
 
-        Parameters
-        ----------
-        y : torch.Tensor
-            The input data to which the inverse operator is applied.
+        Args:
+            y: The input data to which the inverse operator is applied.
 
-        Returns
-        -------
-        torch.Tensor
+        Returns:
             The result of applying the inverse operator to x.
         """
         raise NotImplementedError(
@@ -118,11 +95,9 @@ class Operator:
 
     @property
     def domain_shape(self) -> tuple[int, ...]:
-        """
-        Get the shape of the image domain.
+        """Get the shape of the image domain.
 
-        Returns
-        -------
+        Returns:
             Shape of the image domain.
         """
         raise NotImplementedError(
@@ -131,13 +106,49 @@ class Operator:
 
     @property
     def range_shape(self) -> tuple[int, ...]:
-        """
-        Get the shape of the data (measurement) domain.
+        """Get the shape of the data (measurement) domain.
 
-        Returns
-        -------
+        Returns:
             Shape of the data (measurement) domain.
         """
         raise NotImplementedError(
             "property `range_shape` must be implemented by subclasses."
         )
+
+    def to_device(self, device: DeviceLikeType) -> Operator:
+        """Move the operator and its suboperators to the specified device and update their ``device`` attributes.
+
+        Note: Calling ``nn.Module.to(device)`` does not automatically update the ``device`` attribute.
+        This method ensures that the ``device`` attribute is updated for all suboperators as well.
+
+        Args:
+            device: Target device.
+
+        Returns:
+            The operator moved to the specified device.
+        """
+        super().to(device=device)
+
+        for module in self.modules():  # Note: ``nn.Module.modules()`` is recursive
+            if isinstance(module, Operator):
+                module.device = device
+
+        return self
+
+
+class MrproLinearOp(LinearOperator):
+    """Thin mrpro LinearOperator wrapper around any LION operator.
+
+    The wrapped operator must be linear, differentiable with PyTorch autograd,
+    take ``torch.Tensor``, return a ``torch.Tensor``, implement ``adjoint()``.
+    """
+
+    def __init__(self, op: Operator):
+        super().__init__()
+        self.op = op
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor]:
+        return (self.op(x),)
+
+    def adjoint(self, x: torch.Tensor) -> tuple[torch.Tensor]:
+        return (self.op.adjoint(x),)
