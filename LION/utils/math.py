@@ -16,20 +16,13 @@ def power_method(
 ) -> torch.Tensor:
     """Estimate operator norm by power iteration using torch.
 
-    Parameters
-    ----------
-    op : Operator
-        The operator for which to estimate the norm.
-    maxiter : int
-        Number of power iterations.
-    tol : float
-        Absolute tolerance for convergence. (TODO: consider adding relative tolerance?)
-    device : torch.device | str | None
-        Device for computations. If None, use operator's device.
+    Args:
+        op: The operator for which to estimate the norm.
+        maxiter: Number of power iterations.
+        tol: Absolute tolerance for convergence. (TODO: consider adding relative tolerance?)
+        device: Device for computations. If None, use operator's device.
 
-    Returns
-    -------
-    sigma : torch.Tensor
+    Returns:
         Estimated operator norm.
     """
     arr_old = torch.randn(*op.domain_shape, device=device)
@@ -75,3 +68,29 @@ def test_convexity(net, x, device):
         flag = False
         print("Failed convexity test!")
     return flag
+
+
+def is_power_of_two(n: int) -> bool:
+    """Check whether an integer is a power of two.
+
+    Args:
+        n: Integer to test.
+
+    Returns:
+        True if `n` is a power of two, otherwise False.
+    """
+    return n > 0 and (n & (n - 1)) == 0
+
+
+def next_power_of_two(n: int) -> int:
+    """Return the smallest power of two greater than or equal to `n`.
+
+    Args:
+        n: Input integer.
+
+    Returns:
+        Smallest power of two greater than or equal to `n`.
+    """
+    if n < 1:
+        raise ValueError("n must be positive.")
+    return 1 << (n - 1).bit_length()

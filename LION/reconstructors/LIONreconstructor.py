@@ -1,23 +1,20 @@
+"""Base class for a Reconstructor in the LION framework."""
+
 from __future__ import annotations
 
-from abc import ABC, ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
+from typing import Generic
 
 import torch
 
-# Import CT utils
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
-from LION.models.LIONmodel import to_autograd
-from LION.operators import Operator
-
-# Base class for a Reconstructor in the LION framework.
-# This assumes a trained model
+from LION.operators.Operator import Operator
 
 
 class LIONReconstructor(ABC):
-    def __init__(self, operator: Geometry | Operator):
-        """
-        Base class for a Reconstructor in the LION framework.
+    """Base class for a reconstructor in the LION framework."""
+
+    def __init__(self, operator):
+        """Initialize the reconstructor.
         This assumes a trained model.
 
         Parameters
@@ -26,23 +23,29 @@ class LIONReconstructor(ABC):
             The forward operator representing the imaging system.
             If a Geometry is provided, the corresponding CT operator will be created.
         """
-        __metaclass__ = ABCMeta
-
         if isinstance(operator, Operator):
             self.geometry = None
             self.op = operator
-        elif isinstance(operator, Geometry):
-            self.geometry = operator
-            self.op = make_operator(self.geometry)
+            self.op_autograd = None  # TODO: Add support for autograd-wrapped operators that are not CT operators
         else:
-            raise ValueError(
-                "Input operator is neither of class LION.operators.operator.Operator nor LION.CTtools.ct_geometry.Geometry"
-            )
-        self.op_autograd = to_autograd(self.op)
+            # Import CT utils when needed to avoid import errors when
+            #   not intending to use CT and CT dependencies are not installed
+            from LION.CTtools.ct_geometry import Geometry
+            from LION.models.LIONmodel import to_autograd
 
-    def reconstruct(self, sino: torch.Tensor, **kwargs):
-        """
-        Reconstruct the sinogram using the model and geometry.
+            if isinstance(operator, Geometry):
+                from LION.CTtools.ct_utils import make_operator
+
+                self.geometry = operator
+                self.op = make_operator(self.geometry)
+            else:
+                raise ValueError(
+                    "Input operator is neither of class LION.operators.operator.Operator nor LION.CTtools.ct_geometry.Geometry"
+                )
+            self.op_autograd = to_autograd(self.op)
+
+    def reconstruct(self, sino: torch.Tensor, **kwargs) -> torch.Tensor:
+        """Reconstruct the sinogram using the model and geometry.
 
         :param sino: Sinogram tensor.
         :param noise_level: Noise level for denoising.
@@ -62,5 +65,5 @@ class LIONReconstructor(ABC):
         return self.reconstruct_sample(sino, **kwargs)
 
     @abstractmethod
-    def reconstruct_sample(self, sino: torch.Tensor, **kwargs):
-        pass
+    def reconstruct_sample(self, measurement: torch.Tensor, **kwargs) -> torch.Tensor:
+        """Reconstruct a single sample from the measurement."""

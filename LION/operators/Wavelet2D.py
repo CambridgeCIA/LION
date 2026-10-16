@@ -12,18 +12,12 @@ from LION.operators.Operator import Operator
 class Wavelet2D(Operator):
     """2D orthogonal wavelet transform with periodised Daubechies wavelets.
 
-    Parameters
-    ----------
-    shape : tuple of int
-        Image shape (H, W).
-    wavelet_name : str
-        PyWavelets wavelet name, for example 'db4'.
-    level : int or None
-        Decomposition level. If None, uses the maximum valid level.
-    mode : str
-        Signal extension mode. 'periodization' gives an orthogonal transform.
-    device : str or torch.device
-        Device on which tensors are returned.
+    Args:
+        shape: Image shape (H, W).
+        wavelet_name: PyWavelets wavelet name, for example "db4".
+        level: Decomposition level. If None, uses the maximum valid level.
+        mode: Signal extension mode. "periodization" gives an orthogonal transform.
+        device: Device on which tensors are returned.
     """
 
     def __init__(
@@ -59,21 +53,16 @@ class Wavelet2D(Operator):
         self.size = arr.size
 
     def __call__(self, x: torch.Tensor, out=None) -> torch.Tensor:
-        """Apply the forward wavelet transform."
+        """Apply the forward wavelet transform.
 
         Wavelet analysis: image -> flat coefficient vector.
 
-        Parameters
-        ----------
-        x : torch.Tensor
-            Input image of shape (H, W).
-        out : None
-            Legacy for tomosipo ``to_autograd``. Just ignore.
+        Args:
+            x: Input tensor whose last two dimensions have shape (H, W).
+            out: Legacy for tomosipo ``to_autograd``. Just ignore.
 
-        Returns
-        -------
-        torch.Tensor
-            Flat wavelet coefficient vector of shape (Nw,).
+        Returns:
+            Tensor whose last dimension contains the flat wavelet coefficients.
         """
         return self.forward(x)
 
@@ -84,70 +73,63 @@ class Wavelet2D(Operator):
             Prefer calling the instance of the Wavelet2D operator as ``operator(x)`` over
             directly calling this method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
         """
-        if x.dim() != 2:
-            raise ValueError(
-                f"Expected x with 2 dims (H, W), got shape {tuple(x.shape)}"
-            )
-
         x_np = x.detach().cpu().numpy().astype(np.float32)
+        batch_shape = x_np.shape[:-2]
+        x_np = x_np.reshape(-1, *self.shape)
 
-        # TODO: How to use the PyTorch backend and still ensure adjointness?
-        coeffs = pywt.wavedec2(
-            x_np,
-            wavelet=self.wavelet,
-            mode=self.mode,
-            level=self.level,
-        )
-        arr, _ = pywt.coeffs_to_array(coeffs)
-        w = torch.from_numpy(arr.astype(np.float32)).to(self.device)
-        return w.reshape(-1)
+        w = []
+        for image in x_np:
+            # TODO: How to use the PyTorch backend and still ensure adjointness?
+            coeffs = pywt.wavedec2(
+                image, wavelet=self.wavelet, mode=self.mode, level=self.level
+            )
+            arr, _ = pywt.coeffs_to_array(coeffs)
+            w.append(arr.reshape(-1))
 
-    def adjoint(self, w: torch.Tensor) -> torch.Tensor:
-        """Adjoint of the wavelet analysis operator.
+        w = np.stack(w).reshape(*batch_shape, self.size)
+        return torch.from_numpy(w.astype(np.float32)).to(self.device)
+
+    def adjoint(self, y: torch.Tensor) -> torch.Tensor:
+        """Apply the adjoint of the wavelet analysis operator.
 
         The adjoint is equivalent to the inverse wavelet transform.
         TODO: Add reference.
 
-        Parameters
-        ----------
-        w : torch.Tensor
-            Flat wavelet coefficient vector of shape (Nw,).
+        Args:
+            y: Tensor whose last dimension contains the flat wavelet coefficients.
 
-        Returns
-        -------
-        torch.Tensor
-            Reconstructed image of shape (H, W).
+        Returns:
+            Tensor whose last two dimensions have shape (H, W).
         """
-        return self.inverse(w)
+        return self.inverse(y)
 
-    def inverse(self, w: torch.Tensor) -> torch.Tensor:
-        """Wavelet synthesis: flat coefficient vector -> image.
+    def inverse(self, y: torch.Tensor) -> torch.Tensor:
+        """Apply wavelet synthesis: flat coefficient vector -> image.
 
-        Parameters
-        ----------
-        w : torch.Tensor
-            Flat wavelet coefficient vector of shape (Nw,).
+        Args:
+            y: Tensor whose last dimension contains the flat wavelet coefficients.
 
-        Returns
-        -------
-        torch.Tensor
-            Reconstructed image of shape (H, W).
+        Returns:
+            Tensor whose last two dimensions have shape (H, W).
         """
-        w_np = w.detach().cpu().numpy().astype(np.float32)
-        arr = w_np.reshape(self.arr_shape)
-        coeffs = pywt.array_to_coeffs(arr, self.slices, output_format="wavedec2")
+        w_np = y.detach().cpu().numpy().astype(np.float32)
+        batch_shape = w_np.shape[:-1]
+        w_np = w_np.reshape(-1, self.size)
 
-        # TODO: How to use the PyTorch backend and still ensure adjointness?
-        x_np = pywt.waverec2(
-            coeffs,
-            wavelet=self.wavelet,
-            mode=self.mode,
-        )
-        x_np = x_np.astype(np.float32)
-        # Crop in case of off-by-one due to padding
-        H, W = self.shape
-        x_np = x_np[:H, :W]
-        return torch.from_numpy(x_np).to(self.device)
+        x = []
+        for coeff_vector in w_np:
+            arr = coeff_vector.reshape(self.arr_shape)
+            coeffs = pywt.array_to_coeffs(arr, self.slices, output_format="wavedec2")
+
+            # TODO: How to use the PyTorch backend and still ensure adjointness?
+            x_np = pywt.waverec2(coeffs, wavelet=self.wavelet, mode=self.mode)
+            x_np = x_np.astype(np.float32)
+            # Crop in case of off-by-one due to padding
+            H, W = self.shape
+            x.append(x_np[:H, :W])
+
+        x = np.stack(x).reshape(*batch_shape, *self.shape)
+        return torch.from_numpy(x).to(self.device)
 
     @property
     def domain_shape(self) -> tuple[int, ...]:
@@ -157,4 +139,4 @@ class Wavelet2D(Operator):
     @property
     def range_shape(self) -> tuple[int, ...]:
         """Return the shape of the output range."""
-        return self.arr_shape
+        return (self.size,)

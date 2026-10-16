@@ -6,22 +6,18 @@ import torch
 
 from LION.operators.Operator import Operator
 from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
+from LION.utils.common_primitives import DeviceLikeType
 
 
 class CompositeOp(Operator):
     r"""Composite linear operator :math:`A = \Phi \Psi^{-1}` and its adjoint.
 
-    Parameters
-    ----------
-    wavelet : Wavelet2D
-        Wavelet transform object.
-    phi : PhotocurrentMapOp
-        Photocurrent mapping operator.
-    device : str or torch.device, optional
-        Device for computations. If None, uses wavelet.device.
+    Attributes:
+        wavelet: Wavelet transform object.
+        phi: Photocurrent mapping operator.
+        device: Device for computations. If None, uses wavelet.device.
 
-    References
-    ----------
+    References:
     .. [Koutsourakis2021] G. Koutsourakis, A. Thompson, and J. C. Blakesley,
         "Toward Megapixel Resolution Compressed Sensing Current Mapping of
         Photovoltaic Devices Using Digital Light Processing", Solar RRL,
@@ -32,32 +28,28 @@ class CompositeOp(Operator):
         self,
         wavelet: Operator,
         phi: PhotocurrentMapOp,
-        device: str | torch.device | None = None,
+        device: DeviceLikeType | None = None,
     ):
         """Initialize the CompositeOp A = Phi Psi^{-1}."""
+        super().__init__(device)
         self.wavelet = wavelet
         self.phi = phi
-        self.device = device
 
     def __call__(self, w: torch.Tensor, out=None) -> torch.Tensor:
         """Apply the forward projection A = Phi Psi^{-1}.
 
-        Parameters
-        ----------
-        w : torch.Tensor
-            Wavelet coefficients, shape (Nw,).
-        out : None
-            Legacy for tomosipo ``to_autograd``. Just ignore.
+        Args:
+            w: Wavelet coefficients, shape (Nw,).
+            out: Legacy for tomosipo ``to_autograd``. Just ignore.
 
-        Returns
-        -------
-        torch.Tensor
+        Returns:
             Predicted measurements, shape (M,).
         """
         return self.forward(w)
 
     def forward(self, w: torch.Tensor) -> torch.Tensor:
         """Apply the forward projection A = Phi Psi^{-1}.
+
 
         .. note::
             Prefer calling the instance of the CompositeOp operator as ``operator(w)`` over
@@ -76,15 +68,11 @@ class CompositeOp(Operator):
     def adjoint(self, r: torch.Tensor) -> torch.Tensor:
         """Apply A^T = Psi Phi^T.
 
-        Parameters
-        ----------
-        r : torch.Tensor
-            Residual in measurement space, shape (M,).
+        Args:
+            r: Residual in measurement space, shape (M,).
 
-        Returns
-        -------
-        g : torch.Tensor
-            Gradient in wavelet coefficient space, shape (Nw,).
+        Returns:
+            g: Gradient in wavelet coefficient space, shape (Nw,).
         """
         r = r.to(self.device)
         x_back = self.phi.adjoint(r)  # expected shape (H, W)
@@ -100,5 +88,4 @@ class CompositeOp(Operator):
     @property
     def range_shape(self) -> tuple[int, ...]:
         """Return the shape of the measurement range."""
-        # Opposite of domain_shape of wavelet since wavelet is Psi^{-1}
-        return self.wavelet.domain_shape
+        return self.phi.range_shape

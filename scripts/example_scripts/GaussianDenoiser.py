@@ -149,7 +149,7 @@ model.eval()
 
 from LION.reconstructors.PnP import PnP
 
-reconstructor = PnP(experiment.geometry, model, algorithm="FBS")
+reconstructor = PnP(experiment.geometry, model, default_algorithm="FBS")
 
 with torch.no_grad():
     for i, (sino, target) in enumerate(lidc_dataloader):

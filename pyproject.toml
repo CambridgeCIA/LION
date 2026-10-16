@@ -36,34 +36,41 @@ dependencies = [
     # The main dependency is tomosipo which in turns depends on astra-toolbox.
 
     # The followings are currently set to prefer newer versions (make sure they don't conflict with the ones above)
-    "deepinv",  # pretrained DRUNet
-    "h5py",
-    "imageio",
-    "kornia",  # LION/optimizers/GaussianDenoiserSolver.py
-    "lightning",
-    "matplotlib",
-    "numpy",
-    "opencv-python",
-    "pandas",
-    "pillow",
-    "pydicom",
-    "pylidc",
+    # "deepinv",  # pretrained DRUNet
+    # "h5py",
+    # "imageio",
+    # "kornia",  # LION/optimizers/GaussianDenoiserSolver.py
+    # "lightning",
+    # "matplotlib",
+    "mlflow",
+    "mrpro",
+    # "numpy",
+    # "opencv-python",
+    # "pandas",
+    # "pillow",
+    "piq",
     "ptwt",  # Wavelet transforms for PyTorch, for photocurrent mapping reconstruction baseline
-    "PyWavelets",  # Wavelet transforms for Numpy
+    # "pydicom",
+    "pylidc",
+    # "PyWavelets",  # Wavelet transforms for Numpy
     "pytorch-wavelets",  # Wavelet transforms for PyTorch (TODO: switch to ptwt)
-    "scikit-image",
-    "scipy",
-    "spgl1",  # SPGL1 solver, for baseline photocurrent mapping reconstruction method
+    "rich",
+    # "scikit-image",
+    # "scipy",
+    # "spgl1",  # SPGL1 solver, for baseline photocurrent mapping reconstruction method
     "spyrit",  # Fast Walsh-Hadamard Transform
-    "tifffile",
-    "torch",
-    "torchdiffeq",
-    "torchmetrics",
-    "torchvision",
+    # "tifffile",
+    # "torch",
+    # "torchdiffeq",
+    # "torchmetrics",
+    # "torchvision",
     "tqdm",
-    "wandb",
+    "tyro",
     "LION[codestyle]",
 ]
+
+[project.scripts]
+lion-pcm-gui = "LION.pcm.gui.app:main"
 
 [project.optional-dependencies]
 codestyle = [
@@ -98,21 +105,31 @@ notebooks = [
 ci = [
     "pre-commit",
 ]
-dev = ["LION[tests, docs, ci]"]
+gui = [
+    # "PySide6",
+    "matplotlib",
+    "nuitka",
+    "ordered-set",
+    "zstandard"
+]
+dev = ["LION[tests, docs, ci, gui]"]
 
 # PyTest section
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["pytests"]
 filterwarnings = [
     "error",
     "ignore:Anomaly Detection has been enabled:UserWarning",                   # torch.autograd
     "ignore:.*In the future, this object will be coerced as if it was first converted using.*:FutureWarning", # numpy 1.2
     "ignore:pkg_resources is deprecated as an API:UserWarning",  # ignore warning when importing pytorch_wavelets (if not tests will fail)
     "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",  # ignore warning when importing pytorch_wavelets (if not tests will fail)
+    "ignore:invalid escape sequence.*:SyntaxWarning",  # ignore warning when importing pytorch_wavelets (if not tests will fail)
 ]
 addopts = "-n auto --dist loadfile --maxprocesses=8"
 markers = [
-    "cuda : Tests only to be run when cuda device is available"  # Add argument `-m "not cuda"` to the `pytest` command line to skip tests with this marker
+    "cuda : Tests only to be run when cuda device is available",  # Add argument `-m "not cuda"` to the `pytest` command line to skip tests with this marker
+    "tomosipo : Tests only to be run when tomosipo is available",  # Add argument `-m "not tomosipo"` to the `pytest` command line to skip tests with this marker
+    # We can exclude multiple markers. E.g.  use `-m "not (cuda or tomosipo)"` or `-m "not cuda and not tomosipo"` to skip tests with either marker
 ]
 
 # MyPy section
@@ -135,9 +152,12 @@ module = [
 ignore_missing_imports = true
 
 [tool.ruff]
-line-length = 120
+line-length = 88
 extend-exclude = ["__init__.py"]
 exclude = ["docs/**"]
+
+[tool.black]
+line-length = 88
 
 [tool.ruff.lint]
 select = [
@@ -147,6 +167,7 @@ select = [
     "C4",  # flake8-comprehensions
     "COM", # flake8-commas
     "D",   # pydocstyle
+    "DOC", # ???
     "E",   # pycodestyle errors
     "F",   # Pyflakes
     "FA",  # flake8-future-annotations
@@ -174,6 +195,7 @@ extend-select = [
     "BLE001", #  blind exception
     "D107",   #  missing docstring in __init__
     "D417",   #  undocumented-parameter
+    "DOC102", # documented parameter is not in the function signature
 ]
 ignore = [
     "N999",   #  invalid module name
@@ -186,6 +208,8 @@ ignore = [
     "N802",   #  function name should be lowercase
     "N803",   #  argument name should be lowercase
     "N806",   #  variable in function should be lowercase
+    "F401",   #  unused-import
+    "D202",  #  No blank lines allowed after function docstring
 ]
 
 [tool.ruff.lint.isort]
@@ -198,7 +222,8 @@ inline-quotes = "double"
 multiline-quotes = "double"
 
 [tool.ruff.lint.pydocstyle]
-convention = "numpy"
+convention = "google"
+# convention = "numpy"
 
 [tool.ruff.format]
 quote-style = "double"

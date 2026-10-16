@@ -1,5 +1,5 @@
-import pathlib
 import os
+import pathlib
 
 ## The primary data path is set via the LION_DATA_PATH environment variable.
 
@@ -22,3 +22,18 @@ DETECT_PATH = LION_DATA_PATH.joinpath("raw/2detect")
 LUNA_PROCESSED_DATASET_PATH = LION_DATA_PATH.joinpath("processed/LUNA16")
 LIDC_IDRI_PROCESSED_DATASET_PATH = LION_DATA_PATH.joinpath("processed/LIDC-IDRI")
 DETECT_PROCESSED_DATASET_PATH = LION_DATA_PATH.joinpath("processed/2detect")
+
+# Optional PCM datasets. Override LION_TTV22_PATH on other machines.
+ROOT = os.environ.get("LION_STORAGE_ROOT", "/")
+TTV22_PATH = (
+    pathlib.Path(
+        os.environ.get("LION_TTV22_PATH", str(pathlib.Path(ROOT) / "store/LION/ttv22"))
+    )
+    .expanduser()
+    .resolve()
+)
+PCM_SYNTHETIC_PNG_PATH = (
+    TTV22_PATH / "pcm/data/PCM Synthetic Data Set/Synthetic Data/Synthetic Data"
+)
+PCM_EXAMPLE_DATA_PATH = TTV22_PATH / "pcm/data/photocurrent_data"
+PCM_REAL_DATA_EXAMPLE_PATH = TTV22_PATH / "pcm/data/example_data"

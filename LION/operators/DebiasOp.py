@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from tabnanny import verbose
+from typing import Callable
 
 import torch
-from tqdm import tqdm
 
 from LION.operators.Operator import Operator
 from LION.utils.math import power_method
@@ -14,19 +14,13 @@ from LION.utils.math import power_method
 class DebiasOp(Operator):
     """Debiasing least squares operator on the support of w.
 
-    Parameters
-    ----------
-    operator : Operator
-        Forward operator A.
-    y : torch.Tensor
-        Measurements, shape (M,).
-    w : torch.Tensor
-        l1 minimiser, shape (Nw,).
-    support_tol : float
-        Threshold defining nonzero support.
+    Attributes:
+        op: Forward operator A.
+        y: Measurements, shape (M,).
+        w: l1 minimiser, shape (Nw,).
+        support_tol: Threshold defining nonzero support.
 
-    References
-    ----------
+    References:
     .. [Koutsourakis2021] G. Koutsourakis, A. Thompson, and J. C. Blakesley,
         "Toward Megapixel Resolution Compressed Sensing Current Mapping of
         Photovoltaic Devices Using Digital Light Processing", Solar RRL,
@@ -34,12 +28,9 @@ class DebiasOp(Operator):
     """
 
     def __init__(
-        self,
-        op: Operator,
-        y: torch.Tensor,
-        w: torch.Tensor,
-        support_tol: float = 1e-3,
+        self, op: Operator, y: torch.Tensor, w: torch.Tensor, support_tol: float = 1e-3
     ):
+        super().__init__(device=op.device)
         self.op = op
         self.y = y
         self.w = w
@@ -48,21 +39,16 @@ class DebiasOp(Operator):
         self.support = torch.nonzero(
             torch.abs(w) > support_tol, as_tuple=False
         ).squeeze(1)
-        self.device = op.device
 
     def __call__(self, v: torch.Tensor, out=None) -> torch.Tensor:
         """Apply the forward projection on the support.
 
-        Parameters
-        ----------
-        v : torch.Tensor
-            Input vector on the support, shape (Ns,).
-        out : None
-            Legacy for tomosipo ``to_autograd``. Just ignore.
 
-        Returns
-        -------
-        torch.Tensor
+        Args:
+            v: Input vector on the support, shape (Ns,).
+            out: Legacy for tomosipo ``to_autograd``. Just ignore.
+
+        Returns:
             Output measurements, shape (M,).
         """
         return self.forward(v)
@@ -81,14 +67,10 @@ class DebiasOp(Operator):
     def adjoint(self, r: torch.Tensor) -> torch.Tensor:
         """Apply the adjoint projection on the support.
 
-        Parameters
-        ----------
-        r : torch.Tensor
-            Input measurements, shape (M,).
+        Args:
+            r: Input measurements, shape (M,).
 
-        Returns
-        -------
-        torch.Tensor
+        Returns:
             Output vector on the support, shape (Ns,).
         """
         g_full = self.op.adjoint(r)
@@ -112,30 +94,20 @@ def debias_ls(
     support_tol: float = 1e-3,
     max_iter: int = 200,
     tol: float = 1e-5,
-    progress_bar: bool = False,
+    prog_bar: Callable | None = None,
 ) -> torch.Tensor:
     """Debiasing least squares on the support of w.
 
-    Parameters
-    ----------
-    op : Operator
-        Forward operator A.
-    y : torch.Tensor
-        Measurements, shape (M,).
-    w : torch.Tensor
-        l1 minimiser, shape (Nw,).
-    support_tol : float
-        Threshold defining nonzero support.
-    max_iter : int
-        Maximum number of gradient descent iterations.
-    tol : float
-        Relative stopping threshold.
-    progress_bar : bool
-        Whether to show a progress bar. Default is False.
+    Args:
+        op: Forward operator A.
+        y: Measurements, shape (M,).
+        w: l1 minimiser, shape (Nw,).
+        support_tol: Threshold defining nonzero support.
+        max_iter: Maximum number of gradient descent iterations.
+        tol: Relative stopping threshold.
+        progress_bar: Whether to show a progress bar. Default is False.
 
-    Returns
-    -------
-    w_deb : torch.Tensor
+    Returns:
         Debiased coefficient vector, shape (Nw,).
     """
     device = w.device
@@ -152,9 +124,9 @@ def debias_ls(
 
     v = w[support].clone()
 
-    iterator = range(max_iter)
-    if progress_bar:
-        iterator = tqdm(iterator, desc="Debiasing LS")
+    iterator = (
+        prog_bar(range(max_iter), desc="Debiasing LS") if prog_bar else range(max_iter)
+    )
     for _ in iterator:
         r = op_s(v) - y
         grad = op_s.adjoint(r)
