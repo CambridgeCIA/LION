@@ -1,6 +1,6 @@
 import torch
 from LION.operators import CompositeOp, PhotocurrentMapOp, Subsampler, Wavelet2D
-from tests.helper import dotproduct_adjointness_test
+from LION.utils.tests_helper import dotproduct_adjointness_test
 
 
 def test_composite_op_adjointness():

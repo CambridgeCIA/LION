@@ -4,7 +4,7 @@ import pytest
 import torch
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
-from tests.helper import dotproduct_adjointness_test
+from LION.utils.tests_helper import dotproduct_adjointness_test
 from tomosipo.torch_support import to_autograd
 
 

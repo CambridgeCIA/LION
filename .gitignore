@@ -18,3 +18,10 @@ example.py
 wandb
 
 **/results
+.DS_Store
+*.zip
+mlflow.db
+*.xml
+sys
+argparse
+copy

@@ -15,7 +15,7 @@ Many things are bound to fail and many more are bound to change. If you want to 
 
 Install:
 
-```
+```bash
 git clone https://github.com/CambridgeCIA/LION.git
 cd LION
 git submodule update --init --recursive            # Legacy: for MSD_pytorch_
@@ -74,6 +74,20 @@ LION has been extended to work with more operators.
 ## Developers
 
 Read [`developers.md`](developers.md)
+
+## Tests
+
+To run tests without CUDA and without tomosipo (useful for non-CUDA devices like Macs):
+
+```bash
+pytest tests/ -m "not cuda and not tomosipo"
+```
+
+Otherwise simply run all tests:
+
+```bash
+pytest tests/
+```
 
 ## Contributors
 

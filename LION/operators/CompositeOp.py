@@ -35,6 +35,7 @@ class CompositeOp(Operator):
         device: str | torch.device | None = None,
     ):
         """Initialize the CompositeOp A = Phi Psi^{-1}."""
+        super().__init__(device=device)
         self.wavelet = wavelet
         self.phi = phi
         self.device = device

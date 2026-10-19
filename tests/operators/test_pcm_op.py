@@ -2,7 +2,7 @@
 
 import torch
 from LION.operators import PhotocurrentMapOp, Subsampler
-from tests.helper import dotproduct_adjointness_test
+from LION.utils.tests_helper import dotproduct_adjointness_test
 
 
 def test_pcm_autograd_op_forward_and_backward():
@@ -26,6 +26,21 @@ def test_pcm_autograd_op_forward_and_backward():
     assert isinstance(input_tensor.grad, torch.Tensor)
     assert input_tensor.grad.shape == input_tensor.shape
     assert torch.isfinite(input_tensor.grad).all()
+
+
+def test_pcm_autograd_matches_adjoint():
+    J = 4
+    N = 1 << J
+    subsampler = Subsampler(n=N * N, delta=0.25, coarseJ=J - 1)
+    operator = PhotocurrentMapOp(J=J, subsampler=subsampler)
+
+    x = torch.randn(*operator.domain_shape, requires_grad=True)
+    y = torch.randn(*operator.range_shape)
+
+    loss = torch.sum(operator(x) * y)
+    loss.backward()
+
+    torch.testing.assert_close(x.grad, operator.adjoint(y), rtol=1e-5, atol=1e-5)
 
 
 def test_pcm_op_adjointness():
