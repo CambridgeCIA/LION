@@ -77,8 +77,16 @@ Read [`developers.md`](developers.md)
 
 ## Tests
 
+To run tests without CUDA and without tomosipo (useful for non-CUDA devices like Macs):
+
 ```bash
-pytest pytests/ -m "not cuda and not tomosipo"
+pytest tests/ -m "not cuda and not tomosipo"
+```
+
+Otherwise simply run all tests:
+
+```bash
+pytest tests/
 ```
 
 ## Contributors

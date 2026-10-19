@@ -1,10 +1,12 @@
-"""Thin wrapper around tomosipo's Operator class for linear tomographic projection."""
+"""Operator class for computed tomographic projection."""
 
 from __future__ import annotations
 
-import torch
-from tomosipo.Operator import Operator as TomosipoOperator
+from typing import Literal
 
+import torch
+
+from LION.CTtools.ct_geometry import Geometry
 from LION.operators.Operator import Operator
 from LION.utils.common_primitives import DeviceLikeType
 
@@ -13,16 +15,62 @@ class CTProjectionOp(Operator):
     """Tomographic projection operator and its adjoint using tomosipo.
 
     Args:
-        ts_operator: Tomosipo operator implementing the tomographic projection and its adjoint.
-        device: Device for computations. If None, computations are done on the default device.
+        geometry: The geometry of the CT scan.
+        backend: The backend to use for the projection operator.
+            Currently only 'tomosipo' is supported.
+        device: Device for computations. If None, use default device.
     """
 
     def __init__(
-        self, ts_operator: TomosipoOperator, device: DeviceLikeType | None = None
+        self,
+        geometry: Geometry,
+        backend: Literal["tomosipo"] = "tomosipo",
+        device: DeviceLikeType | None = None,
     ):
         """Initialize the CTProjectionOp."""
         super().__init__(device=device)
-        self._ts = ts_operator
+        if backend == "tomosipo":
+            # Wrap the tomosipo operator
+            import tomosipo as ts
+
+            if not isinstance(geometry, Geometry):
+                raise ValueError(
+                    "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"
+                )
+            if geometry.mode == "fan":
+                vg = ts.volume(
+                    shape=geometry.image_shape,
+                    size=geometry.image_size,
+                    pos=geometry.image_pos,
+                )
+                pg = ts.cone(
+                    angles=geometry.angles,
+                    shape=geometry.detector_shape,
+                    size=geometry.detector_size,
+                    src_orig_dist=geometry.dso,
+                    src_det_dist=geometry.dsd,
+                )
+            elif geometry.mode == "parallel":
+                vg = ts.volume(
+                    shape=geometry.image_shape,
+                    size=geometry.image_size,
+                    pos=geometry.image_pos,
+                )
+                pg = ts.parallel(
+                    angles=geometry.angles,
+                    shape=geometry.detector_shape,
+                    size=geometry.detector_size,
+                )
+            else:
+                raise ValueError(
+                    "Geometry mode not understood, has to be 'fan' or 'parallel'"
+                )
+            self._ts = ts.operator(vg, pg)
+        else:
+            raise ValueError(
+                f"Backend {backend} not supported. "
+                "Currently only 'tomosipo' is supported."
+            )
 
     def __call__(self, x: torch.Tensor, out=None) -> torch.Tensor:
         """Apply the forward projection.

@@ -159,35 +159,7 @@ def from_HU_to_material_id(img):
 
 
 def make_operator(geometry: Geometry) -> CTProjectionOp:
-    if not isinstance(geometry, Geometry):
-        raise ValueError(
-            "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"
-        )
-    if geometry.mode == "fan":
-        vg = ts.volume(
-            shape=geometry.image_shape, size=geometry.image_size, pos=geometry.image_pos
-        )
-        pg = ts.cone(
-            angles=geometry.angles,
-            shape=geometry.detector_shape,
-            size=geometry.detector_size,
-            src_orig_dist=geometry.dso,
-            src_det_dist=geometry.dsd,
-        )
-    elif geometry.mode == "parallel":
-        vg = ts.volume(
-            shape=geometry.image_shape, size=geometry.image_size, pos=geometry.image_pos
-        )
-        pg = ts.parallel(
-            angles=geometry.angles,
-            shape=geometry.detector_shape,
-            size=geometry.detector_size,
-        )
-    else:
-        raise ValueError("Geometry mode not understood, has to be 'fan' or 'parallel'")
-    A = ts.operator(vg, pg)
-    A = CTProjectionOp(A)
-    return A
+    return CTProjectionOp(geometry)
 
 
 def forward_projection(
