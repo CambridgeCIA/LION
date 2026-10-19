@@ -3,8 +3,31 @@ channels:
   - conda-forge
   - nvidia
 dependencies:
-  - astra-toolbox>=2.3.1  # official `astra-toolbox` channel doesn't ship any `aarch64` build 
+  - astra-toolbox>=2.3.1  # official `astra-toolbox` channel doesn't ship any `aarch64` build
     # and `conda-forge` only ships astra-toolbox up to 2.3.1
   - cuda-version=12.8
-  - pip<=25.2  # pip 25.3 drops support for setup.py install which is used to install tomosipo and ts_algorithms from source 
+  - pip<=25.2  # pip 25.3 drops support for setup.py install which is used to install tomosipo and ts_algorithms from source
   - python=3.12
+  - deepinv
+  - h5py
+  - imageio
+  - kornia
+  - lightning
+  - matplotlib
+  - numpy<2.5  # numpy 2.5 (and above) breaks spgl1 0.0.3 (currently latest version)
+  - opencv
+  - pandas
+  - patchelf
+  - pillow
+  - pydicom
+  - pyside6
+  - pywavelets
+  - scikit-image
+  - scipy
+  - spgl1
+  - statsmodels
+  - tifffile
+  - timm
+  - torchdiffeq
+  - torchmetrics
+  - typing_extensions>=4.16

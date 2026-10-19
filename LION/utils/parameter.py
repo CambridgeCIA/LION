@@ -7,12 +7,27 @@ from LION.utils.utils import JSONParamEncoder
 
 
 class LIONParameter:
+    """General class to store parameters (e.g. for experiments).
+
+    Allows nested `LIONParameter`'s.
+
+    Should allow runtime assignments of parameters.
+    """
+
     def __init__(self, **kwargs):
         """
         Initialize LIONParameter from dictionary
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Contains parameters to initialize the `LIONParameter`.
+            If a value is a `dict`, it will be turned into a `LIONParameter`.
         """
         for item in kwargs:
+            # TODO (low importance): Is there an `is_dict_like` that can include more types of key-based objects? If not, should we make one?
             if isinstance(kwargs[item], dict):
+                # If we get a dict, turn it into a LIONParameter (we can have nested LIONParameter's)
                 setattr(self, item, LIONParameter(**(kwargs[item])))
             else:
                 setattr(self, item, kwargs[item])
@@ -21,6 +36,7 @@ class LIONParameter:
         """
         Check if the values are not None
         """
+        # TODO: This only check truthiness, not presence. E.g. if a parameter is False or 0, it will also be considered not filled.
         if not all(vars(self).values()):
             raise ValueError("Not all parameters set")
 
@@ -42,6 +58,7 @@ class LIONParameter:
         """
         Produces a dict of LIONParameter()
         """
+        # TODO: Should we raise `NotImplementedError` instead of letting it pass?
 
     def save(self, fname):
         """
