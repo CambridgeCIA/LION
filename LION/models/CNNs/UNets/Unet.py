@@ -145,28 +145,30 @@ class UNet(LIONmodel):
         return self.conv(dec1)
 
     def block(self, inChan, outChan, noGrp, dropFac, name):
-        return nn.Sequential(
-            OrderedDict(
-                [
-                    (
-                        name + "conv1",
-                        nn.Conv2d(inChan, outChan, kernel_size=3, padding=1, bias=True),
-                    ),
-                    (name + "gn1", nn.GroupNorm(noGrp, outChan)),
-                    (name + "relu1", nn.ReLU(True)),
-                    (name + "dr1", nn.Dropout(p=dropFac)),
-                    (
-                        name + "conv2",
-                        nn.Conv2d(
-                            outChan, outChan, kernel_size=3, padding=1, bias=True
-                        ),
-                    ),
-                    (name + "gn1", nn.GroupNorm(noGrp, outChan)),
-                    (name + "relu2", nn.ReLU(True)),
-                    (name + "dr2", nn.Dropout(p=dropFac)),
-                ]
-            )
-        )
+        layers = [
+            (
+                name + "conv1",
+                nn.Conv2d(inChan, outChan, kernel_size=3, padding=1, bias=True),
+            ),
+            (name + "gn1", nn.GroupNorm(noGrp, outChan)),
+            (name + "relu1", nn.ReLU(True)),
+            (name + "dr1", nn.Dropout(p=dropFac)),
+            (
+                name + "conv2",
+                nn.Conv2d(outChan, outChan, kernel_size=3, padding=1, bias=True),
+            ),
+        ]
+        # Older versions named both norms "gn1", so the second one silently
+        # replaced the first and blocks had a single GroupNorm. Parameters saved
+        # before `norm_after_second_conv` existed keep that architecture, so
+        # their weights still load.
+        if getattr(self.model_parameters, "norm_after_second_conv", False):
+            layers.append((name + "gn2", nn.GroupNorm(noGrp, outChan)))
+        layers += [
+            (name + "relu2", nn.ReLU(True)),
+            (name + "dr2", nn.Dropout(p=dropFac)),
+        ]
+        return nn.Sequential(OrderedDict(layers))
 
     @staticmethod
     def default_parameters():
@@ -178,5 +180,8 @@ class UNet(LIONmodel):
         param.dropFac = 0
         param.kerSiz = 2
         param.noGrp = 32
+        # GroupNorm after both convolutions of each block (False reproduces the
+        # single-norm blocks of LION versions before this option existed)
+        param.norm_after_second_conv = True
 
         return param
