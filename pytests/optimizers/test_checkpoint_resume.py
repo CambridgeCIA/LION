@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import torch
 
-from tests.optimizers._helpers import loader, make_solver, small_dncnn
+from pytests.optimizers._helpers import loader, make_solver, small_dncnn
 
 pytestmark = pytest.mark.filterwarnings("ignore")
 
