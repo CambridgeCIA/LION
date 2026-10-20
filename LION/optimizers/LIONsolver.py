@@ -655,9 +655,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         with torch.no_grad():
             test_loss = np.array([])
             for data, target in tqdm(self.test_loader):
+                data = data.to(self.device)
                 if self.model.get_input_type() == ModelInputType.IMAGE:
                     data = fdk(data, self.op)
-                output = self.model(data.to(self.device))
+                output = self.model(data)
                 test_loss = np.append(
                     test_loss,
                     self.testing_fn(output, target.to(self.device)).cpu().numpy(),
@@ -810,7 +811,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         if self.verbose:
             print(
-                f"Testing loss: {validation_loss.mean()} - Testing loss std: {validation_loss.std()}"
+                f"Validation loss: {validation_loss.mean()} - Validation loss std: {validation_loss.std()}"
             )
 
         # return to train if it was in train
@@ -825,15 +826,18 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         validation_loss = np.array([])
         for data, targets in tqdm(self.validation_loader):
+            data = data.to(self.device)
             if self.model.get_input_type() == ModelInputType.IMAGE:
-                data = fdk(data.to(self.device), self.op)
-                outputs = self.model(data)
-                validation_loss = np.append(
-                    validation_loss,
-                    self.validation_fn(targets.to(self.device), outputs.to(self.device))
-                    .cpu()
-                    .numpy(),
-                )
+                data = fdk(data, self.op)
+            outputs = self.model(data)
+            # same argument order as the training loss: (output, target)
+            validation_loss = np.append(
+                validation_loss,
+                self.validation_fn(outputs, targets.to(self.device))
+                .detach()
+                .cpu()
+                .numpy(),
+            )
         return validation_loss
 
     def get_model(self) -> LIONmodel:
