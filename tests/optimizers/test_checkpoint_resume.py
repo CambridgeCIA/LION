@@ -97,3 +97,27 @@ def test_train_without_checkpointing(tmp_path):
     solver.train(2)
     assert solver.current_epoch == 2
     assert not list(tmp_path.iterdir())
+
+
+def test_min_validation_model_lives_in_save_folder(tmp_path):
+    # checkpoints may go elsewhere; the min-validation model is in save_folder
+    checkpoints = tmp_path / "checkpoints"
+    checkpoints.mkdir()
+
+    def solver_for_run(seed):
+        torch.manual_seed(seed)
+        solver = make_solver()
+        solver.set_training(loader())
+        solver.set_saving(tmp_path, "model")
+        solver.set_checkpointing("model_check_*.pt", 1, save_folder=checkpoints)
+        solver.set_validation(loader(seed=1), 1, validation_fname="model_min_val.pt")
+        return solver
+
+    first = solver_for_run(0)
+    first.train(2)
+    assert (tmp_path / "model_min_val.pt").with_suffix(".pt").is_file()
+    assert not list(checkpoints.glob("model_min_val*"))
+
+    resumed = solver_for_run(1)
+    resumed.train(2)  # only loads
+    assert resumed.validation_loss[1] == pytest.approx(np.min(first.validation_loss))
