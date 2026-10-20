@@ -112,7 +112,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.save_folder: Optional[pathlib.Path] = save_folder
 
         self.do_load_checkpoint: bool = False
-        self.checkpoint_freq: int
+        self.checkpoint_freq: Optional[int] = None
 
         self.final_result_fname: Optional[str] = None
         self.checkpoint_fname: Optional[str] = None
@@ -420,7 +420,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=pathlib.Path,
                 error=False,
                 autofill=True,
-                verbose=True,
+                verbose=verbose,
                 default=self.save_folder,
             ),
         )
@@ -684,24 +684,44 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.model,
             self.optimizer,
             self.current_epoch,
-            self.train_loss,
+            loaded_train_loss,
             _,
         ) = self.model.load_checkpoint_if_exists(
             self.checkpoint_save_folder.joinpath(self.checkpoint_fname),
             self.model,
             self.optimizer,
             self.train_loss,
+            verbose=self.verbose,
         )
+        # Keep the losses of the epochs already done, without shrinking the
+        # array that train() allocated for this run.
+        loaded_train_loss = np.asarray(loaded_train_loss, dtype=float).ravel()
+        if len(self.train_loss) < len(loaded_train_loss):
+            self.train_loss = np.pad(
+                self.train_loss, (0, len(loaded_train_loss) - len(self.train_loss))
+            )
+        self.train_loss[: len(loaded_train_loss)] = loaded_train_loss
+
+        # Restore the best validation loss so far, so that the min-validation
+        # model saved before the interruption is not overwritten by a worse one.
+        validation_folder = getattr(self, "validation_save_folder", None)
         if (
             self.validation_fn is not None
             and self.current_epoch > 0
             and self.validation_fname is not None
             and self.validation_loss is not None
+            and validation_folder is not None
+            and validation_folder.joinpath(self.validation_fname).is_file()
         ):
+            if len(self.validation_loss) < self.current_epoch:
+                self.validation_loss = np.pad(
+                    self.validation_loss,
+                    (0, self.current_epoch - len(self.validation_loss)),
+                )
             self.validation_loss[
                 self.current_epoch - 1
             ] = self.model._read_min_validation(
-                self.checkpoint_save_folder.joinpath(self.validation_fname)
+                validation_folder.joinpath(self.validation_fname)
             )
             if self.verbose:
                 print(
@@ -758,17 +778,25 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         # Make sure all parameters are set
         self.check_training_ready()
 
-        if self.do_load_checkpoint:
+        # Allocate the loss arrays before loading a checkpoint, so that the
+        # loaded values (including the min validation loss) are kept.
+        self.train_loss = np.zeros(n_epochs)
+        if self.validation_loader is not None and self.check_validation_ready() == 0:
+            self.validation_loss = np.zeros(n_epochs)
+        else:
+            self.validation_loss = None
+
+        # Fills in checkpointing defaults (frequency, file name) when possible.
+        self.check_checkpointing_ready(verbose=False)
+        do_checkpoint = (
+            self.checkpoint_freq is not None
+            and self.checkpoint_save_folder is not None
+            and self.checkpoint_fname is not None
+        )
+
+        if self.do_load_checkpoint and do_checkpoint:
             print("Loading checkpoint...")
             self.current_epoch = self.load_checkpoint()
-            self.train_loss = np.append(self.train_loss, np.zeros((n_epochs)))
-        else:
-            self.train_loss = np.zeros(n_epochs)
-
-        if self.check_validation_ready() == 0:
-            self.validation_loss = np.zeros((n_epochs))
-        if self.validation_loader is None:
-            self.validation_loss = None
 
         self.model.train()
         # train loop
@@ -776,7 +804,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             print(f"Training epoch {self.current_epoch + 1}")
             self.epoch_step(self.current_epoch)
 
-            if (self.current_epoch + 1) % self.checkpoint_freq == 0:
+            if do_checkpoint and (self.current_epoch + 1) % self.checkpoint_freq == 0:
                 self.save_checkpoint(self.current_epoch)
 
             self.current_epoch += 1
