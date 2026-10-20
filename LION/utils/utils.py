@@ -1,5 +1,6 @@
 import argparse
 import json
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -88,12 +89,13 @@ def unzip_file(zipped_file_path: Path, unzipped_file_path: Path) -> None:
     """Unzip file. First tries unzip command then 7zip if unzip fails"""
     try:
         print(f"Unzipping {zipped_file_path} files with unzip...")
-        bash_command = f"unzip {zipped_file_path} -d {unzipped_file_path}"
+        bash_command = f"unzip {shlex.quote(str(zipped_file_path))} -d {shlex.quote(str(unzipped_file_path))}"
         run_cmd(bash_command)
     except RuntimeError:
         try:
             print("Unzipping with Unzip failed. Unzipping with 7zip")
-            bash_command = f"7z x {zipped_file_path} -o {unzipped_file_path} -y"
+            # 7z takes the output folder glued to the flag: -o<folder>
+            bash_command = f"7z x {shlex.quote(str(zipped_file_path))} -o{shlex.quote(str(unzipped_file_path))} -y"
             run_cmd(bash_command)
         except RuntimeError:
             raise RuntimeError("Both unzip and 7zip failed for unzipping")
@@ -111,15 +113,16 @@ def download_file(placeholder_url: str, file_path: Path) -> None:
     if not file_path.is_file():
         try:
             print(f"Downloading {placeholder_url} with wget...")
+            # -O sets the full output path (it overrides -P)
             bash_command = (
-                f"wget {placeholder_url} -P {file_path.parent} -O {file_path.stem}"
+                f"wget {shlex.quote(placeholder_url)} -O {shlex.quote(str(file_path))}"
             )
             run_cmd(bash_command)
 
         except RuntimeError:
             try:
                 print("Downloading with wget failed. Downloading with curl...")
-                bash_command = f"curl {placeholder_url} > {file_path}"
+                bash_command = f"curl -fL {shlex.quote(placeholder_url)} -o {shlex.quote(str(file_path))}"
                 run_cmd(bash_command)
             except RuntimeError:
                 raise RuntimeError("curl and wget failed, cannot download")
