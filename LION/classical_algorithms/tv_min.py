@@ -6,6 +6,7 @@ from LION.CTtools.ct_utils import make_operator
 
 from LION.exceptions.exceptions import NoDataException
 from LION.operators.Operator import Operator
+from LION.utils.tomosipo_import import import_tomosipo
 
 
 def tv_min(
@@ -22,7 +23,7 @@ def tv_min(
 
     See ts_algorithms.tv_min2d for more details.
     """
-    from ts_algorithms import tv_min2d as ts_tv_min
+    ts_tv_min = import_tomosipo("ts_algorithms", "tv_min").tv_min2d
 
     if sino.dim() == 4:
         B, _, _, _ = sino.shape

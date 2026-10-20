@@ -6,6 +6,7 @@ from LION.CTtools.ct_utils import make_operator
 
 from LION.exceptions.exceptions import NoDataException
 from LION.operators.Operator import Operator
+from LION.utils.tomosipo_import import import_tomosipo
 
 
 def sirt(
@@ -24,7 +25,7 @@ def sirt(
 
     See ts_algorithms.sirt for more details.
     """
-    from ts_algorithms import sirt as ts_sirt
+    ts_sirt = import_tomosipo("ts_algorithms", "sirt").sirt
 
     if sino.dim() == 4:
         B, _, _, _ = sino.shape

@@ -16,6 +16,7 @@ import torchvision.transforms.functional as TF
 # AItomotools imports
 from LION.CTtools.ct_geometry import Geometry
 from LION.operators.CTProjectionOp import CTProjectionOp
+from LION.utils.tomosipo_import import import_tomosipo
 
 
 def from_HU_to_normal(img):
@@ -174,7 +175,7 @@ def forward_projection(
     if backend != "tomosipo":
         raise ValueError("Only tomosipo backend for CT supported")
     # You can add other backends here
-    import tomosipo as ts
+    ts = import_tomosipo("tomosipo", "forward_projection")
 
     device = torch.cuda.current_device()
 
