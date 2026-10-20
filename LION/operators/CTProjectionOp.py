@@ -107,7 +107,19 @@ class CTProjectionOp(Operator):
 
     def __getattr__(self, name: str):
         """Delegate attribute access to the underlying tomosipo operator."""
-        return getattr(self._ts, name)
+        # nn.Module first (registered parameters, buffers, submodules)
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            pass
+        # Look _ts up directly: if it is not set yet (during __init__, copy or
+        # unpickling), self._ts would call __getattr__ again and recurse forever.
+        ts_op = self.__dict__.get("_ts")
+        if ts_op is None:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'"
+            )
+        return getattr(ts_op, name)
 
     @property
     def domain_shape(self) -> tuple[int, ...]:
