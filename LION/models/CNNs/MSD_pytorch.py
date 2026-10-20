@@ -7,6 +7,7 @@
 
 
 from LION.models import LIONmodel
+from LION.models.LIONmodel import LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 import msd_pytorch as msd
 
@@ -46,6 +47,7 @@ class MSD_pytorch(LIONmodel.LIONmodel):
     @staticmethod
     def default_parameters(mode="regression"):
         param = LIONModelParameter()
+        param.model_input_type = ModelInputType.IMAGE
         if mode == "regression":
             param.type = "regression"
             param.c_in = 1
@@ -55,6 +57,7 @@ class MSD_pytorch(LIONmodel.LIONmodel):
             param.dilations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         elif mode == "segmentation":
             param.type = "segmentation"
+            param.c_in = 1
             param.num_labels = None
             param.depth = 100
             param.width = 1

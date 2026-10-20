@@ -16,7 +16,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from LION.models.LIONmodel import LIONmodel, LIONModelParameter
+from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 
 class MSD_Layer(nn.Module):
@@ -109,7 +109,7 @@ class MSDNet(LIONmodel):
             self.model_parameters.in_channels,
             self.model_parameters.width,
             self.model_parameters.dilations[: self.model_parameters.width],
-            self.model_parameters.activation,
+            self._make_activation(),
         )
         self.layers.append(first_layer)
         for layer_idx in range(1, self.model_parameters.depth):
@@ -122,7 +122,7 @@ class MSDNet(LIONmodel):
                         * self.model_parameters.width : (layer_idx + 1)
                         * self.model_parameters.width
                     ],
-                    self.model_parameters.activation,
+                    self._make_activation(),
                 )
             )
 
@@ -161,8 +161,18 @@ class MSDNet(LIONmodel):
                 bias=False,
             ),
             nn.BatchNorm2d(1),
-            self.model_parameters.activation,
+            self._make_activation(),
         )
+
+    def _make_activation(self) -> nn.Module:
+        """A new activation module from model_parameters.activation, which can be
+        a torch.nn class name (e.g. "ReLU") or an nn.Module."""
+        activation = self.model_parameters.activation
+        if isinstance(activation, str):
+            if not isinstance(getattr(nn, activation, None), type):
+                raise ValueError(f"torch.nn has no activation '{activation}'")
+            return getattr(nn, activation)()
+        return activation
 
     def _initialize_conv_weights(self, layer: nn.Module):
         assert isinstance(layer, nn.Conv2d), "layer not Conv2D"
@@ -219,9 +229,10 @@ class MSDNet(LIONmodel):
         return x
 
     @staticmethod
-    def default_parameters() -> MSD_Params:
+    def default_parameters() -> LIONModelParameter:
 
         params = LIONModelParameter()
+        params.model_input_type = ModelInputType.IMAGE
         params.in_channels = 1
         params.width = 1
         params.depth = 100

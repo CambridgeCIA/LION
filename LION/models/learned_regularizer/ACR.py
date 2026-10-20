@@ -60,7 +60,9 @@ class ICNN_layer(nn.Module):
 ###An L2 tern with learnable weight
 # define a network for training the l2 term
 class L2net(nn.Module):
-    def __init__(self, l2_penalty: float):
+    """``softplus(w) * ||x||^2`` per sample, with a learnable weight ``w``."""
+
+    def __init__(self, l2_penalty: float = -9.0):
         super(L2net, self).__init__()
 
         self.l2_penalty = nn.Parameter((l2_penalty) * torch.ones(1))
@@ -76,65 +78,76 @@ class L2net(nn.Module):
 class ACR(LIONmodel):
     def __init__(
         self,
-        geometry_parameters: ct.Geometry,
+        geometry_parameters: Optional[ct.Geometry] = None,
         model_parameters: Optional[LIONModelParameter] = None,
     ):
 
         super().__init__(model_parameters, geometry_parameters)
+        params = self.model_parameters  # defaults filled in by LIONmodel
         # First Conv
         self.first_layer = nn.Conv2d(
             in_channels=1,
-            out_channels=model_parameters.channels,
-            kernel_size=model_parameters.kernel_size,
-            stride=model_parameters.stride,
+            out_channels=params.channels,
+            kernel_size=params.kernel_size,
+            stride=params.stride,
             padding="same",
             bias=True,
         )
 
-        if model_parameters.relu_type == "LeakyReLU":
+        if params.relu_type == "LeakyReLU":
             self.first_activation = nn.LeakyReLU(negative_slope=0.2)
         else:
             raise ValueError(
                 "Only Leaky ReLU supported (needs to be a convex and monotonically nondecreasin fun)"
             )
 
-        for i in range(model_parameters.layers):
+        for i in range(params.layers):
             self.add_module(
                 f"ICNN_layer_{i}",
                 ICNN_layer(
-                    channels=model_parameters.channels,
-                    kernel_size=model_parameters.kernel_size,
-                    stride=model_parameters.stride,
-                    relu_type=model_parameters.relu_type,
+                    channels=params.channels,
+                    kernel_size=params.kernel_size,
+                    stride=params.stride,
+                    relu_type=params.relu_type,
                 ),
             )
 
         self.last_layer = nn.Conv2d(
-            in_channels=model_parameters.channels,
+            in_channels=params.channels,
             out_channels=1,
-            kernel_size=model_parameters.kernel_size,
-            stride=model_parameters.stride,
+            kernel_size=params.kernel_size,
+            stride=params.stride,
             padding="same",
             bias=False,
         )
         P.register_parametrization(self.last_layer, "weight", Positive())
 
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.L2 = L2net()
+        self.L2 = L2net(params.l2_penalty)
         self.initialize_weights()
-        self.estimate_lambda()
-        self.op_norm = power_method(self.op)
-        self.model_parameters.step_size = 1 / (self.op_norm) ** 2
+        if self.geometry is not None:
+            # Step size for gradient descent on the variational problem
+            self._make_operator()
+            self.op_norm = power_method(self.op)
+            self.model_parameters.step_size = 1 / (self.op_norm) ** 2
+
+    @staticmethod
+    def _set_positive_weight(conv: nn.Conv2d, value: torch.Tensor):
+        # The weight is parametrized (clipped to be positive): write the
+        # underlying tensor, assigning to conv.weight.data has no effect.
+        conv.parametrizations.weight.original.data = value
 
     # a weight initialization routine for the ICNN
     def initialize_weights(self, min_val=0.0, max_val=1e-3):
         for i in range(self.model_parameters.layers):
             block = getattr(self, f"ICNN_layer_{i}")
-            block.blue.weight.data = min_val + (max_val - min_val) * torch.rand_like(
-                block.blue.weight.data
+            weight = block.blue.parametrizations.weight.original
+            self._set_positive_weight(
+                block.blue, min_val + (max_val - min_val) * torch.rand_like(weight)
             )
-        self.last_layer.weight.data = min_val + (max_val - min_val) * torch.rand_like(
-            self.last_layer.weight.data
+        weight = self.last_layer.parametrizations.weight.original
+        self._set_positive_weight(
+            self.last_layer, min_val + (max_val - min_val) * torch.rand_like(weight)
         )
         return self
 
@@ -146,19 +159,7 @@ class ACR(LIONmodel):
         # w1, b1 = icnn[1].parameters()
         # convex_init(w1, b1)
         # assert torch.all(w1 >= 0) and b1.var() > 0
-        device = torch.cuda.current_device()
-        for i in range(self.model_parameters.layers):
-            block = getattr(self, f"ICNN_layer_{i}")
-            block.blue.weight.data = min_val + (max_val - min_val) * torch.rand(
-                self.model_parameters.channels,
-                self.model_parameters.channels,
-                self.model_parameters.kernel_size,
-                self.model_parameters.kernel_size,
-            ).to(device)
-        self.last_layer.weight.data = min_val + (max_val - min_val) * torch.rand_like(
-            self.last_layer.weight.data
-        )
-        return self
+        return self.initialize_weights(min_val, max_val)
 
     def forward(self, x):
         # x = fdk(self.op, x)
@@ -170,7 +171,8 @@ class ACR(LIONmodel):
             z = layer(z, x)
 
         z = self.last_layer(z)
-        return self.pool(z).reshape(-1, 1) + self.L2(z)
+        # convex network output + learnable L2 term on the input image
+        return self.pool(z).reshape(-1, 1) + self.L2(x)
 
     @staticmethod
     def default_parameters():
@@ -180,6 +182,8 @@ class ACR(LIONmodel):
         params.stride = 1
         params.relu_type = "LeakyReLU"
         params.layers = 5
+        # initial value of the L2 weight before softplus (softplus(-9) ~ 1e-4)
+        params.l2_penalty = -9.0
         params.model_input_type = ModelInputType.IMAGE
         return params
 

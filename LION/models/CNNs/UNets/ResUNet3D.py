@@ -9,6 +9,7 @@
 import torch
 import torch.nn as nn
 from LION.models import LIONmodel
+from LION.models.LIONmodel import LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 
 # Implementation of:
@@ -19,7 +20,7 @@ from LION.utils.parameter import LIONParameter
 
 
 class ResidualUnit(nn.Module):
-    def __init__(self, channels, relu_type="ReLU", kernel_size=3):
+    def __init__(self, channels, relu_type="ReLU", kernel_size=3, relu_last=True):
         super().__init__()
         # input parsing:
         layers = len(channels) - 1
@@ -95,16 +96,19 @@ class Up(nn.Module):
 class ResUNet3D(LIONmodel.LIONmodel):
     def __init__(self, model_parameters: LIONParameter = None):
         super().__init__(model_parameters)
+        model_parameters = self.model_parameters
+        act = model_parameters.activation
 
-        self.block_down_1 = ResidualUnit(model_parameters.down_1_channels)
+        self.block_1_down = ResidualUnit(model_parameters.down_1_channels, act)
         self.down_1 = Down()
-        self.block_down_2 = ResidualUnit(model_parameters.down_2_channels)
-        self.down_1 = Down()
-        self.block_down_3 = ResidualUnit(model_parameters.down_3_channels)
-        self.down_1 = Down()
-        self.block_down_4 = ResidualUnit(model_parameters.down_4_channels)
+        self.block_2_down = ResidualUnit(model_parameters.down_2_channels, act)
+        self.down_2 = Down()
+        self.block_3_down = ResidualUnit(model_parameters.down_3_channels, act)
+        self.down_3 = Down()
+        self.block_4_down = ResidualUnit(model_parameters.down_4_channels, act)
+        self.down_4 = Down()
 
-        self.block_bottom = ResidualUnit(model_parameters.latent_channels)
+        self.block_bottom = ResidualUnit(model_parameters.latent_channels, act)
 
         self.up_1 = Up(
             [
@@ -112,19 +116,19 @@ class ResUNet3D(LIONmodel.LIONmodel):
                 model_parameters.up_1_channels[0] // 2,
             ]
         )
-        self.block_up_1 = ResidualUnit(model_parameters.up_1_channels)
+        self.block_1_up = ResidualUnit(model_parameters.up_1_channels, act)
         self.up_2 = Up(
             [model_parameters.up_1_channels[-1], model_parameters.up_2_channels[0] // 2]
         )
-        self.block_up_2 = ResidualUnit(model_parameters.up_2_channels)
+        self.block_2_up = ResidualUnit(model_parameters.up_2_channels, act)
         self.up_3 = Up(
             [model_parameters.up_2_channels[-1], model_parameters.up_3_channels[0] // 2]
         )
-        self.block_up_3 = ResidualUnit(model_parameters.up_3_channels)
+        self.block_3_up = ResidualUnit(model_parameters.up_3_channels, act)
         self.up_4 = Up(
             [model_parameters.up_3_channels[-1], model_parameters.up_4_channels[0] // 2]
         )
-        self.block_up_4 = ResidualUnit(model_parameters.up_4_channels)
+        self.block_4_up = ResidualUnit(model_parameters.up_4_channels, act)
 
         self.block_last = nn.Sequential(
             nn.Conv3d(
@@ -138,6 +142,7 @@ class ResUNet3D(LIONmodel.LIONmodel):
     @staticmethod
     def default_parameters():
         ResUNet3D = LIONModelParameter()
+        ResUNet3D.model_input_type = ModelInputType.IMAGE
         ResUNet3D.down_1_channels = [1, 8, 8]
         ResUNet3D.down_2_channels = [8, 16, 16]
         ResUNet3D.down_3_channels = [16, 32, 32]
@@ -169,5 +174,5 @@ class ResUNet3D(LIONmodel.LIONmodel):
         res = self.block_3_up(torch.cat((block_2_res, self.up_3(res)), dim=1))
         res = self.block_4_up(torch.cat((block_1_res, self.up_4(res)), dim=1))
         res = self.block_last(res)
-        res = torch.nn.Sigmoid(res)
+        res = torch.sigmoid(res)
         return res
