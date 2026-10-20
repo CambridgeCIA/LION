@@ -16,7 +16,6 @@ import torchvision.transforms.functional as TF
 # AItomotools imports
 from LION.CTtools.ct_geometry import Geometry
 from LION.operators.CTProjectionOp import CTProjectionOp
-from LION.utils.tomosipo_import import import_tomosipo
 
 
 def from_HU_to_normal(img):
@@ -141,21 +140,23 @@ def _sinogram_add_noise(
         return proj.cpu().detach().numpy()
 
 
+# Upper HU limit of each material class; values >= the last limit are bone.
+_MATERIAL_HU_LIMITS = [-950, -750, -150, 0, 150, 300]
+# 0: air, 1: lung, 2: bronchi, 3: fat, 4: muscle, 5: bone marrow, 6: bone
+
+
 def from_HU_to_material_id(img):
     """
-    Converts an image in Hounsfield units into a material index
+    Converts an image in Hounsfield units into a material index:
+    0 air (< -950), 1 lung [-950, -750), 2 bronchi [-750, -150), 3 fat [-150, 0),
+    4 muscle [0, 150), 5 bone marrow [150, 300), 6 bone (>= 300).
+    Returns a new uint8 array/tensor; the input is not modified.
     May require some image filtering preprocessing
     """
-    materials = img
-    materials[img < -950] = 0  # air
-    materials[(img > -950) & (img < -750)] = 1  # lung
-    materials[(img > -750) & (img < -150)] = 2  # bronqui
-    materials[(img > -150) & (img < -0)] = 3  # fat
-    materials[(img > 0) & (img < 150)] = 4  # muscle
-    materials[(img > 150) & (img < 300)] = 5  # bone marrow
-    materials[img > 300] = 6  # bone
-    materials = materials.astype(np.uint8)
-    return materials
+    if isinstance(img, torch.Tensor):
+        limits = torch.tensor(_MATERIAL_HU_LIMITS, dtype=img.dtype, device=img.device)
+        return torch.bucketize(img, limits, right=True).to(torch.uint8)
+    return np.digitize(np.asarray(img), _MATERIAL_HU_LIMITS).astype(np.uint8)
 
 
 def make_operator(geometry: Geometry) -> CTProjectionOp:
@@ -168,18 +169,15 @@ def forward_projection(
     backend: str = "tomosipo",
 ) -> torch.Tensor:
     """
-    Produces a noise free forward projection, given np.array image, a size (in real world units), a sinogram shape and size,
-    distances from source to detector DSD and distance from source to object DSO.
+    Produces a noise free forward projection of a 2D image with the given geometry
+    (fan or parallel beam, as set in geometry.mode).
     May support other backends than tomosipo
     """
     if backend != "tomosipo":
         raise ValueError("Only tomosipo backend for CT supported")
-    # You can add other backends here
-    ts = import_tomosipo("tomosipo", "forward_projection")
-
-    device = torch.cuda.current_device()
 
     if isinstance(image, np.ndarray):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         image = torch.from_numpy(image).float().to(device)
     if len(image.shape) == 3:
         if image.shape[0] > 1:  # there is no reason to have this constraint
@@ -189,14 +187,7 @@ def forward_projection(
     else:
         raise ValueError("Image must be 2D")
 
-    vg = ts.volume(shape=geometry.image_shape, size=geometry.image_size)
-    pg = ts.cone(
-        angles=geometry.angles,
-        shape=geometry.detector_shape,
-        size=geometry.detector_size,
-        src_orig_dist=geometry.dso,
-        src_det_dist=geometry.dsd,
-    )
-    A = ts.operator(vg, pg)
+    # Same operator as everywhere else in LION (respects mode and image_pos)
+    A = CTProjectionOp(geometry, backend=backend)
     sino = A(image)[0]
     return sino
