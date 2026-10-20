@@ -18,7 +18,7 @@ from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.CTtools.ct_utils import make_operator
-from ts_algorithms import fdk, nag_ls
+from LION.utils.tomosipo_import import import_tomosipo
 
 
 class deteCT(Dataset):
@@ -461,6 +461,9 @@ class deteCT(Dataset):
         return segmentation
 
     def __getitem__(self, index):
+        ts_algorithms = import_tomosipo("ts_algorithms", "deteCT")
+        fdk, nag_ls = ts_algorithms.fdk, ts_algorithms.nag_ls
+
         index = int(index)  # cast to int
 
         # If input is sinogram, we need to load the sinogram
