@@ -45,7 +45,7 @@ class Geometry(LIONParameter):
     # PLEASE SOMEONE FIND A SMARTER WAY TO DO THIS
     @classmethod
     def init_from_parameter(cls, parameter: LIONParameter):
-        return cls(
+        kwargs = dict(
             image_shape=parameter.image_shape,
             image_size=parameter.image_size,
             detector_shape=parameter.detector_shape,
@@ -55,6 +55,9 @@ class Geometry(LIONParameter):
             mode=parameter.mode,
             angles=parameter.angles,
         )
+        if hasattr(parameter, "image_pos"):
+            kwargs["image_pos"] = parameter.image_pos
+        return cls(**kwargs)
 
     @staticmethod
     def default_parameters():

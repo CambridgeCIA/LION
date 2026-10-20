@@ -45,13 +45,16 @@ class LIONParameter:
         This only exists to allow LIONParameter() inside LIONParameter()
         otherwise, its equivalent to vars(self)
         """
-        d = vars(self)
-        for k, v in d.copy().items():
+        # Build a new dict: vars(self) is the object's own __dict__, and
+        # modifying it would change the parameter object itself.
+        d = {}
+        for k, v in vars(self).items():
             if isinstance(v, LIONParameter):
-                d.pop(k)
-                d[k] = v.serialize()  # love some recursivity
-            if isinstance(v, Path):
+                d[k] = v.serialize()
+            elif isinstance(v, Path):
                 d[k] = str(v)
+            else:
+                d[k] = v
         return d
 
     def deserialize(self):

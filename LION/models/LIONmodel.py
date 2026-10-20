@@ -208,7 +208,7 @@ class LIONmodel(nn.Module, ABC):
 
         # Parse kwargs
         ################
-        dataset_params = np.empty(0)
+        dataset_params = None
         if "dataset" in kwargs:
             dataset_params = kwargs.pop("dataset")
             dic["dataset_params"] = dataset_params
@@ -217,7 +217,7 @@ class LIONmodel(nn.Module, ABC):
             warnings.warn(
                 "\nExpected 'dataset' parameter! Only ignore if you really don't have it.\n"
             )
-        training = np.empty(0)
+        training = None
         if "training" in kwargs:
             training = kwargs.pop("training")
             dic["training_params"] = training
@@ -229,15 +229,13 @@ class LIONmodel(nn.Module, ABC):
 
         if "loss" in kwargs:
             dic["loss"] = kwargs.pop("loss")
-        epoch = np.empty(0)
         if "epoch" in kwargs:
             dic["epoch"] = kwargs.pop("epoch")
-        optimizer = np.empty(0)
         if "optimizer" in kwargs:
             dic["optimizer_state_dict"] = kwargs.pop("optimizer")
 
         # (optional)
-        geometry = []
+        geometry = None
         if "geometry" in kwargs:
             geometry = kwargs.pop("geometry")
             dic["geometry"] = geometry
@@ -267,11 +265,12 @@ class LIONmodel(nn.Module, ABC):
             warnings.warn("\nCould not get git hash.\n")
         options.model_name = self.__class__.__name__
         options.model_parameters = self.model_parameters
-        if geometry:
+        # `is not None`: these can be numpy arrays, whose truth value is ambiguous
+        if geometry is not None:
             options.geometry = geometry
-        if dataset_params:
+        if dataset_params is not None:
             options.dataset_params = dataset_params
-        if training:
+        if training is not None:
             options.training = training
 
         # Do the save:
