@@ -356,7 +356,7 @@ class deteCT(Dataset):
         sinogram: torch.Tensor, the sinogram to add noise to. It has to be flat field corrected, and in absobrtion units (i.e. log transformed)
         I0: float, the number of counts in the measurement (lower=more noise)
         """
-        dev = torch.cuda.current_device()
+        dev = sinogram.device
 
         Im = I0 * torch.exp(-sinogram)
         # Add Poisson noise
@@ -373,7 +373,7 @@ class deteCT(Dataset):
             conv.weight = torch.nn.Parameter(kernel)
         conv = conv.to(dev)
 
-        noisy = Im + conv(PI.unsqueeze(0).to(dev)).cpu()[0]
+        noisy = Im + conv(PI.unsqueeze(0).to(dev))[0]
         noisy = torch.clip(noisy, min=0.0, max=I0)
         noisy[noisy <= 0] = 1e-6
         return -torch.log(noisy / I0)

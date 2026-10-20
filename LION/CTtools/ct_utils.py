@@ -16,6 +16,7 @@ import torchvision.transforms.functional as TF
 # AItomotools imports
 from LION.CTtools.ct_geometry import Geometry
 from LION.operators.CTProjectionOp import CTProjectionOp
+from LION.utils.device import default_device
 
 
 def from_HU_to_normal(img):
@@ -98,7 +99,7 @@ def _sinogram_add_noise(
         dev = proj.device
     elif isinstance(proj, np.ndarray):
         istorch = False
-        dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        dev = default_device()
         proj = torch.from_numpy(proj).to(dev)
     else:
         raise ValueError("numpy or torch tensor expected")
@@ -176,7 +177,7 @@ def forward_projection(
         raise ValueError("Only tomosipo backend for CT supported")
 
     if isinstance(image, np.ndarray):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = default_device()
         image = torch.from_numpy(image).float().to(device)
     if len(image.shape) == 3:
         if image.shape[0] > 1:  # there is no reason to have this constraint

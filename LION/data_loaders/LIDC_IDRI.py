@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
 import LION.CTtools.ct_utils as ct
 from LION.utils.parameter import LIONParameter
+from LION.utils.device import default_device
 
 
 def format_index(index: int) -> str:
@@ -337,7 +338,8 @@ class LIDC_IDRI(Dataset):
         # segmentation specific
         param.clevel = 0.5
         param.annotation = "consensus"
-        param.device = torch.cuda.current_device()
+        # a string (e.g. "cuda:2"), so the parameters stay JSON-serialisable
+        param.device = str(default_device())
         param.geometry = geometry
         return param
 
