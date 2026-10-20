@@ -211,8 +211,8 @@ class ARSolver(LIONsolver):
     def wgan_loss(self, sino_batch, target_batch):
         bad_recon = fdk(sino_batch, self.op)
         if self.do_normalise and self.model.get_input_type() == ModelInputType.IMAGE:
-            bad_recon = self.model.normalise.normalise(bad_recon)
-            target_batch = self.model.normalise.normalise(target_batch)
+            bad_recon = self.model.normalise(bad_recon)
+            target_batch = self.model.normalise(target_batch)
 
         epsilon = torch.Tensor(
             np.random.random((target_batch.shape[0], 1, 1, 1))

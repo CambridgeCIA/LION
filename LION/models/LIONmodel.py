@@ -96,6 +96,8 @@ class LIONmodel(nn.Module, ABC):
         # Pass all relevant parameters to internal storage.
         self.geometry = geometry
         self.model_parameters = model_parameters
+        # Set by set_normalisation(); None means inputs are used as they are.
+        self.normalisator = None
 
     # This should return the parameters from the paper the model is from
     @staticmethod
@@ -144,16 +146,16 @@ class LIONmodel(nn.Module, ABC):
         self.normalisator = Normalisation(normalisation_type, dataset, data_range)
 
     def normalise(self, x):
-        try:
-            return self.normalisator.normalise(x)
-        except:
+        """Normalise ``x`` as set by ``set_normalisation()`` (identity if unset)."""
+        if getattr(self, "normalisator", None) is None:
             return x
+        return self.normalisator.normalise(x)
 
     def unnormalise(self, x, target=None):
-        try:
-            return self.normalisator.unnormalise(x, target)
-        except:
+        """Undo ``normalise()`` (identity if no normalisation is set)."""
+        if getattr(self, "normalisator", None) is None:
             return x
+        return self.normalisator.unnormalise(x, target)
 
     # All classes should have this method. This is the example for Learned Primal Dual.
     # You can obtain this exact text from Google Scholar's page of the paper.
