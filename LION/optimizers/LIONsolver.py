@@ -112,7 +112,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.save_folder: Optional[pathlib.Path] = save_folder
 
         self.do_load_checkpoint: bool = False
-        self.checkpoint_freq: int
+        self.checkpoint_freq: Optional[int] = None
 
         self.final_result_fname: Optional[str] = None
         self.checkpoint_fname: Optional[str] = None
@@ -122,8 +122,24 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.metadata = LIONParameter()
         self.dataset_param = LIONParameter()
 
-        # normalization stuff
-        self.do_normalise: bool = self.model.model_parameters.normalisator is not None
+    @property
+    def do_normalise(self) -> bool:
+        """True if the model has a normalisation set (``model.set_normalisation()``)."""
+        return getattr(self.model, "normalisator", None) is not None
+
+    def _forward(self, data: torch.Tensor) -> torch.Tensor:
+        """Run the model on a batch of measurements, as in training.
+
+        Image-domain models get an FDK reconstruction as input. If the model has
+        a normalisation set, its input is normalised and its output mapped back,
+        so losses are always computed in the units of the target.
+        """
+        if self.model.get_input_type() == ModelInputType.IMAGE:
+            data = fdk(data, self.op)
+            if self.do_normalise:
+                data = self.model.normalise(data)
+                return self.model.unnormalise(self.model(data))
+        return self.model(data)
 
     # This should return the default parameters of the solver
     @staticmethod
@@ -147,23 +163,19 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         validation_freq: int,
         validation_fn: Optional[Callable] = None,
         validation_fname: Optional[str] = None,
-        save_folder: Optional[pathlib.Path] = None,
     ):
         """
-        This function sets the validation data
-        """
-        if isinstance(save_folder, str):
-            save_folder = pathlib.Path(save_folder)
-        elif save_folder is None:
-            save_folder = self.save_folder
+        This function sets the validation data.
 
+        The model with the lowest validation loss is saved as ``validation_fname``
+        in the solver's save folder (see ``set_saving()``).
+        """
         self.validation_loader = validation_loader
         self.validation_freq = validation_freq
         self.validation_fn = (
             validation_fn if validation_fn is not None else self.loss_fn
         )
         self.validation_fname = validation_fname
-        self.validation_save_folder = save_folder
 
     def set_testing(
         self, test_loader: DataLoader, testing_fn: Optional[Callable] = None
@@ -348,23 +360,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        return_code = max(
-            return_code,
-            self.__check_attribute(
-                "validation_save_folder",
-                expected_type=pathlib.Path,
-                error=False,
-                autofill=True,
-                verbose=True,
-                default=self.save_folder,
-            ),
-        )
-
         # Test 14: is the validation filename set? if not, raise error or warn or autofill
-        if (
-            self.final_result_fname is not None
-            and self.validation_save_folder is not None
-        ):
+        # (the min-validation model is saved in self.save_folder)
+        if self.final_result_fname is not None and self.save_folder is not None:
             default_validation_fname = f"{self.final_result_fname}_min_val.pt"
         else:
             default_validation_fname = None
@@ -420,7 +418,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=pathlib.Path,
                 error=False,
                 autofill=True,
-                verbose=True,
+                verbose=verbose,
                 default=self.save_folder,
             ),
         )
@@ -592,13 +590,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if self.validation_loss is None:
             raise LIONSolverException("No validation losses found, failed to save.")
 
-        if self.validation_save_folder is None:
+        if self.save_folder is None:
             raise LIONSolverException(
-                "SaviValidation save folder not setup: Please call set_saving() or pass validation foder to set_validation()."
+                "Save folder not set up, can't save the min-validation model: please call set_saving()."
             )
 
         self.model.save(
-            self.validation_save_folder.joinpath(self.validation_fname),
+            self.save_folder.joinpath(self.validation_fname),
             epoch=epoch,
             training=self.metadata,
             loss=self.validation_loss[epoch],
@@ -655,9 +653,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         with torch.no_grad():
             test_loss = np.array([])
             for data, target in tqdm(self.test_loader):
-                if self.model.get_input_type() == ModelInputType.IMAGE:
-                    data = fdk(data, self.op)
-                output = self.model(data.to(self.device))
+                output = self._forward(data.to(self.device))
                 test_loss = np.append(
                     test_loss,
                     self.testing_fn(output, target.to(self.device)).cpu().numpy(),
@@ -684,24 +680,43 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.model,
             self.optimizer,
             self.current_epoch,
-            self.train_loss,
+            loaded_train_loss,
             _,
         ) = self.model.load_checkpoint_if_exists(
             self.checkpoint_save_folder.joinpath(self.checkpoint_fname),
             self.model,
             self.optimizer,
             self.train_loss,
+            verbose=self.verbose,
         )
+        # Keep the losses of the epochs already done, without shrinking the
+        # array that train() allocated for this run.
+        loaded_train_loss = np.asarray(loaded_train_loss, dtype=float).ravel()
+        if len(self.train_loss) < len(loaded_train_loss):
+            self.train_loss = np.pad(
+                self.train_loss, (0, len(loaded_train_loss) - len(self.train_loss))
+            )
+        self.train_loss[: len(loaded_train_loss)] = loaded_train_loss
+
+        # Restore the best validation loss so far, so that the min-validation
+        # model saved before the interruption is not overwritten by a worse one.
         if (
             self.validation_fn is not None
             and self.current_epoch > 0
             and self.validation_fname is not None
             and self.validation_loss is not None
+            and self.save_folder is not None
+            and self.save_folder.joinpath(self.validation_fname).is_file()
         ):
+            if len(self.validation_loss) < self.current_epoch:
+                self.validation_loss = np.pad(
+                    self.validation_loss,
+                    (0, self.current_epoch - len(self.validation_loss)),
+                )
             self.validation_loss[
                 self.current_epoch - 1
             ] = self.model._read_min_validation(
-                self.checkpoint_save_folder.joinpath(self.validation_fname)
+                self.save_folder.joinpath(self.validation_fname)
             )
             if self.verbose:
                 print(
@@ -758,17 +773,25 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         # Make sure all parameters are set
         self.check_training_ready()
 
-        if self.do_load_checkpoint:
+        # Allocate the loss arrays before loading a checkpoint, so that the
+        # loaded values (including the min validation loss) are kept.
+        self.train_loss = np.zeros(n_epochs)
+        if self.validation_loader is not None and self.check_validation_ready() == 0:
+            self.validation_loss = np.zeros(n_epochs)
+        else:
+            self.validation_loss = None
+
+        # Fills in checkpointing defaults (frequency, file name) when possible.
+        self.check_checkpointing_ready(verbose=False)
+        do_checkpoint = (
+            self.checkpoint_freq is not None
+            and self.checkpoint_save_folder is not None
+            and self.checkpoint_fname is not None
+        )
+
+        if self.do_load_checkpoint and do_checkpoint:
             print("Loading checkpoint...")
             self.current_epoch = self.load_checkpoint()
-            self.train_loss = np.append(self.train_loss, np.zeros((n_epochs)))
-        else:
-            self.train_loss = np.zeros(n_epochs)
-
-        if self.check_validation_ready() == 0:
-            self.validation_loss = np.zeros((n_epochs))
-        if self.validation_loader is None:
-            self.validation_loss = None
 
         self.model.train()
         # train loop
@@ -776,7 +799,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             print(f"Training epoch {self.current_epoch + 1}")
             self.epoch_step(self.current_epoch)
 
-            if (self.current_epoch + 1) % self.checkpoint_freq == 0:
+            if do_checkpoint and (self.current_epoch + 1) % self.checkpoint_freq == 0:
                 self.save_checkpoint(self.current_epoch)
 
             self.current_epoch += 1
@@ -810,7 +833,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         if self.verbose:
             print(
-                f"Testing loss: {validation_loss.mean()} - Testing loss std: {validation_loss.std()}"
+                f"Validation loss: {validation_loss.mean()} - Validation loss std: {validation_loss.std()}"
             )
 
         # return to train if it was in train
@@ -825,15 +848,15 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         validation_loss = np.array([])
         for data, targets in tqdm(self.validation_loader):
-            if self.model.get_input_type() == ModelInputType.IMAGE:
-                data = fdk(data.to(self.device), self.op)
-                outputs = self.model(data)
-                validation_loss = np.append(
-                    validation_loss,
-                    self.validation_fn(targets.to(self.device), outputs.to(self.device))
-                    .cpu()
-                    .numpy(),
-                )
+            outputs = self._forward(data.to(self.device))
+            # same argument order as the training loss: (output, target)
+            validation_loss = np.append(
+                validation_loss,
+                self.validation_fn(outputs, targets.to(self.device))
+                .detach()
+                .cpu()
+                .numpy(),
+            )
         return validation_loss
 
     def get_model(self) -> LIONmodel:

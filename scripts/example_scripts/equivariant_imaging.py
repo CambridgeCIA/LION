@@ -99,7 +99,8 @@ solver.cite()
 
 # set data
 solver.set_training(lidc_dataloader)
-solver.set_validation(lidc_val, 1, my_ssim, validation_fname, save_folder=savefolder)
+solver.set_saving(savefolder, final_result_fname)
+solver.set_validation(lidc_val, 1, my_ssim, validation_fname)
 # solver.set_normalization(True)
 solver.set_testing(lidc_test, my_ssim)
 

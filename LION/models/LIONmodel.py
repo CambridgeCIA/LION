@@ -96,6 +96,8 @@ class LIONmodel(nn.Module, ABC):
         # Pass all relevant parameters to internal storage.
         self.geometry = geometry
         self.model_parameters = model_parameters
+        # Set by set_normalisation(); None means inputs are used as they are.
+        self.normalisator = None
 
     # This should return the parameters from the paper the model is from
     @staticmethod
@@ -144,16 +146,16 @@ class LIONmodel(nn.Module, ABC):
         self.normalisator = Normalisation(normalisation_type, dataset, data_range)
 
     def normalise(self, x):
-        try:
-            return self.normalisator.normalise(x)
-        except:
+        """Normalise ``x`` as set by ``set_normalisation()`` (identity if unset)."""
+        if getattr(self, "normalisator", None) is None:
             return x
+        return self.normalisator.normalise(x)
 
     def unnormalise(self, x, target=None):
-        try:
-            return self.normalisator.unnormalise(x, target)
-        except:
+        """Undo ``normalise()`` (identity if no normalisation is set)."""
+        if getattr(self, "normalisator", None) is None:
             return x
+        return self.normalisator.unnormalise(x, target)
 
     # All classes should have this method. This is the example for Learned Primal Dual.
     # You can obtain this exact text from Google Scholar's page of the paper.
@@ -453,21 +455,29 @@ class LIONmodel(nn.Module, ABC):
     def load_checkpoint_if_exists(
         cls, fname, model, optimiser, total_loss, verbose=True
     ):
+        """Load the latest checkpoint matching ``fname`` (a glob pattern) into
+        ``model`` and ``optimiser``, in place.
+
+        The weights are loaded into the *given* model (rather than into a new
+        instance) so that ``optimiser`` keeps optimising the parameters of the
+        model that is returned. Returns ``(model, optimiser, start_epoch,
+        total_loss, data)``; if no checkpoint exists the inputs are returned
+        unchanged with ``start_epoch=0`` and ``data=None``.
+        """
         if isinstance(fname, str):
             fname = Path(fname)
-        checkpoints = sorted(list(fname.parent.glob(fname.name)))
-        if checkpoints:
-            model, options, data = cls.load_checkpoint(
-                fname.parent.joinpath(checkpoints[-1])
-            )
-            optimiser.load_state_dict(data["optimizer_state_dict"])
-            start_epoch = data["epoch"]
-            total_loss = data["loss"]
-            model.train()
-        else:
-            print(f"checkpoint {fname} not found, failed to load.")
+        # glob() already returns paths that include fname.parent
+        checkpoints = sorted(fname.parent.glob(fname.name))
+        if not checkpoints:
+            if verbose:
+                print(f"checkpoint {fname} not found, failed to load.")
             return model, optimiser, 0, total_loss, None
-        return model, optimiser, start_epoch, total_loss, data
+
+        data = cls._load_data(checkpoints[-1], supress_warnings=True)
+        model.load_state_dict(data.pop("model_state_dict"))
+        optimiser.load_state_dict(data["optimizer_state_dict"])
+        model.train()
+        return model, optimiser, data["epoch"], data["loss"], data
 
     @staticmethod
     def _read_min_validation(filename):
