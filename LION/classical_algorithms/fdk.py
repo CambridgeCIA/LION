@@ -2,16 +2,16 @@ from __future__ import annotations
 import torch
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
-from ts_algorithms import fdk as ts_fdk
-import tomosipo as ts
 
 from LION.exceptions.exceptions import NoDataException
+from LION.operators.Operator import Operator
+from LION.utils.tomosipo_import import import_tomosipo
 
 
 # add option to clip?
-def fdk(
-    sino: torch.Tensor, op: ts.Operator.Operator | Geometry, clip=True
-) -> torch.Tensor:
+def fdk(sino: torch.Tensor, op: Operator | Geometry, clip=True) -> torch.Tensor:
+    ts_fdk = import_tomosipo("ts_algorithms", "fdk").fdk
+
     if sino.dim() == 4:
         B, _, _, _ = sino.shape
         remove_batch = False

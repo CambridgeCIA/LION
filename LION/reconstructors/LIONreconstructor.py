@@ -7,8 +7,8 @@ import torch
 # Import CT utils
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
-from LION.models.LIONmodel import to_autograd
 from LION.operators import Operator
+from LION.utils.tomosipo_import import import_tomosipo
 
 # Base class for a Reconstructor in the LION framework.
 # This assumes a trained model
@@ -38,6 +38,10 @@ class LIONReconstructor(ABC):
             raise ValueError(
                 "Input operator is neither of class LION.operators.operator.Operator nor LION.CTtools.ct_geometry.Geometry"
             )
+        to_autograd = import_tomosipo(
+            "tomosipo.torch_support", "LIONReconstructor with a CT geometry"
+        ).to_autograd
+
         self.op_autograd = to_autograd(self.op)
 
     def reconstruct(self, sino: torch.Tensor, **kwargs):

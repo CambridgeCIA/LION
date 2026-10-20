@@ -22,15 +22,12 @@ from LION.utils.parameter import LIONParameter
 # We will need utilities
 import LION.utils.utils as ai_utils
 from LION.utils.normaliser import Normalisation
+from LION.utils.tomosipo_import import import_tomosipo
 from LION.exceptions.exceptions import NoDataException
 
 # (optional) Given this is a tomography library, it is likely that you will want to load geometries of the tomogprahic problem you are solving, e.g. a ct_geometry
 import LION.CTtools.ct_geometry as ct
 import LION.CTtools.ct_utils as ct_utils
-
-# (optinal) If your model uses the operator (e.g. the CT operator), you may want to load it here. E.g. for tomosipo:
-import tomosipo as ts
-from tomosipo.torch_support import to_autograd
 
 # some numerical standard imports, e.g.
 import numpy as np
@@ -111,6 +108,10 @@ class LIONmodel(nn.Module, ABC):
         # if self.model_parameters.mode.lower() != "ct":
         #     raise NotImplementedError("Only CT operators supported")
         if hasattr(self, "geometry") and self.geometry is not None:
+            to_autograd = import_tomosipo(
+                "tomosipo.torch_support", f"{type(self).__name__}._make_operator"
+            ).to_autograd
+
             self.op = ct_utils.make_operator(self.geometry)
             self.A = to_autograd(self.op, num_extra_dims=1)
             self.AT = to_autograd(self.op.T, num_extra_dims=1)

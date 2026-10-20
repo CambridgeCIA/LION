@@ -5,7 +5,14 @@ import torch
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
 from LION.utils.tests_helper import dotproduct_adjointness_test
-from tomosipo.torch_support import to_autograd
+
+# Every test here needs a real tomosipo/astra installation.
+pytestmark = pytest.mark.tomosipo
+
+try:
+    from tomosipo.torch_support import to_autograd
+except Exception:  # the tests below are skipped by the marker in that case
+    to_autograd = None
 
 
 def test_ct_autograd_op_forward_and_backward():

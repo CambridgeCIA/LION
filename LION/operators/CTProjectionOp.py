@@ -9,6 +9,7 @@ import torch
 from LION.CTtools.ct_geometry import Geometry
 from LION.operators.Operator import Operator
 from LION.utils.common_primitives import DeviceLikeType
+from LION.utils.tomosipo_import import import_tomosipo
 
 
 class CTProjectionOp(Operator):
@@ -31,7 +32,7 @@ class CTProjectionOp(Operator):
         super().__init__(device=device)
         if backend == "tomosipo":
             # Wrap the tomosipo operator
-            import tomosipo as ts
+            ts = import_tomosipo("tomosipo", "CTProjectionOp")
 
             if not isinstance(geometry, Geometry):
                 raise ValueError(

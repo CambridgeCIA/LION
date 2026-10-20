@@ -3,15 +3,15 @@ from typing import Callable, Optional
 import torch
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
-from ts_algorithms import tv_min2d as ts_tv_min
-import tomosipo as ts
 
 from LION.exceptions.exceptions import NoDataException
+from LION.operators.Operator import Operator
+from LION.utils.tomosipo_import import import_tomosipo
 
 
 def tv_min(
     sino: torch.Tensor,
-    op: ts.Operator.Operator | Geometry,
+    op: Operator | Geometry,
     lam: float,
     num_iterations: int = 500,
     L: Optional[float] = None,
@@ -23,6 +23,8 @@ def tv_min(
 
     See ts_algorithms.tv_min2d for more details.
     """
+    ts_tv_min = import_tomosipo("ts_algorithms", "tv_min").tv_min2d
+
     if sino.dim() == 4:
         B, _, _, _ = sino.shape
         remove_batch = False
