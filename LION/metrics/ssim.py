@@ -36,22 +36,25 @@ class SSIM(nn.Module):
             raise ShapeMismatchException(
                 f"x (shape {x.shape}) and target (shape {target.shape}) tensors must match to compare with SSIM"
             )
-        x_ = x.detach().cpu().numpy().squeeze()
-        target_ = target.detach().cpu().numpy().squeeze()
+        # Squeeze per sample, not the whole array: squeezing a batch of size 1
+        # would drop the batch axis and x_[i] would then index image rows.
+        x_ = x.detach().cpu().numpy()
+        target_ = target.detach().cpu().numpy()
         # LION is channels-first, so a 3D sample means (C, W, H) -> channel axis 0
         if batched:
             # shape either B, C, W, H, ... or B, W, H, ...
             # if it's not, then that's your fault not mine, you told me it was batched
             vals = torch.empty((x.shape[0]))
             for i in range(x.shape[0]):
+                xi, ti = x_[i].squeeze(), target_[i].squeeze()
                 sample_axis = channel_axis
                 if sample_axis is None:
-                    sample_axis = 0 if x_[i].ndim >= 3 else None
+                    sample_axis = 0 if xi.ndim >= 3 else None
                 vals[i] = torch.tensor(
                     skim_ssim(
-                        x_[i],
-                        target_[i],
-                        data_range=target_[i].max() - target_[i].min(),
+                        xi,
+                        ti,
+                        data_range=ti.max() - ti.min(),
                         channel_axis=sample_axis,
                     )
                 )
@@ -65,6 +68,7 @@ class SSIM(nn.Module):
                     f"expected one of 'mean' or None for parameter 'reduce', got {reduce}"
                 )
         else:
+            x_, target_ = x_.squeeze(), target_.squeeze()
             if channel_axis is None:
                 channel_axis = 0 if x_.ndim >= 3 else None
             return torch.tensor(

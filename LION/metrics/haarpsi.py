@@ -41,6 +41,7 @@ class HAARPsi(nn.Module):
         Returns:
             (similarity_score, local_similarity, weights): (torch.Tensor, torch.Tensor, torch.Tensor)
         """
+        super().__init__()
         self.preprocess_with_subsampling = preprocess_with_subsampling
         self.C = C
         self.a = a
