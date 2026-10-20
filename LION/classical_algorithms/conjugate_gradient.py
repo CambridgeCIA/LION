@@ -26,7 +26,7 @@ def conjugate_gradient(
     max_iter : int
         Maximum number of iterations.
     tol : float
-        Tolerance for convergence.
+        Tolerance on the relative residual ``||d - A x|| / ||d||``.
 
     Returns
     -------
@@ -34,28 +34,36 @@ def conjugate_gradient(
         The approximate solution vector.
 
     """
+    b_norm = torch.norm(d)
     x = x0.clone()
+    if b_norm == 0:
+        return torch.zeros_like(x)
+
     r = d - matmul_closure(x)
-    d = r.clone()
+    p = r.clone()  # search direction
     rr = torch.sum(r**2)
+    if torch.sqrt(rr) / b_norm < tol:
+        return x
 
     for _ in range(max_iter):
-        z = matmul_closure(d)
+        z = matmul_closure(p)
 
-        dz = torch.sum(d * z)
-        # Check for breakdown
-        if abs(dz) < 1e-14:
+        pz = torch.sum(p * z)
+        # Breakdown: p^T A p must be positive for a symmetric positive definite
+        # A. (An absolute threshold here would stop early on small residuals.)
+        if pz <= 0:
             break
-        alpha = rr / dz
-        x += alpha * d
+        alpha = rr / pz
+        x += alpha * p
         r -= alpha * z
 
-        if torch.norm(r) / torch.norm(d) < tol:
+        # Stop on the relative residual ||b - Ax|| / ||b||
+        if torch.norm(r) / b_norm < tol:
             break
 
         rr_next = torch.sum(r**2)
         beta = rr_next / rr
-        d = r + beta * d
+        p = r + beta * p
         rr = rr_next
 
     return x
