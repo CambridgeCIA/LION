@@ -43,7 +43,6 @@ class GaussianDenoiserSolver(LIONsolver):
         )
         if verbose:
             print("Gaussian Denoiser solver training on device: ", self.device)
-        self.op = make_operator(self.geometry)
         self.patch = None
 
         # Make range of noise levels if noise_level is a single value

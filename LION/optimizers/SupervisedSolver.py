@@ -40,8 +40,7 @@ class SupervisedSolver(LIONsolver):
             save_folder=save_folder,
         )
         if verbose:
-            print("Supervised solver training on device: ", device)
-        self.op = make_operator(self.geometry)
+            print("Supervised solver training on device: ", self.device)
 
     def mini_batch_step(self, sino, target):
         """

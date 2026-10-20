@@ -44,8 +44,7 @@ class SelfSupervisedSolver(LIONsolver):
             solver_params=SolverParams(),
         )
         if verbose:
-            print("Supervised solver training on device: ", device)
-        self.op = make_operator(self.geometry)
+            print("Self-supervised solver training on device: ", self.device)
 
     def mini_batch_step(self, sino, target):
         """

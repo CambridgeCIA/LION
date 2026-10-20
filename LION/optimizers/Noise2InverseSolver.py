@@ -24,7 +24,6 @@ class Noise2InverseSolver(LIONsolver):
         verbose: bool = True,
         device: torch.device = None,
     ) -> None:
-        print(device)
         super().__init__(
             model,
             optimizer,
