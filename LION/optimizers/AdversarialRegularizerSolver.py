@@ -61,14 +61,18 @@ class ARSolver(LIONsolver):
         self.alpha = 1.0
 
     def estimate_alpha(self, dataloader):
+        """Estimate the regularisation weight as the mean (over samples) norm of
+        A^T(A x - y) on ``dataloader``."""
         if dataloader is not None:
             residual = 0.0
-            for _, (sino, target) in enumerate(dataloader):
-                residual += torch.linalg.vector_norm(
-                    self.AT(self.A(target) - sino), dim=(2, 3)
-                ).mean()
-                # residual += torch.sqrt(((self.AT(self.A(target) - data))**2).sum())
-            self.alpha = residual / len(dataloader.dataset)
+            with torch.no_grad():
+                for sino, target in dataloader:
+                    sino, target = sino.to(self.device), target.to(self.device)
+                    residual += torch.linalg.vector_norm(
+                        self.AT(self.A(target) - sino), dim=(2, 3)
+                    ).mean()
+            # each term above is already a mean over its batch
+            self.alpha = residual / len(dataloader)
         if self.verbose:
             print("Estimated alpha: " + str(self.alpha))
 
@@ -84,6 +88,45 @@ class ARSolver(LIONsolver):
             + self.alpha * (self.model(recon)).sum()
         )
 
+    def _variational_reconstruction(self, sino, progress_bar=False):
+        """Minimise the variational energy with the learned regulariser, starting
+        from FDK, using the reconstruction optimiser and a backtracking step."""
+        recon = torch.nn.Parameter(fdk(sino, self.op).detach().clone())
+        optimizer_kwargs = dict(vars(self.solver_params.optimizer_params))
+        optimizer_kwargs["lr"] = self.solver_params.step_size
+        optimizer = self.recon_optimizer_type([recon], **optimizer_kwargs)
+        lr = self.solver_params.step_size
+
+        steps = range(self.solver_params.no_steps)
+        for _ in tqdm(steps) if progress_bar else steps:
+            optimizer.zero_grad()
+
+            energy = self.var_energy(recon, sino)
+            energy.backward(retain_graph=True)
+
+            assert recon.grad is not None
+            while (
+                self.var_energy(recon - recon.grad * lr, sino)
+                > energy - 0.5 * lr * (recon.grad.norm(dim=(2, 3)) ** 2).mean()
+            ):
+                lr = self.solver_params.beta_rate * lr
+            for g in optimizer.param_groups:
+                g["lr"] = lr
+
+            optimizer.step()
+        return recon.detach()
+
+    def _evaluate(self, loader, metric_fn, progress_bar=False):
+        """Reconstruct every batch in ``loader`` and return metric_fn(recon, target)
+        per batch."""
+        losses = np.array([])
+        for sino, target in tqdm(loader):
+            sino, target = sino.to(self.device), target.to(self.device)
+            recon = self._variational_reconstruction(sino, progress_bar=progress_bar)
+            with torch.no_grad():
+                losses = np.append(losses, metric_fn(recon, target).item())
+        return losses
+
     def validate(self):
         if self.check_validation_ready() != 0:
             raise LIONSolverException(
@@ -97,43 +140,8 @@ class ARSolver(LIONsolver):
         status = self.model.training
         self.model.eval()
 
-        self.estimate_alpha(
-            self.validation_loader if self.validation_loader is not None else None
-        )
-
-        validation_loss = np.array([])
-        for sino, target in tqdm(self.validation_loader):
-            recon = fdk(sino, self.op)
-
-            recon = torch.nn.Parameter(recon)
-
-            optimizer = self.recon_optimizer_type(
-                [recon],
-                *self.solver_params.optimizer_params.unpack(),
-                lr=self.solver_params.step_size,
-            )
-            lr = self.solver_params.step_size
-
-            for _ in range(self.solver_params.no_steps):
-                optimizer.zero_grad()
-
-                energy = self.var_energy(recon, sino)
-                energy.backward(retain_graph=True)
-
-                assert recon.grad is not None
-                while (
-                    self.var_energy(recon - recon.grad * lr, sino)
-                    > energy - 0.5 * lr * (recon.grad.norm(dim=(2, 3)) ** 2).mean()
-                ):
-                    lr = self.solver_params.beta_rate * lr
-                for g in optimizer.param_groups:
-                    g["lr"] = lr
-
-                optimizer.step()
-
-            validation_loss = np.append(
-                validation_loss, self.validation_fn(recon, target).item()
-            )
+        self.estimate_alpha(self.validation_loader)
+        validation_loss = self._evaluate(self.validation_loader, self.validation_fn)
 
         if self.verbose:
             print(
@@ -163,41 +171,8 @@ class ARSolver(LIONsolver):
             print(f"Testing model after {self.current_epoch} epochs of training")
 
         self.estimate_alpha(self.test_loader)
-
-        test_loss = np.array([])
-        for sino, target in tqdm(self.test_loader):
-            bad_recon = fdk(sino, self.op)
-
-            recon = torch.nn.Parameter(bad_recon.clone()).requires_grad_(True)
-
-            optimizer = self.recon_optimizer_type(
-                [recon],
-                *self.solver_params.optimizer_params.unpack(),
-                lr=self.solver_params.step_size,
-            )
-            lr = self.solver_params.step_size
-
-            for _ in tqdm(range(self.solver_params.no_steps)):
-                optimizer.zero_grad()
-
-                energy = self.var_energy(recon, sino)
-                energy.backward(retain_graph=True)
-
-                assert recon.grad is not None
-                while (
-                    self.var_energy(recon - recon.grad * lr, sino)
-                    > energy - 0.5 * lr * (recon.grad.norm(dim=(2, 3)) ** 2).mean()
-                ):
-                    lr = self.solver_params.beta_rate * lr
-                for g in optimizer.param_groups:
-                    g["lr"] = lr
-
-                optimizer.step()
-
-                with torch.no_grad():
-                    test_loss = np.append(
-                        test_loss, self.testing_fn(recon, target).item()
-                    )
+        # one value per batch, computed on the final reconstruction
+        test_loss = self._evaluate(self.test_loader, self.testing_fn, progress_bar=True)
 
         if self.verbose:
             print(
