@@ -13,19 +13,8 @@ Regression tests for two bugs that together broke loading saved models:
 DnCNN is used because it needs no CT geometry, so these tests run on CPU.
 """
 
-import sys
-from unittest.mock import MagicMock
-
 import pytest
 import torch
-
-# tomosipo needs a CUDA-enabled astra build and fails to import on some platforms
-# (e.g. macOS). Nothing here uses it, so stub it only when the real one is missing.
-try:
-    import tomosipo  # noqa: F401
-except ImportError:
-    sys.modules["tomosipo"] = MagicMock()
-    sys.modules["tomosipo.torch_support"] = MagicMock()
 
 from LION.models.CNNs.dncnn import DnCNN
 from LION.models.LIONmodel import LIONModelParameter, ModelInputType

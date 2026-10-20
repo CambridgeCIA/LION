@@ -3,15 +3,14 @@ from typing import Callable, Optional
 import torch
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
-from ts_algorithms import sirt as ts_sirt
-import tomosipo as ts
 
 from LION.exceptions.exceptions import NoDataException
+from LION.operators.Operator import Operator
 
 
 def sirt(
     sino: torch.Tensor,
-    op: ts.Operator.Operator | Geometry,
+    op: Operator | Geometry,
     num_iterations: int,
     min_constraint: Optional[float] = None,
     max_constraint: Optional[float] = None,
@@ -25,6 +24,8 @@ def sirt(
 
     See ts_algorithms.sirt for more details.
     """
+    from ts_algorithms import sirt as ts_sirt
+
     if sino.dim() == 4:
         B, _, _, _ = sino.shape
         remove_batch = False

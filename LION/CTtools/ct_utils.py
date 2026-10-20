@@ -10,7 +10,6 @@ from __future__ import annotations
 
 # math/science imports
 import numpy as np
-import tomosipo as ts
 import torch
 import torchvision.transforms.functional as TF
 
