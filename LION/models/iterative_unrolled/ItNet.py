@@ -10,7 +10,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from ts_algorithms import fdk
 from collections import OrderedDict
 
 
@@ -20,6 +19,7 @@ from LION.utils.parameter import LIONParameter
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.models.CNNs.UNets.Unet import UNet
+from LION.utils.tomosipo_import import import_tomosipo
 
 
 class ItNet(LIONmodel):
@@ -44,8 +44,9 @@ class ItNet(LIONmodel):
             )
 
         elif not hasattr(self.model_parameters.step_size, "__len__"):
+            # one scalar: the same step for every iteration
             self.model_parameters.step_size = np.array(
-                self.model_parameters.step_size * self.model_parameters.n_iters
+                [self.model_parameters.step_size] * self.model_parameters.n_iters
             )
         elif len(self.model_parameters.step_size) == self.model_parameters.n_iters:
             self.model_parameters.step_size = np.array(self.model_parameters.step_size)
@@ -74,9 +75,11 @@ class ItNet(LIONmodel):
                     ]
                 )
         else:
-            self.step_size = (
-                torch.ones(self.model_parameters.n_iters)
-                * self.model_parameters.step_size
+            # a buffer, so it moves with the model (.to(device)) like the rest
+            self.register_buffer(
+                "step_size",
+                torch.as_tensor(self.model_parameters.step_size, dtype=torch.float32),
+                persistent=False,
             )
 
     @staticmethod
@@ -119,6 +122,7 @@ class ItNet(LIONmodel):
             )
 
     def forward(self, sino):
+        fdk = import_tomosipo("ts_algorithms", "ItNet").fdk
 
         B, C, W, H = sino.shape
         img = sino.new_zeros(B, 1, *self.geometry.image_shape[1:])
