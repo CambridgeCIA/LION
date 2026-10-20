@@ -138,8 +138,12 @@ class Noise2InverseSolver(LIONsolver):
         with torch.no_grad():
             test_loss = np.array([])
             for sinos, targets in tqdm(self.test_loader):
-                outputs = self.reconstruct(sinos)
-                test_loss = np.append(test_loss, self.testing_fn(targets, outputs))
+                outputs = self.reconstruct(sinos.to(self.device))
+                # same argument order as the training loss: (output, target)
+                test_loss = np.append(
+                    test_loss,
+                    self.testing_fn(outputs, targets.to(self.device)).cpu().numpy(),
+                )
 
         if self.verbose:
             print(
