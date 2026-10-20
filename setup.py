@@ -17,7 +17,7 @@ setuptools.setup(
     author="Ander Biguri",
     author_email="ander.biguri@gmail.com",
     description=("Tomographic tools for AI-driven reconstruction"),
-    license="BSD",
+    license="GPL-3.0",  # same as LICENSE.txt; required by ASTRA and tomosipo (GPL-3)
     keywords="CT, AI",
     url="-",
     packages=packages,

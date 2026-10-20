@@ -22,6 +22,8 @@ dependencies:
   - pydicom
   - pyside6
   - pywavelets
+  - pyyaml
+  - natsort
   - scikit-image
   - scipy
   - spgl1

@@ -22,6 +22,3 @@ wandb
 *.zip
 mlflow.db
 *.xml
-sys
-argparse
-copy

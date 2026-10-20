@@ -1,5 +1,5 @@
 # This file is part of LION library
-# License : BSD-3
+# License : GPL-3
 #
 # Author  : See ./MS-D. Daniel Pelt et al
 # Modifications: Ander Biguri

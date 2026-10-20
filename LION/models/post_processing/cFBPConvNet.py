@@ -1,5 +1,5 @@
 # This file is part of AItomotools library
-# License : BSD-3
+# License : GPL-3
 #
 # Author  : Ander Biguri
 # Modifications: -
