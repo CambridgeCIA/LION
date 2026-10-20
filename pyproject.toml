@@ -20,8 +20,8 @@ include-package-data = true
 name = "LION"
 description = ""
 readme = "README.md"
-requires-python = ">=3.9, <3.13"  # Python 3.13 and later no longer supports numpy 1.x which might be needed
-license = { file = "LICENSE" }
+requires-python = ">=3.10, <3.13"  # 3.10+: LION uses `X | Y` types at runtime and dataclass(kw_only=...). <3.13: numpy 1.x might be needed
+license = { file = "LICENSE.txt" }
 dynamic = ["version"]
 dependencies = [
     # IMPORTANT: astra-toolbox needs to be installed with conda first!
@@ -36,40 +36,49 @@ dependencies = [
     # The main dependency is tomosipo which in turns depends on astra-toolbox.
 
     # The followings are currently set to prefer newer versions (make sure they don't conflict with the ones above)
+    # Most libraries are installed by conda (env_base.yml), see #181. For a pip-only
+    # install use the `standalone` extra below: pip install ".[standalone]"
     # "deepinv",  # pretrained DRUNet
-    # "h5py",
-    # "imageio",
-    # "kornia",  # LION/optimizers/GaussianDenoiserSolver.py
     # "lightning",
-    # "matplotlib",
     "mlflow",
     "mrpro",
-    # "numpy",
     # "opencv-python",
-    # "pandas",
     # "pillow",
     "piq",
     "ptwt",  # Wavelet transforms for PyTorch, for photocurrent mapping reconstruction baseline
-    # "pydicom",
     "pylidc",
-    # "PyWavelets",  # Wavelet transforms for Numpy
     "pytorch-wavelets",  # Wavelet transforms for PyTorch (TODO: switch to ptwt)
     "rich",
-    # "scikit-image",
-    # "scipy",
-    # "spgl1",  # SPGL1 solver, for baseline photocurrent mapping reconstruction method
     "spyrit",  # Fast Walsh-Hadamard Transform
-    # "tifffile",
-    # "torch",
-    # "torchdiffeq",
     # "torchmetrics",
-    # "torchvision",
     "tqdm",
     "tyro",
     "LION[codestyle]",
 ]
 
 [project.optional-dependencies]
+# Everything else LION modules import. These normally come from conda
+# (env_base.yml); this extra is for pip-only installs (and CI). Install torch and
+# torchvision for your CUDA version first (README).
+standalone = [
+    "h5py",  # LION/data_loaders/LUNA16
+    "imageio",  # LION/data_loaders/2deteCT
+    "kornia",  # LION/optimizers/GaussianDenoiserSolver.py
+    "matplotlib",
+    "natsort",  # LION/data_loaders/LUNA16
+    "numpy<2.5",  # numpy 2.5 (and above) breaks spgl1 0.0.3 (currently latest version)
+    "pandas",  # LION/data_loaders/deteCT.py
+    "pydicom",  # LION/data_loaders/LUNA16
+    "PyWavelets",  # Wavelet transforms for Numpy, LION/operators/Wavelet2D.py
+    "pyyaml",  # LION/utils/log.py
+    "scikit-image",  # LION/metrics
+    "scipy",
+    "spgl1",  # SPGL1 solver, imported by LION.classical_algorithms
+    "tifffile",  # LION/data_loaders/LUNA16
+    "torch",
+    "torchdiffeq",  # LION/models/iterative_unrolled/cLPD.py
+    "torchvision",  # LION/CTtools
+]
 codestyle = [
     "jaxtyping",
 ]
