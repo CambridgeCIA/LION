@@ -32,16 +32,17 @@ class PSNR(nn.Module):
     ) -> torch.Tensor:
         if x.shape != target.shape:
             raise ShapeMismatchException(
-                f"x (shape {x.shape}) and target (shape {target.shape}) tensors must match to compare with SSIM"
+                f"x (shape {x.shape}) and target (shape {target.shape}) tensors must match to compare with PSNR"
             )
-        x_ = x.detach().cpu().numpy().squeeze()
-        target_ = target.detach().cpu().numpy().squeeze()
+        # Squeeze per sample, not the whole array: squeezing a batch of size 1
+        # would drop the batch axis and x_[i] would then index image rows.
+        x_ = x.detach().cpu().numpy()
+        target_ = target.detach().cpu().numpy()
         if batched:
             vals = torch.empty(x.shape[0])
             for i in range(x.shape[0]):
-                vals[i] = skim_psnr(
-                    target_[i], x_[i], data_range=target_[i].max() - target_[i].min()
-                )
+                xi, ti = x_[i].squeeze(), target_[i].squeeze()
+                vals[i] = skim_psnr(ti, xi, data_range=ti.max() - ti.min())
 
             if reduce is None:
                 return vals
@@ -52,6 +53,8 @@ class PSNR(nn.Module):
                     f"expected one of 'mean' or None for parameter 'reduce', got {reduce}"
                 )
         else:
+            x_, target_ = x_.squeeze(), target_.squeeze()
+            # skimage expects (image_true, image_test)
             return torch.tensor(
-                skim_psnr(x_, target_, data_range=target_.max() - target_.min())
+                skim_psnr(target_, x_, data_range=target_.max() - target_.min())
             )
