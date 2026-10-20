@@ -1,3 +1,5 @@
+import copy
+import itertools
 from typing import Callable, Optional
 import warnings
 import numpy as np
@@ -10,9 +12,8 @@ import torch.nn.functional as F
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver
 from LION.utils.parameter import LIONParameter
-import tomosipo as ts
 import LION.CTtools.ct_utils as ct_utils
-from tomosipo.torch_support import to_autograd
+from LION.utils.tomosipo_import import import_tomosipo
 
 
 class Sparse2InverseSolver(LIONsolver):
@@ -39,72 +40,71 @@ class Sparse2InverseSolver(LIONsolver):
 
         self.model.geometry = self.geometry
         self.model._make_operator()
-        self.sino_split_count = self.solver_params.sino_split_count
+        # The input sinogram's angles are split into k interleaved subsets. Each
+        # network input averages the FBPs of p of them (every p-subset is used);
+        # the target is the measured projections at the remaining angles.
+        self.sino_split_count = self.solver_params.sino_split_count  # k
+        # parameter files from before input_split_count existed used p = 2
+        self.input_split_count = getattr(self.solver_params, "input_split_count", 2)
+        k, p = self.sino_split_count, self.input_split_count
+        if not 1 <= p < k:
+            # at least one split must be left over as the target
+            raise ValueError(
+                "Sparse2Inverse needs 1 <= input_split_count < sino_split_count, "
+                f"got input_split_count={p}, sino_split_count={k}"
+            )
         self.recon_fn = self.solver_params.recon_fn
-        self.split_combinations = self.two_two_strategy(self.sino_split_count)
+        self.split_combinations = self.input_combinations(k, p)
         self._make_sub_operators()
 
+    @staticmethod
+    def input_combinations(
+        sino_split_count: int, input_split_count: int = 2
+    ) -> list[tuple[int, ...]]:
+        """All combinations of ``input_split_count`` of the ``sino_split_count``
+        splits, e.g. (0, 1), (0, 2), ... for 2 of 4."""
+        return list(itertools.combinations(range(sino_split_count), input_split_count))
+
     @classmethod
-    def two_two_strategy(cls, sino_split_count) -> list[tuple[int, int]]:
-        # to return all 2 element combinations from 0 to sino_split_count-1
-        combos = []
-        for i in range(sino_split_count):
-            for j in range(i + 1, sino_split_count):
-                combos.append((i, j))
-        return combos
+    def two_two_strategy(cls, sino_split_count) -> list[tuple[int, ...]]:
+        """All pairs of splits (input_split_count = 2). Kept for compatibility."""
+        return cls.input_combinations(sino_split_count, 2)
 
-    def _make_sub_operators(self) -> list[ts.Operator.Operator]:
-        self.sub_ops = []
-        angles = self.geometry.angles.copy()
-        n = len(angles)
+    def _geometry_with_angles(self, angle_indices) -> Geometry:
+        """Copy of self.geometry keeping only the given projection angles."""
+        geometry = copy.deepcopy(self.geometry)
+        geometry.angles = np.asarray(self.geometry.angles)[list(angle_indices)]
+        return geometry
+
+    def _complement(self, combo) -> tuple[int, ...]:
+        """Splits not in ``combo``: their projections are the training target."""
+        return tuple(i for i in range(self.sino_split_count) if i not in combo)
+
+    def _make_sub_operators(self):
+        to_autograd = import_tomosipo(
+            "tomosipo.torch_support", "Sparse2InverseSolver"
+        ).to_autograd
+
+        n = len(self.geometry.angles)
         k = self.sino_split_count
+        # split i contains every k-th angle, starting at angle i
+        self.subgroup_indices = [list(range(i, n, k)) for i in range(k)]
 
-        self.subgroup_indices = []
+        self.sub_ops = [
+            ct_utils.make_operator(self._geometry_with_angles(indices))
+            for indices in self.subgroup_indices
+        ]
 
-        for i in range(k):
-            indices_grupo_i = list(range(i, n, k))
-            self.subgroup_indices.append(indices_grupo_i)
-
-        for idx_group in range(k):
-            sub_geom = Geometry(
-                image_shape=tuple(self.geometry.image_shape),  # tupla, ints
-                image_size=tuple(self.geometry.image_size),  # tupla, floats
-                angles=[
-                    angles[i] for i in self.subgroup_indices[idx_group]
-                ],  # list, floats
-                voxel_size=tuple(self.geometry.voxel_size),  # tupla, floats
-                mode=self.geometry.mode,
-                dso=float(self.geometry.dso),
-                dsd=float(self.geometry.dsd),
-                detector_shape=tuple(self.geometry.detector_shape),  # tupla, ints
-                detector_size=tuple(self.geometry.detector_size),  # tupla, floats
-                pixel_size=tuple(self.geometry.pixel_size),  # tupla, floats
-                image_pos=tuple(self.geometry.image_pos),  # tupla, floats
-            )
-            sub_op = ct_utils.make_operator(sub_geom)
-            self.sub_ops.append(sub_op)
-
+        # One differentiable projector per set of target splits (the splits not
+        # used as input), keyed by that set.
         self.combo_ops_autograd = {}
         for combo in self.split_combinations:
-            combo_angles = []
-            for split_idx in combo:
-                combo_angles.extend(self.subgroup_indices[split_idx])
-            combo_angles = sorted(combo_angles)
-            combo_geom = Geometry(
-                image_shape=tuple(self.geometry.image_shape),
-                image_size=tuple(self.geometry.image_size),
-                angles=[angles[i] for i in combo_angles],
-                voxel_size=tuple(self.geometry.voxel_size),
-                mode=self.geometry.mode,
-                dso=float(self.geometry.dso),
-                dsd=float(self.geometry.dsd),
-                detector_shape=tuple(self.geometry.detector_shape),
-                detector_size=tuple(self.geometry.detector_size),
-                pixel_size=tuple(self.geometry.pixel_size),
-                image_pos=tuple(self.geometry.image_pos),
+            target_splits = self._complement(combo)
+            angle_indices = sorted(
+                i for split in target_splits for i in self.subgroup_indices[split]
             )
-            combo_op = ct_utils.make_operator(combo_geom)
-            self.combo_ops_autograd[combo] = to_autograd(combo_op, num_extra_dims=1)
+            op = ct_utils.make_operator(self._geometry_with_angles(angle_indices))
+            self.combo_ops_autograd[target_splits] = to_autograd(op, num_extra_dims=1)
 
     def _calculate_noisy_sub_recons(self, sinos):
         subgroup_recons = {}
@@ -121,7 +121,10 @@ class Sparse2InverseSolver(LIONsolver):
     @staticmethod
     def default_parameters() -> LIONParameter:
         params = LIONParameter()
+        # number of interleaved angular splits of each input sinogram (k)
         params.sino_split_count = 4
+        # number of splits whose FBPs are averaged to form one network input (p)
+        params.input_split_count = 2
         params.recon_fn = fdk
         return params
 
@@ -132,11 +135,8 @@ class Sparse2InverseSolver(LIONsolver):
         total_pixels = 0
         for combo, mean_recon in subgroup_recons.items():
             output_recon = self.model(mean_recon)
-            remaining_splits = [
-                i for i in range(self.sino_split_count) if i not in combo
-            ]
-            projector_combo = tuple(sorted(remaining_splits))
-            projector = self.combo_ops_autograd[projector_combo]
+            remaining_splits = self._complement(combo)
+            projector = self.combo_ops_autograd[remaining_splits]
             objective_idx = []
             for i in remaining_splits:
                 objective_idx.extend(self.subgroup_indices[i])
