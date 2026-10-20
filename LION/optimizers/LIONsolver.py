@@ -122,8 +122,24 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.metadata = LIONParameter()
         self.dataset_param = LIONParameter()
 
-        # normalization stuff
-        self.do_normalise: bool = self.model.model_parameters.normalisator is not None
+    @property
+    def do_normalise(self) -> bool:
+        """True if the model has a normalisation set (``model.set_normalisation()``)."""
+        return getattr(self.model, "normalisator", None) is not None
+
+    def _forward(self, data: torch.Tensor) -> torch.Tensor:
+        """Run the model on a batch of measurements, as in training.
+
+        Image-domain models get an FDK reconstruction as input. If the model has
+        a normalisation set, its input is normalised and its output mapped back,
+        so losses are always computed in the units of the target.
+        """
+        if self.model.get_input_type() == ModelInputType.IMAGE:
+            data = fdk(data, self.op)
+            if self.do_normalise:
+                data = self.model.normalise(data)
+                return self.model.unnormalise(self.model(data))
+        return self.model(data)
 
     # This should return the default parameters of the solver
     @staticmethod
@@ -655,10 +671,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         with torch.no_grad():
             test_loss = np.array([])
             for data, target in tqdm(self.test_loader):
-                data = data.to(self.device)
-                if self.model.get_input_type() == ModelInputType.IMAGE:
-                    data = fdk(data, self.op)
-                output = self.model(data)
+                output = self._forward(data.to(self.device))
                 test_loss = np.append(
                     test_loss,
                     self.testing_fn(output, target.to(self.device)).cpu().numpy(),
@@ -826,10 +839,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         validation_loss = np.array([])
         for data, targets in tqdm(self.validation_loader):
-            data = data.to(self.device)
-            if self.model.get_input_type() == ModelInputType.IMAGE:
-                data = fdk(data, self.op)
-            outputs = self.model(data)
+            outputs = self._forward(data.to(self.device))
             # same argument order as the training loss: (output, target)
             validation_loss = np.append(
                 validation_loss,
