@@ -85,15 +85,15 @@ class LG(LIONmodel):
             print("33.12 (2017): 124007.")
         elif cite_format == "bib":
             string = """
-            @article{adler2018learned,
-            title={Learned primal-dual reconstruction},
+            @article{adler2017solving,
+            title={Solving ill-posed inverse problems using iterative deep neural networks},
             author={Adler, Jonas and {\"O}ktem, Ozan},
-            journal={IEEE transactions on medical imaging},
-            volume={37},
-            number={6},
-            pages={1322--1332},
-            year={2018},
-            publisher={IEEE}
+            journal={Inverse Problems},
+            volume={33},
+            number={12},
+            pages={124007},
+            year={2017},
+            publisher={IOP Publishing}
             }"""
             print(string)
         else:
