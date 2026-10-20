@@ -1,5 +1,5 @@
 # This file is part of LION library
-# License : BSD-3
+# License : GPL-3
 #
 # Author  : Zakhar Shumaylov, Subhadip Mukherjee
 # Modifications: Ander Biguri, Zakhar Shumaylov, Charlie Shoebridge

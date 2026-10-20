@@ -1,6 +1,6 @@
 # =============================================================================
 # This file is part of LION library
-# License : BSD-3
+# License : GPL-3
 #
 # Author  : Ander Biguri
 # Modifications: -

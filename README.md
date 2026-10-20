@@ -100,6 +100,10 @@ pytest pytests/
 
 Tests that need CUDA (`cuda` marker) or tomosipo/astra (`tomosipo` marker) are skipped automatically on machines without them (e.g. Macs). The folder is called `pytests` rather than `tests` because tomosipo installs a top-level `tests` package.
 
+## Licence
+
+LION is released under the GNU General Public License v3 (GPL-3), see [LICENSE.txt](LICENSE.txt). It has to be: its CT backend, [ASTRA](https://github.com/astra-toolbox/astra-toolbox) and [tomosipo](https://github.com/ahendriksen/tomosipo), are GPL-3.
+
 ## Contributors
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->

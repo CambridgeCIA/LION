@@ -1,5 +1,5 @@
 # This file is part of LION library
-# License : BSD-3
+# License : GPL-3
 #
 # Author  : Ander Biguri
 # Modifications: Emilia Zabrzanska (2026): fix LIONmodel namespace references
