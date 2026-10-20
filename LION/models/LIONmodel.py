@@ -22,6 +22,7 @@ from LION.utils.parameter import LIONParameter
 # We will need utilities
 import LION.utils.utils as ai_utils
 from LION.utils.normaliser import Normalisation
+from LION.utils.device import default_device
 from LION.utils.tomosipo_import import import_tomosipo
 from LION.exceptions.exceptions import NoDataException
 
@@ -308,9 +309,7 @@ class LIONmodel(nn.Module, ABC):
         # Load the actual pythorch saved data
         data = torch.load(
             fname,
-            map_location=torch.device(
-                torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
-            ),
+            map_location=default_device(),
             weights_only=weights_only,
         )
         if len(data) > 1 and not supress_warnings:
@@ -395,7 +394,7 @@ class LIONmodel(nn.Module, ABC):
             model = cls(model_parameters=options.model_parameters)
 
         # Load the data into the model we created.
-        model.to(torch.cuda.current_device() if torch.cuda.is_available() else "cpu")
+        model.to(default_device())
         model.load_state_dict(data.pop("model_state_dict"))
 
         return model, options, data
@@ -425,7 +424,7 @@ class LIONmodel(nn.Module, ABC):
         else:
             model = cls(model_parameters=options.model_parameters)
         # Load the data into the model we created.
-        model.to(torch.cuda.current_device() if torch.cuda.is_available() else "cpu")
+        model.to(default_device())
         model.load_state_dict(data.pop("model_state_dict"))
 
         return model, options.unpack(), data

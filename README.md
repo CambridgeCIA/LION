@@ -40,6 +40,21 @@ Afterwards, install the pre-commit hooks for auto-formating your commits. We use
 pre-commit install --hook-type pre-commit --hook-type post-merge
 ```
 
+## Choosing a GPU
+
+Set the device once, at the top of your script, and LION uses it wherever no device is given explicitly (solvers, loading models, datasets, noise simulation):
+
+```python
+import torch
+torch.cuda.set_device(2)            # or: torch.set_default_device("cuda:2")
+```
+
+CT operators (tomosipo/astra) run on the device of the tensors they are given. On machines with several GPUs where only one may be used, the most robust option is to make only that GPU visible to the process, so nothing (LION, PyTorch or astra) can use another:
+
+```bash
+CUDA_VISIBLE_DEVICES=2 python my_script.py
+```
+
 ## Datasets
 
 Several DataSets are currently supported by LION. To point the package to the correct storage location use `export LION_DATA_PATH=/path/to/Datasets`. For convenience, this can be added to your `.bashrc` or similar file.

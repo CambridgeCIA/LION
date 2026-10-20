@@ -22,6 +22,7 @@ from LION.CTtools.ct_utils import make_operator
 from LION.classical_algorithms.fdk import fdk
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
 from LION.utils.parameter import LIONParameter
+from LION.utils.device import default_device
 
 # Lionmodels
 from LION.models.LIONmodel import LIONmodel, ModelInputType
@@ -90,9 +91,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         self.loss_fn = loss_fn
         if device is None:
-            device = torch.device(
-                torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
-            )
+            device = default_device()
         self.device = device
         self.model.to(self.device)
 
@@ -249,9 +248,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 error=False,
                 autofill=autofill,
                 verbose=verbose,
-                default=torch.device(
-                    torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
-                ),
+                default=default_device(),
             ),
         )
 
