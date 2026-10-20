@@ -25,8 +25,6 @@ pytestmark = pytest.mark.filterwarnings("ignore:Expected 'geometry' parameter")
 
 
 def _save(model, path):
-    # dataset/training are passed because save() currently fails without them
-    # on NumPy 2 (tracked separately).
     model.save(path, dataset=LIONParameter(name="test"), training=LIONParameter())
 
 
@@ -95,3 +93,20 @@ def test_load_checkpoint_round_trip(tmp_path):
     assert data["loss"] == 0.5
     for key, value in model.state_dict().items():
         torch.testing.assert_close(loaded.state_dict()[key].cpu(), value.cpu())
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_save_without_optional_metadata(tmp_path):
+    # dataset/training/geometry are optional (save() only warns)
+    DnCNN().save(tmp_path / "model")
+    loaded, _, _ = DnCNN.load(tmp_path / "model", supress_warnings=True)
+    assert isinstance(loaded, DnCNN)
+
+
+def test_save_does_not_change_model_parameters(tmp_path):
+    params = DnCNN.default_parameters()
+    params.extra = LIONParameter(depth=2)
+    model = DnCNN(params)
+    _save(model, tmp_path / "model")
+    assert isinstance(model.model_parameters.extra, LIONParameter)
+    assert model.model_parameters.extra.depth == 2
