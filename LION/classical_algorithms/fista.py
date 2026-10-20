@@ -81,7 +81,7 @@ def fista_l1(
     Returns
     -------
     w : torch.Tensor
-        Estimated coefficient vector, shape ``(Nw,)``.
+        Estimated coefficients, with the shape of ``op.adjoint(y)``.
 
     References
     ----------
@@ -98,16 +98,15 @@ def fista_l1(
     y = y.detach()
     device = y.device
 
-    # Dimension inferred from one adjoint call
+    # Shape of the unknown inferred from one adjoint call
     w0: torch.Tensor = op.adjoint(torch.zeros_like(y))
-    n: int = w0.numel()
 
     if L is None:
         # Power method estimates ||A||_2; Lipschitz constant is ||A||_2^2
         L = power_method(op, device=device).item() ** 2
     step = 1.0 / (L + 1e-12)
 
-    w = torch.zeros(n, dtype=torch.float32, device=device)
+    w = torch.zeros_like(w0, device=device)
     z = w.clone()
     t = 1.0
 
@@ -116,7 +115,7 @@ def fista_l1(
         iterator = tqdm(iterator, desc="FISTA l1")
     for k in iterator:
         Az: torch.Tensor = op(z)
-        grad = op.adjoint(Az - y)  # gradient of data term, shape (n,)
+        grad = op.adjoint(Az - y)  # gradient of data term, same shape as w
 
         w_next = soft_threshold(z - step * grad, lam * step)
         t_next = 0.5 * (1.0 + math.sqrt(1.0 + 4.0 * t * t))
