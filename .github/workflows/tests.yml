@@ -1,0 +1,26 @@
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  cpu-tests:
+    # CPU only: tests that need CUDA or tomosipo/astra are skipped automatically
+    # (see tests/conftest.py).
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+    - name: Install
+      run: |
+        # pip 25.3 dropped `setup.py install`, used to install tomosipo and ts_algorithms
+        python -m pip install "pip<=25.2"
+        python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+        python -m pip install -e ".[tests,standalone]"
+    - name: Run tests
+      run: python -m pytest  # testpaths = pytests/

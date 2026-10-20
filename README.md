@@ -98,7 +98,7 @@ Run the tests with:
 pytest pytests/
 ```
 
-Tests that need CUDA (`cuda` marker) or tomosipo/astra (`tomosipo` marker) are skipped automatically on machines without them (e.g. Macs). The folder is called `pytests` rather than `tests` because tomosipo installs a top-level `tests` package.
+Tests that need CUDA (`cuda` marker) or tomosipo/astra (`tomosipo` marker) are skipped automatically on machines without them (e.g. Macs). The folder is called `pytests` rather than `tests` because tomosipo installs a top-level `tests` package. The same tests run on every pull request (`.github/workflows/tests.yml`).
 
 ## Licence
 
