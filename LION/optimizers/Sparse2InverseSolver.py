@@ -1,4 +1,5 @@
 import copy
+import itertools
 from typing import Callable, Optional
 import warnings
 import numpy as np
@@ -39,24 +40,35 @@ class Sparse2InverseSolver(LIONsolver):
 
         self.model.geometry = self.geometry
         self.model._make_operator()
-        self.sino_split_count = self.solver_params.sino_split_count
-        if self.sino_split_count < 3:
-            # inputs are pairs of splits; at least one split must be left as target
+        # The input sinogram's angles are split into k interleaved subsets. Each
+        # network input averages the FBPs of p of them (every p-subset is used);
+        # the target is the measured projections at the remaining angles.
+        self.sino_split_count = self.solver_params.sino_split_count  # k
+        # parameter files from before input_split_count existed used p = 2
+        self.input_split_count = getattr(self.solver_params, "input_split_count", 2)
+        k, p = self.sino_split_count, self.input_split_count
+        if not 1 <= p < k:
+            # at least one split must be left over as the target
             raise ValueError(
-                f"Sparse2Inverse needs sino_split_count >= 3, got {self.sino_split_count}"
+                "Sparse2Inverse needs 1 <= input_split_count < sino_split_count, "
+                f"got input_split_count={p}, sino_split_count={k}"
             )
         self.recon_fn = self.solver_params.recon_fn
-        self.split_combinations = self.two_two_strategy(self.sino_split_count)
+        self.split_combinations = self.input_combinations(k, p)
         self._make_sub_operators()
 
+    @staticmethod
+    def input_combinations(
+        sino_split_count: int, input_split_count: int = 2
+    ) -> list[tuple[int, ...]]:
+        """All combinations of ``input_split_count`` of the ``sino_split_count``
+        splits, e.g. (0, 1), (0, 2), ... for 2 of 4."""
+        return list(itertools.combinations(range(sino_split_count), input_split_count))
+
     @classmethod
-    def two_two_strategy(cls, sino_split_count) -> list[tuple[int, int]]:
-        # to return all 2 element combinations from 0 to sino_split_count-1
-        combos = []
-        for i in range(sino_split_count):
-            for j in range(i + 1, sino_split_count):
-                combos.append((i, j))
-        return combos
+    def two_two_strategy(cls, sino_split_count) -> list[tuple[int, ...]]:
+        """All pairs of splits (input_split_count = 2). Kept for compatibility."""
+        return cls.input_combinations(sino_split_count, 2)
 
     def _geometry_with_angles(self, angle_indices) -> Geometry:
         """Copy of self.geometry keeping only the given projection angles."""
@@ -84,8 +96,7 @@ class Sparse2InverseSolver(LIONsolver):
         ]
 
         # One differentiable projector per set of target splits (the splits not
-        # used as input). For 4 splits these are again pairs, for other numbers
-        # of splits they are not, so they are keyed by the complement itself.
+        # used as input), keyed by that set.
         self.combo_ops_autograd = {}
         for combo in self.split_combinations:
             target_splits = self._complement(combo)
@@ -110,7 +121,10 @@ class Sparse2InverseSolver(LIONsolver):
     @staticmethod
     def default_parameters() -> LIONParameter:
         params = LIONParameter()
+        # number of interleaved angular splits of each input sinogram (k)
         params.sino_split_count = 4
+        # number of splits whose FBPs are averaged to form one network input (p)
+        params.input_split_count = 2
         params.recon_fn = fdk
         return params
 
