@@ -73,8 +73,26 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
 
     def energy(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """E(x) = 0.5 ||A x - y||^2 + alpha R(x), for one sample."""
-        data_term = 0.5 * torch.sum((self.op_autograd(x) - y) ** 2)
-        return data_term + self.alpha * self.regularizer_value(x)
+        with torch.no_grad():
+            data_term = 0.5 * torch.sum((self.op(x) - y) ** 2)
+            return data_term + self.alpha * self.regularizer_value(x)
+
+    def gradient(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """grad E(x) = A^T (A x - y) + alpha grad R(x), for one sample.
+
+        The data term's gradient is computed with the operator's own forward and
+        adjoint; only the regulariser (a network) is differentiated by autograd.
+        """
+        x = x.detach()
+        with torch.no_grad():
+            data_grad = self.op.adjoint(self.op(x) - y)
+        # Autograd is needed even when called under torch.no_grad() (e.g. from a
+        # solver's validation loop).
+        with torch.enable_grad():
+            x.requires_grad_(True)
+            # gradient for the image only: nothing accumulates in R's weights
+            (reg_grad,) = torch.autograd.grad(self.regularizer_value(x), x)
+        return data_grad + self.alpha * reg_grad
 
     def initial_guess(self, y: torch.Tensor) -> torch.Tensor:
         """FDK for CT operators, zeros otherwise."""
@@ -95,40 +113,28 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
         :param prog_bar: Show a progress bar over the iterations.
         :return: The reconstruction, in the operator's domain shape.
         """
-        # Gradients with respect to the image are needed even when called under
-        # torch.no_grad() (e.g. from a solver's validation loop).
-        with torch.enable_grad():
-            x = (self.initial_guess(sino) if x0 is None else x0).detach().clone()
-            step = self.step_size
-            iterations = range(self.n_steps)
-            if prog_bar:
-                iterations = tqdm(iterations, desc="Learned regulariser reconstruction")
-            for _ in iterations:
-                x.requires_grad_(True)
-                energy = self.energy(x, sino)
-                # gradient for the image only: nothing accumulates in R's weights
-                (grad,) = torch.autograd.grad(energy, x)
-                x, energy = x.detach(), energy.detach()
-                grad_norm2 = torch.sum(grad**2)
-                if grad_norm2 == 0:
+        x = (self.initial_guess(sino) if x0 is None else x0).detach().clone()
+        step = self.step_size
+        iterations = range(self.n_steps)
+        if prog_bar:
+            iterations = tqdm(iterations, desc="Learned regulariser reconstruction")
+        for _ in iterations:
+            energy = self.energy(x, sino)
+            grad = self.gradient(x, sino)
+            grad_norm2 = torch.sum(grad**2)
+            if grad_norm2 == 0:
+                break
+            # Armijo backtracking for the gradient step x - step * grad
+            while True:
+                candidate = x - step * grad
+                if self.energy(candidate, sino) <= energy - 0.5 * step * grad_norm2:
                     break
-                # Armijo backtracking for the gradient step x - step * grad
-                with torch.no_grad():
-                    while True:
-                        candidate = x - step * grad
-                        if (
-                            self.energy(candidate, sino)
-                            <= energy - 0.5 * step * grad_norm2
-                        ):
-                            break
-                        step *= self.backtracking
-                        if step < torch.finfo(x.dtype).tiny:
-                            return (
-                                x  # no decrease possible: x is (numerically) stationary
-                            )
-                x = candidate
-                step /= self.backtracking  # let the step grow again
-        return x.detach()
+                step *= self.backtracking
+                if step < torch.finfo(x.dtype).tiny:
+                    return x  # no decrease possible: x is (numerically) stationary
+            x = candidate
+            step /= self.backtracking  # let the step grow again
+        return x
 
 
 def estimate_alpha(

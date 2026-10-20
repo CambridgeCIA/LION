@@ -123,3 +123,15 @@ def test_estimate_alpha_is_mean_over_samples(problem):
 def test_rejects_bad_backtracking(problem):
     with pytest.raises(ValueError):
         LearnedRegularizerReconstructor(problem[0], quadratic, backtracking=1.0)
+
+
+def test_explicit_gradient_matches_autograd(problem):
+    """grad E = A^T(Ax - y) + alpha grad R, with the data term written out."""
+    op, _, y = problem
+    model = small_regularizer().eval()
+    recon = LearnedRegularizerReconstructor(op, model, alpha=0.3)
+    x = torch.rand(op.domain_shape, dtype=torch.float64, requires_grad=True)
+    energy = 0.5 * torch.sum((op(x) - y) ** 2) + 0.3 * model(x.unsqueeze(0)).sum()
+    (expected,) = torch.autograd.grad(energy, x)
+    torch.testing.assert_close(recon.gradient(x, y), expected)
+    torch.testing.assert_close(recon.energy(x, y), energy.detach())

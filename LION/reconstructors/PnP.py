@@ -11,7 +11,8 @@ from tqdm import tqdm
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
 from LION.classical_algorithms.fdk import fdk
 from LION.CTtools.ct_geometry import Geometry
-from LION.operators import Operator
+from LION.models.LIONmodel import LIONmodel
+from LION.operators import CTProjectionOp, Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
 
@@ -34,6 +35,10 @@ class PnP(LIONReconstructor):
             If a Geometry is provided, the corresponding CT operator will be created.
         prior_fn : Callable[[torch.Tensor], torch.Tensor]
             The prior for plug-and-play, for example, a pre-trained denoiser model.
+            A LIONmodel prior is called on a batch of one image (with its
+            normalisation, and the noise level if it uses one). Any other callable
+            is called on the image as it is (the operator's domain shape) and
+            must return the same shape.
         algorithm : Literal["ADMM", "HQS", "FBS"], optional
             The reconstruction algorithm to use. See the options in the notes below. Default is "ADMM".
 
@@ -65,33 +70,61 @@ class PnP(LIONReconstructor):
         **kwargs,
     ):
         """
-        Reconstruct the sinogram using the model and geometry.
+        Reconstruct one measurement (e.g. a (C, angles, detectors) sinogram)
+        with the selected algorithm. Extra keyword arguments are passed to it.
 
-        :param sino: Sinogram tensor.
-        :return: Reconstructed image tensor.
+        :param sino: Measurement tensor, in the range of the operator.
+        :return: Reconstructed image tensor, in the domain of the operator.
         """
         if not isinstance(sino, torch.Tensor):
             raise TypeError("Sinogram must be a torch.Tensor")
-        if sino.dim() != 3:
-            raise ValueError(
-                f"Sinogram must be a 3D tensor (batch_size, num_angles, num_detectors), but got {sino.dim()}"
-            )
-        # Apply the reconstruction algorithm
         if self.algorithm == "HQS":
-            # Implement the Half Quadratic Splitting algorithm here
-            # This is a placeholder for the actual implementation
-            recon = self.hqs_algorithm(sino, prog_bar=prog_bar, **kwargs)
-        elif self.algorithm == "FBS":
-            # Implement the Forward-Backward Splitting algorithm here
-            # This is a placeholder for the actual implementation
-            recon = self.forward_backward_splitting(sino, prog_bar=prog_bar, **kwargs)
-        elif self.algorithm == "ADMM":
-            recon = self.admm_algorithm(sino, prog_bar=prog_bar, **kwargs)
+            return self.hqs_algorithm(sino, prog_bar=prog_bar, **kwargs)
+        if self.algorithm == "FBS":
+            return self.forward_backward_splitting(sino, prog_bar=prog_bar, **kwargs)
+        if self.algorithm == "ADMM":
+            return self.admm_algorithm(sino, prog_bar=prog_bar, **kwargs)
+        raise ValueError(f"Unknown algorithm: {self.algorithm}")
+
+    # ------------------------------------------------------------------ helpers
+    def _uses_noise_level(self) -> bool:
+        params = getattr(self.model, "model_parameters", None)
+        return bool(getattr(params, "use_noise_level", False))
+
+    def _apply_prior(self, x: torch.Tensor, noise_level=None) -> torch.Tensor:
+        """Apply the prior to an image ``x`` with the operator's domain shape.
+
+        LIONmodel priors get a batch of one (with the model's normalisation and,
+        if the model takes one, the noise level). Other callables get ``x`` as it
+        is and must return the same shape.
+        """
+        if not isinstance(self.model, LIONmodel):
+            return self.model(x)
+        x_in = self.model.normalise(x.unsqueeze(0))
+        if self._uses_noise_level():
+            out = self.model(x_in, noise_level=noise_level)
         else:
-            raise ValueError(f"Unknown algorithm: {self.algorithm}")
+            out = self.model(x_in)
+        return self.model.unnormalise(out).squeeze(0)
 
-        return recon
+    def _initial_guess(self, sino: torch.Tensor) -> torch.Tensor:
+        """FDK for CT operators, zeros otherwise."""
+        if isinstance(self.op, CTProjectionOp):
+            return fdk(sino, self.op)
+        return torch.zeros(self.op.domain_shape, device=sino.device, dtype=sino.dtype)
 
+    def _solve_data_step(self, sino, z, weight, x0, cg_max_iter, cg_tol):
+        """argmin_x ||A x - y||^2 / 2 + weight ||x - z||^2 / 2, by conjugate gradient."""
+
+        def normal_operator(v: torch.Tensor) -> torch.Tensor:
+            return self.op.adjoint(self.op(v)) + weight * v
+
+        rhs = self.op.adjoint(sino) + weight * z
+        return conjugate_gradient(
+            normal_operator, rhs, x0, max_iter=cg_max_iter, tol=cg_tol
+        )
+
+    # --------------------------------------------------------------- algorithms
     def hqs_algorithm(
         self,
         sino,
@@ -100,45 +133,39 @@ class PnP(LIONReconstructor):
         mu=0.1,
         max_iter=100,
         noise_level=None,
+        cg_max_iter=100,
+        cg_tol=1e-7,
         prog_bar: bool = False,
     ):
         """
-        Placeholder for the Half Quadratic Splitting algorithm implementation.
+        Half Quadratic Splitting, as in "Plug-and-Play Image Restoration with Deep
+        Denoiser Prior" (Zhang et al.). Alternates
 
-        :param sino: Sinogram tensor.
-        :param lambda: Regularization parameter.
-        :param mu: Step size.
-        :param max_iter: Maximum number of iterations.
+            x = argmin ||A x - y||^2 / 2 + mu ||x - z||^2 / 2   (conjugate gradient)
+            z = prior(x)
+
+        :param sino: Measurement tensor.
+        :param lambda_: Regularisation parameter.
+        :param mu: Weight of the quadratic coupling term.
+        :param max_iter: Number of HQS iterations.
+        :param noise_level: If given, mu = lambda_ / noise_level**2; otherwise the
+            noise level passed to the prior is sqrt(lambda_ / mu).
         :return: Reconstructed image tensor.
         """
         if noise_level is not None:
-            print("Warning: ignoring value of mu, estimating from noise_level")
-            sigma = noise_level
             mu = lambda_ / noise_level**2
         else:
-            sigma = np.sqrt(lambda_ / mu)
-            # make sigma the operator norm
-            sigma = power_method(self.op)
-            noise_level = np.sqrt(lambda_ / mu)
+            noise_level = float(np.sqrt(lambda_ / mu))
 
-        # initialize the reconstruction
-        x = fdk(sino, self.op)  # Use FDK as an initial guess
-        z = torch.zeros_like(x)
+        x = self._initial_guess(sino)
+        z = x.clone()
         iterator = range(max_iter)
         if prog_bar:
             iterator = tqdm(iterator, desc="HQS iterations")
-        for i in iterator:
-            x = x - 1 / (sigma**2) * self.op.T(self.op(x) - sino) + 2 * mu * (x - z)
-            if (
-                hasattr(self.model_parameters, "use_noise_level")
-                and self.model_parameters.use_noise_level
-            ):
-                z = self.model(x, noise_level=noise_level)
-            else:
-                z = self.model(x)
-        # This is where the actual HQS algorithm would be implemented
-        # For now, we return a dummy tensor
-        return torch.zeros_like(sino)
+        for _ in iterator:
+            x = self._solve_data_step(sino, z, mu, x, cg_max_iter, cg_tol)
+            z = self._apply_prior(x, noise_level)
+        return z
 
     def forward_backward_splitting(
         self,
@@ -149,34 +176,22 @@ class PnP(LIONReconstructor):
         prog_bar: bool = False,
     ):
         """
-        Forward-Backward Splitting algorithm implementation.
+        Forward-Backward Splitting: x = prior(x - step_size * A^T (A x - y)).
+
+        :param step_size: Gradient step; 1 / ||A||^2 if None.
         """
         if step_size is None:
-            op_norm = power_method(self.op)
+            op_norm = power_method(self.op, device=sino.device)
             step_size = 1.0 / (op_norm**2)
 
-        x = fdk(sino, self.op)
+        x = self._initial_guess(sino)
         iterator = range(max_iter)
         if prog_bar:
             iterator = tqdm(iterator, desc="FBS iterations")
-        for i in iterator:
+        for _ in iterator:
             # TODO: would it not make sense to have an adaptive noise_level?
-            if (
-                hasattr(self.model.model_parameters, "use_noise_level")
-                and self.model.model_parameters.use_noise_level
-            ):
-                step = x - step_size * self.op.T(self.op(x) - sino)
-
-                step = self.model.normalise(step)
-                x = self.model(step.unsqueeze(0), noise_level=noise_level).squeeze(0)
-                x = self.model.unnormalise(x)
-            else:
-                step = x - step_size * self.op.T(self.op(x) - sino)
-
-                step = self.model.normalise(step)
-                x = self.model(step.unsqueeze(0)).squeeze(0)
-                x = self.model.unnormalise(x)
-
+            step = x - step_size * self.op.adjoint(self.op(x) - sino)
+            x = self._apply_prior(step, noise_level)
         return x
 
     def admm_algorithm(
@@ -186,24 +201,25 @@ class PnP(LIONReconstructor):
         max_iter: int = 10,
         cg_max_iter: int = 100,
         cg_tol: float = 1e-7,
+        noise_level=None,
         prog_bar: bool = False,
     ) -> torch.Tensor:
+        """
+        ADMM with the prior as the proximal step:
+
+            x = argmin ||A x - y||^2 / 2 + eta ||x - (v - u)||^2 / 2   (CG)
+            v = prior(x + u)
+            u = u + x - v
+        """
         x = torch.zeros(self.op.domain_shape, device=measurement.device)
         v = torch.zeros(self.op.domain_shape, device=measurement.device)
         u = torch.zeros(self.op.domain_shape, device=measurement.device)
 
-        def matmul_closure(x: torch.Tensor) -> torch.Tensor:
-            return self.op.adjoint(self.op(x)) + eta * x
-
-        AT_y = self.op.adjoint(measurement)
         iterator = range(max_iter)
         if prog_bar:
             iterator = tqdm(iterator, desc="ADMM iterations")
         for _ in iterator:
-            d = AT_y + eta * (v - u)
-            x = conjugate_gradient(
-                matmul_closure, d, x, max_iter=cg_max_iter, tol=cg_tol
-            )
-            v = self.model(x + u)
+            x = self._solve_data_step(measurement, v - u, eta, x, cg_max_iter, cg_tol)
+            v = self._apply_prior(x + u, noise_level)
             u = u + (x - v)
         return x
