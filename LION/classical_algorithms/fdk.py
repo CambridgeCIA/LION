@@ -3,9 +3,8 @@ from __future__ import annotations
 import numpy as np
 import torch
 
+from LION.classical_algorithms._batching import batched_reconstruction
 from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
-from LION.exceptions.exceptions import NoDataException
 from LION.operators.Operator import Operator
 from LION.utils.tomosipo_import import import_tomosipo
 
@@ -31,34 +30,15 @@ def fdk(
     Returns:
         The reconstructions, with the same batch layout as ``sino``.
     """
-    if sino.dim() == 4:
-        B = sino.shape[0]
-        remove_batch = False
-    elif sino.dim() == 3:
-        B = 1
-        sino = sino.unsqueeze(0)
-        remove_batch = True
-    else:
-        raise ValueError(
-            "Expected a sinogram of shape (B, C, angles, detectors) or "
-            f"(C, angles, detectors), got shape {tuple(sino.shape)}"
-        )
-    if B == 0:
-        raise NoDataException("Given 0 batches, no data to operate on!")
-    if isinstance(op, Geometry):
-        op = make_operator(op)
 
-    # ts_algorithms works on one sample at a time
-    recons = []
-    for i in range(B):
-        sub_recon = _fdk_sample(op, sino[i], differentiable)
+    def recon_fn(op, sino_i, i):
+        sub_recon = _fdk_sample(op, sino_i, differentiable)
         if clip:
             sub_recon = torch.clip(sub_recon, min=0)
-        recons.append(sub_recon)
-    recon = torch.stack(recons)
-    if remove_batch:
-        recon = recon.squeeze(0)
-    return recon
+        return sub_recon
+
+    # ts_algorithms works on one sample at a time
+    return batched_reconstruction(recon_fn, sino, op)
 
 
 def _is_cone_beam(op) -> bool:
