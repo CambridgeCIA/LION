@@ -5,7 +5,7 @@
   or no CUDA device is available: tomosipo projects with astra's CUDA
   algorithms, and pip's astra-toolbox imports fine on machines without a GPU.
 - Tests marked ``@pytest.mark.cuda`` are skipped when no CUDA device is
-  available, so ``pytest tests`` works everywhere without ``-m "not cuda"``.
+  available, so ``pytest`` works everywhere without ``-m "not cuda"``.
 """
 
 import pytest
@@ -32,3 +32,12 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_tomosipo)
         if "cuda" in item.keywords and not CUDA_AVAILABLE:
             item.add_marker(skip_cuda)
+
+
+# Known to fail: they replace LION modules in sys.modules with mocks, which breaks
+# other tests in the same process. Their batching checks are covered in
+# test_classical_algorithms.py.
+collect_ignore = [
+    "test_sirt.py",
+    "test_tv_min.py",
+]
