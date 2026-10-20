@@ -62,7 +62,7 @@ class GaussianDenoiserSolver(LIONsolver):
         """
         # Forward pass
         if self.do_normalise:
-            target = self.model.normalise.normalise(target)
+            target = self.model.normalise(target)
 
         if self.patch is not None:
             target = self.patch.random_erasing(
@@ -127,7 +127,7 @@ class GaussianDenoiserSolver(LIONsolver):
             for _, targets in tqdm(self.validation_loader):
                 targets = targets.to(self.device)
                 if self.do_normalise:
-                    targets = self.model.normalise.normalise(targets)
+                    targets = self.model.normalise(targets)
 
                 if self.patch is not None:
                     data = self.patch.random_erasing(

@@ -48,15 +48,7 @@ class SupervisedSolver(LIONsolver):
         This function isresponsible for performing a single mini-batch step of the optimization.
         returns the loss of the mini-batch
         """
-        # Forward pass
-        if self.model.get_input_type() == ModelInputType.IMAGE:
-            data = fdk(sino, self.op)
-            if self.do_normalise:
-                data = self.model.normalise.normalise(data)
-                target = self.model.normalise.normalise(target)
-        else:
-            data = sino
-        output = self.model(data)
+        output = self._forward(sino)
         return self.loss_fn(output, target)
 
     @staticmethod

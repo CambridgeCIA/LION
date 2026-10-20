@@ -56,7 +56,7 @@ class SelfSupervisedSolver(LIONsolver):
         if self.model.get_input_type() == ModelInputType.IMAGE:
             data = fdk(sino, self.op)
             if self.do_normalise:
-                data = self.model.normalise.normalise(data)
+                data = self.model.normalise(data)
         else:
             data = sino
 
