@@ -72,7 +72,8 @@ def test_with_experiment(
     """
     # Set device:
     dev = torch.device(device)
-    torch.cuda.set_device(dev)
+    if dev.type == "cuda":
+        torch.cuda.set_device(dev)
 
     # Load test data
     test_data = experiment.get_testing_dataset()
