@@ -106,7 +106,7 @@ dev = ["LION[tests, docs, ci]"]
 
 # PyTest section
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["pytests"]  # not "tests": tomosipo installs a top-level `tests` package
 filterwarnings = [
     "error",
     "ignore:Anomaly Detection has been enabled:UserWarning",                   # torch.autograd

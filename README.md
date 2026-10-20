@@ -77,17 +77,13 @@ Read [`developers.md`](developers.md)
 
 ## Tests
 
-To run tests without CUDA and without tomosipo (useful for non-CUDA devices like Macs):
+Run the tests with:
 
 ```bash
-pytest tests/ -m "not cuda and not tomosipo"
+pytest pytests/
 ```
 
-Otherwise simply run all tests:
-
-```bash
-pytest tests/
-```
+Tests that need CUDA (`cuda` marker) or tomosipo/astra (`tomosipo` marker) are skipped automatically on machines without them (e.g. Macs). The folder is called `pytests` rather than `tests` because tomosipo installs a top-level `tests` package.
 
 ## Contributors
 
