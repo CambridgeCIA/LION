@@ -26,7 +26,6 @@ class Proj2ProjSolver(LIONsolver):
         verbose: bool = True,
         device: torch.device = None,
     ) -> None:
-        print(device)
         super().__init__(
             model,
             optimizer,
@@ -37,7 +36,7 @@ class Proj2ProjSolver(LIONsolver):
             solver_params=solver_params,
         )
 
-        self.operator = ct_utils.make_operator(self.geometry)
+        self.operator = self.op  # the base solver already built it
         self.model.geometry = self.geometry
         self.model.operator = self.operator
         self.projector = to_autograd(self.operator, num_extra_dims=1)
