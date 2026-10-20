@@ -5,7 +5,6 @@ from typing import Callable
 
 import torch
 import torchvision.transforms.functional as TF
-from tomosipo.torch_support import to_autograd
 from torch.optim.optimizer import Optimizer
 
 from LION.classical_algorithms.fdk import fdk
@@ -13,6 +12,7 @@ from LION.CTtools.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.utils.parameter import LIONParameter
+from LION.utils.tomosipo_import import import_tomosipo
 
 
 def get_rotation_matrix(angle: float):
@@ -30,7 +30,7 @@ class EquivariantSolver(LIONsolver):
         loss_fn: Callable,
         geometry: Geometry,
         verbose: bool = True,
-        device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
+        device: torch.device = None,
         solver_params: SolverParams | None = None,
     ) -> None:
         super().__init__(
@@ -38,6 +38,10 @@ class EquivariantSolver(LIONsolver):
         )
         self.transformation_group = self.solver_params.transformation_group
         self.alpha = self.solver_params.equivariance_strength
+        to_autograd = import_tomosipo(
+            "tomosipo.torch_support", "EquivariantSolver"
+        ).to_autograd
+
         self.A = to_autograd(self.op, num_extra_dims=1)
         self.AT = to_autograd(self.op.T, num_extra_dims=1)
 

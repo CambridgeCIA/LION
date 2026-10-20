@@ -1,5 +1,6 @@
 """LION's core (operators, classical algorithms, models, solvers base) must import
-without tomosipo/astra, so the pure-torch parts can be used on any machine."""
+without tomosipo/astra, so the pure-torch parts can be used on any machine.
+Importing must also not touch CUDA (checked by making every CUDA query fail)."""
 
 import subprocess
 import sys
@@ -17,6 +18,8 @@ MODULES = [
     "LION.reconstructors",
     "LION.optimizers.LIONsolver",
     "LION.optimizers.SupervisedSolver",
+    "LION.optimizers.EquivariantSolver",
+    "LION.optimizers.AdversarialRegularizerSolver",
 ]
 
 
@@ -27,6 +30,10 @@ def test_imports_without_tomosipo(module):
         "import sys\n"
         "for name in ('tomosipo', 'tomosipo.torch_support', 'ts_algorithms', 'astra'):\n"
         "    sys.modules[name] = None\n"
+        "import torch\n"
+        "def _no_cuda(*args, **kwargs):\n"
+        "    raise RuntimeError('CUDA queried at import time')\n"
+        "torch.cuda.current_device = _no_cuda\n"
         f"import {module}\n"
     )
     result = subprocess.run(

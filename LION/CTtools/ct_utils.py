@@ -69,9 +69,11 @@ def sinogram_add_noise(
             proj, I0, sigma, sigma_blur, ks_value, flat_field, dark_field
         )
     else:
+        if torch.is_tensor(proj):
+            proj = proj.detach()
         with torch.no_grad():
             sino = _sinogram_add_noise(
-                proj.detach(), I0, sigma, sigma_blur, ks_value, flat_field, dark_field
+                proj, I0, sigma, sigma_blur, ks_value, flat_field, dark_field
             )
     return sino
 
@@ -92,16 +94,13 @@ def _sinogram_add_noise(
     - Detector crosstalk in % of the signal of adjacent pixels.
     - Add a flat_field to add even more realistic noise (computed at non-corrected flat fields)
     """
-    dev = torch.cuda.current_device()
     if torch.is_tensor(proj):
         istorch = True
-        dev = proj.get_device()
-        if dev == -1:
-            dev = torch.device("cpu")
+        dev = proj.device
     elif isinstance(proj, np.ndarray):
-        # all good
         istorch = False
-        proj = torch.from_numpy(proj).cuda(dev)
+        dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        proj = torch.from_numpy(proj).to(dev)
     else:
         raise ValueError("numpy or torch tensor expected")
     if dark_field is None:

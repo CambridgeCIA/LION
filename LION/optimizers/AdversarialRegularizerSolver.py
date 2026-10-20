@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-from tomosipo.torch_support import to_autograd
 from torch.optim.optimizer import Optimizer
 from tqdm import tqdm
 
@@ -18,6 +17,7 @@ from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.utils.parameter import LIONParameter
+from LION.utils.tomosipo_import import import_tomosipo
 
 
 class ARParams(SolverParams):
@@ -47,13 +47,15 @@ class ARSolver(LIONsolver):
         recon_optimizer_type,
         geometry: Geometry = None,
         verbose: bool = True,
-        device: torch.device = torch.device(f"cuda:{torch.cuda.current_device()}"),
+        device: torch.device = None,
         solver_params: ARParams | None = None,
     ) -> None:
         super().__init__(
             model, optimizer, self.wgan_loss, geometry, verbose, device, solver_params
         )
         self.recon_optimizer_type = recon_optimizer_type
+        to_autograd = import_tomosipo("tomosipo.torch_support", "ARSolver").to_autograd
+
         self.A = to_autograd(self.op, num_extra_dims=1)
         self.AT = to_autograd(self.op.T, num_extra_dims=1)
         self.alpha = 1.0
