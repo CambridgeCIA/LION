@@ -42,9 +42,6 @@ from abc import ABC, abstractmethod, ABCMeta
 import warnings
 import pathlib
 
-# Imports for models that use grandients of themselves inside:
-from LION.models.PnP.gradient_step_denoiser import GSD
-
 
 # TODO: finish this
 class SolverState(Enum):
@@ -823,12 +820,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         status = self.model.training
         self.model.eval()
 
-        # if the model is something that needs a gradient, do not use torch.no_grad()
-        # this is an efficiency problem.
-        if not isinstance(self.model, GSD):
-            with torch.no_grad():
-                validation_loss = self._validation_loop()
-        else:
+        # Models that need autograd in their forward pass (e.g. gradient-step
+        # denoisers) enable it themselves, so no_grad is safe for all models.
+        with torch.no_grad():
             validation_loss = self._validation_loop()
 
         if self.verbose:
