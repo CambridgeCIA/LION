@@ -8,6 +8,7 @@
 
 import os
 import csv
+import fnmatch
 import pathlib
 
 import numpy as np
@@ -273,9 +274,12 @@ class LUNA16(CT_data_loader):
             subfolder = [f.name for f in self.folder.iterdir() if f.is_dir()]
             self.subfolders = [s for s in subfolder if s.startswith("subset")]
         elif "*" in subfolder:
-            subfolder_list = [f for f in self.folder.iterdir() if f.is_dir()]
-            # Not sure what that does
-            self.subfolders = fnmatch.filter(subfolder_list, subfolder)
+            # subfolders whose name matches the glob pattern, e.g. "subset*"
+            self.subfolders = [
+                f.name
+                for f in self.folder.iterdir()
+                if f.is_dir() and fnmatch.fnmatch(f.name, subfolder)
+            ]
         else:
             self.subfolders = [subfolder]
         if self.verbose:
