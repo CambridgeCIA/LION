@@ -19,7 +19,7 @@ from LION.utils.parameter import LIONParameter
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.models.CNNs.UNets.Unet import UNet
-from LION.utils.tomosipo_import import import_tomosipo
+from LION.classical_algorithms.fdk import fdk
 
 
 class ItNet(LIONmodel):
@@ -122,21 +122,18 @@ class ItNet(LIONmodel):
             )
 
     def forward(self, sino):
-        fdk = import_tomosipo("ts_algorithms", "ItNet").fdk
-
-        B, C, W, H = sino.shape
-        img = sino.new_zeros(B, 1, *self.geometry.image_shape[1:])
-        update = sino.new_zeros(B, 1, *self.geometry.image_shape[1:])
-        # Start from FDK
-        for i in range(sino.shape[0]):
-            img[i] = fdk(self.op, sino[i])
+        # Start from FDK (the input data needs no gradient)
+        img = fdk(sino, self.op, clip=False)
 
         for i in range(self.model_parameters.n_iters):
             unet = getattr(self, f"Unet_{i}")
             img = unet(img)
-
-            for j in range(img.shape[0]):
-                update[j] = self.step_size[i] * fdk(self.op, self.op(img[j]) - sino[j])
-            img = img - update
+            # Data-consistency step, differentiable end to end: the residual uses
+            # the autograd-wrapped operator and the FDK backprojects through
+            # autograd too. Residuals are signed, so they are not clipped.
+            residual = self.A(img) - sino
+            img = img - self.step_size[i] * fdk(
+                residual, self.op, clip=False, differentiable=True
+            )
 
         return img
