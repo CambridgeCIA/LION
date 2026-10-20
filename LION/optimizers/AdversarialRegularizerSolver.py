@@ -16,35 +16,49 @@ from LION.CTtools.ct_geometry import Geometry
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
-from LION.utils.parameter import LIONParameter
-from LION.utils.tomosipo_import import import_tomosipo
+from LION.reconstructors.LearnedRegularizerReconstructor import (
+    LearnedRegularizerReconstructor,
+    estimate_alpha,
+)
 
 
 class ARParams(SolverParams):
+    """Parameters of ARSolver.
+
+    Args:
+        lambd_gp: Weight of the gradient penalty in the WGAN training loss.
+        n_steps, step_size, backtracking: Settings of the variational
+            reconstruction used for validation and testing (see
+            LearnedRegularizerReconstructor).
+    """
+
     def __init__(
         self,
-        optimizer_params: LIONParameter,
-        early_stopping: bool = False,
-        no_steps: int = 150,
-        step_size: float = 1e-6,
-        beta_rate: float = 0.95,
         lambd_gp: float = 1e-1,
+        n_steps: int = 150,
+        step_size: float = 1e-6,
+        backtracking: float = 0.95,
     ):
         super().__init__()
-        self.early_stopping = early_stopping
-        self.no_steps = no_steps
-        self.step_size = step_size
-        self.optimizer_params = optimizer_params
-        self.beta_rate = beta_rate
         self.lambd_gp = lambd_gp
+        self.n_steps = n_steps
+        self.step_size = step_size
+        self.backtracking = backtracking
 
 
 class ARSolver(LIONsolver):
+    """Trains an adversarial regulariser (Lunz et al., 2018).
+
+    Training compares clean images with FDK reconstructions (WGAN loss with
+    gradient penalty). Validation and testing reconstruct with the regulariser
+    being trained, through LearnedRegularizerReconstructor; use that class
+    directly to reconstruct with a trained regulariser.
+    """
+
     def __init__(
         self,
         model: LIONmodel,
         optimizer: Optimizer,
-        recon_optimizer_type,
         geometry: Geometry = None,
         verbose: bool = True,
         device: torch.device = None,
@@ -53,137 +67,56 @@ class ARSolver(LIONsolver):
         super().__init__(
             model, optimizer, self.wgan_loss, geometry, verbose, device, solver_params
         )
-        self.recon_optimizer_type = recon_optimizer_type
-        to_autograd = import_tomosipo("tomosipo.torch_support", "ARSolver").to_autograd
-
-        self.A = to_autograd(self.op, num_extra_dims=1)
-        self.AT = to_autograd(self.op.T, num_extra_dims=1)
-        self.alpha = 1.0
-
-    def estimate_alpha(self, dataloader):
-        """Estimate the regularisation weight as the mean (over samples) norm of
-        A^T(A x - y) on ``dataloader``."""
-        if dataloader is not None:
-            residual = 0.0
-            with torch.no_grad():
-                for sino, target in dataloader:
-                    sino, target = sino.to(self.device), target.to(self.device)
-                    residual += torch.linalg.vector_norm(
-                        self.AT(self.A(target) - sino), dim=(2, 3)
-                    ).mean()
-            # each term above is already a mean over its batch
-            self.alpha = residual / len(dataloader)
-        if self.verbose:
-            print("Estimated alpha: " + str(self.alpha))
+        self.reconstructor = LearnedRegularizerReconstructor(
+            self.op,
+            self.model,
+            n_steps=self.solver_params.n_steps,
+            step_size=self.solver_params.step_size,
+            backtracking=self.solver_params.backtracking,
+        )
 
     @staticmethod
     def default_parameters() -> ARParams:
-        raise LIONSolverException(
-            "Cannot construct default parameters for ARSolver, need to provide validation/testing optimizer parameters"
+        return ARParams()
+
+    def set_validation(
+        self,
+        validation_loader,
+        validation_freq,
+        validation_fn=None,
+        validation_fname=None,
+    ):
+        # The training loss (WGAN) is not a reconstruction metric: by default,
+        # validate with the MSE between reconstruction and target.
+        if validation_fn is None:
+            validation_fn = torch.nn.MSELoss()
+        super().set_validation(
+            validation_loader, validation_freq, validation_fn, validation_fname
         )
 
-    def var_energy(self, recon, sino):
-        return (
-            0.5 * ((self.A(recon) - sino) ** 2).sum()
-            + self.alpha * (self.model(recon)).sum()
-        )
+    def set_testing(self, test_loader, testing_fn=None):
+        if testing_fn is None:
+            testing_fn = torch.nn.MSELoss()
+        super().set_testing(test_loader, testing_fn)
 
-    def _variational_reconstruction(self, sino, progress_bar=False):
-        """Minimise the variational energy with the learned regulariser, starting
-        from FDK, using the reconstruction optimiser and a backtracking step."""
-        recon = torch.nn.Parameter(fdk(sino, self.op).detach().clone())
-        optimizer_kwargs = dict(vars(self.solver_params.optimizer_params))
-        optimizer_kwargs["lr"] = self.solver_params.step_size
-        optimizer = self.recon_optimizer_type([recon], **optimizer_kwargs)
-        lr = self.solver_params.step_size
+    def _forward(self, data: torch.Tensor) -> torch.Tensor:
+        # validation and testing reconstruct with the current regulariser
+        return self.reconstructor.reconstruct(data)
 
-        steps = range(self.solver_params.no_steps)
-        for _ in tqdm(steps) if progress_bar else steps:
-            optimizer.zero_grad()
-
-            energy = self.var_energy(recon, sino)
-            energy.backward(retain_graph=True)
-
-            assert recon.grad is not None
-            while (
-                self.var_energy(recon - recon.grad * lr, sino)
-                > energy - 0.5 * lr * (recon.grad.norm(dim=(2, 3)) ** 2).mean()
-            ):
-                lr = self.solver_params.beta_rate * lr
-            for g in optimizer.param_groups:
-                g["lr"] = lr
-
-            optimizer.step()
-        return recon.detach()
-
-    def _evaluate(self, loader, metric_fn, progress_bar=False):
-        """Reconstruct every batch in ``loader`` and return metric_fn(recon, target)
-        per batch."""
-        losses = np.array([])
-        for sino, target in tqdm(loader):
-            sino, target = sino.to(self.device), target.to(self.device)
-            recon = self._variational_reconstruction(sino, progress_bar=progress_bar)
-            with torch.no_grad():
-                losses = np.append(losses, metric_fn(recon, target).item())
-        return losses
+    def _set_alpha(self, loader):
+        self.reconstructor.alpha = estimate_alpha(self.op, loader, self.device)
+        if self.verbose:
+            print(f"Estimated alpha: {self.reconstructor.alpha}")
 
     def validate(self):
-        if self.check_validation_ready() != 0:
-            raise LIONSolverException(
-                "Solver not ready for validation. Please call set_validation."
-            )
-
-        # these always pass if the above does, this is just to placate static type checker
-        assert self.validation_loader is not None
-        assert self.validation_fn is not None
-
-        status = self.model.training
-        self.model.eval()
-
-        self.estimate_alpha(self.validation_loader)
-        validation_loss = self._evaluate(self.validation_loader, self.validation_fn)
-
-        if self.verbose:
-            print(
-                f"Validation loss mean: {validation_loss.mean()} - Validation loss std: {validation_loss.std()}"
-            )
-
-        # return to train if it was in train
-        if status:
-            self.model.train()
-
-        return np.mean(validation_loss)
+        if self.validation_loader is not None:
+            self._set_alpha(self.validation_loader)
+        return super().validate()
 
     def test(self):
-        if self.check_testing_ready() != 0:
-            raise LIONSolverException(
-                "Solver not ready for testing. Please call set_testing."
-            )
-
-        # these always pass if the above does, this is just to placate static type checker
-        assert self.test_loader is not None
-        assert self.testing_fn is not None
-
-        status = self.model.training
-        self.model.eval()
-
-        if self.verbose:
-            print(f"Testing model after {self.current_epoch} epochs of training")
-
-        self.estimate_alpha(self.test_loader)
-        # one value per batch, computed on the final reconstruction
-        test_loss = self._evaluate(self.test_loader, self.testing_fn, progress_bar=True)
-
-        if self.verbose:
-            print(
-                f"Testing loss mean: {test_loss.mean()} - Testing loss std: {test_loss.std()}"
-            )
-
-        # return to train if it was in train
-        if status:
-            self.model.train()
-
-        return test_loss
+        if self.test_loader is not None:
+            self._set_alpha(self.test_loader)
+        return super().test()
 
     def wgan_loss(self, sino_batch, target_batch):
         bad_recon = fdk(sino_batch, self.op)

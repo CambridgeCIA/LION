@@ -1,82 +1,100 @@
-"""ARSolver evaluation logic, on CPU with an identity "CT" operator."""
+"""ARSolver trains the regulariser; validation and testing reconstruct with
+LearnedRegularizerReconstructor. CPU only, with an identity "CT" operator."""
 
-import sys
-import types
-
-import numpy as np
 import pytest
 import torch
 
 import LION.optimizers.AdversarialRegularizerSolver as ar_module
 import LION.optimizers.LIONsolver as lion_solver
 from LION.CTtools.ct_geometry import Geometry
-from LION.utils.parameter import LIONParameter
+from LION.operators import Operator
 from pytests.optimizers._helpers import loader, small_dncnn
 
 pytestmark = pytest.mark.filterwarnings("ignore")
 
 
+class IdentityOp(Operator):
+    def __call__(self, x, out=None):
+        return x
+
+    def forward(self, x):
+        return x
+
+    def adjoint(self, y):
+        return y
+
+    @property
+    def domain_shape(self):
+        return (1, 8, 8)
+
+    @property
+    def range_shape(self):
+        return (1, 8, 8)
+
+
 @pytest.fixture
 def identity_ct(monkeypatch):
-    """A = A^T = identity, FDK = identity."""
-    fake = types.ModuleType("tomosipo.torch_support")
-    fake.to_autograd = lambda op, **kwargs: (lambda x: x)
-    monkeypatch.setitem(sys.modules, "tomosipo.torch_support", fake)
-    monkeypatch.setitem(sys.modules, "tomosipo", types.ModuleType("tomosipo"))
-    monkeypatch.setattr(
-        lion_solver, "make_operator", lambda g: types.SimpleNamespace(T=None)
-    )
+    monkeypatch.setattr(lion_solver, "make_operator", lambda g: IdentityOp())
     monkeypatch.setattr(ar_module, "fdk", lambda sino, op: sino)
 
 
-class RecordingSGD(torch.optim.SGD):
-    kwargs = []
-
-    def __init__(self, params, **kwargs):
-        RecordingSGD.kwargs.append(kwargs)
-        super().__init__(params, **kwargs)
-
-
-def make_ar_solver(no_steps=3):
-    params = ar_module.ARParams(
-        optimizer_params=LIONParameter(momentum=0.5), no_steps=no_steps
-    )
+def make_ar_solver(**params):
     model = small_dncnn()
     return ar_module.ARSolver(
         model,
         torch.optim.Adam(model.parameters()),
-        RecordingSGD,
         geometry=Geometry.default_parameters(),
         device=torch.device("cpu"),
-        solver_params=params,
+        solver_params=ar_module.ARParams(**params),
         verbose=False,
     )
 
 
-def test_estimate_alpha_is_mean_over_batches(identity_ct):
-    solver = make_ar_solver()
-    data = loader(n=6, batch_size=3)
-    expected = np.mean(
-        [torch.linalg.vector_norm(y - x, dim=(2, 3)).mean().item() for x, y in data]
+def test_default_parameters(identity_ct):
+    model = small_dncnn()
+    solver = ar_module.ARSolver(
+        model,
+        torch.optim.Adam(model.parameters()),
+        geometry=Geometry.default_parameters(),
     )
-    solver.estimate_alpha(data)
-    assert float(solver.alpha) == pytest.approx(expected, rel=1e-5)
+    assert solver.reconstructor.n_steps == ar_module.ARParams().n_steps
 
 
-def test_test_reports_one_value_per_batch(identity_ct):
-    solver = make_ar_solver(no_steps=4)
-    solver.set_testing(loader(n=6, batch_size=2), testing_fn=torch.nn.MSELoss())
+def test_training_step(identity_ct):
+    solver = make_ar_solver()
+    solver.set_training(loader(n=4, batch_size=2))
+    solver.train_loss = None
+    loss = solver.mini_batch_step(*next(iter(loader(n=2, batch_size=2))))
+    assert torch.isfinite(loss)
+
+
+def test_test_reports_one_value_per_batch_and_estimates_alpha(identity_ct):
+    solver = make_ar_solver(n_steps=4, step_size=1e-2)
+    data = loader(n=6, batch_size=2)
+    solver.set_testing(data, testing_fn=torch.nn.MSELoss())
     losses = solver.test()
     assert losses.shape == (3,)
+    expected_alpha = torch.stack(
+        [torch.linalg.vector_norm(y - x) for xb, yb in data for x, y in zip(xb, yb)]
+    ).mean()
+    assert solver.reconstructor.alpha == pytest.approx(expected_alpha.item(), rel=1e-5)
 
 
-def test_reconstruction_optimizer_gets_keyword_options(identity_ct):
-    RecordingSGD.kwargs.clear()
+def test_validation_uses_the_reconstructor(identity_ct, tmp_path):
+    solver = make_ar_solver(n_steps=2, step_size=1e-2)
+    calls = []
+    original = solver.reconstructor.reconstruct
+    solver.reconstructor.reconstruct = lambda d: calls.append(d.shape) or original(d)
+    solver.set_saving(tmp_path, "model")
+    solver.set_validation(loader(n=4, batch_size=2), validation_freq=1)
+    assert solver.validate() > 0
+    assert calls == [torch.Size([2, 1, 8, 8])] * 2
+
+
+def test_default_metrics_are_reconstruction_mse(identity_ct, tmp_path):
     solver = make_ar_solver()
-    solver.set_testing(loader(n=2, batch_size=2), testing_fn=torch.nn.MSELoss())
-    solver.test()
-    assert RecordingSGD.kwargs == [
-        {"momentum": 0.5, "lr": solver.solver_params.step_size}
-    ]
-    # the parameter object must not be emptied by being used
-    assert solver.solver_params.optimizer_params.momentum == 0.5
+    solver.set_saving(tmp_path, "model")
+    solver.set_validation(loader(), validation_freq=1)
+    solver.set_testing(loader())
+    assert isinstance(solver.validation_fn, torch.nn.MSELoss)
+    assert isinstance(solver.testing_fn, torch.nn.MSELoss)
