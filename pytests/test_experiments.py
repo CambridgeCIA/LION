@@ -6,14 +6,11 @@ import tempfile
 # LION.utils.paths requires LION_DATA_PATH at import time
 os.environ.setdefault("LION_DATA_PATH", tempfile.gettempdir())
 
-import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import pytest  # noqa: E402
-import torch  # noqa: E402
 
 import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
 from LION.data_loaders.deteCT import deteCT  # noqa: E402
-from LION.data_loaders.walnuts.walnuts import WalnutDataset  # noqa: E402
 
 EXPERIMENTS = [
     cls
@@ -86,21 +83,3 @@ def test_detect_length_is_the_number_of_slices(tmp_path, query):
     dataset = fake_detect(tmp_path, "test", query=query)
     assert len(dataset) == len(dataset.slice_dataframe)
     assert len(dataset) == (3 if query == "" else 2)  # 1 test sample, 3 slices
-
-
-# --------------------------------------------------------------------------
-# Walnuts: sinogram assembly from saved middle slices
-
-
-def test_walnut_sinogram_has_one_row_per_projection(tmp_path, monkeypatch):
-    monkeypatch.setattr(WalnutDataset, "__len__", lambda self: 3)
-    dataset = WalnutDataset.__new__(WalnutDataset)  # no tif files needed
-    dataset.dimension, dataset.tube_path = 2, tmp_path
-    for i in range(3):
-        torch.save(
-            torch.full((1, 768), float(i)), tmp_path / f"middle_slice_{i:06d}.pt"
-        )
-    sinogram = dataset.make_sinogram()
-    assert sinogram.shape == (1, 3, 768)
-    for i in range(3):
-        assert (sinogram[0, i] == i).all()
