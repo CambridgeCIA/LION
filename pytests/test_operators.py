@@ -209,3 +209,29 @@ def test_wavelet_operator_norm_torch():
     wavelet_op = Wavelet2D((N, N), wavelet_name="db4")
     wavelet_op_norm = power_method(wavelet_op)
     torch.testing.assert_close(wavelet_op_norm.item(), 1.0, atol=1e-4, rtol=1e-4)
+
+
+def test_power_method_is_reproducible_and_scale_free():
+    """Seeded start (same estimate every call); relative tolerance (the number
+    of iterations does not depend on the scale of the operator)."""
+    from pytests.helpers import ImageMatrixOp
+
+    torch.manual_seed(0)
+    A = torch.randn(30, 20)
+
+    class Counting(ImageMatrixOp):
+        calls = 0
+
+        def __call__(self, x, out=None):
+            type(self).calls += 1
+            return super().__call__(x)
+
+    def iterations(scale):
+        Counting.calls = 0
+        norm = power_method(Counting(scale * A, (20,)), tol=1e-5, maxiter=1000)
+        return norm, Counting.calls
+
+    (n1, c1), (n2, c2) = iterations(1.0), iterations(1000.0)
+    torch.testing.assert_close(n2 / 1000, n1, rtol=1e-4, atol=0)
+    assert c1 == c2 < 2000  # converged, in the same number of steps
+    torch.testing.assert_close(iterations(1.0)[0], n1, rtol=0, atol=0)  # same start
