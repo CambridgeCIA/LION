@@ -41,8 +41,18 @@ class JSONParamEncoder(json.JSONEncoder):
 
 
 def get_git_revision_hash() -> str:
-    """Gets git commit hash"""
-    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
+    """Commit hash of the LION code in use (not of the current working directory).
+
+    Raises if LION is not a git checkout (e.g. installed from a wheel).
+    """
+    lion_folder = Path(__file__).resolve().parent
+    return (
+        subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=lion_folder, stderr=subprocess.DEVNULL
+        )
+        .decode("ascii")
+        .strip()
+    )
 
 
 # Run cmd line
