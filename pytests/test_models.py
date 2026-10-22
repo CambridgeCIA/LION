@@ -287,6 +287,133 @@ def test_activation_name_is_case_insensitive(model_class):
 
 
 # --------------------------------------------------------------------------
+# LPD / cLPD with a matrix "CT" operator (tomosipo stubbed, CPU)
+
+LPD_MODULES = [
+    "LION.models.iterative_unrolled.LPD",
+    "LION.models.iterative_unrolled.cLPD",
+]
+
+
+@pytest.fixture
+def lpd_module(monkeypatch, request):
+    """Import LPD or cLPD with tomosipo/ts_algorithms stubbed; the operator is
+    a fixed matrix from 8x8 images to 6x5 "sinograms"."""
+    import importlib
+    import sys
+    import types
+
+    stubs = {
+        "tomosipo": types.ModuleType("tomosipo"),
+        "tomosipo.torch_support": types.ModuleType("tomosipo.torch_support"),
+        "ts_algorithms": types.ModuleType("ts_algorithms"),
+    }
+    stubs["tomosipo.torch_support"].to_autograd = lambda op, **kw: op
+    stubs["ts_algorithms"].fdk = None  # replaced in make_lpd
+    for name, module in stubs.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    name = request.param
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    module = importlib.import_module(name)
+    yield module
+    sys.modules.pop(name, None)  # don't leave the stubbed import behind
+
+
+def lpd_geometry():
+    geometry = Geometry.default_parameters()
+    geometry.image_shape = [1, 8, 8]
+    geometry.angles = np.linspace(0, np.pi, 6, endpoint=False)
+    geometry.detector_shape = [1, 5]
+    return geometry
+
+
+def make_lpd(module, monkeypatch, calls=None, **params):
+    torch.manual_seed(0)
+    M = torch.randn(30, 64) / 8
+
+    def A(x):
+        if calls is not None:
+            calls.append(x.detach().clone())
+        return (x.reshape(x.shape[0], -1) @ M.T).reshape(x.shape[0], 1, 6, 5)
+
+    def AT(y):
+        return (y.reshape(y.shape[0], -1) @ M).reshape(y.shape[0], 1, 8, 8)
+
+    def make_operator(self):
+        self.op, self.A, self.AT = None, A, AT
+
+    monkeypatch.setattr(LIONmodel, "_make_operator", make_operator)
+    monkeypatch.setattr(module, "fdk", lambda op, sino: torch.zeros(8, 8))
+    model_class = module.LPD if hasattr(module, "LPD") else module.cLPD
+    p = model_class.default_parameters()
+    p.n_iters, p.step_size = 2, 0.5
+    for k, v in params.items():
+        setattr(p, k, v)
+    return model_class(lpd_geometry(), p)
+
+
+@ignore_warnings
+@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
+def test_lpd_channels_follow_the_parameters(lpd_module, monkeypatch):
+    sino = torch.rand(2, 1, 6, 5)
+    assert make_lpd(lpd_module, monkeypatch)(sino).shape == (2, 1, 8, 8)
+    custom = make_lpd(
+        lpd_module,
+        monkeypatch,
+        data_channels=[6, 16, 16, 4],  # 4 dual channels (+ A f and g)
+        reg_channels=[4, 16, 16, 3],  # 3 primal channels (+ A^T h)
+    )
+    assert custom(sino).shape == (2, 1, 8, 8)
+    with pytest.raises(ValueError, match="data_channels"):
+        make_lpd(lpd_module, monkeypatch, data_channels=[7, 16, 16, 4])
+
+
+@ignore_warnings
+@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
+@pytest.mark.parametrize("channel, saved_before", [(1, False), (0, True)])
+def test_lpd_dual_step_projects_the_chosen_primal_channel(
+    lpd_module, monkeypatch, channel, saved_before
+):
+    """Adler & Oktem project primal channel 1 in the dual step; parameter files
+    from before the option existed keep LION's old channel 0."""
+    calls = []
+    model = make_lpd(lpd_module, monkeypatch, calls)
+    if saved_before:
+        del model.model_parameters.dual_step_primal_channel
+    else:
+        assert model.model_parameters.dual_step_primal_channel == channel
+
+    class ChannelIndex(torch.nn.Module):  # primal update: channel k gets k + 1
+        def forward(self, x):
+            n = model.model_parameters.reg_channels[-1]
+            k = torch.arange(1.0, n + 1).view(1, n, 1, 1)
+            return k * torch.ones(x.shape[0], n, *x.shape[2:])
+
+    setattr(model, "0_primal", ChannelIndex())
+    model(torch.rand(1, 1, 6, 5))
+    # FDK start is 0, so after one primal step channel c is c + 1 (+ the update)
+    assert calls[1].mean().item() == pytest.approx(channel + 1)
+
+
+@ignore_warnings
+@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
+def test_lpd_learned_steps_positive_and_old_checkpoints_load(lpd_module, monkeypatch):
+    sino = torch.rand(1, 1, 6, 5)
+    model = make_lpd(lpd_module, monkeypatch, learned_step=True, step_positive=True)
+    assert not hasattr(model, "lambda_primal")
+    with torch.no_grad():
+        out_positive = model(sino)
+        for step in model.lambda_dual:
+            step.neg_()  # a negative learned step is used as its absolute value
+        torch.testing.assert_close(model(sino), out_positive)
+
+    # checkpoints from before lambda_primal was removed
+    state = model.state_dict()
+    state.update({f"lambda_primal.{i}": torch.ones(1) for i in range(2)})
+    model.load_state_dict(state, strict=True)
+
+
+# --------------------------------------------------------------------------
 # UNet: conv-norm-relu twice; old single-norm checkpoints still load
 
 

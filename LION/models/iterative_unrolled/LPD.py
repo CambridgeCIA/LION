@@ -105,6 +105,36 @@ class RegProximal(nn.Module):
         return self.block(x)
 
 
+def _drop_lambda_primal(module, state_dict, prefix, *args):
+    """Ignore the (unused) lambda_primal steps of old checkpoints."""
+    for key in [k for k in state_dict if k.startswith(prefix + "lambda_primal")]:
+        del state_dict[key]
+
+
+def _check_channels(params):
+    """Number of primal/dual channels, from the output of the blocks.
+
+    The dual block sees [h, A f, g] (n_dual + 2 channels) and the primal block
+    [f, A^T h] (n_primal + 1 channels); both output an update of their variable.
+    """
+    n_dual, n_primal = params.data_channels[-1], params.reg_channels[-1]
+    if params.data_channels[0] != n_dual + 2 or params.reg_channels[0] != n_primal + 1:
+        raise ValueError(
+            "data_channels must start with data_channels[-1] + 2 channels and "
+            "reg_channels with reg_channels[-1] + 1, got "
+            f"data_channels={params.data_channels}, reg_channels={params.reg_channels}"
+        )
+    # channel of the primal variable projected in the dual step: 1 as in Adler &
+    # Oktem (the second primal channel); parameter files from before this option
+    # existed used channel 0
+    channel = getattr(params, "dual_step_primal_channel", 0)
+    if not 0 <= channel < n_primal:
+        raise ValueError(
+            f"dual_step_primal_channel={channel} needs at least {channel + 1} primal channels"
+        )
+    return n_primal, n_dual, channel
+
+
 class LPD(LIONmodel):
     """Learned Primal Dual network"""
 
@@ -144,6 +174,8 @@ class LPD(LIONmodel):
                 ),
             )
 
+        _check_channels(self.model_parameters)
+
         # Create pytorch compatible operators and send them to autograd
         self._make_operator()
 
@@ -152,55 +184,20 @@ class LPD(LIONmodel):
             print("Step size is None, computing it with power method")
             # compute step size
             self.model_parameters.step_size = 1 / power_method(self.op)
-        # Are we learning the step? (with the above initialization)
+        # Step size of each iteration: the primal update adds step * A^T(h).
+        # (A lambda_primal used to be created too, but was never used.)
+        n_iters = self.model_parameters.n_iters
+        step_size = self.model_parameters.step_size
         if self.model_parameters.learned_step:
-            # Enforce positivity by making it 10^step
-            if self.model_parameters.step_positive:
-                self.lambda_dual = nn.ParameterList(
-                    [
-                        nn.Parameter(
-                            torch.ones(1)
-                            * 10 ** np.log10(self.model_parameters.step_size)
-                        )
-                        for i in range(self.model_parameters.n_iters)
-                    ]
-                )
-                self.lambda_primal = nn.ParameterList(
-                    [
-                        nn.Parameter(
-                            torch.ones(1)
-                            * 10 ** np.log10(self.model_parameters.step_size)
-                        )
-                        for i in range(self.model_parameters.n_iters)
-                    ]
-                )
-            # Negatives OK
-            else:
-                self.lambda_dual = nn.ParameterList(
-                    [
-                        nn.Parameter(torch.ones(1) * self.model_parameters.step_size)
-                        for i in range(self.model_parameters.n_iters)
-                    ]
-                )
-                self.lambda_primal = nn.ParameterList(
-                    [
-                        nn.Parameter(torch.ones(1) * self.model_parameters.step_size)
-                        for i in range(self.model_parameters.n_iters)
-                    ]
-                )
+            self.lambda_dual = nn.ParameterList(
+                [nn.Parameter(torch.ones(1) * step_size) for _ in range(n_iters)]
+            )
         else:
             self.register_buffer(
-                "lambda_dual",
-                torch.ones(self.model_parameters.n_iters)
-                * self.model_parameters.step_size,
-                persistent=False,
+                "lambda_dual", torch.ones(n_iters) * step_size, persistent=False
             )
-            self.register_buffer(
-                "lambda_primal",
-                torch.ones(self.model_parameters.n_iters)
-                * self.model_parameters.step_size,
-                persistent=False,
-            )
+        # checkpoints saved before lambda_primal was removed still load
+        self.register_load_state_dict_pre_hook(_drop_lambda_primal)
 
     @staticmethod
     def default_parameters():
@@ -214,6 +211,8 @@ class LPD(LIONmodel):
         LPD_params.mode = "ct"
         LPD_params.instance_norm = False
         LPD_params.conv_bias = True
+        # project the second primal channel in the dual step, as in Adler & Oktem
+        LPD_params.dual_step_primal_channel = 1
         LPD_params.model_input_type = ModelInputType.SINOGRAM
         return LPD_params
 
@@ -229,6 +228,8 @@ class LPD(LIONmodel):
         LPD_params.mode = "ct"
         LPD_params.instance_norm = True
         LPD_params.conv_bias = False
+        # project the second primal channel in the dual step, as in Adler & Oktem
+        LPD_params.dual_step_primal_channel = 1
         LPD_params.model_input_type = ModelInputType.SINOGRAM
         return LPD_params
 
@@ -281,22 +282,27 @@ class LPD(LIONmodel):
         if len(self.geometry.angles) != W or self.geometry.detector_shape[1] != H:
             raise ValueError("geo description and sinogram size do not match")
 
+        n_primal, n_dual, c = _check_channels(self.model_parameters)
+
         # initialize parameters
-        h = g.new_zeros(B, 5, W, H)
-        f_primal = g.new_zeros(B, 5, *self.geometry.image_shape[1:])
+        h = g.new_zeros(B, n_dual, W, H)
+        f_primal = g.new_zeros(B, n_primal, *self.geometry.image_shape[1:])
         for i in range(B):
             aux = fdk(self.op, g[i, 0])
             aux = torch.clip(aux, min=0)
-            for channel in range(5):
+            for channel in range(n_primal):
                 f_primal[i, channel] = aux
 
         for i in range(self.model_parameters.n_iters):
             primal_module = getattr(self, f"{i}_primal")
             dual_module = getattr(self, f"{i}_dual")
-            f_dual = self.A(f_primal[:, :1])
+            f_dual = self.A(f_primal[:, c : c + 1])
             h = self.__dual_step(g, h, f_dual, dual_module)
 
-            update = self.lambda_dual[i] * self.AT(h[:, :1])
+            step = self.lambda_dual[i]
+            if self.model_parameters.step_positive:
+                step = step.abs()  # learned steps stay positive
+            update = step * self.AT(h[:, :1])
             f_primal = self.__primal_step(f_primal, update, primal_module)
 
         return f_primal[:, 0:1]
