@@ -3,6 +3,7 @@ download/unzip command lines."""
 
 import pathlib
 import shlex
+import subprocess
 
 import numpy as np
 import pytest
@@ -113,6 +114,17 @@ def test_geometry_round_trip_keeps_image_pos(tmp_path):
     np.testing.assert_allclose(restored.image_pos, geo.image_pos)
     np.testing.assert_allclose(restored.angles, geo.angles)
     assert restored.mode == geo.mode
+
+
+def test_git_hash_is_lions_not_the_working_directory(tmp_path, monkeypatch):
+    lion_folder = pathlib.Path(utils.__file__).resolve().parent
+    expected = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=lion_folder, capture_output=True, text=True
+    )
+    if expected.returncode != 0:
+        pytest.skip("LION is not a git checkout here")
+    monkeypatch.chdir(tmp_path)  # not a git repository
+    assert utils.get_git_revision_hash() == expected.stdout.strip()
 
 
 # --------------------------------------------------------------------------
