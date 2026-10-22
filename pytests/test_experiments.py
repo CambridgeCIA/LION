@@ -51,6 +51,7 @@ def test_experiments_choose_the_noise_model(monkeypatch, saved_before):
     ct_experiments.LowDoseCTRecon(params).sino_fun("sinogram")
     assert calls[0]["legacy"] is saved_before
     assert calls[0]["I0"] == params.noise_params.I0
+    assert calls[0]["mass_attenuation"] is None  # relative noise model by default
 
 
 # --------------------------------------------------------------------------

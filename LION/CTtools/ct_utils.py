@@ -32,11 +32,17 @@ def from_HU_to_normal(img):
         raise NotImplementedError
 
 
-def from_HU_to_mu(img):
+# Mass attenuation coefficient of water, mu/rho in cm^2/g (NIST XCOM), at a few
+# effective energies (keV) of a CT spectrum.
+WATER_MASS_ATTENUATION = {50: 0.2269, 60: 0.2059, 80: 0.1837, 100: 0.1707}
+
+
+def from_HU_to_density(img):
     """
-    Converts image in Hounsfield Units (air-> -1000, bone->500) into linear attenuation coefficient (air-> 0.0012,
-    bone->1.52 g/cm^3). Approximate.
-    Comercial scanners use a piecewise linear function. Check STIR for real values. (https://raw.githubusercontent.com/UCL/STIR/85cc1940c297b1749cf44a9fba937d7cefdccd47/src/utilities/share/ct_slopes.json)
+    Converts an image in Hounsfield Units into (approximate) mass density in
+    g/cm^3, linearly: air (-1000 HU) -> 0.0012, water (0 HU) -> 1.0137,
+    500 HU -> 1.52. Real tissue is closer to bilinear (bone is denser per HU);
+    this is the conversion LION uses for its simulated datasets.
     """
     if isinstance(img, np.ndarray):
         return np.maximum(
@@ -51,6 +57,23 @@ def from_HU_to_mu(img):
         raise NotImplementedError
 
 
+def from_HU_to_mu(img, mass_attenuation=None, length_unit_cm=0.1):
+    """
+    Linear attenuation coefficient mu = density * (mu/rho), per length unit
+    (default 1/mm, as LION geometries are in mm), with ``mass_attenuation``
+    the mass attenuation coefficient mu/rho in cm^2/g (e.g.
+    ``WATER_MASS_ATTENUATION[60]``: water-equivalent, monochromatic).
+
+    Without ``mass_attenuation`` it returns the density (g/cm^3) of
+    ``from_HU_to_density``, as it did before October 2026 (when its docstring
+    called that the attenuation).
+    """
+    density = from_HU_to_density(img)
+    if mass_attenuation is None:
+        return density
+    return density * (mass_attenuation * length_unit_cm)
+
+
 def sinogram_add_noise(
     proj,
     I0=1000,
@@ -61,10 +84,27 @@ def sinogram_add_noise(
     dark_field=None,
     enable_gradients=False,
     legacy=False,
+    mass_attenuation=None,
+    length_unit_cm=0.1,
 ):
     """
     Adds realistic noise to sinograms (see _sinogram_add_noise), with or
     without gradients.
+
+    How the line integrals ``proj`` become attenuation, i.e. what ``I0`` means:
+
+    - ``mass_attenuation=None`` (relative, the default): ``proj`` is divided by
+      the maximum of each sample, so the most attenuating ray always keeps
+      e^-1 of I0, whatever the object and its units.
+    - ``mass_attenuation`` = mu/rho of water in cm^2/g (e.g.
+      ``WATER_MASS_ATTENUATION[60]``; physical): ``proj`` are line integrals of
+      a density image (g/cm^3, e.g. from ``from_HU_to_density``) in
+      ``length_unit_cm`` (0.1: mm), and the transmission is
+      exp(-mu/rho * proj * length_unit_cm). ``I0`` is then the number of
+      photons per detector pixel in vacuum, as in XCIST, and larger objects
+      get noisier data. Monochromatic and water-equivalent.
+
+    The returned sinogram has the units of ``proj`` in both cases.
 
     legacy=True reproduces the noise of LION before October 2026: detector
     cross-talk blurred across neighbouring angles as well as detectors, and
@@ -73,14 +113,32 @@ def sinogram_add_noise(
     """
     if enable_gradients:
         sino = _sinogram_add_noise(
-            proj, I0, sigma, sigma_blur, ks_value, flat_field, dark_field, legacy
+            proj,
+            I0,
+            sigma,
+            sigma_blur,
+            ks_value,
+            flat_field,
+            dark_field,
+            legacy,
+            mass_attenuation,
+            length_unit_cm,
         )
     else:
         if torch.is_tensor(proj):
             proj = proj.detach()
         with torch.no_grad():
             sino = _sinogram_add_noise(
-                proj, I0, sigma, sigma_blur, ks_value, flat_field, dark_field, legacy
+                proj,
+                I0,
+                sigma,
+                sigma_blur,
+                ks_value,
+                flat_field,
+                dark_field,
+                legacy,
+                mass_attenuation,
+                length_unit_cm,
             )
     return sino
 
@@ -94,6 +152,8 @@ def _sinogram_add_noise(
     flat_field=None,
     dark_field=None,
     legacy=False,
+    mass_attenuation=None,
+    length_unit_cm=0.1,
 ):
     """
     Adds realistic noise to sinograms, (C, angles, detectors) or batched
@@ -103,8 +163,8 @@ def _sinogram_add_noise(
     - Detector crosstalk: a Gaussian blur (std sigma_blur pixels) along the detector,
       within each projection.
     - Add a flat_field to add even more realistic noise (computed at non-corrected flat fields)
-    The line integrals are scaled by the maximum of each sample before applying I0.
-    See sinogram_add_noise for ``legacy``.
+    See sinogram_add_noise for how the line integrals become attenuation
+    (``mass_attenuation``) and for ``legacy``.
     """
     if torch.is_tensor(proj):
         istorch = True
@@ -119,13 +179,18 @@ def _sinogram_add_noise(
         dark_field = torch.zeros(proj.shape, device=dev)
     if flat_field is None:
         flat_field = torch.ones(proj.shape, device=dev)
-    # Scale of the line integrals: the maximum of each sample (alternatively the
-    # highest power of 2 close to this value, but lets leave it as is).
-    if proj.dim() == 4 and not legacy:
-        max_val = torch.amax(proj, dim=(1, 2, 3), keepdim=True)
-    else:  # one sample (or, legacy, the whole batch)
-        max_val = torch.amax(proj)
-    max_val = torch.where(max_val <= 0, torch.ones_like(max_val), max_val)
+    # Scale of the line integrals: attenuation = proj / max_val
+    if mass_attenuation is not None:
+        # physical: mu/rho [cm^2/g] * density line integral [g/cm^3 * length unit]
+        max_val = torch.tensor(1.0 / (mass_attenuation * length_unit_cm), device=dev)
+    else:
+        # relative: the maximum of each sample (alternatively the highest power
+        # of 2 close to this value, but lets leave it as is)
+        if proj.dim() == 4 and not legacy:
+            max_val = torch.amax(proj, dim=(1, 2, 3), keepdim=True)
+        else:  # one sample (or, legacy, the whole batch)
+            max_val = torch.amax(proj)
+        max_val = torch.where(max_val <= 0, torch.ones_like(max_val), max_val)
     Im = I0 * torch.exp(-proj / max_val)
 
     # Uncorrect the flat fields
