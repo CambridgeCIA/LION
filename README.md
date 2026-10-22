@@ -25,7 +25,11 @@ python -m pip install torch torchvision --index-url https://download.pytorch.org
 pip install .
 ```
 
+With mamba, use `mamba env create --file=env_base.yml --name=lion` and `mamba activate lion` instead; the rest is the same.
+
 To change CUDA version, update the `python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128` line as well as the ` cuda-version=12.8` specified in `env_base.yml`.
+
+torch is installed by pip only, in the line above. Libraries that depend on torch (kornia, torchdiffeq, ...) are installed by `pip install .` after it, so conda never brings a second (CPU-only) copy of pytorch into the environment. Create the environment fresh from `env_base.yml` rather than updating an old one.
 
 If you would like to contribute to the development of LION, you can replace the last line of the above set of commands by
 
@@ -33,7 +37,7 @@ If you would like to contribute to the development of LION, you can replace the 
 pip install -e ".[dev]"
 ```
 
-to make the installation editable (i.e. changes you make to the source will be visible when you restart the REPL or start a new Python process) and include additional development dependencies like `pre-commit`.
+to make the installation editable (i.e. changes you make to the source will be visible when you restart the REPL or start a new Python process) and include additional development dependencies like `pre-commit`, `pytest-xdist` and the libraries some example scripts use (`deepinv`, `torchmetrics`; also available on their own as `pip install ".[examples]"`).
 Afterwards, install the pre-commit hooks for auto-formating your commits. We use Black for code formatting (see [.pre-commit-config.yaml](.pre-commit-config.yaml)):
 
 ```
