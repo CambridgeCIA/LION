@@ -281,6 +281,16 @@ def test_validation_uses_normalisation(tmp_path):
     assert all(x.min() >= 0 and x.max() <= 1 for x in seen)
 
 
+@pytest.mark.parametrize("normalisation_type", ["sample", "custom"])
+def test_normalising_a_constant_image_gives_no_nan(normalisation_type):
+    model = small_dncnn()
+    model.set_normalisation(normalisation_type, data_range=(2.0, 2.0))
+    x = torch.full((2, 1, 8, 8), 2.0)
+    normalised = model.normalise(x)
+    assert torch.isfinite(normalised).all()
+    torch.testing.assert_close(model.unnormalise(normalised), x)
+
+
 def test_model_normalise_is_identity_without_normaliser():
     model = small_dncnn()
     x = torch.rand(2, 1, 8, 8) * 10
@@ -293,6 +303,23 @@ def test_model_normalise_does_not_hide_errors():
     model.set_normalisation("sample")
     with pytest.raises(Exception):
         model.normalise(torch.rand(8))  # 'sample' needs (B, C, H, W)
+
+
+@pytest.mark.parametrize("noise_level", [0.05, [0.05], [0.01, 0.1]])
+def test_gaussian_denoiser_noise_level(noise_level):
+    from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
+
+    model = small_dncnn()
+    solver = GaussianDenoiserSolver(
+        model,
+        torch.optim.SGD(model.parameters(), lr=0.1),
+        torch.nn.MSELoss(),
+        geometry=Geometry.default_parameters(),
+        device=torch.device("cpu"),
+        noise_level=noise_level,
+    )
+    assert solver.noise_level.shape == (2,)
+    assert solver.noise_level[0] == np.atleast_1d(noise_level)[0]
 
 
 # --------------------------------------------------------------------------

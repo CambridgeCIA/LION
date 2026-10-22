@@ -5,6 +5,13 @@ import numpy as np
 import torch
 
 
+def _nonzero(data_range):
+    """The range to divide by: 1 where it is 0 (a constant image maps to 0)."""
+    if isinstance(data_range, torch.Tensor):
+        return torch.where(data_range == 0, torch.ones_like(data_range), data_range)
+    return data_range if data_range != 0 else 1
+
+
 class Normalisation:
     def __init__(self, normalisation_type="none", dataset=None, data_range=None):
         """
@@ -55,9 +62,9 @@ class Normalisation:
             # normalize each sample in batch separately
             self.last_max = x.amax(dim=(2, 3), keepdim=True)
             self.last_min = x.amin(dim=(2, 3), keepdim=True)
-            return (x - self.last_min) / (self.last_max - self.last_min)
+            return (x - self.last_min) / _nonzero(self.last_max - self.last_min)
         if self.type == "dataset" or self.type == "custom":
-            return (x - self.xmin) / (self.xmax - self.xmin)
+            return (x - self.xmin) / _nonzero(self.xmax - self.xmin)
         if self.type == "none":
             return x  # return input if no normalization is set
 

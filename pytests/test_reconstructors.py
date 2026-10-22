@@ -174,3 +174,16 @@ def test_explicit_gradient_matches_autograd(lr_problem):
     (expected,) = torch.autograd.grad(energy, x)
     torch.testing.assert_close(recon.gradient(x, y), expected)
     torch.testing.assert_close(recon.energy(x, y), energy.detach())
+
+
+def test_lionmodel_regularizer_sees_normalised_images(lr_problem):
+    """The regulariser is applied with the normalisation it was trained with."""
+    op, _, y = lr_problem
+    model = small_regularizer().eval()
+    model.set_normalisation("custom", data_range=(0.0, 10.0))
+    seen = []
+    model.register_forward_pre_hook(lambda m, args: seen.append(args[0].detach()))
+    recon = LearnedRegularizerReconstructor(op, model, alpha=0.1)
+    x = 10 * torch.rand(op.domain_shape, dtype=torch.float64)
+    recon.regularizer_value(x)
+    torch.testing.assert_close(seen[-1], x.unsqueeze(0) / 10)

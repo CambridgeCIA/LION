@@ -85,12 +85,13 @@ def test_with_experiment(
         raise ValueError("model must inherit from LIONmodel: ")
     model, _, _ = model_type.load(model_fpath)
     model = model.to(dev)
+    model.eval()  # e.g. BatchNorm with its running statistics
 
     # Sample a random batch (size n)
     data, gt = next(iter(test_dataloader))
     data = data.to(dev)
     # run model on data
-
-    pred = model(data)
+    with torch.no_grad():
+        pred = model(data)
 
     return pred, gt

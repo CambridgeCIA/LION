@@ -164,3 +164,30 @@ def test_7z_fallback_output_folder(commands, tmp_path):
     utils.unzip_file(archive, out)
     assert calls[0] == ["unzip", str(archive), "-d", str(out)]
     assert calls[1] == ["7z", "x", str(archive), f"-o{out}", "-y"]
+
+
+# --------------------------------------------------------------------------
+# Testing a saved model on an experiment
+
+
+def test_test_with_experiment_evaluates_in_eval_mode(monkeypatch, tmp_path):
+    monkeypatch.setenv("LION_DATA_PATH", str(tmp_path))  # needed to import experiments
+    from torch.utils.data import TensorDataset
+
+    from LION.models.CNNs.dncnn import DnCNN
+    from LION.utils.test_model import test_with_experiment
+
+    torch.manual_seed(0)
+    model = small_dncnn().train()  # DnCNN has BatchNorm layers
+
+    class Saved(DnCNN):
+        @classmethod
+        def load(cls, fname):
+            return model, None, None
+
+    class Experiment:
+        def get_testing_dataset(self):
+            return TensorDataset(torch.rand(4, 1, 8, 8), torch.rand(4, 1, 8, 8))
+
+    pred, _ = test_with_experiment(Experiment(), Saved, "model.pt", n=2)
+    assert not model.training and not pred.requires_grad
