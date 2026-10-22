@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Callable, Literal
+from collections.abc import Callable
+from typing import Literal
 
 import numpy as np
 import torch
@@ -12,7 +13,8 @@ from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
 from LION.classical_algorithms.fdk import fdk
 from LION.CTtools.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel
-from LION.operators import CTProjectionOp, Operator
+from LION.operators.CTProjectionOp import CTProjectionOp
+from LION.operators.Operator import Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
 
@@ -24,8 +26,7 @@ class PnP(LIONReconstructor):
         prior_fn: Callable[[torch.Tensor], torch.Tensor],
         algorithm: Literal["ADMM", "HQS", "FBS"] = "ADMM",
     ):
-        """
-        Plug-and-Play Reconstructor using a denoiser as prior.
+        """Plug-and-Play Reconstructor using a denoiser as prior.
 
         Parameters
         ----------
@@ -42,7 +43,7 @@ class PnP(LIONReconstructor):
         algorithm : Literal["ADMM", "HQS", "FBS"], optional
             The reconstruction algorithm to use. See the options in the notes below. Default is "ADMM".
 
-        Notes
+        Notes:
         -----
         The following algorithms are implemented:
         - "ADMM": Alternating Direction Method of Multipliers
@@ -70,8 +71,7 @@ class PnP(LIONReconstructor):
         prog_bar: bool = False,
         **kwargs,
     ):
-        """
-        Reconstruct one measurement (e.g. a (C, angles, detectors) sinogram)
+        """Reconstruct one measurement (e.g. a (C, angles, detectors) sinogram)
         with the selected algorithm. Extra keyword arguments are passed to it.
 
         :param sino: Measurement tensor, in the range of the operator.
@@ -139,8 +139,7 @@ class PnP(LIONReconstructor):
         x0=None,
         prog_bar: bool = False,
     ):
-        """
-        Half Quadratic Splitting, as in "Plug-and-Play Image Restoration with Deep
+        """Half Quadratic Splitting, as in "Plug-and-Play Image Restoration with Deep
         Denoiser Prior" (Zhang et al.). Alternates
 
             x = argmin ||A x - y||^2 / 2 + mu ||x - z||^2 / 2   (conjugate gradient)
@@ -179,8 +178,7 @@ class PnP(LIONReconstructor):
         x0=None,
         prog_bar: bool = False,
     ):
-        """
-        Forward-Backward Splitting: x = prior(x - step_size * A^T (A x - y)).
+        """Forward-Backward Splitting: x = prior(x - step_size * A^T (A x - y)).
 
         :param step_size: Gradient step; 1 / ||A||^2 if None (||A|| is computed
             once per reconstructor, on the first call).
@@ -212,8 +210,7 @@ class PnP(LIONReconstructor):
         x0=None,
         prog_bar: bool = False,
     ) -> torch.Tensor:
-        """
-        ADMM with the prior as the proximal step:
+        """ADMM with the prior as the proximal step:
 
             x = argmin ||A x - y||^2 / 2 + eta ||x - (v - u)||^2 / 2   (CG)
             v = prior(x + u)

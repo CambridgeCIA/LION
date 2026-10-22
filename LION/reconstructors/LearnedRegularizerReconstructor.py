@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 from tqdm import tqdm
@@ -10,7 +10,8 @@ from tqdm import tqdm
 from LION.classical_algorithms.fdk import fdk
 from LION.CTtools.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel
-from LION.operators import CTProjectionOp, Operator
+from LION.operators.CTProjectionOp import CTProjectionOp
+from LION.operators.Operator import Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 
 
@@ -81,7 +82,7 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
             return data_term + self.alpha * self.regularizer_value(x)
 
     def gradient(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """grad E(x) = A^T (A x - y) + alpha grad R(x), for one sample.
+        """Grad E(x) = A^T (A x - y) + alpha grad R(x), for one sample.
 
         The data term's gradient is computed with the operator's own forward and
         adjoint; only the regulariser (a network) is differentiated by autograd.

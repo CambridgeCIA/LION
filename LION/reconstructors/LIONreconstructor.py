@@ -7,7 +7,7 @@ import torch
 # Import CT utils
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
-from LION.operators import Operator
+from LION.operators.Operator import Operator
 
 # Base class for a Reconstructor in the LION framework.
 # This assumes a trained model
@@ -15,8 +15,7 @@ from LION.operators import Operator
 
 class LIONReconstructor(ABC):
     def __init__(self, operator: Geometry | Operator):
-        """
-        Base class for a Reconstructor in the LION framework.
+        """Base class for a Reconstructor in the LION framework.
         This assumes a trained model.
 
         Parameters
@@ -38,9 +37,8 @@ class LIONReconstructor(ABC):
                 "Input operator is neither of class LION.operators.operator.Operator nor LION.CTtools.ct_geometry.Geometry"
             )
 
-    def reconstruct(self, sino: torch.Tensor, **kwargs):
-        """
-        Reconstruct the sinogram using the model and geometry.
+    def reconstruct(self, sino: torch.Tensor, **kwargs) -> torch.Tensor:
+        """Reconstruct the sinogram using the model and geometry.
 
         :param sino: Sinogram tensor.
         :param noise_level: Noise level for denoising.
@@ -60,5 +58,5 @@ class LIONReconstructor(ABC):
         return self.reconstruct_sample(sino, **kwargs)
 
     @abstractmethod
-    def reconstruct_sample(self, sino: torch.Tensor, **kwargs):
-        pass
+    def reconstruct_sample(self, measurement: torch.Tensor, **kwargs) -> torch.Tensor:
+        """Reconstruct a single sample from the measurement."""
