@@ -146,12 +146,14 @@ class deteCT(Dataset):
         It is used to partition the dataset on a sample basis, rather than on a slice basis,
         avoiding 'data leakage' between training, validation and testing
         """
-        # Consecutive blocks of samples; rounded, so that floating point error
-        # (e.g. 1 - 0.8 - 0.1 = 0.0999...) does not drop a sample.
+        # Consecutive blocks of samples, with the same boundaries as before
+        # (floor of n * proportion). The epsilon stops floating point error
+        # (e.g. 0.8 + 0.1 = 0.9000...01 or 0.7 + 0.2 = 0.8999...) from moving a
+        # boundary, and the test split takes all the remaining samples.
         n_samples = len(self.sample_dataframe)
-        end_train = round(n_samples * self.training_proportion)
-        end_validation = round(
-            n_samples * (self.training_proportion + self.validation_proportion)
+        end_train = int(n_samples * self.training_proportion + 1e-9)
+        end_validation = int(
+            n_samples * (self.training_proportion + self.validation_proportion) + 1e-9
         )
         if self.mode == "train":
             self.sample_dataframe = self.sample_dataframe.iloc[:end_train]

@@ -65,7 +65,7 @@ def fake_detect(tmp_path, mode, n_samples=10, query=""):
 
 
 @pytest.mark.filterwarnings("ignore:You are not using any detector query")
-@pytest.mark.parametrize("n_samples", [10, 100])
+@pytest.mark.parametrize("n_samples", [10, 17, 100])
 def test_detect_splits_use_every_sample_once(tmp_path, n_samples):
     splits = {
         mode: set(
@@ -74,11 +74,9 @@ def test_detect_splits_use_every_sample_once(tmp_path, n_samples):
         for mode in ("train", "validation", "test")
     }
     sizes = [len(splits[m]) for m in ("train", "validation", "test")]
-    assert sizes == [
-        round(0.8 * n_samples),
-        round(0.1 * n_samples),
-        round(0.1 * n_samples),
-    ]
+    # train and validation as before (floor of n * proportion); test gets the rest
+    end_train, end_validation = int(0.8 * n_samples), int(0.9 * n_samples + 1e-9)
+    assert sizes == [end_train, end_validation - end_train, n_samples - end_validation]
     assert set.union(*splits.values()) == set(range(n_samples))
 
 
