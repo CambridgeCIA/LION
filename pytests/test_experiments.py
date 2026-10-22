@@ -10,6 +10,7 @@ import pandas as pd  # noqa: E402
 import pytest  # noqa: E402
 
 import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
+import LION.data_loaders.LIDC_IDRI as lidc  # noqa: E402
 from LION.data_loaders.deteCT import deteCT  # noqa: E402
 
 EXPERIMENTS = [
@@ -83,3 +84,48 @@ def test_detect_length_is_the_number_of_slices(tmp_path, query):
     dataset = fake_detect(tmp_path, "test", query=query)
     assert len(dataset) == len(dataset.slice_dataframe)
     assert len(dataset) == (3 if query == "" else 2)  # 1 test sample, 3 slices
+
+
+# --------------------------------------------------------------------------
+# LIDC-IDRI: slices taken per patient
+
+NON_NODULE, NODULE = list(range(100)), list(range(100, 110))
+
+
+@pytest.mark.parametrize(
+    "non_nodule, nodule, max_slices, expected_total, expected_nodule",
+    [
+        (NON_NODULE, NODULE, 5, 5, 2),  # both kinds available: the requested split
+        (NON_NODULE, [], 5, 5, 0),  # no nodule slices: non-nodule ones only
+        ([7], NODULE, 5, 5, 4),  # too few non-nodule slices: more nodule ones
+        ([7], [100], 5, 2, 1),  # fewer slices than asked for: all of them
+        (NON_NODULE, NODULE, -1, 110, 10),  # -1: every slice
+    ],
+)
+def test_lidc_slice_selection(
+    non_nodule, nodule, max_slices, expected_total, expected_nodule
+):
+    selected = lidc.select_slices(non_nodule, nodule, max_slices, 0.5)
+    assert len(selected) == expected_total
+    assert sum(s in nodule for s in selected) == expected_nodule
+    assert selected == sorted(set(selected))  # sorted, no repeats
+
+
+def test_lidc_legacy_selection_skipped_patients_without_nodules():
+    assert lidc.select_slices(NON_NODULE, [], 5, 0.5, legacy=True) == []
+    # with both kinds available, legacy and current agree
+    assert lidc.select_slices(NON_NODULE, NODULE, 5, 0.5, legacy=True) == (
+        lidc.select_slices(NON_NODULE, NODULE, 5, 0.5)
+    )
+
+
+@pytest.mark.parametrize("saved_before", [False, True])
+def test_lidc_uses_legacy_selection_for_old_parameters(saved_before):
+    params = lidc.LIDC_IDRI.default_parameters(task="segmentation")
+    assert params.legacy_slice_selection is False
+    if saved_before:
+        del params.legacy_slice_selection
+    dataset = lidc.LIDC_IDRI.__new__(lidc.LIDC_IDRI)  # no data needed
+    dataset.params = params
+    selected = dataset.get_slices_to_load(["p"], {"p": NON_NODULE}, {"p": []}, 5, 0.5)
+    assert len(selected["p"]) == (0 if saved_before else 5)
