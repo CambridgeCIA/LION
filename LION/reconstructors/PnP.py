@@ -51,6 +51,7 @@ class PnP(LIONReconstructor):
         """
         super().__init__(physics)
         self.model = prior_fn
+        self._op_norm = None  # ||A||, computed once when first needed (FBS)
 
         if algorithm == "HQS":
             # Half Quadratic Splitting, as from the paper "Plug-and-Play Image Restoration with Deep Denoiser Prior"
@@ -107,8 +108,8 @@ class PnP(LIONReconstructor):
             out = self.model(x_in)
         return self.model.unnormalise(out).squeeze(0)
 
-    def _initial_guess(self, sino: torch.Tensor) -> torch.Tensor:
-        """FDK for CT operators, zeros otherwise."""
+    def initial_guess(self, sino: torch.Tensor) -> torch.Tensor:
+        """FDK for CT operators, zeros otherwise (the default start of HQS/FBS)."""
         if isinstance(self.op, CTProjectionOp):
             return fdk(sino, self.op)
         return torch.zeros(self.op.domain_shape, device=sino.device, dtype=sino.dtype)
@@ -135,6 +136,7 @@ class PnP(LIONReconstructor):
         noise_level=None,
         cg_max_iter=100,
         cg_tol=1e-7,
+        x0=None,
         prog_bar: bool = False,
     ):
         """
@@ -150,6 +152,7 @@ class PnP(LIONReconstructor):
         :param max_iter: Number of HQS iterations.
         :param noise_level: If given, mu = lambda_ / noise_level**2; otherwise the
             noise level passed to the prior is sqrt(lambda_ / mu).
+        :param x0: Starting image; ``initial_guess(sino)`` (FDK for CT) if None.
         :return: Reconstructed image tensor.
         """
         if noise_level is not None:
@@ -157,7 +160,7 @@ class PnP(LIONReconstructor):
         else:
             noise_level = float(np.sqrt(lambda_ / mu))
 
-        x = self._initial_guess(sino)
+        x = self.initial_guess(sino) if x0 is None else x0
         z = x.clone()
         iterator = range(max_iter)
         if prog_bar:
@@ -173,18 +176,22 @@ class PnP(LIONReconstructor):
         step_size=None,
         max_iter=10,
         noise_level=None,
+        x0=None,
         prog_bar: bool = False,
     ):
         """
         Forward-Backward Splitting: x = prior(x - step_size * A^T (A x - y)).
 
-        :param step_size: Gradient step; 1 / ||A||^2 if None.
+        :param step_size: Gradient step; 1 / ||A||^2 if None (||A|| is computed
+            once per reconstructor, on the first call).
+        :param x0: Starting image; ``initial_guess(sino)`` (FDK for CT) if None.
         """
         if step_size is None:
-            op_norm = power_method(self.op, device=sino.device)
-            step_size = 1.0 / (op_norm**2)
+            if self._op_norm is None:
+                self._op_norm = power_method(self.op, device=sino.device)
+            step_size = 1.0 / (self._op_norm**2)
 
-        x = self._initial_guess(sino)
+        x = self.initial_guess(sino) if x0 is None else x0
         iterator = range(max_iter)
         if prog_bar:
             iterator = tqdm(iterator, desc="FBS iterations")
@@ -202,6 +209,7 @@ class PnP(LIONReconstructor):
         cg_max_iter: int = 100,
         cg_tol: float = 1e-7,
         noise_level=None,
+        x0=None,
         prog_bar: bool = False,
     ) -> torch.Tensor:
         """
@@ -210,9 +218,15 @@ class PnP(LIONReconstructor):
             x = argmin ||A x - y||^2 / 2 + eta ||x - (v - u)||^2 / 2   (CG)
             v = prior(x + u)
             u = u + x - v
+
+        :param x0: Starting image for x and v; zeros if None. For example
+            ``x0=pnp.initial_guess(measurement)`` starts from FDK (CT).
         """
-        x = torch.zeros(self.op.domain_shape, device=measurement.device)
-        v = torch.zeros(self.op.domain_shape, device=measurement.device)
+        if x0 is None:
+            x = torch.zeros(self.op.domain_shape, device=measurement.device)
+        else:
+            x = x0
+        v = x.clone()
         u = torch.zeros(self.op.domain_shape, device=measurement.device)
 
         iterator = range(max_iter)

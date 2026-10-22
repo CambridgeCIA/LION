@@ -68,6 +68,35 @@ def test_unknown_algorithm(pnp_problem):
         PnP(pnp_problem[0], Identity(), algorithm="nope")
 
 
+def test_fbs_computes_the_operator_norm_once(pnp_problem, monkeypatch):
+    import importlib
+
+    # the module, not the PnP class that LION.reconstructors exports under that name
+    pnp_module = importlib.import_module("LION.reconstructors.PnP")
+
+    op, x_true, y = pnp_problem
+    calls = []
+    real = pnp_module.power_method
+    monkeypatch.setattr(
+        pnp_module, "power_method", lambda *a, **kw: calls.append(1) or real(*a, **kw)
+    )
+    recon = PnP(op, Identity(), algorithm="FBS")
+    for _ in range(3):  # e.g. three samples of a batch
+        recon.reconstruct(y, max_iter=2)
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("algorithm", ["ADMM", "HQS", "FBS"])
+def test_starting_image_can_be_given(pnp_problem, algorithm):
+    op, x_true, y = pnp_problem
+    kwargs = dict(ALGORITHM_KWARGS[algorithm], max_iter=1)
+    recon = PnP(op, Identity(), algorithm=algorithm)
+    default = recon.reconstruct(y, **kwargs)
+    from_truth = recon.reconstruct(y, x0=x_true.clone(), **kwargs)
+    error = lambda x: torch.linalg.vector_norm(x - x_true)
+    assert error(from_truth) < error(default)
+
+
 # --------------------------------------------------------------------------
 # LearnedRegularizerReconstructor, with "sinograms" of shape (1, 6, 5)
 
