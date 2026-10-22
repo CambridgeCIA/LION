@@ -5,12 +5,12 @@
 # Modifications: -
 # =============================================================================
 
+from typing import Optional
 from warnings import warn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchdiffeq import odeint, odeint_adjoint
-from ts_algorithms import fdk
 import LION.CTtools.ct_geometry as ct
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
@@ -86,6 +86,7 @@ class ODEBlock(nn.Module):
         odefunc: nn.Module,
         tol: float = 1e-3,
         adjoint: bool = False,
+        solver: str = "rk4",
     ):
         """
         Args:
@@ -98,8 +99,10 @@ class ODEBlock(nn.Module):
         self.adjoint = adjoint
         self.odefunc = odefunc
         self.tol = tol
+        self.solver = solver
 
-    def forward(self, x, eval_times=None, solver="rk4"):
+    def forward(self, x, eval_times=None, solver=None):
+        solver = self.solver if solver is None else solver
         # Forward pass corresponds to solving ODE, so reset number of function
         # evaluations counter
         self.odefunc.nfe = 0
@@ -206,106 +209,84 @@ class Up(nn.Module):
         return self.block(x)
 
 
+def _scalar(value):
+    """Parameter files written before the fix stored these as 1-tuples/lists."""
+    if isinstance(value, (tuple, list)) and len(value) == 1:
+        return value[0]
+    return value
+
+
 class cFBPConvNet(LIONmodel):
+    """Continuous FBPConvNet: FBPConvNet with every convolution block replaced
+    by a neural ODE block. Takes the FDK reconstruction as input (IMAGE) and
+    returns input + residual, like FBPConvNetImage."""
+
     def __init__(
         self,
-        geometry_parameters: ct.Geometry,
+        geometry: Optional[ct.Geometry] = None,
         model_parameters: LIONParameter = None,
     ):
 
         warn(
-            "cFBPConvNet has not been succesfully tested yet, use with caution. \n If you manage to get it working, contact the authors."
+            "cFBPConvNet has not been trained and validated in LION yet, use with caution. \n If you manage to get it working, contact the authors."
         )
-        super().__init__(model_parameters, geometry_parameters)
-        self._make_operator()
+        super().__init__(model_parameters, geometry)
+        for name in ("tol", "ode_adjoint", "do_second_order", "solver"):
+            setattr(
+                self.model_parameters,
+                name,
+                _scalar(getattr(self.model_parameters, name)),
+            )
 
         self.second_order = self.model_parameters.do_second_order
         self.solver = self.model_parameters.solver
-
-        # continuous version of FBPConvNet:
         if self.second_order:
-            self.initial_velocity = InitialVelocity(
-                self.model_parameters.down_1_channels
+            # The state of a second-order ODE is (z, v), with twice the channels;
+            # ConvSODEFunc and InitialVelocity are not built for that yet.
+            raise NotImplementedError(
+                "The second-order (do_second_order=True) cFBPConvNet is not implemented yet."
             )
-            # Down blocks
-            ode_d1 = ConvSODEFunc(
-                channels=self.model_parameters.down_1_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_d2 = ConvSODEFunc(
-                channels=self.model_parameters.down_2_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_d3 = ConvSODEFunc(
-                channels=self.model_parameters.down_3_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_d4 = ConvSODEFunc(
-                channels=self.model_parameters.down_4_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            # "latent space"
-            ode_bottom = ConvSODEFunc(
-                channels=self.model_parameters.latent_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            # Up blocks
-            ode_u1 = ConvSODEFunc(
-                channels=self.model_parameters.up_1_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_u2 = ConvSODEFunc(
-                channels=self.model_parameters.up_2_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_u3 = ConvSODEFunc(
-                channels=self.model_parameters.up_3_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_u4 = ConvSODEFunc(
-                channels=self.model_parameters.up_4_channels,
-                relu_type=self.model_parameters.activation,
-            )
-        else:
-            # Down blocks
-            ode_d1 = ConvODEFunc(
-                channels=self.model_parameters.down_1_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_d2 = ConvODEFunc(
-                channels=self.model_parameters.down_2_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_d3 = ConvODEFunc(
-                channels=self.model_parameters.down_3_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_d4 = ConvODEFunc(
-                channels=self.model_parameters.down_4_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            # "latent space"
-            ode_bottom = ConvODEFunc(
-                channels=self.model_parameters.latent_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            # Up blocks
-            ode_u1 = ConvODEFunc(
-                channels=self.model_parameters.up_1_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_u2 = ConvODEFunc(
-                channels=self.model_parameters.up_2_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_u3 = ConvODEFunc(
-                channels=self.model_parameters.up_3_channels,
-                relu_type=self.model_parameters.activation,
-            )
-            ode_u4 = ConvODEFunc(
-                channels=self.model_parameters.up_4_channels,
-                relu_type=self.model_parameters.activation,
-            )
+
+        # continuous version of FBPConvNet (first order):
+        # Down blocks
+        ode_d1 = ConvODEFunc(
+            channels=self.model_parameters.down_1_channels,
+            relu_type=self.model_parameters.activation,
+        )
+        ode_d2 = ConvODEFunc(
+            channels=self.model_parameters.down_2_channels,
+            relu_type=self.model_parameters.activation,
+        )
+        ode_d3 = ConvODEFunc(
+            channels=self.model_parameters.down_3_channels,
+            relu_type=self.model_parameters.activation,
+        )
+        ode_d4 = ConvODEFunc(
+            channels=self.model_parameters.down_4_channels,
+            relu_type=self.model_parameters.activation,
+        )
+        # "latent space"
+        ode_bottom = ConvODEFunc(
+            channels=self.model_parameters.latent_channels,
+            relu_type=self.model_parameters.activation,
+        )
+        # Up blocks
+        ode_u1 = ConvODEFunc(
+            channels=self.model_parameters.up_1_channels,
+            relu_type=self.model_parameters.activation,
+        )
+        ode_u2 = ConvODEFunc(
+            channels=self.model_parameters.up_2_channels,
+            relu_type=self.model_parameters.activation,
+        )
+        ode_u3 = ConvODEFunc(
+            channels=self.model_parameters.up_3_channels,
+            relu_type=self.model_parameters.activation,
+        )
+        ode_u4 = ConvODEFunc(
+            channels=self.model_parameters.up_4_channels,
+            relu_type=self.model_parameters.activation,
+        )
 
         self.input_1x1_conv = nn.Conv2d(
             in_channels=1,
@@ -316,6 +297,7 @@ class cFBPConvNet(LIONmodel):
             ode_d1,
             tol=self.model_parameters.tol,
             adjoint=self.model_parameters.ode_adjoint,
+            solver=self.solver,
         )
         self.conv_down1_2 = nn.Conv2d(
             in_channels=self.model_parameters.down_1_channels[-1],
@@ -327,6 +309,7 @@ class cFBPConvNet(LIONmodel):
             ode_d2,
             tol=self.model_parameters.tol,
             adjoint=self.model_parameters.ode_adjoint,
+            solver=self.solver,
         )
         self.conv_down2_3 = nn.Conv2d(
             in_channels=self.model_parameters.down_2_channels[-1],
@@ -338,6 +321,7 @@ class cFBPConvNet(LIONmodel):
             ode_d3,
             tol=self.model_parameters.tol,
             adjoint=self.model_parameters.ode_adjoint,
+            solver=self.solver,
         )
         self.conv_down3_4 = nn.Conv2d(
             in_channels=self.model_parameters.down_3_channels[-1],
@@ -349,6 +333,7 @@ class cFBPConvNet(LIONmodel):
             ode_d4,
             tol=self.model_parameters.tol,
             adjoint=self.model_parameters.ode_adjoint,
+            solver=self.solver,
         )
         self.conv_down4_bottom = nn.Conv2d(
             in_channels=self.model_parameters.down_4_channels[-1],
@@ -360,6 +345,7 @@ class cFBPConvNet(LIONmodel):
             ode_bottom,
             tol=self.model_parameters.tol,
             adjoint=self.model_parameters.ode_adjoint,
+            solver=self.solver,
         )
         self.up_1 = Up(
             [
@@ -377,6 +363,7 @@ class cFBPConvNet(LIONmodel):
             ode_u1,
             tol=self.model_parameters.tol,
             adjoint=self.model_parameters.ode_adjoint,
+            solver=self.solver,
         )
         self.up_2 = Up(
             [
@@ -394,6 +381,7 @@ class cFBPConvNet(LIONmodel):
             ode_u2,
             tol=self.model_parameters.tol,
             adjoint=self.model_parameters.ode_adjoint,
+            solver=self.solver,
         )
         self.up_3 = Up(
             [
@@ -411,6 +399,7 @@ class cFBPConvNet(LIONmodel):
             ode_u3,
             tol=self.model_parameters.tol,
             adjoint=self.model_parameters.ode_adjoint,
+            solver=self.solver,
         )
         self.up_4 = Up(
             [
@@ -424,6 +413,7 @@ class cFBPConvNet(LIONmodel):
             ode_u4,
             tol=self.model_parameters.tol,
             adjoint=self.model_parameters.ode_adjoint,
+            solver=self.solver,
         )
         self.conv_up4_last = nn.Conv2d(
             in_channels=self.model_parameters.up_4_channels[-1] * 2,
@@ -459,16 +449,16 @@ class cFBPConvNet(LIONmodel):
 
         params.activation = "ReLU"
 
-        params.tol = (1e-3,)
-        params.ode_adjoint = (False,)
-        params.do_second_order = (False,)
-        params.solver = ("rk4",)
+        params.tol = 1e-3
+        params.ode_adjoint = False
+        params.do_second_order = False
+        params.solver = "rk4"
         return params
 
     @staticmethod
     def cite(cite_format="MLA"):
         if cite_format == "MLA":
-            print(" Jin, Kyong Hwan, et al.")
+            print("Runkel, Christina, Ander Biguri, and Carola-Bibiane Schönlieb.")
             print('"Continuous Learned Primal Dual"')
             print("\x1B[3m ArXiv \x1B[0m")
             print("(2024): 2405.02478.")
@@ -487,16 +477,7 @@ class cFBPConvNet(LIONmodel):
             )
 
     def forward(self, x):
-        B, C, W, H = x.shape
-
-        image = x.new_zeros(B, 1, *self.geo.image_shape[1:])
-        for i in range(B):
-            aux = fdk(self.op, x[i, 0])
-            aux = torch.clip(aux, min=0)
-            image[i] = aux
-
-        if self.second_order:
-            x = self.initial_velocity(x)
+        """x: FDK reconstructions, (B, 1, H, W)."""
         inp = self.input_1x1_conv(x)
         block_1_res = self.block_1_down(inp)
         block_2_res = self.block_2_down(self.down_1(self.conv_down1_2(block_1_res)))

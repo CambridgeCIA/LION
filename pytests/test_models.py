@@ -287,6 +287,65 @@ def test_activation_name_is_case_insensitive(model_class):
 
 
 # --------------------------------------------------------------------------
+# cFBPConvNet (FBPConvNet with neural ODE blocks)
+
+
+def small_cfbpconvnet_params(**overrides):
+    from LION.models.post_processing.cFBPConvNet import cFBPConvNet
+
+    params = cFBPConvNet.default_parameters()
+    c = 4
+    for name, mult in [("down_1", 1), ("down_2", 2), ("down_3", 4), ("down_4", 8)]:
+        n = len(getattr(params, f"{name}_channels"))
+        setattr(params, f"{name}_channels", [c * mult] * n)
+    for name, mult in [("up_1", 8), ("up_2", 4), ("up_3", 2), ("up_4", 1)]:
+        n = len(getattr(params, f"{name}_channels"))
+        setattr(params, f"{name}_channels", [c * mult] * n)
+    params.latent_channels = [c * 16] * 3
+    params.last_block = [c, 1, 1]
+    for k, v in overrides.items():
+        setattr(params, k, v)
+    return params
+
+
+@ignore_warnings
+def test_cfbpconvnet_runs_on_images(tmp_path):
+    from LION.models.post_processing.cFBPConvNet import cFBPConvNet
+
+    defaults = cFBPConvNet.default_parameters()
+    assert defaults.model_input_type is ModelInputType.IMAGE
+    assert (defaults.ode_adjoint, defaults.do_second_order) == (False, False)
+
+    torch.manual_seed(0)
+    model = cFBPConvNet(model_parameters=small_cfbpconvnet_params())
+    x = torch.rand(2, 1, 32, 32, requires_grad=True)
+    out = model(x)
+    assert out.shape == x.shape
+    out.sum().backward()
+    assert x.grad is not None
+    assert all(p.grad is not None for p in model.parameters() if p.requires_grad)
+
+    model.save(tmp_path / "model", dataset=LIONParameter(), training=LIONParameter())
+    loaded, _, _ = cFBPConvNet.load(tmp_path / "model", supress_warnings=True)
+    loaded.eval(), model.eval()
+    torch.testing.assert_close(loaded(x.detach()), model(x.detach()))
+
+
+@ignore_warnings
+def test_cfbpconvnet_old_tuple_parameters_and_second_order():
+    from LION.models.post_processing.cFBPConvNet import cFBPConvNet
+
+    # parameter files written with the old defaults stored 1-tuples
+    old = small_cfbpconvnet_params(
+        tol=(1e-3,), ode_adjoint=(False,), do_second_order=(False,), solver=("rk4",)
+    )
+    model = cFBPConvNet(model_parameters=old)
+    assert model.second_order is False and model.solver == "rk4"
+    with pytest.raises(NotImplementedError, match="second-order"):
+        cFBPConvNet(model_parameters=small_cfbpconvnet_params(do_second_order=True))
+
+
+# --------------------------------------------------------------------------
 # UNet: conv-norm-relu twice; old single-norm checkpoints still load
 
 
