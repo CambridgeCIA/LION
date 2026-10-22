@@ -9,31 +9,7 @@ from LION.models.CNNs.UNets.Unet import UNet
 from LION.optimizers.EquivariantSolver import EquivariantSolver
 from LION.utils.parameter import LIONParameter
 import LION.experiments.ct_experiments as ct_experiments
-from skimage.metrics import (
-    structural_similarity as ssim,
-    peak_signal_noise_ratio as psnr,
-)
-import numpy as np
-
-
-def my_ssim(x: torch.Tensor, y: torch.Tensor):
-    if x.shape[0] == 1:
-        x = x.detach().cpu().numpy().squeeze()
-        y = y.detach().cpu().numpy().squeeze()
-        return torch.tensor(
-            np.array([ssim(x, y, data_range=x.max() - x.min())]), dtype=torch.float32
-        )
-    else:
-        x = x.detach().cpu().numpy().squeeze()
-        y = y.detach().cpu().numpy().squeeze()
-        vals = []
-        for i in range(x.shape[0]):
-            vals.append(ssim(x[i], y[i], data_range=x[i].max() - x[i].min()))
-        return torch.tensor(np.array(vals), dtype=torch.float32)
-
-
-# SSIM is a score: the solver should keep the model with the HIGHEST validation value
-my_ssim.higher_is_better = True
+from LION.metrics.ssim import SSIM
 
 
 # %%
@@ -104,9 +80,10 @@ solver.cite()
 # set data
 solver.set_training(lidc_dataloader)
 solver.set_saving(savefolder, final_result_fname)
-solver.set_validation(lidc_val, 1, my_ssim, validation_fname)
+# SSIM is a score: the solver keeps the model with the highest value
+solver.set_validation(lidc_val, 1, SSIM(), validation_fname)
 # solver.set_normalization(True)
-solver.set_testing(lidc_test, my_ssim)
+solver.set_testing(lidc_test, SSIM())
 
 # set checkpointing procedure
 solver.set_checkpointing(checkpoint_fname, 10, save_folder=savefolder)
