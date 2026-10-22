@@ -66,6 +66,52 @@ def create_consensus_annotation(
     return nodule_mask
 
 
+def _evenly_spaced(slices: List, n: int) -> List:
+    """n of the given slices, evenly spaced (the first one included)."""
+    indices = np.linspace(0, len(slices), n, dtype=int, endpoint=False)
+    return list(np.array(slices)[indices])
+
+
+def select_slices(
+    non_nodule_slices: List,
+    nodule_slices: List,
+    max_slices: int,
+    pcg_slices_nodule: float,
+    legacy: bool = False,
+) -> List:
+    """Slices to load for one patient, sorted.
+
+    Takes up to ``max_slices`` slices (all of them if -1), a fraction
+    ``pcg_slices_nodule`` of them with a nodule. If the patient has too few
+    slices of one kind, more of the other kind are taken; patients without
+    nodule slices contribute non-nodule slices.
+
+    ``legacy=True`` reproduces LION before October 2026: at most
+    min(max_slices, #non-nodule, #nodule) slices, so patients without nodule
+    slices contributed none, and -1 meant at most 1000 of each.
+    """
+    n_non_available, n_nodule_available = len(non_nodule_slices), len(nodule_slices)
+    if legacy:
+        if max_slices == -1:
+            max_slices = 1000
+        n = min(max_slices, n_non_available, n_nodule_available)
+        n_non = int(np.ceil(n * (1 - pcg_slices_nodule)))
+        n_nodule = n - n_non
+    elif max_slices == -1:
+        n_non, n_nodule = n_non_available, n_nodule_available
+    else:
+        n = min(max_slices, n_non_available + n_nodule_available)
+        # same split as the legacy rule when both kinds are available...
+        n_non = min(int(np.ceil(n * (1 - pcg_slices_nodule))), n_non_available)
+        n_nodule = min(n - n_non, n_nodule_available)
+        # ...and the rest from the other kind when one runs out
+        n_non = min(n - n_nodule, n_non_available)
+    selected = _evenly_spaced(non_nodule_slices, n_non) + _evenly_spaced(
+        nodule_slices, n_nodule
+    )
+    return sorted(selected)
+
+
 class LIDC_IDRI(Dataset):
     def __init__(
         self,
@@ -89,8 +135,9 @@ class LIDC_IDRI(Dataset):
             - mode (str): Defines "train", "validation" or "test" mode.
             - Task (str): Defines what task is the Dataset being used for. "segmentation" (default) returns (gt_image,segmentation) pairs while "reconstruction" returns (sinogram, gt_image) pairs
             - annotation (str): Defines what annotation mode to use. Distinguish between "random" and "consensus". Default "consensus"
-            - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. Default is -1, which takes all slices we have of each patient and pcg_slices_nodule gets ignored.
-            - pcg_slices_nodule (float): Defines percentage of slices with nodule in dataset. 0 meaning "no nodules at all" and 1 meaning "just take slices that contain annotated nodules". Only used if max_num_slices_per_patient != -1. Default is 0.5.
+            - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. -1 takes all slices we have of each patient and pcg_slices_nodule gets ignored. Default is 5.
+            - pcg_slices_nodule (float): Defines percentage of slices with nodule in dataset. 0 meaning "no nodules at all" and 1 meaning "just take slices that contain annotated nodules". Only used if max_num_slices_per_patient != -1. If a patient has too few slices of one kind, more of the other kind are taken. Default is 0.5.
+            - legacy_slice_selection (bool): True reproduces the selection of LION before October 2026, which left out patients without nodule slices. Default False (missing in old parameter files, which then use the old selection).
             - clevel (float): Defines consensus level if annotation=consensus. Value between 0-1. Default is 0.5.
             - geometry: Geometry() type, if sinograms are requied (e.g. fo "reconstruction")
 
@@ -328,6 +375,9 @@ class LIDC_IDRI(Dataset):
         )  # not used, but for metadata
         param.max_num_slices_per_patient = 5
         param.pcg_slices_nodule = 0.5
+        # True reproduces the slice selection of LION before October 2026
+        # (patients without nodule slices were left out); see select_slices
+        param.legacy_slice_selection = False
         param.task = task
         param.folder = LIDC_IDRI_PROCESSED_DATASET_PATH
         if task == "reconstruction" and geometry is None:
@@ -368,50 +418,16 @@ class LIDC_IDRI(Dataset):
             {}
         )  # Empty dict which should contain patient id as key and slice ids as array of values
 
-        if num_slices_per_patient == -1:
-            num_slices_per_patient = 1000
-
+        # parameter files from before legacy_slice_selection existed used the old rule
+        legacy = getattr(self.params, "legacy_slice_selection", True)
         for patient_id in patient_list:  # Loop over every patient
-            number_of_slices = min(
+            patient_id_to_slices_to_load_dict[patient_id] = select_slices(
+                non_nodule_slices_dict[patient_id],
+                nodule_slices_dict[patient_id],
                 num_slices_per_patient,
-                min(
-                    len(non_nodule_slices_dict[patient_id]),
-                    len(nodule_slices_dict[patient_id]),
-                ),
+                pcg_slices_nodule,
+                legacy=legacy,
             )
-
-            # Get amount of slices we want without nodule
-            number_of_slices_without_nodule = int(
-                np.ceil(number_of_slices * (1 - pcg_slices_nodule))
-            )
-            # Get amount of slices we want with nodule
-            number_of_slices_with_nodule = (
-                number_of_slices - number_of_slices_without_nodule
-            )
-
-            # Get linspace of non-nodule and nodule slices of each patient and afterwards sort the list in increasing order
-            patient_id_to_slices_to_load_dict[patient_id] = list(
-                np.array(non_nodule_slices_dict[patient_id])[
-                    np.linspace(
-                        0,
-                        len(non_nodule_slices_dict[patient_id]),
-                        number_of_slices_without_nodule,
-                        dtype=int,
-                        endpoint=False,
-                    )
-                ]
-            ) + list(
-                np.array(nodule_slices_dict[patient_id])[
-                    np.linspace(
-                        0,
-                        len(nodule_slices_dict[patient_id]),
-                        number_of_slices_with_nodule,
-                        dtype=int,
-                        endpoint=False,
-                    )
-                ]
-            )
-            patient_id_to_slices_to_load_dict[patient_id].sort()
 
         return patient_id_to_slices_to_load_dict
 
