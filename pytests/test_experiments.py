@@ -35,6 +35,23 @@ def test_noise_function_is_always_defined(cls):
     assert cls(params).sino_fun is None
 
 
+@pytest.mark.parametrize("saved_before", [False, True])
+def test_experiments_choose_the_noise_model(monkeypatch, saved_before):
+    """New experiments use the current noise model; parameters saved before
+    legacy_noise_model existed reproduce the old one."""
+    params = ct_experiments.LowDoseCTRecon.default_parameters()
+    assert params.noise_params.legacy_noise_model is False
+    if saved_before:
+        del params.noise_params.legacy_noise_model
+    calls = []
+    monkeypatch.setattr(
+        ct_experiments.ct, "sinogram_add_noise", lambda sino, **kw: calls.append(kw)
+    )
+    ct_experiments.LowDoseCTRecon(params).sino_fun("sinogram")
+    assert calls[0]["legacy"] is saved_before
+    assert calls[0]["I0"] == params.noise_params.I0
+
+
 # --------------------------------------------------------------------------
 # 2DeteCT: splits and length, from a fake data record (no sinograms needed)
 
