@@ -1,9 +1,12 @@
+import numpy as np
+import copy
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ct
 import LION.CTtools.ct_utils as ct_utils
+from LION.utils.tomosipo_import import import_tomosipo
 import LION.utils.utils as ai_utils
 
 # new
@@ -88,7 +91,8 @@ class IntermediateResidualBlock(Module):
     """
     Depthwise 1D convolutional residual block.
 
-    Used in the angular interpolation subnetwork. Applies a depthwise Conv1d,
+    Used in the interpolation subnetwork (along the detector, each projection
+    on its own, as in the DeepFBP paper). Applies a depthwise Conv1d,
     followed by BatchNorm1d and PReLU, with a residual connection.
 
     Args:
@@ -112,46 +116,33 @@ class IntermediateResidualBlock(Module):
 
 class single_back_projections(Module):
     """
-    Applies single-angle differentiable backprojections using Tomosipo.
+    Applies single-angle differentiable backprojections.
 
-    Each angle in the sparse set is used to compute a separate backprojection,
-    forming a stack of angle-specific reconstructions.
+    Each angle of the geometry gets its own backprojector, built from the LION
+    Geometry of the data (``make_operator`` with that one angle), so the
+    single-view backprojections are consistent with the full CT operator:
+    summed over the angles they give its backprojection.
 
     Args:
-        angles_sparse (torch.Tensor):
-            Sparse angles to backproject.
-        src_orig_dist (float):
-            Source-to-origin distance.
-        num_detectors (int):
-            Number of detector bins.
-        vg (ts.VolumeGeometry):
-            Volume geometry for tomosipo operator.
+        geometry (Geometry):
+            The LION geometry of the (sparse-view) data.
     """
 
-    def __init__(self, angles_sparse, src_orig_dist, num_detectors, vg):
+    def __init__(self, geometry):
 
         super().__init__()
-        self.angles_sparse = angles_sparse
-        self.src_orig_dist = src_orig_dist
-        self.num_detectors = num_detectors
-        self.vg = vg
-
+        to_autograd = import_tomosipo(
+            "tomosipo.torch_support", "DeepFusionBP"
+        ).to_autograd
+        angles = np.asarray(geometry.angles)
         self.tomosipo_geometries = []
-        for angle in self.angles_sparse:
-            # Define Fan Beam Geometry for each angle
-            proj_geom_single = ts.cone(
-                angles=angle,
-                src_orig_dist=self.src_orig_dist,
-                shape=(1, self.num_detectors),
+        for i in range(len(angles)):
+            single_angle = copy.deepcopy(geometry)
+            single_angle.angles = angles[i : i + 1]
+            # (B, 1, 1, detectors) -> (B, 1, H, W), differentiable
+            self.tomosipo_geometries.append(
+                to_autograd(ct_utils.make_operator(single_angle).T, num_extra_dims=1)
             )
-
-            # Compute Back Projection
-            A_single = ts.operator(self.vg, proj_geom_single)
-
-            # make operator diferenciable
-            self.AT = to_autograd(A_single.T, is_2d=True, num_extra_dims=2)
-
-            self.tomosipo_geometries.append(self.AT)
 
     def forward(self, sinogram):
         """
@@ -373,27 +364,18 @@ class DeepFusionBPNetwork(LIONmodel):  # (Module) -> (LIONmodel)
 
     This module implements the full reconstruction pipeline including:
         - A learnable frequency-domain filter (shared or per-angle).
-        - Angular interpolation using a stack of 1D residual convolutions.
+        - Interpolation network, as in DeepFBP (Tan et al. 2024): 1D convolutions along the detector, applied to each projection separately (no mixing across angles)
         - Differentiable single-angle backprojections via Tomosipo.
         - A deep CNN (based on DBP) to fuse and denoise reconstructed views.
 
     Args:
-        angles_sparse (torch.Tensor):
-            Sparse subset of projection angles.
-        src_orig_dist (float):
-            Source-to-origin distance used in CT geometry.
-        num_detectors (int):
-            Number of detector bins per projection.
-        num_angles (int):
-            Number of sparse angles used in this configuration.
-        vg (ts.VolumeGeometry):
-            Tomosipo volume geometry for reconstruction.
-        A (ts.Operator):
-            Tomosipo projection operator (unused here but stored).
-        filter_type (str):
-            Either "Filter I" (shared filter) or "per-angle".
-        device (torch.device):
-            Device where the model will run (e.g., "cuda").
+        geometry (Geometry):
+            LION geometry of the (sparse-view) data; the single-angle
+            backprojectors are built from it.
+        model_parameters (LIONModelParameter):
+            filter_type: "Filter I" (one filter shared by all angles) or a
+            filter per angle; fft_padding_twice_detectors (see
+            compute_projection_size_padded).
 
     Forward Input:
         x (Tensor): Input sinogram of shape [B, 1, A, D], where:
@@ -406,25 +388,13 @@ class DeepFusionBPNetwork(LIONmodel):  # (Module) -> (LIONmodel)
             Reconstructed CT images of shape [B, 1, H, W].
     """
 
-    def __init__(
-        self, geometry: ct.Geometry, model_parameters: LIONParameter = None
-    ):  # delete angles_sparse,src_orig_dist,vg
+    def __init__(self, geometry: ct.Geometry, model_parameters: LIONParameter = None):
         super().__init__(model_parameters, geometry)
 
         self._make_operator()
 
         self.num_detectors = geometry.detector_shape[1]
         self.view_angles = len(geometry.angles)
-        self.angles_sparse = geometry.angles  # new, may need to be modify
-        self.src_orig_dist = geometry.dso  # new, may need to be modify
-        self.vg = ts.volume(
-            shape=(
-                geometry.image_shape[0],
-                geometry.image_shape[1],
-                geometry.image_shape[2],
-            )
-        )  # new
-
         # Padding parameters
         self.projection_size_padded = self.compute_projection_size_padded()
         self.padding = self.projection_size_padded - self.num_detectors
@@ -445,29 +415,24 @@ class DeepFusionBPNetwork(LIONmodel):  # (Module) -> (LIONmodel)
         self.interpolator_conv = Conv1d(1, 1, kernel_size=3, padding=1, bias=False)
 
         # Single views backprojection
-        self.back_projections = single_back_projections(
-            self.angles_sparse, self.src_orig_dist, self.num_detectors, self.vg
-        )
+        self.back_projections = single_back_projections(geometry)
 
         # DBP_model for ct reconstructions
-        self.dbp_layer = DBP_block(len(self.angles_sparse))
+        self.dbp_layer = DBP_block(self.view_angles)
 
     def compute_projection_size_padded(self):
         """
-        Computes the padded projection width for frequency-domain filtering.
-
-        This ensures the sinogram is padded to the nearest power of two to avoid
-        aliasing artifacts when applying FFT-based filters.
-
-        Returns:
-            int:
-                Projection size after zero-padding.
+        FFT length for the filter: the next power of two of at least twice the
+        number of detectors, so that filtering is not circular (wrap-around).
+        Parameter files from before ``fft_padding_twice_detectors`` existed use
+        the old length, the next power of two of the number of detectors (no
+        padding at all when that is already a power of two).
         """
-
+        n = self.num_detectors
+        if getattr(self.model_parameters, "fft_padding_twice_detectors", False):
+            n = 2 * n
         return 2 ** int(
-            torch.ceil(
-                torch.log2(torch.tensor(self.num_detectors, dtype=torch.float32))
-            ).item()
+            torch.ceil(torch.log2(torch.tensor(n, dtype=torch.float32))).item()
         )
 
     def ram_lak_filter(self, size):
@@ -488,6 +453,8 @@ class DeepFusionBPNetwork(LIONmodel):  # (Module) -> (LIONmodel)
         DFuBP_params.filter_type = "Filter I"
         DFuBP_params.mode = "ct"
         DFuBP_params.model_input_type = ModelInputType.SINOGRAM
+        # zero-pad the projections to >= 2x the detectors before the FFT filter
+        DFuBP_params.fft_padding_twice_detectors = True
         return DFuBP_params
 
     # new
@@ -498,7 +465,7 @@ class DeepFusionBPNetwork(LIONmodel):  # (Module) -> (LIONmodel)
 
         The input sinogram goes through:
             1. Learnable frequency-domain filtering (Ram-Lak initialized).
-            2. Angular interpolation via 1D depthwise convolutions.
+            2. Interpolation network: 1D depthwise convolutions along the detector, per projection.
             3. Single-angle differentiable backprojections (Tomosipo).
             4. A deep CNN that fuses and denoises the backprojections.
 

@@ -587,3 +587,66 @@ def test_training_still_backpropagates_to_weights(make_model):
     loss = model(torch.rand(2, 1, 16, 16)).pow(2).mean()
     loss.backward()
     assert all(p.grad is not None for p in model.parameters() if p.requires_grad)
+
+
+# --------------------------------------------------------------------------
+# Learned FBPs (DeepFBP, FusionFBP), with a matrix "CT" operator on CPU
+
+
+def make_learned_fbp(module, class_name, monkeypatch, drop=(), **params):
+    torch.manual_seed(0)
+    M = torch.randn(30, 64) / 8  # 8x8 images -> 6 angles x 5 detectors
+
+    def make_operator(self):
+        self.op = None
+        self.A = lambda x: (x.reshape(x.shape[0], -1) @ M.T).reshape(-1, 1, 6, 5)
+        self.AT = lambda y: (y.reshape(y.shape[0], -1) @ M).reshape(-1, 1, 8, 8)
+
+    monkeypatch.setattr(LIONmodel, "_make_operator", make_operator)
+    model_class = getattr(module, class_name)
+    p = model_class.default_parameters()
+    for k, v in params.items():
+        setattr(p, k, v)
+    for k in drop:  # e.g. parameters that old parameter files don't have
+        delattr(p, k)
+    geometry = Geometry.default_parameters()
+    geometry.image_shape = [1, 8, 8]
+    geometry.angles = np.linspace(0, np.pi, 6, endpoint=False)
+    geometry.detector_shape = [1, 5]
+    return model_class(geometry, p)
+
+
+LEARNED_FBPS = [
+    ("LION.models.learned_fbp.DeepFBP", "DeepFBPNetwork"),
+    ("LION.models.learned_fbp.FusionFBP", "FusionFBPNetwork"),
+]
+
+
+@ignore_warnings
+@pytest.mark.parametrize("module_name, class_name", LEARNED_FBPS)
+@pytest.mark.parametrize("saved_before", [False, True])
+def test_learned_fbp_fft_padding(
+    import_without_tomosipo, monkeypatch, module_name, class_name, saved_before
+):
+    """The filter's FFT length is >= 2x the detectors (no wrap-around);
+    parameter files from before the option keep the old length."""
+    module = import_without_tomosipo(module_name)
+    drop = ["fft_padding_twice_detectors"] if saved_before else []
+    model = make_learned_fbp(module, class_name, monkeypatch, drop=drop)
+    expected = 8 if saved_before else 16  # 5 detectors: 2^3 >= 5, 2^4 >= 10
+    assert model.projection_size_padded == expected
+    assert model.learnable_filter.weights.shape[-1] == expected
+    assert model(torch.rand(2, 1, 6, 5)).shape == (2, 1, 8, 8)
+
+
+@ignore_warnings
+def test_deepfbp_output_is_only_clamped_below(import_without_tomosipo, monkeypatch):
+    module = import_without_tomosipo("LION.models.learned_fbp.DeepFBP")
+    model = make_learned_fbp(module, "DeepFBPNetwork", monkeypatch).eval()
+    last_conv = model.denoising_output[0]
+    with torch.no_grad():
+        last_conv.weight.zero_()
+        last_conv.bias.fill_(3.0)  # above the old [0, 1] range
+        assert torch.allclose(model(torch.rand(1, 1, 6, 5)), torch.tensor(3.0))
+        last_conv.bias.fill_(-3.0)
+        assert (model(torch.rand(1, 1, 6, 5)) == 0).all()
