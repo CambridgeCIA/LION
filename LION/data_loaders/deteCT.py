@@ -146,24 +146,21 @@ class deteCT(Dataset):
         It is used to partition the dataset on a sample basis, rather than on a slice basis,
         avoiding 'data leakage' between training, validation and testing
         """
+        # Consecutive blocks of samples, with the same boundaries as before
+        # (floor of n * proportion). The epsilon stops floating point error
+        # (e.g. 0.8 + 0.1 = 0.9000...01 or 0.7 + 0.2 = 0.8999...) from moving a
+        # boundary, and the test split takes all the remaining samples.
+        n_samples = len(self.sample_dataframe)
+        end_train = int(n_samples * self.training_proportion + 1e-9)
+        end_validation = int(
+            n_samples * (self.training_proportion + self.validation_proportion) + 1e-9
+        )
         if self.mode == "train":
-            self.sample_dataframe = self.sample_dataframe.head(
-                int(len(self.sample_dataframe) * self.training_proportion)
-            )
+            self.sample_dataframe = self.sample_dataframe.iloc[:end_train]
         elif self.mode == "validation":
-            self.sample_dataframe = self.sample_dataframe.iloc[
-                int(len(self.sample_dataframe) * self.training_proportion) : int(
-                    len(self.sample_dataframe)
-                    * (self.training_proportion + self.validation_proportion)
-                )
-            ]
+            self.sample_dataframe = self.sample_dataframe.iloc[end_train:end_validation]
         else:
-            self.sample_dataframe = self.sample_dataframe.tail(
-                int(
-                    len(self.sample_dataframe)
-                    * (1 - self.training_proportion - self.validation_proportion)
-                )
-            )
+            self.sample_dataframe = self.sample_dataframe.iloc[end_validation:]
 
         self.slice_dataframe = self.slice_dataframe[
             self.slice_dataframe["sample_index"].isin(
@@ -316,11 +313,9 @@ class deteCT(Dataset):
         self.sample_dataframe = pd.DataFrame.from_dict(record)
 
     def __len__(self):
-        return (
-            self.sample_dataframe["last_slice"].iloc[-1]
-            - self.sample_dataframe["first_slice"].iloc[0]
-            + 1
-        )
+        # __getitem__ indexes the rows of slice_dataframe, which need not be
+        # consecutive slices (e.g. with a query)
+        return len(self.slice_dataframe)
 
     def add_sinogram_noise(self, sinogram, I0, cross_talk=0.05):
         r"""
