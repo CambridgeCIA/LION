@@ -6,6 +6,7 @@ import tempfile
 # LION.utils.paths requires LION_DATA_PATH at import time
 os.environ.setdefault("LION_DATA_PATH", tempfile.gettempdir())
 
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import pytest  # noqa: E402
 
@@ -57,7 +58,7 @@ def test_experiments_choose_the_noise_model(monkeypatch, saved_before):
 # 2DeteCT: splits and length, from a fake data record (no sinograms needed)
 
 
-def fake_detect(tmp_path, mode, n_samples=10, query=""):
+def write_fake_detect_record(folder, n_samples=10):
     """n_samples samples of 3 slices each; slice 1 of every sample is detector 2."""
     rows = []
     for sample in range(n_samples):
@@ -72,7 +73,11 @@ def fake_detect(tmp_path, mode, n_samples=10, query=""):
                     detector=2 if k == 1 else 1,
                 )
             )
-    pd.DataFrame(rows).to_csv(tmp_path / "default_data_records.csv", index=False)
+    pd.DataFrame(rows).to_csv(folder / "default_data_records.csv", index=False)
+
+
+def fake_detect(tmp_path, mode, n_samples=10, query=""):
+    write_fake_detect_record(tmp_path, n_samples)
     params = deteCT.default_parameters()
     params.path_to_dataset = tmp_path
     params.query = query
@@ -101,6 +106,65 @@ def test_detect_length_is_the_number_of_slices(tmp_path, query):
     dataset = fake_detect(tmp_path, "test", query=query)
     assert len(dataset) == len(dataset.slice_dataframe)
     assert len(dataset) == (3 if query == "" else 2)  # 1 test sample, 3 slices
+
+
+# --------------------------------------------------------------------------
+# ct_experiments on the measured 2DeteCT data
+
+# experiment -> (number of the 3600 measured angles used, input mode); None: not possible
+ON_2DETECT = {
+    "clinicalCTRecon": (3600, "mode2"),
+    "LowDoseCTRecon": (3600, "mode1"),
+    "ExtremeLowDoseCTRecon": None,
+    "SparseAngleCTRecon": (50, "mode2"),
+    "SparseAngleLowDoseCTRecon": (50, "mode1"),
+    "SparseAngleExtremeLowDoseCTRecon": None,
+    "LimitedAngleCTRecon": (60, "mode2"),
+    "LimitedAngleLowDoseCTRecon": (60, "mode1"),
+    "LimitedAngleExtremeLowDoseCTRecon": None,
+}
+
+
+@pytest.mark.parametrize("cls", EXPERIMENTS, ids=lambda c: c.__name__)
+def test_ct_experiments_on_2detect(cls):
+    expected = ON_2DETECT[cls.__name__]
+    if expected is None:
+        with pytest.raises(ValueError, match="not possible with the measured 2DeteCT"):
+            cls.default_parameters(dataset="2DeteCT")
+        return
+    n_angles, input_mode = expected
+    params = cls.default_parameters(dataset="2DeteCT")
+    measured = np.asarray(deteCT.get_default_geometry().angles)
+    angles = np.asarray(params.geometry.angles)
+    assert len(angles) == n_angles
+    assert np.isin(angles, measured).all()  # only measured angles
+    if n_angles < 3600:  # sparse/limited: same sampling as the simulated experiment
+        simulated = np.asarray(cls.default_parameters().geometry.angles)
+        np.testing.assert_allclose(
+            np.abs(np.diff(angles)), np.abs(np.diff(simulated)), atol=1e-9
+        )
+    # ("full" sampling is all 3600 measured angles, as in FullDataCTRecon)
+    assert params.data_loader_params.input_mode == input_mode
+    assert params.data_loader_params.target_mode == "mode2"
+    assert not hasattr(params, "noise_params")
+
+
+@pytest.mark.filterwarnings("ignore:You are not using any detector query")
+def test_2detect_experiment_builds_its_datasets(tmp_path):
+    write_fake_detect_record(tmp_path)
+    experiment = ct_experiments.SparseAngleLowDoseCTRecon(
+        dataset="2DeteCT", datafolder=tmp_path
+    )
+    dataset = experiment.get_training_dataset()
+    assert len(dataset.angle_index) == 50 and dataset.input_mode == "mode1"
+
+    params = ct_experiments.LowDoseCTRecon.default_parameters(dataset="2DeteCT")
+    params.noise_params = (
+        ct_experiments.LowDoseCTRecon.default_parameters().noise_params
+    )
+    params.data_loader_params.path_to_dataset = tmp_path
+    with pytest.raises(ValueError, match="measured data"):
+        ct_experiments.LowDoseCTRecon(params, dataset="2DeteCT").get_training_dataset()
 
 
 # --------------------------------------------------------------------------
