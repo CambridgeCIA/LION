@@ -36,23 +36,8 @@ class deteCT(Dataset):
             self.geometry = self.get_default_geometry()
             self.angle_index = list(range(len(self.geometry.angles)))
         else:
-            self.__is_valid_geo(geometry_params)
+            self.angle_index = self.__is_valid_geo(geometry_params)
             self.geometry = geometry_params
-            if not np.array_equal(
-                self.geometry.angles, self.get_default_geometry().angles
-            ):
-                # if we are here we already know that the angles are at least valid.
-                self.angle_index = []
-                full_angles = self.get_default_geometry().angles
-                for angle in self.geometry.angles:
-                    index = next(
-                        i
-                        for i, _ in enumerate(full_angles)
-                        if np.isclose(_, angle, 10e-4)
-                    )
-                    self.angle_index.append(index)
-            else:
-                self.angle_index = list(range(len(self.geometry.angles)))
 
         if parameters.query == "" and (
             not parameters.flat_field_correction or not parameters.dark_field_correction
@@ -259,6 +244,23 @@ class deteCT(Dataset):
         geometry.angles = -np.linspace(0, 2 * np.pi, 3600, endpoint=False) + np.pi
         return geometry
 
+    @staticmethod
+    def _get_angle_indices(full_angles, angles):
+        """Map requested angles to unique views in the raw deteCT sinogram."""
+        angle_indices = []
+        for angle in angles:
+            matches = np.flatnonzero(
+                np.isclose(full_angles, angle, rtol=0.0, atol=1e-8)
+            )
+            if matches.size != 1:
+                raise ValueError(
+                    "Given angles must be part of existing ones. Check the array "
+                    "deteCT.get_default_geometry().angles for the existing angles. "
+                    f"The given angle {angle} is not part of the existing angles."
+                )
+            angle_indices.append(int(matches[0]))
+        return angle_indices
+
     def __is_valid_geo(self, geometry):
         if not isinstance(geometry, ctgeo.Geometry):
             raise ValueError("geometry must be a ctgeo.Geometry object")
@@ -286,23 +288,9 @@ class deteCT(Dataset):
             raise ValueError(f"image_pos must be {default_geo.image_pos}")
 
         full_angles = self.get_default_geometry().angles
-        if not np.array_equal(geometry.angles, full_angles):
-            # I think this is slow, maybe there is abetter way
-
-            for angle in geometry.angles:
-                index = next(
-                    (
-                        i
-                        for i, _ in enumerate(full_angles)
-                        if np.isclose(_, angle, 10e-4)
-                    ),
-                    None,
-                )
-                if index is None:
-                    raise ValueError(
-                        f"Given angles must be part of existing ones. Check the array deteCT.get_default_geometry().angles for the existing angles. The given angle {angle} is not part of the existing angles."
-                    )
-            return True
+        if np.array_equal(geometry.angles, full_angles):
+            return list(range(len(full_angles)))
+        return self._get_angle_indices(full_angles, geometry.angles)
 
     @staticmethod
     def get_default_operator():
@@ -335,7 +323,7 @@ class deteCT(Dataset):
         )
 
     def add_sinogram_noise(self, sinogram, I0, cross_talk=0.05):
-        """
+        r"""
         Add noise to a measured sinogram.
         The reason this data loader has a bestpoke function for this is that the noise is that the
         noise simulator in LION.ct_tools.ct_utils assumes noiseles sinograms in X-ray absobtion.
