@@ -126,12 +126,13 @@ class WalnutDataset(Dataset):
             sinogram = torch.zeros((1, self.__len__(), 768))
             for i in tqdm(range(self.__len__())):
                 parsed_index = parse_index(i)
+                # projection i is row i of the sinogram (angles, detectors)
                 if self.tube_path.joinpath(f"middle_slice_{parsed_index}.pt").is_file():
-                    sinogram[:, :, i] = torch.load(
+                    sinogram[:, i, :] = torch.load(
                         self.tube_path.joinpath(f"middle_slice_{parsed_index}.pt")
                     )
                 else:
-                    sinogram[:, :, i] = self.measurement_transform(
+                    sinogram[:, i, :] = self.measurement_transform(
                         self.tube_path.joinpath(f"scan_{parsed_index}.tif")
                     )[0, 486, :]
             return sinogram
@@ -139,7 +140,7 @@ class WalnutDataset(Dataset):
             sinogram = torch.zeros((1, self.__len__(), 972, 768))
             for i in tqdm(range(self.__len__())):
                 parsed_index = parse_index(i)
-                sinogram[:, :, i] = self.measurement_transform(
+                sinogram[:, i] = self.measurement_transform(
                     self.tube_path.joinpath(f"scan_{parsed_index}.tif")
                 )[0]
             return sinogram
