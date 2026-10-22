@@ -216,6 +216,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             save_folder = pathlib.Path(save_folder)
         elif save_folder is None:
             save_folder = self.save_folder
+        if save_folder is None:
+            raise LIONSolverException(
+                "No folder for the checkpoints: pass save_folder, or call set_saving() first."
+            )
 
         if not save_folder.is_dir():
             raise ValueError(
@@ -354,25 +358,20 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        # Test 14: is the validation filename set? if not, raise error or warn or autofill
-        # (the min-validation model is saved in self.save_folder)
-        if self.final_result_fname is not None and self.save_folder is not None:
-            default_validation_fname = f"{self.final_result_fname}_min_val.pt"
-        else:
-            default_validation_fname = None
-        return_code = max(
-            return_code,
-            self.__check_attribute(
-                "validation_fname",
-                expected_type=str,
-                error=False,
-                autofill=True,
-                verbose=False,
-                default=default_validation_fname,
-            ),
-        )
+        # Test 14: file name of the min-validation model (saved in self.save_folder).
+        # Not needed to validate: without it the model is just not saved.
+        if (
+            self.validation_fname is None
+            and self.final_result_fname is not None
+            and self.save_folder is not None
+        ):
+            self.validation_fname = f"{self.final_result_fname}_min_val.pt"
 
         return return_code
+
+    def _saves_min_validation(self) -> bool:
+        """True if the model with the lowest validation loss can be saved."""
+        return self.validation_fname is not None and self.save_folder is not None
 
     def check_testing_ready(self, error=True, verbose=True):
         return_code = 0
@@ -637,13 +636,14 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             f.unlink()
 
     def test(self):
-        self.model.eval()
         if self.check_testing_ready() != 0:
             warnings.warn("Solver not setup to test. Please call set_testing.")
             return np.array([])
         assert self.test_loader is not None
         assert self.testing_fn is not None
 
+        was_training = self.model.training
+        self.model.eval()
         with torch.no_grad():
             test_loss = np.array([])
             for data, target in tqdm(self.test_loader):
@@ -652,6 +652,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                     test_loss,
                     self.testing_fn(output, target.to(self.device)).cpu().numpy(),
                 )
+        if was_training:
+            self.model.train()
 
         if self.verbose:
             print(
@@ -752,9 +754,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                     f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
                 )
 
-            if self.validation_fname is not None and self.validation_loss[
-                epoch
-            ] <= np.min(self.validation_loss[np.nonzero(self.validation_loss)]):
+            if self._saves_min_validation() and self.validation_loss[epoch] <= np.min(
+                self.validation_loss[np.nonzero(self.validation_loss)]
+            ):
                 self.save_validation(epoch)
         elif self.verbose:
             print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
@@ -768,10 +770,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.check_training_ready()
 
         # Allocate the loss arrays before loading a checkpoint, so that the
-        # loaded values (including the min validation loss) are kept.
-        self.train_loss = np.zeros(n_epochs)
+        # loaded values (including the min validation loss) are kept. Losses of
+        # epochs already trained by this solver (an earlier train() call) are kept.
+        self.train_loss = self._resized(self.train_loss, n_epochs)
         if self.validation_loader is not None and self.check_validation_ready() == 0:
-            self.validation_loss = np.zeros(n_epochs)
+            self.validation_loss = self._resized(self.validation_loss, n_epochs)
+            if not self._saves_min_validation():
+                warnings.warn(
+                    "Validation runs, but the model with the lowest validation loss "
+                    "is not saved: call set_saving() to save it."
+                )
         else:
             self.validation_loss = None
 
@@ -798,7 +806,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
             self.current_epoch += 1
 
-    # Models that need gradients
+    def _resized(self, losses: Optional[np.ndarray], n_epochs: int) -> np.ndarray:
+        """Zeros for n_epochs, keeping the losses of the epochs already trained."""
+        resized = np.zeros(n_epochs)
+        if losses is not None:
+            n = min(len(losses), n_epochs, self.current_epoch)
+            resized[:n] = losses[:n]
+        return resized
 
     def validate(self):
         """

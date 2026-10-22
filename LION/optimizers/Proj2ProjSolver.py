@@ -94,9 +94,9 @@ class Proj2ProjSolver(LIONsolver):
         batch_loss = ((output_sino_mask - target_sino) ** 2).mean()
         return batch_loss
 
-    # No validation in Proj2Proj
-    def validate(self):
-        return 0
+    def _forward(self, data):
+        # validation and testing evaluate the reconstruction
+        return self.reconstruct(data)
 
     def reconstruct(self, sinos):
         input_recon = self.recon_fn(sinos, self.operator)

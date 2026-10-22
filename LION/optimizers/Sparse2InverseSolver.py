@@ -148,9 +148,9 @@ class Sparse2InverseSolver(LIONsolver):
         batch_loss /= total_pixels
         return batch_loss
 
-    # No validation in Sparse2Inverse as it is unsupervised learning
-    def validate(self):
-        return 0
+    def _forward(self, data):
+        # validation and testing evaluate the reconstruction
+        return self.reconstruct(data)
 
     def reconstruct(self, sinos):
         subgroup_recons = self._calculate_noisy_sub_recons(sinos)

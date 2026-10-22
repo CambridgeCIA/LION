@@ -116,43 +116,9 @@ class Noise2InverseSolver(LIONsolver):
 
         return loss.sum() / len(self.cali_J)
 
-    # No validation in Noise2Inverse (is this right?)
-    def validate(self):
-        return 0
-
-    def test(self):
-        """
-        This function performs a testing step
-        """
-        if self.check_testing_ready() != 0:
-            warnings.warn("Solver not setup for testing. Please call set_testing")
-            return np.array([])
-        assert self.test_loader is not None
-        assert self.testing_fn is not None
-
-        was_training = self.model.training
-        self.model.eval()
-
-        # do we want to be able to use this on a trained model? Surely yes?
-        with torch.no_grad():
-            test_loss = np.array([])
-            for sinos, targets in tqdm(self.test_loader):
-                outputs = self.reconstruct(sinos.to(self.device))
-                # same argument order as the training loss: (output, target)
-                test_loss = np.append(
-                    test_loss,
-                    self.testing_fn(outputs, targets.to(self.device)).cpu().numpy(),
-                )
-
-        if self.verbose:
-            print(
-                f"Testing loss: {test_loss.mean()} - Testing loss std: {test_loss.std()}"
-            )
-
-        if was_training:
-            self.model.train()
-
-        return test_loss
+    def _forward(self, data):
+        # validation and testing evaluate the reconstruction
+        return self.reconstruct(data)
 
     def reconstruct(self, sinos):
         noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)  # b, split, c, w, h
