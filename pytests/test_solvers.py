@@ -10,6 +10,7 @@ import itertools
 import pathlib
 import sys
 import types
+import warnings
 
 import numpy as np
 import pytest
@@ -627,3 +628,14 @@ def test_validation_and_test_use_the_reconstruction(fake_ct, tmp_path):
     )
     assert solver.test().shape == (2,)
     assert calls  # the sub-reconstructions were computed
+
+
+def test_warn_if_not_mse():
+    """Noisier2Inverse, Proj2Proj and E2I train with the MSE whatever loss is
+    given (their derivations need it) and say so if it is another one."""
+    with pytest.warns(UserWarning, match="mean squared error"):
+        lion_solver.warn_if_not_mse(torch.nn.L1Loss(), "Proj2ProjSolver")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        lion_solver.warn_if_not_mse(torch.nn.MSELoss(), "Proj2ProjSolver")
+        lion_solver.warn_if_not_mse(None, "Proj2ProjSolver")
