@@ -163,8 +163,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         This function sets the validation data.
 
-        The model with the lowest validation loss is saved as ``validation_fname``
-        in the solver's save folder (see ``set_saving()``).
+        The model with the best validation value is saved as ``validation_fname``
+        in the solver's save folder (see ``set_saving()``). Best is the lowest
+        value, unless ``validation_fn`` has ``higher_is_better = True`` (as
+        LION's PSNR and SSIM metrics do; any function can set it, e.g.
+        ``my_metric.higher_is_better = True``).
         """
         self.validation_loader = validation_loader
         self.validation_freq = validation_freq
@@ -368,6 +371,21 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.validation_fname = f"{self.final_result_fname}_min_val.pt"
 
         return return_code
+
+    def _validation_higher_is_better(self) -> bool:
+        """True if the validation function is a score to maximise (e.g. PSNR, SSIM)."""
+        return bool(getattr(self.validation_fn, "higher_is_better", False))
+
+    def _is_best_validation(self, epoch: int) -> bool:
+        """True if the validation value of ``epoch`` is the best so far.
+
+        Epochs without validation have 0 in ``validation_loss`` and are skipped.
+        """
+        done = self.validation_loss[np.nonzero(self.validation_loss)]
+        value = self.validation_loss[epoch]
+        if self._validation_higher_is_better():
+            return value >= np.max(done)
+        return value <= np.min(done)
 
     def _saves_min_validation(self) -> bool:
         """True if the model with the lowest validation loss can be saved."""
@@ -716,7 +734,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             )
             if self.verbose:
                 print(
-                    f"Loaded checkpoint at epoch {self.current_epoch}. Current min validation loss is {self.validation_loss[self.current_epoch-1]}"
+                    f"Loaded checkpoint at epoch {self.current_epoch}. Current best validation value is {self.validation_loss[self.current_epoch-1]}"
                 )
         return self.current_epoch
 
@@ -754,9 +772,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                     f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
                 )
 
-            if self._saves_min_validation() and self.validation_loss[epoch] <= np.min(
-                self.validation_loss[np.nonzero(self.validation_loss)]
-            ):
+            if self._saves_min_validation() and self._is_best_validation(epoch):
                 self.save_validation(epoch)
         elif self.verbose:
             print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")

@@ -32,6 +32,10 @@ def my_ssim(x: torch.Tensor, y: torch.Tensor):
         return torch.tensor(np.array(vals), dtype=torch.float32)
 
 
+# SSIM is a score: the solver should keep the model with the HIGHEST validation value
+my_ssim.higher_is_better = True
+
+
 # %%
 # % Chose device:
 device = torch.device("cuda:0")

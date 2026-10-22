@@ -10,6 +10,9 @@ from LION.exceptions.exceptions import ShapeMismatchException
 class PSNR(nn.Module):
     """PSNR: A wrapper for skimage.metrics.peak_signal_noise_ratio that operates on (potentially) batched pytorch tensors"""
 
+    # a score, not a loss: solvers keep the model with the highest validation value
+    higher_is_better = True
+
     def __init__(self):
         super().__init__()
 

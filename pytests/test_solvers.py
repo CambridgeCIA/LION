@@ -233,6 +233,49 @@ def test_test_restores_training_mode():
     assert not solver.model.training
 
 
+class Scripted:
+    """A validation function returning the given values, one per validation."""
+
+    def __init__(self, values, higher_is_better=None):
+        self.values = iter(values)
+        if higher_is_better is not None:
+            self.higher_is_better = higher_is_better
+
+    def __call__(self, output, target):
+        return torch.tensor(next(self.values))
+
+
+@pytest.mark.parametrize(
+    "validation_fn, best",
+    [
+        (Scripted([0.5, 0.3, 0.7]), 0.3),  # a loss: lowest is best
+        (Scripted([0.5, 0.9, 0.7], higher_is_better=True), 0.9),  # e.g. SSIM
+    ],
+    ids=["loss", "score"],
+)
+def test_best_validation_model_follows_the_metric_direction(
+    tmp_path, validation_fn, best
+):
+    solver = make_solver()
+    solver.set_training(loader())
+    solver.set_saving(tmp_path, "model")
+    data = loader(n=2, batch_size=2)  # one batch: one value per validation
+    solver.set_validation(data, 1, validation_fn, validation_fname="best.pt")
+    solver.train(3)
+    assert solver.model._read_min_validation(tmp_path / "best.pt") == pytest.approx(
+        best
+    )
+
+
+def test_lion_scores_are_maximised():
+    from LION.metrics.haarpsi import HAARPsi
+    from LION.metrics.psnr import PSNR
+    from LION.metrics.ssim import SSIM
+
+    assert PSNR.higher_is_better and SSIM.higher_is_better and HAARPsi.higher_is_better
+    assert not getattr(torch.nn.MSELoss(), "higher_is_better", False)
+
+
 def _order_check_fn(targets):
     seen = []
 
