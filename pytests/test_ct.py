@@ -357,3 +357,21 @@ def test_itnet_gradient_reaches_the_sinogram():
     sino = op(phantom(geometry)[0]).unsqueeze(0).requires_grad_(True)
     (grad,) = torch.autograd.grad(model(sino).sum(), sino)
     assert torch.isfinite(grad).all() and grad.abs().sum() > 0
+
+
+@pytest.mark.tomosipo
+def test_deepfusionbp_single_view_backprojections_match_the_operator():
+    """The per-angle backprojectors are built from the LION geometry: summed over
+    the angles they give the CT operator's backprojection."""
+    from LION.models.learned_fbp.DeepFusionBP import single_back_projections
+
+    geometry = fan_geometry()
+    geometry.angles = geometry.angles[::10]  # sparse view: 9 angles
+    op = make_operator(geometry)
+    sino = torch.rand(2, 1, len(geometry.angles), geometry.detector_shape[1]).cuda()
+    views = single_back_projections(geometry)(sino)  # (B, angles, H, W)
+    assert views.shape == (2, len(geometry.angles), *geometry.image_shape[1:])
+    expected = torch.stack([op.T(s) for s in sino])  # (B, 1, H, W)
+    torch.testing.assert_close(
+        views.sum(dim=1, keepdim=True), expected, rtol=1e-3, atol=1e-3
+    )

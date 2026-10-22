@@ -81,9 +81,8 @@ class LearnableFilter(Module):
 
 class IntermediateResidualBlock(Module):
     """
-    Depthwise 1D residual block used for angular interpolation.
-    Each channel is processed independently (depthwise convolution),
-    allowing flexible angle-wise feature transformation.
+    Depthwise 1D residual block of the interpolation network. Each projection
+    is processed on its own, along the detector (as in the DeepFBP paper).
     Args:
         channels (int):
             Number of input/output channels (must match).
@@ -125,7 +124,7 @@ class DeepFBPNetwork(LIONmodel):
     Deep Filtered Backprojection Network for CT reconstruction.
     Pipeline:
         - Learnable frequency filter (Ram-Lak based init)
-        - Angular interpolation via depthwise convolutions
+        - Interpolation network, as in DeepFBP (Tan et al. 2024): 1D convolutions along the detector, applied to each projection separately (no mixing across angles)
         - Differentiable backprojection (Tomosipo)
         - Residual CNN-based denoiser
     Args:
@@ -180,18 +179,23 @@ class DeepFBPNetwork(LIONmodel):
         self.denoising_res_2 = DenoisingResidualBlock(64)
         self.denoising_res_3 = DenoisingResidualBlock(64)
         self.denoising_output = Sequential(
-            Conv2d(64, 1, kernel_size=3, padding=1), Hardtanh(0, 1)
+            Conv2d(64, 1, kernel_size=3, padding=1),
+            ReLU(),  # non-negative attenuation; no upper bound
         )
 
     def compute_projection_size_padded(self):
         """
-        Computes the next power-of-two padding size to avoid aliasing.
+        FFT length for the filter: the next power of two of at least twice the
+        number of detectors, so that filtering is not circular (wrap-around).
+        Parameter files from before ``fft_padding_twice_detectors`` existed use
+        the old length, the next power of two of the number of detectors (no
+        padding at all when that is already a power of two).
         """
-
+        n = self.num_detectors
+        if getattr(self.model_parameters, "fft_padding_twice_detectors", False):
+            n = 2 * n
         return 2 ** int(
-            torch.ceil(
-                torch.log2(torch.tensor(self.num_detectors, dtype=torch.float32))
-            ).item()
+            torch.ceil(torch.log2(torch.tensor(n, dtype=torch.float32))).item()
         )
 
     def ram_lak_filter(self, size):
@@ -212,6 +216,8 @@ class DeepFBPNetwork(LIONmodel):
         DFBP_params.filter_type = "Filter I"
         DFBP_params.mode = "ct"
         DFBP_params.model_input_type = ModelInputType.SINOGRAM
+        # zero-pad the projections to >= 2x the detectors before the FFT filter
+        DFBP_params.fft_padding_twice_detectors = True
         DFBP_params.normalizer = True
         return DFBP_params
 
@@ -222,7 +228,7 @@ class DeepFBPNetwork(LIONmodel):
         Runs a forward pass through the DeepFBP pipeline.
         Steps:
             1. Apply learnable frequency-domain filter.
-            2. Perform angular interpolation via 1D convolutions.
+            2. Interpolation network: 1D convolutions along the detector, per projection.
             3. Apply differentiable backprojection using Tomosipo.
             4. Normalize projection output.
             5. Apply residual 2D CNN denoising network.
@@ -231,7 +237,7 @@ class DeepFBPNetwork(LIONmodel):
                 Input sinogram of shape [B, 1, A, D].
         Returns:
             Tensor:
-                Reconstructed image tensor of shape [B, 1, H, W], with pixel values in [0, 1].
+                Reconstructed image tensor of shape [B, 1, H, W], with non-negative values.
         """
 
         # Initial shape: [B, 1, A, D]
