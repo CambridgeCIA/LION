@@ -179,7 +179,9 @@ class LIDC_IDRI(Dataset):
         self.device = self.params.device
 
         if task in ["reconstruction"]:
-            self.image_transform = ct.from_HU_to_mu
+            self.image_transform = (
+                ct.from_HU_to_density
+            )  # g/cm^3 (was from_HU_to_mu, same values)
         if task in ["segmentation"]:
             self.image_transform = ct.from_HU_to_normal
 

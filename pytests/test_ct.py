@@ -13,6 +13,9 @@ import torch
 from LION.classical_algorithms import fdk
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import (
+    WATER_MASS_ATTENUATION,
+    from_HU_to_density,
+    from_HU_to_mu,
     forward_projection,
     from_HU_to_material_id,
     make_operator,
@@ -91,6 +94,51 @@ def test_noise_of_a_sample_does_not_depend_on_its_batch(deterministic_noise, leg
         assert not torch.allclose(alone, in_batch)
     else:
         torch.testing.assert_close(alone, in_batch)
+
+
+@pytest.mark.parametrize("mass_attenuation", [None, WATER_MASS_ATTENUATION[60]])
+def test_noise_free_limit_returns_the_sinogram(deterministic_noise, mass_attenuation):
+    """Without random counts, both models give back the clean line integrals
+    (so the physical scaling converts to attenuation and back consistently)."""
+    torch.manual_seed(0)
+    sino = 300 * torch.rand(2, 1, 20, 30)  # density line integrals, g/cm^3 * mm
+    noisy = sinogram_add_noise(
+        sino, I0=1e6, sigma=0, sigma_blur=1e-3, mass_attenuation=mass_attenuation
+    )
+    torch.testing.assert_close(noisy, sino, rtol=1e-3, atol=1e-2)
+
+
+def test_physical_noise_grows_with_the_object():
+    """Physical model: std of the line integral ~ 1 / (k sqrt(I0 exp(-k p))),
+    k = mu/rho * 0.1 cm/mm; thicker objects transmit fewer photons."""
+    torch.manual_seed(0)
+    k = WATER_MASS_ATTENUATION[60] * 0.1
+    stds = []
+    for p in (100.0, 300.0):  # ~10 and ~30 cm of water
+        sino = torch.full((1, 200, 400), p)
+        noisy = sinogram_add_noise(
+            sino,
+            I0=1e5,
+            sigma=0,
+            sigma_blur=1e-3,
+            mass_attenuation=WATER_MASS_ATTENUATION[60],
+        )
+        expected = 1 / (k * np.sqrt(1e5 * np.exp(-k * p)))
+        assert (noisy - sino).std().item() == pytest.approx(expected, rel=0.1)
+        stds.append((noisy - sino).std().item())
+    assert stds[1] > 3 * stds[0]
+
+
+def test_hu_to_density_and_mu():
+    hu = np.array([-1000.0, 0.0, 500.0])
+    density = from_HU_to_density(hu)
+    np.testing.assert_allclose(density, [0.0012, 1.0137, 1.52], atol=1e-4)
+    # without an energy, from_HU_to_mu keeps returning the density (old behaviour)
+    np.testing.assert_allclose(from_HU_to_mu(hu), density)
+    # with mu/rho: mu in 1/mm; water at 60 keV ~ 0.021 /mm
+    mu = from_HU_to_mu(hu, WATER_MASS_ATTENUATION[60])
+    np.testing.assert_allclose(mu, density * WATER_MASS_ATTENUATION[60] * 0.1)
+    assert mu[1] == pytest.approx(0.0209, abs=1e-4)
 
 
 # --------------------------------------------------------------------------

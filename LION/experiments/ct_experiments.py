@@ -40,8 +40,15 @@ class Experiment(ABC):
             noise = self.param.noise_params
             # parameter files from before legacy_noise_model existed used the old model
             legacy = getattr(noise, "legacy_noise_model", True)
+            # None: relative noise model; mu/rho (cm^2/g): physical (see sinogram_add_noise)
+            mass_attenuation = getattr(noise, "mass_attenuation", None)
             self.sino_fun = lambda sino, I0=noise.I0, sigma=noise.sigma, sigma_blur=noise.sigma_blur: ct.sinogram_add_noise(
-                sino, I0=I0, sigma=sigma, sigma_blur=sigma_blur, legacy=legacy
+                sino,
+                I0=I0,
+                sigma=sigma,
+                sigma_blur=sigma_blur,
+                legacy=legacy,
+                mass_attenuation=mass_attenuation,
             )
 
     @staticmethod
