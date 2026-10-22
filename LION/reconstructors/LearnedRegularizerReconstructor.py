@@ -26,8 +26,9 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
     on its own (a batch is reconstructed sample by sample).
 
     Works with any regulariser R, however it was trained: adversarial (AR),
-    convex (ACR), ... A LIONmodel regulariser is called on a batch of one image
-    and may return a (1, 1) value; any other callable is called on the image as
+    convex (ACR), ... A LIONmodel regulariser is called on a batch of one image,
+    normalised as set by its ``set_normalisation()``, and may return a (1, 1)
+    value; any other callable is called on the image as
     it is (the operator's domain shape). Its output is summed to a scalar.
 
     Parameters
@@ -68,7 +69,9 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
     def regularizer_value(self, x: torch.Tensor) -> torch.Tensor:
         """R(x) as a scalar, for one image ``x`` in the operator's domain shape."""
         if isinstance(self.regularizer, LIONmodel):
-            return self.regularizer(x.unsqueeze(0)).sum()
+            # with the model's normalisation, as in training (identity if unset)
+            x_in = self.regularizer.normalise(x.unsqueeze(0))
+            return self.regularizer(x_in).sum()
         return self.regularizer(x).sum()
 
     def energy(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # numerical imports
 import torch
 from torch.optim.optimizer import Optimizer
@@ -28,7 +30,7 @@ class GaussianDenoiserSolver(LIONsolver):
         model_regularization=None,
         device: torch.device = None,
         save_folder: str = None,
-        noise_level: np.ndarray = np.array([0.05]),
+        noise_level: float | np.ndarray = 0.05,
     ):
 
         super().__init__(
@@ -46,6 +48,7 @@ class GaussianDenoiserSolver(LIONsolver):
         self.patch = None
 
         # Make range of noise levels if noise_level is a single value
+        noise_level = np.atleast_1d(np.asarray(noise_level, dtype=float))
         if noise_level.ndim == 1 and noise_level.shape[0] == 1:
             noise_level = np.array([noise_level[0], noise_level[0]])
         elif noise_level.ndim != 1 or noise_level.shape[0] != 2:
@@ -162,7 +165,7 @@ class GaussianDenoiserSolver(LIONsolver):
 
         if self.verbose:
             print(
-                f"Testing loss: {validation_loss.mean()} - Testing loss std: {validation_loss.std()}"
+                f"Validation loss: {validation_loss.mean()} - Validation loss std: {validation_loss.std()}"
             )
 
         # return to train if it was in train
