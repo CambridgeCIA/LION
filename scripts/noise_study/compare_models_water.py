@@ -121,9 +121,10 @@ def main(energy_keV=60, out=None):
     print(
         "Same total noise, distributed differently: the physical model puts\n"
         "more of it on the most attenuating rays. Where the physical total is\n"
-        "larger than predicted, some rays got so few photons that the counts\n"
-        "were clipped (photon starvation: sinogram_add_noise sets counts <= 0\n"
-        "to 1e-6, a huge line integral); the first-order formula misses that.\n"
+        "larger than predicted, some rays got (almost) no photons: zero counts,\n"
+        "or a detector signal pushed to <= 0 by the electronic noise, which\n"
+        "sinogram_add_noise replaces by 1e-6 before the log (a huge line\n"
+        "integral). The first-order formula misses that.\n"
     )
 
     # Figure: central-ray noise against size, and the equivalent I0

@@ -69,7 +69,14 @@ These limits are shared with most published simulators of this kind:
 - It has no tube-current modulation. Real scanners adapt the dose to the
   patient (AEC), which the relative model imitates crudely and at its
   extreme.
-- Counts at or below 0 are set to 1e-6. Under the physical model this
-  happens on starved rays and creates very large line integrals. LoDoPaB-CT
-  uses a floor of 0.1 photons instead. Whether to change the floor is a
-  separate decision.
+- Photon starvation needs a choice before the log. Photon counts are never
+  negative, but they can be 0. The detector signal that LION simulates (an
+  energy-integrating detector: photons plus Gaussian electronic noise, after
+  the dark field) can be 0 or negative, as real raw data can at ultra-low dose
+  (Ding et al. 2018; Ye et al. 2019). LION replaces every value <= 0 with
+  1e-6. That gives line integrals of log(I0) + 13.8, far beyond any real
+  attenuation, and these become the streaks. LoDoPaB-CT has no electronic
+  noise and replaces 0 photons with 0.1. Scanners apply their own pre-log
+  corrections. The value used sets how strong starvation streaks are.
+  Changing it is a separate decision. It never matters for the relative
+  model, where no ray drops below I0/e.
