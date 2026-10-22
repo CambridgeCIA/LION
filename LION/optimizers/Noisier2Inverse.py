@@ -8,7 +8,7 @@ from LION.models.LIONmodel import LIONmodel
 import torch
 import torch.nn.functional as F
 from torch.optim.optimizer import Optimizer
-from LION.optimizers.LIONsolver import LIONsolver
+from LION.optimizers.LIONsolver import LIONsolver, warn_if_not_mse
 from LION.utils.parameter import LIONParameter
 import tomosipo as ts
 import LION.CTtools.ct_utils as ct_utils
@@ -18,6 +18,14 @@ import torchvision.transforms.functional as TF
 
 
 class Noisier2Inverse(LIONsolver):
+    """Noisier2Inverse.
+
+    The training loss is the mean squared error: the target y - M estimates the
+    clean projections only in the mean-squared sense (the minimiser of the
+    expected MSE is the conditional mean). ``loss_fn`` is only used as the
+    default validation and testing function.
+    """
+
     def __init__(
         self,
         model: LIONmodel,
@@ -37,6 +45,7 @@ class Noisier2Inverse(LIONsolver):
             device,
             solver_params=solver_params,
         )
+        warn_if_not_mse(loss_fn, "Noisier2Inverse")
 
         self.operator = self.op  # the base solver already built it
         self.model.geometry = self.geometry

@@ -54,6 +54,22 @@ class SolverParams(LIONParameter):
         super().__init__()
 
 
+def warn_if_not_mse(loss_fn, solver_name: str):
+    """Warn that ``loss_fn`` is not used by a solver whose loss must be the MSE.
+
+    Some self-supervised losses are only valid for the mean squared error
+    (e.g. their target is a conditional mean), so these solvers use the MSE
+    whatever loss is passed; ``loss_fn`` is still the default validation and
+    testing function.
+    """
+    if loss_fn is not None and not isinstance(loss_fn, torch.nn.MSELoss):
+        warnings.warn(
+            f"{solver_name} trains with the mean squared error, which its derivation "
+            f"requires; the given loss_fn ({type(loss_fn).__name__}) is only used "
+            "as the default validation and testing function."
+        )
+
+
 class LIONsolver(ABC, metaclass=ABCMeta):
     def __init__(
         self,
