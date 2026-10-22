@@ -90,9 +90,9 @@ class Equivariance2InverseSolver(LIONsolver):
         batch_loss += ((output_recon_2 - rotated_output_recon_1) ** 2).mean()
         return batch_loss
 
-    # No validation in E2I
-    def validate(self):
-        return 0
+    def _forward(self, data):
+        # validation and testing evaluate the reconstruction
+        return self.reconstruct(data)
 
     def reconstruct(self, sinos):
         input_recon = self.recon_fn(sinos, self.operator)

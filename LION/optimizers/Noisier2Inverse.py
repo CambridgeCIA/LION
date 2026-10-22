@@ -75,9 +75,9 @@ class Noisier2Inverse(LIONsolver):
         batch_loss = ((output_sino - target_sino) ** 2).mean()
         return batch_loss
 
-    # No validation in Noisier2Inverse
-    def validate(self):
-        return 0
+    def _forward(self, data):
+        # validation and testing evaluate the reconstruction
+        return self.reconstruct(data)
 
     def reconstruct(self, sinos):
         input_recon = self.recon_fn(sinos, self.operator)

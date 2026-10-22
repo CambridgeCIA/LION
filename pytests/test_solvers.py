@@ -21,6 +21,7 @@ import LION.optimizers.AdversarialRegularizerSolver as ar_module
 import LION.optimizers.LIONsolver as lion_solver
 import LION.optimizers.SupervisedSolver as supervised_solver
 from LION.CTtools.ct_geometry import Geometry
+from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.operators import Operator
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver
@@ -155,6 +156,23 @@ def test_train_without_checkpointing(tmp_path):
     assert not list(tmp_path.iterdir())
 
 
+def test_train_twice_keeps_the_loss_history():
+    solver = make_solver()
+    solver.set_training(loader())
+    solver.train(2)
+    first = solver.train_loss.copy()
+    solver.train(3)  # one more epoch
+    assert solver.current_epoch == 3
+    np.testing.assert_array_equal(solver.train_loss[:2], first)
+    assert solver.train_loss[2] > 0
+
+
+def test_checkpointing_needs_a_folder():
+    solver = make_solver()
+    with pytest.raises(LIONSolverException, match="set_saving"):
+        solver.set_checkpointing("model_check_*.pt")
+
+
 def test_min_validation_model_lives_in_save_folder(tmp_path):
     # checkpoints may go elsewhere; the min-validation model is in save_folder
     checkpoints = tmp_path / "checkpoints"
@@ -192,6 +210,27 @@ def test_validation_runs_for_all_input_types(tmp_path, input_type):
     losses = solver._validation_loop()
     assert losses.shape == (3,)  # one value per batch
     assert solver.validate() > 0
+
+
+def test_validation_runs_without_set_saving():
+    solver = make_solver()
+    solver.set_training(loader())
+    solver.set_validation(loader(seed=1), validation_freq=1)
+    with pytest.warns(UserWarning, match="not saved"):
+        solver.train(2)
+    assert solver.validation_loss is not None
+    assert (solver.validation_loss > 0).all()
+
+
+def test_test_restores_training_mode():
+    solver = make_solver()
+    solver.set_testing(loader())
+    solver.model.train()
+    solver.test()
+    assert solver.model.training
+    solver.model.eval()
+    solver.test()
+    assert not solver.model.training
 
 
 def _order_check_fn(targets):
@@ -492,3 +531,29 @@ def test_training_step_uses_each_combination(fake_ct, monkeypatch, splits, input
     n_combinations = len(list(itertools.combinations(range(splits), inputs)))
     assert len(calls) == n_combinations * inputs
     assert all(n == 360 // splits for n in calls)
+
+
+def test_validation_and_test_use_the_reconstruction(fake_ct, tmp_path):
+    """Self-supervised solvers validate and test their reconstruct() output
+    (they used to return 0 from validate(), which crashed train())."""
+    geometry = Geometry.default_parameters()
+    geometry.image_shape = [1, 8, 8]
+    calls = []
+
+    def recon_fn(sub_sino, op):
+        calls.append(sub_sino.shape)
+        return sub_sino.mean() * torch.ones(sub_sino.shape[0], 1, 8, 8)
+
+    solver = make_s2i_solver(4, geometry, 2, recon_fn=recon_fn)
+    sinos, images = torch.rand(4, 1, 360, 8), torch.rand(4, 1, 8, 8)
+    data = DataLoader(TensorDataset(sinos, images), batch_size=2)
+    solver.set_saving(tmp_path, "model")
+    solver.set_validation(data, validation_freq=1)
+    solver.set_testing(data)
+
+    assert solver.validate() > 0
+    torch.testing.assert_close(
+        solver._forward(sinos[:2]), solver.reconstruct(sinos[:2])
+    )
+    assert solver.test().shape == (2,)
+    assert calls  # the sub-reconstructions were computed
