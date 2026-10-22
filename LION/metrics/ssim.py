@@ -9,6 +9,9 @@ from LION.exceptions.exceptions import ShapeMismatchException
 class SSIM(nn.Module):
     """SSIM: A wrapper for skimage.metrics.structural_similarity that operates on (potentially) batched pytorch tensors"""
 
+    # a score, not a loss: solvers keep the model with the highest validation value
+    higher_is_better = True
+
     def __init__(self):
         super().__init__()
 

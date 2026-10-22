@@ -3,6 +3,9 @@ import torch.nn as nn
 
 
 class HAARPsi(nn.Module):
+    # a similarity score: higher is better
+    higher_is_better = True
+
     def __init__(self, preprocess_with_subsampling: bool = True, C=30.0, a=4.2):
         """
         This is a Python PyTorch implementation of the HaarPSI algorithm as presented in "A Haar wavelet-based perceptual similarity index for image quality assessment" by Rafael Reisenhofer, Sebastian Bosse, Gitta Kutyniok and Thomas Wiegand.
