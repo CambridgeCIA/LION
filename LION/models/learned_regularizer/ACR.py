@@ -78,11 +78,11 @@ class L2net(nn.Module):
 class ACR(LIONmodel):
     def __init__(
         self,
-        geometry_parameters: Optional[ct.Geometry] = None,
+        geometry: Optional[ct.Geometry] = None,
         model_parameters: Optional[LIONModelParameter] = None,
     ):
 
-        super().__init__(model_parameters, geometry_parameters)
+        super().__init__(model_parameters, geometry)
         params = self.model_parameters  # defaults filled in by LIONmodel
         # First Conv
         self.first_layer = nn.Conv2d(

@@ -6,6 +6,7 @@
 # =============================================================================
 
 import torch
+from LION.models.LIONmodel import ModelInputType
 from LION.models.post_processing.FBPConvNet import FBPConvNet
 
 
@@ -13,6 +14,12 @@ class FBPConvNetImage(FBPConvNet):
     """
     FBPConvNet that takes a pre-computed FBP image as input instead of calling FDK inside the forward pass.
     """
+
+    @staticmethod
+    def default_parameters():
+        params = FBPConvNet.default_parameters()
+        params.model_input_type = ModelInputType.IMAGE  # it takes images, not sinograms
+        return params
 
     def forward(self, image):
 

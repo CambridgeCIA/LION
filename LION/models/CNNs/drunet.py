@@ -83,10 +83,9 @@ class DRUNet(LIONmodel):
 
         model_parameters = self.model_parameters
 
-        if self.model_parameters.act.lower() in dict(
-            getmembers(torch.nn.functional, isfunction)
-        ):
-            self._act = torch.nn.functional.__dict__[self.model_parameters.act]
+        act = self.model_parameters.act.lower()
+        if act in dict(getmembers(torch.nn.functional, isfunction)):
+            self._act = torch.nn.functional.__dict__[act]
         else:
             raise ValueError(
                 f"`torch.nn.functional` does not export a function '{self.model_parameters.act}'."
@@ -274,7 +273,8 @@ class DRUNet(LIONmodel):
             ), "`noise_level` must be a non-negative float, instead got: " + str(
                 type(noise_level)
             )
-            x0 = torch.cat((x0, noise_level * torch.ones_like(x0)), dim=1)
+            # one extra input channel holding the noise level
+            x0 = torch.cat((x0, noise_level * torch.ones_like(x0[:, :1])), dim=1)
         x1 = self.lift(x0)
         x2 = self.down1(x1)
         x3 = self.down2(x2)

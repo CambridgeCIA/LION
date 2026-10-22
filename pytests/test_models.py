@@ -8,15 +8,19 @@ import torch
 import LION.models.iterative_unrolled.ItNet as itnet_module
 from LION.CTtools.ct_geometry import Geometry
 from LION.models.CNNs.dncnn import DnCNN
+from LION.models.CNNs.drunet import DRUNet
 from LION.models.CNNs.MSDNet import MSDNet
 from LION.models.CNNs.UNets.ResUNet3D import ResUNet3D
 from LION.models.CNNs.UNets.Unet import UNet
 from LION.models.iterative_unrolled.ItNet import ItNet
 from LION.models.learned_regularizer.ACR import ACR
+from LION.models.learned_regularizer.AR import AR
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
+from LION.models.post_processing.FBPConvNet import FBPConvNet
+from LION.models.post_processing.FBPConvNetImage import FBPConvNetImage
 from LION.models.post_processing.FBPMSDNet import FBPMSDNet
 from LION.utils.parameter import LIONParameter
-from pytests.helpers import small_gsd, small_gsdrunet
+from pytests.helpers import ImageMatrixOp, small_gsd, small_gsdrunet
 
 # Saving a model without geometry warns about it; that is expected for DnCNN.
 pytestmark = pytest.mark.filterwarnings("ignore:Expected 'geometry' parameter")
@@ -211,6 +215,75 @@ def test_save_does_not_change_model_parameters(tmp_path):
     _save(model, tmp_path / "model")
     assert isinstance(model.model_parameters.extra, LIONParameter)
     assert model.model_parameters.extra.depth == 2
+
+
+def small_geometry(n=16):
+    geometry = Geometry.default_parameters()
+    geometry.image_shape = [1, n, n]
+    return geometry
+
+
+def small_fbpmsdnet_params():
+    params = FBPMSDNet.default_parameters()
+    params.depth, params.dilations = 2, [1, 2]
+    return params
+
+
+@ignore_warnings
+@pytest.mark.parametrize(
+    "make_model",
+    [
+        lambda: AR(AR.default_parameters(), small_geometry()),
+        lambda: ACR(small_geometry()),
+        lambda: FBPMSDNet(small_fbpmsdnet_params(), small_geometry()),
+    ],
+    ids=["AR", "ACR", "FBPMSDNet"],
+)
+def test_models_with_geometry_load(monkeypatch, tmp_path, make_model):
+    """load() passes the saved geometry as `geometry=`: every model must call
+    its geometry argument that."""
+    # a stand-in CT operator (identity on 16x16 images), so no tomosipo is needed
+    op = ImageMatrixOp(torch.eye(16 * 16), (1, 16, 16))
+    monkeypatch.setattr(
+        LIONmodel, "_make_operator", lambda self: setattr(self, "op", op)
+    )
+    model = make_model()
+    _save(model, tmp_path / "model")
+    loaded, _, _ = type(model).load(tmp_path / "model", supress_warnings=True)
+    assert list(loaded.geometry.image_shape) == [1, 16, 16]
+    for key, value in model.state_dict().items():
+        torch.testing.assert_close(loaded.state_dict()[key].cpu(), value.cpu())
+
+
+@pytest.mark.parametrize("shape", [(512, 512), (362, 362), (100, 60)])
+def test_ar_any_image_size(shape):
+    geometry = Geometry.default_parameters()
+    geometry.image_shape = [1, *shape]
+    model = AR(AR.default_parameters(), geometry)
+    assert model(torch.rand(2, 1, *shape)).shape == (2, 1)
+    if shape == (512, 512):  # same layer as before for multiples of 16
+        assert model.fc[0].in_features == 128 * 32 * 32
+
+
+def test_fbpconvnet_image_takes_images():
+    assert FBPConvNetImage.default_parameters().model_input_type is ModelInputType.IMAGE
+    assert FBPConvNet.default_parameters().model_input_type is ModelInputType.SINOGRAM
+
+
+def test_drunet_noise_level_with_several_channels():
+    params = DRUNet.default_parameters()
+    params.in_channels = params.out_channels = 3
+    params.use_noise_level = True
+    params.int_channels, params.n_blocks = 8, 1
+    out = DRUNet(params)(torch.rand(2, 3, 16, 16), noise_level=0.1)
+    assert out.shape == (2, 3, 16, 16)
+
+
+@pytest.mark.parametrize("model_class", [DRUNet, DnCNN])
+def test_activation_name_is_case_insensitive(model_class):
+    params = model_class.default_parameters()
+    params.act = "Leaky_ReLU"
+    model_class(params)
 
 
 # --------------------------------------------------------------------------

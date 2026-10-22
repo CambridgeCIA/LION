@@ -19,10 +19,9 @@ class DnCNN(LIONmodel):
 
         model_parameters = self.model_parameters
 
-        if model_parameters.act.lower() in dict(
-            getmembers(torch.nn.functional, isfunction)
-        ):
-            self._act = torch.nn.functional.__dict__[model_parameters.act]
+        act = model_parameters.act.lower()
+        if act in dict(getmembers(torch.nn.functional, isfunction)):
+            self._act = torch.nn.functional.__dict__[act]
         else:
             raise ValueError(
                 f"`torch.nn.functional` does not export a function '{model_parameters.act}'."

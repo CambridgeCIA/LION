@@ -7,13 +7,9 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 
 class FBPMSDNet(LIONmodel):
-    def __init__(
-        self, model_parameters: LIONModelParameter | None, geometry_parameters: Geometry
-    ):
-        assert (
-            geometry_parameters is not None
-        ), "Geometry parameters are required for FBPMSDNet"
-        super().__init__(model_parameters, geometry_parameters)
+    def __init__(self, model_parameters: LIONModelParameter | None, geometry: Geometry):
+        assert geometry is not None, "Geometry parameters are required for FBPMSDNet"
+        super().__init__(model_parameters, geometry)
         self.net = MSDNet(self.model_parameters)
         self._make_operator()
 

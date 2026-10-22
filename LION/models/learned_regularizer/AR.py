@@ -10,10 +10,8 @@ import LION.CTtools.ct_geometry as ct
 
 
 class AR(LIONmodel):
-    def __init__(
-        self, model_parameters: LIONModelParameter, geometry_parametrs: ct.Geometry
-    ):
-        super().__init__(model_parameters, geometry_parametrs)
+    def __init__(self, model_parameters: LIONModelParameter, geometry: ct.Geometry):
+        super().__init__(model_parameters, geometry)
 
         self.leaky_relu = nn.LeakyReLU()
         self.convnet = nn.Sequential(
@@ -31,9 +29,12 @@ class AR(LIONmodel):
             self.leaky_relu,
         )
 
-        size = self.geometry.image_shape[-1]
+        # each of the 4 stride-2 convolutions (kernel 5, padding 2) maps n to ceil(n / 2)
+        height, width = self.geometry.image_shape[-2:]
+        for _ in range(4):
+            height, width = (height + 1) // 2, (width + 1) // 2
         self.fc = nn.Sequential(
-            nn.Linear(128 * (size // 2**4) ** 2, 256),
+            nn.Linear(128 * height * width, 256),
             self.leaky_relu,
             nn.Linear(256, 1),
         )
