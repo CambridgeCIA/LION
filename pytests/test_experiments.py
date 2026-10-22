@@ -114,14 +114,14 @@ def test_detect_length_is_the_number_of_slices(tmp_path, query):
 # experiment -> (number of the 3600 measured angles used, input mode); None: not possible
 ON_2DETECT = {
     "clinicalCTRecon": (3600, "mode2"),
-    "LowDoseCTRecon": (3600, "mode1"),
-    "ExtremeLowDoseCTRecon": None,
+    "LowDoseCTRecon": None,
+    "ExtremeLowDoseCTRecon": (3600, "mode1"),
     "SparseAngleCTRecon": (50, "mode2"),
-    "SparseAngleLowDoseCTRecon": (50, "mode1"),
-    "SparseAngleExtremeLowDoseCTRecon": None,
+    "SparseAngleLowDoseCTRecon": None,
+    "SparseAngleExtremeLowDoseCTRecon": (50, "mode1"),
     "LimitedAngleCTRecon": (60, "mode2"),
-    "LimitedAngleLowDoseCTRecon": (60, "mode1"),
-    "LimitedAngleExtremeLowDoseCTRecon": None,
+    "LimitedAngleLowDoseCTRecon": None,
+    "LimitedAngleExtremeLowDoseCTRecon": (60, "mode1"),
 }
 
 
@@ -152,19 +152,19 @@ def test_ct_experiments_on_2detect(cls):
 @pytest.mark.filterwarnings("ignore:You are not using any detector query")
 def test_2detect_experiment_builds_its_datasets(tmp_path):
     write_fake_detect_record(tmp_path)
-    experiment = ct_experiments.SparseAngleLowDoseCTRecon(
+    experiment = ct_experiments.SparseAngleExtremeLowDoseCTRecon(
         dataset="2DeteCT", datafolder=tmp_path
     )
     dataset = experiment.get_training_dataset()
     assert len(dataset.angle_index) == 50 and dataset.input_mode == "mode1"
 
-    params = ct_experiments.LowDoseCTRecon.default_parameters(dataset="2DeteCT")
+    params = ct_experiments.clinicalCTRecon.default_parameters(dataset="2DeteCT")
     params.noise_params = (
         ct_experiments.LowDoseCTRecon.default_parameters().noise_params
     )
     params.data_loader_params.path_to_dataset = tmp_path
     with pytest.raises(ValueError, match="measured data"):
-        ct_experiments.LowDoseCTRecon(params, dataset="2DeteCT").get_training_dataset()
+        ct_experiments.clinicalCTRecon(params, dataset="2DeteCT").get_training_dataset()
 
 
 # --------------------------------------------------------------------------

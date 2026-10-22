@@ -89,10 +89,11 @@ class Experiment(ABC):
         Its geometry is fixed by the scan (3600 angles over 360 degrees), so an
         experiment can only select some of the measured angles (``angles``, an
         index or slice into them). Dose levels are measured modes: "clinical"
-        uses mode2 sinograms, "low" the low-dose mode1 ones; the targets are
+        uses mode2 sinograms, "extremely_low" the low-dose mode1 ones (3 W
+        instead of 90 W tube power, ~30x less); the targets are
         mode2 reconstructions. There is no noise to simulate.
         """
-        input_modes = {"clinical": "mode2", "low": "mode1"}
+        input_modes = {"clinical": "mode2", "extremely_low": "mode1"}
         if dose not in input_modes:
             raise ValueError(
                 f"2DeteCT has measured data for the doses {list(input_modes)}, not {dose!r}"
@@ -142,9 +143,10 @@ class ExtremeLowDoseCTRecon(Experiment):
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
         if dataset == "2DeteCT":
-            Experiment.not_possible_with_2detect(
+            return Experiment.measured_2detect_parameters(
                 "Extremely low dose full angular sampling experiment",
-                "there is no measured mode with an extremely low dose",
+                angles=slice(None),
+                dose="extremely_low",
             )
         param = LIONParameter()
         param.name = "Extremely low dose full angular sampling experiment"
@@ -172,10 +174,10 @@ class LowDoseCTRecon(Experiment):
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
         if dataset == "2DeteCT":
-            return Experiment.measured_2detect_parameters(
+            Experiment.not_possible_with_2detect(
                 "Low dose full angular sampling experiment",
-                angles=slice(None),
-                dose="low",
+                "its measured low-dose mode (mode1, ~30x less tube power) is used "
+                "for the extremely low dose experiments",
             )
         param = LIONParameter()
         param.name = "Low dose full angular sampling experiment"
@@ -234,11 +236,11 @@ class LimitedAngleLowDoseCTRecon(Experiment):
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
         if dataset == "2DeteCT":
-            return Experiment.measured_2detect_parameters(
+            Experiment.not_possible_with_2detect(
                 "Low dose limited angular sampling experiment",
-                angles=slice(0, 600, 10),
-                dose="low",
-            )  # 60 views over 60 degrees
+                "its measured low-dose mode (mode1, ~30x less tube power) is used "
+                "for the extremely low dose experiments",
+            )
         param = LIONParameter()
         param.name = "Low dose limited angular sampling experiment"
         # Parameters for the geometry
@@ -269,10 +271,11 @@ class LimitedAngleExtremeLowDoseCTRecon(Experiment):
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
         if dataset == "2DeteCT":
-            Experiment.not_possible_with_2detect(
+            return Experiment.measured_2detect_parameters(
                 "Extremely low dose limited angular sampling experiment",
-                "there is no measured mode with an extremely low dose",
-            )
+                angles=slice(0, 600, 10),
+                dose="extremely_low",
+            )  # 60 views over 60 degrees
         param = LIONParameter()
         param.name = "Extremely low dose limited angular sampling experiment"
         # Parameters for the geometry
@@ -335,11 +338,11 @@ class SparseAngleLowDoseCTRecon(Experiment):
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
         if dataset == "2DeteCT":
-            return Experiment.measured_2detect_parameters(
+            Experiment.not_possible_with_2detect(
                 "Low dose sparse angular sampling experiment",
-                angles=slice(None, None, 72),
-                dose="low",
-            )  # 50 views, every 7.2 degrees
+                "its measured low-dose mode (mode1, ~30x less tube power) is used "
+                "for the extremely low dose experiments",
+            )
         param = LIONParameter()
         param.name = "Low dose sparse angular sampling experiment"
         # Parameters for the geometry
@@ -370,10 +373,11 @@ class SparseAngleExtremeLowDoseCTRecon(Experiment):
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
         if dataset == "2DeteCT":
-            Experiment.not_possible_with_2detect(
+            return Experiment.measured_2detect_parameters(
                 "Extremely low dose sparse angular sampling experiment",
-                "there is no measured mode with an extremely low dose",
-            )
+                angles=slice(None, None, 72),
+                dose="extremely_low",
+            )  # 50 views, every 7.2 degrees
         param = LIONParameter()
         param.name = "Extremely low dose sparse angular sampling experiment"
         # Parameters for the geometry
