@@ -58,6 +58,41 @@ def test_less_noise_with_more_photons(clean_sino):
     assert (high - clean_sino).abs().mean() < (low - clean_sino).abs().mean()
 
 
+@pytest.fixture
+def deterministic_noise(monkeypatch):
+    """No random counts: Poisson returns its mean, electronic noise is zero,
+    so only the cross-talk blur and the scaling of the line integrals remain."""
+    monkeypatch.setattr(torch, "poisson", lambda x: x.clone())
+    monkeypatch.setattr(torch, "randn", lambda *shape, **kw: torch.zeros(*shape, **kw))
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_crosstalk_is_along_the_detector(deterministic_noise, legacy):
+    sino = torch.zeros(1, 9, 9)
+    sino[0, 4, 4] = 1.0  # one bright detector pixel in one projection
+    noisy = sinogram_add_noise(sino, I0=1e4, sigma=0, sigma_blur=1.0, legacy=legacy)
+    assert noisy[0, 4, 3] > 1e-3  # neighbouring detector pixel, same angle
+    other_angle = noisy[0, 3, 4]
+    if legacy:  # the old model also blurred into the neighbouring angle
+        assert other_angle > 1e-3
+    else:
+        assert other_angle < 1e-5  # (float32 rounding of log(exp(0)))
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_noise_of_a_sample_does_not_depend_on_its_batch(deterministic_noise, legacy):
+    torch.manual_seed(0)
+    a, b = torch.rand(1, 20, 30), 5 * torch.rand(1, 20, 30)  # b has a larger maximum
+    alone = sinogram_add_noise(a.unsqueeze(0), I0=1e3, sigma=0, legacy=legacy)[0]
+    in_batch = sinogram_add_noise(torch.stack([a, b]), I0=1e3, sigma=0, legacy=legacy)[
+        0
+    ]
+    if legacy:  # scaled by the maximum of the whole batch
+        assert not torch.allclose(alone, in_batch)
+    else:
+        torch.testing.assert_close(alone, in_batch)
+
+
 # --------------------------------------------------------------------------
 # HU conversions
 

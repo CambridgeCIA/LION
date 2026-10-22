@@ -60,20 +60,27 @@ def sinogram_add_noise(
     flat_field=None,
     dark_field=None,
     enable_gradients=False,
+    legacy=False,
 ):
     """
-    Wraper for _sinogram_add_noise to support gradients
+    Adds realistic noise to sinograms (see _sinogram_add_noise), with or
+    without gradients.
+
+    legacy=True reproduces the noise of LION before October 2026: detector
+    cross-talk blurred across neighbouring angles as well as detectors, and
+    the attenuation scaled by the maximum of the whole input (so in a batch,
+    each sample's noise depended on the others).
     """
     if enable_gradients:
         sino = _sinogram_add_noise(
-            proj, I0, sigma, sigma_blur, ks_value, flat_field, dark_field
+            proj, I0, sigma, sigma_blur, ks_value, flat_field, dark_field, legacy
         )
     else:
         if torch.is_tensor(proj):
             proj = proj.detach()
         with torch.no_grad():
             sino = _sinogram_add_noise(
-                proj, I0, sigma, sigma_blur, ks_value, flat_field, dark_field
+                proj, I0, sigma, sigma_blur, ks_value, flat_field, dark_field, legacy
             )
     return sino
 
@@ -86,13 +93,18 @@ def _sinogram_add_noise(
     ks_value=3,
     flat_field=None,
     dark_field=None,
+    legacy=False,
 ):
     """
-    Adds realistic noise to sinograms.
+    Adds realistic noise to sinograms, (C, angles, detectors) or batched
+    (B, C, angles, detectors).
     - Poisson noise, with I0 counts in a scanner with no sample (bigger value==less noise)
     - Gaussian noise of zero mean and sigma std
-    - Detector crosstalk in % of the signal of adjacent pixels.
+    - Detector crosstalk: a Gaussian blur (std sigma_blur pixels) along the detector,
+      within each projection.
     - Add a flat_field to add even more realistic noise (computed at non-corrected flat fields)
+    The line integrals are scaled by the maximum of each sample before applying I0.
+    See sinogram_add_noise for ``legacy``.
     """
     if torch.is_tensor(proj):
         istorch = True
@@ -107,11 +119,13 @@ def _sinogram_add_noise(
         dark_field = torch.zeros(proj.shape, device=dev)
     if flat_field is None:
         flat_field = torch.ones(proj.shape, device=dev)
-    max_val = torch.amax(
-        proj
-    )  # alternatively the highest power of 2 close to this value, but lets leave it as is.
-    if max_val <= 0:
-        max_val = 1.0
+    # Scale of the line integrals: the maximum of each sample (alternatively the
+    # highest power of 2 close to this value, but lets leave it as is).
+    if proj.dim() == 4 and not legacy:
+        max_val = torch.amax(proj, dim=(1, 2, 3), keepdim=True)
+    else:  # one sample (or, legacy, the whole batch)
+        max_val = torch.amax(proj)
+    max_val = torch.where(max_val <= 0, torch.ones_like(max_val), max_val)
     Im = I0 * torch.exp(-proj / max_val)
 
     # Uncorrect the flat fields
@@ -124,7 +138,10 @@ def _sinogram_add_noise(
     ks = int(sigma_blur * ks_value) * 2 + 1
     if ks < 3:
         ks = 3
-    Im = TF.gaussian_blur(Im, kernel_size=[ks, ks], sigma=[sigma_blur, sigma_blur])
+    if legacy:  # blurred across neighbouring angles too
+        Im = TF.gaussian_blur(Im, kernel_size=[ks, ks], sigma=[sigma_blur, sigma_blur])
+    else:  # kernel [width, height]: along the detector (last axis) only
+        Im = TF.gaussian_blur(Im, kernel_size=[ks, 1], sigma=[sigma_blur, 1.0])
 
     # Electronic noise:
     Im = Im + sigma * torch.randn(Im.shape, device=dev)
