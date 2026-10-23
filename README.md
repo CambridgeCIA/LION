@@ -21,11 +21,15 @@ cd LION
 git submodule update --init --recursive            # Legacy: for MSD_pytorch_
 conda env create --file=env_base.yml --name=lion   # You can change 'lion' to a different env name
 conda activate lion
-python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install .
 ```
 
-To change CUDA version, update the `python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128` line as well as the ` cuda-version=12.8` specified in `env_base.yml`.
+With mamba, use `mamba env create --file=env_base.yml --name=lion` and `mamba activate lion` instead; the rest is the same.
+
+Everything compiled, torch included, comes from conda (`env_base.yml`), so all of it uses the same C++ runtime. Don't install torch with pip on top: a pip torch loads the system's C++ runtime, and conda's libraries (scipy, ...) then fail with `CXXABI_... not found` on machines with an older system. Create the environment fresh from `env_base.yml` rather than updating an old one.
+
+- **CUDA version**: set by `cuda-version` in `env_base.yml` (12.9). Any CUDA 12 driver runs it (`nvidia-smi` shows the driver's CUDA version).
+- **No GPU on the machine where you create the environment** (e.g. a login node): conda cannot see a CUDA driver and refuses `pytorch-gpu`. Tell it which CUDA to assume: `CONDA_OVERRIDE_CUDA=12.9 conda env create --file=env_base.yml --name=lion`.
 
 If you would like to contribute to the development of LION, you can replace the last line of the above set of commands by
 
@@ -33,7 +37,7 @@ If you would like to contribute to the development of LION, you can replace the 
 pip install -e ".[dev]"
 ```
 
-to make the installation editable (i.e. changes you make to the source will be visible when you restart the REPL or start a new Python process) and include additional development dependencies like `pre-commit`.
+to make the installation editable (i.e. changes you make to the source will be visible when you restart the REPL or start a new Python process) and include additional development dependencies like `pre-commit` and `pytest-xdist`.
 Afterwards, install the pre-commit hooks for auto-formating your commits. We use Black for code formatting (see [.pre-commit-config.yaml](.pre-commit-config.yaml)):
 
 ```

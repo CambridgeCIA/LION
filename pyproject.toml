@@ -38,8 +38,9 @@ dependencies = [
     # The followings are currently set to prefer newer versions (make sure they don't conflict with the ones above)
     # Most libraries are installed by conda (env_base.yml), see #181. For a pip-only
     # install use the `standalone` extra below: pip install ".[standalone]"
-    # "deepinv",  # pretrained DRUNet
-    # "lightning",
+    # Libraries that depend on torch are installed here, by pip, after torch (README):
+    # from conda they would bring a second, CPU-only pytorch (and MKL) into the env.
+    "kornia",  # LION/optimizers/GaussianDenoiserSolver.py
     "mlflow",
     "mrpro",
     # "opencv-python",
@@ -50,7 +51,7 @@ dependencies = [
     "pytorch-wavelets",  # Wavelet transforms for PyTorch (TODO: switch to ptwt)
     "rich",
     "spyrit",  # Fast Walsh-Hadamard Transform
-    # "torchmetrics",
+    "torchdiffeq",  # LION/models/post_processing/cFBPConvNet.py, iterative_unrolled/cLPD.py
     "tqdm",
     "tyro",
     "LION[codestyle]",
@@ -63,7 +64,6 @@ dependencies = [
 standalone = [
     "h5py",  # LION/data_loaders/LUNA16
     "imageio",  # LION/data_loaders/2deteCT
-    "kornia",  # LION/optimizers/GaussianDenoiserSolver.py
     "matplotlib",
     "natsort",  # LION/data_loaders/LUNA16
     "numpy<2.5",  # numpy 2.5 (and above) breaks spgl1 0.0.3 (currently latest version)
@@ -76,8 +76,12 @@ standalone = [
     "spgl1",  # SPGL1 solver, imported by LION.classical_algorithms
     "tifffile",  # LION/data_loaders/LUNA16
     "torch",
-    "torchdiffeq",  # LION/models/iterative_unrolled/cLPD.py
     "torchvision",  # LION/CTtools
+]
+# Used by some example scripts only (scripts/example_scripts)
+examples = [
+    "deepinv",  # PnP_ADMM.py, photocurrent_mapping.py: pretrained DRUNet
+    "torchmetrics",  # photocurrent_mapping.py
 ]
 codestyle = [
     "jaxtyping",
@@ -111,7 +115,7 @@ notebooks = [
 ci = [
     "pre-commit",
 ]
-dev = ["LION[tests, docs, ci]"]
+dev = ["LION[tests, docs, ci, examples]"]
 
 # PyTest section
 [tool.pytest.ini_options]
