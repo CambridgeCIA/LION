@@ -9,7 +9,7 @@ import types
 import numpy as np
 import pytest
 import torch
-from LION.classical_algorithms import fdk
+from LION.classical_algorithms.fdk import fdk
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import (
     forward_projection,
@@ -18,7 +18,8 @@ from LION.CTtools.ct_utils import (
     sinogram_add_noise,
 )
 from LION.operators.CTProjectionOp import CTProjectionOp
-from LION.utils.tests_helper import dotproduct_adjointness_test
+
+from pytests.helper import dotproduct_adjointness_test
 
 try:
     from tomosipo.torch_support import to_autograd

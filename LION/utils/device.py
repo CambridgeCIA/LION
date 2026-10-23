@@ -15,7 +15,7 @@ from __future__ import annotations
 import torch
 
 
-def default_device() -> torch.device:
+def default_device(device_name: str = "auto") -> torch.device:
     """Return the device LION uses when no device is given.
 
     In order of priority:
@@ -23,8 +23,11 @@ def default_device() -> torch.device:
     1. ``torch.set_default_device(...)``, if set to anything other than the CPU;
     2. the current CUDA device (``torch.cuda.set_device(k)``, cuda:0 by default),
        if CUDA is available;
-    3. the CPU.
+    3. the MPS device, if available (Apple Silicon);
+    4. the CPU.
     """
+    if device_name != "auto":
+        return torch.device(device_name)
     get_default = getattr(torch, "get_default_device", None)  # torch >= 2.3
     if get_default is not None:
         device = get_default()
@@ -34,4 +37,6 @@ def default_device() -> torch.device:
             return device
     if torch.cuda.is_available():
         return torch.device("cuda", torch.cuda.current_device())
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
     return torch.device("cpu")

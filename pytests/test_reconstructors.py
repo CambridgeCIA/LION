@@ -2,8 +2,12 @@
 
 import pytest
 import torch
+from LION.reconstructors.LearnedRegularizerReconstructor import (
+    LearnedRegularizerReconstructor,
+    estimate_alpha,
+)
+from LION.reconstructors.PnP import PnP
 
-from LION.reconstructors import LearnedRegularizerReconstructor, PnP, estimate_alpha
 from pytests.helpers import ImageMatrixOp, small_dncnn
 
 # --------------------------------------------------------------------------
