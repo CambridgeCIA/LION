@@ -330,18 +330,47 @@ def test_differentiable_matches_default(geometry, clip):
 
 @pytest.mark.tomosipo
 @pytest.mark.parametrize("geometry", GEOMETRIES, ids=GEOMETRY_IDS)
-def test_backward_is_the_adjoint(geometry):
-    """FDK (unclipped) is linear, L(y); autograd must give L^T: <L y, x> = <y, L^T x>."""
+def test_backward_goes_through_the_forward_projector(geometry):
+    """Unclipped, fdk(y) = c * B(F(W(y))): W the FDK weights (fan beam only),
+    F the ramp filter, B tomosipo's backprojector, c a constant. Its autograd
+    gradient must be W^T(F^T(c * A(x))), with A tomosipo's forward projector,
+    so <y, grad> = c * <F(W(y)), A(x)>.
+
+    <fdk(y), x> = <y, grad> is not tested: ASTRA's A and B are only
+    approximately adjoint, and for random y and x that inner product is so
+    small that the difference is large in relative terms."""
+    from ts_algorithms.fbp import filter_sino
+    from ts_algorithms.fdk import fdk_weigh_projections
+
+    from LION.classical_algorithms.fdk import _is_cone_beam
+
     torch.manual_seed(0)
     op = make_operator(geometry)
     y = torch.randn(1, *op.range_shape, device="cuda", requires_grad=True)
     x = torch.randn(1, *op.domain_shape, device="cuda")
     Ly = fdk(y, op, clip=False, differentiable=True)
-    (LTx,) = torch.autograd.grad(Ly, y, grad_outputs=x)
-    lhs = torch.sum(Ly.detach() * x)
-    rhs = torch.sum(y.detach() * LTx)
-    assert LTx.abs().sum() > 0
-    torch.testing.assert_close(lhs, rhs, rtol=1e-3, atol=1e-3)
+    (grad,) = torch.autograd.grad(Ly, y, grad_outputs=x)
+
+    with torch.no_grad():
+        z = y[0].detach()
+        if _is_cone_beam(op):
+            z = fdk_weigh_projections(op, z, overwrite_y=False)
+        z = filter_sino(z, overwrite_y=False)  # F(W(y))
+        Bz = op.T(z)
+        Ax = op(x[0])
+    # the constant, and a check that fdk is c * B(F(W(y)))
+    c = torch.sum(Ly[0].detach() * Bz) / torch.sum(Bz * Bz)
+    torch.testing.assert_close(Ly[0].detach(), c * Bz, rtol=1e-4, atol=1e-4)
+
+    assert grad.abs().sum() > 0
+    actual = torch.sum(y.detach().double() * grad.double())
+    expected = c.double() * torch.sum(z.double() * Ax.double())
+    scale = (
+        c.abs().double()
+        * torch.linalg.vector_norm(z.double())
+        * torch.linalg.vector_norm(Ax.double())
+    )
+    assert abs(actual - expected) <= 1e-4 * scale
 
 
 @pytest.mark.tomosipo

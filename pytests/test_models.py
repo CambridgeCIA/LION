@@ -327,6 +327,7 @@ def test_cfbpconvnet_runs_on_images(tmp_path):
 
     model.save(tmp_path / "model", dataset=LIONParameter(), training=LIONParameter())
     loaded, _, _ = cFBPConvNet.load(tmp_path / "model", supress_warnings=True)
+    loaded = loaded.cpu()  # load() puts the model on the default device (a GPU, if any)
     loaded.eval(), model.eval()
     torch.testing.assert_close(loaded(x.detach()), model(x.detach()))
 
