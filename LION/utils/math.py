@@ -17,25 +17,16 @@ def power_method(
 ) -> torch.Tensor:
     """Estimate operator norm by power iteration using torch.
 
-    Parameters
-    ----------
-    op : Operator
-        The operator for which to estimate the norm.
-    maxiter : int
-        Number of power iterations.
-    tol : float
-        Relative tolerance: stops once ||A v - sigma u|| <= tol * sigma, i.e.
-        independently of the scale of the operator.
-    device : torch.device | str | None
-        Device for computations. If None, use operator's device.
-    seed : int | None
-        Seed of the random starting vector, so the estimate is the same on
-        every call (e.g. step sizes computed from it). None uses torch's
-        global random state.
+    Args:
+        op: The operator for which to estimate the norm.
+        maxiter: Number of power iterations.
+        tol: Relative tolerance: stops once ||A v - sigma u|| <= tol * sigma, i.e.
+            independently of the scale of the operator.
+        device: Device for computations. If None, use operator's device.
+        seed: Seed of the random starting vector, so the estimate is the same on
+            every call (e.g. step sizes computed from it). None uses torch's global random state.
 
-    Returns
-    -------
-    sigma : torch.Tensor
+    Returns:
         Estimated operator norm.
     """
     if device is None:
@@ -85,3 +76,29 @@ def test_convexity(net, x, device):
         flag = False
         print("Failed convexity test!")
     return flag
+
+
+def is_power_of_two(n: int) -> bool:
+    """Check whether an integer is a power of two.
+
+    Args:
+        n: Integer to test.
+
+    Returns:
+        True if `n` is a power of two, otherwise False.
+    """
+    return n > 0 and (n & (n - 1)) == 0
+
+
+def next_power_of_two(n: int) -> int:
+    """Return the smallest power of two greater than or equal to `n`.
+
+    Args:
+        n: Input integer.
+
+    Returns:
+        Smallest power of two greater than or equal to `n`.
+    """
+    if n < 1:
+        raise ValueError("n must be positive.")
+    return 1 << (n - 1).bit_length()

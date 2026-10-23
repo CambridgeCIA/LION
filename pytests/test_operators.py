@@ -3,20 +3,17 @@ and operator norms. The CT operator is tested in test_ct.py."""
 
 import pytest
 import torch
-from spyrit.core.torch import fwht, ifwht
-
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
-from LION.operators import (
-    CompositeOp,
-    Operator,
-    PhotocurrentMapOp,
-    Subsampler,
-    WalshHadamard2D,
-    Wavelet2D,
-)
+from LION.operators.CompositeOp import CompositeOp
+from LION.operators.Operator import Operator
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
+from LION.operators.WalshHadamard2D import WalshHadamard2D
+from LION.operators.Wavelet2D import Wavelet2D
 from LION.utils.math import power_method
-from LION.utils.tests_helper import dotproduct_adjointness_test
+from spyrit.core.torch import fwht, ifwht
+
+from pytests.helper import dotproduct_adjointness_test
 
 J = 4  # 16x16 images
 N = 1 << J
