@@ -5,9 +5,18 @@ channels:
 dependencies:
   - astra-toolbox>=2.3.1  # official `astra-toolbox` channel doesn't ship any `aarch64` build
     # and `conda-forge` only ships astra-toolbox up to 2.3.1
-  - cuda-version=12.8
+  - cuda-version=12.9  # conda-forge's CUDA builds of pytorch: 12.9 has torch 2.13, 12.8 only 2.7
   - pip<=25.2  # pip 25.3 drops support for setup.py install which is used to install tomosipo and ts_algorithms from source
   - python=3.12
+  # torch from conda too, so every compiled library uses conda's C++ runtime. A pip
+  # torch loads the system's, and conda's scipy etc. then fail on machines with an
+  # older system runtime ("CXXABI_1.3.15 not found").
+  - pytorch-gpu
+  - torchvision
+  - deepinv  # example scripts
+  - kornia
+  - torchdiffeq
+  - torchmetrics  # example scripts
   - h5py
   - imageio
   - matplotlib
