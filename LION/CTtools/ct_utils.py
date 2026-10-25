@@ -74,6 +74,9 @@ def from_HU_to_mu(img, mass_attenuation=None, length_unit_cm=0.1):
     return density * (mass_attenuation * length_unit_cm)
 
 
+NOISE_MODELS = ("physical", "relative")
+
+
 def sinogram_add_noise(
     proj,
     I0=1000,
@@ -84,76 +87,70 @@ def sinogram_add_noise(
     dark_field=None,
     enable_gradients=False,
     legacy=False,
-    mass_attenuation=None,
+    model="physical",
+    mass_attenuation=WATER_MASS_ATTENUATION[60],
     length_unit_cm=0.1,
-    min_counts=None,
+    min_counts=1.0,
 ):
     """
     Adds realistic noise to sinograms (see _sinogram_add_noise), with or
     without gradients.
 
-    How the line integrals ``proj`` become attenuation, i.e. what ``I0`` means:
+    ``model`` says how the line integrals ``proj`` become attenuation, i.e.
+    what ``I0`` means:
 
-    - ``mass_attenuation=None`` (relative, the default): ``proj`` is divided by
-      the maximum of each sample, so the most attenuating ray always keeps
-      e^-1 of I0, whatever the object and its units.
-    - ``mass_attenuation`` = mu/rho of water in cm^2/g (e.g.
-      ``WATER_MASS_ATTENUATION[60]``; physical): ``proj`` are line integrals of
-      a density image (g/cm^3, e.g. from ``from_HU_to_density``) in
-      ``length_unit_cm`` (0.1: mm), and the transmission is
-      exp(-mu/rho * proj * length_unit_cm). ``I0`` is then the number of
-      photons per detector pixel in vacuum, as in XCIST, and larger objects
-      get noisier data. Monochromatic and water-equivalent.
+    - ``"physical"`` (default): ``proj`` are line integrals of a density image
+      (g/cm^3, e.g. from ``from_HU_to_density``) in ``length_unit_cm`` (0.1:
+      mm, as LION geometries), and the transmission is
+      exp(-mass_attenuation * proj * length_unit_cm), with ``mass_attenuation``
+      the mu/rho of water in cm^2/g (default ``WATER_MASS_ATTENUATION[60]``;
+      monochromatic, water-equivalent). ``I0`` is the number of photons per
+      detector pixel in vacuum, as in XCIST, and larger objects get noisier
+      data, as in a scanner.
+    - ``"relative"``: ``proj`` is divided by the maximum of each sample, so the
+      most attenuating ray always keeps e^-1 of I0, whatever the object and its
+      units. LION's model before October 2026 (``mass_attenuation`` unused).
 
     The returned sinogram has the units of ``proj`` in both cases.
 
     ``min_counts``: the detector signal (photons plus electronic noise, the
     dark field subtracted) can be 0 or negative when a ray gets (almost) no
     photons, and the log needs a positive value. Signals below ``min_counts``
-    (in photons, e.g. 1.0) are set to it, so a starved ray reads as at most
-    log(I0 / min_counts) of attenuation. None (default) keeps LION's old rule:
-    signals <= 0 become 1e-6, i.e. log(I0) + 13.8, far beyond any real
-    attenuation, which turns starved rays into strong streaks. It only matters
-    when rays are starved: with the physical model, never with the relative
-    one at LION's I0s.
+    (in photons; default 1) are set to it, so a starved ray reads as at most
+    log(I0 / min_counts) of attenuation. None: LION's old rule, signals <= 0
+    become 1e-6, i.e. log(I0) + 13.8, far beyond any real attenuation, which
+    turns starved rays into strong streaks. It only matters when rays are
+    starved, so in practice only with the physical model.
 
-    legacy=True reproduces the noise of LION before October 2026: detector
-    cross-talk blurred across neighbouring angles as well as detectors, and
-    the attenuation scaled by the maximum of the whole input (so in a batch,
-    each sample's noise depended on the others).
+    legacy=True reproduces the noise of LION before October 2026 exactly: the
+    relative model, with detector cross-talk blurred across neighbouring angles
+    as well as detectors, the attenuation scaled by the maximum of the whole
+    input (so in a batch, each sample's noise depended on the others) and the
+    old rule for starved rays (``model``, ``mass_attenuation`` and
+    ``min_counts`` unused).
     """
+    if model not in NOISE_MODELS:
+        raise ValueError(f"model must be one of {NOISE_MODELS}, got {model!r}")
+    if legacy:
+        model, min_counts = "relative", None
+    kwargs = dict(
+        I0=I0,
+        sigma=sigma,
+        sigma_blur=sigma_blur,
+        ks_value=ks_value,
+        flat_field=flat_field,
+        dark_field=dark_field,
+        legacy=legacy,
+        mass_attenuation=mass_attenuation if model == "physical" else None,
+        length_unit_cm=length_unit_cm,
+        min_counts=min_counts,
+    )
     if enable_gradients:
-        sino = _sinogram_add_noise(
-            proj,
-            I0,
-            sigma,
-            sigma_blur,
-            ks_value,
-            flat_field,
-            dark_field,
-            legacy,
-            mass_attenuation,
-            length_unit_cm,
-            min_counts,
-        )
-    else:
-        if torch.is_tensor(proj):
-            proj = proj.detach()
-        with torch.no_grad():
-            sino = _sinogram_add_noise(
-                proj,
-                I0,
-                sigma,
-                sigma_blur,
-                ks_value,
-                flat_field,
-                dark_field,
-                legacy,
-                mass_attenuation,
-                length_unit_cm,
-                min_counts,
-            )
-    return sino
+        return _sinogram_add_noise(proj, **kwargs)
+    if torch.is_tensor(proj):
+        proj = proj.detach()
+    with torch.no_grad():
+        return _sinogram_add_noise(proj, **kwargs)
 
 
 def _sinogram_add_noise(
@@ -177,8 +174,8 @@ def _sinogram_add_noise(
     - Detector crosstalk: a Gaussian blur (std sigma_blur pixels) along the detector,
       within each projection.
     - Add a flat_field to add even more realistic noise (computed at non-corrected flat fields)
-    See sinogram_add_noise for how the line integrals become attenuation
-    (``mass_attenuation``), for ``min_counts`` and for ``legacy``.
+    ``mass_attenuation=None`` is the relative model, otherwise the physical one;
+    see sinogram_add_noise for the models, ``min_counts`` and ``legacy``.
     """
     if torch.is_tensor(proj):
         istorch = True

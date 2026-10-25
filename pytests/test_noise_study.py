@@ -37,7 +37,7 @@ def test_predicted_variance_matches_lions_simulation(model, sigma_blur):
         scale, kwargs = nt.physical_scale(MU_RHO), dict(mass_attenuation=MU_RHO)
     else:
         p = ramp_sinogram(2.0)
-        scale, kwargs = nt.relative_scale(p), {}
+        scale, kwargs = nt.relative_scale(p), dict(model="relative")
     noisy = ct.sinogram_add_noise(
         p.float(), I0=I0, sigma=sigma, sigma_blur=sigma_blur, **kwargs
     ).double()

@@ -86,25 +86,22 @@ def test_crosstalk_is_along_the_detector(deterministic_noise, legacy):
 def test_noise_of_a_sample_does_not_depend_on_its_batch(deterministic_noise, legacy):
     torch.manual_seed(0)
     a, b = torch.rand(1, 20, 30), 5 * torch.rand(1, 20, 30)  # b has a larger maximum
-    alone = sinogram_add_noise(a.unsqueeze(0), I0=1e3, sigma=0, legacy=legacy)[0]
-    in_batch = sinogram_add_noise(torch.stack([a, b]), I0=1e3, sigma=0, legacy=legacy)[
-        0
-    ]
+    kwargs = dict(I0=1e3, sigma=0, legacy=legacy, model="relative")
+    alone = sinogram_add_noise(a.unsqueeze(0), **kwargs)[0]
+    in_batch = sinogram_add_noise(torch.stack([a, b]), **kwargs)[0]
     if legacy:  # scaled by the maximum of the whole batch
         assert not torch.allclose(alone, in_batch)
     else:
         torch.testing.assert_close(alone, in_batch)
 
 
-@pytest.mark.parametrize("mass_attenuation", [None, WATER_MASS_ATTENUATION[60]])
-def test_noise_free_limit_returns_the_sinogram(deterministic_noise, mass_attenuation):
+@pytest.mark.parametrize("model", ["relative", "physical"])
+def test_noise_free_limit_returns_the_sinogram(deterministic_noise, model):
     """Without random counts, both models give back the clean line integrals
     (so the physical scaling converts to attenuation and back consistently)."""
     torch.manual_seed(0)
     sino = 300 * torch.rand(2, 1, 20, 30)  # density line integrals, g/cm^3 * mm
-    noisy = sinogram_add_noise(
-        sino, I0=1e6, sigma=0, sigma_blur=1e-3, mass_attenuation=mass_attenuation
-    )
+    noisy = sinogram_add_noise(sino, I0=1e6, sigma=0, sigma_blur=1e-3, model=model)
     torch.testing.assert_close(noisy, sino, rtol=1e-3, atol=1e-2)
 
 
@@ -121,7 +118,7 @@ def test_physical_noise_grows_with_the_object():
             I0=1e5,
             sigma=0,
             sigma_blur=1e-3,
-            mass_attenuation=WATER_MASS_ATTENUATION[60],
+            model="physical",
         )
         expected = 1 / (k * np.sqrt(1e5 * np.exp(-k * p)))
         assert (noisy - sino).std().item() == pytest.approx(expected, rel=0.1)
@@ -136,9 +133,8 @@ def test_starved_rays_are_floored_at_min_counts():
     torch.manual_seed(0)
     k = WATER_MASS_ATTENUATION[60] * 0.1
     sino = torch.full((1, 50, 60), 600.0)  # transmission ~ 4e-6
-    kwargs = dict(I0=1e4, sigma=5, mass_attenuation=WATER_MASS_ATTENUATION[60])
-    old = sinogram_add_noise(sino, **kwargs)
-    floored = sinogram_add_noise(sino, min_counts=1.0, **kwargs)
+    old = sinogram_add_noise(sino, I0=1e4, sigma=5, min_counts=None)
+    floored = sinogram_add_noise(sino, I0=1e4, sigma=5)  # default: 1 photon
     assert old.max().item() * k == pytest.approx(np.log(1e4) + np.log(1e6), rel=1e-3)
     assert floored.max().item() * k <= np.log(1e4) + 1e-4
     assert floored.min().item() >= 0
@@ -149,10 +145,24 @@ def test_min_counts_changes_nothing_without_starved_rays():
     no signal is near the floor, so the noise is exactly the same."""
     sino = 3 * torch.rand(1, 40, 50)
     torch.manual_seed(1)
-    default = sinogram_add_noise(sino, I0=1000)
+    old_rule = sinogram_add_noise(sino, I0=1000, model="relative", min_counts=None)
     torch.manual_seed(1)
-    floored = sinogram_add_noise(sino, I0=1000, min_counts=1.0)
-    torch.testing.assert_close(floored, default, rtol=0, atol=0)
+    floored = sinogram_add_noise(sino, I0=1000, model="relative")
+    torch.testing.assert_close(floored, old_rule, rtol=0, atol=0)
+
+
+def test_noise_model_names():
+    sino = 3 * torch.rand(1, 10, 12)
+    with pytest.raises(ValueError):
+        sinogram_add_noise(sino, model="legacy")
+    # legacy=True is the relative model as before October 2026, whatever model says
+    torch.manual_seed(2)
+    a = sinogram_add_noise(sino, I0=1000, legacy=True)
+    torch.manual_seed(2)
+    b = sinogram_add_noise(
+        sino, I0=1000, legacy=True, model="relative", min_counts=None
+    )
+    torch.testing.assert_close(a, b, rtol=0, atol=0)
 
 
 def test_hu_to_density_and_mu():

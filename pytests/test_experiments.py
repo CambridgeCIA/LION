@@ -36,23 +36,46 @@ def test_noise_function_is_always_defined(cls):
     assert cls(params).sino_fun is None
 
 
-@pytest.mark.parametrize("saved_before", [False, True])
-def test_experiments_choose_the_noise_model(monkeypatch, saved_before):
-    """New experiments use the current noise model; parameters saved before
-    legacy_noise_model existed reproduce the old one."""
+@pytest.mark.parametrize("saved", ["now", "22-25 Oct 2026", "before 22 Oct 2026"])
+def test_experiments_choose_the_noise_model(monkeypatch, saved):
+    """New experiments use the physical noise model. Parameters saved before
+    noise_model existed keep the relative model, and those saved before
+    legacy_noise_model existed reproduce LION's original noise."""
     params = ct_experiments.LowDoseCTRecon.default_parameters()
-    assert params.noise_params.legacy_noise_model is False
-    if saved_before:
+    assert params.noise_params.noise_model == "physical"
+    assert params.noise_params.I0 == ct_experiments.LOW_DOSE_I0
+    if saved != "now":  # what the parameter files of that time contain
+        for name in ("noise_model", "mass_attenuation", "min_counts"):
+            delattr(params.noise_params, name)
+        params.noise_params.I0 = 3500
+        params.noise_params.legacy_noise_model = False
+    if saved == "before 22 Oct 2026":
         del params.noise_params.legacy_noise_model
     calls = []
     monkeypatch.setattr(
         ct_experiments.ct, "sinogram_add_noise", lambda sino, **kw: calls.append(kw)
     )
     ct_experiments.LowDoseCTRecon(params).sino_fun("sinogram")
-    assert calls[0]["legacy"] is saved_before
-    assert calls[0]["I0"] == params.noise_params.I0
-    assert calls[0]["mass_attenuation"] is None  # relative noise model by default
-    assert calls[0]["min_counts"] is None  # LION's old rule for signals <= 0
+    (kw,) = calls
+    assert kw["I0"] == params.noise_params.I0
+    if saved == "now":
+        assert (kw["model"], kw["legacy"], kw["min_counts"]) == ("physical", False, 1.0)
+    else:
+        assert (kw["model"], kw["min_counts"]) == ("relative", None)
+        assert kw["legacy"] is (saved == "before 22 Oct 2026")
+
+
+def test_experiment_doses():
+    doses = {
+        cls: cls.default_parameters().noise_params.I0
+        for cls in (
+            ct_experiments.clinicalCTRecon,
+            ct_experiments.LowDoseCTRecon,
+            ct_experiments.ExtremeLowDoseCTRecon,
+            ct_experiments.SparseAngleExtremeLowDoseCTRecon,
+        )
+    }
+    assert list(doses.values()) == [100000, 30000, 7000, 7000]
 
 
 # --------------------------------------------------------------------------

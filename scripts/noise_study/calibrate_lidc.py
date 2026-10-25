@@ -5,9 +5,9 @@
 # Author  : Ander Biguri
 # =============================================================================
 """
-Part B of the noise study: what the relative-model I0 of LION's LIDC-IDRI
-experiments means in photons, slice by slice, and which physical I0 would
-give the same reconstruction quality. Needs a GPU, tomosipo and the
+Part B of the noise study: what the relative-model I0 that LION's LIDC-IDRI
+experiments had until 25 Oct 2026 means in photons, slice by slice, and which
+physical I0 would give the same reconstruction quality. Needs a GPU, tomosipo and the
 LIDC-IDRI data (as for any LION experiment). About 10 minutes with the
 defaults.
 
@@ -57,6 +57,9 @@ EXPERIMENTS = {
     "low dose": ct_experiments.LowDoseCTRecon,
     "extremely low dose": ct_experiments.ExtremeLowDoseCTRecon,
 }
+# The I0 these experiments had with the relative model (before 25 Oct 2026);
+# they now use the physical model, at ct_experiments.CLINICAL_I0 etc.
+RELATIVE_I0 = {"clinical": 10000, "low dose": 3500, "extremely low dose": 1000}
 # Physical I0 grid for the PSNR matching (photons per detector pixel in vacuum)
 I0_GRID = np.geomspace(1e3, 1e7, 17)
 # Rays through less than 1 mm of water are air: left out of the analytic match
@@ -70,14 +73,13 @@ MIN_COUNTS = 1.0
 
 
 def add_noise(p, noise, I0, mass_attenuation=None):
+    """The physical model with mass_attenuation, else the relative one."""
+    if mass_attenuation is None:
+        model = dict(model="relative", min_counts=None)
+    else:
+        model = dict(mass_attenuation=mass_attenuation, min_counts=MIN_COUNTS)
     return ct.sinogram_add_noise(
-        p,
-        I0=I0,
-        sigma=noise.sigma,
-        sigma_blur=noise.sigma_blur,
-        mass_attenuation=mass_attenuation,
-        # the relative model as the experiments run it
-        min_counts=MIN_COUNTS if mass_attenuation is not None else None,
+        p, I0=I0, sigma=noise.sigma, sigma_blur=noise.sigma_blur, **model
     )
 
 
@@ -112,7 +114,8 @@ def main(args):
         data = experiment.get_testing_dataset()
         indices = np.linspace(0, len(data) - 1, args.n_slices).round().astype(int)
         fdk_every = max(1, args.n_slices // args.fdk_slices)
-        print(f"--- {name}: relative I0 = {noise.I0}, {len(indices)} slices ---")
+        I0_rel = RELATIVE_I0[name]
+        print(f"--- {name}: relative I0 = {I0_rel}, {len(indices)} slices ---")
 
         for count, index in enumerate(indices):
             _, image = data[int(index)]  # the density image (g/cm^3)
@@ -122,12 +125,12 @@ def main(args):
             row = {
                 "experiment": name,
                 "slice": int(index),
-                "relative_I0": noise.I0,
+                "relative_I0": I0_rel,
                 # thickest water-equivalent path through the slice, in mm
                 "max_path_mm": p.max().item() / 1.0137,
                 "equivalent_I0_analytic": nt.equivalent_physical_I0(
                     p.cpu(),
-                    noise.I0,
+                    I0_rel,
                     mu_rho,
                     sigma=noise.sigma,
                     w=w,
@@ -136,7 +139,7 @@ def main(args):
             }
 
             if count % fdk_every == 0:
-                rel = fdk(add_noise(p, noise, noise.I0), op)
+                rel = fdk(add_noise(p, noise, I0_rel), op)
                 row["psnr_relative"] = psnr(rel, image).item()
                 row["ssim_relative"] = ssim(rel, image).item()
                 grid = [
@@ -174,8 +177,12 @@ def main(args):
 
     write_csv(rows, out / "lidc_calibration.csv")
     plot_calibration(rows, out / "lidc_calibration.png")
-    shown = recommended
-    if args.physical_I0:  # physical I0 to show, per experiment, instead of the matches
+    # physical I0 to show: the experiments' own, unless given
+    shown = {
+        name: Experiment.default_parameters().noise_params.I0
+        for name, Experiment in EXPERIMENTS.items()
+    }
+    if args.physical_I0:
         shown = dict(zip(EXPERIMENTS, (float(v) for v in args.physical_I0.split(","))))
     plot_examples(examples, shown, mu_rho, out / "lidc_examples.png")
     print(
@@ -259,7 +266,7 @@ def plot_examples(examples, recommended, mu_rho, path):
             p, image = ex[key]["p"], ex[key]["image"]
             for model in ("relative", "physical"):
                 if model == "relative":
-                    recon = fdk(add_noise(p, noise, noise.I0), op)
+                    recon = fdk(add_noise(p, noise, RELATIVE_I0[name]), op)
                 else:
                     recon = fdk(add_noise(p, noise, recommended[name], mu_rho), op)
                 ax = row_axes[col]
@@ -294,7 +301,7 @@ if __name__ == "__main__":
         "--physical-I0",
         default=None,
         help="comma-separated physical I0 for the example figure, one per "
-        "experiment (clinical,low,extremely low); default: the PSNR matches",
+        "experiment (clinical,low,extremely low); default: the experiments' own",
     )
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--out", default=None)

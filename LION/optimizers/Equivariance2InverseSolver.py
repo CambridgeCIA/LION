@@ -57,6 +57,9 @@ class Equivariance2InverseSolver(LIONsolver):
         params.I0 = 500
         params.sigma = (50) ** (0.5)
         params.sigma_blur = 0.8
+        # noise model of ct_utils.sinogram_add_noise for the rotated sinograms;
+        # I0, sigma and sigma_blur above are for the relative model
+        params.noise_model = "relative"
         return params
 
     def mini_batch_step(self, sinos, targets):
@@ -91,6 +94,9 @@ class Equivariance2InverseSolver(LIONsolver):
             ks_value=3,
             flat_field=None,
             dark_field=None,
+            # the relative model, unless the solver parameters say otherwise
+            # (set them to match the noise of the experiment's data)
+            model=getattr(self.solver_params, "noise_model", "relative"),
         )
 
         rotated_noisy_image = self.recon_fn(rotated_sinogram_noisy, self.model.operator)

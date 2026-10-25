@@ -18,6 +18,14 @@ import LION.CTtools.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 from LION.data_loaders.deteCT import deteCT
 
+# Photons per detector pixel in vacuum of the simulated experiments (physical
+# noise model, see Experiment.noise_parameters). Chosen by looking at
+# LIDC-IDRI reconstructions (scripts/noise_study, 25 Oct 2026); before, the
+# relative model used 10000, 3500 and 1000.
+CLINICAL_I0 = 100000
+LOW_DOSE_I0 = 30000
+EXTREMELY_LOW_DOSE_I0 = 7000
+
 
 class Experiment(ABC):
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
@@ -38,21 +46,44 @@ class Experiment(ABC):
         self.sino_fun = None
         if hasattr(self.param, "noise_params"):
             noise = self.param.noise_params
-            # parameter files from before legacy_noise_model existed used the old model
-            legacy = getattr(noise, "legacy_noise_model", True)
-            # None: relative noise model; mu/rho (cm^2/g): physical (see sinogram_add_noise)
-            mass_attenuation = getattr(noise, "mass_attenuation", None)
-            # None: LION's old 1e-6 for signals <= 0 (see sinogram_add_noise)
-            min_counts = getattr(noise, "min_counts", None)
-            self.sino_fun = lambda sino, I0=noise.I0, sigma=noise.sigma, sigma_blur=noise.sigma_blur: ct.sinogram_add_noise(
-                sino,
-                I0=I0,
-                sigma=sigma,
-                sigma_blur=sigma_blur,
+            model = getattr(noise, "noise_model", None)
+            if model is None:
+                # saved before noise_model existed (25 Oct 2026): the relative
+                # model, and before legacy_noise_model (22 Oct 2026) exactly
+                # LION's original noise
+                model = "relative"
+                legacy = getattr(noise, "legacy_noise_model", True)
+            else:
+                legacy = getattr(noise, "legacy_noise_model", False)
+            kwargs = dict(
                 legacy=legacy,
-                mass_attenuation=mass_attenuation,
-                min_counts=min_counts,
+                model=model,
+                mass_attenuation=getattr(
+                    noise, "mass_attenuation", ct.WATER_MASS_ATTENUATION[60]
+                ),
+                # missing: LION's old rule for starved rays (see sinogram_add_noise)
+                min_counts=getattr(noise, "min_counts", None),
             )
+            self.sino_fun = lambda sino, I0=noise.I0, sigma=noise.sigma, sigma_blur=noise.sigma_blur: ct.sinogram_add_noise(
+                sino, I0=I0, sigma=sigma, sigma_blur=sigma_blur, **kwargs
+            )
+
+    @staticmethod
+    def noise_parameters(I0):
+        """
+        Noise of LION's simulated experiments: the physical model of
+        ct_utils.sinogram_add_noise, with I0 photons per detector pixel in
+        vacuum, water at 60 keV, electronic noise sigma = 5 photons, detector
+        cross-talk, and starved rays floored at 1 photon.
+        """
+        noise = LIONParameter()
+        noise.noise_model = "physical"
+        noise.I0 = I0
+        noise.sigma = 5
+        noise.sigma_blur = 0.3015
+        noise.mass_attenuation = ct.WATER_MASS_ATTENUATION[60]
+        noise.min_counts = 1.0
+        return noise
 
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
@@ -122,14 +153,8 @@ class ExtremeLowDoseCTRecon(Experiment):
         param.name = "Extremely low dose full angular sampling experiment"
         # Parameters for the geometry
         param.geometry = ctgeo.Geometry.default_parameters()
-        # Parameters for the noise in the sinogram.
-        # Default, 10% of clinical dose.
-        param.noise_params = LIONParameter()
-        param.noise_params.I0 = 1000
-        param.noise_params.sigma = 5
-        param.noise_params.sigma_blur = 0.3015
-        # True reproduces the noise of LION before October 2026 (see sinogram_add_noise)
-        param.noise_params.legacy_noise_model = False
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
         param.data_loader_params = Experiment.get_dataset_parameters(
             dataset, geometry=param.geometry
         )
@@ -147,14 +172,8 @@ class LowDoseCTRecon(Experiment):
         param.name = "Low dose full angular sampling experiment"
         # Parameters for the geometry
         param.geometry = ctgeo.Geometry.default_parameters()
-        # Parameters for the noise in the sinogram.
-        # Default, 10% of clinical dose.
-        param.noise_params = LIONParameter()
-        param.noise_params.I0 = 3500
-        param.noise_params.sigma = 5
-        param.noise_params.sigma_blur = 0.3015
-        # True reproduces the noise of LION before October 2026 (see sinogram_add_noise)
-        param.noise_params.legacy_noise_model = False
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
         param.data_loader_params = Experiment.get_dataset_parameters(
             dataset, geometry=param.geometry
         )
@@ -172,14 +191,8 @@ class LimitedAngleCTRecon(Experiment):
         param.name = "Clinical dose limited angular sampling experiment"
         # Parameters for the geometry
         param.geometry = ctgeo.Geometry.sparse_angle_parameters()
-        # Parameters for the noise in the sinogram.
-        # Default, 50% of clinical dose.
-        param.noise_params = LIONParameter()
-        param.noise_params.I0 = 10000
-        param.noise_params.sigma = 5
-        param.noise_params.sigma_blur = 0.3015
-        # True reproduces the noise of LION before October 2026 (see sinogram_add_noise)
-        param.noise_params.legacy_noise_model = False
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
         param.data_loader_params = Experiment.get_dataset_parameters(
             dataset, geometry=param.geometry
         )
@@ -197,13 +210,8 @@ class LimitedAngleLowDoseCTRecon(Experiment):
         param.name = "Low dose limited angular sampling experiment"
         # Parameters for the geometry
         param.geometry = ctgeo.Geometry.sparse_angle_parameters()
-        # Parameters for the noise in the sinogram.
-        param.noise_params = LIONParameter()
-        param.noise_params.I0 = 3500
-        param.noise_params.sigma = 5
-        param.noise_params.sigma_blur = 0.3015
-        # True reproduces the noise of LION before October 2026 (see sinogram_add_noise)
-        param.noise_params.legacy_noise_model = False
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
@@ -226,13 +234,8 @@ class LimitedAngleExtremeLowDoseCTRecon(Experiment):
         param.name = "Extremely low dose limited angular sampling experiment"
         # Parameters for the geometry
         param.geometry = ctgeo.Geometry.sparse_angle_parameters()
-        # Parameters for the noise in the sinogram.
-        param.noise_params = LIONParameter()
-        param.noise_params.I0 = 1000
-        param.noise_params.sigma = 5
-        param.noise_params.sigma_blur = 0.3015
-        # True reproduces the noise of LION before October 2026 (see sinogram_add_noise)
-        param.noise_params.legacy_noise_model = False
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
@@ -255,14 +258,8 @@ class SparseAngleCTRecon(Experiment):
         param.name = "Clinical dose sparse angular sampling experiment"
         # Parameters for the geometry
         param.geometry = ctgeo.Geometry.sparse_view_parameters()
-        # Parameters for the noise in the sinogram.
-        # Default, 50% of clinical dose.
-        param.noise_params = LIONParameter()
-        param.noise_params.I0 = 10000
-        param.noise_params.sigma = 5
-        param.noise_params.sigma_blur = 0.3015
-        # True reproduces the noise of LION before October 2026 (see sinogram_add_noise)
-        param.noise_params.legacy_noise_model = False
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
 
         param.data_loader_params = Experiment.get_dataset_parameters(
             dataset, geometry=param.geometry
@@ -281,13 +278,8 @@ class SparseAngleLowDoseCTRecon(Experiment):
         param.name = "Low dose sparse angular sampling experiment"
         # Parameters for the geometry
         param.geometry = ctgeo.Geometry.sparse_view_parameters()
-        # Parameters for the noise in the sinogram.
-        param.noise_params = LIONParameter()
-        param.noise_params.I0 = 3500
-        param.noise_params.sigma = 5
-        param.noise_params.sigma_blur = 0.3015
-        # True reproduces the noise of LION before October 2026 (see sinogram_add_noise)
-        param.noise_params.legacy_noise_model = False
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
@@ -310,13 +302,8 @@ class SparseAngleExtremeLowDoseCTRecon(Experiment):
         param.name = "Extremely low dose sparse angular sampling experiment"
         # Parameters for the geometry
         param.geometry = ctgeo.Geometry.sparse_view_parameters()
-        # Parameters for the noise in the sinogram.
-        param.noise_params = LIONParameter()
-        param.noise_params.I0 = 1000
-        param.noise_params.sigma = 5
-        param.noise_params.sigma_blur = 0.3015
-        # True reproduces the noise of LION before October 2026 (see sinogram_add_noise)
-        param.noise_params.legacy_noise_model = False
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
@@ -339,14 +326,8 @@ class clinicalCTRecon(Experiment):
         param.name = "Clinical dose full angular sampling experiment"
         # Parameters for the geometry
         param.geometry = ctgeo.Geometry.default_parameters()
-        # Parameters for the noise in the sinogram.
-        # Default, 50% of clinical dose.
-        param.noise_params = LIONParameter()
-        param.noise_params.I0 = 10000
-        param.noise_params.sigma = 5
-        param.noise_params.sigma_blur = 0.3015
-        # True reproduces the noise of LION before October 2026 (see sinogram_add_noise)
-        param.noise_params.legacy_noise_model = False
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
 
         param.data_loader_params = Experiment.get_dataset_parameters(
             dataset, geometry=param.geometry

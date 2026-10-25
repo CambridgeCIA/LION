@@ -1,15 +1,16 @@
 # Noise study: relative vs physical noise model
 
 LION's `ct_utils.sinogram_add_noise` can scale line integrals in two ways
-before it simulates photon counts:
+before it simulates photon counts (`model=`):
 
-- **relative** (`mass_attenuation=None`, the default): each sinogram is divided
-  by its own maximum. The most attenuating ray of every slice keeps `I0/e`
-  photons, whatever the size of the object.
-- **physical** (`mass_attenuation=ct.WATER_MASS_ATTENUATION[60]`): the real
-  transmission of a density image, in mm. `I0` is the number of photons per
-  detector pixel in vacuum, as in XCIST. Larger objects get noisier data, and
-  the thickest rays can run out of photons.
+- **physical** (the default since 25 Oct 2026): the real transmission of a
+  density image, in mm (`mass_attenuation`, default water at 60 keV). `I0` is
+  the number of photons per detector pixel in vacuum, as in XCIST. Larger
+  objects get noisier data, and the thickest rays can run out of photons
+  (floored at `min_counts` photons, default 1).
+- **relative** (`model="relative"`, LION's model before): each sinogram is
+  divided by its own maximum. The most attenuating ray of every slice keeps
+  `I0/e` photons, whatever the size of the object.
 
 The scripts in this folder give the evidence needed to choose between the two,
 and the physical `I0` values that would replace the current ones.
@@ -56,9 +57,13 @@ before the results were known.
    It shows where each model puts the noise, and when the physical model
    reaches photon starvation, which the relative model never reaches.
 
-If 1 and 2 hold, we can switch the experiments to the physical model with the
-I0 values from 2. Old parameter files then keep the relative model, because a
-missing `mass_attenuation` means the old behaviour.
+Results (Ander's runs, 23–25 Oct 2026): 1 and 2 held. LION's simulated
+experiments now use the physical model (`noise_params.noise_model =
+"physical"`) with I0 = 1e5 (clinical), 3e4 (low dose) and 7e3 (extremely low
+dose), chosen by looking at the LIDC-IDRI reconstructions rather than by
+matching the old model's average difficulty, which would have meant ~1e4 for
+"clinical": a lower dose than real clinical CT. Parameter files saved before
+`noise_model` existed keep the relative model.
 
 ## Known limits of the physical model
 

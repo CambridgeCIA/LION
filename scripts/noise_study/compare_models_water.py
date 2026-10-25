@@ -92,13 +92,16 @@ def main(energy_keV=60, out=None):
     for k in (0, 3, 6):
         d = DIAMETERS[k]
         p = nt.water_cylinder_sinogram(d, geometry)[:, :1].repeat(1, 4000, 1).float()
-        rel = ct.sinogram_add_noise(p, I0=I0, sigma=SIGMA, sigma_blur=SIGMA_BLUR)
+        rel = ct.sinogram_add_noise(
+            p, I0=I0, sigma=SIGMA, sigma_blur=SIGMA_BLUR, model="relative"
+        )
         phys = ct.sinogram_add_noise(
             p,
             I0=equivalent["low dose"][k].item(),
             sigma=SIGMA,
             sigma_blur=SIGMA_BLUR,
             mass_attenuation=mu_rho,
+            min_counts=None,  # as the formula: no floor
         )
         # total over the rays through the cylinder of the per-ray variance
         # (over the 4000 views)

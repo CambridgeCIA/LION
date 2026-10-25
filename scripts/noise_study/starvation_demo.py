@@ -55,13 +55,19 @@ def recon(s):
 
 
 cases = [
-    ("relative, I0 1e4", dict(I0=1e4)),
-    ("physical, I0 1e4, old 1e-6 rule", dict(I0=1e4, mass_attenuation=mu)),
+    ("relative, I0 1e4", dict(I0=1e4, model="relative")),
+    (
+        "physical, I0 1e4, old 1e-6 rule",
+        dict(I0=1e4, mass_attenuation=mu, min_counts=None),
+    ),
     (
         "physical, I0 1e4, floor 1 photon",
         dict(I0=1e4, mass_attenuation=mu, min_counts=1.0),
     ),
-    ("physical, I0 1e5, old 1e-6 rule", dict(I0=1e5, mass_attenuation=mu)),
+    (
+        "physical, I0 1e5, old 1e-6 rule",
+        dict(I0=1e5, mass_attenuation=mu, min_counts=None),
+    ),
     (
         "physical, I0 1e5, floor 1 photon",
         dict(I0=1e5, mass_attenuation=mu, min_counts=1.0),
