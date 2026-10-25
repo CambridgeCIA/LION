@@ -6,6 +6,7 @@ import tempfile
 # LION.utils.paths requires LION_DATA_PATH at import time
 os.environ.setdefault("LION_DATA_PATH", tempfile.gettempdir())
 
+import numpy as np
 import pandas as pd  # noqa: E402
 import pytest  # noqa: E402
 
@@ -84,7 +85,7 @@ def test_experiment_doses():
             ct_experiments.SparseAngleExtremeLowDoseCTRecon,
         )
     }
-    assert list(doses.values()) == [100000, 30000, 7000, 7000]
+    assert list(doses.values()) == [20000, 5000, 1000, 1000]
 
 
 # --------------------------------------------------------------------------
@@ -111,6 +112,45 @@ def fake_detect(tmp_path, mode, n_samples=10, query=""):
     params.path_to_dataset = tmp_path
     params.query = query
     return deteCT(mode, parameters=params)
+
+
+@pytest.mark.filterwarnings("ignore:You are not using any detector query")
+def test_detect_noise_I0_per_detector(tmp_path):
+    """noise_params.I0 is one number for every slice (as before October 2026)
+    or a dict per detector (the default of deteCT.noise_parameters)."""
+    data = fake_detect(tmp_path, "train")
+    detectors = data.slice_dataframe["detector"].values
+    data.noise_params = deteCT.noise_parameters()  # per detector
+    for index, detector in enumerate(detectors):
+        assert data.noise_I0(index) == {1: 290, 2: 100}[detector]
+    data.noise_params = deteCT.noise_parameters(I0={"1": 300, "2": 120})  # from JSON
+    assert [data.noise_I0(i) for i in range(3)] == [
+        {1: 300, 2: 120}[d] for d in detectors[:3]
+    ]
+    data.noise_params = deteCT.noise_parameters(I0=200)  # one for all
+    assert {data.noise_I0(i) for i in range(len(detectors))} == {200}
+
+
+@pytest.mark.filterwarnings("ignore:You are not using any detector query")
+def test_detect_loader_adds_noise_with_the_slice_I0(tmp_path, monkeypatch):
+    data = fake_detect(tmp_path, "train")  # slices 0-2: the first sample
+    geometry = deteCT.get_default_geometry()
+    n_angles, n_det = len(geometry.angles), geometry.detector_shape[-1]
+    for k in range(3):
+        folder = tmp_path / f"slice{k:05d}" / "mode2"
+        folder.mkdir(parents=True)
+        np.save(folder / "sinogram.npy", np.full((n_angles, n_det), 0.5, np.float32))
+        np.save(folder / "flat.npy", np.ones((1, n_det), np.float32))
+        np.save(folder / "dark.npy", np.zeros((1, n_det), np.float32))
+    data.add_noise = True
+    data.noise_params = deteCT.noise_parameters()
+    seen = []
+    monkeypatch.setattr(
+        data, "add_sinogram_noise", lambda sino, I0, cross_talk: seen.append(I0) or sino
+    )
+    for k in range(3):
+        data.__load_and_preprocess_sinogram__(k, "mode2")
+    assert seen == [290, 100, 290]  # slice 1 of the sample is detector 2
 
 
 @pytest.mark.filterwarnings("ignore:You are not using any detector query")

@@ -107,15 +107,18 @@ def sinogram_add_noise(
       (g/cm^3, e.g. from ``from_HU_to_density``) in ``length_unit_cm`` (0.1:
       mm, as LION geometries), and the transmission is
       exp(-mass_attenuation * proj * length_unit_cm), with ``mass_attenuation``
-      the mu/rho of water in cm^2/g (default ``DEFAULT_MASS_ATTENUATION``, water
-      at 80 keV; monochromatic, water-equivalent). ``I0`` is the number of photons per
-      detector pixel in vacuum, as in XCIST, and larger objects get noisier
-      data, as in a scanner.
+      the mu/rho of water in cm^2/g (default ``DEFAULT_MASS_ATTENUATION``,
+      water at 80 keV; monochromatic, water-equivalent). ``I0`` is the number
+      of photons per detector pixel in vacuum, as in XCIST, and larger objects
+      get noisier data, as in a scanner.
     - ``"relative"``: ``proj`` is divided by the maximum of each sample, so the
       most attenuating ray always keeps e^-1 of I0, whatever the object and its
       units. LION's model before October 2026 (``mass_attenuation`` unused).
 
-    The returned sinogram has the units of ``proj`` in both cases.
+    The returned sinogram has the units of ``proj`` in both cases. The physical
+    model only makes sense for density line integrals in the given length unit
+    (as LION's simulated experiments produce, see ``ct_experiments``); for
+    sinograms in other units, use ``model="relative"``.
 
     ``detector``:
 

@@ -20,8 +20,44 @@ import LION.CTtools.ct_utils as ct
 from LION.CTtools.ct_utils import make_operator
 from LION.utils.tomosipo_import import import_tomosipo
 
+# Low-dose (mode1) noise of 2DeteCT's two detectors, as the I0 of
+# deteCT.add_sinogram_noise that reproduces it when added to mode2: measured
+# by Ander on 100 slices (25 Oct 2026; physical noise model of the sinogram
+# variance, fitted per slice). Detector 2 gets about a third of the photons
+# of detector 1 (its mode2 too: ~4,400 vs ~14,600 effective photons).
+MODE1_I0_PER_DETECTOR = {1: 290, 2: 100}
+
 
 class deteCT(Dataset):
+    """
+    The 2DeteCT dataset: 5,000 slices of 109 scanned samples (fruit, nuts and
+    other objects), each measured in three modes:
+
+                     |  mode1   |   mode2  |  mode3
+        Tube Voltage |   90kV   |   90kV   |  60kV
+        Tube power   |    3W    |    90W   |  60W
+        Filter       | Thoraeus | Thoraeus | No Filter
+        Meaning      | Low Dose | High Dose| Beam hardening
+
+    Detectors: the data were acquired with two detectors, recorded in the
+    ``detector`` column of the data record. Detector 1: samples 1-63 (slices
+    1-2830, mixes 1-2); detector 2: samples 64-109 (slices 2831-5000, mixes
+    2-3). Their noise differs: with the same tube settings, detector 2 gets
+    about a third of the photons of detector 1 (``MODE1_I0_PER_DETECTOR``).
+    Samples are split in order (training_proportion, validation_proportion),
+    so with the default 0.8/0.1/0.1 the validation and test sets are all
+    detector 2, and the training set is mostly detector 1.
+
+    Added noise (``add_noise`` and ``noise_params``): ``add_sinogram_noise``
+    adds Poisson noise and detector cross-talk to the measured (already noisy)
+    sinograms, as in Kiss et al. 2024. ``noise_params.I0`` is either
+    - a number: the same I0 for every slice, as LION did before October 2026
+      and as Kiss et al. 2024 did (I0 = 200 to look like mode1); or
+    - a dict {detector: I0}: one I0 per detector, so that the simulated noise
+      follows each detector's real noise. ``deteCT.noise_parameters()`` gives
+      ``MODE1_I0_PER_DETECTOR``, which looks like mode1 on each detector.
+    """
+
     def __init__(
         self,
         mode,
@@ -317,6 +353,31 @@ class deteCT(Dataset):
         # consecutive slices (e.g. with a query)
         return len(self.slice_dataframe)
 
+    @staticmethod
+    def noise_parameters(I0=None, cross_talk=0.05):
+        """
+        noise_params for ``add_noise``: by default the I0 of each detector
+        that makes mode2 plus the added noise look like that detector's mode1
+        (``MODE1_I0_PER_DETECTOR``). I0 can be a number (the same for every
+        slice, LION's behaviour before October 2026) or a dict
+        {detector: I0}. cross_talk: fraction of the signal of the neighbouring
+        detector pixels (0.05, from XCIST).
+        """
+        noise = LIONParameter()
+        noise.I0 = dict(MODE1_I0_PER_DETECTOR) if I0 is None else I0
+        noise.cross_talk = cross_talk
+        return noise
+
+    def noise_I0(self, index):
+        """The I0 of the added noise for the slice at index: noise_params.I0
+        if it is a number, else the I0 of the slice's detector."""
+        I0 = self.noise_params.I0
+        if isinstance(I0, dict):
+            detector = int(self.slice_dataframe.iloc[index]["detector"])
+            # LIONParameter files may store dict keys as strings
+            return I0[detector] if detector in I0 else I0[str(detector)]
+        return I0
+
     def add_sinogram_noise(self, sinogram, I0, cross_talk=0.05):
         r"""
         Add noise to a measured sinogram.
@@ -337,7 +398,9 @@ class deteCT(Dataset):
 
         Input:
         sinogram: torch.Tensor, the sinogram to add noise to. It has to be flat field corrected, and in absobrtion units (i.e. log transformed)
-        I0: float, the number of counts in the measurement (lower=more noise)
+        I0: float, the number of counts in the measurement (lower=more noise).
+            The data loader passes noise_I0(index): one I0 per detector when
+            noise_params.I0 is a dict (see the class docstring).
         """
         dev = sinogram.device
 
@@ -390,7 +453,7 @@ class deteCT(Dataset):
 
         if self.add_noise:
             sinogram = self.add_sinogram_noise(
-                sinogram, self.noise_params.I0, self.noise_params.cross_talk
+                sinogram, self.noise_I0(index), self.noise_params.cross_talk
             )
 
         sinogram = torch.flip(sinogram, [2])

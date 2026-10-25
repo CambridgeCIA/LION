@@ -4,7 +4,37 @@
 #
 # Author  : Ander Biguri
 # =============================================================================
+"""
+LION's CT experiments: a geometry, a dataset and, for simulated data, the
+noise added to the sinograms (``param.noise_params``).
 
+Noise of the simulated (LIDC-IDRI) experiments, since 25 October 2026
+---------------------------------------------------------------------
+``Experiment.noise_parameters(I0)``: the physical noise model of
+``ct_utils.sinogram_add_noise``. The images are densities (g/cm^3, see the
+LIDC-IDRI data loader), the geometries are in mm, so the line integrals give
+the real transmission through water at 80 keV, and ``I0`` is the number of
+photons per detector pixel in vacuum. Thicker patients get noisier data, as in
+a scanner, and photon-starved rays are floored at 1 photon before the log. The
+detector is energy-integrating (electronic noise, cross-talk) unless
+``detector="photon_counting"``.
+
+The doses (``CLINICAL_I0``, ``LOW_DOSE_I0``, ``EXTREMELY_LOW_DOSE_I0``) were
+chosen by Ander by looking at FDK reconstructions of small, typical and large
+LIDC-IDRI patients.
+
+Before, the experiments used the relative model: each sinogram divided by its
+maximum, so every patient's thickest ray kept I0/e photons (I0 = 10000, 3500
+and 1000). That is not how a scanner works; the noise did not depend on the
+size of the patient. Parameter files saved before ``noise_model`` existed
+still use the relative model (``noise_model = "relative"``), with the errors
+LION's noise had before October 2026 fixed (cross-talk across angles, batch
+maximum, 1e-6 rule for starved rays), so their results are close to, but not
+bit-identical with, the old ones. New results are not comparable with old
+results of the same experiment name.
+
+Measured 2DeteCT data have their own noise; see the deteCT data loader.
+"""
 
 import numpy as np
 import torch
@@ -19,12 +49,12 @@ from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 from LION.data_loaders.deteCT import deteCT
 
 # Photons per detector pixel in vacuum of the simulated experiments (physical
-# noise model, see Experiment.noise_parameters). Chosen by looking at
-# LIDC-IDRI reconstructions (scripts/noise_study, 25 Oct 2026); before, the
-# relative model used 10000, 3500 and 1000.
-CLINICAL_I0 = 100000
-LOW_DOSE_I0 = 30000
-EXTREMELY_LOW_DOSE_I0 = 7000
+# noise model, water at 80 keV; see Experiment.noise_parameters). Chosen by
+# Ander on 25 Oct 2026 by looking at LIDC-IDRI reconstructions. With the
+# relative model, the experiments used 10000, 3500 and 1000.
+CLINICAL_I0 = 20000
+LOW_DOSE_I0 = 5000
+EXTREMELY_LOW_DOSE_I0 = 1000
 
 
 class Experiment(ABC):
