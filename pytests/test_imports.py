@@ -59,7 +59,8 @@ def run_isolated(code):
 @pytest.fixture(scope="module")
 def import_errors():
     """{module: traceback or None}, imported one after another in one interpreter."""
-    return run_isolated(f"""
+    return run_isolated(
+        f"""
         def _no_cuda(*args, **kwargs):
             raise RuntimeError("CUDA queried at import time")
         torch.cuda.current_device = _no_cuda
@@ -71,13 +72,15 @@ def import_errors():
             except Exception:
                 errors[module] = traceback.format_exc()
         print(json.dumps(errors))
-        """)
+        """
+    )
 
 
 @pytest.fixture(scope="module")
 def missing_backend_errors():
     """{call: ImportError message or None} for CT functions called without tomosipo."""
-    return run_isolated(f"""
+    return run_isolated(
+        f"""
         from LION.CTtools.ct_geometry import Geometry
         errors = {{}}
         for call in {CALLS!r}:
@@ -87,7 +90,8 @@ def missing_backend_errors():
             except ImportError as e:
                 errors[call] = str(e)
         print(json.dumps(errors))
-        """)
+        """
+    )
 
 
 @pytest.mark.parametrize("module", MODULES)

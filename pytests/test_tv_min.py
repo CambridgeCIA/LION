@@ -7,7 +7,6 @@ The bug: tv_min.py previously passed the full batched ``sino`` tensor to
 ts_algorithms.tv_min2d instead of ``sino[i]``, causing a shape mismatch when
 ``B > 1`` (ts_algorithms expects a single sample, not a batch).
 """
-
 import sys
 from unittest.mock import MagicMock
 
