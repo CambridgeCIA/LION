@@ -32,11 +32,30 @@ def from_HU_to_normal(img):
         raise NotImplementedError
 
 
-def from_HU_to_mu(img):
+# Mass attenuation coefficient of water (liquid), mu/rho in cm^2/g (total, with
+# coherent scattering), at a few effective energies (keV) of a CT spectrum.
+# Source: J. H. Hubbell and S. M. Seltzer, "Tables of X-Ray Mass Attenuation
+# Coefficients and Mass Energy-Absorption Coefficients", NIST Standard
+# Reference Database 126, version 1.4 (2004), table "Water, Liquid":
+# https://physics.nist.gov/PhysRefData/XrayMassCoef/ComTab/water.html
+# (landing page: https://www.nist.gov/pml/x-ray-mass-attenuation-coefficients).
+# Values checked against that table on 25 Oct 2026.
+WATER_MASS_ATTENUATION = {50: 0.2269, 60: 0.2059, 80: 0.1837, 100: 0.1707}
+# Default of the physical noise model: water at 80 keV, close to the effective
+# energy of a 120 kV clinical beam after the patient (decided 25 Oct 2026).
+DEFAULT_MASS_ATTENUATION = WATER_MASS_ATTENUATION[80]
+
+
+def from_HU_to_density(img):
     """
-    Converts image in Hounsfield Units (air-> -1000, bone->500) into linear attenuation coefficient (air-> 0.0012,
-    bone->1.52 g/cm^3). Approximate.
-    Comercial scanners use a piecewise linear function. Check STIR for real values. (https://raw.githubusercontent.com/UCL/STIR/85cc1940c297b1749cf44a9fba937d7cefdccd47/src/utilities/share/ct_slopes.json)
+    Converts an image in Hounsfield Units into (approximate) mass density in
+    g/cm^3, linearly: air (-1000 HU) -> 0.0012, water (0 HU) -> 1.0137,
+    500 HU -> 1.52. Real tissue is closer to bilinear (bone is denser per HU);
+    this is the conversion LION uses for its simulated datasets.
+    Commercial scanners use a piecewise linear function. STIR has
+    scanner-specific bilinear conversions from HU to attenuation (for
+    PET/SPECT attenuation correction, so at those photon energies):
+    https://raw.githubusercontent.com/UCL/STIR/85cc1940c297b1749cf44a9fba937d7cefdccd47/src/utilities/share/ct_slopes.json
     """
     if isinstance(img, np.ndarray):
         return np.maximum(
@@ -51,6 +70,28 @@ def from_HU_to_mu(img):
         raise NotImplementedError
 
 
+def from_HU_to_mu(img, mass_attenuation=None, length_unit_cm=0.1):
+    """
+    Linear attenuation coefficient mu = density * (mu/rho), per length unit
+    (default 1/mm, as LION geometries are in mm), with ``mass_attenuation``
+    the mass attenuation coefficient mu/rho in cm^2/g (e.g.
+    ``WATER_MASS_ATTENUATION[80]``, from the NIST tables cited there:
+    water-equivalent, monochromatic).
+
+    Without ``mass_attenuation`` it returns the density (g/cm^3) of
+    ``from_HU_to_density``, as it did before October 2026 (when its docstring
+    called that the attenuation).
+    """
+    density = from_HU_to_density(img)
+    if mass_attenuation is None:
+        return density
+    return density * (mass_attenuation * length_unit_cm)
+
+
+NOISE_MODELS = ("physical", "relative")
+DETECTORS = ("energy_integrating", "photon_counting")
+
+
 def sinogram_add_noise(
     proj,
     I0=1000,
@@ -60,29 +101,84 @@ def sinogram_add_noise(
     flat_field=None,
     dark_field=None,
     enable_gradients=False,
-    legacy=False,
+    model="physical",
+    detector="energy_integrating",
+    mass_attenuation=DEFAULT_MASS_ATTENUATION,
+    length_unit_cm=0.1,
+    min_counts=1.0,
 ):
     """
     Adds realistic noise to sinograms (see _sinogram_add_noise), with or
     without gradients.
 
-    legacy=True reproduces the noise of LION before October 2026: detector
-    cross-talk blurred across neighbouring angles as well as detectors, and
-    the attenuation scaled by the maximum of the whole input (so in a batch,
-    each sample's noise depended on the others).
+    ``model`` says how the line integrals ``proj`` become attenuation, i.e.
+    what ``I0`` means:
+
+    - ``"physical"`` (default): ``proj`` are line integrals of a density image
+      (g/cm^3, e.g. from ``from_HU_to_density``) in ``length_unit_cm`` (0.1:
+      mm, as LION geometries), and the transmission is
+      exp(-mass_attenuation * proj * length_unit_cm), with ``mass_attenuation``
+      the mu/rho of water in cm^2/g (default ``DEFAULT_MASS_ATTENUATION``,
+      water at 80 keV; monochromatic, water-equivalent). ``I0`` is the number
+      of photons per detector pixel in vacuum, as in XCIST, and larger objects
+      get noisier data, as in a scanner.
+    - ``"relative"``: ``proj`` is divided by the maximum of each sample, so the
+      most attenuating ray always keeps e^-1 of I0, whatever the object and its
+      units. LION's model before October 2026 (``mass_attenuation`` unused).
+
+    The returned sinogram has the units of ``proj`` in both cases. The physical
+    model only makes sense for density line integrals in the given length unit
+    (as LION's simulated experiments produce, see ``ct_experiments``); for
+    sinograms in other units, use ``model="relative"``.
+
+    ``detector``:
+
+    - ``"energy_integrating"`` (default; most clinical scanners): Poisson
+      photon counts, detector cross-talk (a Gaussian blur of std
+      ``sigma_blur`` pixels along the detector) and Gaussian electronic noise
+      of std ``sigma`` photons, as in XCIST.
+    - ``"photon_counting"``: the Poisson photon counts themselves. The energy
+      threshold rejects electronic noise, so ``sigma`` and ``sigma_blur`` are
+      not used, and the counts are integers >= 0. Charge sharing, pulse
+      pile-up and energy resolution are not modelled.
+
+    ``min_counts``: the detector signal (photons plus electronic noise, the
+    dark field subtracted) can be 0 or negative when a ray gets (almost) no
+    photons, and the log needs a positive value. Signals below ``min_counts``
+    (in photons; default 1) are set to it, so a starved ray reads as at most
+    log(I0 / min_counts) of attenuation. None: LION's old rule, signals <= 0
+    become 1e-6, i.e. log(I0) + 13.8, far beyond any real attenuation, which
+    turns starved rays into strong streaks. It only matters when rays are
+    starved, so in practice only with the physical model. A photon-counting
+    detector's signal is never negative, but it can be 0.
+
+    LION's noise before October 2026 was the relative model with three errors,
+    since fixed and not kept as an option (Ander, 25 Oct 2026): detector
+    cross-talk blurred across neighbouring angles as well as detectors, the
+    attenuation scaled by the maximum of the whole batch, and the 1e-6 rule.
     """
+    if model not in NOISE_MODELS:
+        raise ValueError(f"model must be one of {NOISE_MODELS}, got {model!r}")
+    if detector not in DETECTORS:
+        raise ValueError(f"detector must be one of {DETECTORS}, got {detector!r}")
+    kwargs = dict(
+        I0=I0,
+        sigma=sigma,
+        sigma_blur=sigma_blur,
+        ks_value=ks_value,
+        flat_field=flat_field,
+        dark_field=dark_field,
+        mass_attenuation=mass_attenuation if model == "physical" else None,
+        photon_counting=detector == "photon_counting",
+        length_unit_cm=length_unit_cm,
+        min_counts=min_counts,
+    )
     if enable_gradients:
-        sino = _sinogram_add_noise(
-            proj, I0, sigma, sigma_blur, ks_value, flat_field, dark_field, legacy
-        )
-    else:
-        if torch.is_tensor(proj):
-            proj = proj.detach()
-        with torch.no_grad():
-            sino = _sinogram_add_noise(
-                proj, I0, sigma, sigma_blur, ks_value, flat_field, dark_field, legacy
-            )
-    return sino
+        return _sinogram_add_noise(proj, **kwargs)
+    if torch.is_tensor(proj):
+        proj = proj.detach()
+    with torch.no_grad():
+        return _sinogram_add_noise(proj, **kwargs)
 
 
 def _sinogram_add_noise(
@@ -93,7 +189,10 @@ def _sinogram_add_noise(
     ks_value=3,
     flat_field=None,
     dark_field=None,
-    legacy=False,
+    mass_attenuation=None,
+    length_unit_cm=0.1,
+    min_counts=None,
+    photon_counting=False,
 ):
     """
     Adds realistic noise to sinograms, (C, angles, detectors) or batched
@@ -103,8 +202,10 @@ def _sinogram_add_noise(
     - Detector crosstalk: a Gaussian blur (std sigma_blur pixels) along the detector,
       within each projection.
     - Add a flat_field to add even more realistic noise (computed at non-corrected flat fields)
-    The line integrals are scaled by the maximum of each sample before applying I0.
-    See sinogram_add_noise for ``legacy``.
+    ``mass_attenuation=None`` is the relative model, otherwise the physical one;
+    photon_counting: only the Poisson counts (no cross-talk, no electronic
+    noise). See sinogram_add_noise for the models, the detectors,
+    and ``min_counts``.
     """
     if torch.is_tensor(proj):
         istorch = True
@@ -119,13 +220,18 @@ def _sinogram_add_noise(
         dark_field = torch.zeros(proj.shape, device=dev)
     if flat_field is None:
         flat_field = torch.ones(proj.shape, device=dev)
-    # Scale of the line integrals: the maximum of each sample (alternatively the
-    # highest power of 2 close to this value, but lets leave it as is).
-    if proj.dim() == 4 and not legacy:
-        max_val = torch.amax(proj, dim=(1, 2, 3), keepdim=True)
-    else:  # one sample (or, legacy, the whole batch)
-        max_val = torch.amax(proj)
-    max_val = torch.where(max_val <= 0, torch.ones_like(max_val), max_val)
+    # Scale of the line integrals: attenuation = proj / max_val
+    if mass_attenuation is not None:
+        # physical: mu/rho [cm^2/g] * density line integral [g/cm^3 * length unit]
+        max_val = torch.tensor(1.0 / (mass_attenuation * length_unit_cm), device=dev)
+    else:
+        # relative: the maximum of each sample (alternatively the highest power
+        # of 2 close to this value, but lets leave it as is)
+        if proj.dim() == 4:
+            max_val = torch.amax(proj, dim=(1, 2, 3), keepdim=True)
+        else:  # one sample
+            max_val = torch.amax(proj)
+        max_val = torch.where(max_val <= 0, torch.ones_like(max_val), max_val)
     Im = I0 * torch.exp(-proj / max_val)
 
     # Uncorrect the flat fields
@@ -134,19 +240,21 @@ def _sinogram_add_noise(
     # Add Poisson noise
     Im = torch.poisson(Im)
 
-    # Detector cross talk
-    ks = int(sigma_blur * ks_value) * 2 + 1
-    if ks < 3:
-        ks = 3
-    if legacy:  # blurred across neighbouring angles too
-        Im = TF.gaussian_blur(Im, kernel_size=[ks, ks], sigma=[sigma_blur, sigma_blur])
-    else:  # kernel [width, height]: along the detector (last axis) only
+    if not photon_counting:  # energy-integrating detector
+        # Detector cross talk
+        ks = int(sigma_blur * ks_value) * 2 + 1
+        if ks < 3:
+            ks = 3
+        # kernel [width, height]: along the detector (last axis) only
         Im = TF.gaussian_blur(Im, kernel_size=[ks, 1], sigma=[sigma_blur, 1.0])
 
-    # Electronic noise:
-    Im = Im + sigma * torch.randn(Im.shape, device=dev)
+        # Electronic noise:
+        Im = Im + sigma * torch.randn(Im.shape, device=dev)
 
-    Im[Im <= 0] = 1e-6
+    if min_counts is None:  # LION's old rule
+        Im[Im <= 0] = 1e-6
+    else:  # starved rays: at most log(I0 / min_counts) of attenuation
+        Im = torch.clamp(Im, min=min_counts)
     # Correct flat fields
     Im = (Im - dark_field) / (flat_field - dark_field)
     proj = -torch.log(Im / I0) * max_val

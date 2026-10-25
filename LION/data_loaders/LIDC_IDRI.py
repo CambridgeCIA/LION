@@ -122,6 +122,15 @@ class LIDC_IDRI(Dataset):
         """
         Initializes LIDC-IDRI dataset.
 
+        Images: for reconstruction, the CT images (Hounsfield units) are turned
+        into mass density in g/cm^3 (``ct_utils.from_HU_to_density``: air 0.0012,
+        water 1.0137, 500 HU 1.52). Before October 2026 the same values came from
+        ``from_HU_to_mu``, which called them attenuation. With LION's geometries
+        in mm, the sinograms are then density line integrals in g/cm^3 * mm,
+        which is what the physical noise model of
+        ``ct_utils.sinogram_add_noise`` expects: the experiments
+        (``ct_experiments``) add the noise.
+
         Parameters:
             - device (torch.device): Selects the device to use for the data loader.
             - task (str): Defines pipeline on how to use data. Distinguish between "joint", "end_to_end", "segmentation", "reconstruction" and "diagnostic".
@@ -179,7 +188,9 @@ class LIDC_IDRI(Dataset):
         self.device = self.params.device
 
         if task in ["reconstruction"]:
-            self.image_transform = ct.from_HU_to_mu
+            self.image_transform = (
+                ct.from_HU_to_density
+            )  # g/cm^3 (was from_HU_to_mu, same values)
         if task in ["segmentation"]:
             self.image_transform = ct.from_HU_to_normal
 

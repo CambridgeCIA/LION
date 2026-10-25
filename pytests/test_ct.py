@@ -13,6 +13,10 @@ import torch
 from LION.classical_algorithms import fdk
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import (
+    DEFAULT_MASS_ATTENUATION,
+    WATER_MASS_ATTENUATION,
+    from_HU_to_density,
+    from_HU_to_mu,
     forward_projection,
     from_HU_to_material_id,
     make_operator,
@@ -66,31 +70,126 @@ def deterministic_noise(monkeypatch):
     monkeypatch.setattr(torch, "randn", lambda *shape, **kw: torch.zeros(*shape, **kw))
 
 
-@pytest.mark.parametrize("legacy", [False, True])
-def test_crosstalk_is_along_the_detector(deterministic_noise, legacy):
+def test_crosstalk_is_along_the_detector(deterministic_noise):
     sino = torch.zeros(1, 9, 9)
     sino[0, 4, 4] = 1.0  # one bright detector pixel in one projection
-    noisy = sinogram_add_noise(sino, I0=1e4, sigma=0, sigma_blur=1.0, legacy=legacy)
+    noisy = sinogram_add_noise(sino, I0=1e4, sigma=0, sigma_blur=1.0, model="relative")
     assert noisy[0, 4, 3] > 1e-3  # neighbouring detector pixel, same angle
-    other_angle = noisy[0, 3, 4]
-    if legacy:  # the old model also blurred into the neighbouring angle
-        assert other_angle > 1e-3
-    else:
-        assert other_angle < 1e-5  # (float32 rounding of log(exp(0)))
+    assert noisy[0, 3, 4] < 1e-5  # not the neighbouring angle (float32 rounding)
 
 
-@pytest.mark.parametrize("legacy", [False, True])
-def test_noise_of_a_sample_does_not_depend_on_its_batch(deterministic_noise, legacy):
+def test_noise_of_a_sample_does_not_depend_on_its_batch(deterministic_noise):
     torch.manual_seed(0)
     a, b = torch.rand(1, 20, 30), 5 * torch.rand(1, 20, 30)  # b has a larger maximum
-    alone = sinogram_add_noise(a.unsqueeze(0), I0=1e3, sigma=0, legacy=legacy)[0]
-    in_batch = sinogram_add_noise(torch.stack([a, b]), I0=1e3, sigma=0, legacy=legacy)[
-        0
-    ]
-    if legacy:  # scaled by the maximum of the whole batch
-        assert not torch.allclose(alone, in_batch)
-    else:
-        torch.testing.assert_close(alone, in_batch)
+    kwargs = dict(I0=1e3, sigma=0, model="relative")
+    alone = sinogram_add_noise(a.unsqueeze(0), **kwargs)[0]
+    in_batch = sinogram_add_noise(torch.stack([a, b]), **kwargs)[0]
+    torch.testing.assert_close(alone, in_batch)
+
+
+@pytest.mark.parametrize("model", ["relative", "physical"])
+def test_noise_free_limit_returns_the_sinogram(deterministic_noise, model):
+    """Without random counts, both models give back the clean line integrals
+    (so the physical scaling converts to attenuation and back consistently)."""
+    torch.manual_seed(0)
+    sino = 300 * torch.rand(2, 1, 20, 30)  # density line integrals, g/cm^3 * mm
+    noisy = sinogram_add_noise(sino, I0=1e6, sigma=0, sigma_blur=1e-3, model=model)
+    torch.testing.assert_close(noisy, sino, rtol=1e-3, atol=1e-2)
+
+
+def test_physical_noise_grows_with_the_object():
+    """Physical model: std of the line integral ~ 1 / (k sqrt(I0 exp(-k p))),
+    k = mu/rho * 0.1 cm/mm; thicker objects transmit fewer photons."""
+    torch.manual_seed(0)
+    k = DEFAULT_MASS_ATTENUATION * 0.1  # water at 80 keV
+    stds = []
+    for p in (100.0, 300.0):  # ~10 and ~30 cm of water
+        sino = torch.full((1, 200, 400), p)
+        noisy = sinogram_add_noise(
+            sino,
+            I0=1e5,
+            sigma=0,
+            sigma_blur=1e-3,
+            model="physical",
+        )
+        expected = 1 / (k * np.sqrt(1e5 * np.exp(-k * p)))
+        assert (noisy - sino).std().item() == pytest.approx(expected, rel=0.1)
+        stds.append((noisy - sino).std().item())
+    assert stds[1] > 3 * stds[0]
+
+
+def test_starved_rays_are_floored_at_min_counts():
+    """A ray through ~60 cm of water at I0 = 1e4 gets ~0 photons. LION's old
+    rule (signal <= 0 -> 1e-6) reads it as log(I0) + 13.8 attenuation; with
+    min_counts it reads as at most log(I0 / min_counts)."""
+    torch.manual_seed(0)
+    k = DEFAULT_MASS_ATTENUATION * 0.1
+    sino = torch.full((1, 50, 60), 700.0)  # transmission ~ 2e-6
+    old = sinogram_add_noise(sino, I0=1e4, sigma=5, min_counts=None)
+    floored = sinogram_add_noise(sino, I0=1e4, sigma=5)  # default: 1 photon
+    assert old.max().item() * k == pytest.approx(np.log(1e4) + np.log(1e6), rel=1e-3)
+    assert floored.max().item() * k <= np.log(1e4) + 1e-4
+    assert floored.min().item() >= 0
+
+
+def test_min_counts_changes_nothing_without_starved_rays():
+    """With enough photons (the relative model at LION's I0s keeps >= I0/e)
+    no signal is near the floor, so the noise is exactly the same."""
+    sino = 3 * torch.rand(1, 40, 50)
+    torch.manual_seed(1)
+    old_rule = sinogram_add_noise(sino, I0=1000, model="relative", min_counts=None)
+    torch.manual_seed(1)
+    floored = sinogram_add_noise(sino, I0=1000, model="relative")
+    torch.testing.assert_close(floored, old_rule, rtol=0, atol=0)
+
+
+def test_noise_model_names():
+    sino = 3 * torch.rand(1, 10, 12)
+    with pytest.raises(ValueError):
+        sinogram_add_noise(sino, model="legacy")
+
+
+def test_photon_counting_gives_integer_counts_without_electronic_noise():
+    """Photon counting: the counts are Poisson integers >= 0 (no electronic
+    noise, no cross-talk), so I0 * exp(-p / s) of the output is an integer and
+    the variance is 1 / (I0 T) with no electronic term."""
+    torch.manual_seed(0)
+    k = DEFAULT_MASS_ATTENUATION * 0.1
+    p = torch.full((1, 400, 300), 150.0)  # ~15 cm of water: T ~ 0.06
+    kwargs = dict(I0=2000, sigma=50, sigma_blur=2.0)  # sigma and blur unused
+    counts = 2000 * torch.exp(
+        -k * sinogram_add_noise(p, detector="photon_counting", **kwargs).double()
+    )
+    torch.testing.assert_close(counts, counts.round(), rtol=0, atol=1e-6 * 2000)
+    T = float(np.exp(-k * 150))
+    expected_var = 1 / (k**2 * 2000 * T)
+    noisy = sinogram_add_noise(p, detector="photon_counting", **kwargs)
+    assert noisy.var().item() == pytest.approx(expected_var, rel=0.05)
+    # the energy-integrating detector adds the electronic noise (sigma = 50)
+    ei = sinogram_add_noise(p, **kwargs)
+    assert ei.var().item() > 1.5 * expected_var
+
+
+def test_photon_counting_zero_counts_are_floored():
+    torch.manual_seed(0)
+    k = DEFAULT_MASS_ATTENUATION * 0.1
+    p = torch.full((1, 50, 60), 700.0)  # ~0 photons
+    noisy = sinogram_add_noise(p, I0=1e4, detector="photon_counting")
+    assert noisy.max().item() * k == pytest.approx(np.log(1e4), rel=1e-4)
+    with pytest.raises(ValueError):
+        sinogram_add_noise(p, detector="photon-counting")
+
+
+def test_hu_to_density_and_mu():
+    hu = np.array([-1000.0, 0.0, 500.0])
+    density = from_HU_to_density(hu)
+    np.testing.assert_allclose(density, [0.0012, 1.0137, 1.52], atol=1e-4)
+    # without an energy, from_HU_to_mu keeps returning the density (old behaviour)
+    np.testing.assert_allclose(from_HU_to_mu(hu), density)
+    # with mu/rho: mu in 1/mm; water at 60 keV ~ 0.021 /mm
+    mu = from_HU_to_mu(hu, WATER_MASS_ATTENUATION[60])
+    np.testing.assert_allclose(mu, density * WATER_MASS_ATTENUATION[60] * 0.1)
+    assert mu[1] == pytest.approx(0.0209, abs=1e-4)
 
 
 # --------------------------------------------------------------------------
