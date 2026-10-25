@@ -6,7 +6,7 @@ import tempfile
 # LION.utils.paths requires LION_DATA_PATH at import time
 os.environ.setdefault("LION_DATA_PATH", tempfile.gettempdir())
 
-import numpy as np
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import pytest  # noqa: E402
 
