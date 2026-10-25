@@ -22,6 +22,10 @@ The new sinograms come from the experiment itself (dataset[i]), so this
 shows exactly what training and testing on these experiments will see.
 --detector photon_counting shows the same experiments with a photon-counting
 detector instead.
+
+--sweep 1e5,3e4,1e4,3e3,1e3 writes lidc_sweep.png instead: the three patients
+with the old relative model at its three doses and the physical model at
+each I0 given, side by side, to choose the experiments' I0 by eye.
 """
 
 import argparse
@@ -62,7 +66,68 @@ def pick_slices(data, op, n_slices, device):
     return picks
 
 
+def sweep(args):
+    """One figure: the three patients (rows); ground truth, the old relative
+    model at its three doses, and the physical model at each --sweep I0."""
+    device = torch.device(args.device)
+    out = pathlib.Path(args.out) if args.out else pathlib.Path(__file__).parent
+    out.mkdir(parents=True, exist_ok=True)
+    psnr = PSNR()
+    torch.manual_seed(0)
+    experiment = ct_experiments.clinicalCTRecon(dataset="LIDC-IDRI")
+    noise = experiment.param.noise_params
+    op = ct.make_operator(experiment.geometry)
+    data = experiment.get_testing_dataset()
+    picks = pick_slices(data, op, args.n_slices, device)
+    I0s = [float(v) for v in args.sweep.split(",")]
+    columns = [("ground truth", None)]
+    columns += [
+        (f"old {name}: relative, I0 {I0}", I0) for name, I0 in RELATIVE_I0.items()
+    ]
+    columns += [(f"physical, I0 {I0:g}", I0) for I0 in I0s]
+    n_old = 1 + len(RELATIVE_I0)
+    fig, axes = plt.subplots(
+        len(picks), len(columns), figsize=(3.6 * len(columns), 3.9 * len(picks))
+    )
+    for row, (label, (index, path)) in zip(axes, picks.items()):
+        _, image = data[index]
+        image = image.to(device).unsqueeze(0)
+        clean = op(image[0])
+        line = []
+        for k, (title, I0) in enumerate(columns):
+            if I0 is None:
+                img = image
+            else:
+                model = (
+                    dict(model="relative")
+                    if k < n_old
+                    else dict(detector=args.detector)  # the physical model
+                )
+                sino = ct.sinogram_add_noise(
+                    clean,
+                    I0=I0,
+                    sigma=noise.sigma,
+                    sigma_blur=noise.sigma_blur,
+                    **model,
+                )
+                img = fdk(sino.unsqueeze(0), op)
+                value = psnr(img, image).item()
+                title += f"\nPSNR {value:.1f}"
+                line.append(f"{title.splitlines()[0]}: {value:.1f}")
+            ax = row[k]
+            ax.imshow(img[0, 0].cpu().numpy(), cmap="gray", vmin=0, vmax=args.vmax)
+            ax.set_title(f"{label} ({path:.0f} mm)\n{title}", fontsize=8)
+            ax.axis("off")
+        print(f"{label} patient, PSNR: " + "; ".join(line))
+    fig.tight_layout()
+    path = out / "lidc_sweep.png"
+    fig.savefig(path, dpi=90)
+    print(f"Saved {path}")
+
+
 def main(args):
+    if args.sweep:
+        return sweep(args)
     device = torch.device(args.device)
     out = pathlib.Path(args.out) if args.out else pathlib.Path(__file__).parent
     out.mkdir(parents=True, exist_ok=True)
@@ -140,6 +205,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--vmax", type=float, default=1.3, help="display window: 0 to vmax g/cm^3"
+    )
+    parser.add_argument(
+        "--sweep",
+        default=None,
+        help="comma-separated physical I0 (e.g. 1e5,3e4,1e4,3e3,1e3): one figure "
+        "with the old relative doses and the physical model at each of these",
     )
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--out", default=None)
