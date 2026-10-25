@@ -4,7 +4,6 @@ import random
 from typing import Callable
 
 import torch
-import torchvision.transforms.functional as TF
 from torch.optim.optimizer import Optimizer
 
 from LION.classical_algorithms.fdk import fdk
@@ -12,6 +11,7 @@ from LION.CTtools.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.utils.parameter import LIONParameter
+from LION.utils.image_transforms import rotate
 from LION.utils.tomosipo_import import import_tomosipo
 
 
@@ -51,7 +51,7 @@ class EquivariantSolver(LIONsolver):
         angle_increment = 360 / cardinality
 
         return [
-            lambda x, i=i: TF.rotate(x, i * angle_increment) for i in range(cardinality)
+            lambda x, i=i: rotate(x, i * angle_increment) for i in range(cardinality)
         ]
 
     @staticmethod

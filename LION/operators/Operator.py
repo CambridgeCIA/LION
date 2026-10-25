@@ -5,9 +5,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import torch
-from mrpro.operators.LinearOperator import LinearOperator
 
 from LION.utils.common_primitives import DeviceLikeType
+from LION.utils.tomosipo_import import import_mrpro
 
 
 class Operator(torch.nn.Module, ABC):
@@ -136,19 +136,44 @@ class Operator(torch.nn.Module, ABC):
         return self
 
 
-class MrproLinearOp(LinearOperator):
-    """Thin mrpro LinearOperator wrapper around any LION operator.
+_MrproLinearOp = None
 
-    The wrapped operator must be linear, differentiable with PyTorch autograd,
-    take ``torch.Tensor``, return a ``torch.Tensor``, implement ``adjoint()``.
-    """
 
-    def __init__(self, op: Operator):
-        super().__init__()
-        self.op = op
+def _mrpro_linear_op():
+    """MrproLinearOp, defined on first use: it subclasses mrpro's
+    LinearOperator, and mrpro is only imported when needed (like tomosipo)."""
+    global _MrproLinearOp
+    if _MrproLinearOp is None:
+        LinearOperator = import_mrpro(
+            "mrpro.operators.LinearOperator", "MrproLinearOp"
+        ).LinearOperator
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor]:
-        return (self.op(x),)
+        class MrproLinearOp(LinearOperator):
+            """Thin mrpro LinearOperator wrapper around any LION operator.
 
-    def adjoint(self, x: torch.Tensor) -> tuple[torch.Tensor]:
-        return (self.op.adjoint(x),)
+            The wrapped operator must be linear, differentiable with PyTorch
+            autograd, take ``torch.Tensor``, return a ``torch.Tensor``,
+            implement ``adjoint()``.
+            """
+
+            def __init__(self, op: Operator):
+                super().__init__()
+                self.op = op
+
+            def forward(self, x: torch.Tensor) -> tuple[torch.Tensor]:
+                return (self.op(x),)
+
+            def adjoint(self, x: torch.Tensor) -> tuple[torch.Tensor]:
+                return (self.op.adjoint(x),)
+
+        MrproLinearOp.__module__ = __name__
+        MrproLinearOp.__qualname__ = "MrproLinearOp"
+        _MrproLinearOp = MrproLinearOp
+    return _MrproLinearOp
+
+
+def __getattr__(name):
+    # `from LION.operators.Operator import MrproLinearOp` imports mrpro then
+    if name == "MrproLinearOp":
+        return _mrpro_linear_op()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

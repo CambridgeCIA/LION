@@ -3,9 +3,17 @@
 from __future__ import annotations
 
 import torch
-from spyrit.core.torch import fwht
 
 from LION.operators.Operator import Operator
+
+
+# spyrit is imported on first use: it loads torchvision and sympy, which
+# `import LION.operators` does not need otherwise.
+def fwht(x, order=False, dim=-1):
+    """spyrit's fast Walsh-Hadamard transform (``spyrit.core.torch.fwht``)."""
+    from spyrit.core.torch import fwht as spyrit_fwht
+
+    return spyrit_fwht(x, order=order, dim=dim)
 
 
 class WalshHadamard2D(Operator):

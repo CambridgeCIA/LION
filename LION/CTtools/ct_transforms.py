@@ -11,7 +11,6 @@ from typing import List, Dict
 
 import torch
 import torch.nn as nn
-from torchvision.transforms import Compose
 
 """
 class TransfromTemplate(object):
@@ -21,6 +20,18 @@ class TransfromTemplate(object):
     def __call__(self, sample:torch.Tensor) -> torch.Tensor:
         return sample
 """
+
+
+def _compose(transforms):
+    """Apply transforms one after the other."""
+
+    def apply(sample):
+        for transform in transforms:
+            sample = transform(sample)
+        return sample
+
+    return apply
+
 
 # NOTE: This is not being used because likely more complex transforms are needed to simulate CT noise accurately.
 
@@ -145,7 +156,7 @@ class CompleteSinogramTransform(object):
         flat_field=None,
         dark_field=None,
     ):
-        self.sinogram_transform = Compose(
+        self.sinogram_transform = _compose(
             [
                 Exponentiate(I0),
                 FieldsUncorrect(sinogram_size, flat_field, dark_field),

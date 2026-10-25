@@ -11,12 +11,12 @@ from __future__ import annotations
 # math/science imports
 import numpy as np
 import torch
-import torchvision.transforms.functional as TF
 
 # AItomotools imports
 from LION.CTtools.ct_geometry import Geometry
 from LION.operators.CTProjectionOp import CTProjectionOp
 from LION.utils.device import default_device
+from LION.utils.image_transforms import gaussian_blur
 
 
 def from_HU_to_normal(img):
@@ -245,8 +245,8 @@ def _sinogram_add_noise(
         ks = int(sigma_blur * ks_value) * 2 + 1
         if ks < 3:
             ks = 3
-        # kernel [width, height]: along the detector (last axis) only
-        Im = TF.gaussian_blur(Im, kernel_size=[ks, 1], sigma=[sigma_blur, 1.0])
+        # along the detector (last axis) only
+        Im = gaussian_blur(Im, ks, sigma_blur, dims=(-1,))
 
         # Electronic noise:
         Im = Im + sigma * torch.randn(Im.shape, device=dev)
