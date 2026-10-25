@@ -32,8 +32,14 @@ def from_HU_to_normal(img):
         raise NotImplementedError
 
 
-# Mass attenuation coefficient of water, mu/rho in cm^2/g (NIST XCOM), at a few
-# effective energies (keV) of a CT spectrum.
+# Mass attenuation coefficient of water (liquid), mu/rho in cm^2/g (total, with
+# coherent scattering), at a few effective energies (keV) of a CT spectrum.
+# Source: J. H. Hubbell and S. M. Seltzer, "Tables of X-Ray Mass Attenuation
+# Coefficients and Mass Energy-Absorption Coefficients", NIST Standard
+# Reference Database 126, version 1.4 (2004), table "Water, Liquid":
+# https://physics.nist.gov/PhysRefData/XrayMassCoef/ComTab/water.html
+# (landing page: https://www.nist.gov/pml/x-ray-mass-attenuation-coefficients).
+# Values checked against that table on 25 Oct 2026.
 WATER_MASS_ATTENUATION = {50: 0.2269, 60: 0.2059, 80: 0.1837, 100: 0.1707}
 # Default of the physical noise model: water at 80 keV, close to the effective
 # energy of a 120 kV clinical beam after the patient (decided 25 Oct 2026).
@@ -46,6 +52,10 @@ def from_HU_to_density(img):
     g/cm^3, linearly: air (-1000 HU) -> 0.0012, water (0 HU) -> 1.0137,
     500 HU -> 1.52. Real tissue is closer to bilinear (bone is denser per HU);
     this is the conversion LION uses for its simulated datasets.
+    Commercial scanners use a piecewise linear function. STIR has
+    scanner-specific bilinear conversions from HU to attenuation (for
+    PET/SPECT attenuation correction, so at those photon energies):
+    https://raw.githubusercontent.com/UCL/STIR/85cc1940c297b1749cf44a9fba937d7cefdccd47/src/utilities/share/ct_slopes.json
     """
     if isinstance(img, np.ndarray):
         return np.maximum(
@@ -65,7 +75,8 @@ def from_HU_to_mu(img, mass_attenuation=None, length_unit_cm=0.1):
     Linear attenuation coefficient mu = density * (mu/rho), per length unit
     (default 1/mm, as LION geometries are in mm), with ``mass_attenuation``
     the mass attenuation coefficient mu/rho in cm^2/g (e.g.
-    ``WATER_MASS_ATTENUATION[60]``: water-equivalent, monochromatic).
+    ``WATER_MASS_ATTENUATION[80]``, from the NIST tables cited there:
+    water-equivalent, monochromatic).
 
     Without ``mass_attenuation`` it returns the density (g/cm^3) of
     ``from_HU_to_density``, as it did before October 2026 (when its docstring
