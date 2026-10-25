@@ -46,7 +46,7 @@ SIGMA, SIGMA_BLUR = 5.0, 0.3015
 DIAMETERS = [100, 150, 200, 250, 300, 350, 400, 450]  # mm
 
 
-def main(energy_keV=60, out=None):
+def main(energy_keV=80, out=None):
     mu_rho = ct.WATER_MASS_ATTENUATION[energy_keV]
     s_phys = nt.physical_scale(mu_rho)
     w = nt.blur_variance_factor(SIGMA_BLUR)
@@ -170,7 +170,7 @@ def main(energy_keV=60, out=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument(
-        "--energy", type=int, default=60, choices=ct.WATER_MASS_ATTENUATION
+        "--energy", type=int, default=80, choices=ct.WATER_MASS_ATTENUATION
     )
     parser.add_argument("--out", default=None, help="where to save the figure")
     args = parser.parse_args()

@@ -60,9 +60,24 @@ def test_experiments_choose_the_noise_model(monkeypatch, saved):
     assert kw["I0"] == params.noise_params.I0
     if saved == "now":
         assert (kw["model"], kw["legacy"], kw["min_counts"]) == ("physical", False, 1.0)
+        assert kw["detector"] == "energy_integrating"
+        assert kw["mass_attenuation"] == ct_experiments.ct.WATER_MASS_ATTENUATION[80]
     else:
         assert (kw["model"], kw["min_counts"]) == ("relative", None)
         assert kw["legacy"] is (saved == "before 22 Oct 2026")
+
+
+def test_photon_counting_experiment(monkeypatch):
+    params = ct_experiments.LowDoseCTRecon.default_parameters()
+    params.noise_params = ct_experiments.Experiment.noise_parameters(
+        5000, detector="photon_counting"
+    )
+    calls = []
+    monkeypatch.setattr(
+        ct_experiments.ct, "sinogram_add_noise", lambda sino, **kw: calls.append(kw)
+    )
+    ct_experiments.LowDoseCTRecon(params).sino_fun("sinogram")
+    assert calls[0]["detector"] == "photon_counting" and calls[0]["I0"] == 5000
 
 
 def test_experiment_doses():

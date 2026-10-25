@@ -58,8 +58,9 @@ class Experiment(ABC):
             kwargs = dict(
                 legacy=legacy,
                 model=model,
+                detector=getattr(noise, "detector", "energy_integrating"),
                 mass_attenuation=getattr(
-                    noise, "mass_attenuation", ct.WATER_MASS_ATTENUATION[60]
+                    noise, "mass_attenuation", ct.DEFAULT_MASS_ATTENUATION
                 ),
                 # missing: LION's old rule for starved rays (see sinogram_add_noise)
                 min_counts=getattr(noise, "min_counts", None),
@@ -69,19 +70,22 @@ class Experiment(ABC):
             )
 
     @staticmethod
-    def noise_parameters(I0):
+    def noise_parameters(I0, detector="energy_integrating"):
         """
         Noise of LION's simulated experiments: the physical model of
         ct_utils.sinogram_add_noise, with I0 photons per detector pixel in
-        vacuum, water at 60 keV, electronic noise sigma = 5 photons, detector
-        cross-talk, and starved rays floored at 1 photon.
+        vacuum, water at 80 keV, and starved rays floored at 1 photon. The
+        default energy-integrating detector has electronic noise (sigma = 5
+        photons) and cross-talk; detector="photon_counting" has neither (see
+        ct_utils.sinogram_add_noise).
         """
         noise = LIONParameter()
         noise.noise_model = "physical"
         noise.I0 = I0
         noise.sigma = 5
         noise.sigma_blur = 0.3015
-        noise.mass_attenuation = ct.WATER_MASS_ATTENUATION[60]
+        noise.detector = detector
+        noise.mass_attenuation = ct.DEFAULT_MASS_ATTENUATION
         noise.min_counts = 1.0
         return noise
 

@@ -35,6 +35,9 @@ def from_HU_to_normal(img):
 # Mass attenuation coefficient of water, mu/rho in cm^2/g (NIST XCOM), at a few
 # effective energies (keV) of a CT spectrum.
 WATER_MASS_ATTENUATION = {50: 0.2269, 60: 0.2059, 80: 0.1837, 100: 0.1707}
+# Default of the physical noise model: water at 80 keV, close to the effective
+# energy of a 120 kV clinical beam after the patient (decided 25 Oct 2026).
+DEFAULT_MASS_ATTENUATION = WATER_MASS_ATTENUATION[80]
 
 
 def from_HU_to_density(img):
@@ -75,6 +78,7 @@ def from_HU_to_mu(img, mass_attenuation=None, length_unit_cm=0.1):
 
 
 NOISE_MODELS = ("physical", "relative")
+DETECTORS = ("energy_integrating", "photon_counting")
 
 
 def sinogram_add_noise(
@@ -88,7 +92,8 @@ def sinogram_add_noise(
     enable_gradients=False,
     legacy=False,
     model="physical",
-    mass_attenuation=WATER_MASS_ATTENUATION[60],
+    detector="energy_integrating",
+    mass_attenuation=DEFAULT_MASS_ATTENUATION,
     length_unit_cm=0.1,
     min_counts=1.0,
 ):
@@ -103,8 +108,8 @@ def sinogram_add_noise(
       (g/cm^3, e.g. from ``from_HU_to_density``) in ``length_unit_cm`` (0.1:
       mm, as LION geometries), and the transmission is
       exp(-mass_attenuation * proj * length_unit_cm), with ``mass_attenuation``
-      the mu/rho of water in cm^2/g (default ``WATER_MASS_ATTENUATION[60]``;
-      monochromatic, water-equivalent). ``I0`` is the number of photons per
+      the mu/rho of water in cm^2/g (default ``DEFAULT_MASS_ATTENUATION``, water
+      at 80 keV; monochromatic, water-equivalent). ``I0`` is the number of photons per
       detector pixel in vacuum, as in XCIST, and larger objects get noisier
       data, as in a scanner.
     - ``"relative"``: ``proj`` is divided by the maximum of each sample, so the
@@ -113,6 +118,17 @@ def sinogram_add_noise(
 
     The returned sinogram has the units of ``proj`` in both cases.
 
+    ``detector``:
+
+    - ``"energy_integrating"`` (default; most clinical scanners): Poisson
+      photon counts, detector cross-talk (a Gaussian blur of std
+      ``sigma_blur`` pixels along the detector) and Gaussian electronic noise
+      of std ``sigma`` photons, as in XCIST.
+    - ``"photon_counting"``: the Poisson photon counts themselves. The energy
+      threshold rejects electronic noise, so ``sigma`` and ``sigma_blur`` are
+      not used, and the counts are integers >= 0. Charge sharing, pulse
+      pile-up and energy resolution are not modelled.
+
     ``min_counts``: the detector signal (photons plus electronic noise, the
     dark field subtracted) can be 0 or negative when a ray gets (almost) no
     photons, and the log needs a positive value. Signals below ``min_counts``
@@ -120,19 +136,22 @@ def sinogram_add_noise(
     log(I0 / min_counts) of attenuation. None: LION's old rule, signals <= 0
     become 1e-6, i.e. log(I0) + 13.8, far beyond any real attenuation, which
     turns starved rays into strong streaks. It only matters when rays are
-    starved, so in practice only with the physical model.
+    starved, so in practice only with the physical model. A photon-counting
+    detector's signal is never negative, but it can be 0.
 
     legacy=True reproduces the noise of LION before October 2026 exactly: the
     relative model, with detector cross-talk blurred across neighbouring angles
     as well as detectors, the attenuation scaled by the maximum of the whole
     input (so in a batch, each sample's noise depended on the others) and the
-    old rule for starved rays (``model``, ``mass_attenuation`` and
-    ``min_counts`` unused).
+    old rule for starved rays, energy-integrating (``model``, ``detector``,
+    ``mass_attenuation`` and ``min_counts`` unused).
     """
     if model not in NOISE_MODELS:
         raise ValueError(f"model must be one of {NOISE_MODELS}, got {model!r}")
+    if detector not in DETECTORS:
+        raise ValueError(f"detector must be one of {DETECTORS}, got {detector!r}")
     if legacy:
-        model, min_counts = "relative", None
+        model, detector, min_counts = "relative", "energy_integrating", None
     kwargs = dict(
         I0=I0,
         sigma=sigma,
@@ -142,6 +161,7 @@ def sinogram_add_noise(
         dark_field=dark_field,
         legacy=legacy,
         mass_attenuation=mass_attenuation if model == "physical" else None,
+        photon_counting=detector == "photon_counting",
         length_unit_cm=length_unit_cm,
         min_counts=min_counts,
     )
@@ -165,6 +185,7 @@ def _sinogram_add_noise(
     mass_attenuation=None,
     length_unit_cm=0.1,
     min_counts=None,
+    photon_counting=False,
 ):
     """
     Adds realistic noise to sinograms, (C, angles, detectors) or batched
@@ -175,7 +196,9 @@ def _sinogram_add_noise(
       within each projection.
     - Add a flat_field to add even more realistic noise (computed at non-corrected flat fields)
     ``mass_attenuation=None`` is the relative model, otherwise the physical one;
-    see sinogram_add_noise for the models, ``min_counts`` and ``legacy``.
+    photon_counting: only the Poisson counts (no cross-talk, no electronic
+    noise). See sinogram_add_noise for the models, the detectors,
+    ``min_counts`` and ``legacy``.
     """
     if torch.is_tensor(proj):
         istorch = True
@@ -210,17 +233,20 @@ def _sinogram_add_noise(
     # Add Poisson noise
     Im = torch.poisson(Im)
 
-    # Detector cross talk
-    ks = int(sigma_blur * ks_value) * 2 + 1
-    if ks < 3:
-        ks = 3
-    if legacy:  # blurred across neighbouring angles too
-        Im = TF.gaussian_blur(Im, kernel_size=[ks, ks], sigma=[sigma_blur, sigma_blur])
-    else:  # kernel [width, height]: along the detector (last axis) only
-        Im = TF.gaussian_blur(Im, kernel_size=[ks, 1], sigma=[sigma_blur, 1.0])
+    if not photon_counting:  # energy-integrating detector
+        # Detector cross talk
+        ks = int(sigma_blur * ks_value) * 2 + 1
+        if ks < 3:
+            ks = 3
+        if legacy:  # blurred across neighbouring angles too
+            Im = TF.gaussian_blur(
+                Im, kernel_size=[ks, ks], sigma=[sigma_blur, sigma_blur]
+            )
+        else:  # kernel [width, height]: along the detector (last axis) only
+            Im = TF.gaussian_blur(Im, kernel_size=[ks, 1], sigma=[sigma_blur, 1.0])
 
-    # Electronic noise:
-    Im = Im + sigma * torch.randn(Im.shape, device=dev)
+        # Electronic noise:
+        Im = Im + sigma * torch.randn(Im.shape, device=dev)
 
     if min_counts is None:  # LION's old rule
         Im[Im <= 0] = 1e-6

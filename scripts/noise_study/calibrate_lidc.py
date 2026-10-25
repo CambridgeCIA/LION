@@ -289,7 +289,7 @@ if __name__ == "__main__":
     parser.add_argument("--n-slices", type=int, default=300)
     parser.add_argument("--fdk-slices", type=int, default=30)
     parser.add_argument(
-        "--energy", type=int, default=60, choices=ct.WATER_MASS_ATTENUATION
+        "--energy", type=int, default=80, choices=ct.WATER_MASS_ATTENUATION
     )
     parser.add_argument(
         "--min-counts",

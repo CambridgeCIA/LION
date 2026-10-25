@@ -44,7 +44,7 @@ theta = np.linspace(0, 180, 720, endpoint=False)
 p = radon(img, theta, circle=False) * px  # density * mm
 print("max path (water-eq mm)", p.max() / 1.0137)
 sino = torch.from_numpy(p.T[None].astype(np.float32))  # (1, angles, detectors)
-mu = ct.WATER_MASS_ATTENUATION[60]
+mu = ct.DEFAULT_MASS_ATTENUATION  # water at 80 keV
 
 
 def recon(s):
@@ -96,7 +96,7 @@ for a, (name, kw) in zip(ax.flat, cases):
     )
     a.axis("off")
 fig.suptitle(
-    f"330 x 250 mm abdomen phantom (thickest path {p.max()/1.0137:.0f} mm water), 60 keV, sigma = 5; window 0.8-1.3 g/cm3"
+    f"330 x 250 mm abdomen phantom (thickest path {p.max()/1.0137:.0f} mm water), 80 keV, sigma = 5; window 0.8-1.3 g/cm3"
 )
 fig.tight_layout(rect=(0, 0, 1, 0.96))
 out = (

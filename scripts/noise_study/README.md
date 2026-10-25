@@ -4,7 +4,7 @@ LION's `ct_utils.sinogram_add_noise` can scale line integrals in two ways
 before it simulates photon counts (`model=`):
 
 - **physical** (the default since 25 Oct 2026): the real transmission of a
-  density image, in mm (`mass_attenuation`, default water at 60 keV). `I0` is
+  density image, in mm (`mass_attenuation`, default water at 80 keV). `I0` is
   the number of photons per detector pixel in vacuum, as in XCIST. Larger
   objects get noisier data, and the thickest rays can run out of photons
   (floored at `min_counts` photons, default 1).
