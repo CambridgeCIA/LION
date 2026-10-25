@@ -404,18 +404,47 @@ def test_differentiable_matches_default(geometry, clip):
 
 @pytest.mark.tomosipo
 @pytest.mark.parametrize("geometry", GEOMETRIES, ids=GEOMETRY_IDS)
-def test_backward_is_the_adjoint(geometry):
-    """FDK (unclipped) is linear, L(y); autograd must give L^T: <L y, x> = <y, L^T x>."""
+def test_backward_goes_through_the_forward_projector(geometry):
+    """Unclipped, fdk(y) = c * B(F(W(y))): W the FDK weights (fan beam only),
+    F the ramp filter, B tomosipo's backprojector, c a constant. Its autograd
+    gradient must be W^T(F^T(c * A(x))), with A tomosipo's forward projector,
+    so <y, grad> = c * <F(W(y)), A(x)>.
+
+    <fdk(y), x> = <y, grad> is not tested: ASTRA's A and B are only
+    approximately adjoint, and for random y and x that inner product is so
+    small that the difference is large in relative terms."""
+    from ts_algorithms.fbp import filter_sino
+    from ts_algorithms.fdk import fdk_weigh_projections
+
+    from LION.classical_algorithms.fdk import _is_cone_beam
+
     torch.manual_seed(0)
     op = make_operator(geometry)
     y = torch.randn(1, *op.range_shape, device="cuda", requires_grad=True)
     x = torch.randn(1, *op.domain_shape, device="cuda")
     Ly = fdk(y, op, clip=False, differentiable=True)
-    (LTx,) = torch.autograd.grad(Ly, y, grad_outputs=x)
-    lhs = torch.sum(Ly.detach() * x)
-    rhs = torch.sum(y.detach() * LTx)
-    assert LTx.abs().sum() > 0
-    torch.testing.assert_close(lhs, rhs, rtol=1e-3, atol=1e-3)
+    (grad,) = torch.autograd.grad(Ly, y, grad_outputs=x)
+
+    with torch.no_grad():
+        z = y[0].detach()
+        if _is_cone_beam(op):
+            z = fdk_weigh_projections(op, z, overwrite_y=False)
+        z = filter_sino(z, overwrite_y=False)  # F(W(y))
+        Bz = op.T(z)
+        Ax = op(x[0])
+    # the constant, and a check that fdk is c * B(F(W(y)))
+    c = torch.sum(Ly[0].detach() * Bz) / torch.sum(Bz * Bz)
+    torch.testing.assert_close(Ly[0].detach(), c * Bz, rtol=1e-4, atol=1e-4)
+
+    assert grad.abs().sum() > 0
+    actual = torch.sum(y.detach().double() * grad.double())
+    expected = c.double() * torch.sum(z.double() * Ax.double())
+    scale = (
+        c.abs().double()
+        * torch.linalg.vector_norm(z.double())
+        * torch.linalg.vector_norm(Ax.double())
+    )
+    assert abs(actual - expected) <= 1e-4 * scale
 
 
 @pytest.mark.tomosipo
@@ -431,3 +460,21 @@ def test_itnet_gradient_reaches_the_sinogram():
     sino = op(phantom(geometry)[0]).unsqueeze(0).requires_grad_(True)
     (grad,) = torch.autograd.grad(model(sino).sum(), sino)
     assert torch.isfinite(grad).all() and grad.abs().sum() > 0
+
+
+@pytest.mark.tomosipo
+def test_deepfusionbp_single_view_backprojections_match_the_operator():
+    """The per-angle backprojectors are built from the LION geometry: summed over
+    the angles they give the CT operator's backprojection."""
+    from LION.models.learned_fbp.DeepFusionBP import single_back_projections
+
+    geometry = fan_geometry()
+    geometry.angles = geometry.angles[::10]  # sparse view: 9 angles
+    op = make_operator(geometry)
+    sino = torch.rand(2, 1, len(geometry.angles), geometry.detector_shape[1]).cuda()
+    views = single_back_projections(geometry)(sino)  # (B, angles, H, W)
+    assert views.shape == (2, len(geometry.angles), *geometry.image_shape[1:])
+    expected = torch.stack([op.T(s) for s in sino])  # (B, 1, H, W)
+    torch.testing.assert_close(
+        views.sum(dim=1, keepdim=True), expected, rtol=1e-3, atol=1e-3
+    )

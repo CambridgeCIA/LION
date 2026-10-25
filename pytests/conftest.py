@@ -41,3 +41,33 @@ collect_ignore = [
     "test_sirt.py",
     "test_tv_min.py",
 ]
+
+
+@pytest.fixture
+def import_without_tomosipo(monkeypatch):
+    """Import a module that imports tomosipo/ts_algorithms at the top, with those
+    stubbed, e.g. to test a model's torch code on CPU with a stand-in operator.
+    The stubbed import is removed afterwards."""
+    import importlib
+    import sys
+    import types
+
+    stubs = {
+        "tomosipo": types.ModuleType("tomosipo"),
+        "tomosipo.torch_support": types.ModuleType("tomosipo.torch_support"),
+        "ts_algorithms": types.ModuleType("ts_algorithms"),
+    }
+    stubs["tomosipo.torch_support"].to_autograd = lambda op, **kw: op
+    stubs["ts_algorithms"].fdk = None
+    for name, module in stubs.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    imported = []
+
+    def import_(name):
+        monkeypatch.delitem(sys.modules, name, raising=False)
+        imported.append(name)
+        return importlib.import_module(name)
+
+    yield import_
+    for name in imported:
+        sys.modules.pop(name, None)

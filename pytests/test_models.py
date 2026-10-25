@@ -327,6 +327,7 @@ def test_cfbpconvnet_runs_on_images(tmp_path):
 
     model.save(tmp_path / "model", dataset=LIONParameter(), training=LIONParameter())
     loaded, _, _ = cFBPConvNet.load(tmp_path / "model", supress_warnings=True)
+    loaded = loaded.cpu()  # load() puts the model on the default device (a GPU, if any)
     loaded.eval(), model.eval()
     torch.testing.assert_close(loaded(x.detach()), model(x.detach()))
 
@@ -456,6 +457,115 @@ def test_data_step_is_differentiable(no_ct_operator, monkeypatch):
 
 
 # --------------------------------------------------------------------------
+# LPD / cLPD with a matrix "CT" operator (tomosipo stubbed, CPU)
+
+LPD_MODULES = [
+    "LION.models.iterative_unrolled.LPD",
+    "LION.models.iterative_unrolled.cLPD",
+]
+
+
+@pytest.fixture
+def lpd_module(import_without_tomosipo, request):
+    """LPD or cLPD, imported with tomosipo/ts_algorithms stubbed (see conftest)."""
+    return import_without_tomosipo(request.param)
+
+
+def lpd_geometry():
+    geometry = Geometry.default_parameters()
+    geometry.image_shape = [1, 8, 8]
+    geometry.angles = np.linspace(0, np.pi, 6, endpoint=False)
+    geometry.detector_shape = [1, 5]
+    return geometry
+
+
+def make_lpd(module, monkeypatch, calls=None, **params):
+    torch.manual_seed(0)
+    M = torch.randn(30, 64) / 8
+
+    def A(x):
+        if calls is not None:
+            calls.append(x.detach().clone())
+        return (x.reshape(x.shape[0], -1) @ M.T).reshape(x.shape[0], 1, 6, 5)
+
+    def AT(y):
+        return (y.reshape(y.shape[0], -1) @ M).reshape(y.shape[0], 1, 8, 8)
+
+    def make_operator(self):
+        self.op, self.A, self.AT = None, A, AT
+
+    monkeypatch.setattr(LIONmodel, "_make_operator", make_operator)
+    monkeypatch.setattr(module, "fdk", lambda op, sino: torch.zeros(8, 8))
+    model_class = module.LPD if hasattr(module, "LPD") else module.cLPD
+    p = model_class.default_parameters()
+    p.n_iters, p.step_size = 2, 0.5
+    for k, v in params.items():
+        setattr(p, k, v)
+    return model_class(lpd_geometry(), p)
+
+
+@ignore_warnings
+@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
+def test_lpd_channels_follow_the_parameters(lpd_module, monkeypatch):
+    sino = torch.rand(2, 1, 6, 5)
+    assert make_lpd(lpd_module, monkeypatch)(sino).shape == (2, 1, 8, 8)
+    custom = make_lpd(
+        lpd_module,
+        monkeypatch,
+        data_channels=[6, 16, 16, 4],  # 4 dual channels (+ A f and g)
+        reg_channels=[4, 16, 16, 3],  # 3 primal channels (+ A^T h)
+    )
+    assert custom(sino).shape == (2, 1, 8, 8)
+    with pytest.raises(ValueError, match="data_channels"):
+        make_lpd(lpd_module, monkeypatch, data_channels=[7, 16, 16, 4])
+
+
+@ignore_warnings
+@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
+@pytest.mark.parametrize("channel, saved_before", [(1, False), (0, True)])
+def test_lpd_dual_step_projects_the_chosen_primal_channel(
+    lpd_module, monkeypatch, channel, saved_before
+):
+    """Adler & Oktem project primal channel 1 in the dual step; parameter files
+    from before the option existed keep LION's old channel 0."""
+    calls = []
+    model = make_lpd(lpd_module, monkeypatch, calls)
+    if saved_before:
+        del model.model_parameters.dual_step_primal_channel
+    else:
+        assert model.model_parameters.dual_step_primal_channel == channel
+
+    class ChannelIndex(torch.nn.Module):  # primal update: channel k gets k + 1
+        def forward(self, x):
+            n = model.model_parameters.reg_channels[-1]
+            k = torch.arange(1.0, n + 1).view(1, n, 1, 1)
+            return k * torch.ones(x.shape[0], n, *x.shape[2:])
+
+    setattr(model, "0_primal", ChannelIndex())
+    model(torch.rand(1, 1, 6, 5))
+    # FDK start is 0, so after one primal step channel c is c + 1 (+ the update)
+    assert calls[1].mean().item() == pytest.approx(channel + 1)
+
+
+@ignore_warnings
+@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
+def test_lpd_learned_steps_positive_and_old_checkpoints_load(lpd_module, monkeypatch):
+    sino = torch.rand(1, 1, 6, 5)
+    model = make_lpd(lpd_module, monkeypatch, learned_step=True, step_positive=True)
+    assert not hasattr(model, "lambda_primal")
+    with torch.no_grad():
+        out_positive = model(sino)
+        for step in model.lambda_dual:
+            step.neg_()  # a negative learned step is used as its absolute value
+        torch.testing.assert_close(model(sino), out_positive)
+
+    # checkpoints from before lambda_primal was removed
+    state = model.state_dict()
+    state.update({f"lambda_primal.{i}": torch.ones(1) for i in range(2)})
+    model.load_state_dict(state, strict=True)
+
+
+# --------------------------------------------------------------------------
 # Gradient-step denoisers need autograd in forward(); they must work when
 # called under torch.no_grad() (validation, testing, PnP loops).
 
@@ -478,3 +588,66 @@ def test_training_still_backpropagates_to_weights(make_model):
     loss = model(torch.rand(2, 1, 16, 16)).pow(2).mean()
     loss.backward()
     assert all(p.grad is not None for p in model.parameters() if p.requires_grad)
+
+
+# --------------------------------------------------------------------------
+# Learned FBPs (DeepFBP, FusionFBP), with a matrix "CT" operator on CPU
+
+
+def make_learned_fbp(module, class_name, monkeypatch, drop=(), **params):
+    torch.manual_seed(0)
+    M = torch.randn(30, 64) / 8  # 8x8 images -> 6 angles x 5 detectors
+
+    def make_operator(self):
+        self.op = None
+        self.A = lambda x: (x.reshape(x.shape[0], -1) @ M.T).reshape(-1, 1, 6, 5)
+        self.AT = lambda y: (y.reshape(y.shape[0], -1) @ M).reshape(-1, 1, 8, 8)
+
+    monkeypatch.setattr(LIONmodel, "_make_operator", make_operator)
+    model_class = getattr(module, class_name)
+    p = model_class.default_parameters()
+    for k, v in params.items():
+        setattr(p, k, v)
+    for k in drop:  # e.g. parameters that old parameter files don't have
+        delattr(p, k)
+    geometry = Geometry.default_parameters()
+    geometry.image_shape = [1, 8, 8]
+    geometry.angles = np.linspace(0, np.pi, 6, endpoint=False)
+    geometry.detector_shape = [1, 5]
+    return model_class(geometry, p)
+
+
+LEARNED_FBPS = [
+    ("LION.models.learned_fbp.DeepFBP", "DeepFBPNetwork"),
+    ("LION.models.learned_fbp.FusionFBP", "FusionFBPNetwork"),
+]
+
+
+@ignore_warnings
+@pytest.mark.parametrize("module_name, class_name", LEARNED_FBPS)
+@pytest.mark.parametrize("saved_before", [False, True])
+def test_learned_fbp_fft_padding(
+    import_without_tomosipo, monkeypatch, module_name, class_name, saved_before
+):
+    """The filter's FFT length is >= 2x the detectors (no wrap-around);
+    parameter files from before the option keep the old length."""
+    module = import_without_tomosipo(module_name)
+    drop = ["fft_padding_twice_detectors"] if saved_before else []
+    model = make_learned_fbp(module, class_name, monkeypatch, drop=drop)
+    expected = 8 if saved_before else 16  # 5 detectors: 2^3 >= 5, 2^4 >= 10
+    assert model.projection_size_padded == expected
+    assert model.learnable_filter.weights.shape[-1] == expected
+    assert model(torch.rand(2, 1, 6, 5)).shape == (2, 1, 8, 8)
+
+
+@ignore_warnings
+def test_deepfbp_output_is_only_clamped_below(import_without_tomosipo, monkeypatch):
+    module = import_without_tomosipo("LION.models.learned_fbp.DeepFBP")
+    model = make_learned_fbp(module, "DeepFBPNetwork", monkeypatch).eval()
+    last_conv = model.denoising_output[0]
+    with torch.no_grad():
+        last_conv.weight.zero_()
+        last_conv.bias.fill_(3.0)  # above the old [0, 1] range
+        assert torch.allclose(model(torch.rand(1, 1, 6, 5)), torch.tensor(3.0))
+        last_conv.bias.fill_(-3.0)
+        assert (model(torch.rand(1, 1, 6, 5)) == 0).all()

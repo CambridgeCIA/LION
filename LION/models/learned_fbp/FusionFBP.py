@@ -74,7 +74,8 @@ class LearnableFilter(Module):
 
 class IntermediateResidualBlock(Module):
     """
-    Depthwise 1D residual block used in angular interpolation.
+    Depthwise 1D residual block of the interpolation network (along the
+    detector, each projection on its own, as in the DeepFBP paper).
     """
 
     def __init__(self, channels):
@@ -264,7 +265,7 @@ class FusionFBPNetwork(LIONmodel):
     deep learning modules for interpolation and denoising.
     Pipeline:
         - Learnable frequency-domain filtering (Ram-Lak-based)
-        - Angular interpolation via residual 1D convolutions
+        - Interpolation network, as in DeepFBP (Tan et al. 2024): 1D convolutions along the detector, applied to each projection separately (no mixing across angles)
         - Differentiable backprojection using Tomosipo
         - Deep CNN-based image denoising
     Args:
@@ -317,13 +318,17 @@ class FusionFBPNetwork(LIONmodel):
 
     def compute_projection_size_padded(self):
         """
-        Computes the next power-of-two padding size to avoid aliasing.
+        FFT length for the filter: the next power of two of at least twice the
+        number of detectors, so that filtering is not circular (wrap-around).
+        Parameter files from before ``fft_padding_twice_detectors`` existed use
+        the old length, the next power of two of the number of detectors (no
+        padding at all when that is already a power of two).
         """
-
+        n = self.num_detectors
+        if getattr(self.model_parameters, "fft_padding_twice_detectors", False):
+            n = 2 * n
         return 2 ** int(
-            torch.ceil(
-                torch.log2(torch.tensor(self.num_detectors, dtype=torch.float32))
-            ).item()
+            torch.ceil(torch.log2(torch.tensor(n, dtype=torch.float32))).item()
         )
 
     def ram_lak_filter(self, size):
@@ -344,6 +349,8 @@ class FusionFBPNetwork(LIONmodel):
         FuFBP_params.filter_type = "Filter I"
         FuFBP_params.mode = "ct"
         FuFBP_params.model_input_type = ModelInputType.SINOGRAM
+        # zero-pad the projections to >= 2x the detectors before the FFT filter
+        FuFBP_params.fft_padding_twice_detectors = True
         FuFBP_params.normalizer = True
         return FuFBP_params
 

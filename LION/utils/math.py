@@ -13,6 +13,7 @@ def power_method(
     maxiter: int = 100,
     tol: float = 1e-6,
     device: torch.device | str | None = None,
+    seed: int | None = 0,
 ) -> torch.Tensor:
     """Estimate operator norm by power iteration using torch.
 
@@ -23,9 +24,14 @@ def power_method(
     maxiter : int
         Number of power iterations.
     tol : float
-        Absolute tolerance for convergence. (TODO: consider adding relative tolerance?)
+        Relative tolerance: stops once ||A v - sigma u|| <= tol * sigma, i.e.
+        independently of the scale of the operator.
     device : torch.device | str | None
         Device for computations. If None, use operator's device.
+    seed : int | None
+        Seed of the random starting vector, so the estimate is the same on
+        every call (e.g. step sizes computed from it). None uses torch's
+        global random state.
 
     Returns
     -------
@@ -34,7 +40,9 @@ def power_method(
     """
     if device is None:
         device = getattr(op, "device", None)
-    arr_old = torch.randn(*op.domain_shape, device=device)
+    generator = None if seed is None else torch.Generator().manual_seed(seed)
+    # drawn on the CPU, so that the same seed gives the same vector on any device
+    arr_old = torch.randn(*op.domain_shape, generator=generator).to(device)
     error = tol + 1
     i = 0
     while error >= tol:
@@ -46,7 +54,7 @@ def power_method(
         z = op.adjoint(u)
         beta = torch.linalg.norm(z)
         arr = (1.0 / beta) * z
-        error = torch.linalg.norm(op(arr) - beta * u)
+        error = torch.linalg.norm(op(arr) - beta * u) / beta
         sigma = beta
         arr_old = arr
         i += 1
