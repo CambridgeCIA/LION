@@ -9,7 +9,6 @@ import torch
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver
 from LION.utils.parameter import LIONParameter
-import tomosipo as ts
 import LION.CTtools.ct_utils as ct
 
 
@@ -36,7 +35,15 @@ class Noise2InverseSolver(LIONsolver):
 
         self.sino_split_count = self.solver_params.sino_split_count
         self.recon_fn = self.solver_params.recon_fn
-        self.cali_J = np.array(self.solver_params.cali_J)
+        cali_J = getattr(self.solver_params, "cali_J", None)
+        if cali_J is None:  # the X:1 strategy for the split count used
+            cali_J = self.X_one_strategy(self.sino_split_count)
+        if any(j < 1 or j > self.sino_split_count for J in cali_J for j in J):
+            raise ValueError(
+                f"cali_J {cali_J} has splits outside 1..sino_split_count "
+                f"({self.sino_split_count}); J's are 1-indexed"
+            )
+        self.cali_J = np.array(cali_J)
         self.sub_ops = self._make_sub_operators()
 
     @classmethod
@@ -47,7 +54,7 @@ class Noise2InverseSolver(LIONsolver):
     def one_X_strategy(cls, sino_split_count) -> frozenset[frozenset[int]]:
         raise NotImplementedError("Sorry, not implemented this yet!")
 
-    def _make_sub_operators(self) -> list[ts.Operator.Operator]:
+    def _make_sub_operators(self) -> list:
         ops = []
         # maintain a copy of the original angles to restore later
         angles = self.geometry.angles.copy()
@@ -86,7 +93,11 @@ class Noise2InverseSolver(LIONsolver):
         params = LIONParameter()
         params.sino_split_count = 4
         params.recon_fn = fdk
-        params.cali_J = Noise2InverseSolver.X_one_strategy(params.sino_split_count)
+        # The J sets (1-indexed splits) used as targets. None: the X:1 strategy
+        # for sino_split_count, i.e. [[1], [2], ..., [sino_split_count]],
+        # computed when the solver is made, so changing sino_split_count after
+        # default_parameters() changes the J sets too.
+        params.cali_J = None
         return params
 
     def mini_batch_step(self, sinos, targets):

@@ -251,8 +251,10 @@ class Scripted:
     [
         (Scripted([0.5, 0.3, 0.7]), 0.3),  # a loss: lowest is best
         (Scripted([0.5, 0.9, 0.7], higher_is_better=True), 0.9),  # e.g. SSIM
+        (Scripted([0.0, 0.3, 0.7]), 0.0),  # a validation value can be 0
+        (Scripted([0.4, 0.0, 0.7]), 0.0),
     ],
-    ids=["loss", "score"],
+    ids=["loss", "score", "zero-first", "zero-later"],
 )
 def test_best_validation_model_follows_the_metric_direction(
     tmp_path, validation_fn, best
@@ -639,3 +641,78 @@ def test_warn_if_not_mse():
         warnings.simplefilter("error")
         lion_solver.warn_if_not_mse(torch.nn.MSELoss(), "Proj2ProjSolver")
         lion_solver.warn_if_not_mse(None, "Proj2ProjSolver")
+
+
+# --------------------------------------------------------------------------
+# Noise2Inverse
+
+
+def make_n2i_solver(monkeypatch, params):
+    import LION.optimizers.Noise2InverseSolver as n2i
+
+    monkeypatch.setattr(n2i.ct, "make_operator", lambda geometry: None)
+    model = small_dncnn()
+    return n2i.Noise2InverseSolver(
+        model,
+        torch.optim.SGD(model.parameters(), lr=1e-2),
+        torch.nn.MSELoss(),
+        solver_params=params,
+        geometry=Geometry.default_parameters(),
+        device=torch.device("cpu"),
+    )
+
+
+def test_noise2inverse_J_sets_follow_the_split_count(monkeypatch):
+    """The default J sets are made for the split count the solver uses, also
+    when sino_split_count is changed after default_parameters()."""
+    from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
+
+    params = Noise2InverseSolver.default_parameters()
+    params.sino_split_count = 8
+    solver = make_n2i_solver(monkeypatch, params)
+    assert solver.cali_J.tolist() == [[j] for j in range(1, 9)]
+    assert len(solver.sub_ops) == 8
+
+    params.cali_J = [[1, 2], [3, 4]]  # given J sets are used as they are
+    assert make_n2i_solver(monkeypatch, params).cali_J.tolist() == [[1, 2], [3, 4]]
+
+    params.sino_split_count = 2
+    with pytest.raises(ValueError, match="cali_J"):
+        make_n2i_solver(monkeypatch, params)
+
+
+# --------------------------------------------------------------------------
+# Equivariant imaging
+
+
+def test_equivariant_solver_gradient_goes_through_the_second_fdk(monkeypatch):
+    """For image-input models, the equivariance term's gradient flows through
+    the FDK of the transformed image (the input of the second network pass)."""
+    import LION.optimizers.EquivariantSolver as ei
+
+    calls = []
+
+    def fake_fdk(sino, op, differentiable=False):
+        calls.append(differentiable)
+        return sino if differentiable else sino.detach()
+
+    monkeypatch.setattr(
+        lion_solver, "make_operator", lambda g: types.SimpleNamespace(T=None)
+    )
+    monkeypatch.setattr(ei, "fdk", fake_fdk)
+    identity = types.SimpleNamespace(
+        to_autograd=lambda op, num_extra_dims: (lambda x: x)
+    )
+    monkeypatch.setattr(ei, "import_tomosipo", lambda *args: identity)
+
+    model = small_dncnn()
+    solver = ei.EquivariantSolver(
+        model,
+        torch.optim.SGD(model.parameters(), lr=1e-2),
+        torch.nn.MSELoss(),
+        Geometry.default_parameters(),
+        device=torch.device("cpu"),
+    )
+    loss = solver.mini_batch_step(torch.rand(2, 1, 8, 8), None)
+    loss.backward()
+    assert calls == [False, True]  # the data's FDK needs no gradient

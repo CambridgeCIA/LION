@@ -3,7 +3,9 @@
 ## 2DeteCT
 
 A dataset of uCT scans with different settings for sinograms. The data is made of composition of different materials. [Read more in the Nature paper](https://www.nature.com/articles/s41597-023-02484-6).
-To install 2DeteCT, run `python ./LION/data_loaders/2DeteCT/dowload.py` and once finished (probably a few hours later) run `python ./LION/data_loaders/2DeteCT/pre_processs_2deteCT.py`. Once finished, you should have `LION_DATA_PATH/processed/2detect` folder in your system. You can now delete `LION_DATA_PATH/raw/2detect` to save space if you want. 
+To install 2DeteCT, run `python ./LION/data_loaders/2deteCT/download.py` and once finished (probably a few hours later) run `python ./LION/data_loaders/2deteCT/pre_process_2deteCT.py`. Once finished, you should have `LION_DATA_PATH/processed/2detect` folder in your system. You can now delete `LION_DATA_PATH/raw/2detect` to save space if you want. 
+
+The data loader is `LION.data_loaders.deteCT`; its class docstring describes the modes, the two detectors (samples 1-63 and 64-109 were measured with different detectors), the train/validation/test splits and the noise options.
 
 ## LIDC-IDRI
 
@@ -20,11 +22,13 @@ LION_DATA_PATH/raw/LIDC-IDRI/
 
 Then, to process the dataset, create a new conda enviroment with `conda env create -f ./LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri_environment.yml`, activate it as `conda activate lidc_idri` and run the python file `python ./LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py`. 
 
+The data loader is `LION.data_loaders.LIDC_IDRI`. Its images are densities (g/cm³); the noise of the CT experiments (`LION.experiments.ct_experiments`, see its module docstring) is added to their sinograms.
+
 You can now delete `LION_DATA_PATH/raw/LIDC-IDRI` to save space if you want. Note that the download size is around 133GB, so both download and processing can take hours.
 
 More details on the downloader tool are available [here](LIDC_IDRI/README.md)
 
 ## Walnuts
 A dataset of uCT scans of walnuts. [Read more in the Nature paper](https://www.nature.com/articles/s41597-019-0235-y).
-You can dowload it using `python LION/data_loaders/walnuts/dowload_walnuts.py`
+You can download it using `python LION/data_loaders/walnuts/download.py`
 pre-processing and Data Loading WIP

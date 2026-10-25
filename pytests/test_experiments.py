@@ -13,6 +13,7 @@ import pytest  # noqa: E402
 import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
 import LION.data_loaders.LIDC_IDRI as lidc  # noqa: E402
 from LION.data_loaders.deteCT import deteCT  # noqa: E402
+from LION.utils.parameter import LIONParameter  # noqa: E402
 
 EXPERIMENTS = [
     cls
@@ -133,6 +134,19 @@ def test_detect_noise_I0_per_detector(tmp_path):
     ]
     data.noise_params = deteCT.noise_parameters(I0=200)  # one for all
     assert {data.noise_I0(i) for i in range(len(detectors))} == {200}
+
+
+@pytest.mark.filterwarnings("ignore:You are not using any detector query")
+def test_detect_noise_I0_per_detector_after_json(tmp_path):
+    """Saved and loaded, the per-detector dict comes back as a LIONParameter."""
+    data = fake_detect(tmp_path, "train")
+    deteCT.noise_parameters().save(tmp_path / "noise.json")
+    loaded = LIONParameter()
+    loaded.load(tmp_path / "noise.json")
+    assert isinstance(loaded.I0, LIONParameter)
+    data.noise_params = loaded
+    for index, detector in enumerate(data.slice_dataframe["detector"].values):
+        assert data.noise_I0(index) == {1: 290, 2: 100}[detector]
 
 
 @pytest.mark.filterwarnings("ignore:You are not using any detector query")

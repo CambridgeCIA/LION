@@ -177,6 +177,34 @@ def test_load_round_trip(tmp_path):
         torch.testing.assert_close(loaded.state_dict()[key].cpu(), value.cpu())
 
 
+def test_nested_model_parameters_load(tmp_path):
+    """GSD keeps its backbone's parameters inside its own: loaded from JSON
+    they are plain LIONParameters, which the backbone must accept."""
+    from LION.models.PnP.gradient_step_denoiser import GSD
+
+    torch.manual_seed(0)
+    model = small_gsd().eval()
+    _save(model, tmp_path / "model")
+    loaded, _, _ = GSD.load(tmp_path / "model", supress_warnings=True)
+    loaded = loaded.cpu().eval()  # load() puts the model on the default device
+    backbone = loaded._backbone_model.model_parameters
+    assert isinstance(backbone, LIONModelParameter)
+    assert backbone.model_input_type is ModelInputType.IMAGE
+    x = torch.rand(1, 1, 16, 16)
+    torch.testing.assert_close(loaded(x), model(x))
+
+
+def test_models_take_plain_parameters():
+    """A plain LIONParameter works as model parameters; a Geometry is refused."""
+    params = LIONParameter(**vars(DnCNN.default_parameters()))
+    params.model_input_type = int(ModelInputType.IMAGE)  # as JSON stores it
+    model = DnCNN(params)
+    assert isinstance(model.model_parameters, LIONModelParameter)
+    assert model.get_input_type() is ModelInputType.IMAGE
+    with pytest.raises(TypeError, match="Geometry"):
+        DnCNN(Geometry.default_parameters())
+
+
 def test_load_checkpoint_round_trip(tmp_path):
     torch.manual_seed(0)
     model = DnCNN()

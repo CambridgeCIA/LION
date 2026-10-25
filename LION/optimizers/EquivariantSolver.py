@@ -74,7 +74,11 @@ class EquivariantSolver(LIONsolver):
         transformed_recon1 = random_transform(recon1)
 
         if needs_image:
-            recon2 = self.model(fdk(self.A(transformed_recon1), self.op))
+            # differentiable: the gradient also flows through the network's
+            # input here, as in the EI paper (and deepinv's EILoss)
+            recon2 = self.model(
+                fdk(self.A(transformed_recon1), self.op, differentiable=True)
+            )
         else:
             recon2 = self.model(self.A(transformed_recon1))
 
