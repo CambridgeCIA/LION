@@ -36,21 +36,18 @@ def test_noise_function_is_always_defined(cls):
     assert cls(params).sino_fun is None
 
 
-@pytest.mark.parametrize("saved", ["now", "22-25 Oct 2026", "before 22 Oct 2026"])
-def test_experiments_choose_the_noise_model(monkeypatch, saved):
-    """New experiments use the physical noise model. Parameters saved before
-    noise_model existed keep the relative model, and those saved before
-    legacy_noise_model existed reproduce LION's original noise."""
+@pytest.mark.parametrize("saved_before", [False, True])
+def test_experiments_choose_the_noise_model(monkeypatch, saved_before):
+    """New experiments use the physical noise model; parameters saved before
+    noise_model existed (25 Oct 2026) use the relative one."""
     params = ct_experiments.LowDoseCTRecon.default_parameters()
     assert params.noise_params.noise_model == "physical"
     assert params.noise_params.I0 == ct_experiments.LOW_DOSE_I0
-    if saved != "now":  # what the parameter files of that time contain
-        for name in ("noise_model", "mass_attenuation", "min_counts"):
+    if saved_before:  # what the parameter files of that time contain
+        for name in ("noise_model", "detector", "mass_attenuation", "min_counts"):
             delattr(params.noise_params, name)
         params.noise_params.I0 = 3500
-        params.noise_params.legacy_noise_model = False
-    if saved == "before 22 Oct 2026":
-        del params.noise_params.legacy_noise_model
+        params.noise_params.legacy_noise_model = False  # ignored now
     calls = []
     monkeypatch.setattr(
         ct_experiments.ct, "sinogram_add_noise", lambda sino, **kw: calls.append(kw)
@@ -58,13 +55,10 @@ def test_experiments_choose_the_noise_model(monkeypatch, saved):
     ct_experiments.LowDoseCTRecon(params).sino_fun("sinogram")
     (kw,) = calls
     assert kw["I0"] == params.noise_params.I0
-    if saved == "now":
-        assert (kw["model"], kw["legacy"], kw["min_counts"]) == ("physical", False, 1.0)
-        assert kw["detector"] == "energy_integrating"
-        assert kw["mass_attenuation"] == ct_experiments.ct.WATER_MASS_ATTENUATION[80]
-    else:
-        assert (kw["model"], kw["min_counts"]) == ("relative", None)
-        assert kw["legacy"] is (saved == "before 22 Oct 2026")
+    assert "legacy" not in kw
+    assert kw["model"] == ("relative" if saved_before else "physical")
+    assert (kw["detector"], kw["min_counts"]) == ("energy_integrating", 1.0)
+    assert kw["mass_attenuation"] == ct_experiments.ct.WATER_MASS_ATTENUATION[80]
 
 
 def test_photon_counting_experiment(monkeypatch):

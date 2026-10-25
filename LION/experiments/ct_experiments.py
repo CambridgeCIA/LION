@@ -46,24 +46,14 @@ class Experiment(ABC):
         self.sino_fun = None
         if hasattr(self.param, "noise_params"):
             noise = self.param.noise_params
-            model = getattr(noise, "noise_model", None)
-            if model is None:
-                # saved before noise_model existed (25 Oct 2026): the relative
-                # model, and before legacy_noise_model (22 Oct 2026) exactly
-                # LION's original noise
-                model = "relative"
-                legacy = getattr(noise, "legacy_noise_model", True)
-            else:
-                legacy = getattr(noise, "legacy_noise_model", False)
             kwargs = dict(
-                legacy=legacy,
-                model=model,
+                # saved before noise_model existed (25 Oct 2026): the relative model
+                model=getattr(noise, "noise_model", "relative"),
                 detector=getattr(noise, "detector", "energy_integrating"),
                 mass_attenuation=getattr(
                     noise, "mass_attenuation", ct.DEFAULT_MASS_ATTENUATION
                 ),
-                # missing: LION's old rule for starved rays (see sinogram_add_noise)
-                min_counts=getattr(noise, "min_counts", None),
+                min_counts=getattr(noise, "min_counts", 1.0),
             )
             self.sino_fun = lambda sino, I0=noise.I0, sigma=noise.sigma, sigma_blur=noise.sigma_blur: ct.sinogram_add_noise(
                 sino, I0=I0, sigma=sigma, sigma_blur=sigma_blur, **kwargs

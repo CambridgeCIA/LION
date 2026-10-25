@@ -90,7 +90,6 @@ def sinogram_add_noise(
     flat_field=None,
     dark_field=None,
     enable_gradients=False,
-    legacy=False,
     model="physical",
     detector="energy_integrating",
     mass_attenuation=DEFAULT_MASS_ATTENUATION,
@@ -139,19 +138,15 @@ def sinogram_add_noise(
     starved, so in practice only with the physical model. A photon-counting
     detector's signal is never negative, but it can be 0.
 
-    legacy=True reproduces the noise of LION before October 2026 exactly: the
-    relative model, with detector cross-talk blurred across neighbouring angles
-    as well as detectors, the attenuation scaled by the maximum of the whole
-    input (so in a batch, each sample's noise depended on the others) and the
-    old rule for starved rays, energy-integrating (``model``, ``detector``,
-    ``mass_attenuation`` and ``min_counts`` unused).
+    LION's noise before October 2026 was the relative model with three errors,
+    since fixed and not kept as an option (Ander, 25 Oct 2026): detector
+    cross-talk blurred across neighbouring angles as well as detectors, the
+    attenuation scaled by the maximum of the whole batch, and the 1e-6 rule.
     """
     if model not in NOISE_MODELS:
         raise ValueError(f"model must be one of {NOISE_MODELS}, got {model!r}")
     if detector not in DETECTORS:
         raise ValueError(f"detector must be one of {DETECTORS}, got {detector!r}")
-    if legacy:
-        model, detector, min_counts = "relative", "energy_integrating", None
     kwargs = dict(
         I0=I0,
         sigma=sigma,
@@ -159,7 +154,6 @@ def sinogram_add_noise(
         ks_value=ks_value,
         flat_field=flat_field,
         dark_field=dark_field,
-        legacy=legacy,
         mass_attenuation=mass_attenuation if model == "physical" else None,
         photon_counting=detector == "photon_counting",
         length_unit_cm=length_unit_cm,
@@ -181,7 +175,6 @@ def _sinogram_add_noise(
     ks_value=3,
     flat_field=None,
     dark_field=None,
-    legacy=False,
     mass_attenuation=None,
     length_unit_cm=0.1,
     min_counts=None,
@@ -198,7 +191,7 @@ def _sinogram_add_noise(
     ``mass_attenuation=None`` is the relative model, otherwise the physical one;
     photon_counting: only the Poisson counts (no cross-talk, no electronic
     noise). See sinogram_add_noise for the models, the detectors,
-    ``min_counts`` and ``legacy``.
+    and ``min_counts``.
     """
     if torch.is_tensor(proj):
         istorch = True
@@ -220,9 +213,9 @@ def _sinogram_add_noise(
     else:
         # relative: the maximum of each sample (alternatively the highest power
         # of 2 close to this value, but lets leave it as is)
-        if proj.dim() == 4 and not legacy:
+        if proj.dim() == 4:
             max_val = torch.amax(proj, dim=(1, 2, 3), keepdim=True)
-        else:  # one sample (or, legacy, the whole batch)
+        else:  # one sample
             max_val = torch.amax(proj)
         max_val = torch.where(max_val <= 0, torch.ones_like(max_val), max_val)
     Im = I0 * torch.exp(-proj / max_val)
@@ -238,12 +231,8 @@ def _sinogram_add_noise(
         ks = int(sigma_blur * ks_value) * 2 + 1
         if ks < 3:
             ks = 3
-        if legacy:  # blurred across neighbouring angles too
-            Im = TF.gaussian_blur(
-                Im, kernel_size=[ks, ks], sigma=[sigma_blur, sigma_blur]
-            )
-        else:  # kernel [width, height]: along the detector (last axis) only
-            Im = TF.gaussian_blur(Im, kernel_size=[ks, 1], sigma=[sigma_blur, 1.0])
+        # kernel [width, height]: along the detector (last axis) only
+        Im = TF.gaussian_blur(Im, kernel_size=[ks, 1], sigma=[sigma_blur, 1.0])
 
         # Electronic noise:
         Im = Im + sigma * torch.randn(Im.shape, device=dev)

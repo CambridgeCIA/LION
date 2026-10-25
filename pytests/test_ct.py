@@ -70,30 +70,21 @@ def deterministic_noise(monkeypatch):
     monkeypatch.setattr(torch, "randn", lambda *shape, **kw: torch.zeros(*shape, **kw))
 
 
-@pytest.mark.parametrize("legacy", [False, True])
-def test_crosstalk_is_along_the_detector(deterministic_noise, legacy):
+def test_crosstalk_is_along_the_detector(deterministic_noise):
     sino = torch.zeros(1, 9, 9)
     sino[0, 4, 4] = 1.0  # one bright detector pixel in one projection
-    noisy = sinogram_add_noise(sino, I0=1e4, sigma=0, sigma_blur=1.0, legacy=legacy)
+    noisy = sinogram_add_noise(sino, I0=1e4, sigma=0, sigma_blur=1.0, model="relative")
     assert noisy[0, 4, 3] > 1e-3  # neighbouring detector pixel, same angle
-    other_angle = noisy[0, 3, 4]
-    if legacy:  # the old model also blurred into the neighbouring angle
-        assert other_angle > 1e-3
-    else:
-        assert other_angle < 1e-5  # (float32 rounding of log(exp(0)))
+    assert noisy[0, 3, 4] < 1e-5  # not the neighbouring angle (float32 rounding)
 
 
-@pytest.mark.parametrize("legacy", [False, True])
-def test_noise_of_a_sample_does_not_depend_on_its_batch(deterministic_noise, legacy):
+def test_noise_of_a_sample_does_not_depend_on_its_batch(deterministic_noise):
     torch.manual_seed(0)
     a, b = torch.rand(1, 20, 30), 5 * torch.rand(1, 20, 30)  # b has a larger maximum
-    kwargs = dict(I0=1e3, sigma=0, legacy=legacy, model="relative")
+    kwargs = dict(I0=1e3, sigma=0, model="relative")
     alone = sinogram_add_noise(a.unsqueeze(0), **kwargs)[0]
     in_batch = sinogram_add_noise(torch.stack([a, b]), **kwargs)[0]
-    if legacy:  # scaled by the maximum of the whole batch
-        assert not torch.allclose(alone, in_batch)
-    else:
-        torch.testing.assert_close(alone, in_batch)
+    torch.testing.assert_close(alone, in_batch)
 
 
 @pytest.mark.parametrize("model", ["relative", "physical"])
@@ -156,14 +147,6 @@ def test_noise_model_names():
     sino = 3 * torch.rand(1, 10, 12)
     with pytest.raises(ValueError):
         sinogram_add_noise(sino, model="legacy")
-    # legacy=True is the relative model as before October 2026, whatever model says
-    torch.manual_seed(2)
-    a = sinogram_add_noise(sino, I0=1000, legacy=True)
-    torch.manual_seed(2)
-    b = sinogram_add_noise(
-        sino, I0=1000, legacy=True, model="relative", min_counts=None
-    )
-    torch.testing.assert_close(a, b, rtol=0, atol=0)
 
 
 def test_photon_counting_gives_integer_counts_without_electronic_noise():

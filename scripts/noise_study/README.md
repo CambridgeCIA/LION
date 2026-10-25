@@ -21,6 +21,8 @@ and the physical `I0` values that would replace the current ones.
 | `calibrate_lidc.py` | GPU, tomosipo, LIDC-IDRI, ~10 min | Under the relative model, how much does the effective dose change from slice to slice? Which physical I0 keeps each experiment as hard on average? |
 | `detect_measured_noise.py` | 2DeteCT data, CPU, ~15 min | On real measured data, does the noise follow one I0 per scanner (physical model) or one per slice (relative model)? Which simulator I0 matches mode1? |
 | `starvation_demo.py` | CPU, ~1 min | What photon starvation does to an abdomen-sized phantom with the physical model, with LION's old rule for starved rays and with a floor (`min_counts`). |
+| `lidc_examples.py` | GPU, tomosipo, LIDC-IDRI, a few minutes | What the LIDC-IDRI experiments give now (physical model, their I0, 80 keV): FDK of a small, a typical and a large patient, old vs new, per experiment. `--detector photon_counting` for the photon-counting option. |
+| `detect_detectors.py` | GPU, tomosipo, 2DeteCT, a few minutes | Do 2DeteCT's two detectors have different low-dose noise, and does the 2DeteCT noise simulation need one I0 per detector? Reconstructions and noise images of measured mode1 vs simulated (one I0 for all, or per detector), and sinogram noise curves. |
 
 `noise_tools.py` holds the shared functions. They are tested on synthetic
 data in `pytests/test_noise_study.py`: the variance formula against LION's
