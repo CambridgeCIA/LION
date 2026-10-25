@@ -19,6 +19,7 @@ and the physical `I0` values that would replace the current ones.
 | `compare_models_water.py` | CPU, ~10 s | How do the two models differ on water cylinders of 100–450 mm? Which physical I0 gives the same image noise? |
 | `calibrate_lidc.py` | GPU, tomosipo, LIDC-IDRI, ~10 min | Under the relative model, how much does the effective dose change from slice to slice? Which physical I0 keeps each experiment as hard on average? |
 | `detect_measured_noise.py` | 2DeteCT data, CPU, ~15 min | On real measured data, does the noise follow one I0 per scanner (physical model) or one per slice (relative model)? Which simulator I0 matches mode1? |
+| `starvation_demo.py` | CPU, ~1 min | What photon starvation does to an abdomen-sized phantom with the physical model, with LION's old rule for starved rays and with a floor (`min_counts`). |
 
 `noise_tools.py` holds the shared functions. They are tested on synthetic
 data in `pytests/test_noise_study.py`: the variance formula against LION's
@@ -73,10 +74,11 @@ These limits are shared with most published simulators of this kind:
   negative, but they can be 0. The detector signal that LION simulates (an
   energy-integrating detector: photons plus Gaussian electronic noise, after
   the dark field) can be 0 or negative, as real raw data can at ultra-low dose
-  (Ding et al. 2018; Ye et al. 2019). LION replaces every value <= 0 with
-  1e-6. That gives line integrals of log(I0) + 13.8, far beyond any real
-  attenuation, and these become the streaks. LoDoPaB-CT has no electronic
-  noise and replaces 0 photons with 0.1. Scanners apply their own pre-log
-  corrections. The value used sets how strong starvation streaks are.
-  Changing it is a separate decision. It never matters for the relative
-  model, where no ray drops below I0/e.
+  (Ding et al. 2018; Ye et al. 2019). LION's old rule replaces every value
+  <= 0 with 1e-6, which reads as log(I0) + 13.8 of attenuation, far beyond any
+  real one: a few starved rays become streaks across the whole image.
+  `sinogram_add_noise(..., min_counts=1.0)` floors the signal at 1 photon
+  instead (`noise_params.min_counts` in the experiments; missing keeps the old
+  rule). It never matters for the relative model, where no ray drops below
+  I0/e. `calibrate_lidc.py` uses a floor of 1 photon by default
+  (`--min-counts none` for the old rule).

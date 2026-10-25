@@ -129,6 +129,32 @@ def test_physical_noise_grows_with_the_object():
     assert stds[1] > 3 * stds[0]
 
 
+def test_starved_rays_are_floored_at_min_counts():
+    """A ray through ~60 cm of water at I0 = 1e4 gets ~0 photons. LION's old
+    rule (signal <= 0 -> 1e-6) reads it as log(I0) + 13.8 attenuation; with
+    min_counts it reads as at most log(I0 / min_counts)."""
+    torch.manual_seed(0)
+    k = WATER_MASS_ATTENUATION[60] * 0.1
+    sino = torch.full((1, 50, 60), 600.0)  # transmission ~ 4e-6
+    kwargs = dict(I0=1e4, sigma=5, mass_attenuation=WATER_MASS_ATTENUATION[60])
+    old = sinogram_add_noise(sino, **kwargs)
+    floored = sinogram_add_noise(sino, min_counts=1.0, **kwargs)
+    assert old.max().item() * k == pytest.approx(np.log(1e4) + np.log(1e6), rel=1e-3)
+    assert floored.max().item() * k <= np.log(1e4) + 1e-4
+    assert floored.min().item() >= 0
+
+
+def test_min_counts_changes_nothing_without_starved_rays():
+    """With enough photons (the relative model at LION's I0s keeps >= I0/e)
+    no signal is near the floor, so the noise is exactly the same."""
+    sino = 3 * torch.rand(1, 40, 50)
+    torch.manual_seed(1)
+    default = sinogram_add_noise(sino, I0=1000)
+    torch.manual_seed(1)
+    floored = sinogram_add_noise(sino, I0=1000, min_counts=1.0)
+    torch.testing.assert_close(floored, default, rtol=0, atol=0)
+
+
 def test_hu_to_density_and_mu():
     hu = np.array([-1000.0, 0.0, 500.0])
     density = from_HU_to_density(hu)

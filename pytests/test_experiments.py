@@ -52,6 +52,7 @@ def test_experiments_choose_the_noise_model(monkeypatch, saved_before):
     assert calls[0]["legacy"] is saved_before
     assert calls[0]["I0"] == params.noise_params.I0
     assert calls[0]["mass_attenuation"] is None  # relative noise model by default
+    assert calls[0]["min_counts"] is None  # LION's old rule for signals <= 0
 
 
 # --------------------------------------------------------------------------

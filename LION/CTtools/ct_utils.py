@@ -86,6 +86,7 @@ def sinogram_add_noise(
     legacy=False,
     mass_attenuation=None,
     length_unit_cm=0.1,
+    min_counts=None,
 ):
     """
     Adds realistic noise to sinograms (see _sinogram_add_noise), with or
@@ -106,6 +107,16 @@ def sinogram_add_noise(
 
     The returned sinogram has the units of ``proj`` in both cases.
 
+    ``min_counts``: the detector signal (photons plus electronic noise, the
+    dark field subtracted) can be 0 or negative when a ray gets (almost) no
+    photons, and the log needs a positive value. Signals below ``min_counts``
+    (in photons, e.g. 1.0) are set to it, so a starved ray reads as at most
+    log(I0 / min_counts) of attenuation. None (default) keeps LION's old rule:
+    signals <= 0 become 1e-6, i.e. log(I0) + 13.8, far beyond any real
+    attenuation, which turns starved rays into strong streaks. It only matters
+    when rays are starved: with the physical model, never with the relative
+    one at LION's I0s.
+
     legacy=True reproduces the noise of LION before October 2026: detector
     cross-talk blurred across neighbouring angles as well as detectors, and
     the attenuation scaled by the maximum of the whole input (so in a batch,
@@ -123,6 +134,7 @@ def sinogram_add_noise(
             legacy,
             mass_attenuation,
             length_unit_cm,
+            min_counts,
         )
     else:
         if torch.is_tensor(proj):
@@ -139,6 +151,7 @@ def sinogram_add_noise(
                 legacy,
                 mass_attenuation,
                 length_unit_cm,
+                min_counts,
             )
     return sino
 
@@ -154,6 +167,7 @@ def _sinogram_add_noise(
     legacy=False,
     mass_attenuation=None,
     length_unit_cm=0.1,
+    min_counts=None,
 ):
     """
     Adds realistic noise to sinograms, (C, angles, detectors) or batched
@@ -164,7 +178,7 @@ def _sinogram_add_noise(
       within each projection.
     - Add a flat_field to add even more realistic noise (computed at non-corrected flat fields)
     See sinogram_add_noise for how the line integrals become attenuation
-    (``mass_attenuation``) and for ``legacy``.
+    (``mass_attenuation``), for ``min_counts`` and for ``legacy``.
     """
     if torch.is_tensor(proj):
         istorch = True
@@ -211,7 +225,10 @@ def _sinogram_add_noise(
     # Electronic noise:
     Im = Im + sigma * torch.randn(Im.shape, device=dev)
 
-    Im[Im <= 0] = 1e-6
+    if min_counts is None:  # LION's old rule
+        Im[Im <= 0] = 1e-6
+    else:  # starved rays: at most log(I0 / min_counts) of attenuation
+        Im = torch.clamp(Im, min=min_counts)
     # Correct flat fields
     Im = (Im - dark_field) / (flat_field - dark_field)
     proj = -torch.log(Im / I0) * max_val

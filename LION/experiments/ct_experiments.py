@@ -42,6 +42,8 @@ class Experiment(ABC):
             legacy = getattr(noise, "legacy_noise_model", True)
             # None: relative noise model; mu/rho (cm^2/g): physical (see sinogram_add_noise)
             mass_attenuation = getattr(noise, "mass_attenuation", None)
+            # None: LION's old 1e-6 for signals <= 0 (see sinogram_add_noise)
+            min_counts = getattr(noise, "min_counts", None)
             self.sino_fun = lambda sino, I0=noise.I0, sigma=noise.sigma, sigma_blur=noise.sigma_blur: ct.sinogram_add_noise(
                 sino,
                 I0=I0,
@@ -49,6 +51,7 @@ class Experiment(ABC):
                 sigma_blur=sigma_blur,
                 legacy=legacy,
                 mass_attenuation=mass_attenuation,
+                min_counts=min_counts,
             )
 
     @staticmethod

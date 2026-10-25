@@ -63,6 +63,12 @@ I0_GRID = np.geomspace(1e3, 1e7, 17)
 MIN_LINE_INTEGRAL = 1.0
 
 
+# Floor of the detector signal before the log, in photons, for the physical
+# model (sinogram_add_noise's min_counts; None: LION's old 1e-6 rule, which
+# turns photon-starved rays into strong streaks). Set by --min-counts.
+MIN_COUNTS = 1.0
+
+
 def add_noise(p, noise, I0, mass_attenuation=None):
     return ct.sinogram_add_noise(
         p,
@@ -70,6 +76,8 @@ def add_noise(p, noise, I0, mass_attenuation=None):
         sigma=noise.sigma,
         sigma_blur=noise.sigma_blur,
         mass_attenuation=mass_attenuation,
+        # the relative model as the experiments run it
+        min_counts=MIN_COUNTS if mass_attenuation is not None else None,
     )
 
 
@@ -85,6 +93,8 @@ def matching_I0(psnr_grid, psnr_target):
 
 
 def main(args):
+    global MIN_COUNTS
+    MIN_COUNTS = None if args.min_counts.lower() == "none" else float(args.min_counts)
     device = torch.device(args.device)
     out = pathlib.Path(args.out) if args.out else pathlib.Path(__file__).parent
     out.mkdir(parents=True, exist_ok=True)
@@ -164,7 +174,10 @@ def main(args):
 
     write_csv(rows, out / "lidc_calibration.csv")
     plot_calibration(rows, out / "lidc_calibration.png")
-    plot_examples(examples, recommended, mu_rho, out / "lidc_examples.png")
+    shown = recommended
+    if args.physical_I0:  # physical I0 to show, per experiment, instead of the matches
+        shown = dict(zip(EXPERIMENTS, (float(v) for v in args.physical_I0.split(","))))
+    plot_examples(examples, shown, mu_rho, out / "lidc_examples.png")
     print(
         f"Saved lidc_calibration.csv, lidc_calibration.png, lidc_examples.png to {out}"
     )
@@ -233,8 +246,8 @@ def plot_calibration(rows, path):
 
 def plot_examples(examples, recommended, mu_rho, path):
     """FDK of the least and the most attenuating slice: relative model at the
-    experiment's I0 vs physical model at the recommended I0. Same average
-    difficulty; the difference is where the noise goes."""
+    experiment's I0 vs physical model at the given I0 (by default the PSNR
+    matches: same average difficulty, the difference is where the noise goes)."""
     fig, axes = plt.subplots(
         len(examples), 4, figsize=(16, 4 * len(examples)), squeeze=False
     )
@@ -252,7 +265,9 @@ def plot_examples(examples, recommended, mu_rho, path):
                 ax = row_axes[col]
                 ax.imshow(recon[0, 0].cpu().numpy(), cmap="gray", vmin=0, vmax=1.3)
                 ax.set_title(
-                    f"{name}, {ex[key]['max_path_mm']:.0f} mm path: {model}\n"
+                    f"{name}, {ex[key]['max_path_mm']:.0f} mm path: {model}"
+                    + (f" I0 {recommended[name]:.3g}" if model == "physical" else "")
+                    + "\n"
                     f"PSNR {PSNR()(recon, image).item():.1f}",
                     fontsize=9,
                 )
@@ -268,6 +283,18 @@ if __name__ == "__main__":
     parser.add_argument("--fdk-slices", type=int, default=30)
     parser.add_argument(
         "--energy", type=int, default=60, choices=ct.WATER_MASS_ATTENUATION
+    )
+    parser.add_argument(
+        "--min-counts",
+        default="1",
+        help="floor of the signal before the log, in photons (physical model); "
+        "'none' for LION's old 1e-6 rule",
+    )
+    parser.add_argument(
+        "--physical-I0",
+        default=None,
+        help="comma-separated physical I0 for the example figure, one per "
+        "experiment (clinical,low,extremely low); default: the PSNR matches",
     )
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--out", default=None)
