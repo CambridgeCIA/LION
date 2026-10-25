@@ -70,6 +70,22 @@ def warn_if_not_mse(loss_fn, solver_name: str):
         )
 
 
+def model_forward(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:
+    """Run ``model`` on a batch of measurements, as the solvers do.
+
+    Image-domain models get an FDK reconstruction (with operator ``op``) as
+    input. If the model has a normalisation set, its input is normalised and
+    its output mapped back, so the output is in the units of the target.
+    Sinogram-domain models get the measurements as they are (``op`` unused).
+    """
+    if model.get_input_type() == ModelInputType.IMAGE:
+        data = fdk(data, op)
+        if getattr(model, "normalisator", None) is not None:
+            data = model.normalise(data)
+            return model.unnormalise(model(data))
+    return model(data)
+
+
 class LIONsolver(ABC, metaclass=ABCMeta):
     def __init__(
         self,
@@ -140,18 +156,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return getattr(self.model, "normalisator", None) is not None
 
     def _forward(self, data: torch.Tensor) -> torch.Tensor:
-        """Run the model on a batch of measurements, as in training.
-
-        Image-domain models get an FDK reconstruction as input. If the model has
-        a normalisation set, its input is normalised and its output mapped back,
-        so losses are always computed in the units of the target.
-        """
-        if self.model.get_input_type() == ModelInputType.IMAGE:
-            data = fdk(data, self.op)
-            if self.do_normalise:
-                data = self.model.normalise(data)
-                return self.model.unnormalise(self.model(data))
-        return self.model(data)
+        """Run the model on a batch of measurements, as in training (see
+        ``model_forward``)."""
+        return model_forward(self.model, data, self.op)
 
     # This should return the default parameters of the solver
     @staticmethod

@@ -3,7 +3,9 @@
 import torch
 from torch.utils.data import DataLoader, RandomSampler
 import matplotlib.pyplot as plt
-from LION.models.LIONmodel import LIONmodel
+from LION.models.LIONmodel import LIONmodel, ModelInputType
+from LION.CTtools.ct_utils import make_operator
+from LION.optimizers.LIONsolver import model_forward
 import LION.experiments.ct_experiments as ct_experiments
 from typing import Type
 import random
@@ -49,6 +51,7 @@ def test_with_img_output(
         plt.colorbar()
         # reconstruct filepath with suffix i
         plt.savefig(f"{split_path[0]}{i+1}.{split_path[1]}")
+        plt.close()
 
 
 def test_with_experiment(
@@ -59,6 +62,13 @@ def test_with_experiment(
     device: str = "cpu",
 ):
     """Test model trained and saved at model_fpath. Returns prediction and ground truth data
+
+    The model is run as the solvers run it in validation and testing
+    (``LION.optimizers.LIONsolver.model_forward``): image-domain models get the
+    FDK of the experiment's sinograms, normalised if the model has a
+    normalisation set. Solvers with their own reconstruction (e.g.
+    Noise2Inverse, Equivariance2Inverse) evaluate differently: use their
+    ``reconstruct``.
 
     Args:
         experiment (ct_experiments.Experiment): Expriment model was trained on. Must be same, otherwise results cannot be guaranteed.
@@ -90,8 +100,11 @@ def test_with_experiment(
     # Sample a random batch (size n)
     data, gt = next(iter(test_dataloader))
     data = data.to(dev)
-    # run model on data
+    # the CT operator, for the FDK input of image-domain models
+    op = None
+    if model.get_input_type() == ModelInputType.IMAGE:
+        op = make_operator(experiment.geometry)
     with torch.no_grad():
-        pred = model(data)
+        pred = model_forward(model, data, op)
 
     return pred, gt
