@@ -116,7 +116,11 @@ for i in range(30):
     _, target = samples[i]
     
     sino_clean, _ = samples[i]
-    y=ct_utils._sinogram_add_noise(sino_clean, I0=10000, sigma=sigma_paper, sigma_blur=sigma_blurred_paper, ks_value=3)
+    # relative noise model: the foam's projections are not densities in mm
+    y = ct_utils.sinogram_add_noise(
+        sino_clean, I0=10000, sigma=sigma_paper, sigma_blur=sigma_blurred_paper,
+        ks_value=3, model="relative",
+    )
     noisy_list_y.append(y.view(1, 360, 900))
     target_list.append(target.view(1, 512, 512))
     if i == 0:
@@ -134,9 +138,9 @@ optimizer = Adam(model.parameters(), lr=1e-4)
 loss_fn = nn.MSELoss() 
 
 n2i_params = Noise2InverseSolver.default_parameters() 
-n2i_params.splits = 4 
-n2i_params.algo = fdk 
-n2i_params.strategy = Noise2InverseSolver.X_one_strategy(n2i_params.splits) 
+n2i_params.sino_split_count = 4
+n2i_params.recon_fn = fdk
+n2i_params.cali_J = Noise2InverseSolver.X_one_strategy(n2i_params.sino_split_count)
 
 solver = Noise2InverseSolver(model, optimizer, loss_fn, n2i_params, geometry, verbose=True, device=device) 
 

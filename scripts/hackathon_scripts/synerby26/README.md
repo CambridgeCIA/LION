@@ -8,8 +8,8 @@ algorithm with the LION library.
 
 The workflow is divided into two main steps to ensure version compatibility:
 
-- Creation of analytical bubble structures (Foam_env).
-- Training a neural network for self-supervised denoising (lion_env).
+- Creation of analytical bubble structures (`foam_env`): `python generate_foam_dataset.py`.
+- Training a neural network for self-supervised denoising (`lion`): `python noise2inverse_foam.py`.
 
 Create the environment with the specific version of Python for generating the
 dataset, activate the environment and install the necessary stuff:
@@ -25,7 +25,6 @@ For installing LION:
 ```sh
 git clone https://github.com/CambridgeCIA/LION.git
 cd LION
-git submodule update --init --recursive            # Legacy: for MSD_pytorch_
 conda env create --file=env_base.yml --name=lion
 conda activate lion
 pip install .
