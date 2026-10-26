@@ -11,6 +11,7 @@ from typing import List, Dict
 import pathlib
 import random
 import math
+import re
 import warnings
 
 import torch
@@ -190,6 +191,7 @@ class LIDC_IDRI(Dataset):
             - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. -1 takes all slices we have of each patient and pcg_slices_nodule gets ignored. Default is 5.
             - pcg_slices_nodule (float): Defines percentage of slices with nodule in dataset. 0 meaning "no nodules at all" and 1 meaning "just take slices that contain annotated nodules". Only used if max_num_slices_per_patient != -1. If a patient has too few slices of one kind, more of the other kind are taken. Default is 0.5.
             - legacy_slice_selection (bool): True reproduces the selection of LION before October 2026, which left out patients without nodule slices. Default False (missing in old parameter files, which then use the old selection).
+            - legacy_patient_list (bool): True reproduces the patient list of LION before October 2026 (patients 1 to N for N folders), which left out patients 1011 and 1012 and was moved by leftover folders. Default False: the LIDC-IDRI-NNNN folders (missing in old parameter files, which then use the old list). See ``patient_list``.
             - clevel (float): Defines consensus level if annotation=consensus. Value between 0-1. Default is 0.5.
             - geometry: Geometry() type, if sinograms are requied (e.g. fo "reconstruction")
 
@@ -265,8 +267,9 @@ class LIDC_IDRI(Dataset):
         self.patients_diagnosis_dictionary = load_json(
             self.path_to_processed_dataset.joinpath("patient_id_to_diagnosis.json")
         )
-        self.total_patients = (
-            len(list(self.path_to_processed_dataset.glob("LIDC-IDRI-*"))) + 1
+        self.patient_ids_all, self.total_patients = self.patient_list(
+            self.path_to_processed_dataset,
+            legacy=getattr(self.params, "legacy_patient_list", True),
         )
         self.num_slices_per_patient = self.params.max_num_slices_per_patient
         self.pcg_slices_nodule = self.params.pcg_slices_nodule
@@ -275,60 +278,48 @@ class LIDC_IDRI(Dataset):
             self.params.clevel
         )  # consensus level, only used if annotation == consensus
         self.patient_index_to_n_slices_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": len(
+            patient_id: len(
                 list(
-                    self.path_to_processed_dataset.joinpath(
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ).glob("slice_*.npy")
+                    self.path_to_processed_dataset.joinpath(patient_id).glob(
+                        "slice_*.npy"
+                    )
                 )
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids_all
         }
 
         # Dict with all slices of each patient
         self.patient_index_to_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": list(
+            patient_id: list(
                 np.arange(
                     0,
-                    self.patient_index_to_n_slices_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ],
+                    self.patient_index_to_n_slices_dict[patient_id],
                     1,
                 )
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids_all
         }
 
         # Dict with all nodule slices of each patient
         # Converts the keys from self.patients_masks_dictionary to integer
         self.patient_index_to_nodule_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": [
+            patient_id: [
                 int(item)
                 for item in list(
-                    self.patients_masks_dictionary[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ].keys()
+                    self.patients_masks_dictionary.get(patient_id, {}).keys()
                 )
             ]
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids_all
         }
 
         # Dict with all non-nodule slices of each patient
         # Computes as difference of all slices dict and dict with nodules
         self.patient_index_to_non_nodule_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": list(
-                set(
-                    self.patient_index_to_slices_index_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ]
-                )
-                - set(
-                    self.patient_index_to_nodule_slices_index_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ]
-                )
+            patient_id: list(
+                set(self.patient_index_to_slices_index_dict[patient_id])
+                - set(self.patient_index_to_nodule_slices_index_dict[patient_id])
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids_all
         }
 
         # Corrupted data handling
@@ -349,15 +340,11 @@ class LIDC_IDRI(Dataset):
                         break
 
         self.patient_index_to_nodule_slices_index_dict: Dict = {
-            f"LIDC-IDRI-{format_index(index)}": list(
-                set(
-                    self.patient_index_to_nodule_slices_index_dict[
-                        f"LIDC-IDRI-{format_index(index)}"
-                    ]
-                )
-                - set(self.removed_slices[f"LIDC-IDRI-{format_index(index)}"])
+            patient_id: list(
+                set(self.patient_index_to_nodule_slices_index_dict[patient_id])
+                - set(self.removed_slices[patient_id])
             )
-            for index in range(1, self.total_patients)
+            for patient_id in self.patient_ids_all
         }
 
         ##% Divide dataset in training/validation/testing
@@ -427,6 +414,32 @@ class LIDC_IDRI(Dataset):
         )
 
         print(f"Patient lists ready for {self.params.mode} dataset")
+
+    @staticmethod
+    def patient_list(path_to_processed_dataset, legacy=False):
+        """The patients of the dataset, in order, and the number the
+        train/validation/test proportions are taken of.
+
+        The patients are the folders named LIDC-IDRI-NNNN, so patients without a
+        scan (0238 and 0585) or that failed pre-processing are not in the list,
+        and other folders (e.g. a leftover ``LIDC-IDRI-0002.tmp``) are ignored.
+
+        ``legacy=True`` is LION's list before October 2026 (parameter files
+        without ``legacy_patient_list`` use it): patients 1 to N, N the number
+        of entries named LIDC-IDRI-*, with proportions of N + 1. As 0238 and 0585
+        have no scan, it leaves out the last two patients (1011 and 1012), and any
+        other entry (a missing patient, a leftover folder) moves the splits.
+        """
+        folder = pathlib.Path(path_to_processed_dataset)
+        if legacy:
+            n = len(list(folder.glob("LIDC-IDRI-*")))
+            return [f"LIDC-IDRI-{format_index(i)}" for i in range(1, n + 1)], n + 1
+        patients = sorted(
+            p.name
+            for p in folder.glob("LIDC-IDRI-*")
+            if p.is_dir() and re.fullmatch(r"LIDC-IDRI-\d{4}", p.name)
+        )
+        return patients, len(patients)
 
     @staticmethod
     def read_not_resampled(path_to_processed_dataset):
@@ -541,6 +554,9 @@ class LIDC_IDRI(Dataset):
         # True reproduces the slice selection of LION before October 2026
         # (patients without nodule slices were left out); see select_slices
         param.legacy_slice_selection = False
+        # True reproduces the patient list of LION before October 2026, which
+        # left out the last two patients; see LIDC_IDRI.patient_list
+        param.legacy_patient_list = False
         param.task = task
         param.folder = LIDC_IDRI_PROCESSED_DATASET_PATH
         if task == "reconstruction" and geometry is None:
