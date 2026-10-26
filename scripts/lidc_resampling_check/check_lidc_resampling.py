@@ -10,6 +10,8 @@ the order to run them in.
 
   resampling  CPU, read-only. A few patients across the range of pixel
               spacings, before and after resampling, on the same mm axes.
+  match       GPU, read-only. For each experiment, the I0 after #264 that
+              gives the same image noise as before #264, on average.
   doses       GPU, read-only. FDK of a small, a typical and a large patient
               at the experiments' doses: before #264 (each scan's own slices,
               300 mm geometry) and after (resampled slices, 500 mm geometry).
@@ -254,6 +256,98 @@ def experiments():
     }
 
 
+def parse_I0s(text):
+    """'6e4,1.5e4,3e3' -> [60000.0, 15000.0, 3000.0] (clinical, low, extremely low)"""
+    values = [float(v) for v in text.split(",")]
+    if len(values) != 3:
+        raise SystemExit("--after-I0 needs three values: clinical,low,extremely low")
+    return values
+
+
+def check_match(args):
+    """For each experiment, the I0 after #264 that gives the same noise in the
+    FDK images as before #264 (the images the doses were chosen on), on
+    average over --n-slices patients."""
+    import torch
+
+    from LION.classical_algorithms import fdk
+    from LION.CTtools import ct_utils as ct
+    from LION.CTtools.ct_geometry import Geometry
+    from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
+
+    folder, device = args.data, torch.device(args.device)
+    torch.manual_seed(0)
+    spacings = original_spacings()
+    old_op = ct.make_operator(Geometry.default_parameters())
+    new_op = ct.make_operator(LIDC_IDRI.default_geometry())
+    candidates = [p for p in patients(folder) if p in spacings]
+    candidates = candidates[:: max(1, len(candidates) // args.n_slices)]
+    factors = [0.5, 1, 2, 4, 8, 16, 32]
+
+    def density(hu):
+        image = torch.from_numpy(hu.astype(np.float32))[None].to(device)
+        return ct.from_HU_to_density(image)
+
+    def noise_variance(cls, I0, image, op):
+        """Mean variance of FDK(noisy) - FDK(clean) inside the body."""
+        params = cls.default_parameters()
+        params.noise_params.I0 = I0
+        clean = op(image)
+        noise = fdk(cls(params).sino_fun(clean).unsqueeze(0), op) - fdk(
+            clean.unsqueeze(0), op
+        )
+        body = image.unsqueeze(0) > 0.1  # g/cm^3: everything but air
+        return (noise[body] ** 2).mean().item()
+
+    images = []
+    for patient in candidates:
+        require_native(folder, patient)
+        hu = load_slice(folder, patient, n_slices(folder, patient) // 2)
+        images.append(
+            (density(hu), density(resampling.resample_ct_slice(hu, spacings[patient])))
+        )
+    print(f"{len(images)} patients (middle slices)")
+    proposed, rows = [], []
+    for name, cls in experiments().items():
+        I0 = cls.default_parameters().noise_params.I0
+        before = np.mean([noise_variance(cls, I0, old, old_op) for old, _ in images])
+        after = [
+            np.mean([noise_variance(cls, f * I0, new, new_op) for _, new in images])
+            for f in factors
+        ]
+        if not after[-1] <= before <= after[0]:
+            print(
+                f"{name}: the matching I0 is outside {factors[0]}-{factors[-1]} "
+                "times the current one; the value below is the nearest end"
+            )
+        # noise variance falls with I0: interpolate log(variance) vs log(I0)
+        log_I0 = np.interp(
+            -np.log(before), -np.log(after), np.log(np.array(factors) * I0)
+        )
+        matched = float(f"{np.exp(log_I0):.2g}")
+        proposed.append(matched)
+        rows.append(
+            dict(
+                experiment=name,
+                I0_before=I0,
+                noise_std_before=before**0.5,
+                noise_std_after_same_I0=after[1] ** 0.5,
+                matched_I0=matched,
+            )
+        )
+        print(
+            f"{name}: before #264 I0 {I0:g}, noise std {before ** 0.5:.4f} g/cm^3; "
+            f"after, same I0: {after[1] ** 0.5:.4f}; same noise as before at I0 "
+            f"~{matched:g}"
+        )
+    (args.out / "match.json").write_text(json.dumps(rows, indent=2))
+    values = ",".join(f"{v:g}" for v in proposed)
+    print("To look at these doses next to the ones you chose before:")
+    print(
+        f"  python {__file__} doses --data {folder} --after-I0 {values} --out {args.out}"
+    )
+
+
 def check_doses(args):
     import torch
 
@@ -270,11 +364,18 @@ def check_doses(args):
     old_op = ct.make_operator(Geometry.default_parameters())  # before #264
     new_op = ct.make_operator(LIDC_IDRI.default_geometry())  # after
     exps = {name: cls(cls.default_parameters()) for name, cls in experiments().items()}
+    after_exps = dict(exps)
+    if args.after_I0:  # proposed doses after #264, for the "after" columns
+        for (name, cls), I0 in zip(experiments().items(), parse_I0s(args.after_I0)):
+            params = cls.default_parameters()
+            params.noise_params.I0 = I0
+            after_exps[name] = cls(params)
     if args.sweep:
         for I0 in [float(v) for v in args.sweep.split(",")]:
             params = experiments()["clinical"].default_parameters()
             params.noise_params.I0 = I0
             exps[f"I0 {I0:g}"] = experiments()["clinical"](params)
+            after_exps[f"I0 {I0:g}"] = exps[f"I0 {I0:g}"]
 
     def density(hu):
         image = torch.from_numpy(hu.astype(np.float32))[None].to(device)
@@ -333,7 +434,8 @@ def check_doses(args):
         line = []
         for ax, (name, when) in zip(row[1:], columns):
             image, op, s = images[when]
-            sino = exps[name].sino_fun(op(image))  # the experiment's noise
+            exp = exps[name] if when == "before" else after_exps[name]
+            sino = exp.sino_fun(op(image))  # the experiment's noise
             recon = fdk(sino.unsqueeze(0), op)
             value = psnr(recon, image.unsqueeze(0)).item()
             line.append(f"{name} {when}: {value:.1f}")
@@ -344,7 +446,7 @@ def check_doses(args):
                 vmax=args.vmax,
                 extent=extent(s),
             )
-            I0 = exps[name].param.noise_params.I0
+            I0 = exp.param.noise_params.I0
             ax.set_title(
                 f"{name}, {when} #264\nI0 {I0:g}, PSNR {value:.1f}", fontsize=8
             )
@@ -565,7 +667,8 @@ def check_loader(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument(
-        "check", choices=["resampling", "doses", "trial", "loader", "integrity"]
+        "check",
+        choices=["resampling", "doses", "match", "trial", "loader", "integrity"],
     )
     parser.add_argument(
         "--data",
@@ -594,6 +697,12 @@ if __name__ == "__main__":
         help="doses: also the clinical experiment at these I0, "
         "comma-separated (e.g. 3e4,2e4,1e4,5e3,2e3,1e3), after #264",
     )
+    parser.add_argument(
+        "--after-I0",
+        default=None,
+        help="doses: the I0 of the clinical, low and extremely low dose "
+        "experiments after #264, comma-separated (default: the current ones)",
+    )
     parser.add_argument("--trial-dir", type=pathlib.Path, default=None)
     parser.add_argument(
         "--vmax", type=float, default=1.3, help="display window: 0 to vmax g/cm^3"
@@ -607,7 +716,7 @@ if __name__ == "__main__":
     if args.n_patients is None:
         args.n_patients = 30 if args.check == "trial" else 6
     if args.n_slices is None:
-        args.n_slices = 200 if args.check == "doses" else 3
+        args.n_slices = {"doses": 200, "match": 30}.get(args.check, 3)
     args.out.mkdir(parents=True, exist_ok=True)
     {
         "resampling": check_resampling,
@@ -615,4 +724,5 @@ if __name__ == "__main__":
         "trial": make_trial,
         "loader": check_loader,
         "integrity": check_integrity,
+        "match": check_match,
     }[args.check](args)

@@ -34,6 +34,25 @@ PIXEL_SPACING_MM = 500.0 / 512.0
 PRE_PROCESSING_FILE = "pre_processing.json"
 
 
+def npy_problem(path: pathlib.Path):
+    """None if the .npy file exists and holds all the data its header says,
+    else what is wrong. Reads the header only."""
+    try:
+        with open(path, "rb") as f:
+            version = np.lib.format.read_magic(f)
+            if version == (1, 0):
+                shape, _, dtype = np.lib.format.read_array_header_1_0(f)
+            else:
+                shape, _, dtype = np.lib.format.read_array_header_2_0(f)
+            expected = f.tell() + int(np.prod(shape)) * dtype.itemsize
+    except Exception as error:  # missing, or not a .npy file
+        return f"unreadable: {error}"
+    size = path.stat().st_size
+    if size != expected:
+        return f"incomplete, {size} of {expected} bytes"
+    return None
+
+
 def format_index(index: int) -> str:
     str_index = str(index)
     while len(str_index) < 4:
@@ -142,6 +161,11 @@ class LIDC_IDRI(Dataset):
         ``python LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py
         --resample-only`` resamples them in place (no DICOM files needed).
 
+        Damaged data: the LIDC-IDRI download and pre-processing can leave
+        incomplete files. The loader leaves out, with a warning, selected slices
+        whose files are incomplete or unreadable, and the patients
+        ``pre_processing.json`` lists as not resampled.
+
         Images: for reconstruction, the CT images (Hounsfield units) are turned
         into mass density in g/cm^3 (``ct_utils.from_HU_to_density``: air 0.0012,
         water 1.0137, 500 HU 1.52). Before October 2026 the same values came from
@@ -223,6 +247,8 @@ class LIDC_IDRI(Dataset):
 
         self.path_to_processed_dataset = pathlib.Path(self.params.folder)
         self.pixel_spacing_mm = self.read_pixel_spacing(self.path_to_processed_dataset)
+        # patients the pre-processing could not resample (e.g. a damaged file)
+        self.not_resampled = self.read_not_resampled(self.path_to_processed_dataset)
         self.check_geometry()
         self.patients_masks_dictionary = load_json(
             self.path_to_processed_dataset.joinpath("patients_masks.json")
@@ -388,6 +414,7 @@ class LIDC_IDRI(Dataset):
             self.num_slices_per_patient,
             self.pcg_slices_nodule,
         )
+        self.slices_to_load = self.drop_damaged_slices(self.slices_to_load)
         self.slice_index_to_patient_id_list = self.get_slice_index_to_patient_id_list(
             self.slices_to_load
         )
@@ -396,6 +423,50 @@ class LIDC_IDRI(Dataset):
         )
 
         print(f"Patient lists ready for {self.params.mode} dataset")
+
+    @staticmethod
+    def read_not_resampled(path_to_processed_dataset):
+        """Patients the pre-processing could not resample (pre_processing.json)."""
+        path = pathlib.Path(path_to_processed_dataset).joinpath(PRE_PROCESSING_FILE)
+        if not path.is_file():
+            return []
+        return load_json(path).get("not_resampled", [])
+
+    def drop_damaged_slices(self, slices_to_load: Dict) -> Dict:
+        """Leave out, with a warning, the slices that cannot be loaded: those of
+        patients the pre-processing could not resample, and incomplete or
+        unreadable files (and, for tasks with masks, their mask files).
+
+        A damaged file can come from an interrupted download, pre-processing or
+        copy. Only the selected slices are checked (their headers and sizes),
+        so this is quick unless every slice is selected.
+        """
+        needs_masks = self.params.task in ["joint", "end_to_end", "segmentation"]
+        kept, dropped = {}, []
+        for patient_id, slice_indices in slices_to_load.items():
+            if patient_id in self.not_resampled:
+                dropped += [f"{patient_id} (not resampled)"]
+                kept[patient_id] = []
+                continue
+            folder = self.path_to_processed_dataset.joinpath(patient_id)
+            masks = list(folder.glob("mask_*.npy")) if needs_masks else []
+            kept[patient_id] = []
+            for slice_index in slice_indices:
+                files = [folder.joinpath(f"slice_{slice_index}.npy")]
+                files += [m for m in masks if m.name.split("_")[1] == str(slice_index)]
+                problems = [
+                    f"{f.name}: {npy_problem(f)}" for f in files if npy_problem(f)
+                ]
+                if problems:
+                    dropped += [f"{patient_id}/{p}" for p in problems]
+                else:
+                    kept[patient_id].append(slice_index)
+        if dropped:
+            warnings.warn(
+                f"LIDC-IDRI: left out {len(dropped)} damaged or unusable files "
+                f"(re-run the pre-processing for these patients): {dropped}"
+            )
+        return kept
 
     @staticmethod
     def read_pixel_spacing(path_to_processed_dataset):

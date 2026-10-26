@@ -13,6 +13,8 @@ None of them changes your processed dataset: the trial works on a copy.
 |---|---|---|---|
 | `resampling` | CPU, LION env | < 1 min | `resampling.png`, `resampling.json` |
 | `doses` | GPU, LION env | a few min | `doses.png` (`doses_sweep.png` with `--sweep`) |
+| `match` | GPU, LION env | a few min | the I0 that give the old image noise, `match.json` |
+| `integrity` | CPU, LION env | a few min for the whole dataset | incomplete `.npy` files, `integrity.json` |
 | `trial` | CPU, LION env | a few min, ~4 GB of disk per 30 patients | a copy of the first patients, and the slices the conversion should give |
 | `loader` | GPU, LION env, after converting the copy | a few min | `loader.png`, and a list of problems (if any) |
 
@@ -85,6 +87,21 @@ percentile of the thickest water path, after resampling).
   columns show the clinical experiment after #264 at other I0, to choose new
   values by eye as last time.
 - **Each title** has the PSNR against the ground truth.
+- **`--after-I0 a,b,c`**: the "after" columns use these I0 (clinical, low,
+  extremely low) instead of the current ones, to compare proposed doses with
+  the images you chose the doses on.
+
+**`match`**: for each experiment, the I0 after #264 that gives the same noise
+in the FDK images as before #264, on average over 30 patients (middle
+slices). The noise is FDK(noisy) − FDK(clean), inside the body. It prints
+these I0 and the `doses --after-I0 ...` command that shows them next to the
+"before" images. Image noise is matched, not visual impression: adjust from
+there by eye (e.g. with `--sweep`).
+
+```
+python scripts/lidc_resampling_check/check_lidc_resampling.py match --data ... --out lidc_check
+python scripts/lidc_resampling_check/check_lidc_resampling.py doses --data ... --after-I0 <the printed values> --out lidc_check
+```
 
 **`loader`**: checks what `--resample-only` wrote on the copy:
 - the `pre_processing.json` record and each patient's `pixel_spacing.json`;
@@ -99,3 +116,10 @@ loader, and checks:
 `loader.png` shows a target and the FDK of the experiment's noisy sinogram for
 three test slices per experiment. It ends with "All checks passed." or a list
 of problems.
+
+**Damaged files.** `integrity --data <folder>` lists `.npy` files shorter than
+their header says (e.g. an interrupted download, pre-processing or copy).
+`trial` skips patients with such files. `--resample-only` leaves such a patient
+as it is, goes on with the others, and lists it in `pre_processing.json`
+(`not_resampled`). The data loader leaves out, with a warning, those patients
+and any selected slice whose file is incomplete.

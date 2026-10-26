@@ -167,12 +167,6 @@ def test_old_dataset_is_resampled_in_place(preprocessing, tmp_path):
     )
 
 
-def test_dataset_marked_only_when_every_patient_is_resampled(preprocessing, tmp_path):
-    fake_processed_patient(tmp_path / "LIDC-IDRI-0001", 0.7)
-    preprocessing.write_pre_processing_file(tmp_path)
-    assert not (tmp_path / "pre_processing.json").exists()
-
-
 # --------------------------------------------------------------------------
 # Geometry
 
@@ -223,3 +217,72 @@ def test_new_patients_are_resampled(preprocessing, tmp_path):
             resampling.resample_ct_slice(volume[:, :, k], 0.6),
         )
     assert preprocessing.is_resampled(tmp_path)
+
+
+# --------------------------------------------------------------------------
+# Damaged files: left out with a warning
+
+
+def test_incomplete_npy_files_are_found(tmp_path):
+    good, bad = tmp_path / "good.npy", tmp_path / "bad.npy"
+    np.save(good, np.zeros((512, 512), dtype=np.int16))
+    np.save(bad, np.zeros((512, 512), dtype=np.int16))
+    bad.write_bytes(bad.read_bytes()[:131072])  # as a cut-off copy
+    assert lidc.npy_problem(good) is None
+    assert "incomplete" in lidc.npy_problem(bad)
+    assert "unreadable" in lidc.npy_problem(tmp_path / "missing.npy")
+
+
+@pytest.mark.parametrize("task", ["reconstruction", "segmentation"])
+def test_loader_leaves_out_damaged_slices(tmp_path, task):
+    for patient in ("LIDC-IDRI-0001", "LIDC-IDRI-0002", "LIDC-IDRI-0003"):
+        (tmp_path / patient).mkdir()
+        for k in range(3):
+            np.save(
+                tmp_path / patient / f"slice_{k}.npy", np.zeros((512, 512), np.int16)
+            )
+    np.save(
+        tmp_path / "LIDC-IDRI-0001" / "mask_2_nodule_0_annotation_5.npy",
+        np.zeros((512, 512), np.int16),
+    )
+    damaged = tmp_path / "LIDC-IDRI-0001" / "slice_1.npy"
+    damaged.write_bytes(damaged.read_bytes()[:1000])
+    mask = tmp_path / "LIDC-IDRI-0001" / "mask_2_nodule_0_annotation_5.npy"
+    mask.write_bytes(mask.read_bytes()[:1000])
+
+    dataset = lidc.LIDC_IDRI.__new__(lidc.LIDC_IDRI)  # no full dataset needed
+    dataset.params = types.SimpleNamespace(task=task)
+    dataset.path_to_processed_dataset = tmp_path
+    dataset.not_resampled = ["LIDC-IDRI-0003"]
+    selected = {
+        p: [0, 1, 2] for p in ("LIDC-IDRI-0001", "LIDC-IDRI-0002", "LIDC-IDRI-0003")
+    }
+    with pytest.warns(UserWarning, match="left out"):
+        kept = dataset.drop_damaged_slices(selected)
+    # slice 2's mask only matters when masks are loaded
+    assert kept["LIDC-IDRI-0001"] == ([0] if task == "segmentation" else [0, 2])
+    assert kept["LIDC-IDRI-0002"] == [0, 1, 2]
+    assert kept["LIDC-IDRI-0003"] == []
+
+
+def test_dataset_record_lists_patients_not_resampled(preprocessing, tmp_path):
+    fake_processed_patient(tmp_path / "LIDC-IDRI-0001", 0.7)
+    fake_processed_patient(tmp_path / "LIDC-IDRI-0002", 0.5)
+    preprocessing.resample_processed_patient(tmp_path / "LIDC-IDRI-0002", 0.5)
+    preprocessing.write_pre_processing_file(tmp_path)
+    assert lidc.LIDC_IDRI.read_not_resampled(tmp_path) == ["LIDC-IDRI-0001"]
+    assert lidc.LIDC_IDRI.read_pixel_spacing(tmp_path) == lidc.PIXEL_SPACING_MM
+
+
+def test_conversion_goes_on_after_a_damaged_patient(preprocessing, tmp_path):
+    for patient, spacing in SPACINGS.items():
+        fake_processed_patient(tmp_path / patient, spacing)
+    damaged = tmp_path / "LIDC-IDRI-0001" / "slice_1.npy"
+    original = damaged.read_bytes()[:131072]
+    damaged.write_bytes(original)
+    preprocessing.resample_processed_dataset(tmp_path)
+    assert not preprocessing.is_resampled(tmp_path / "LIDC-IDRI-0001")
+    assert damaged.read_bytes() == original  # left as it was
+    assert preprocessing.is_resampled(tmp_path / "LIDC-IDRI-0002")
+    assert not list(tmp_path.glob("*.tmp"))
+    assert lidc.LIDC_IDRI.read_not_resampled(tmp_path) == ["LIDC-IDRI-0001"]

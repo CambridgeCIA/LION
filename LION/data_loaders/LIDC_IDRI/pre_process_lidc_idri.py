@@ -221,16 +221,17 @@ def resample_processed_dataset(path_to_processed_dataset: pathlib.Path) -> None:
 
 
 def write_pre_processing_file(path_to_processed_dataset: pathlib.Path) -> None:
-    """Mark the dataset as resampled, if every patient folder is."""
+    """Record the dataset's pixel spacing, with the patients that could not
+    be resampled (e.g. a damaged file): the data loader leaves them out."""
     folders = [
         f for f in path_to_processed_dataset.glob("LIDC-IDRI-????") if f.is_dir()
     ]
-    missing = [f.name for f in folders if not is_resampled(f)]
+    missing = sorted(f.name for f in folders if not is_resampled(f))
     if missing:
         print(
-            f"Not resampled yet: {missing}; see the errors above, then run this again"
+            f"Not resampled: {missing}. The data loader will leave them out; "
+            "repair them (see the errors above) and run this again to add them."
         )
-        return
     write_json(
         path_to_processed_dataset.joinpath(PRE_PROCESSING_FILE),
         {
@@ -238,6 +239,7 @@ def write_pre_processing_file(path_to_processed_dataset: pathlib.Path) -> None:
             "image_shape": list(IMAGE_SHAPE),
             "image_size_mm": [PIXEL_SPACING_MM * n for n in IMAGE_SHAPE],
             "interpolation": "linear, Gaussian anti-aliasing (resampling.py)",
+            "not_resampled": missing,
         },
     )
 
