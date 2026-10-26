@@ -18,6 +18,7 @@
 from enum import Enum
 from typing import Optional
 from LION.utils.parameter import LIONParameter
+import LION.utils.spec as spec
 
 # We will need utilities
 import LION.utils.utils as ai_utils
@@ -40,6 +41,7 @@ import torch.nn.functional as F
 from abc import ABC, abstractmethod, ABCMeta
 
 # Some other imports
+import json
 import warnings
 from pathlib import Path
 import inspect
@@ -111,6 +113,11 @@ class LIONmodel(nn.Module, ABC):
 
         if model_parameters is None:
             model_parameters = self.default_parameters()
+        else:
+            # A name the model doesn't know is not used: likely a typo
+            spec.warn_unknown_names(
+                type(self).__name__, model_parameters, self.default_parameters()
+            )
         model_parameters = as_model_parameter(model_parameters)
         # Pass all relevant parameters to internal storage.
         self.geometry = geometry
@@ -255,8 +262,9 @@ class LIONmodel(nn.Module, ABC):
 
         # (optional)
         geometry = None
+        given_geometry = None
         if "geometry" in kwargs:
-            geometry = kwargs.pop("geometry")
+            geometry = given_geometry = kwargs.pop("geometry")
             dic["geometry"] = geometry
         elif hasattr(self, "geometry") and self.geometry is not None:
             geometry = self.geometry
@@ -271,30 +279,27 @@ class LIONmodel(nn.Module, ABC):
                 "The following parameters are not understood: "
                 + str(list(kwargs.keys()))
             )
-        # Prepare parameters to be saved
-        ##########################
-        # These are for human readability, but we redundantly save it in the data too
-        # Make a super LIONParameter()
-        options = LIONParameter()
+        # The model's metadata: the spec that builds it again (see
+        # LION.utils.spec), and what is known of its data and training.
+        metadata = {"lion_format": spec.FORMAT_VERSION}
         # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
         # we need to at least know exactly when the model was saved, to at least be able to reproduce.
         try:
-            options.commit_hash = ai_utils.get_git_revision_hash()
-        except:
+            metadata["commit_hash"] = ai_utils.get_git_revision_hash()
+        except Exception:
             warnings.warn("\nCould not get git hash.\n")
-        options.model_name = self.__class__.__name__
-        options.model_parameters = self.model_parameters
-        # `is not None`: these can be numpy arrays, whose truth value is ambiguous
-        if geometry is not None:
-            options.geometry = geometry
+        metadata["model"] = spec.to_spec(self)
+        # A geometry given here describes the data (e.g. for a model without one)
+        if given_geometry is not None:
+            metadata["geometry"] = spec.encode(given_geometry)
         if dataset_params is not None:
-            options.dataset_params = dataset_params
+            metadata["dataset_params"] = spec.encode(dataset_params)
         if training is not None:
-            options.training = training
+            metadata["training"] = spec.encode(training)
 
         # Do the save:
-
-        options.save(fname.with_suffix(".json"))
+        with open(fname.with_suffix(".json"), "w", encoding="utf-8") as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=4)
         torch.save(dic, fname.with_suffix(".pt"))
 
     # Mandatory function, saves model for training
@@ -338,9 +343,62 @@ class LIONmodel(nn.Module, ABC):
         return data
 
     @classmethod
-    def _load_parameter_file(cls, fname, supress_warnings=False):
-        # Load the actual parameters
-        ##############################
+    def _read_model_file(cls, fname, allow=()):
+        """The class to build, its keyword arguments and the file's metadata
+        (``options``), from a model's ``.json``.
+
+        The model is built as ``cls``, unless ``cls`` is ``LIONmodel``: then as
+        the class the file names, which must be in a module ``LION.utils.spec``
+        allows (LION's own, or one given in ``allow``).
+        """
+        fname = Path(fname)
+        with open(fname.with_suffix(".json"), encoding="utf-8") as f:
+            saved = json.load(f)
+        if "lion_format" not in saved:
+            return cls._read_unversioned_model_file(fname)
+        if saved["lion_format"] > spec.FORMAT_VERSION:
+            raise ValueError(
+                f"{fname.with_suffix('.json')} has metadata format {saved['lion_format']}; "
+                f"this version of LION reads up to {spec.FORMAT_VERSION}. Update LION."
+            )
+
+        path, kwargs = spec.build_arguments(saved["model"], allow)
+        if cls is LIONmodel:
+            target = spec.resolve(path, allow)
+            if not (inspect.isclass(target) and issubclass(target, LIONmodel)):
+                raise ValueError(f"{path} is not a LIONmodel")
+        else:
+            target = cls
+            if path != spec.import_path(cls):
+                warnings.warn(
+                    f"\nThe file holds a {path}; it is loaded as a {spec.import_path(cls)}, "
+                    "which may fail.\n"
+                )
+
+        options = LIONParameter()
+        options.lion_format = saved["lion_format"]
+        if "commit_hash" in saved:
+            options.commit_hash = saved["commit_hash"]
+        options.model_name = path.rsplit(".", 1)[-1]
+        options.model_parameters = kwargs.get("model_parameters")
+        if "geometry" in saved:
+            options.geometry = spec.build(saved["geometry"], allow)
+        elif kwargs.get("geometry") is not None:
+            options.geometry = kwargs["geometry"]
+        for key in ("dataset_params", "training"):
+            if key in saved:
+                setattr(options, key, spec.build(saved[key], allow))
+        return target, kwargs, options
+
+    @classmethod
+    def _read_unversioned_model_file(cls, fname):
+        """``_read_model_file`` for a ``.json`` without ``lion_format``: the model
+        parameters and geometry as LIONParameters, and the class only by name."""
+        if cls is LIONmodel:
+            raise ValueError(
+                f"{fname.with_suffix('.json')} names its model class only by name: load "
+                "it with that class, e.g. FBPConvNet.load(...)"
+            )
         options = LIONParameter()
         options.load(fname.with_suffix(".json"))
         # JSON loads nested parameters back as plain LIONParameter
@@ -371,38 +429,40 @@ class LIONmodel(nn.Module, ABC):
         #         warnings.warn(
         #             f"\nThe code for the model has changed since it was saved, loading it may fail. This model was saved in {options.commit_hash}\n"
         #         )
-        return options
-
-    @classmethod
-    def load(cls, fname, *, weights_only=False, supress_warnings=False):
-        """
-        Function that loads a model from memory.
-        """
-        # Make it a Path if needed
-        if isinstance(fname, str):
-            fname = Path(fname)
-
-        options = LIONmodel._load_parameter_file(fname)
         # Check if model name matches the one that is loading it
         if options.model_name != cls.__name__:
             warnings.warn(
                 f"\nSaved model is from a class with a different name than current, likely load will fail. \nCurrent class name: {cls.__name__}, Saved model class name: {options.model_name}\n"
             )
+        # Some models need geometry, some others not.
+        kwargs = {"model_parameters": options.model_parameters}
+        sig = inspect.signature(cls.__init__)
+        if hasattr(options, "geometry") and "geometry" in sig.parameters:
+            kwargs["geometry"] = options.geometry
+        return cls, kwargs, options
+
+    @classmethod
+    def load(cls, fname, *, weights_only=False, supress_warnings=False, allow=()):
+        """
+        Function that loads a model from memory: built from its ``.json``, with
+        the weights of its ``.pt``.
+
+        Called on a model class (``FBPConvNet.load(f)``) it builds that class;
+        called on ``LIONmodel`` (``LIONmodel.load(f)``) it builds the class the
+        file names. ``allow``: module prefixes of your own model classes (see
+        ``LION.utils.spec.build``). Returns ``(model, options, data)``.
+        """
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+
+        target, kwargs, options = cls._read_model_file(fname, allow)
 
         # load data
         data = LIONmodel._load_data(
             fname, weights_only=weights_only, supress_warnings=supress_warnings
         )
-        # Some models need geometry, some others not.
-        # This initializes the model itself (cls)
-        sig = inspect.signature(cls.__init__)
-        if hasattr(options, "geometry") and "geometry" in sig.parameters:
-            model = cls(
-                model_parameters=options.model_parameters,
-                geometry=options.geometry,
-            )
-        else:
-            model = cls(model_parameters=options.model_parameters)
+        model = target(**kwargs)
 
         # Load the data into the model we created.
         model.to(default_device())
@@ -411,29 +471,15 @@ class LIONmodel(nn.Module, ABC):
         return model, options, data
 
     @classmethod
-    def load_checkpoint(cls, fname):
+    def load_checkpoint(cls, fname, *, allow=()):
         # Make it a Path if needed
         if isinstance(fname, str):
             fname = Path(fname)
 
-        options = cls._load_parameter_file(fname)
-        # Check if model name matches the one that is loading it
-        if options.model_name != cls.__name__:
-            warnings.warn(
-                f"\nSaved model is from a class with a different name than current, likely load will fail. \nCurrent class name: {cls.__name__}, Saved model class name: {options.model_name}\n"
-            )
+        target, kwargs, options = cls._read_model_file(fname, allow)
         # load data
         data = LIONmodel._load_data(fname, supress_warnings=True)
-        # Some models need geometry, some others not.
-        # This initializes the model itself (cls)
-        sig = inspect.signature(cls.__init__)
-        if hasattr(options, "geometry") and "geometry" in sig.parameters:
-            model = cls(
-                model_parameters=options.model_parameters,
-                geometry=options.geometry,
-            )
-        else:
-            model = cls(model_parameters=options.model_parameters)
+        model = target(**kwargs)
         # Load the data into the model we created.
         model.to(default_device())
         model.load_state_dict(data.pop("model_state_dict"))

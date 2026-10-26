@@ -306,7 +306,8 @@ def test_save_without_optional_metadata(tmp_path):
 def test_save_does_not_change_model_parameters(tmp_path):
     params = DnCNN.default_parameters()
     params.extra = LIONParameter(depth=2)
-    model = DnCNN(params)
+    with pytest.warns(UserWarning, match="unknown parameter"):
+        model = DnCNN(params)
     _save(model, tmp_path / "model")
     assert isinstance(model.model_parameters.extra, LIONParameter)
     assert model.model_parameters.extra.depth == 2
