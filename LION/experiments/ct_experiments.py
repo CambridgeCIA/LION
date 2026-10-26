@@ -21,7 +21,11 @@ detector is energy-integrating (electronic noise, cross-talk) unless
 
 The doses (``CLINICAL_I0``, ``LOW_DOSE_I0``, ``EXTREMELY_LOW_DOSE_I0``) were
 chosen by Ander by looking at FDK reconstructions of small, typical and large
-LIDC-IDRI patients.
+LIDC-IDRI patients (25 Oct 2026: 20000, 5000, 1000). When the slices were
+resampled to their real size (26 Oct 2026, see the geometry below), most
+patients became thicker and noisier at the same I0, so the doses were raised to
+42000, 11000 and 2100: the I0 that give, on average over 30 patients, the same
+noise in the FDK images as before (checked by eye by Ander).
 
 Before, the experiments used the relative model: each sinogram divided by its
 maximum, so every patient's thickest ray kept I0/e photons (I0 = 10000, 3500
@@ -61,11 +65,13 @@ from LION.data_loaders.deteCT import deteCT
 
 # Photons per detector pixel in vacuum of the simulated experiments (physical
 # noise model, water at 80 keV; see Experiment.noise_parameters). Chosen by
-# Ander on 25 Oct 2026 by looking at LIDC-IDRI reconstructions. With the
-# relative model, the experiments used 10000, 3500 and 1000.
-CLINICAL_I0 = 20000
-LOW_DOSE_I0 = 5000
-EXTREMELY_LOW_DOSE_I0 = 1000
+# Ander on 25-26 Oct 2026 by looking at LIDC-IDRI reconstructions; the same
+# image noise as 20000, 5000 and 1000 gave before the slices were resampled to
+# their real size (see the module docstring). With the relative model, the
+# experiments used 10000, 3500 and 1000.
+CLINICAL_I0 = 42000
+LOW_DOSE_I0 = 11000
+EXTREMELY_LOW_DOSE_I0 = 2100
 
 # Angles of the LIDC-IDRI limited-angle and sparse-view experiments (as
 # Geometry.sparse_angle_parameters and sparse_view_parameters)

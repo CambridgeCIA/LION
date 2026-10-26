@@ -85,7 +85,7 @@ def test_experiment_doses():
             ct_experiments.SparseAngleExtremeLowDoseCTRecon,
         )
     }
-    assert list(doses.values()) == [20000, 5000, 1000, 1000]
+    assert list(doses.values()) == [42000, 11000, 2100, 2100]
 
 
 # --------------------------------------------------------------------------
