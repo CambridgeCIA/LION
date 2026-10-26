@@ -17,14 +17,18 @@ import numpy as np
 from pathlib import Path
 import warnings
 
-import tomosipo as ts
-from tomosipo.torch_support import to_autograd
-from ts_algorithms import fdk
-from LION.utils.math import power_method
+from LION.utils.tomosipo_import import import_tomosipo
+
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+
+def fdk(op, sino):
+    """ts_algorithms' FDK, imported on first use (LION imports without the CT
+    backend)."""
+    return import_tomosipo("ts_algorithms", "LG").fdk(op, sino)
 
 
 class LGblock(nn.Module):

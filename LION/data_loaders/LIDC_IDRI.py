@@ -17,7 +17,6 @@ import torch
 import numpy as np
 import json
 from torch.utils.data import Dataset
-import matplotlib.pyplot as plt
 
 
 from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
@@ -238,6 +237,11 @@ class LIDC_IDRI(Dataset):
         if task in ["segmentation"]:
             self.image_transform = ct.from_HU_to_normal
 
+        # parameters loaded from JSON have the geometry as a plain LIONParameter
+        if self.params.geometry is not None and not isinstance(
+            self.params.geometry, ct.Geometry
+        ):
+            self.params.geometry = ct.Geometry.init_from_parameter(self.params.geometry)
         if geometry_parameters is not None:
             self.params.geometry = geometry_parameters
             self.operator = ct.make_operator(geometry_parameters)

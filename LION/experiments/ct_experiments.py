@@ -95,6 +95,14 @@ class Experiment(ABC):
                 self.param.data_loader_params.path_to_dataset = pathlib.Path(datafolder)
             else:
                 self.param.data_loader_params.folder = datafolder
+        # parameters loaded from a JSON file have the geometry as a plain
+        # LIONParameter; operators and models need a Geometry
+        if self.experiment_params.geometry is not None and not isinstance(
+            self.experiment_params.geometry, ctgeo.Geometry
+        ):
+            self.experiment_params.geometry = ctgeo.Geometry.init_from_parameter(
+                self.experiment_params.geometry
+            )
         self.geometry = self.experiment_params.geometry
         self.dataset = dataset
         # Noise added to the simulated sinograms (None: clean sinograms)
