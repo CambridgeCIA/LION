@@ -1,89 +1,111 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 
+from LION.exceptions.exceptions import ShapeMismatchException
+
 
 class HAARPsi(nn.Module):
+    """HaarPSI: the Haar wavelet-based perceptual similarity index, for
+    (potentially) batched pytorch tensors, used like LION's PSNR and SSIM.
+
+    Reisenhofer, Bosse, Kutyniok and Wiegand, "A Haar wavelet-based perceptual
+    similarity index for image quality assessment", Signal Processing: Image
+    Communication 61 (2018). PyTorch implementation by Sören Dittmer and Clemens
+    Karner (through project FWF T1307-N/Anna Breger), from the TensorFlow
+    implementation by David Neumann and the MATLAB one by Rafael Reisenhofer.
+    It matches ``piq.haarpsi`` for images in [0, data_range].
+
+    Args (constructor):
+        preprocess_with_subsampling: subsample the images by 2 first (as in
+            the paper). Default True.
+        C, a: the algorithm's constants, determined experimentally by the
+            authors of HaarPSI (defaults 30 and 4.2, for images in [0, 255]).
+    """
+
     # a similarity score: higher is better
     higher_is_better = True
 
     def __init__(self, preprocess_with_subsampling: bool = True, C=30.0, a=4.2):
-        """
-        This is a Python PyTorch implementation of the HaarPSI algorithm as presented in "A Haar wavelet-based perceptual similarity index for image quality assessment" by Rafael Reisenhofer, Sebastian Bosse, Gitta Kutyniok and Thomas Wiegand.
-
-        Converted by Sören Dittmer and Clemens Karner (through project FWF T1307-N/Anna Breger) from the original Python tensorflow implementation written by David Neumann and from the original MATLAB implementation written by Rafael Reisenhofer.
-
-        Please note that this implementation requires images scaled to [0,1], while the original implementation expects images with image values in [0,255].
-
-        Last update: 28.05.2024
-
-        Parameters:
-            Mandatory:
-                ref: torch.Tensor
-                    The reference image, can be an RGB or grayscale image with image values scaled to [0,1]
-                    in one of the following formats:
-                        (#samples, #channels, width, height)
-                        (#channels, width, height)
-                        (width, height)
-                deg: torch.Tensor
-                    The degraded image, can be an RGB or grayscale image with image values scaled to [0,1]
-                    in one of the following formats:
-                        (#samples, #channels, width, height)
-                        (#channels, width, height)
-                        (width, height)
-            Optional:
-                preprocess_with_subsampling: boolean
-                    Default: True
-                    Determines if subsampling is performed.
-                C: float
-                    Default: 30.0
-                    A paramter of the algorithm, which has been experimentally determined by the creators of HaarPSI.
-                α: float
-                    Default: 4.2
-                    A paramter of the algorithm, which has been experimentally determined by the creators of HaarPSI.
-
-        Returns:
-            (similarity_score, local_similarity, weights): (torch.Tensor, torch.Tensor, torch.Tensor)
-        """
         super().__init__()
         self.preprocess_with_subsampling = preprocess_with_subsampling
         self.C = C
         self.a = a
 
-    def forward(self, ref: torch.Tensor, deg: torch.Tensor):
-        assert ref.shape == deg.shape, "The images must have the same dimensions"
-        assert len(ref.shape) in {
-            2,
-            3,
-            4,
-        }, "Grayscale and color single images and batches are supported"
-        assert ref.dtype == torch.float32, "The images must be of type float32"
-        assert ref.dtype == deg.dtype, "The images must have the same dtype"
-        assert torch.all(ref >= 0) and torch.all(
-            ref <= 1
-        ), "The images must be in the range [0, 1]"
-        assert torch.all(deg >= 0) and torch.all(
-            deg <= 1
-        ), "The images must be in the range [0, 1]"
+    def forward(
+        self,
+        x: torch.Tensor,
+        target: torch.Tensor,
+        reduce: str | None = None,
+        batched=True,
+        data_range: float | None = None,
+    ) -> torch.Tensor:
+        """
+        Args:
+            x: input image(s), (B, C, H, W) or (B, H, W) if batched, else
+                (C, H, W) or (H, W). C is 1 (grayscale) or 3 (RGB).
+            target: target image(s) to compare x against, same shape as x.
+            reduce: if batched=False has no effect. Otherwise specifies what
+                operation should be done to aggregate the scores along the batch
+                axis. Defaults to None, in which case a tensor of shape
+                (batch size) is returned.
+            batched: whether x and target are batched or not.
+            data_range: the range of the image values, for images in
+                [0, data_range] (e.g. 1 for images in [0, 1]), as in
+                ``piq.haarpsi``. Defaults to None: each pair is mapped with its
+                target's minimum and range (max - min) to a target in [0, 1],
+                like the range PSNR and SSIM use. Images may have values outside
+                the range (e.g. noisy reconstructions).
 
-        ref = 255 * ref
-        deg = 255 * deg
+        Returns:
+            The HaarPSI of each sample, in [0, 1], 1 for identical images.
+        """
+        score = self.maps(x, target, batched=batched, data_range=data_range)[0]
+        if not batched:
+            return score[0]
+        if reduce is None:
+            return score
+        if reduce == "mean":
+            return torch.mean(score)
+        raise ValueError(
+            f"expected one of 'mean' or None for parameter 'reduce', got {reduce}"
+        )
 
-        if len(ref.shape) == 2:
-            ref = ref.unsqueeze(0).unsqueeze(0)
-            deg = deg.unsqueeze(0).unsqueeze(0)
-        elif len(ref.shape) == 3:
-            ref = ref.unsqueeze(0)
-            deg = deg.unsqueeze(0)
+    def maps(self, x, target, batched=True, data_range=None):
+        """HaarPSI with its local similarity maps and weights.
 
-        assert deg.shape[1] in {1, 3}, "The images must be grayscale or color."
-        assert (
-            ref.shape[1] == deg.shape[1]
-        ), "The images must both have the same number of color channels."
+        Same arguments as ``forward``. Returns ``(score, local_similarities,
+        weights)``: score has shape (B,), the others (B, n_channels, H, W), with
+        H and W halved if subsampling and n_channels 2 for grayscale or 3 for
+        colour images (always batched).
+        """
+        if x.shape != target.shape:
+            raise ShapeMismatchException(
+                f"x (shape {x.shape}) and target (shape {target.shape}) tensors must match to compare with HAARPsi"
+            )
+        if not batched:
+            x, target = x.unsqueeze(0), target.unsqueeze(0)
+        if x.dim() == 3:  # (B, H, W)
+            x, target = x.unsqueeze(1), target.unsqueeze(1)
+        if x.dim() != 4 or x.shape[1] not in {1, 3}:
+            raise ValueError(
+                "HAARPsi expects grayscale or RGB images: (B, C, H, W) or (B, H, W) "
+                f"if batched, else (C, H, W) or (H, W), with C 1 or 3; got {tuple(x.shape)}"
+            )
+        x, target = x.float(), target.float()
+        if data_range is None:  # the target in [0, 1]
+            low = torch.amin(target, dim=(1, 2, 3), keepdim=True)
+            data_range = torch.amax(target, dim=(1, 2, 3), keepdim=True) - low
+            x, target = x - low, target - low
+        # the constant C is for images in [0, 255]
+        scale = 255.0 / data_range
+        score, local_similarities, weights = self._haarpsi(target * scale, x * scale)
+        return score[:, 0], local_similarities, weights
 
-        if deg.shape[1] == 3:
-            is_color_image = True
-        else:
-            is_color_image = False
+    def _haarpsi(self, ref: torch.Tensor, deg: torch.Tensor):
+        """HaarPSI of (B, C, H, W) images with values in [0, 255]."""
+        is_color_image = deg.shape[1] == 3
 
         if is_color_image:
             ref_y = (
@@ -116,12 +138,13 @@ class HAARPsi(nn.Module):
                 - 0.523 * deg[:, 1, :, :]
                 + 0.312 * deg[:, 2, :, :]
             )
-            ref_y = ref_y.unsqueeze(0)
-            deg_y = deg_y.unsqueeze(0)
-            ref_i = ref_i.unsqueeze(0)
-            deg_i = deg_i.unsqueeze(0)
-            ref_q = ref_q.unsqueeze(0)
-            deg_q = deg_q.unsqueeze(0)
+            # (B, H, W) -> (B, 1, H, W)
+            ref_y = ref_y.unsqueeze(1)
+            deg_y = deg_y.unsqueeze(1)
+            ref_i = ref_i.unsqueeze(1)
+            deg_i = deg_i.unsqueeze(1)
+            ref_q = ref_q.unsqueeze(1)
+            deg_q = deg_q.unsqueeze(1)
         else:
             ref_y = ref
             deg_y = deg
@@ -142,16 +165,16 @@ class HAARPsi(nn.Module):
         coeffs_deg_y = self._haar_wavelet_decompose(deg_y, n_scales)
         if is_color_image:
             coefficients_ref_i = torch.abs(
-                self._convolve2d(ref_i, torch.ones((2, 2)) / 4.0)
+                self._convolve2d(ref_i, torch.ones((2, 2), device=ref.device) / 4.0)
             )
             coefficients_deg_i = torch.abs(
-                self._convolve2d(deg_i, torch.ones((2, 2)) / 4.0)
+                self._convolve2d(deg_i, torch.ones((2, 2), device=ref.device) / 4.0)
             )
             coefficients_ref_q = torch.abs(
-                self._convolve2d(ref_q, torch.ones((2, 2)) / 4.0)
+                self._convolve2d(ref_q, torch.ones((2, 2), device=ref.device) / 4.0)
             )
             coefficients_deg_q = torch.abs(
-                self._convolve2d(deg_q, torch.ones((2, 2)) / 4.0)
+                self._convolve2d(deg_q, torch.ones((2, 2), device=ref.device) / 4.0)
             )
 
         n_samples, _, height, width = ref_y.shape
