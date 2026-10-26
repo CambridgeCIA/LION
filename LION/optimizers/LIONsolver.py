@@ -70,6 +70,22 @@ def warn_if_not_mse(loss_fn, solver_name: str):
         )
 
 
+def model_forward(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:
+    """Run ``model`` on a batch of measurements, as the solvers do.
+
+    Image-domain models get an FDK reconstruction (with operator ``op``) as
+    input. If the model has a normalisation set, its input is normalised and
+    its output mapped back, so the output is in the units of the target.
+    Sinogram-domain models get the measurements as they are (``op`` unused).
+    """
+    if model.get_input_type() == ModelInputType.IMAGE:
+        data = fdk(data, op)
+        if getattr(model, "normalisator", None) is not None:
+            data = model.normalise(data)
+            return model.unnormalise(model(data))
+    return model(data)
+
+
 class LIONsolver(ABC, metaclass=ABCMeta):
     def __init__(
         self,
@@ -140,18 +156,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return getattr(self.model, "normalisator", None) is not None
 
     def _forward(self, data: torch.Tensor) -> torch.Tensor:
-        """Run the model on a batch of measurements, as in training.
-
-        Image-domain models get an FDK reconstruction as input. If the model has
-        a normalisation set, its input is normalised and its output mapped back,
-        so losses are always computed in the units of the target.
-        """
-        if self.model.get_input_type() == ModelInputType.IMAGE:
-            data = fdk(data, self.op)
-            if self.do_normalise:
-                data = self.model.normalise(data)
-                return self.model.unnormalise(self.model(data))
-        return self.model(data)
+        """Run the model on a batch of measurements, as in training (see
+        ``model_forward``)."""
+        return model_forward(self.model, data, self.op)
 
     # This should return the default parameters of the solver
     @staticmethod
@@ -395,9 +402,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     def _is_best_validation(self, epoch: int) -> bool:
         """True if the validation value of ``epoch`` is the best so far.
 
-        Epochs without validation have 0 in ``validation_loss`` and are skipped.
+        Epochs without validation have NaN in ``validation_loss`` and are
+        skipped (a validation value can be 0, e.g. a loss of a perfect model).
         """
-        done = self.validation_loss[np.nonzero(self.validation_loss)]
+        done = self.validation_loss[~np.isnan(self.validation_loss)]
         value = self.validation_loss[epoch]
         if self._validation_higher_is_better():
             return value >= np.max(done)
@@ -742,6 +750,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 self.validation_loss = np.pad(
                     self.validation_loss,
                     (0, self.current_epoch - len(self.validation_loss)),
+                    constant_values=np.nan,
                 )
             self.validation_loss[
                 self.current_epoch - 1
@@ -806,7 +815,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         # epochs already trained by this solver (an earlier train() call) are kept.
         self.train_loss = self._resized(self.train_loss, n_epochs)
         if self.validation_loader is not None and self.check_validation_ready() == 0:
-            self.validation_loss = self._resized(self.validation_loss, n_epochs)
+            # NaN: not validated (yet)
+            self.validation_loss = self._resized(
+                self.validation_loss, n_epochs, fill=np.nan
+            )
             if not self._saves_min_validation():
                 warnings.warn(
                     "Validation runs, but the model with the lowest validation loss "
@@ -838,9 +850,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
             self.current_epoch += 1
 
-    def _resized(self, losses: Optional[np.ndarray], n_epochs: int) -> np.ndarray:
-        """Zeros for n_epochs, keeping the losses of the epochs already trained."""
-        resized = np.zeros(n_epochs)
+    def _resized(
+        self, losses: Optional[np.ndarray], n_epochs: int, fill: float = 0.0
+    ) -> np.ndarray:
+        """``fill`` for n_epochs, keeping the losses of the epochs already trained."""
+        resized = np.full(n_epochs, fill)
         if losses is not None:
             n = min(len(losses), n_epochs, self.current_epoch)
             resized[:n] = losses[:n]

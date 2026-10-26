@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 
 from LION.exceptions.exceptions import ShapeMismatchException
+from LION.metrics.psnr import _range
 
 
 class SSIM(nn.Module):
@@ -24,6 +25,8 @@ class SSIM(nn.Module):
                 Defaults to None, in which case a tensor of shape (batch size) is returned.
             channel_axis: if working with color images, which axis of image tensor corresponds to channel dimension. 
                 Defaults to None, corresponding to a grayscale image.
+            data_range: the range of the image values (e.g. 1 for images in [0, 1]).
+                Defaults to None: the range (max - min) of each target.
 
     """
 
@@ -34,6 +37,7 @@ class SSIM(nn.Module):
         reduce: str | None = None,
         batched=True,
         channel_axis: int | None = None,
+        data_range: float | None = None,
     ) -> torch.Tensor:
         if x.shape != target.shape:
             raise ShapeMismatchException(
@@ -57,7 +61,7 @@ class SSIM(nn.Module):
                     skim_ssim(
                         xi,
                         ti,
-                        data_range=ti.max() - ti.min(),
+                        data_range=_range(ti, data_range),
                         channel_axis=sample_axis,
                     )
                 )
@@ -78,7 +82,7 @@ class SSIM(nn.Module):
                 skim_ssim(
                     x_,
                     target_,
-                    data_range=target_.max() - target_.min(),
+                    data_range=_range(target_, data_range),
                     channel_axis=channel_axis,
                 )
             )

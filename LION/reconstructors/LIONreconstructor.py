@@ -42,11 +42,12 @@ class LIONReconstructor(ABC):
         """
         Reconstruct the sinogram using the model and geometry.
 
-        :param sino: Sinogram tensor.
+        :param sino: Measurements (e.g. a sinogram), one sample or a batch.
         :param noise_level: Noise level for denoising.
         """
-        # call reconstruct_sample for each batch if sino is 4D
-        if sino.dim() == 4:
+        # a batch has one more dimension than the operator's measurements
+        # (B, C, angles, detectors for CT; B, M for a matrix operator)
+        if sino.dim() == len(self.op.range_shape) + 1:
             recons = torch.zeros(
                 sino.size(0),
                 *self.op.domain_shape,

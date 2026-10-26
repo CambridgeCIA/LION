@@ -11,7 +11,7 @@ from LION.optimizers.LIONsolver import LIONsolver, warn_if_not_mse
 from LION.utils.parameter import LIONParameter
 from LION.utils.tomosipo_import import import_tomosipo
 import random
-import torchvision.transforms as TT
+from LION.utils.image_transforms import rotate
 
 
 # Parameters of the noise model of LION's E2I until Oct 2026
@@ -184,9 +184,8 @@ class Equivariance2InverseSolver(LIONsolver):
         batch_loss = ((AJ - YJ) ** 2).mean()
 
         angle = random.uniform(0, 360)
-        rotated_output_recon_1 = TT.functional.rotate(
-            output_recon_1, angle, interpolation=TT.InterpolationMode.BILINEAR
-        )
+        rotated_output_recon_1 = rotate(output_recon_1, angle, interpolation="bilinear")
+        rotated_output_recon_1 = torch.clamp(rotated_output_recon_1, min=0.0)
         rotated_sinogram = self.projector(rotated_output_recon_1)
         with torch.no_grad():
             noise = self._noise(rotated_sinogram)

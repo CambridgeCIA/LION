@@ -63,6 +63,19 @@ def test_lionmodel_prior_gets_a_batch(pnp_problem, algorithm):
     assert set(seen) == {(1, *op.domain_shape)}
 
 
+def test_vector_measurements_are_batched(pnp_problem):
+    """A batch of vector measurements (B, M) is a batch, not one sample: the
+    batch is found from the operator's range shape, not by assuming CT."""
+    op, x_true, y = pnp_problem
+    assert y.dim() == 1  # (M,)
+    recon = PnP(op, Identity(), algorithm="HQS")
+    kwargs = ALGORITHM_KWARGS["HQS"]
+    out = recon.reconstruct(torch.stack([y, 2 * y]), **kwargs)
+    assert out.shape == (2, *op.domain_shape)
+    torch.testing.assert_close(out[0], x_true, atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(out[1], 2 * x_true, atol=1e-3, rtol=1e-3)
+
+
 def test_unknown_algorithm(pnp_problem):
     with pytest.raises(ValueError):
         PnP(pnp_problem[0], Identity(), algorithm="nope")
