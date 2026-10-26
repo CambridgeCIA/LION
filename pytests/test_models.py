@@ -194,6 +194,68 @@ def test_nested_model_parameters_load(tmp_path):
     torch.testing.assert_close(loaded(x), model(x))
 
 
+class Middle(LIONmodel):
+    """A model that builds another LIONmodel from parameters in its own."""
+
+    def __init__(self, model_parameters=None):
+        super().__init__(model_parameters)
+        self.inner = DnCNN(self.model_parameters.inner_params)
+
+    @staticmethod
+    def default_parameters():
+        params = LIONModelParameter(model_input_type=ModelInputType.IMAGE)
+        params.inner_params = DnCNN.default_parameters()
+        params.inner_params.blocks = 3
+        params.inner_params.int_channels = 4
+        return params
+
+    def forward(self, x):
+        return self.inner(x)
+
+
+class Outer(LIONmodel):
+    """Two levels of nesting: Outer -> Middle -> DnCNN."""
+
+    def __init__(self, model_parameters=None):
+        super().__init__(model_parameters)
+        self.middle = Middle(self.model_parameters.middle_params)
+        self.scale = torch.nn.Parameter(torch.tensor(2.0))
+
+    @staticmethod
+    def default_parameters():
+        params = LIONModelParameter(model_input_type=ModelInputType.IMAGE)
+        params.middle_params = Middle.default_parameters()
+        return params
+
+    def forward(self, x):
+        return self.scale * self.middle(x)
+
+
+@pytest.mark.parametrize("cls", [Middle, Outer])
+def test_models_inside_models_load(tmp_path, cls):
+    """Any LIONmodel that builds other LIONmodels from nested parameters, at
+    any depth, loads: each model converts its own parameters."""
+    torch.manual_seed(0)
+    model = cls().eval()
+    _save(model, tmp_path / "model")
+    loaded, _, _ = cls.load(tmp_path / "model", supress_warnings=True)
+    loaded = loaded.cpu().eval()
+    x = torch.rand(1, 1, 16, 16)
+    torch.testing.assert_close(loaded(x), model(x))
+    inner = loaded.inner if cls is Middle else loaded.middle.inner
+    assert isinstance(inner.model_parameters, LIONModelParameter)
+    assert inner.get_input_type() is ModelInputType.IMAGE
+
+
+def test_itnet_with_its_unet_loads(no_ct_operator, tmp_path):
+    torch.manual_seed(0)
+    model = ItNet(Geometry.default_parameters(), itnet_params(0.5, True))
+    _save(model, tmp_path / "model")
+    loaded, _, _ = ItNet.load(tmp_path / "model", supress_warnings=True)
+    for (k, a), (_, b) in zip(model.state_dict().items(), loaded.state_dict().items()):
+        torch.testing.assert_close(a, b.cpu(), msg=k)
+
+
 def test_models_take_plain_parameters():
     """A plain LIONParameter works as model parameters; a Geometry is refused."""
     params = LIONParameter(**vars(DnCNN.default_parameters()))
