@@ -372,6 +372,8 @@ class deteCT(Dataset):
         """The I0 of the added noise for the slice at index: noise_params.I0
         if it is a number, else the I0 of the slice's detector."""
         I0 = self.noise_params.I0
+        if isinstance(I0, LIONParameter):  # a dict saved and loaded as JSON
+            I0 = vars(I0)
         if isinstance(I0, dict):
             detector = int(self.slice_dataframe.iloc[index]["detector"])
             # LIONParameter files may store dict keys as strings

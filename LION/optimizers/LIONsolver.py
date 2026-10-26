@@ -395,9 +395,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     def _is_best_validation(self, epoch: int) -> bool:
         """True if the validation value of ``epoch`` is the best so far.
 
-        Epochs without validation have 0 in ``validation_loss`` and are skipped.
+        Epochs without validation have NaN in ``validation_loss`` and are
+        skipped (a validation value can be 0, e.g. a loss of a perfect model).
         """
-        done = self.validation_loss[np.nonzero(self.validation_loss)]
+        done = self.validation_loss[~np.isnan(self.validation_loss)]
         value = self.validation_loss[epoch]
         if self._validation_higher_is_better():
             return value >= np.max(done)
@@ -742,6 +743,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 self.validation_loss = np.pad(
                     self.validation_loss,
                     (0, self.current_epoch - len(self.validation_loss)),
+                    constant_values=np.nan,
                 )
             self.validation_loss[
                 self.current_epoch - 1
@@ -806,7 +808,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         # epochs already trained by this solver (an earlier train() call) are kept.
         self.train_loss = self._resized(self.train_loss, n_epochs)
         if self.validation_loader is not None and self.check_validation_ready() == 0:
-            self.validation_loss = self._resized(self.validation_loss, n_epochs)
+            # NaN: not validated (yet)
+            self.validation_loss = self._resized(
+                self.validation_loss, n_epochs, fill=np.nan
+            )
             if not self._saves_min_validation():
                 warnings.warn(
                     "Validation runs, but the model with the lowest validation loss "
@@ -838,9 +843,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
             self.current_epoch += 1
 
-    def _resized(self, losses: Optional[np.ndarray], n_epochs: int) -> np.ndarray:
-        """Zeros for n_epochs, keeping the losses of the epochs already trained."""
-        resized = np.zeros(n_epochs)
+    def _resized(
+        self, losses: Optional[np.ndarray], n_epochs: int, fill: float = 0.0
+    ) -> np.ndarray:
+        """``fill`` for n_epochs, keeping the losses of the epochs already trained."""
+        resized = np.full(n_epochs, fill)
         if losses is not None:
             n = min(len(losses), n_epochs, self.current_epoch)
             resized[:n] = losses[:n]

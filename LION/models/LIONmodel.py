@@ -60,6 +60,22 @@ class LIONModelParameter(LIONParameter):
         super().__init__(**kwargs)
 
 
+def as_model_parameter(params: LIONParameter) -> LIONModelParameter:
+    """The LIONModelParameter for ``params``, with ``model_input_type`` as a
+    ModelInputType.
+
+    JSON files have no classes: a saved parameter loads back as a plain
+    LIONParameter, nested ones included (e.g. the backbone parameters of GSD),
+    and ``model_input_type`` as an int. Models call this on their parameters,
+    so they accept them however they were made.
+    """
+    if not isinstance(params, LIONModelParameter):
+        params = LIONModelParameter(**vars(params))
+    if params.model_input_type is not None:
+        params.model_input_type = ModelInputType(params.model_input_type)
+    return params
+
+
 class LIONmodel(nn.Module, ABC):
     """
     Base class for all models in the toolbox,
@@ -84,8 +100,9 @@ class LIONmodel(nn.Module, ABC):
                 "If you passed positional arguments to the model, please verify their order matches the model's __init__ signature."
             )
 
-        if model_parameters is not None and not isinstance(
-            model_parameters, LIONModelParameter
+        # A Geometry is a LIONParameter too: catch it passed in the wrong place.
+        if isinstance(model_parameters, ct.Geometry) or not (
+            model_parameters is None or isinstance(model_parameters, LIONParameter)
         ):
             raise TypeError(
                 f"Expected model_parameters to be of type LIONModelParameter or None, but got {type(model_parameters).__name__}. "
@@ -94,6 +111,7 @@ class LIONmodel(nn.Module, ABC):
 
         if model_parameters is None:
             model_parameters = self.default_parameters()
+        model_parameters = as_model_parameter(model_parameters)
         # Pass all relevant parameters to internal storage.
         self.geometry = geometry
         self.model_parameters = model_parameters
@@ -325,16 +343,9 @@ class LIONmodel(nn.Module, ABC):
         ##############################
         options = LIONParameter()
         options.load(fname.with_suffix(".json"))
-        # JSON loads nested parameters back as plain LIONParameter, but models
-        # require a LIONModelParameter.
+        # JSON loads nested parameters back as plain LIONParameter
         if isinstance(getattr(options, "model_parameters", None), LIONParameter):
-            options.model_parameters = LIONModelParameter(
-                **vars(options.model_parameters)
-            )
-            if options.model_parameters.model_input_type is not None:
-                options.model_parameters.model_input_type = ModelInputType(
-                    options.model_parameters.model_input_type
-                )
+            options.model_parameters = as_model_parameter(options.model_parameters)
         if hasattr(options, "geometry"):
             options.geometry = ct.Geometry.init_from_parameter(options.geometry)
         # Error check

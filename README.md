@@ -88,7 +88,7 @@ Folders for each of these exist in `LION/models`. An extra folder for standard `
 
 Originally designed for tomographic reconstruction tasks, specifically Computed Tomography (CT),
 LION has been extended to work with more operators.
-[Read more about operators here](LION/operators/_README.md)
+[Read more about operators here](LION/operators/_README.rst)
 
 ## Developers
 
@@ -134,13 +134,6 @@ LION is released under the GNU General Public License v3 (GPL-3), see [LICENSE.t
     </tr>
   </tbody>
 </table>
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
 
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
