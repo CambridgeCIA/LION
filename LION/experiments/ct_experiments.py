@@ -21,7 +21,11 @@ detector is energy-integrating (electronic noise, cross-talk) unless
 
 The doses (``CLINICAL_I0``, ``LOW_DOSE_I0``, ``EXTREMELY_LOW_DOSE_I0``) were
 chosen by Ander by looking at FDK reconstructions of small, typical and large
-LIDC-IDRI patients.
+LIDC-IDRI patients (25 Oct 2026: 20000, 5000, 1000). When the slices were
+resampled to their real size (26 Oct 2026, see the geometry below), most
+patients became thicker and noisier at the same I0, so the doses were raised to
+42000, 11000 and 2100: the I0 that give, on average over 30 patients, the same
+noise in the FDK images as before (checked by eye by Ander).
 
 Before, the experiments used the relative model: each sinogram divided by its
 maximum, so every patient's thickest ray kept I0/e photons (I0 = 10000, 3500
@@ -34,6 +38,17 @@ bit-identical with, the old ones. New results are not comparable with old
 results of the same experiment name.
 
 Measured 2DeteCT data have their own noise; see the deteCT data loader.
+
+Geometry of the LIDC-IDRI experiments, since 26 October 2026
+-------------------------------------------------------------
+``LIDC_IDRI.default_geometry(angles)``: 512x512 pixels over 500 mm (the
+pre-processing resamples every scan to that spacing, see the LIDC-IDRI data
+loader) and a 1024-pixel detector that covers it. The angles are as before:
+360 over 360 degrees, 60 over 60 degrees for limited angle
+(``LIMITED_ANGLES``), 50 over 360 degrees for sparse view (``SPARSE_ANGLES``).
+Before, the experiments used ``Geometry.default_parameters()`` and its
+sparse presets (300 mm, 900-pixel detector) on slices of each scan's own
+pixel spacing. Parameter files saved before keep their geometry.
 """
 
 import numpy as np
@@ -50,11 +65,18 @@ from LION.data_loaders.deteCT import deteCT
 
 # Photons per detector pixel in vacuum of the simulated experiments (physical
 # noise model, water at 80 keV; see Experiment.noise_parameters). Chosen by
-# Ander on 25 Oct 2026 by looking at LIDC-IDRI reconstructions. With the
-# relative model, the experiments used 10000, 3500 and 1000.
-CLINICAL_I0 = 20000
-LOW_DOSE_I0 = 5000
-EXTREMELY_LOW_DOSE_I0 = 1000
+# Ander on 25-26 Oct 2026 by looking at LIDC-IDRI reconstructions; the same
+# image noise as 20000, 5000 and 1000 gave before the slices were resampled to
+# their real size (see the module docstring). With the relative model, the
+# experiments used 10000, 3500 and 1000.
+CLINICAL_I0 = 42000
+LOW_DOSE_I0 = 11000
+EXTREMELY_LOW_DOSE_I0 = 2100
+
+# Angles of the LIDC-IDRI limited-angle and sparse-view experiments (as
+# Geometry.sparse_angle_parameters and sparse_view_parameters)
+LIMITED_ANGLES = np.linspace(0, 2 * np.pi / 6, 60, endpoint=False)  # 60 over 60 deg
+SPARSE_ANGLES = np.linspace(0, 2 * np.pi, 50, endpoint=False)  # 50 over 360 deg
 
 
 class Experiment(ABC):
@@ -216,7 +238,7 @@ class ExtremeLowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Extremely low dose full angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.default_parameters()
+        param.geometry = LIDC_IDRI.default_geometry()
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
         param.data_loader_params = Experiment.get_dataset_parameters(
@@ -241,7 +263,7 @@ class LowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Low dose full angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.default_parameters()
+        param.geometry = LIDC_IDRI.default_geometry()
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
         param.data_loader_params = Experiment.get_dataset_parameters(
@@ -266,7 +288,7 @@ class LimitedAngleCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Clinical dose limited angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_angle_parameters()
+        param.geometry = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
         param.data_loader_params = Experiment.get_dataset_parameters(
@@ -291,7 +313,7 @@ class LimitedAngleLowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Low dose limited angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_angle_parameters()
+        param.geometry = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
 
@@ -321,7 +343,7 @@ class LimitedAngleExtremeLowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Extremely low dose limited angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_angle_parameters()
+        param.geometry = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
 
@@ -351,7 +373,7 @@ class SparseAngleCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Clinical dose sparse angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_view_parameters()
+        param.geometry = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
 
@@ -377,7 +399,7 @@ class SparseAngleLowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Low dose sparse angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_view_parameters()
+        param.geometry = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
 
@@ -407,7 +429,7 @@ class SparseAngleExtremeLowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Extremely low dose sparse angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.sparse_view_parameters()
+        param.geometry = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
 
@@ -437,7 +459,7 @@ class clinicalCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Clinical dose full angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = ctgeo.Geometry.default_parameters()
+        param.geometry = LIDC_IDRI.default_geometry()
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
 

@@ -6,6 +6,7 @@
 # Modifications:-
 # =============================================================================
 
+import argparse
 import pathlib
 from pathlib import Path
 from typing import Tuple, List, Dict
@@ -32,6 +33,23 @@ spec.loader.exec_module(foo)
 # from ...utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH, LIDC_IDRI_PATH
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH, LIDC_IDRI_PATH
+
+# resampling.py is next to this script
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from resampling import (
+    PIXEL_SPACING_MM,
+    IMAGE_SHAPE,
+    resample_ct_slice,
+    resample_mask,
+)
+
+# Slices are resampled to PIXEL_SPACING_MM (500 mm over 512 pixels, the largest
+# spacing in LIDC-IDRI, so nothing is cropped). Each patient folder records its
+# spacing in this file; the dataset folder gets PRE_PROCESSING_FILE once every
+# patient is resampled (the data loader reads it). Datasets processed before
+# October 2026 have neither: their slices are at each scan's own spacing.
+PATIENT_SPACING_FILE = "pixel_spacing.json"
+PRE_PROCESSING_FILE = "pre_processing.json"
 
 
 def configure_pylidc(path_to_raw_dataset: pathlib.Path) -> None:
@@ -67,7 +85,7 @@ def process_patient_mask(scan, path_to_processed_volume_folder: pathlib.Path) ->
     patient_nodules_dict = {}
 
     ## Fetching n_slices for the volume
-    n_slices = len(list(path_to_processed_volume_folder.glob("*")))
+    n_slices = len(list(path_to_processed_volume_folder.glob("slice_*.npy")))
     for slice_index in range(n_slices):
         patient_nodules_dict[slice_index] = {}
     list_of_annotated_nodules: List[
@@ -99,7 +117,11 @@ def process_patient_mask(scan, path_to_processed_volume_folder: pathlib.Path) ->
                 path_to_mask_slice = path_to_processed_volume_folder.joinpath(
                     f"mask_{slice_index}_nodule_{nodule_index}_annotation_{annotation.id}.npy"
                 )
-                np.save(path_to_mask_slice, nodule_array)
+                # resampled as the slices
+                np.save(
+                    path_to_mask_slice,
+                    resample_mask(nodule_array, scan.pixel_spacing),
+                )
 
     return {k: v for k, v in patient_nodules_dict.items() if v}
 
@@ -111,10 +133,115 @@ def process_volume(scan: pl.Scan, path_to_processed_volume_folder: pathlib.Path)
         path_to_slice = pathlib.Path(
             path_to_processed_volume_folder.joinpath(f"slice_{slice_index}.npy")
         )
-        assert np.shape(volume[:, :, slice_index]) == (512, 512), print(
-            np.shape(volume[:, :, slice_index])
+        if np.shape(volume[:, :, slice_index]) != (512, 512):
+            raise ValueError(
+                f"Unexpected slice shape {np.shape(volume[:, :, slice_index])}"
+            )
+        np.save(
+            path_to_slice,
+            resample_ct_slice(volume[:, :, slice_index], scan.pixel_spacing),
         )
-        np.save(path_to_slice, volume[:, :, slice_index])
+    write_patient_spacing(path_to_processed_volume_folder, scan.pixel_spacing)
+
+
+def write_patient_spacing(path_to_processed_volume_folder, original_spacing):
+    write_json(
+        path_to_processed_volume_folder.joinpath(PATIENT_SPACING_FILE),
+        {
+            "original_pixel_spacing_mm": float(original_spacing),
+            "pixel_spacing_mm": PIXEL_SPACING_MM,
+        },
+    )
+
+
+def resample_processed_patient(
+    path_to_processed_volume_folder: pathlib.Path, original_spacing: float
+) -> None:
+    """Resample a patient folder processed before October 2026 (slices and
+    masks at the scan's own spacing) to PIXEL_SPACING_MM.
+
+    The resampled folder is written next to it and then swapped in, so an
+    interrupted run leaves either the old or the new folder, never a mix.
+    """
+    folder = path_to_processed_volume_folder
+    tmp = folder.with_name(folder.name + ".resampling.tmp")
+    if tmp.exists():
+        shutil.rmtree(tmp)
+    tmp.mkdir()
+    for path in folder.iterdir():
+        try:
+            if path.name.startswith("slice_"):
+                image = resample_ct_slice(np.load(path), original_spacing)
+                np.save(tmp / path.name, image)
+            elif path.name.startswith("mask_"):
+                np.save(tmp / path.name, resample_mask(np.load(path), original_spacing))
+            else:
+                shutil.copy2(path, tmp / path.name)
+        except Exception as error:
+            raise RuntimeError(f"{path}: {error}") from error
+    write_patient_spacing(tmp, original_spacing)
+    old = folder.with_name(folder.name + ".old")
+    folder.rename(old)
+    tmp.rename(folder)
+    shutil.rmtree(old)
+
+
+def is_resampled(path_to_processed_volume_folder: pathlib.Path) -> bool:
+    return path_to_processed_volume_folder.joinpath(PATIENT_SPACING_FILE).is_file()
+
+
+def resample_processed_dataset(path_to_processed_dataset: pathlib.Path) -> None:
+    """Resample every patient of a dataset processed before October 2026, in
+    place. Needs pylidc (for the pixel spacings, in its own database) but not
+    the DICOM files. Patients already resampled are skipped, so this can be
+    run again after an interruption."""
+    failed = []
+    for folder in sorted(path_to_processed_dataset.glob("LIDC-IDRI-????")):
+        if not folder.is_dir() or is_resampled(folder):
+            continue
+        scan = pl.query(pl.Scan).filter(pl.Scan.patient_id == folder.name).first()
+        if scan is None:
+            print(f"Patient {folder.name} has no scan in pylidc, skipping")
+            continue
+        print(f"Resampling {folder.name} from {scan.pixel_spacing} mm")
+        try:
+            resample_processed_patient(folder, scan.pixel_spacing)
+        except Exception as error:  # e.g. a truncated .npy file
+            # the patient's folder is left as it was; the others go on
+            failed.append((folder.name, str(error)))
+            print(f"\t Failed, patient left as it was: {error}")
+            tmp = folder.with_name(folder.name + ".resampling.tmp")
+            if tmp.exists():
+                shutil.rmtree(tmp)
+    if failed:
+        print(f"{len(failed)} patients could not be resampled:")
+        for patient, error in failed:
+            print(f"  {patient}: {error}")
+    write_pre_processing_file(path_to_processed_dataset)
+
+
+def write_pre_processing_file(path_to_processed_dataset: pathlib.Path) -> None:
+    """Record the dataset's pixel spacing, with the patients that could not
+    be resampled (e.g. a damaged file): the data loader leaves them out."""
+    folders = [
+        f for f in path_to_processed_dataset.glob("LIDC-IDRI-????") if f.is_dir()
+    ]
+    missing = sorted(f.name for f in folders if not is_resampled(f))
+    if missing:
+        print(
+            f"Not resampled: {missing}. The data loader will leave them out; "
+            "repair them (see the errors above) and run this again to add them."
+        )
+    write_json(
+        path_to_processed_dataset.joinpath(PRE_PROCESSING_FILE),
+        {
+            "pixel_spacing_mm": PIXEL_SPACING_MM,
+            "image_shape": list(IMAGE_SHAPE),
+            "image_size_mm": [PIXEL_SPACING_MM * n for n in IMAGE_SHAPE],
+            "interpolation": "linear, Gaussian anti-aliasing (resampling.py)",
+            "not_resampled": missing,
+        },
+    )
 
 
 def load_json(path: pathlib.Path, default):
@@ -131,6 +258,20 @@ def write_json(path: pathlib.Path, data) -> None:
 
 def remove_error_for_patient(error_list: List, patient_id: str) -> List:
     return [error for error in error_list if error[0] != patient_id]
+
+
+def compute_pixel_spacing(path_to_processed_dataset: pathlib.Path):
+    """The pixel spacing of each scan before resampling, in mm (pylidc)."""
+    file_name = "patient_id_to_pixel_spacing.json"
+    patient_dict_to_pixel_spacing = {}
+    for patient_index in range(1, 1012):
+        formatted_index = f"LIDC-IDRI-{format_index(patient_index)}"
+        scan = pl.query(pl.Scan).filter(pl.Scan.patient_id == formatted_index).first()
+        if scan is not None:
+            patient_dict_to_pixel_spacing[patient_index] = scan.pixel_spacing
+    with open(path_to_processed_dataset.joinpath(file_name), "w") as out_file:
+        print(f"Writing {file_name}...")
+        json.dump(patient_dict_to_pixel_spacing, out_file)
 
 
 def compute_slice_thickness(path_to_processed_dataset: pathlib.Path):
@@ -175,7 +316,19 @@ def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
         )
 
         if path_to_processed_volume_folder.is_dir():
-            print(f"\t Patient {formatted_index} already sampled, passing...")
+            if not is_resampled(path_to_processed_volume_folder):
+                # processed before October 2026, at the scan's own spacing
+                scan = (
+                    pl.query(pl.Scan)
+                    .filter(pl.Scan.patient_id == formatted_index)
+                    .first()
+                )
+                print(f"\t Patient {formatted_index}: resampling the processed slices")
+                resample_processed_patient(
+                    path_to_processed_volume_folder, scan.pixel_spacing
+                )
+            else:
+                print(f"\t Patient {formatted_index} already sampled, passing...")
             continue
 
         try:
@@ -313,15 +466,38 @@ def compute_patient_with_nodule_subtetly(
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Pre-process LIDC-IDRI for LION")
+    parser.add_argument(
+        "--resample-only",
+        action="store_true",
+        help="Only resample a dataset processed before October 2026 (slices at "
+        "each scan's own spacing) to LION's pixel spacing, in place. Needs pylidc "
+        "but not the raw DICOM files.",
+    )
+    parser.add_argument(
+        "--folder",
+        default=None,
+        help="the processed LIDC-IDRI folder (the one with LIDC-IDRI-0001, ...). "
+        "Default: LION_DATA_PATH/processed/LIDC-IDRI",
+    )
+    args = parser.parse_args()
 
     path_to_raw_dataset = pathlib.Path(LIDC_IDRI_PATH)
+    path_to_processed_dataset = pathlib.Path(
+        args.folder if args.folder else LIDC_IDRI_PROCESSED_DATASET_PATH
+    )
+    if args.resample_only:
+        resample_processed_dataset(path_to_processed_dataset)
+        compute_pixel_spacing(path_to_processed_dataset)
+        sys.exit(0)
+
     configure_pylidc(path_to_raw_dataset)
     path_to_diagnosis_file = path_to_raw_dataset.joinpath(
         "tcia-diagnosis-data-2012-04-20.xls"
     )
-    path_to_processed_dataset = pathlib.Path(LIDC_IDRI_PROCESSED_DATASET_PATH)
     print("LIDC-IDRI dataset pre-processing functions")
     pre_process_dataset(path_to_processed_dataset)
+    write_pre_processing_file(path_to_processed_dataset)
     compute_diagnosis_file(
         path_to_diagnosis_file,
         path_to_processed_dataset.joinpath("patient_id_to_diagnosis.json"),
@@ -330,3 +506,4 @@ if __name__ == "__main__":
         path_to_processed_dataset, nodule_subtelty=4, operator="superior"
     )
     compute_slice_thickness(path_to_processed_dataset)
+    compute_pixel_spacing(path_to_processed_dataset)
