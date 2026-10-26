@@ -478,7 +478,8 @@ class LIDC_IDRI(Dataset):
                 f"{path_to_processed_dataset} was pre-processed before October 2026: "
                 "its slices have each scan's own pixel spacing (0.46 to 0.98 mm), "
                 "not one for all. Run `python LION/data_loaders/LIDC_IDRI/"
-                "pre_process_lidc_idri.py --resample-only` to resample them."
+                "pre_process_lidc_idri.py --resample-only --folder "
+                f"{path_to_processed_dataset}` to resample them."
             )
             return None
         return load_json(path)["pixel_spacing_mm"]
