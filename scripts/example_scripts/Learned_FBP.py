@@ -1,4 +1,4 @@
-# %% This example shows how to train Learned Primal dual for full angle, noisy measurements.
+# %% This example shows how to train a learned FBP network for full angle, noisy measurements.
 
 # %% Imports
 
