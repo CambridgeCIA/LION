@@ -185,7 +185,6 @@ class Equivariance2InverseSolver(LIONsolver):
 
         angle = random.uniform(0, 360)
         rotated_output_recon_1 = rotate(output_recon_1, angle, interpolation="bilinear")
-        rotated_output_recon_1 = torch.clamp(rotated_output_recon_1, min=0.0)
         rotated_sinogram = self.projector(rotated_output_recon_1)
         with torch.no_grad():
             noise = self._noise(rotated_sinogram)
