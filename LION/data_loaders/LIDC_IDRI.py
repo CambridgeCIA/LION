@@ -11,6 +11,7 @@ from typing import List, Dict
 import pathlib
 import random
 import math
+import warnings
 
 import torch
 import numpy as np
@@ -25,6 +26,14 @@ from LION.utils.parameter import LIONParameter
 from LION.utils.device import default_device
 
 
+# The pre-processing (LIDC_IDRI/pre_process_lidc_idri.py, resampling.py)
+# resamples every slice to this pixel spacing on 512x512: 500 mm, the largest
+# field of view in LIDC-IDRI, so nothing is cropped.
+PIXEL_SPACING_MM = 500.0 / 512.0
+# written by the pre-processing once every patient is resampled
+PRE_PROCESSING_FILE = "pre_processing.json"
+
+
 def format_index(index: int) -> str:
     str_index = str(index)
     while len(str_index) < 4:
@@ -36,7 +45,8 @@ def format_index(index: int) -> str:
 def load_json(file_path: pathlib.Path):
     if not file_path.is_file():
         raise FileNotFoundError(f"No file found at {file_path}")
-    return json.load(open(file_path))
+    with open(file_path) as file:
+        return json.load(file)
 
 
 def choose_random_annotation(
@@ -122,6 +132,16 @@ class LIDC_IDRI(Dataset):
         """
         Initializes LIDC-IDRI dataset.
 
+        Pixel spacing: the pre-processing resamples every slice to
+        ``PIXEL_SPACING_MM`` (500 mm over 512x512 pixels, the largest field of
+        view in the dataset, so no scan is cropped; smaller ones are surrounded
+        by air), so all images have the same physical size.
+        ``LIDC_IDRI.default_geometry()`` is the matching CT geometry. Datasets
+        processed before October 2026 have each scan's own spacing (0.46 to
+        0.98 mm) and no ``pre_processing.json``: the loader warns, and
+        ``python LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py
+        --resample-only`` resamples them in place (no DICOM files needed).
+
         Images: for reconstruction, the CT images (Hounsfield units) are turned
         into mass density in g/cm^3 (``ct_utils.from_HU_to_density``: air 0.0012,
         water 1.0137, 500 HU 1.52). Before October 2026 the same values came from
@@ -202,6 +222,8 @@ class LIDC_IDRI(Dataset):
         # Start of Patient pre-processing
 
         self.path_to_processed_dataset = pathlib.Path(self.params.folder)
+        self.pixel_spacing_mm = self.read_pixel_spacing(self.path_to_processed_dataset)
+        self.check_geometry()
         self.patients_masks_dictionary = load_json(
             self.path_to_processed_dataset.joinpath("patients_masks.json")
         )
@@ -374,6 +396,60 @@ class LIDC_IDRI(Dataset):
         )
 
         print(f"Patient lists ready for {self.params.mode} dataset")
+
+    @staticmethod
+    def read_pixel_spacing(path_to_processed_dataset):
+        """The pixel spacing (mm) of the processed slices, or None for a
+        dataset processed before October 2026 (each scan's own spacing)."""
+        path = pathlib.Path(path_to_processed_dataset).joinpath(PRE_PROCESSING_FILE)
+        if not path.is_file():
+            warnings.warn(
+                f"{path_to_processed_dataset} was pre-processed before October 2026: "
+                "its slices have each scan's own pixel spacing (0.46 to 0.98 mm), "
+                "not one for all. Run `python LION/data_loaders/LIDC_IDRI/"
+                "pre_process_lidc_idri.py --resample-only` to resample them."
+            )
+            return None
+        return load_json(path)["pixel_spacing_mm"]
+
+    def check_geometry(self):
+        """Warn if the geometry's pixel size is not the data's pixel spacing:
+        then sizes, and the physical noise model's path lengths, are wrong."""
+        geometry = self.params.geometry
+        if self.pixel_spacing_mm is None or geometry is None:
+            return
+        pixel_size = geometry.image_size[-1] / geometry.image_shape[-1]
+        if not math.isclose(pixel_size, self.pixel_spacing_mm, rel_tol=1e-6):
+            warnings.warn(
+                f"The geometry's pixel size ({pixel_size:.4g} mm) is not the pixel "
+                f"spacing of the data ({self.pixel_spacing_mm:.4g} mm); "
+                "LIDC_IDRI.default_geometry() matches the data."
+            )
+
+    @staticmethod
+    def default_geometry(angles=None):
+        """The fan-beam geometry for the pre-processed slices.
+
+        512x512 pixels of ``PIXEL_SPACING_MM`` (500 mm). Source to centre 575
+        mm, source to detector 1050 mm, as LION's default geometry, with a
+        1024 x 1 mm detector: it covers a 504 mm circle, like the ~50 degree fan
+        of a clinical scanner (LION's 900 mm detector covers 453 mm).
+
+        Args:
+            angles: projection angles in radians. Default: 360 over 360 degrees.
+        """
+        if angles is None:
+            angles = np.linspace(0, 2 * np.pi, 360, endpoint=False)
+        return ct.Geometry(
+            image_shape=[1, 512, 512],
+            image_size=[PIXEL_SPACING_MM, 500.0, 500.0],
+            detector_shape=[1, 1024],
+            detector_size=[1, 1024],
+            dso=575,
+            dsd=1050,
+            mode="fan",
+            angles=np.asarray(angles),
+        )
 
     @staticmethod
     def default_parameters(geometry=None, task="reconstruction"):

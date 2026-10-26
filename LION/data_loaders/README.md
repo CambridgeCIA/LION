@@ -24,6 +24,8 @@ You can now delete `LION_DATA_PATH/raw/LIDC-IDRI` to save space if you want. Not
 
 More details on the downloader tool are available [here](LIDC_IDRI/README.md)
 
+**Pixel spacing.** The pre-processing resamples every slice to 500 mm over 512x512 pixels (0.977 mm, the largest pixel spacing in LIDC-IDRI, so no scan is cropped; scans with a smaller field of view are surrounded by air), and writes `pre_processing.json` in the processed folder. Datasets processed before October 2026 kept each scan's own spacing (0.46 to 0.98 mm). To resample one in place, without the raw DICOM files, run `python ./LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py --resample-only` in the `lidc_idri` environment. `LIDC_IDRI.default_geometry()` is the CT geometry that matches the resampled slices.
+
 ## Walnuts
 A dataset of uCT scans of walnuts. [Read more in the Nature paper](https://www.nature.com/articles/s41597-019-0235-y).
 You can dowload it using `python LION/data_loaders/walnuts/dowload_walnuts.py`
