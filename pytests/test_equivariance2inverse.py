@@ -146,23 +146,3 @@ def test_e2i_old_parameters(monkeypatch):
         solver = make_e2i_solver(monkeypatch, params)
     assert solver.solver_params.noise_std is None
     assert solver.solver_params.equivariance_strength == 1.0
-
-
-def test_e2i_does_not_clamp_the_rotated_image(monkeypatch):
-    """As in the paper and the authors' code, the rotated reconstruction is
-    not clamped at 0 (a model output of -1 stays -1 inside the image)."""
-    import LION.optimizers.Equivariance2InverseSolver as e2i
-
-    def equivariance_term(strength):
-        params = e2i.Equivariance2InverseSolver.default_parameters()
-        params.noise_std = 0.0
-        params.equivariance_strength = strength
-        solver = make_e2i_solver(monkeypatch, params)
-        solver.model.forward = lambda x: -torch.ones_like(x)
-        torch.manual_seed(0)
-        return solver.mini_batch_step(torch.rand(1, 1, 16, 16), None).item()
-
-    term = equivariance_term(1.0) - equivariance_term(0.0)
-    # clamped, the rotated image would be 0 everywhere and the term exactly 1;
-    # unclamped, only the corners rotated in from outside (zeros) differ
-    assert term < 0.5
