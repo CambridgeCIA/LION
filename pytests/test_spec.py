@@ -6,6 +6,7 @@ import inspect
 import json
 import os
 import pathlib
+import pickle
 import tempfile
 import warnings
 
@@ -461,3 +462,105 @@ def test_saved_file_with_a_removed_parameter_loads_with_a_warning(tmp_path):
     with pytest.warns(UserWarning, match="lambda_primal"):
         loaded, _, _ = DnCNN.load(tmp_path / "model", supress_warnings=True)
     assert isinstance(loaded, DnCNN)
+
+
+# --------------------------------------------------------------------------
+# The weights file (.pt): read with torch's safe loader
+
+
+def test_pt_holds_only_safe_contents(tmp_path):
+    model = DnCNN()
+    optimiser = torch.optim.Adam(model.parameters())
+    model(torch.rand(1, 1, 8, 8)).sum().backward()
+    optimiser.step()
+    save_kwargs = dict(dataset=LIONParameter(name="x"), geometry=small_geometry())
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        model.save_checkpoint(
+            tmp_path / "checkpoint",
+            epoch=np.int64(3),
+            loss=np.array([0.5, 0.4, 0.3]),
+            optimizer=optimiser,
+            training_param=LIONParameter(lr=1e-3),
+            **save_kwargs,
+        )
+    # torch's own safe loader, with nothing extra allowed
+    data = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
+    assert set(data) == {"model_state_dict", "optimizer_state_dict", "epoch", "loss"}
+    assert data["epoch"] == 3 and data["loss"] == [0.5, 0.4, 0.3]
+
+
+@pytest.mark.parametrize(
+    "loss, expected",
+    [
+        (np.array([0.5, 0.4]), np.array([0.5, 0.4])),  # training history
+        (np.float64(0.25), 0.25),  # the best validation value
+        (torch.tensor([0.5, 0.4]), np.array([0.5, 0.4])),
+    ],
+    ids=["array", "numpy float", "tensor"],
+)
+def test_loss_comes_back_as_numbers(tmp_path, loss, expected):
+    save(DnCNN(), tmp_path / "model", loss=loss, epoch=1)
+    _, _, data = DnCNN.load(tmp_path / "model", supress_warnings=True)
+    assert type(data["loss"]) is type(expected)
+    np.testing.assert_allclose(data["loss"], expected)
+
+
+def old_pt(path, model):
+    """A .pt as LION saved it with pickled parameter objects, a geometry, a
+    path and numpy values."""
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "dataset_params": LIONParameter(folder=pathlib.Path("/data/LIDC-IDRI")),
+            "training_params": LIONParameter(epochs=3),
+            "geometry": Geometry.default_parameters(),
+            "loss": np.array([0.5, 0.4], dtype=np.float32),
+            "epoch": 3,
+        },
+        path,
+    )
+
+
+def test_old_pt_loads_safely(tmp_path):
+    model = DnCNN()
+    save(model, tmp_path / "model")
+    old_pt(tmp_path / "model.pt", model)
+    with pytest.raises(pickle.UnpicklingError):  # torch alone refuses it
+        torch.load(tmp_path / "model.pt", weights_only=True)
+    loaded, _, data = DnCNN.load(tmp_path / "model", supress_warnings=True)
+    assert isinstance(data["geometry"], Geometry)
+    assert data["dataset_params"].folder == pathlib.Path("/data/LIDC-IDRI")
+    np.testing.assert_allclose(data["loss"], [0.5, 0.4])
+    for key, value in model.state_dict().items():
+        torch.testing.assert_close(loaded.state_dict()[key].cpu(), value.cpu())
+
+
+class NotAllowed:
+    """An object LION doesn't load safely."""
+
+
+def test_pt_with_other_objects_needs_weights_only_false(tmp_path):
+    model = DnCNN()
+    save(model, tmp_path / "model")
+    torch.save(
+        {"model_state_dict": model.state_dict(), "extra": NotAllowed()},
+        tmp_path / "model.pt",
+    )
+    with pytest.raises(pickle.UnpicklingError, match="weights_only=False"):
+        DnCNN.load(tmp_path / "model", supress_warnings=True)
+    _, _, data = DnCNN.load(
+        tmp_path / "model", supress_warnings=True, weights_only=False
+    )
+    assert isinstance(data["extra"], NotAllowed)
+
+
+def test_files_from_numpy_1_are_allowed():
+    """numpy 1 named its array functions numpy.core.multiarray.*"""
+    from LION.models.LIONmodel import _safe_globals
+
+    names = {entry[1] for entry in _safe_globals() if isinstance(entry, tuple)}
+    assert {
+        "numpy.core.multiarray._reconstruct",
+        "numpy.core.multiarray.scalar",
+    } <= names

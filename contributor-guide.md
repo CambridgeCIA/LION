@@ -70,6 +70,9 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   geometries.
 - A parameter name that `default_parameters()` doesn't have gives a warning
   (it isn't used: likely a typo).
+- A model's `.pt` holds only tensors and plain Python values (state dicts,
+  epoch, loss); everything else goes in its `.json`. LION reads it with
+  `torch.load(weights_only=True)`, which runs no code from the file (torch >= 2.6).
 
 ## Models
 

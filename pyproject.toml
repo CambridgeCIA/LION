@@ -69,7 +69,7 @@ standalone = [
     "scipy",
     "spgl1",  # SPGL1 solver, imported by LION.classical_algorithms
     "tifffile",  # LION/data_loaders/LUNA16
-    "torch",
+    "torch>=2.6",  # LION loads model files with weights_only=True, unsafe before 2.6 (CVE-2025-32434)
     "torchvision",  # not imported by LION, but required by mrpro and spyrit
 ]
 # Used by some example scripts only (scripts/example_scripts)
