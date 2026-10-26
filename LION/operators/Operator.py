@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 import torch
 
 from LION.utils.common_primitives import DeviceLikeType
-from LION.utils.tomosipo_import import import_mrpro
+from LION.utils.mrpro_import import import_mrpro
 
 
 class Operator(torch.nn.Module, ABC):

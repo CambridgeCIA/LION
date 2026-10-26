@@ -140,3 +140,19 @@ def test_mrpro_wrapper_is_defined_on_first_use():
     assert MrproLinearOp.__qualname__ == "MrproLinearOp"
     module = sys.modules["LION.operators.Operator"]
     assert module.MrproLinearOp is MrproLinearOp  # defined once
+
+
+def test_missing_mrpro_says_what_is_missing():
+    result = run_isolated(
+        """
+        sys.modules["mrpro"] = None  # as if not installed
+        from LION.utils.mrpro_import import import_mrpro
+        try:
+            import_mrpro("mrpro", "MrproLinearOp")
+            message = None
+        except ImportError as error:
+            message = str(error)
+        print(json.dumps(message))
+        """
+    )
+    assert result is not None and "MRI backend (mrpro)" in result
