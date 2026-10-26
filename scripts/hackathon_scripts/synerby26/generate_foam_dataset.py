@@ -10,7 +10,7 @@ PIXSIZE = 0.004
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
-    phantom_file = 'phantom_hackathon.h5'
+phantom_file = 'phantom_hackathon.h5'
 if not os.path.exists(phantom_file):
     foam_ct_phantom.FoamPhantom.generate(phantom_file, seed=42, n_bubbles=2000, n_crystals=5000, radius=0.1, height=1.0)
 
