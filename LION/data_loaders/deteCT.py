@@ -249,7 +249,6 @@ class deteCT(Dataset):
 
     @staticmethod
     def get_default_geometry():
-        geometry = ctgeo.Geometry.default_parameters()
         # From Max Kiss code
         SOD = 431.019989
         SDD = 529.000488
@@ -266,15 +265,20 @@ class deteCT(Dataset):
         SOD = SOD * scaleFactor
         detPixSz = detPixSz * scaleFactor
 
-        geometry.dsd = SDD
-        geometry.dso = SOD
-        geometry.detector_shape = [1, 956]
-        geometry.detector_size = [detPixSz, detPixSz * 956]
-        geometry.image_shape = [1, 1024, 1024]
-        geometry.image_size = [1, 1024, 1024]
-        geometry.image_pos = [0, -1, -1]
-        geometry.angles = -np.linspace(0, 2 * np.pi, 3600, endpoint=False) + np.pi
-        return geometry
+        # Built here rather than by changing Geometry.default_parameters(), whose
+        # voxel and pixel sizes then stayed those of the default geometry
+        # (before October 2026; nothing used them).
+        return ctgeo.Geometry(
+            mode="fan",
+            dsd=SDD,
+            dso=SOD,
+            detector_shape=[1, 956],
+            detector_size=[detPixSz, detPixSz * 956],
+            image_shape=[1, 1024, 1024],
+            image_size=[1, 1024, 1024],
+            image_pos=[0, -1, -1],
+            angles=-np.linspace(0, 2 * np.pi, 3600, endpoint=False) + np.pi,
+        )
 
     @staticmethod
     def _get_angle_indices(full_angles, angles):
@@ -461,7 +465,9 @@ class deteCT(Dataset):
         sinogram = sinogram[:, self.angle_index, :]
 
         # Interpolate if geometry is not default
-        if self.geometry.detector_shape != self.get_default_geometry().detector_shape:
+        if not np.array_equal(
+            self.geometry.detector_shape, self.get_default_geometry().detector_shape
+        ):
             sinogram = torch.nn.functional.interpolate(
                 sinogram.unsqueeze(0),
                 size=(sinogram.shape[1], self.geometry.detector_shape[1]),
@@ -480,7 +486,9 @@ class deteCT(Dataset):
             np.load(path_to_input.joinpath("reconstruction.npy")).astype(np.float32)
         ).unsqueeze(0)
         # Interpolate if geometry is not default
-        if self.geometry.image_shape != self.get_default_geometry().image_shape:
+        if not np.array_equal(
+            self.geometry.image_shape, self.get_default_geometry().image_shape
+        ):
             reconstruction = torch.nn.functional.interpolate(
                 reconstruction.unsqueeze(0),
                 size=(self.geometry.image_shape[1], self.geometry.image_shape[2]),
@@ -498,7 +506,9 @@ class deteCT(Dataset):
             np.load(path_to_input.joinpath("segmentation.npy"))
         ).unsqueeze(0)
         # Interpolate if geometry is not default
-        if self.geometry.image_shape != self.get_default_geometry().image_shape:
+        if not np.array_equal(
+            self.geometry.image_shape, self.get_default_geometry().image_shape
+        ):
             segmentation = torch.nn.functional.interpolate(
                 segmentation.unsqueeze(0),
                 size=(self.geometry.image_shape[1], self.geometry.image_shape[2]),
