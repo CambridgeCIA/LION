@@ -6,7 +6,7 @@ from typing import Literal
 
 import torch
 
-from LION.CTtools.ct_geometry import Geometry
+from LION.CTtools.ct_geometry import Geometry, check_geometry
 from LION.operators.Operator import Operator
 from LION.utils.common_primitives import DeviceLikeType
 from LION.utils.tomosipo_import import import_tomosipo
@@ -30,14 +30,15 @@ class CTProjectionOp(Operator):
     ):
         """Initialize the CTProjectionOp."""
         super().__init__(device=device)
+        if not isinstance(geometry, Geometry):
+            raise ValueError(
+                "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"
+            )
+        check_geometry(geometry)
         if backend == "tomosipo":
             # Wrap the tomosipo operator
             ts = import_tomosipo("tomosipo", "CTProjectionOp")
 
-            if not isinstance(geometry, Geometry):
-                raise ValueError(
-                    "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"
-                )
             if geometry.mode == "fan":
                 vg = ts.volume(
                     shape=geometry.image_shape,

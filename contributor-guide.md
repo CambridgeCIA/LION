@@ -97,6 +97,11 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
 
 - Changes to data loading are checked against the real data (or its record),
   not only against fake data in tests.
+- A CT `Geometry` is given by any two of shape, size and spacing, for the image
+  (`image_shape`, `image_size`, `voxel_size`) and the detector
+  (`detector_shape`, `detector_size`, `pixel_size`); the third is computed when
+  read. `check_geometry()` checks a geometry when an operator is built from it
+  and when it is saved.
 - Simulated CT data are densities (`ct_utils.from_HU_to_density`) in mm
   geometries. Noise is added with `ct_utils.sinogram_add_noise`, whose
   physical model is the default. The module docstring of
