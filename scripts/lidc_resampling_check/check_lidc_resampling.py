@@ -418,12 +418,24 @@ def make_trial(args):
     expected = trial / "expected"
     expected.mkdir()
     chosen = [f"LIDC-IDRI-{i:04d}" for i in range(1, args.n_patients + 1)]
+    copied = []
     for patient in chosen:
         if not (source / patient).is_dir():
             print(f"{patient} is not in {source}, skipping")
             continue
         require_native(source, patient)
+        damaged = [
+            (path.name, npy_problem(path))
+            for path in sorted((source / patient).glob("*.npy"))
+            if npy_problem(path)
+        ]
+        if damaged:
+            print(f"{patient} has incomplete files in {source}, not copied:")
+            for name, problem in damaged:
+                print(f"  {name}: {problem}")
+            continue
         shutil.copytree(source / patient, target / patient)
+        copied.append(patient)
         spacing = spacings[patient]
         n = n_slices(source, patient)
         for index in sorted({0, n // 2, n - 1}):
@@ -439,7 +451,7 @@ def make_trial(args):
                     expected / f"{patient}_{path.name}",
                     resampling.resample_mask(np.load(path), spacing),
                 )
-    print(f"Copied {len(chosen)} patients to {target}; expected slices in {expected}.")
+    print(f"Copied {len(copied)} patients to {target}; expected slices in {expected}.")
     print("Now convert the copy (pylidc needs setuptools<81, see README.md):")
     print(
         f"  LION_DATA_PATH={trial} python "
