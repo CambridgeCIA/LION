@@ -156,3 +156,19 @@ def test_missing_mrpro_says_what_is_missing():
         """
     )
     assert result is not None and "MRI backend (mrpro)" in result
+
+
+def test_missing_spyrit_says_what_is_missing():
+    result = run_isolated(
+        """
+        sys.modules["spyrit"] = None  # as if not installed
+        from LION.operators.WalshHadamard2D import fwht
+        try:
+            fwht(torch.zeros(4))
+            message = None
+        except ImportError as error:
+            message = str(error)
+        print(json.dumps(message))
+        """
+    )
+    assert result is not None and "spyrit" in result and "WalshHadamard2D" in result

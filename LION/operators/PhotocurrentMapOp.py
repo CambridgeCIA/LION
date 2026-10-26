@@ -6,22 +6,20 @@ import numpy as np
 import torch
 
 from LION.operators.Operator import Operator
+from LION.utils.spyrit_import import import_spyrit
 
 
-# spyrit is imported on first use: it loads torchvision and sympy, which
-# `import LION.operators` does not need otherwise.
+# spyrit is imported on first use (LION.utils.spyrit_import), like tomosipo
 def fwht(x, order=False, dim=-1):
     """spyrit's fast Walsh-Hadamard transform (``spyrit.core.torch.fwht``)."""
-    from spyrit.core.torch import fwht as spyrit_fwht
-
-    return spyrit_fwht(x, order=order, dim=dim)
+    spyrit = import_spyrit("spyrit.core.torch", "PhotocurrentMapOp")
+    return spyrit.fwht(x, order=order, dim=dim)
 
 
 def ifwht(x, order=False, dim=-1):
     """spyrit's inverse fast Walsh-Hadamard transform (``spyrit.core.torch.ifwht``)."""
-    from spyrit.core.torch import ifwht as spyrit_ifwht
-
-    return spyrit_ifwht(x, order=order, dim=dim)
+    spyrit = import_spyrit("spyrit.core.torch", "PhotocurrentMapOp")
+    return spyrit.ifwht(x, order=order, dim=dim)
 
 
 def normal_to_dyadic_permutation(J: int) -> np.ndarray:
