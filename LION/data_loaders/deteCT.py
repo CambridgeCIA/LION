@@ -265,9 +265,6 @@ class deteCT(Dataset):
         SOD = SOD * scaleFactor
         detPixSz = detPixSz * scaleFactor
 
-        # Built here rather than by changing Geometry.default_parameters(), whose
-        # voxel and pixel sizes then stayed those of the default geometry
-        # (before October 2026; nothing used them).
         return ctgeo.Geometry(
             mode="fan",
             dsd=SDD,

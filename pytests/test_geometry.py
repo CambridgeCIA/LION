@@ -1,5 +1,6 @@
 """CT geometry: any two of shape, size and spacing, the value computed from them,
-check_geometry, saving and loading (including files saved before October 2026)."""
+check_geometry, saving and loading (including files whose stored spacing
+disagrees with their size and shape)."""
 
 import copy
 import json
@@ -78,8 +79,8 @@ def test_value_not_set_and_not_computable_is_none():
 
 
 def test_computed_value_follows_changes():
-    """Changing a default geometry used to leave its voxel and pixel sizes out of
-    date (as in the 2DeteCT geometry before October 2026)."""
+    """Changing a geometry's sizes or shapes changes its computed voxel and
+    pixel sizes."""
     geometry = Geometry.default_parameters()
     geometry.image_size = [1.0, 1024.0, 1024.0]
     geometry.image_shape = [1, 1024, 1024]
@@ -310,8 +311,8 @@ def test_round_trip(tmp_path, how):
 
 
 def old_geometry_file_text():
-    """A 2DeteCT geometry as LION saved it before October 2026: every value
-    stored, with the voxel and pixel sizes left from the default geometry."""
+    """A 2DeteCT geometry file with every value stored, and voxel and pixel
+    sizes that disagree with its sizes and shapes."""
     d = {
         "mode": "fan",
         "image_size": [1, 1024, 1024],
@@ -364,8 +365,8 @@ def test_old_file_with_consistent_sizes_loads_silently(tmp_path):
 
 
 def test_old_pickle_with_out_of_date_sizes_loads():
-    """A geometry pickled before October 2026 (e.g. inside a model's .pt file)
-    stores its voxel size, out of date in the 2DeteCT geometry."""
+    """A pickled geometry (e.g. inside a model's .pt file) whose stored voxel
+    size disagrees with its size and shape."""
     state = {
         k: np.array(v)
         for k, v in json.loads(old_geometry_file_text()).items()
@@ -382,8 +383,8 @@ def test_old_pickle_with_out_of_date_sizes_loads():
 
 
 def test_detect_geometry_sizes():
-    """The 2DeteCT geometry's voxel and pixel sizes are its own, not those left
-    from the default geometry (0.586 and 1.0 before October 2026)."""
+    """The 2DeteCT geometry's voxel and pixel sizes come from its own sizes and
+    shapes."""
     geometry = deteCT.get_default_geometry()
     np.testing.assert_allclose(geometry.voxel_size, [1, 1, 1])
     np.testing.assert_allclose(

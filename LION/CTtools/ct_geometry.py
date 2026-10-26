@@ -127,9 +127,9 @@ class Geometry(LIONParameter):
         )
 
     def __setstate__(self, state):
-        # Unpickling (also copy.deepcopy). Geometries pickled before October 2026
-        # (e.g. in a model's .pt file) store voxel_size and pixel_size, which can
-        # be out of date: where they disagree, they are computed again.
+        # Unpickling (also copy.deepcopy). A pickled geometry can store a
+        # voxel_size or pixel_size that disagrees with its size and shape: it is
+        # then computed again.
         state = dict(state)
         for triple in _TRIPLES:
             if all(name in state for name in triple) and not _agree(
@@ -147,8 +147,7 @@ class Geometry(LIONParameter):
         return super().serialize()
 
     def load(self, fname):
-        """Load a geometry saved as JSON (see ``init_from_parameter`` for files
-        saved before October 2026)."""
+        """Load a geometry saved as JSON (see ``init_from_parameter``)."""
         with open(fname, encoding="utf-8") as f:
             d = json.load(f)
         self.__init__(**_saved_triples(d))
@@ -159,11 +158,9 @@ class Geometry(LIONParameter):
         """The Geometry of a geometry saved as JSON and loaded as a
         LIONParameter.
 
-        Files saved before October 2026 also store ``voxel_size`` and
-        ``pixel_size``, which LION then always computed from the sizes and
-        shapes, once, so they can be out of date. Where a file has all three
-        values of a triple, the spacing is computed again from the size and
-        shape (with a warning if the stored one disagreed).
+        Where a file has all three values of a triple, the spacing is computed
+        again from the size and shape (with a warning if the stored one
+        disagreed).
         """
         names = ("mode", "image_pos", "dso", "dsd", "angles") + IMAGE + DETECTOR
         kwargs = {
@@ -302,10 +299,8 @@ def _saved_triples(d: dict) -> dict:
     """Saved geometry values, with the spacing left out of any triple whose three
     values are all there (it is computed again from size and shape).
 
-    Files saved before October 2026 store the spacings as LION computed them
-    once, so they can be out of date (e.g. the 2DeteCT geometry's). Files saved
-    since store only the values that were set, and check them first, so their
-    three values (if all set) agree and nothing is lost.
+    Saving checks the geometry first, so three saved values agree and nothing
+    is lost; a stored spacing that disagrees is replaced, with a warning.
     """
     d = dict(d)
     for triple in _TRIPLES:
@@ -317,8 +312,7 @@ def _saved_triples(d: dict) -> dict:
                 warnings.warn(
                     f"The saved {spacing_name} {np.asarray(spacing).tolist()} does "
                     f"not match {size_name} / {shape_name}; it is computed again as "
-                    f"{(size / shape).tolist()} (files saved before October 2026 "
-                    f"could store an out-of-date {spacing_name})."
+                    f"{(size / shape).tolist()}."
                 )
     return d
 
