@@ -76,7 +76,7 @@ standalone = [
     "spgl1",  # SPGL1 solver, imported by LION.classical_algorithms
     "tifffile",  # LION/data_loaders/LUNA16
     "torch",
-    "torchvision",  # LION/CTtools
+    "torchvision",  # not imported by LION, but required by mrpro, piq and spyrit
 ]
 # Used by some example scripts only (scripts/example_scripts)
 examples = [

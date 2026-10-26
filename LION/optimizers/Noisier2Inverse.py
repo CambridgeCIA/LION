@@ -14,7 +14,7 @@ import tomosipo as ts
 import LION.CTtools.ct_utils as ct_utils
 from tomosipo.torch_support import to_autograd
 
-import torchvision.transforms.functional as TF
+from LION.utils.image_transforms import gaussian_blur
 
 
 class Noisier2Inverse(LIONsolver):
@@ -67,7 +67,7 @@ class Noisier2Inverse(LIONsolver):
         ks = int(sigma * 3) * 2 + 1
 
         N = torch.randn_like(sinos) * delta
-        N = TF.gaussian_blur(N, kernel_size=[ks, ks], sigma=[sigma, sigma])
+        N = gaussian_blur(N, ks, sigma)
         z = sinos + N
 
         input_recon = self.recon_fn(z, self.model.operator)

@@ -12,7 +12,7 @@ import tomosipo as ts
 import LION.CTtools.ct_utils as ct_utils
 from tomosipo.torch_support import to_autograd
 import random
-import torchvision.transforms as TT
+from LION.utils.image_transforms import rotate
 
 
 class Equivariance2InverseSolver(LIONsolver):
@@ -80,9 +80,7 @@ class Equivariance2InverseSolver(LIONsolver):
         batch_loss = ((AJ - YJ) ** 2).mean()
 
         angle = random.uniform(0, 360)
-        rotated_output_recon_1 = TT.functional.rotate(
-            output_recon_1, angle, interpolation=TT.InterpolationMode.BILINEAR
-        )
+        rotated_output_recon_1 = rotate(output_recon_1, angle, interpolation="bilinear")
         rotated_output_recon_1 = torch.clamp(rotated_output_recon_1, min=0.0)
         rotated_sinogram = self.projector(rotated_output_recon_1)
         rotated_sinogram = torch.clamp(rotated_sinogram, min=0.0)

@@ -104,3 +104,71 @@ def test_ct_functions_say_what_is_missing(missing_backend_errors, call):
     message = missing_backend_errors[call]
     assert message is not None, "no ImportError raised"
     assert "CT backend" in message and "env_base.yml" in message
+
+
+# torchvision is not used by LION; mrpro (MRI) and spyrit (Walsh-Hadamard) are
+# backends, imported on first use like tomosipo. Optimizers that need tomosipo
+# at import time are left out (they fail at import without it).
+LIGHT_MODULES = MODULES + [
+    "LION.optimizers.Noisier2Inverse",
+    "LION.optimizers.Noise2InverseSolver",
+    "LION.metrics.haarpsi",
+]
+
+
+def test_import_does_not_load_heavy_backends():
+    loaded = run_isolated(
+        f"""
+        for module in {LIGHT_MODULES!r}:
+            try:
+                __import__(module)
+            except ImportError:
+                pass  # e.g. tomosipo missing: not what this test checks
+        print(json.dumps([m for m in ("torchvision", "mrpro", "spyrit", "sympy")
+                          if m in sys.modules]))
+        """
+    )
+    assert loaded == []
+
+
+def test_mrpro_wrapper_is_defined_on_first_use():
+    pytest.importorskip("mrpro")
+    from LION.operators.Operator import MrproLinearOp
+    from mrpro.operators.LinearOperator import LinearOperator
+
+    assert issubclass(MrproLinearOp, LinearOperator)
+    assert MrproLinearOp.__qualname__ == "MrproLinearOp"
+    module = sys.modules["LION.operators.Operator"]
+    assert module.MrproLinearOp is MrproLinearOp  # defined once
+
+
+def test_missing_mrpro_says_what_is_missing():
+    result = run_isolated(
+        """
+        sys.modules["mrpro"] = None  # as if not installed
+        from LION.utils.mrpro_import import import_mrpro
+        try:
+            import_mrpro("mrpro", "MrproLinearOp")
+            message = None
+        except ImportError as error:
+            message = str(error)
+        print(json.dumps(message))
+        """
+    )
+    assert result is not None and "MRI backend (mrpro)" in result
+
+
+def test_missing_spyrit_says_what_is_missing():
+    result = run_isolated(
+        """
+        sys.modules["spyrit"] = None  # as if not installed
+        from LION.operators.WalshHadamard2D import fwht
+        try:
+            fwht(torch.zeros(4))
+            message = None
+        except ImportError as error:
+            message = str(error)
+        print(json.dumps(message))
+        """
+    )
+    assert result is not None and "spyrit" in result and "WalshHadamard2D" in result
