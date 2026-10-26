@@ -474,10 +474,18 @@ if __name__ == "__main__":
         "each scan's own spacing) to LION's pixel spacing, in place. Needs pylidc "
         "but not the raw DICOM files.",
     )
+    parser.add_argument(
+        "--folder",
+        default=None,
+        help="the processed LIDC-IDRI folder (the one with LIDC-IDRI-0001, ...). "
+        "Default: LION_DATA_PATH/processed/LIDC-IDRI",
+    )
     args = parser.parse_args()
 
     path_to_raw_dataset = pathlib.Path(LIDC_IDRI_PATH)
-    path_to_processed_dataset = pathlib.Path(LIDC_IDRI_PROCESSED_DATASET_PATH)
+    path_to_processed_dataset = pathlib.Path(
+        args.folder if args.folder else LIDC_IDRI_PROCESSED_DATASET_PATH
+    )
     if args.resample_only:
         resample_processed_dataset(path_to_processed_dataset)
         compute_pixel_spacing(path_to_processed_dataset)
