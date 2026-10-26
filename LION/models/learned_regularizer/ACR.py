@@ -129,7 +129,7 @@ class ACR(LIONmodel):
             # Step size for gradient descent on the variational problem
             self._make_operator()
             self.op_norm = power_method(self.op)
-            self.model_parameters.step_size = 1 / (self.op_norm) ** 2
+            self.model_parameters.step_size = float(1 / (self.op_norm) ** 2)
 
     @staticmethod
     def _set_positive_weight(conv: nn.Conv2d, value: torch.Tensor):

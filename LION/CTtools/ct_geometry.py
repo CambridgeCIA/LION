@@ -140,6 +140,12 @@ class Geometry(LIONParameter):
                 break
         self.__dict__.update(state)
 
+    def spec_kwargs(self):
+        """The values a spec of this geometry holds (``LION.utils.spec``), after
+        ``check_geometry()``: only the values that were set."""
+        check_geometry(self)
+        return dict(vars(self))
+
     def serialize(self):
         """The geometry as a dict, after ``check_geometry()``: only the values
         that were set, not the computed ones."""

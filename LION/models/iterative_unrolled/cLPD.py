@@ -380,7 +380,7 @@ class cLPD(LIONmodel):
         if self.model_parameters.step_size is None:
             print("Step size is None, computing it with power method")
             # compute step size
-            self.model_parameters.step_size = 1 / power_method(self.op)
+            self.model_parameters.step_size = float(1 / power_method(self.op))
 
         # Step size of each iteration: the primal update adds step * A^T(h).
         # (A lambda_primal used to be created too, but was never used.)

@@ -59,9 +59,17 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   way parameter files saved before keep reproducing their results. The
   exception is when the old behaviour was simply wrong; then say so in the
   docstring.
-- Parameters saved as JSON lose their classes. Code that reads them converts
-  them back, e.g. `as_model_parameter()` for models and
-  `Geometry.init_from_parameter()` for geometries.
+- **Components keep each constructor argument as an attribute of the same
+  name** (`self.model_parameters`, `self.geometry`, ...). LION saves a component
+  as the call that builds it (a spec, `LION/utils/spec.py`) from those
+  attributes, so it can be built again from its file alone. A class that can't
+  follow the rule defines `spec_kwargs()`.
+- Specs keep classes, tuples, numpy arrays and enums. Parameter files saved as
+  plain JSON lose them; code that reads such files converts them back, e.g.
+  `as_model_parameter()` for models and `Geometry.init_from_parameter()` for
+  geometries.
+- A parameter name that `default_parameters()` doesn't have gives a warning
+  (it isn't used: likely a typo).
 
 ## Models
 
