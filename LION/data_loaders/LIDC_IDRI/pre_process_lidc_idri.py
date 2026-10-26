@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Tuple, List, Dict
 import shutil
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pylidc as pl
 import pandas as pd

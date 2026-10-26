@@ -24,9 +24,6 @@ from torch.nn import (
     BatchNorm2d,
 )
 from torch.nn.functional import pad
-import matplotlib.pyplot as plt
-import tomosipo as ts
-from tomosipo.torch_support import to_autograd
 import json
 
 # from .model import ModelBase

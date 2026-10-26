@@ -297,3 +297,22 @@ def test_lidc_uses_legacy_selection_for_old_parameters(saved_before):
     dataset.params = params
     selected = dataset.get_slices_to_load(["p"], {"p": NON_NODULE}, {"p": []}, 5, 0.5)
     assert len(selected["p"]) == (0 if saved_before else 5)
+
+
+@pytest.mark.parametrize(
+    "cls", [ct_experiments.clinicalCTRecon, ct_experiments.SparseAngleCTRecon]
+)
+def test_experiment_from_saved_parameters_has_a_geometry(tmp_path, cls):
+    """Saved as JSON, the geometry loads back as a plain LIONParameter; the
+    experiment turns it back into a Geometry (operators and models need one)."""
+    params = cls.default_parameters()
+    params.save(tmp_path / "experiment.json")
+    loaded = LIONParameter()
+    loaded.load(tmp_path / "experiment.json")
+    assert not isinstance(loaded.geometry, ct_experiments.ctgeo.Geometry)
+    experiment = cls(loaded)
+    assert isinstance(experiment.geometry, ct_experiments.ctgeo.Geometry)
+    np.testing.assert_allclose(experiment.geometry.angles, params.geometry.angles)
+    assert list(experiment.geometry.detector_shape) == list(
+        params.geometry.detector_shape
+    )

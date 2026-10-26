@@ -253,8 +253,10 @@ class Scripted:
         (Scripted([0.5, 0.9, 0.7], higher_is_better=True), 0.9),  # e.g. SSIM
         (Scripted([0.0, 0.3, 0.7]), 0.0),  # a validation value can be 0
         (Scripted([0.4, 0.0, 0.7]), 0.0),
+        (Scripted([float("nan"), 0.3, 0.7]), 0.3),  # e.g. diverged: never best
+        (Scripted([0.4, float("nan"), 0.7]), 0.4),
     ],
-    ids=["loss", "score", "zero-first", "zero-later"],
+    ids=["loss", "score", "zero-first", "zero-later", "nan-first", "nan-later"],
 )
 def test_best_validation_model_follows_the_metric_direction(
     tmp_path, validation_fn, best

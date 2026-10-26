@@ -405,8 +405,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         Epochs without validation have NaN in ``validation_loss`` and are
         skipped (a validation value can be 0, e.g. a loss of a perfect model).
         """
-        done = self.validation_loss[~np.isnan(self.validation_loss)]
         value = self.validation_loss[epoch]
+        if np.isnan(value):  # e.g. diverged: never the best
+            return False
+        done = self.validation_loss[~np.isnan(self.validation_loss)]
         if self._validation_higher_is_better():
             return value >= np.max(done)
         return value <= np.min(done)

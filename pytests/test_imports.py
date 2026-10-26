@@ -27,6 +27,14 @@ MODULES = [
     "LION.optimizers.SupervisedSolver",
     "LION.optimizers.EquivariantSolver",
     "LION.optimizers.AdversarialRegularizerSolver",
+    "LION.optimizers.Noisier2Inverse",
+    "LION.optimizers.Proj2ProjSolver",
+    "LION.models.iterative_unrolled.LG",
+    "LION.models.iterative_unrolled.LPD",
+    "LION.models.iterative_unrolled.cLPD",
+    "LION.models.learned_fbp.DeepFBP",
+    "LION.models.learned_fbp.DeepFusionBP",
+    "LION.models.learned_fbp.FusionFBP",
 ]
 
 CALLS = [

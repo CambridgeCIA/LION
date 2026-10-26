@@ -20,7 +20,6 @@ from natsort import natsorted, ns
 
 # scientific imports
 import numpy as np
-import tomosipo as ts
 import scipy.io
 from scipy import ndimage
 
