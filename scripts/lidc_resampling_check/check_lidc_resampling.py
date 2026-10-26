@@ -16,6 +16,8 @@ the order to run them in.
   trial       CPU. Copies the first patients to a separate folder, where the
               pre-processing's --resample-only can be tried without touching
               the real data, and saves the slices it should produce.
+  integrity   CPU, read-only. Finds .npy files that are incomplete (shorter than
+              their header says), from headers and file sizes only.
   loader      GPU. After --resample-only on the trial copy: checks what it
               wrote against the saved slices, then reconstructs test slices of
               the experiments through LION's data loader.
@@ -359,6 +361,48 @@ def check_doses(args):
 
 
 # --------------------------------------------------------------------------
+# integrity
+
+
+def npy_problem(path):
+    """None if the .npy file holds all the data its header says, else why not
+    (reads the header only)."""
+    try:
+        with open(path, "rb") as f:
+            version = np.lib.format.read_magic(f)
+            if version == (1, 0):
+                shape, _, dtype = np.lib.format.read_array_header_1_0(f)
+            else:
+                shape, _, dtype = np.lib.format.read_array_header_2_0(f)
+            expected = f.tell() + int(np.prod(shape)) * dtype.itemsize
+    except Exception as error:
+        return f"unreadable header: {error}"
+    size = path.stat().st_size
+    if size != expected:
+        return f"{size} bytes, the header says {expected} ({shape}, {dtype})"
+    return None
+
+
+def check_integrity(args):
+    """Every .npy file of every patient: is it complete? Reads only headers
+    and file sizes, so it is quick."""
+    folder = args.data
+    found, n_files = [], 0
+    for patient in patients(folder):
+        for path in sorted((folder / patient).glob("*.npy")):
+            n_files += 1
+            problem = npy_problem(path)
+            if problem:
+                found.append((str(path), problem))
+                print(f"{path}: {problem}")
+    (args.out / "integrity.json").write_text(json.dumps(found, indent=2))
+    print(
+        f"Checked {n_files} files in {len(patients(folder))} patients: "
+        f"{len(found)} incomplete. List in {args.out / 'integrity.json'}"
+    )
+
+
+# --------------------------------------------------------------------------
 # trial and loader
 
 
@@ -416,6 +460,12 @@ def check_loader(args):
     out, problems = args.out, []
 
     # 1. what --resample-only wrote
+    if not (folder / "pre_processing.json").is_file():
+        raise SystemExit(
+            f"{folder} has no pre_processing.json: --resample-only did not finish "
+            "every patient (see its output). Run the integrity check on the copy "
+            "and on the original data."
+        )
     record = json.loads((folder / "pre_processing.json").read_text())
     print("pre_processing.json:", record)
     if record["pixel_spacing_mm"] != NEW_SPACING:
@@ -502,7 +552,9 @@ def check_loader(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("check", choices=["resampling", "doses", "trial", "loader"])
+    parser.add_argument(
+        "check", choices=["resampling", "doses", "trial", "loader", "integrity"]
+    )
     parser.add_argument(
         "--data",
         type=pathlib.Path,
@@ -550,4 +602,5 @@ if __name__ == "__main__":
         "doses": check_doses,
         "trial": make_trial,
         "loader": check_loader,
+        "integrity": check_integrity,
     }[args.check](args)

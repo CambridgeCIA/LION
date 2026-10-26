@@ -169,12 +169,16 @@ def resample_processed_patient(
         shutil.rmtree(tmp)
     tmp.mkdir()
     for path in folder.iterdir():
-        if path.name.startswith("slice_"):
-            np.save(tmp / path.name, resample_ct_slice(np.load(path), original_spacing))
-        elif path.name.startswith("mask_"):
-            np.save(tmp / path.name, resample_mask(np.load(path), original_spacing))
-        else:
-            shutil.copy2(path, tmp / path.name)
+        try:
+            if path.name.startswith("slice_"):
+                image = resample_ct_slice(np.load(path), original_spacing)
+                np.save(tmp / path.name, image)
+            elif path.name.startswith("mask_"):
+                np.save(tmp / path.name, resample_mask(np.load(path), original_spacing))
+            else:
+                shutil.copy2(path, tmp / path.name)
+        except Exception as error:
+            raise RuntimeError(f"{path}: {error}") from error
     write_patient_spacing(tmp, original_spacing)
     old = folder.with_name(folder.name + ".old")
     folder.rename(old)
@@ -191,6 +195,7 @@ def resample_processed_dataset(path_to_processed_dataset: pathlib.Path) -> None:
     place. Needs pylidc (for the pixel spacings, in its own database) but not
     the DICOM files. Patients already resampled are skipped, so this can be
     run again after an interruption."""
+    failed = []
     for folder in sorted(path_to_processed_dataset.glob("LIDC-IDRI-????")):
         if not folder.is_dir() or is_resampled(folder):
             continue
@@ -199,7 +204,19 @@ def resample_processed_dataset(path_to_processed_dataset: pathlib.Path) -> None:
             print(f"Patient {folder.name} has no scan in pylidc, skipping")
             continue
         print(f"Resampling {folder.name} from {scan.pixel_spacing} mm")
-        resample_processed_patient(folder, scan.pixel_spacing)
+        try:
+            resample_processed_patient(folder, scan.pixel_spacing)
+        except Exception as error:  # e.g. a truncated .npy file
+            # the patient's folder is left as it was; the others go on
+            failed.append((folder.name, str(error)))
+            print(f"\t Failed, patient left as it was: {error}")
+            tmp = folder.with_name(folder.name + ".resampling.tmp")
+            if tmp.exists():
+                shutil.rmtree(tmp)
+    if failed:
+        print(f"{len(failed)} patients could not be resampled:")
+        for patient, error in failed:
+            print(f"  {patient}: {error}")
     write_pre_processing_file(path_to_processed_dataset)
 
 
@@ -210,7 +227,9 @@ def write_pre_processing_file(path_to_processed_dataset: pathlib.Path) -> None:
     ]
     missing = [f.name for f in folders if not is_resampled(f)]
     if missing:
-        print(f"Not resampled yet: {missing}; run this script again")
+        print(
+            f"Not resampled yet: {missing}; see the errors above, then run this again"
+        )
         return
     write_json(
         path_to_processed_dataset.joinpath(PRE_PROCESSING_FILE),
