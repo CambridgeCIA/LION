@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from tabnanny import verbose
-
 import torch
 from tqdm import tqdm
 
@@ -113,6 +111,7 @@ def debias_ls(
     max_iter: int = 200,
     tol: float = 1e-5,
     progress_bar: bool = False,
+    verbose: bool = False,
 ) -> torch.Tensor:
     """Debiasing least squares on the support of w.
 
