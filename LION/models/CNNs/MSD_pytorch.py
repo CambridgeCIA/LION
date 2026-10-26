@@ -9,13 +9,27 @@
 from LION.models import LIONmodel
 from LION.models.LIONmodel import LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
-import msd_pytorch as msd
+
+
+def _import_msd_pytorch():
+    """msd_pytorch is not a LION dependency (it needs its own CUDA build), so
+    it is imported only when this model is made."""
+    try:
+        import msd_pytorch
+    except ImportError as error:
+        raise ImportError(
+            "MSD_pytorch needs `msd_pytorch` (https://github.com/ahendriksen/"
+            "msd_pytorch), which is not installed. LION's own MSDNet "
+            "(LION.models.CNNs.MSDNet) needs nothing extra."
+        ) from error
+    return msd_pytorch
 
 
 class MSD_pytorch(LIONmodel.LIONmodel):
     def __init__(self, model_parameters=None):
 
         super().__init__(model_parameters)
+        msd = _import_msd_pytorch()
 
         if self.model_parameters.type == "regression":
             model = msd.MSDRegressionModel(

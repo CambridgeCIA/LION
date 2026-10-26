@@ -41,20 +41,14 @@ dependencies = [
     # Libraries that depend on torch are installed here, by pip, after torch (README):
     # from conda they would bring a second, CPU-only pytorch (and MKL) into the env.
     "kornia",  # LION/optimizers/GaussianDenoiserSolver.py
-    "mlflow",
-    "mrpro",
-    # "opencv-python",
-    # "pillow",
-    "piq",
-    "ptwt",  # Wavelet transforms for PyTorch, for photocurrent mapping reconstruction baseline
-    "pylidc",
-    "pytorch-wavelets",  # Wavelet transforms for PyTorch (TODO: switch to ptwt)
-    "rich",
-    "spyrit",  # Fast Walsh-Hadamard Transform
+    "mrpro",  # MRI backend, imported on use (LION/utils/mrpro_import.py)
+    "pylidc",  # LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py
+    "spyrit",  # Fast Walsh-Hadamard Transform, imported on use (LION/utils/spyrit_import.py)
     "torchdiffeq",  # LION/models/post_processing/cFBPConvNet.py, iterative_unrolled/cLPD.py
     "tqdm",
-    "tyro",
-    "LION[codestyle]",
+    # Not dependencies since October 2026, as LION does not import them:
+    # mlflow, ptwt, pytorch-wavelets, rich, tyro (none used); piq (tests only,
+    # see `tests`); jaxtyping (one example script, see `examples`).
 ]
 
 [project.optional-dependencies]
@@ -76,11 +70,12 @@ standalone = [
     "spgl1",  # SPGL1 solver, imported by LION.classical_algorithms
     "tifffile",  # LION/data_loaders/LUNA16
     "torch",
-    "torchvision",  # not imported by LION, but required by mrpro, piq and spyrit
+    "torchvision",  # not imported by LION, but required by mrpro and spyrit
 ]
 # Used by some example scripts only (scripts/example_scripts)
 examples = [
     "deepinv",  # PnP_ADMM.py, photocurrent_mapping.py: pretrained DRUNet
+    "jaxtyping",  # photocurrent_mapping.py
     "torchmetrics",  # photocurrent_mapping.py
 ]
 codestyle = [
@@ -93,6 +88,7 @@ tests = [
     "pytest",
     "pytest-cov",
     "pytest-xdist",
+    "piq",  # reference HaarPSI in pytests/test_metrics.py
 ]
 docs = [
     "LION[notebooks]",

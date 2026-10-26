@@ -12,7 +12,7 @@ dependencies:
   # torch loads the system's, and conda's scipy etc. then fail on machines with an
   # older system runtime ("CXXABI_1.3.15 not found").
   - pytorch-gpu
-  # LION does not import torchvision, but mrpro, piq and spyrit (pip, pyproject.toml)
+  # LION does not import torchvision, but mrpro and spyrit (pip, pyproject.toml)
   # require it: from conda here, or pip would install it with a pip torch
   - torchvision
   - deepinv  # example scripts
