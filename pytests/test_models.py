@@ -110,11 +110,16 @@ def test_acr_is_convex_along_a_line():
 
 @ignore_warnings
 def test_msd_pytorch_defaults():
-    pytest.importorskip("msd_pytorch")
+    # importable without msd_pytorch, which is only needed to make the model
     from LION.models.CNNs.MSD_pytorch import MSD_pytorch
 
     assert MSD_pytorch.default_parameters().model_input_type is ModelInputType.IMAGE
     assert MSD_pytorch.default_parameters("segmentation").c_in == 1
+    try:
+        import msd_pytorch  # noqa: F401
+    except ImportError:
+        with pytest.raises(ImportError, match="msd_pytorch"):
+            MSD_pytorch()
 
 
 # --------------------------------------------------------------------------
