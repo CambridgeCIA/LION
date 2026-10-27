@@ -19,6 +19,7 @@ from enum import Enum
 from typing import Optional
 from LION.utils.parameter import LIONParameter
 import LION.utils.spec as spec
+from LION.data_loaders.data_record import is_data_record
 
 # We will need utilities
 import LION.utils.utils as ai_utils
@@ -269,7 +270,9 @@ class LIONmodel(nn.Module, ABC):
         """
         Saves model given a filename.
         While its not enforced, the following Parameters are expected from kwargs:
-        - 'dataset' : LIONParameter describing the dataset creation and handling.
+        - 'dataset' : the record of the data (``LION.data_loaders.data_record``,
+          e.g. ``experiment.data_record("train")``), saved and read back as it is;
+          or a LIONParameter describing the dataset creation and handling.
         - 'training': LIONParameter describing the training algorithm and procedures
         - 'geometry': If the model itself has no scan geometry parameter, but the dataset was created with some geometry
 
@@ -340,7 +343,10 @@ class LIONmodel(nn.Module, ABC):
         # A geometry given here describes the data (e.g. for a model without one)
         if given_geometry is not None:
             metadata["geometry"] = spec.encode(given_geometry)
-        if dataset_params is not None:
+        if is_data_record(dataset_params):
+            # already JSON (LION.data_loaders.data_record), kept as it is
+            metadata["dataset_params"] = dataset_params
+        elif dataset_params is not None:
             metadata["dataset_params"] = spec.encode(dataset_params)
         if training is not None:
             metadata["training"] = spec.encode(training)
@@ -452,7 +458,11 @@ class LIONmodel(nn.Module, ABC):
         elif kwargs.get("geometry") is not None:
             options.geometry = kwargs["geometry"]
         for key in ("dataset_params", "training"):
-            if key in saved:
+            if is_data_record(saved.get(key)):
+                # a data record is read as it is: making its dataset again
+                # (build(record["dataset"])) reads the data, so only on request
+                setattr(options, key, saved[key])
+            elif key in saved:
                 setattr(options, key, spec.build(saved[key], allow))
         return target, kwargs, options
 

@@ -29,7 +29,9 @@ function without calling it. A dict without ``_target_`` (in older files) is a
 """
 
 import enum
+import functools
 import importlib
+import os
 import inspect
 import pathlib
 import warnings
@@ -59,6 +61,8 @@ ALLOWED_TARGETS = (
     "builtins.complex",
     "numpy.array",
     "pathlib.Path",
+    "functools.partial",
+    "LION.utils.paths.data_path",
 )
 # Constructor arguments that describe where an object runs, not what it is.
 RUNTIME_ARGUMENTS = ("device", "verbose")
@@ -102,7 +106,16 @@ def encode(value):
             f"got shape {tuple(value.shape)}"
         )
     if isinstance(value, pathlib.PurePath):
+        relative = _relative_to_data_path(value)
+        if relative is not None:  # the same place on any machine
+            return {TARGET: "LION.utils.paths.data_path", ARGS: [relative]}
         return {TARGET: "pathlib.Path", ARGS: [str(value)]}
+    if isinstance(value, functools.partial):
+        return {
+            TARGET: "functools.partial",
+            ARGS: [encode(value.func)] + [encode(a) for a in value.args],
+            **{k: encode(v) for k, v in value.keywords.items()},
+        }
     if isinstance(value, (tuple, set, frozenset)):
         return {
             TARGET: f"builtins.{type(value).__name__}",
@@ -131,6 +144,19 @@ def encode(value):
     return to_spec(value)
 
 
+def _relative_to_data_path(path):
+    """``path`` relative to ``LION_DATA_PATH`` (a string), or None if it is
+    not inside it (or ``LION_DATA_PATH`` is not set)."""
+    root = os.environ.get("LION_DATA_PATH")
+    if root is None:
+        return None
+    root = pathlib.Path(root).expanduser().resolve()
+    try:
+        return pathlib.Path(path).expanduser().resolve().relative_to(root).as_posix()
+    except ValueError:
+        return None
+
+
 def to_spec(obj) -> dict:
     """The spec of an object: its class and the arguments that build it."""
     if isinstance(obj, LIONParameter):
@@ -153,8 +179,14 @@ def _constructor_arguments(obj) -> dict:
     cls = type(obj)
     kwargs = {}
     parameters = list(inspect.signature(cls.__init__).parameters.values())[1:]
+    if any(p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) for p in parameters):
+        raise SpecError(
+            f"{cls.__name__} can't be saved: its constructor takes *args or "
+            "**kwargs, so its arguments can't be read from its attributes "
+            f"(define {cls.__name__}.spec_kwargs())"
+        )
     for p in parameters:
-        if p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name in RUNTIME_ARGUMENTS:
+        if p.name in RUNTIME_ARGUMENTS:
             continue
         if hasattr(obj, p.name):
             kwargs[p.name] = getattr(obj, p.name)

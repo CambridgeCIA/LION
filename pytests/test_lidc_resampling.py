@@ -184,9 +184,11 @@ def test_default_geometry_covers_the_field_of_view():
 def test_loader_warns_if_the_geometry_does_not_match():
     dataset = lidc.LIDC_IDRI.__new__(lidc.LIDC_IDRI)  # no data needed
     dataset.pixel_spacing_mm = lidc.PIXEL_SPACING_MM
-    dataset.params = types.SimpleNamespace(geometry=lidc.LIDC_IDRI.default_geometry())
+    dataset.parameters = types.SimpleNamespace(
+        geometry=lidc.LIDC_IDRI.default_geometry()
+    )
     dataset.check_geometry()  # no warning
-    dataset.params.geometry = ct_experiments.ctgeo.Geometry.default_parameters()
+    dataset.parameters.geometry = ct_experiments.ctgeo.Geometry.default_parameters()
     with pytest.warns(UserWarning, match="pixel size"):
         dataset.check_geometry()
 
@@ -251,7 +253,7 @@ def test_loader_leaves_out_damaged_slices(tmp_path, task):
     mask.write_bytes(mask.read_bytes()[:1000])
 
     dataset = lidc.LIDC_IDRI.__new__(lidc.LIDC_IDRI)  # no full dataset needed
-    dataset.params = types.SimpleNamespace(task=task)
+    dataset.parameters = types.SimpleNamespace(task=task)
     dataset.path_to_processed_dataset = tmp_path
     dataset.not_resampled = ["LIDC-IDRI-0003"]
     selected = {
@@ -331,7 +333,6 @@ def test_lidc_loader_uses_the_legacy_list_for_old_parameters(tmp_path, saved_bef
     fake_lidc(tmp_path, range(1, 11), extra=["LIDC-IDRI-0010.old"])
     params = lidc.LIDC_IDRI.default_parameters(task="segmentation")
     params.folder = tmp_path
-    params.device = "cpu"
     assert params.legacy_patient_list is False
     if saved_before:  # parameter files from before October 2026
         del params.legacy_patient_list

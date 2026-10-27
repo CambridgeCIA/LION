@@ -66,6 +66,8 @@ class deteCT(Dataset):
     ):
         if parameters is None:
             parameters = self.default_parameters()
+        self.parameters = parameters
+        self.geometry_params = geometry_params
 
         # Get geometry default, or validate if given geometry is valid for 2DeteCT, as its raw sinogram data, we can't allow any geometry
         if geometry_params is None:
@@ -333,6 +335,22 @@ class deteCT(Dataset):
 
     def get_operator(self):
         return make_operator(self.geometry)
+
+    def sample_ids(self):
+        """What each sample is, in order: its slice identifier."""
+        return [str(i) for i in self.slice_dataframe["slice_identifier"]]
+
+    def sample_files(self):
+        """The files the samples are read from, in order: those of each
+        slice's input and target modes."""
+        files = []
+        modes = sorted({self.input_mode, self.target_mode})
+        for identifier in self.slice_dataframe["slice_identifier"]:
+            for mode in modes:
+                files += sorted(
+                    self.path_to_dataset.joinpath(str(identifier), mode).glob("*")
+                )
+        return files
 
     def set_sinogram_transform(self, sinogram_transform):
         self.sinogram_transform = sinogram_transform

@@ -9,7 +9,6 @@
 
 from typing import List, Dict
 import pathlib
-import random
 import math
 import re
 import warnings
@@ -72,7 +71,9 @@ def load_json(file_path: pathlib.Path):
 def choose_random_annotation(
     nodule_annotations_list: List,
 ) -> str:
-    return random.choice(nodule_annotations_list)
+    """One of the annotations, drawn with torch's random numbers (so
+    ``rng.seeded`` makes the choice reproducible)."""
+    return nodule_annotations_list[int(torch.randint(len(nodule_annotations_list), ()))]
 
 
 def create_consensus_annotation(
@@ -177,7 +178,6 @@ class LIDC_IDRI(Dataset):
         (``ct_experiments``) add the noise.
 
         Parameters:
-            - device (torch.device): Selects the device to use for the data loader.
             - task (str): Defines pipeline on how to use data. Distinguish between "joint", "end_to_end", "segmentation", "reconstruction" and "diagnostic".
                           Dataset will return, for each task:
                           "segmentation"    -> (image, segmentation_label)
@@ -194,6 +194,8 @@ class LIDC_IDRI(Dataset):
             - legacy_slice_selection (bool): True reproduces the selection of LION before October 2026, which left out patients without nodule slices. Default False (missing in old parameter files, which then use the old selection).
             - legacy_patient_list (bool): True reproduces the patient list of LION before October 2026 (patients 1 to N for N folders), which left out patients 1011 and 1012 and was moved by leftover folders. Default False: the LIDC-IDRI-NNNN folders (missing in old parameter files, which then use the old list). See ``patient_list``.
             - clevel (float): Defines consensus level if annotation=consensus. Value between 0-1. Default is 0.5.
+            - annotation_seed (int or None): with annotation="random", each nodule of each slice gets one annotation, the same every time it is read (see LION.utils.rng.seeded). None: a new one each time. Default 0.
+        The data are on LION's selected device, ``default_device()``.
             - geometry: Geometry() type, if sinograms are requied (e.g. fo "reconstruction")
 
         """
@@ -207,9 +209,11 @@ class LIDC_IDRI(Dataset):
 
         if parameters is None:
             parameters = LIDC_IDRI.default_parameters(geometry=geometry_parameters)
-        self.params = parameters
+        self.parameters = parameters
+        self.mode = mode
+        self.geometry_parameters = geometry_parameters
 
-        task = self.params.task
+        task = self.parameters.task
         assert task in [
             "joint",
             "end_to_end",
@@ -224,7 +228,7 @@ class LIDC_IDRI(Dataset):
         if (
             task in ["reconstruction"]
             and geometry_parameters is None
-            and self.params.geometry is None
+            and self.parameters.geometry is None
         ):
             raise ValueError("geometry input required for recosntruction modes")
 
@@ -232,7 +236,8 @@ class LIDC_IDRI(Dataset):
         self.sinogram_transform = None
         self.sinogram_transform_seed = None
         self.image_transform = None
-        self.device = self.params.device
+        # the device selected in LION (a device in parameter files is not used)
+        self.device = default_device()
 
         if task in ["reconstruction"]:
             self.image_transform = (
@@ -242,18 +247,20 @@ class LIDC_IDRI(Dataset):
             self.image_transform = ct.from_HU_to_normal
 
         # parameters loaded from JSON have the geometry as a plain LIONParameter
-        if self.params.geometry is not None and not isinstance(
-            self.params.geometry, ct.Geometry
+        if self.parameters.geometry is not None and not isinstance(
+            self.parameters.geometry, ct.Geometry
         ):
-            self.params.geometry = ct.Geometry.init_from_parameter(self.params.geometry)
+            self.parameters.geometry = ct.Geometry.init_from_parameter(
+                self.parameters.geometry
+            )
         if geometry_parameters is not None:
-            self.params.geometry = geometry_parameters
+            self.parameters.geometry = geometry_parameters
             self.operator = ct.make_operator(geometry_parameters)
-        elif self.params.geometry is not None:
-            self.operator = ct.make_operator(self.params.geometry)
+        elif self.parameters.geometry is not None:
+            self.operator = ct.make_operator(self.parameters.geometry)
         # Start of Patient pre-processing
 
-        self.path_to_processed_dataset = pathlib.Path(self.params.folder)
+        self.path_to_processed_dataset = pathlib.Path(self.parameters.folder)
         self.pixel_spacing_mm = self.read_pixel_spacing(self.path_to_processed_dataset)
         # patients the pre-processing could not resample (e.g. a damaged file)
         self.not_resampled = self.read_not_resampled(self.path_to_processed_dataset)
@@ -271,13 +278,13 @@ class LIDC_IDRI(Dataset):
         )
         self.patient_ids_all, self.total_patients = self.patient_list(
             self.path_to_processed_dataset,
-            legacy=getattr(self.params, "legacy_patient_list", True),
+            legacy=getattr(self.parameters, "legacy_patient_list", True),
         )
-        self.num_slices_per_patient = self.params.max_num_slices_per_patient
-        self.pcg_slices_nodule = self.params.pcg_slices_nodule
-        self.annotation = self.params.annotation
+        self.num_slices_per_patient = self.parameters.max_num_slices_per_patient
+        self.pcg_slices_nodule = self.parameters.pcg_slices_nodule
+        self.annotation = self.parameters.annotation
         self.clevel = (
-            self.params.clevel
+            self.parameters.clevel
         )  # consensus level, only used if annotation == consensus
         self.patient_index_to_n_slices_dict: Dict = {
             patient_id: len(
@@ -350,9 +357,9 @@ class LIDC_IDRI(Dataset):
         }
 
         ##% Divide dataset in training/validation/testing
-        self.training_proportion = self.params.training_proportion
-        self.validation_proportion = self.params.validation_proportion
-        self.params.mode = mode
+        self.training_proportion = self.parameters.training_proportion
+        self.validation_proportion = self.parameters.validation_proportion
+        self.parameters.mode = mode
         # Commpute number if images for each
         self.n_patients_training = math.floor(
             self.training_proportion * (self.total_patients)
@@ -389,15 +396,15 @@ class LIDC_IDRI(Dataset):
         )
 
         print("Preparing patient list, this may take time....")
-        if self.params.mode == "train":
+        if self.parameters.mode == "train":
             patient_list_to_load = self.training_patients_list
-        elif self.params.mode == "validation":
+        elif self.parameters.mode == "validation":
             patient_list_to_load = self.validation_patients_list
-        elif self.params.mode == "test":
+        elif self.parameters.mode == "test":
             patient_list_to_load = self.testing_patients_list
         else:
             raise NotImplementedError(
-                f"mode {self.params.mode} not implemented, try training, validation or testing"
+                f"mode {self.parameters.mode} not implemented, try training, validation or testing"
             )
 
         self.slices_to_load = self.get_slices_to_load(
@@ -415,7 +422,7 @@ class LIDC_IDRI(Dataset):
             self.slices_to_load
         )
 
-        print(f"Patient lists ready for {self.params.mode} dataset")
+        print(f"Patient lists ready for {self.parameters.mode} dataset")
 
     @staticmethod
     def patient_list(path_to_processed_dataset, legacy=False):
@@ -460,7 +467,7 @@ class LIDC_IDRI(Dataset):
         copy. Only the selected slices are checked (their headers and sizes),
         so this is quick unless every slice is selected.
         """
-        needs_masks = self.params.task in ["joint", "end_to_end", "segmentation"]
+        needs_masks = self.parameters.task in ["joint", "end_to_end", "segmentation"]
         kept, dropped = {}, []
         for patient_id, slice_indices in slices_to_load.items():
             if patient_id in self.not_resampled:
@@ -506,7 +513,7 @@ class LIDC_IDRI(Dataset):
     def check_geometry(self):
         """Warn if the geometry's pixel size is not the data's pixel spacing:
         then sizes, and the physical noise model's path lengths, are wrong."""
-        geometry = self.params.geometry
+        geometry = self.parameters.geometry
         if self.pixel_spacing_mm is None or geometry is None:
             return
         pixel_size = geometry.image_size[-1] / geometry.image_shape[-1]
@@ -569,8 +576,8 @@ class LIDC_IDRI(Dataset):
         # segmentation specific
         param.clevel = 0.5
         param.annotation = "consensus"
-        # a string (e.g. "cuda:2"), so the parameters stay JSON-serialisable
-        param.device = str(default_device())
+        # annotation="random": the seed of each slice's choice (see rng.seeded)
+        param.annotation_seed = 0
         param.geometry = geometry
         return param
 
@@ -600,7 +607,7 @@ class LIDC_IDRI(Dataset):
         )  # Empty dict which should contain patient id as key and slice ids as array of values
 
         # parameter files from before legacy_slice_selection existed used the old rule
-        legacy = getattr(self.params, "legacy_slice_selection", True)
+        legacy = getattr(self.parameters, "legacy_slice_selection", True)
         for patient_id in patient_list:  # Loop over every patient
             patient_id_to_slices_to_load_dict[patient_id] = select_slices(
                 non_nodule_slices_dict[patient_id],
@@ -699,7 +706,17 @@ class LIDC_IDRI(Dataset):
                     while len(nodule_annotations_list) < 4:
                         nodule_annotations_list.append("")
 
-                    annotation = choose_random_annotation(nodule_annotations_list)
+                    # annotation_seed: each nodule of each slice gets one
+                    # annotation, the same every time it is read; None or
+                    # missing: a new one each time
+                    with seeded(
+                        getattr(self.parameters, "annotation_seed", None),
+                        "LIDC-IDRI-annotation",
+                        patient_id,
+                        slice_index,
+                        nodule_index,
+                    ):
+                        annotation = choose_random_annotation(nodule_annotations_list)
                     if annotation == "":
                         # Hopefully, that exists the try to return an empty mask
                         nodule_mask = torch.zeros((512, 512), dtype=torch.bool)
@@ -739,6 +756,30 @@ class LIDC_IDRI(Dataset):
     def __len__(self):
         return len(self.slice_index_to_patient_id_list)
 
+    def _sample(self, index):
+        """The patient and slice file index of sample ``index``."""
+        patient_id = self.slice_index_to_patient_id_list[index]
+        position = index - self.patient_id_to_first_index_dict[patient_id]
+        return patient_id, self.slices_to_load[patient_id][position]
+
+    def sample_ids(self):
+        """What each sample is, in order: ``"LIDC-IDRI-NNNN/slice_K"``."""
+        return [
+            "{}/slice_{}".format(*self._sample(index)) for index in range(len(self))
+        ]
+
+    def sample_files(self):
+        """The files the samples are read from, in order: each slice, and for
+        tasks with masks the slice's mask files."""
+        files = []
+        for index in range(len(self)):
+            patient_id, slice_index = self._sample(index)
+            folder = self.path_to_processed_dataset.joinpath(patient_id)
+            files.append(folder.joinpath(f"slice_{slice_index}.npy"))
+            if self.parameters.task in ["joint", "end_to_end", "segmentation"]:
+                files += sorted(folder.glob(f"mask_{slice_index}_*.npy"))
+        return files
+
     def get_specific_slice(self, patient_index, slice_index):
         ## Assumes slice and mask exist
         file_path = self.path_to_processed_dataset.joinpath(
@@ -761,7 +802,7 @@ class LIDC_IDRI(Dataset):
             f"{patient_id}/slice_{slice_index_to_load}.npy"
         )
 
-        if self.params.task in [
+        if self.parameters.task in [
             "joint",
             "end_to_end",
             "segmentation",
@@ -771,11 +812,11 @@ class LIDC_IDRI(Dataset):
             if self.image_transform is not None:
                 reconstruction_tensor = self.image_transform(reconstruction_tensor)
 
-        if self.params.task in ["joint", "end_to_end", "segmentation"]:
+        if self.parameters.task in ["joint", "end_to_end", "segmentation"]:
             mask_tensor = self.get_mask_tensor(patient_id, slice_index_to_load)
             return reconstruction_tensor, mask_tensor
 
-        elif self.params.task == "reconstruction":
+        elif self.parameters.task == "reconstruction":
             sinogram = self.compute_clean_sinogram(reconstruction_tensor.float())
 
             if self.sinogram_transform is not None:
@@ -789,7 +830,7 @@ class LIDC_IDRI(Dataset):
                     sinogram = self.sinogram_transform(sinogram)
             return sinogram, reconstruction_tensor
 
-        elif self.params.task == "diagnostic":
+        elif self.parameters.task == "diagnostic":
             return self.patients_diagnosis_dictionary[patient_id]
         else:
             raise NotImplementedError

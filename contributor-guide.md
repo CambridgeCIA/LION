@@ -116,6 +116,12 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
 - Simulated CT data are densities (`ct_utils.from_HU_to_density`) in mm
   geometries. Noise is added with `ct_utils.sinogram_add_noise`, whose
   physical model is the default.
+- Data loaders keep their constructor arguments under the same names
+  (`mode`, `parameters`, the geometry) and list their samples
+  (`sample_ids()`, `sample_files()`), so `data_record(dataset)`
+  (`LION/data_loaders/data_record.py`) can describe them; data are on
+  `default_device()`. A noise function is a LION function or a
+  `functools.partial` of one (not a lambda), so it can be recorded.
 - Random numbers that make up the data (e.g. simulated noise) are drawn inside
   `LION.utils.rng.seeded(seed, <sample identity>)`, so each sample is the same
   every time it is read. Randomness of training (shuffling, noise a solver
