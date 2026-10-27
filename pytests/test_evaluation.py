@@ -185,8 +185,12 @@ def test_a_model_file_runs_as_its_solver(no_ct, tmp_path):
     path = train_and_save(make_solver(Halving), tmp_path)
     run = method(path, allow=["pytests."])
     assert run.record["kind"] == "solver" and run.record["solver"].endswith("Halving")
-    y = data()[0][0].unsqueeze(0)
-    torch.testing.assert_close(run(y) * 2, run.modules[0](y))
+    # a loaded model is on LION's default device (the GPU, where there is one)
+    loaded = run.modules[0]
+    y = data()[0][0].unsqueeze(0).to(next(loaded.parameters()).device)
+    with torch.no_grad():
+        expected = loaded.eval()(y) / 2
+    torch.testing.assert_close(run(y), expected)
 
 
 # --------------------------------------------------------------------------
