@@ -143,13 +143,16 @@ class Evaluation:
 
     # -- running -----------------------------------------------------------
 
-    def run(self, x, name: str | None = None, *, save: bool = True) -> LIONParameter:
+    def run(
+        self, x, name: str | None = None, *, save: bool = True, allow=()
+    ) -> LIONParameter:
         """Score ``x`` (a model, a model's file, a solver, a reconstructor or a
         function ``f(y, operator)``; see ``LION.evaluation.method``) on every
         test sample. Returns its test record, saved in ``save_folder``; a
         record saved before for the same method and evaluation is read
-        instead."""
-        run = method(x, self.get_operator())
+        instead. ``allow``: modules outside LION a model file may name (e.g.
+        your own solver)."""
+        run = method(x, self.get_operator(), allow=allow)
         for module in run.modules:
             module.to(self.device)
         name = name or _default_name(run.record)

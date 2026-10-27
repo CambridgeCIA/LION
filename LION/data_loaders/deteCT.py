@@ -340,6 +340,11 @@ class deteCT(LIONDataset):
         """What each sample is, in order: its slice identifier."""
         return [str(i) for i in self.slice_dataframe["slice_identifier"]]
 
+    def sample_groups(self):
+        """The group of each sample, in order: the physical sample (mix) its
+        slice is from, by which the splits are made."""
+        return [f"sample_{i}" for i in self.slice_dataframe["sample_index"]]
+
     def sample_files(self):
         """The files the samples are read from, in order: those of each
         slice's input and target modes."""

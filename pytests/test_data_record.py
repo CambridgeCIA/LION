@@ -447,3 +447,30 @@ def test_a_subset_is_recorded_and_made_again(lidc_folder, no_tomosipo):
         made = LIONDataset.instantiate(record)
     assert isinstance(made, torch.utils.data.Subset) and made.indices == [2, 0]
     assert type(made.dataset) is lidc.LIDC_IDRI
+
+
+# --------------------------------------------------------------------------
+# Groups of samples (patients), for checking leakage
+
+
+def test_lidc_groups_are_the_patients(lidc_folder, no_tomosipo):
+    """The groups of a dataset's samples (LIDC-IDRI: its patients) are kept,
+    sorted, for checking that no test patient was trained on; a subset's are
+    those of its samples, through nested subsets too."""
+    data = lidc_dataset(lidc_folder, mode="train")
+    patients = [i.split("/")[0] for i in data.sample_ids()]
+    assert data.sample_groups() == patients
+    assert through_json(data_record(data)).samples.groups == sorted(set(patients))
+    subset = torch.utils.data.Subset(data, [3, 2])
+    assert data_record(subset).samples.groups == sorted({patients[3], patients[2]})
+    nested = torch.utils.data.Subset(subset, [1])
+    assert data_record(nested).samples.groups == [patients[2]]
+    assert data_record(nested).samples.ids == [data.sample_ids()[2]]
+
+
+def test_detect_groups_are_the_physical_samples(tmp_path):
+    """2DeteCT's splits are by physical sample: its records keep them."""
+    training = data_record(fake_detect(tmp_path, "train"))
+    test = data_record(fake_detect(tmp_path, "test"))
+    assert training.samples.groups == [f"sample_{i}" for i in range(8)]
+    assert test.samples.groups == ["sample_9"]

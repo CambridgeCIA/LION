@@ -14,7 +14,10 @@ checked, from the record alone:
 - ``experiment`` and ``split``: for a dataset made by an experiment, the
   experiment's spec and which split this is;
 - ``samples``: what each sample is (e.g. ``"LIDC-IDRI-0912/slice_37"``), in
-  order, their number and a hash of the list;
+  order, their number and a hash of the list; for datasets whose samples come
+  in groups (``sample_groups()``: LIDC-IDRI's patients, 2DeteCT's physical
+  samples), the ``groups`` they are from, sorted. Evaluations check by group
+  that no test patient was trained on;
 - ``subset``: for a ``torch.utils.data.Subset``, its ``indices`` into the
   dataset it is taken from (whose record this is); ``samples`` lists the
   subset's samples;
@@ -123,12 +126,7 @@ def _record(dataset, hash_files) -> dict:
         )
 
     if hasattr(dataset, "sample_ids"):
-        ids = list(dataset.sample_ids())
-        record["samples"] = {
-            "count": len(ids),
-            "sha256": _sha256_of_lines(ids),
-            "ids": ids,
-        }
+        record["samples"] = _samples(dataset, None)
 
     if hash_files:
         if not hasattr(dataset, "sample_files"):
@@ -148,10 +146,31 @@ def _subset_record(subset, hash_files) -> dict:
     indices = [int(i) for i in subset.indices]
     record["subset"] = {"indices": indices}
     if "samples" in record:
-        ids = [record["samples"]["ids"][i] for i in indices]
-        record["samples"] = {
-            "count": len(ids),
-            "sha256": _sha256_of_lines(ids),
-            "ids": ids,
-        }
+        record["samples"] = _samples(subset.dataset, indices)
     return record
+
+
+def _ids_and_groups(dataset):
+    """Each sample's ID and group (None if it has none), through subsets."""
+    if isinstance(dataset, Subset):
+        ids, groups = _ids_and_groups(dataset.dataset)
+        indices = [int(i) for i in dataset.indices]
+        return [ids[i] for i in indices], (
+            None if groups is None else [groups[i] for i in indices]
+        )
+    ids = list(dataset.sample_ids())
+    if not hasattr(dataset, "sample_groups"):
+        return ids, None
+    return ids, list(dataset.sample_groups())
+
+
+def _samples(dataset, indices) -> dict:
+    """The ``samples`` of a record: those at ``indices`` (None: all)."""
+    ids, groups = _ids_and_groups(dataset)
+    if indices is not None:
+        ids = [ids[i] for i in indices]
+        groups = None if groups is None else [groups[i] for i in indices]
+    samples = {"count": len(ids), "sha256": _sha256_of_lines(ids), "ids": ids}
+    if groups is not None:
+        samples["groups"] = sorted(set(groups))
+    return samples

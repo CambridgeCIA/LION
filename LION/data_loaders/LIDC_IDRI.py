@@ -766,6 +766,12 @@ class LIDC_IDRI(LIONDataset):
             "{}/slice_{}".format(*self._sample(index)) for index in range(len(self))
         ]
 
+    def sample_groups(self):
+        """The group of each sample, in order: its patient. Slices of one
+        patient are near-copies, so a patient's slices are kept in one split,
+        and evaluations check that no test patient was trained on."""
+        return [self._sample(index)[0] for index in range(len(self))]
+
     def sample_files(self):
         """The files the samples are read from, in order: each slice, and for
         tasks with masks the slice's mask files."""
