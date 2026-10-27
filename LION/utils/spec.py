@@ -26,6 +26,10 @@ function without calling it. A dict without ``_target_`` (in older files) is a
   targets in allowed modules are imported, and only classes are called (plus
   ``numpy.array``); functions are only referred to. Add your own modules with
   ``allow=``.
+- ``X.instantiate(source)``, on LION's components (``LIONmodel``,
+  ``LIONDataset``, ``Experiment``), makes the component a saved file
+  describes, through ``instantiate(spec, cls, base)``. ``X.load(source)`` also
+  restores its state (a model's weights).
 """
 
 import enum
@@ -33,6 +37,7 @@ import functools
 import importlib
 import os
 import inspect
+import json
 import pathlib
 import warnings
 
@@ -286,6 +291,44 @@ def build_arguments(spec: dict, allow=()):
         raise SpecError("a spec with positional arguments can't be split into keywords")
     named = {k: build(v, allow) for k, v in spec.items() if k not in _KEYS}
     return spec[TARGET], named
+
+
+def read(source) -> dict:
+    """Saved metadata: the path of a ``.json`` (or of a model's files, e.g.
+    ``"model.pt"`` or ``"model"``: its ``.json`` is read), or a dict already
+    read from one."""
+    if isinstance(source, dict):
+        return source
+    path = pathlib.Path(source).with_suffix(".json")
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def target_class(path: str, cls, base, allow=()):
+    """The class to make for a spec naming ``path``, when ``cls.instantiate``
+    (or ``cls.load``) is called: the class the spec names if ``cls`` is the
+    base class (``LIONmodel``, ``LIONDataset``, ``Experiment``), which must
+    derive from it; otherwise ``cls``, with a warning if the spec names
+    another class."""
+    if cls is base:
+        target = resolve(path, allow)
+        if not (inspect.isclass(target) and issubclass(target, base)):
+            raise SpecError(f"{path} is not a {base.__name__}")
+        return target
+    if path != import_path(cls):
+        warnings.warn(
+            f"\nThe file holds a {path}; it is made as a {import_path(cls)}, "
+            "which may fail.\n",
+            stacklevel=3,
+        )
+    return cls
+
+
+def instantiate(spec: dict, cls, base, allow=()):
+    """Make the component a spec describes, as ``cls`` (see ``target_class``).
+    Used by the ``instantiate()`` class methods of LION's components."""
+    path, kwargs = build_arguments(spec, allow)
+    return target_class(path, cls, base, allow)(**kwargs)
 
 
 def unknown_names(

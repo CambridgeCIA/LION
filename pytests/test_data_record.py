@@ -1,5 +1,6 @@
 """The record of a model's data (LION.data_loaders.data_record): datasets and
-experiments described so they can be made again and checked, paths inside
+experiments described so they can be made again and checked
+(LIONDataset.instantiate, Experiment.instantiate), paths inside
 LION_DATA_PATH, noise functions as partials, the seeded random annotation."""
 
 import functools
@@ -21,7 +22,12 @@ import LION.data_loaders.LIDC_IDRI as lidc  # noqa: E402
 import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
 import LION.utils.paths as paths  # noqa: E402
 from LION.CTtools.ct_utils import sinogram_add_noise  # noqa: E402
-from LION.data_loaders.data_record import data_record, is_data_record  # noqa: E402
+from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
+from LION.data_loaders.data_record import (  # noqa: E402
+    data_record,
+    is_data_record,
+    read_record,
+)
 from LION.data_loaders.deteCT import deteCT  # noqa: E402
 from LION.models.CNNs.dncnn import DnCNN  # noqa: E402
 from LION.utils.device import default_device  # noqa: E402
@@ -128,9 +134,13 @@ def test_lidc_dataset_record_rebuilds_the_same_dataset(lidc_folder, no_tomosipo)
     record = through_json(data_record(data))
     assert "experiment" not in record
     assert record["samples"]["count"] == len(data)
-    rebuilt = build(record["dataset"])
-    assert type(rebuilt) is lidc.LIDC_IDRI
-    assert rebuilt.sample_ids() == record["samples"]["ids"]
+    for cls in (LIONDataset, lidc.LIDC_IDRI):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # same samples, no noise: no warning
+            rebuilt = cls.instantiate(record)
+        assert type(rebuilt) is lidc.LIDC_IDRI
+        assert rebuilt.mode == "train"
+        assert rebuilt.sample_ids() == record["samples"]["ids"]
 
 
 # --------------------------------------------------------------------------
@@ -167,7 +177,8 @@ def test_experiment_record(lidc_folder, no_tomosipo):
     assert record["sinogram_transform_seed"] == 0
     assert record["sinogram_transform"]["I0"] == ct_experiments.LOW_DOSE_I0
     # made again from the record alone: the same samples and noise
-    again = build(record["experiment"]).get_dataset(record["split"])
+    again = ct_experiments.Experiment.instantiate(record).get_dataset(record["split"])
+    assert type(again.experiment) is ct_experiments.LowDoseCTRecon
     assert again.sample_ids() == record["samples"]["ids"]
     original = experiment.get_testing_dataset()
     assert torch.equal(again[0][0], original[0][0])
@@ -284,5 +295,114 @@ def test_detect_record(tmp_path):
     assert data.geometry_params is None
     record = through_json(data_record(data))
     assert record["samples"]["ids"] == list(data.slice_dataframe["slice_identifier"])
-    rebuilt = build(record["dataset"])
+    rebuilt = deteCT.instantiate(record)
+    assert type(rebuilt) is deteCT and rebuilt.mode == "train"
     assert rebuilt.sample_ids() == record["samples"]["ids"]
+
+
+# --------------------------------------------------------------------------
+# instantiate(): datasets and experiments made again from what was saved
+
+
+def saved_model(folder, record):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        DnCNN().save(folder / "model", dataset=record)
+    return folder / "model"
+
+
+def test_dataset_from_a_model_file(lidc_folder, tmp_path, no_tomosipo):
+    experiment = ct_experiments.LowDoseCTRecon(datafolder=lidc_folder)
+    path = saved_model(tmp_path, experiment.data_record("test"))
+    for source in (
+        path,
+        str(path) + ".pt",
+        json.loads(path.with_suffix(".json").read_text()),
+    ):
+        with pytest.warns(UserWarning, match="without the noise"):
+            data = LIONDataset.instantiate(source)
+        assert type(data) is lidc.LIDC_IDRI and data.mode == "test"
+        assert data.sinogram_transform is None  # the dataset alone
+        assert data.sample_ids() == experiment.get_testing_dataset().sample_ids()
+
+
+def test_experiment_from_a_model_file(lidc_folder, tmp_path, no_tomosipo):
+    experiment = ct_experiments.LowDoseCTRecon(datafolder=lidc_folder)
+    path = saved_model(tmp_path, experiment.data_record("test"))
+    again = ct_experiments.LowDoseCTRecon.instantiate(path).get_dataset("test")
+    assert torch.equal(again[1][0], experiment.get_testing_dataset()[1][0])
+
+
+def test_experiment_from_its_spec(lidc_folder, no_tomosipo):
+    experiment = ct_experiments.LowDoseCTRecon(datafolder=lidc_folder)
+    made = ct_experiments.Experiment.instantiate(through_json(to_spec(experiment)))
+    assert type(made) is ct_experiments.LowDoseCTRecon
+    assert made.param.noise_params.I0 == experiment.param.noise_params.I0
+
+
+def test_the_noise_warning_says_how_to_get_it(lidc_folder, no_tomosipo):
+    """Data set up without an experiment: the user's own noise."""
+    data = lidc_dataset(lidc_folder)
+    data.set_sinogram_transform(functools.partial(sinogram_add_noise, I0=500), seed=3)
+    record = through_json(data_record(data))
+    with pytest.warns(UserWarning, match=r"sinogram_add_noise, seed 3.*set_sinogram"):
+        again = LIONDataset.instantiate(record)
+    again.set_sinogram_transform(
+        build(record["sinogram_transform"]), seed=record["sinogram_transform_seed"]
+    )
+    assert torch.equal(again[0][0], data[0][0])
+    with pytest.raises(ValueError, match="not made by an Experiment"):
+        ct_experiments.Experiment.instantiate(record)
+
+
+def test_other_samples_warn(lidc_folder, no_tomosipo):
+    record = through_json(data_record(lidc_dataset(lidc_folder)))
+    record["samples"]["ids"] = record["samples"]["ids"][:1] + ["LIDC-IDRI-0099/slice_3"]
+    with pytest.warns(
+        UserWarning, match="1 of the record's are missing, 1 are not in it"
+    ):
+        LIONDataset.instantiate(record)
+    record["samples"]["ids"] = list(reversed(lidc_dataset(lidc_folder).sample_ids()))
+    with pytest.warns(UserWarning, match="in another order"):
+        LIONDataset.instantiate(record)
+
+
+def test_check_files(lidc_folder, no_tomosipo):
+    record = through_json(data_record(lidc_dataset(lidc_folder), hash_files=True))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        LIONDataset.instantiate(record, check_files=True)
+    np.save(
+        lidc_folder / "LIDC-IDRI-0010" / "slice_1.npy", np.ones((512, 512), np.int16)
+    )
+    with pytest.warns(UserWarning, match="contents of its files differ"):
+        LIONDataset.instantiate(record, check_files=True)
+    del record["files"]
+    with pytest.raises(ValueError, match="hash_files=True"):
+        LIONDataset.instantiate(record, check_files=True)
+
+
+def test_a_dataset_spec_alone(lidc_folder, no_tomosipo):
+    data = lidc_dataset(lidc_folder)
+    made = lidc.LIDC_IDRI.instantiate(through_json(to_spec(data)))
+    assert made.sample_ids() == data.sample_ids()
+
+
+def test_what_cannot_be_instantiated(lidc_folder, no_tomosipo):
+    experiment = ct_experiments.LowDoseCTRecon(datafolder=lidc_folder)
+    with pytest.raises(SpecError, match="not a LIONDataset"):
+        LIONDataset.instantiate(through_json(to_spec(experiment)))
+    with pytest.raises(ValueError, match="no data record"):
+        LIONDataset.instantiate({"lion_format": 1})
+    record = through_json(data_record(lidc_dataset(lidc_folder)))
+    record["dataset"] = {"unsaved": "<MyDataset>", "reason": "a lambda"}
+    with pytest.raises(ValueError, match="only names its dataset"):
+        LIONDataset.instantiate(record)
+
+
+def test_read_record(lidc_folder, tmp_path, no_tomosipo):
+    record = through_json(data_record(lidc_dataset(lidc_folder)))
+    assert read_record(record) == record
+    assert read_record(saved_model(tmp_path, record)) == record
+    (tmp_path / "record.json").write_text(json.dumps(record))
+    assert read_record(tmp_path / "record.json") == record

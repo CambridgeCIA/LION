@@ -10,7 +10,6 @@ from pathlib import Path
 import pandas as pd
 import torch
 import numpy as np
-from torch.utils.data import Dataset
 import warnings
 from LION.utils.paths import DETECT_PROCESSED_DATASET_PATH
 from LION.utils.parameter import LIONParameter
@@ -19,6 +18,7 @@ import LION.CTtools.ct_utils as ct
 from LION.CTtools.ct_utils import make_operator
 from LION.utils.tomosipo_import import import_tomosipo
 from LION.utils.rng import seeded
+from LION.data_loaders.LIONDataset import LIONDataset
 
 # Low-dose (mode1) noise of 2DeteCT's two detectors, as the I0 of
 # deteCT.add_sinogram_noise that reproduces it when added to mode2: measured
@@ -28,7 +28,7 @@ from LION.utils.rng import seeded
 MODE1_I0_PER_DETECTOR = {1: 290, 2: 100}
 
 
-class deteCT(Dataset):
+class deteCT(LIONDataset):
     """
     The 2DeteCT dataset: 5,000 slices of 109 scanned samples (fruit, nuts and
     other objects), each measured in three modes:

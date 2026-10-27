@@ -16,13 +16,13 @@ import warnings
 import torch
 import numpy as np
 import json
-from torch.utils.data import Dataset
 
 
 from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
 import LION.CTtools.ct_utils as ct
 from LION.utils.parameter import LIONParameter
 from LION.utils.device import default_device
+from LION.data_loaders.LIONDataset import LIONDataset
 from LION.utils.rng import seeded
 
 
@@ -143,7 +143,7 @@ def select_slices(
     return sorted(selected)
 
 
-class LIDC_IDRI(Dataset):
+class LIDC_IDRI(LIONDataset):
     def __init__(
         self,
         mode,

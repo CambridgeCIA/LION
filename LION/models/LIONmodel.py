@@ -417,35 +417,36 @@ class LIONmodel(nn.Module, ABC):
     @classmethod
     def _read_model_file(cls, fname, allow=()):
         """The class to build, its keyword arguments and the file's metadata
-        (``options``), from a model's ``.json``.
+        (``options``), from a model's ``.json`` (its path, or the dict read
+        from it, or the model's spec alone).
 
         The model is built as ``cls``, unless ``cls`` is ``LIONmodel``: then as
         the class the file names, which must be in a module ``LION.utils.spec``
         allows (LION's own, or one given in ``allow``).
         """
-        fname = Path(fname)
-        with open(fname.with_suffix(".json"), encoding="utf-8") as f:
-            saved = json.load(f)
-        if "lion_format" not in saved:
-            return cls._read_unversioned_model_file(fname)
+        if isinstance(fname, dict):
+            saved, where = fname, "the metadata given"
+            if spec.TARGET in saved:  # a model's spec alone
+                saved = {"lion_format": spec.FORMAT_VERSION, "model": saved}
+            elif "lion_format" not in saved:
+                raise ValueError(
+                    "metadata without 'lion_format' (an older file): "
+                    "give its file instead"
+                )
+        else:
+            fname = Path(fname)
+            where = fname.with_suffix(".json")
+            saved = spec.read(fname)
+            if "lion_format" not in saved:
+                return cls._read_unversioned_model_file(fname)
         if saved["lion_format"] > spec.FORMAT_VERSION:
             raise ValueError(
-                f"{fname.with_suffix('.json')} has metadata format {saved['lion_format']}; "
+                f"{where} has metadata format {saved['lion_format']}; "
                 f"this version of LION reads up to {spec.FORMAT_VERSION}. Update LION."
             )
 
         path, kwargs = spec.build_arguments(saved["model"], allow)
-        if cls is LIONmodel:
-            target = spec.resolve(path, allow)
-            if not (inspect.isclass(target) and issubclass(target, LIONmodel)):
-                raise ValueError(f"{path} is not a LIONmodel")
-        else:
-            target = cls
-            if path != spec.import_path(cls):
-                warnings.warn(
-                    f"\nThe file holds a {path}; it is loaded as a {spec.import_path(cls)}, "
-                    "which may fail.\n"
-                )
+        target = spec.target_class(path, cls, LIONmodel, allow)
 
         options = LIONParameter()
         options.lion_format = saved["lion_format"]
@@ -516,6 +517,19 @@ class LIONmodel(nn.Module, ABC):
         if hasattr(options, "geometry") and "geometry" in sig.parameters:
             kwargs["geometry"] = options.geometry
         return cls, kwargs, options
+
+    @classmethod
+    def instantiate(cls, source, *, allow=()):
+        """The model a saved file describes, with its saved parameters and new
+        (untrained) weights. ``load()`` is this plus the saved weights.
+
+        ``source``: a model's file (``"model"``, ``"model.json"`` or
+        ``"model.pt"``: the ``.json`` is read), the dict read from it, or the
+        model's spec. Called on a model class it makes that class; called on
+        ``LIONmodel``, the class the file names (``allow`` as in ``load``).
+        """
+        target, kwargs, _ = cls._read_model_file(source, allow)
+        return target(**kwargs)
 
     @classmethod
     def load(cls, fname, *, weights_only=True, supress_warnings=False, allow=()):

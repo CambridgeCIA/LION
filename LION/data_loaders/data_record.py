@@ -20,9 +20,13 @@ checked, from the record alone:
   It reads the data, so it is only computed when asked.
 
 A record is plain JSON. It is saved with a model as it is
-(``model.save(f, dataset=data_record(dataset))``) and read back as a dict: the
-dataset is only made again on request, ``build(record["dataset"])`` or
-``build(record["experiment"]).get_dataset(record["split"])``.
+(``model.save(f, dataset=data_record(dataset))``) and read back as a dict. The
+data are only made again on request, from the record or the model's file:
+
+- ``LIONDataset.instantiate(source)``: the dataset alone, without noise (the
+  noise is part of the experiment), checked against the record's samples;
+- ``Experiment.instantiate(source).get_dataset(record["split"])``: the data
+  as the experiment made them, noise included.
 """
 
 import hashlib
@@ -36,6 +40,34 @@ RECORD_VERSION = 1
 
 def is_data_record(value) -> bool:
     return isinstance(value, dict) and RECORD_KEY in value
+
+
+def read_record(source) -> dict:
+    """The data record in ``source``: a record, a model's metadata holding
+    one (as its ``dataset_params``), or the path of a ``.json`` with either."""
+    saved = spec.read(source)
+    if is_data_record(saved):
+        return saved
+    if is_data_record(saved.get("dataset_params")):
+        return saved["dataset_params"]
+    raise ValueError(
+        "no data record found: give a record (data_record(dataset)) or the file "
+        "of a model saved with one (model.save(f, dataset=record))"
+    )
+
+
+def recorded_spec(record: dict, key: str) -> dict:
+    """The spec of ``record[key]`` ("dataset", "experiment"), or an error if
+    the record could only name it."""
+    if key not in record:
+        raise ValueError(f"the data record has no {key}")
+    value = record[key]
+    if isinstance(value, dict) and "unsaved" in value:
+        raise ValueError(
+            f"the data record only names its {key}, {value['unsaved']}: it couldn't "
+            f"be saved ({value['reason']}), so it can't be made again"
+        )
+    return value
 
 
 def _unsaved(obj, error) -> dict:

@@ -72,7 +72,8 @@ import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 from LION.data_loaders.deteCT import deteCT
-from LION.data_loaders.data_record import data_record
+from LION.data_loaders.data_record import data_record, read_record, recorded_spec
+from LION.utils import spec
 
 # Photons per detector pixel in vacuum of the simulated experiments (physical
 # noise model, water at 80 keV; see Experiment.noise_parameters). Chosen by
@@ -259,6 +260,30 @@ class Experiment(ABC):
         """The record of a split's data: this experiment, the split, the
         dataset, its noise, its samples (``LION.data_loaders.data_record``)."""
         return data_record(self.get_dataset(split), hash_files=hash_files)
+
+    @classmethod
+    def instantiate(cls, source, *, allow=()):
+        """The experiment a saved file describes. ``source``: a data record,
+        a model's file (or the dict read from it) saved with one, or the
+        experiment's spec. Called on an experiment class it makes that class;
+        called on ``Experiment``, the class the record names (``allow``: see
+        ``LION.utils.spec.build``).
+
+        ``Experiment.instantiate(f).get_dataset(record["split"])`` makes the
+        data as they were: dataset, geometry and noise (with its seed).
+        """
+        if isinstance(source, dict) and spec.TARGET in source:
+            return spec.instantiate(source, cls, Experiment, allow)
+        record = read_record(source)
+        if "experiment" not in record:
+            raise ValueError(
+                "these data were not made by an Experiment: make the dataset with "
+                "LIONDataset.instantiate(source) and set its noise from "
+                "record['sinogram_transform']"
+            )
+        return spec.instantiate(
+            recorded_spec(record, "experiment"), cls, Experiment, allow
+        )
 
     def __str__(self):
         return f"Experiment parameters: \n {self.param} \n Dataset: \n {self.dataset} \n Geometry parameters: \n {self.geometry}"
