@@ -121,6 +121,21 @@ def test_lidc_keeps_its_arguments(lidc_folder, no_tomosipo):
     assert data.geometry_parameters is None
 
 
+def test_making_a_split_leaves_the_experiment_unchanged(lidc_folder, no_tomosipo):
+    """An experiment's datasets share its data_loader_params: making one split
+    doesn't change the experiment, or the record of another split."""
+    experiment = ct_experiments.LowDoseCTRecon(datafolder=lidc_folder)
+    before = json.dumps(to_spec(experiment), sort_keys=True, default=str)
+    training = experiment.get_dataset("train")
+    training_record = json.dumps(data_record(training).serialize(), default=str)
+    experiment.get_dataset("test")
+    assert json.dumps(to_spec(experiment), sort_keys=True, default=str) == before
+    assert json.dumps(data_record(training).serialize(), default=str) == (
+        training_record
+    )
+    assert training.mode == "train"
+
+
 def test_lidc_uses_the_selected_device(lidc_folder, no_tomosipo):
     assert "device" not in vars(lidc.LIDC_IDRI.default_parameters(task="segmentation"))
     params = lidc.LIDC_IDRI.default_parameters(task="segmentation")

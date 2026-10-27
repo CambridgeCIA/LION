@@ -40,9 +40,12 @@ class Normalisation:
             ), "Dataset must be provided for dataset normalization"
             xmax = -np.inf
             xmin = np.inf
-            for _, gt in dataset:
-                xmax = max(gt.max(), xmax)
-                xmin = min(gt.min(), xmin)
+            # by index: iterating a Dataset relies on __getitem__ raising
+            # IndexError at the end, which not every dataset does (LIDC-IDRI)
+            for i in range(len(dataset)):
+                gt = dataset[i][1]
+                xmax = max(float(gt.max()), xmax)
+                xmin = min(float(gt.min()), xmin)
             self.xmin = xmin
             self.xmax = xmax
         if self.type == "custom":

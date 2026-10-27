@@ -113,6 +113,11 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   loss is given, and warn (`warn_if_not_mse`).
 - Reconstruction is separate from training (`LION/reconstructors`) and uses
   `op.adjoint`, not autograd.
+- Methods are evaluated with `LION.evaluation` (`Evaluation`, outside the
+  solvers): every test sample, PSNR/SSIM/HaarPSI by default with one range for
+  the test set, records saved and reused. The classical baseline of each
+  modality is `LION.evaluation.baseline(operator)` (CT: FDK): add new
+  modalities there, not on the operator.
 - Solvers take a training `seed` (default 0; `None`: unseeded) and pass it to
   `LIONsolver`, which seeds torch, numpy and Python's `random` when training
   starts (`LION.utils.rng.seed_all`); checkpoints keep the random state, so a
