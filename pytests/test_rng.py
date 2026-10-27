@@ -81,7 +81,9 @@ def noise(sinogram):
 
 def stand_in_projection(image):
     """A clean sinogram that depends on the image, without tomosipo."""
-    return (image.float().mean() + 2.0) * torch.ones(1, 90, 128) * 100
+    return (
+        (image.float().mean() + 2.0) * torch.ones(1, 90, 128, device=image.device) * 100
+    )
 
 
 @pytest.fixture
@@ -118,6 +120,9 @@ def same(a, b):
 
 
 def test_seeded_slices_have_one_noisy_measurement(lidc_data):
+    # on the CPU: DataLoader workers can't use CUDA once the main process has
+    # (LION's loaders return data on their device)
+    lidc_data.device = torch.device("cpu")
     lidc_data.set_sinogram_transform(noise, seed=0)
     first = read_all(lidc_data)
     assert same(first, read_all(lidc_data, seed=None))  # the next epoch

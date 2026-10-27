@@ -82,7 +82,9 @@ def test_object_whose_arguments_cannot_be_read_raises():
 
 
 def stand_in_projection(image):
-    return (image.float().mean() + 2.0) * torch.ones(1, 90, 128) * 100
+    return (
+        (image.float().mean() + 2.0) * torch.ones(1, 90, 128, device=image.device) * 100
+    )
 
 
 @pytest.fixture
