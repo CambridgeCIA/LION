@@ -35,6 +35,7 @@ class Noisier2Inverse(LIONsolver):
         verbose: bool = True,
         device: torch.device = None,
         seed: Optional[int] = 0,
+        deterministic: bool = False,
     ) -> None:
         super().__init__(
             model,
@@ -45,6 +46,7 @@ class Noisier2Inverse(LIONsolver):
             device,
             solver_params=solver_params,
             seed=seed,
+            deterministic=deterministic,
         )
         warn_if_not_mse(loss_fn, "Noisier2Inverse")
 

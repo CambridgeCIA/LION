@@ -102,6 +102,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         solver_params: Optional[SolverParams] = None,
         save_folder: Optional[pathlib.Path] = None,
         seed: Optional[int] = 0,
+        deterministic: bool = False,
     ) -> None:
         """
         ``seed``: the training seed. When training starts, torch (CPU and
@@ -111,6 +112,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         within a run (shuffling, noise a solver adds) still changes every batch
         and epoch. Two runs with the same seed give the same model: use
         different seeds for an ensemble. ``None``: unseeded.
+
+        ``deterministic``: use only deterministic algorithms (torch's
+        ``use_deterministic_algorithms``, deterministic cuDNN), so that on a GPU
+        two runs with the same seed give exactly the same model, and a resumed
+        run the uninterrupted one. Slower; a few operations then raise (torch
+        names them). It applies to the whole program from here on. Off, GPU
+        runs with the same seed differ slightly (e.g. ~1e-3 in the weights after
+        a few epochs). On a GPU it needs ``CUBLAS_WORKSPACE_CONFIG=:4096:8``
+        before cuBLAS starts: it is set here if it isn't (exporting it before the
+        script is surer).
 
         ``save_folder``: where results are saved; by default the folder in the
         ``LION_RESULTS_PATH`` environment variable, if set.
@@ -160,6 +171,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             None if save_folder is None else pathlib.Path(save_folder).expanduser()
         )
         self.seed = seed
+        self.deterministic = deterministic
+        if deterministic:
+            os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+            torch.use_deterministic_algorithms(True)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
         self.n_epochs: Optional[int] = None
         self.initial_weights_sha256: Optional[str] = None
         self._data_records = {}

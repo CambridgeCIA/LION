@@ -27,6 +27,7 @@ class Sparse2InverseSolver(LIONsolver):
         verbose: bool = True,
         device: torch.device = None,
         seed: Optional[int] = 0,
+        deterministic: bool = False,
     ) -> None:
         super().__init__(
             model,
@@ -37,6 +38,7 @@ class Sparse2InverseSolver(LIONsolver):
             device,
             solver_params=solver_params,
             seed=seed,
+            deterministic=deterministic,
         )
 
         self.model.geometry = self.geometry

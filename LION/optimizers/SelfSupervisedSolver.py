@@ -35,6 +35,7 @@ class SelfSupervisedSolver(LIONsolver):
         model_regularization=None,
         device: torch.device = None,
         seed: Optional[int] = 0,
+        deterministic: bool = False,
     ):
 
         super().__init__(
@@ -46,6 +47,7 @@ class SelfSupervisedSolver(LIONsolver):
             device=device,
             solver_params=SolverParams(),
             seed=seed,
+            deterministic=deterministic,
         )
         if verbose:
             print("Self-supervised solver training on device: ", self.device)

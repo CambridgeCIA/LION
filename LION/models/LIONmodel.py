@@ -21,6 +21,7 @@ from LION.utils.parameter import LIONParameter
 import LION.utils.spec as spec
 from LION.data_loaders.data_record import is_data_record
 from LION.optimizers.training_record import is_training_record
+from LION.utils import environment
 
 # We will need utilities
 import LION.utils.utils as ai_utils
@@ -345,6 +346,11 @@ class LIONmodel(nn.Module, ABC):
         except Exception:
             warnings.warn("\nCould not get git hash.\n")
         metadata["model"] = spec.to_spec(self)
+        # LION's code, the main packages and the machine (LION.utils.environment)
+        first = next(self.parameters(), None)
+        metadata["environment"] = environment.environment_record(
+            None if first is None else first.device
+        ).serialize()
         # A geometry given here describes the data (e.g. for a model without one)
         if given_geometry is not None:
             metadata["geometry"] = spec.encode(given_geometry)
@@ -459,6 +465,14 @@ class LIONmodel(nn.Module, ABC):
         options.lion_format = saved["lion_format"]
         if "commit_hash" in saved:
             options.commit_hash = saved["commit_hash"]
+        if "environment" in saved:
+            options.environment = LIONParameter(**saved["environment"])
+            difference = environment.code_differences(saved["environment"])
+            if difference is not None:
+                warnings.warn(
+                    f"\n{where} was saved with other LION code: {difference}. "
+                    "Loading may fail, or the model may behave differently.\n"
+                )
         options.model_name = path.rsplit(".", 1)[-1]
         options.model_parameters = kwargs.get("model_parameters")
         if "geometry" in saved:

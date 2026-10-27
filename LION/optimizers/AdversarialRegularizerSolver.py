@@ -66,6 +66,7 @@ class ARSolver(LIONsolver):
         device: torch.device = None,
         solver_params: ARParams | None = None,
         seed: Optional[int] = 0,
+        deterministic: bool = False,
     ) -> None:
         super().__init__(
             model,
@@ -76,6 +77,7 @@ class ARSolver(LIONsolver):
             device,
             solver_params,
             seed=seed,
+            deterministic=deterministic,
         )
         self.reconstructor = LearnedRegularizerReconstructor(
             self.op,
