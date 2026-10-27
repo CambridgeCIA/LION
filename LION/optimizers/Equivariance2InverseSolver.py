@@ -96,6 +96,7 @@ class Equivariance2InverseSolver(LIONsolver):
         geometry: Geometry = None,
         verbose: bool = True,
         device: torch.device = None,
+        seed: Optional[int] = 0,
     ) -> None:
         super().__init__(
             model,
@@ -105,6 +106,7 @@ class Equivariance2InverseSolver(LIONsolver):
             verbose,
             device,
             solver_params=solver_params,
+            seed=seed,
         )
         warn_if_not_mse(loss_fn, "Equivariance2InverseSolver")
         old = [k for k in _OLD_NOISE_PARAMETERS if hasattr(self.solver_params, k)]

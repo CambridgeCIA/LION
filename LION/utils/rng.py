@@ -5,6 +5,9 @@
   seeded from ``seed`` and ``parts``, e.g. the noise of one data sample, so that
   sample is the same in every epoch, run, order and DataLoader worker. The
   global random state is restored afterwards.
+- ``seed_all(seed)``: seed torch, numpy and Python's ``random``, as the solvers
+  do when training starts; ``random_state()`` / ``set_random_state()`` keep
+  and restore their state (checkpoints).
 
 One seed gives the same numbers on the same device type and torch version.
 torch's CPU and CUDA generators are different algorithms, so CPU and GPU give
@@ -64,6 +67,46 @@ def seeded(seed, *parts, device=None):
             with torch.cuda.device(device):
                 torch.cuda.manual_seed(value)
         yield
+
+
+def seed_all(seed: int) -> None:
+    """Seed every random generator training draws from: torch's (CPU and all
+    CUDA devices), numpy's and Python's ``random``. The solvers call it when
+    training starts (their ``seed``); call it at the top of a script to also
+    make the model's initial weights repeatable."""
+    torch.manual_seed(seed)  # also every CUDA device
+    np.random.seed(seed % 2**32)
+    random.seed(seed)
+
+
+def random_state() -> dict:
+    """The state of every generator ``seed_all`` seeds, as tensors, lists and
+    numbers (so a checkpoint holding it loads with ``weights_only=True``)."""
+    name, keys, position, has_gauss, cached_gauss = np.random.get_state()
+    version, internal, gauss_next = random.getstate()
+    return {
+        "torch": torch.get_rng_state(),
+        "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
+        "numpy": [name, keys.tolist(), int(position), int(has_gauss), cached_gauss],
+        "random": [version, list(internal), gauss_next],
+    }
+
+
+def set_random_state(state: dict) -> None:
+    """Restore the generators from ``random_state()``. CUDA states are only
+    restored on a machine with as many CUDA devices. The states may have been
+    loaded onto a GPU (``torch.load(map_location=...)``): torch takes them as
+    CPU tensors."""
+    torch.set_rng_state(state["torch"].cpu())
+    if state["cuda"] and torch.cuda.is_available():
+        if len(state["cuda"]) == torch.cuda.device_count():
+            torch.cuda.set_rng_state_all([s.cpu() for s in state["cuda"]])
+    name, keys, position, has_gauss, cached_gauss = state["numpy"]
+    np.random.set_state(
+        (name, np.asarray(keys, dtype=np.uint32), position, has_gauss, cached_gauss)
+    )
+    version, internal, gauss_next = state["random"]
+    random.setstate((version, tuple(internal), gauss_next))
 
 
 def random_permutation(num_indices: int, seed: int) -> np.ndarray:

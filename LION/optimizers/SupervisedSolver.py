@@ -1,4 +1,6 @@
 # numerical imports
+from typing import Optional
+
 import torch
 from torch.optim.optimizer import Optimizer
 import numpy as np
@@ -27,6 +29,7 @@ class SupervisedSolver(LIONsolver):
         model_regularization=None,
         device: torch.device = None,
         save_folder: str = None,
+        seed: Optional[int] = 0,
     ):
 
         super().__init__(
@@ -38,6 +41,7 @@ class SupervisedSolver(LIONsolver):
             device=device,
             solver_params=SolverParams(),
             save_folder=save_folder,
+            seed=seed,
         )
         if verbose:
             print("Supervised solver training on device: ", self.device)

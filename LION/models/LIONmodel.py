@@ -20,6 +20,7 @@ from typing import Optional
 from LION.utils.parameter import LIONParameter
 import LION.utils.spec as spec
 from LION.data_loaders.data_record import is_data_record
+from LION.optimizers.training_record import is_training_record
 
 # We will need utilities
 import LION.utils.utils as ai_utils
@@ -273,7 +274,9 @@ class LIONmodel(nn.Module, ABC):
         - 'dataset' : the record of the data (``LION.data_loaders.data_record``,
           e.g. ``experiment.data_record("train")``), saved and read back as it is;
           or a LIONParameter describing the dataset creation and handling.
-        - 'training': LIONParameter describing the training algorithm and procedures
+        - 'training': the record of the training (``LION.optimizers.training_record``,
+          written by the solvers), saved and read back as it is; or a
+          LIONParameter describing the training algorithm and procedures
         - 'geometry': If the model itself has no scan geometry parameter, but the dataset was created with some geometry
 
         If you want to save the model for training later (i.e. checkpoiting), use save_checkpoint()
@@ -312,6 +315,8 @@ class LIONmodel(nn.Module, ABC):
             dic["epoch"] = _plain_numbers(kwargs.pop("epoch"))
         if "optimizer" in kwargs:
             dic["optimizer_state_dict"] = kwargs.pop("optimizer")
+        if "random_state" in kwargs:  # LION.utils.rng.random_state(), for resuming
+            dic["random_state"] = kwargs.pop("random_state")
 
         # (optional)
         geometry = None
@@ -345,10 +350,12 @@ class LIONmodel(nn.Module, ABC):
             metadata["geometry"] = spec.encode(given_geometry)
         if is_data_record(dataset_params):
             # already JSON (LION.data_loaders.data_record), kept as it is
-            metadata["dataset_params"] = dataset_params
+            metadata["dataset_params"] = spec.read(dataset_params)  # as JSON
         elif dataset_params is not None:
             metadata["dataset_params"] = spec.encode(dataset_params)
-        if training is not None:
+        if is_training_record(training):
+            metadata["training"] = spec.read(training)  # as JSON
+        elif training is not None:
             metadata["training"] = spec.encode(training)
 
         # Do the save:
@@ -459,10 +466,10 @@ class LIONmodel(nn.Module, ABC):
         elif kwargs.get("geometry") is not None:
             options.geometry = kwargs["geometry"]
         for key in ("dataset_params", "training"):
-            if is_data_record(saved.get(key)):
-                # a data record is read as it is: making its dataset again
-                # (build(record["dataset"])) reads the data, so only on request
-                setattr(options, key, saved[key])
+            if is_data_record(saved.get(key)) or is_training_record(saved.get(key)):
+                # a record, whose specs stay dicts: making its components
+                # again (e.g. the dataset, which reads the data) is on request
+                setattr(options, key, LIONParameter(**saved[key]))
             elif key in saved:
                 setattr(options, key, spec.build(saved[key], allow))
         return target, kwargs, options
@@ -610,7 +617,7 @@ class LIONmodel(nn.Module, ABC):
         The weights are loaded into the *given* model (rather than into a new
         instance) so that ``optimiser`` keeps optimising the parameters of the
         model that is returned. Returns ``(model, optimiser, start_epoch,
-        total_loss, data)``; if no checkpoint exists the inputs are returned
+        total_loss, data)``, ``data["file"]`` being the checkpoint read; if no checkpoint exists the inputs are returned
         unchanged with ``start_epoch=0`` and ``data=None``.
         """
         if isinstance(fname, str):
@@ -623,6 +630,7 @@ class LIONmodel(nn.Module, ABC):
             return model, optimiser, 0, total_loss, None
 
         data = cls._load_data(checkpoints[-1], supress_warnings=True)
+        data["file"] = checkpoints[-1]
         model.load_state_dict(data.pop("model_state_dict"))
         optimiser.load_state_dict(data["optimizer_state_dict"])
         model.train()

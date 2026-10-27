@@ -22,11 +22,13 @@ class LIONParameter:
         ----------
         **kwargs : dict
             Contains parameters to initialize the `LIONParameter`.
-            If a value is a `dict`, it will be turned into a `LIONParameter`.
+            If a value is a `dict`, it will be turned into a `LIONParameter`,
+            unless it is a spec (a dict with ``"_target_"``, see
+            ``LION.utils.spec``): a spec describes an object and stays a dict.
         """
         for item in kwargs:
             # TODO (low importance): Is there an `is_dict_like` that can include more types of key-based objects? If not, should we make one?
-            if isinstance(kwargs[item], dict):
+            if isinstance(kwargs[item], dict) and "_target_" not in kwargs[item]:
                 # If we get a dict, turn it into a LIONParameter (we can have nested LIONParameter's)
                 setattr(self, item, LIONParameter(**(kwargs[item])))
             else:

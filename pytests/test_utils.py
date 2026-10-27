@@ -265,3 +265,15 @@ def test_test_with_experiment_runs_models_as_the_solvers(
             assert not fdk_inputs
             expected = model(sino)
     torch.testing.assert_close(pred, expected)
+
+
+def test_lion_parameter_keeps_specs_as_dicts():
+    """A dict with "_target_" describes an object (LION.utils.spec): it stays a
+    dict; other dicts become LIONParameters, as before."""
+    from LION.utils.parameter import LIONParameter
+
+    spec = {"_target_": "torch.nn.modules.loss.MSELoss", "reduction": "mean"}
+    p = LIONParameter(loss=spec, inner={"a": 1, "spec": spec})
+    assert p.loss == spec and isinstance(p.loss, dict)
+    assert isinstance(p.inner, LIONParameter) and p.inner.spec == spec
+    assert p.serialize() == {"loss": spec, "inner": {"a": 1, "spec": spec}}

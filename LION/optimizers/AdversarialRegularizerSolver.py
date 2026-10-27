@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import numpy as np
+from typing import Optional
+
 import torch
 from torch.optim.optimizer import Optimizer
 from tqdm import tqdm
@@ -63,9 +65,17 @@ class ARSolver(LIONsolver):
         verbose: bool = True,
         device: torch.device = None,
         solver_params: ARParams | None = None,
+        seed: Optional[int] = 0,
     ) -> None:
         super().__init__(
-            model, optimizer, self.wgan_loss, geometry, verbose, device, solver_params
+            model,
+            optimizer,
+            self.wgan_loss,
+            geometry,
+            verbose,
+            device,
+            solver_params,
+            seed=seed,
         )
         self.reconstructor = LearnedRegularizerReconstructor(
             self.op,

@@ -23,6 +23,9 @@ from LION.classical_algorithms.fdk import fdk
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
 from LION.utils.parameter import LIONParameter
 from LION.utils.device import default_device
+from LION.utils import rng, spec
+from LION.data_loaders.data_record import data_record
+from LION.optimizers import training_record as records
 
 # Lionmodels
 from LION.models.LIONmodel import LIONmodel, ModelInputType
@@ -40,6 +43,7 @@ from torch.optim.optimizer import Optimizer
 from abc import ABC, abstractmethod, ABCMeta
 
 # general imports
+import os
 import warnings
 import pathlib
 
@@ -97,7 +101,20 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         device: torch.device = None,
         solver_params: Optional[SolverParams] = None,
         save_folder: Optional[pathlib.Path] = None,
+        seed: Optional[int] = 0,
     ) -> None:
+        """
+        ``seed``: the training seed. When training starts, torch (CPU and
+        CUDA), numpy and Python's ``random`` are seeded with it, so the same
+        solver, model and data give the same training, and checkpoints keep the
+        random state, so a resumed run continues the same way. The randomness
+        within a run (shuffling, noise a solver adds) still changes every batch
+        and epoch. Two runs with the same seed give the same model: use
+        different seeds for an ensemble. ``None``: unseeded.
+
+        ``save_folder``: where results are saved; by default the folder in the
+        ``LION_RESULTS_PATH`` environment variable, if set.
+        """
 
         super().__init__()
         if solver_params is None:
@@ -137,7 +154,15 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         self.current_epoch: int = 0
 
-        self.save_folder: Optional[pathlib.Path] = save_folder
+        if save_folder is None:
+            save_folder = os.environ.get("LION_RESULTS_PATH")
+        self.save_folder: Optional[pathlib.Path] = (
+            None if save_folder is None else pathlib.Path(save_folder).expanduser()
+        )
+        self.seed = seed
+        self.n_epochs: Optional[int] = None
+        self.initial_weights_sha256: Optional[str] = None
+        self._data_records = {}
 
         self.do_load_checkpoint: bool = False
         self.checkpoint_freq: Optional[int] = None
@@ -147,8 +172,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.validation_fname: Optional[str] = None
         self.checkpoint_save_folder: Optional[pathlib.Path] = None
         self.verbose = verbose
-        self.metadata = LIONParameter()
-        self.dataset_param = LIONParameter()
 
     @property
     def do_normalise(self) -> bool:
@@ -159,6 +182,123 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """Run the model on a batch of measurements, as in training (see
         ``model_forward``)."""
         return model_forward(self.model, data, self.op)
+
+    # ------------------------------------------------------------------
+    # The training record (LION.optimizers.training_record)
+
+    def spec_kwargs(self) -> dict:
+        """The solver's own constructor arguments: not the model (saved as
+        the model) nor the optimizer (built on the model's parameters)."""
+        kwargs = spec._constructor_arguments(self)
+        kwargs.pop("model", None)
+        kwargs.pop("optimizer", None)
+        return kwargs
+
+    def _data_record(self, loader) -> dict:
+        """The data record of a loader's dataset, made once per loader."""
+        key = id(loader.dataset)
+        if key not in self._data_records:
+            self._data_records[key] = data_record(loader.dataset)
+        return self._data_records[key]
+
+    def training_record(self, kind: str, epoch: int, value=None) -> LIONParameter:
+        """The record of this training, for a file holding the ``kind``
+        ("final", "best_validation", "checkpoint") weights after ``epoch``
+        epochs (see ``LION.optimizers.training_record``)."""
+        solver = {spec.TARGET: spec.import_path(type(self))}
+        for name, argument in self.spec_kwargs().items():
+            if isinstance(argument, LIONParameter):
+                # value by value, so one that can't be saved (e.g. a lambda
+                # recon_fn) doesn't hide the others
+                values = (
+                    argument.spec_kwargs()
+                    if hasattr(argument, "spec_kwargs")
+                    else vars(argument)
+                )
+                solver[name] = {
+                    spec.TARGET: spec.import_path(type(argument)),
+                    **{
+                        k: spec.encode_or_name(v, f"{name}.{k}")
+                        for k, v in values.items()
+                    },
+                }
+            else:
+                solver[name] = spec.encode_or_name(argument, name)
+        record = {
+            records.RECORD_KEY: records.RECORD_VERSION,
+            "solver": solver,
+            "optimizer": spec.encode_or_name(self.optimizer, "the optimizer"),
+            "seed": self.seed,
+            "initial_weights_sha256": self.initial_weights_sha256,
+        }
+        if self.train_loader is not None:
+            record["train"] = records.loader_settings(self.train_loader)
+        if self.validation_loader is not None and self.validation_fn is not None:
+            record["validation"] = {
+                "data": self._data_record(self.validation_loader),
+                **records.loader_settings(self.validation_loader),
+                "every": self.validation_freq,
+                "function": spec.encode_or_name(self.validation_fn, "it"),
+            }
+        record["epochs"] = {"asked": self.n_epochs, "done": epoch}
+        record["weights"] = {"kind": kind, "epoch": epoch}
+        if value is not None:
+            record["weights"]["value"] = float(value)
+        record["history"] = {
+            "train_loss": records.history(self.train_loss, epoch),
+            "validation": records.history(self.validation_loss, epoch),
+        }
+        return LIONParameter(**record)
+
+    def _training_data_record(self):
+        """The training data's record: the model file's ``dataset_params``."""
+        if self.train_loader is None:
+            return None
+        return self._data_record(self.train_loader)
+
+    @classmethod
+    def instantiate(cls, source, model: LIONmodel, *, allow=(), **arguments):
+        """The solver a saved file describes, training ``model``.
+
+        ``source``: a model file a solver saved (or the dict read from it), or
+        its training record. Made from the solver's own record only: its
+        class, ``solver_params``, loss and seed, and the optimizer (class and
+        hyperparameters) on ``model``'s parameters. The data, validation,
+        testing and saving are set as usual (``set_training``, ...).
+        ``arguments`` replace recorded ones or give those that couldn't be
+        recorded (e.g. ``loss_fn`` for a lambda loss) and where it runs
+        (``device``, ``verbose``, ``save_folder``). Called on ``LIONsolver``
+        it makes the class the record names; on a solver class, that class.
+        """
+        record = records.read_training_record(source)
+        if spec.is_unsaved(record.optimizer):
+            raise ValueError(
+                f"the record only names its optimizer, "
+                f"{record.optimizer.unsaved}: it can't be made again"
+            )
+        solver_spec = {
+            k: v
+            for k, v in record.solver.items()
+            if k == spec.TARGET or k not in arguments
+        }
+        unsaved = [
+            name
+            for name, value in solver_spec.items()
+            if isinstance(value, dict)
+            and (
+                "unsaved" in value
+                or any(isinstance(v, dict) and "unsaved" in v for v in value.values())
+            )
+        ]
+        if unsaved:
+            raise ValueError(
+                f"the record only names (part of) {', '.join(unsaved)}, which can't "
+                "be made again: give " + ", ".join(f"{k}=..." for k in unsaved)
+            )
+        path, kwargs = spec.build_arguments(solver_spec, allow)
+        target = spec.target_class(path, cls, LIONsolver, allow)
+        optimizer = spec.build(record.optimizer, allow, params=model.parameters())
+        return target(model=model, optimizer=optimizer, **kwargs, **arguments)
 
     # This should return the default parameters of the solver
     @staticmethod
@@ -611,8 +751,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             epoch + 1,
             self.train_loss,
             self.optimizer,
-            self.metadata,
-            dataset=self.dataset_param,
+            self.training_record("checkpoint", epoch + 1),
+            dataset=self._training_data_record(),
+            random_state=rng.random_state(),
         )
 
     def save_validation(self, epoch):
@@ -635,9 +776,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model.save(
             self.save_folder.joinpath(self.validation_fname),
             epoch=epoch,
-            training=self.metadata,
+            training=self.training_record(
+                "best_validation", epoch + 1, value=self.validation_loss[epoch]
+            ),
             loss=self.validation_loss[epoch],
-            dataset=self.dataset_param,
+            dataset=self._training_data_record(),
         )
 
     def save_final_results(self, final_result_fname=None, save_folder=None, epoch=None):
@@ -656,9 +799,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model.save(
             self.save_folder.joinpath(self.final_result_fname),
             epoch=epoch,
-            training=self.metadata,
+            training=self.training_record("final", epoch),
             loss=self.train_loss,
-            dataset=self.dataset_param,
+            dataset=self._training_data_record(),
         )
 
     def clean_checkpoints(self):
@@ -721,7 +864,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.optimizer,
             self.current_epoch,
             loaded_train_loss,
-            _,
+            data,
         ) = self.model.load_checkpoint_if_exists(
             self.checkpoint_save_folder.joinpath(self.checkpoint_fname),
             self.model,
@@ -729,6 +872,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.train_loss,
             verbose=self.verbose,
         )
+        if data is not None:
+            self._resume_from(data)
         # Keep the losses of the epochs already done, without shrinking the
         # array that train() allocated for this run.
         loaded_train_loss = np.asarray(loaded_train_loss, dtype=float).ravel()
@@ -765,6 +910,27 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 )
         return self.current_epoch
 
+    def _resume_from(self, data):
+        """Continue the run a checkpoint was saved from: its random state, the
+        hash of its initial weights, and the values the solver computed
+        during the run (``solver_params`` that are ``None`` here)."""
+        if self.seed is not None and "random_state" in data:
+            rng.set_random_state(data["random_state"])
+        try:
+            record = records.read_training_record(data["file"])
+        except (ValueError, OSError):
+            return  # a checkpoint saved without a training record
+        self.initial_weights_sha256 = getattr(record, "initial_weights_sha256", None)
+        saved = record.solver.get("solver_params")
+        if not isinstance(saved, dict):
+            return
+        saved = {k: v for k, v in saved.items() if k not in spec._KEYS}
+        for name, value in saved.items():
+            if isinstance(value, dict) and "unsaved" in value:
+                continue
+            if getattr(self.solver_params, name, 0) is None and value is not None:
+                setattr(self.solver_params, name, spec.build(value))
+
     def train_step(self):
         """
         This function is responsible for performing a single tranining set epoch of the optimization.
@@ -793,7 +959,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.train_loss[epoch] = self.train_step()
         # actually make sure we're doing validation
         if self.validation_loss is not None and (epoch + 1) % self.validation_freq == 0:
-            self.validation_loss[epoch] = self.validate()
+            # validation leaves training's random numbers as they were (a
+            # DataLoader draws one when it starts), so the trained model doesn't
+            # depend on how often it was validated
+            cuda = [self.device] if torch.device(self.device).type == "cuda" else []
+            with torch.random.fork_rng(devices=cuda):
+                self.validation_loss[epoch] = self.validate()
             if self.verbose:
                 print(
                     f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
@@ -811,6 +982,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         assert n_epochs > 0, "Number of epochs must be a positive integer"
         # Make sure all parameters are set
         self.check_training_ready()
+        self.n_epochs = n_epochs
 
         # Allocate the loss arrays before loading a checkpoint, so that the
         # loaded values (including the min validation loss) are kept. Losses of
@@ -840,6 +1012,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if self.do_load_checkpoint and do_checkpoint:
             print("Loading checkpoint...")
             self.current_epoch = self.load_checkpoint()
+
+        if self.current_epoch == 0:  # a new run
+            if self.seed is not None:
+                rng.seed_all(self.seed)
+                if self.verbose:
+                    print(
+                        f"Training seed: {self.seed} (the solver's seed argument; "
+                        "seed=None for an unseeded run)"
+                    )
+            self.initial_weights_sha256 = records.weights_sha256(self.model)
 
         self.model.train()
         # train loop

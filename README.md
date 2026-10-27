@@ -63,7 +63,13 @@ CUDA_VISIBLE_DEVICES=2 python my_script.py
 
 Several DataSets are currently supported by LION. To point the package to the correct storage location use `export LION_DATA_PATH=/path/to/Datasets`. For convenience, this can be added to your `.bashrc` or similar file.
 
-NOTE: If you are part of CIA at DAMTP, you already have access to these datasets and you don't need to follow any instruction to dowload them. They should be accessible using `export LION_DATA_PATH=/store/LION/datasets`
+NOTE: If you are part of CIA at DAMTP, you already have access to these datasets and you don't need to follow any instruction to dowload them. They should be accessible using `export LION_DATA_PATH=/store/cia-lion/datasets`
+
+## Results
+
+Trained models and checkpoints are saved where you tell the solver to save them (`save_folder`, or `set_saving`). To have a default, set `export LION_RESULTS_PATH=/path/to/results` (for example in your `.bashrc`): a solver without a `save_folder` saves there. It is optional. Paths inside `LION_RESULTS_PATH` (and `LION_DATA_PATH`) are written relative to it in LION's saved files, so the files mean the same on any machine.
+
+NOTE: If you are part of CIA at DAMTP, set `LION_RESULTS_PATH` to your own user folder.
 
 The supported Datasets are `2DeteCT`, `LIDC-IDRI`,
 
