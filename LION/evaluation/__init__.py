@@ -12,8 +12,9 @@
   CSV), per-sample scores, box plots, differences to the baseline, example
   images (best/median/worst or chosen samples, zoom crops), and its spec
   (``Comparison.instantiate(folder)``).
-- ``LION.evaluation.figures``: those figures as functions (matplotlib, only
-  imported there).
+- ``LION.evaluation.figures``: those figures as functions, in plain matplotlib
+  (only imported there), and their data (``per_sample``,
+  ``per_sample_differences``) for any other plot.
 - ``baseline(operator)``: the classical reconstruction of the modality (FDK
   for CT), which methods are compared with.
 - ``scores``, ``summary``, ``table``: the same, as functions.

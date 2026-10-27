@@ -182,7 +182,7 @@ class Comparison:
         found = {}
         for metric in records[0].summary.serialize():
             name = _file_part(metric)
-            found[f"box_{name}"] = box_plot(records, metric, baseline)
+            found[f"box_{name}"] = box_plot(records, metric)
             if baseline is not None and len(records) > 1:
                 found[f"difference_{name}"] = difference_plot(records, metric, baseline)
         return found

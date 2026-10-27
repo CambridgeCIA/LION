@@ -18,12 +18,12 @@ import torch  # noqa: E402
 import LION.evaluation.evaluation as evaluation_module  # noqa: E402
 from LION.evaluation import Comparison  # noqa: E402
 from LION.evaluation.figures import (  # noqa: E402
-    BASELINE,
-    METHOD,
     box_plot,
     chosen_samples,
     difference_plot,
     example_images,
+    per_sample,
+    per_sample_differences,
     reconstructions,
 )
 from pytests.test_comparison import Slices, doubling, evaluation  # noqa: E402
@@ -54,39 +54,45 @@ def record(name, values, higher=True):
     }
 
 
-def medians(fig):
-    """The median of each box, in order."""
-    return [
-        line.get_ydata()[0]
-        for line in fig.axes[0].lines
-        if len(line.get_ydata()) == 2 and line.get_linewidth() == 1.2
-    ]
-
-
 # --------------------------------------------------------------------------
 # Score plots and the chosen samples
 
 
-def test_box_plot_one_box_per_method_the_baseline_muted():
-    records = [record("base", [1.0, 2.0, 3.0]), record("net", [2.0, 4.0, 6.0])]
-    fig = box_plot(records, "M", baseline="base")
-    assert [t.get_text() for t in fig.axes[0].get_xticklabels()] == ["base", "net"]
-    assert medians(fig) == [2.0, 4.0]
-    colours = [p.get_facecolor()[:3] for p in fig.axes[0].patches]
-    from matplotlib.colors import to_rgb
-
-    assert colours == [to_rgb(BASELINE), to_rgb(METHOD)]
-    assert "higher is better" in fig.axes[0].get_ylabel()
-
-
-def test_difference_plot_is_per_sample_against_the_baseline():
+def test_per_sample_scores_and_differences():
     base = record("base", [1.0, 2.0, 3.0])
-    net = record("net", [3.0, 2.0, 4.0])  # differences 2, 0, 1
+    net = record("net", [3.0, 2.0, 4.0])
+    assert per_sample([base, net], "M") == {
+        "base": [1.0, 2.0, 3.0],
+        "net": [3.0, 2.0, 4.0],
+    }
+    assert per_sample_differences([base, net], "M", "base") == {"net": [2.0, 0.0, 1.0]}
+    # matched by sample ID, not position
+    net["scores"]["ids"] = ["s2", "s0", "s1"]
+    assert per_sample_differences([base, net], "M", "base") == {"net": [0.0, 1.0, 2.0]}
+    with pytest.raises(ValueError, match="no record named"):
+        per_sample_differences([net], "M", "base")
+
+
+def test_plots_are_boxes_of_that_data():
+    base = record("base", [1.0, 2.0, 3.0])
+    net = record("net", [3.0, 2.0, 4.0])
+    fig = box_plot([base, net], "M")
+    assert [t.get_text() for t in fig.axes[0].get_xticklabels()] == ["base", "net"]
+    assert "higher is better" in fig.axes[0].get_ylabel()
     fig = difference_plot([base, net], "M", "base")
     assert [t.get_text() for t in fig.axes[0].get_xticklabels()] == ["net"]
-    assert medians(fig) == [1.0]
-    with pytest.raises(ValueError, match="no record named"):
-        difference_plot([net], "M", "base")
+    assert fig.axes[0].get_ylabel().startswith("M − base")
+
+
+def test_plots_draw_into_a_given_axes():
+    from matplotlib.figure import Figure
+
+    mine = Figure()
+    left, right = mine.subplots(1, 2)
+    records = [record("base", [1.0, 2.0]), record("net", [2.0, 3.0])]
+    assert box_plot(records, "M", ax=left) is mine
+    assert difference_plot(records, "M", "base", ax=right) is mine
+    assert len(mine.axes) == 2
 
 
 def test_chosen_samples():
