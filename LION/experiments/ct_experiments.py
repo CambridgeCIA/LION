@@ -236,6 +236,13 @@ class Experiment(ABC):
 
     SPLITS = ("train", "validation", "test")
 
+    def baseline(self):
+        """The reconstruction methods are compared with in this experiment
+        (``LION.evaluation.Comparison``), as a function ``f(y, operator)``;
+        None: the modality's (``LION.evaluation.baseline``: FDK for CT).
+        Experiments where another method is the standard override this."""
+        return None
+
     def get_dataset(self, split):
         """The dataset of a split ("train", "validation" or "test"). It keeps
         the experiment and the split (``dataset.experiment``,

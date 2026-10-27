@@ -117,7 +117,11 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   solvers): every test sample, PSNR/SSIM/HaarPSI by default with one range for
   the test set, records saved and reused. The classical baseline of each
   modality is `LION.evaluation.baseline(operator)` (CT: FDK): add new
-  modalities there, not on the operator.
+  modalities there, not on the operator; an experiment whose standard is
+  another method overrides `Experiment.baseline()`. `Comparison` runs several
+  methods against the baseline, after checking their records: a model trained
+  or validated on test data (by patient) is an error, another problem or other
+  LION code a warning.
 - Solvers take a training `seed` (default 0; `None`: unseeded) and pass it to
   `LIONsolver`, which seeds torch, numpy and Python's `random` when training
   starts (`LION.utils.rng.seed_all`); checkpoints keep the random state, so a
@@ -159,7 +163,10 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   `instantiate()`, nothing else), keep their constructor arguments under the
   same names (`mode`, `parameters`, the geometry) and list their samples
   (`sample_ids()`, `sample_files()`), so `data_record(dataset)`
-  (`LION/data_loaders/data_record.py`) can describe them; data are on
+  (`LION/data_loaders/data_record.py`) can describe them. Where samples come
+  in groups that must stay in one split (LIDC-IDRI's patients, 2DeteCT's
+  physical samples), `sample_groups()` gives each sample's, so evaluations
+  check leakage by group; data are on
   `default_device()`. A noise function is a LION function or a
   `functools.partial` of one (not a lambda), so it can be recorded.
 - Noise is part of the experiment, not the dataset: `LIONDataset.instantiate`

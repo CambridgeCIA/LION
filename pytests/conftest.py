@@ -6,6 +6,8 @@
   algorithms, and pip's astra-toolbox imports fine on machines without a GPU.
 - Tests marked ``@pytest.mark.cuda`` are skipped when no CUDA device is
   available, so ``pytest`` works everywhere without ``-m "not cuda"``.
+- ``LION_RESULTS_PATH`` is unset in every test, so tests don't depend on (or
+  write to) the results folder of whoever runs them; tests of it set it.
 """
 
 import pytest
@@ -41,6 +43,11 @@ collect_ignore = [
     "test_sirt.py",
     "test_tv_min.py",
 ]
+
+
+@pytest.fixture(autouse=True)
+def no_results_folder(monkeypatch):
+    monkeypatch.delenv("LION_RESULTS_PATH", raising=False)
 
 
 @pytest.fixture
