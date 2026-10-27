@@ -37,6 +37,15 @@ maximum, 1e-6 rule for starved rays), so their results are close to, but not
 bit-identical with, the old ones. New results are not comparable with old
 results of the same experiment name.
 
+Each slice has one noisy measurement (``noise_params.seed``): its noise is
+drawn from a generator seeded by the seed and the slice (patient and slice
+file), so it is the same in every epoch, run, sample order and DataLoader
+worker, in training, validation and test, as a scan is measured once.
+Training randomness (shuffling, noise a solver adds) is not affected.
+``seed = None``, and parameter files without it, draw fresh noise each time a
+slice is read. One seed gives the same noise on the same device type (CPU or
+CUDA) and torch version; see ``LION.utils.rng``.
+
 Measured 2DeteCT data have their own noise; see the deteCT data loader.
 
 Geometry of the LIDC-IDRI experiments, since 26 October 2026
@@ -131,6 +140,11 @@ class Experiment(ABC):
         default energy-integrating detector has electronic noise (sigma = 5
         photons) and cross-talk; detector="photon_counting" has neither (see
         ct_utils.sinogram_add_noise).
+
+        ``seed``: each slice's noise is drawn from a generator seeded by the
+        seed and the slice, so a slice has one noisy measurement, the same in
+        every epoch and run, as a scan is measured once (training, validation
+        and test). None: fresh noise each time the slice is read.
         """
         noise = LIONParameter()
         noise.noise_model = "physical"
@@ -140,6 +154,7 @@ class Experiment(ABC):
         noise.detector = detector
         noise.mass_attenuation = ct.DEFAULT_MASS_ATTENUATION
         noise.min_counts = 1.0
+        noise.seed = 0
         return noise
 
     @staticmethod
@@ -155,7 +170,9 @@ class Experiment(ABC):
                 parameters=self.param.data_loader_params,
                 geometry_parameters=self.geometry,
             )
-            dataloader.set_sinogram_transform(self.sino_fun)
+            dataloader.set_sinogram_transform(
+                self.sino_fun, seed=getattr(self.param.noise_params, "seed", None)
+            )
 
         elif self.dataset == "2DeteCT":
             if hasattr(self.param, "noise_params"):

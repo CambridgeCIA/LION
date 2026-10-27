@@ -115,7 +115,11 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   and when it is saved.
 - Simulated CT data are densities (`ct_utils.from_HU_to_density`) in mm
   geometries. Noise is added with `ct_utils.sinogram_add_noise`, whose
-  physical model is the default. The module docstring of
+  physical model is the default.
+- Random numbers that make up the data (e.g. simulated noise) are drawn inside
+  `LION.utils.rng.seeded(seed, <sample identity>)`, so each sample is the same
+  every time it is read. Randomness of training (shuffling, noise a solver
+  adds) is not seeded per sample. The module docstring of
   `LION/experiments/ct_experiments.py` documents the experiments' noise, doses
   and geometries, and how they changed.
 - Data loaders expect damaged files (interrupted downloads or copies) and leave

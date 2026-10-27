@@ -24,6 +24,7 @@ from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
 import LION.CTtools.ct_utils as ct
 from LION.utils.parameter import LIONParameter
 from LION.utils.device import default_device
+from LION.utils.rng import seeded
 
 
 # The pre-processing (LIDC_IDRI/pre_process_lidc_idri.py, resampling.py)
@@ -229,6 +230,7 @@ class LIDC_IDRI(Dataset):
 
         # Aux variable setting
         self.sinogram_transform = None
+        self.sinogram_transform_seed = None
         self.image_transform = None
         self.device = self.params.device
 
@@ -661,8 +663,17 @@ class LIDC_IDRI(Dataset):
         tensor = torch.from_numpy(np.load(file_path)).unsqueeze(0).to(self.device)
         return tensor
 
-    def set_sinogram_transform(self, sinogram_transform):
+    def set_sinogram_transform(self, sinogram_transform, seed=None):
+        """A function applied to each clean sinogram, e.g. the noise of an
+        experiment.
+
+        ``seed``: an integer makes its random numbers depend only on the seed
+        and the slice (patient and slice file): each slice gets the same
+        noisy sinogram in every epoch, run, order and DataLoader worker, as a
+        scan measures it once. None: fresh random numbers each time.
+        """
         self.sinogram_transform = sinogram_transform
+        self.sinogram_transform_seed = seed
 
     def set_image_transform(self, image_transform):
         self.image_transform = image_transform
@@ -768,7 +779,14 @@ class LIDC_IDRI(Dataset):
             sinogram = self.compute_clean_sinogram(reconstruction_tensor.float())
 
             if self.sinogram_transform is not None:
-                sinogram = self.sinogram_transform(sinogram)
+                with seeded(
+                    self.sinogram_transform_seed,
+                    "LIDC-IDRI",
+                    patient_id,
+                    slice_index_to_load,
+                    device=sinogram.device,
+                ):
+                    sinogram = self.sinogram_transform(sinogram)
             return sinogram, reconstruction_tensor
 
         elif self.params.task == "diagnostic":
