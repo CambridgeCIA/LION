@@ -167,6 +167,6 @@ def baseline(operator):
     ):
         return inverse
     raise ValueError(
-        f"no standard baseline for {type(operator).__name__}: give one, e.g. "
-        "Comparison(..., baseline=my_reconstruction)"
+        f"no standard baseline for {type(operator).__name__}: give the "
+        "reconstruction to compare with yourself, as a function f(y, operator)"
     )

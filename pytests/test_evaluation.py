@@ -457,3 +457,15 @@ def test_an_experiment(tmp_path, monkeypatch):
     assert len(record.scores.ids) == 2
     assert record.scores.ids[0].startswith("LIDC-IDRI-")
     assert len(list((tmp_path / "results").glob("zeros-*.json"))) == 1
+    # run again (a new evaluation, as in a new script): read, not recomputed
+    monkeypatch.setattr(
+        evaluation_module, "scores", lambda *a, **k: pytest.fail("recomputed")
+    )
+    again = Evaluation(
+        ct_experiments.LowDoseCTRecon(datafolder=folder),
+        save_folder=tmp_path / "results",
+        samples=2,
+    ).run(zeros, "zeros")
+    assert again.scores.ids == record.scores.ids
+    # and again in the same evaluation
+    evaluation_.run(zeros, "zeros")

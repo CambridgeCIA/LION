@@ -25,7 +25,6 @@ from LION.utils.device import default_device
 from LION.data_loaders.LIONDataset import LIONDataset
 from LION.utils.rng import seeded
 
-
 # The pre-processing (LIDC_IDRI/pre_process_lidc_idri.py, resampling.py)
 # resamples every slice to this pixel spacing on 512x512: 500 mm, the largest
 # field of view in LIDC-IDRI, so nothing is cropped.
@@ -359,7 +358,6 @@ class LIDC_IDRI(LIONDataset):
         ##% Divide dataset in training/validation/testing
         self.training_proportion = self.parameters.training_proportion
         self.validation_proportion = self.parameters.validation_proportion
-        self.parameters.mode = mode
         # Commpute number if images for each
         self.n_patients_training = math.floor(
             self.training_proportion * (self.total_patients)
@@ -396,15 +394,15 @@ class LIDC_IDRI(LIONDataset):
         )
 
         print("Preparing patient list, this may take time....")
-        if self.parameters.mode == "train":
+        if self.mode == "train":
             patient_list_to_load = self.training_patients_list
-        elif self.parameters.mode == "validation":
+        elif self.mode == "validation":
             patient_list_to_load = self.validation_patients_list
-        elif self.parameters.mode == "test":
+        elif self.mode == "test":
             patient_list_to_load = self.testing_patients_list
         else:
             raise NotImplementedError(
-                f"mode {self.parameters.mode} not implemented, try training, validation or testing"
+                f"mode {self.mode} not implemented, try training, validation or testing"
             )
 
         self.slices_to_load = self.get_slices_to_load(
@@ -422,7 +420,7 @@ class LIDC_IDRI(LIONDataset):
             self.slices_to_load
         )
 
-        print(f"Patient lists ready for {self.parameters.mode} dataset")
+        print(f"Patient lists ready for {self.mode} dataset")
 
     @staticmethod
     def patient_list(path_to_processed_dataset, legacy=False):
