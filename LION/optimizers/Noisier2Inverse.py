@@ -34,6 +34,7 @@ class Noisier2Inverse(LIONsolver):
         geometry: Geometry = None,
         verbose: bool = True,
         device: torch.device = None,
+        seed: Optional[int] = 0,
     ) -> None:
         super().__init__(
             model,
@@ -43,6 +44,7 @@ class Noisier2Inverse(LIONsolver):
             verbose,
             device,
             solver_params=solver_params,
+            seed=seed,
         )
         warn_if_not_mse(loss_fn, "Noisier2Inverse")
 

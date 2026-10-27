@@ -24,6 +24,29 @@ LIDC_IDRI_PROCESSED_DATASET_PATH = LION_DATA_PATH.joinpath("processed/LIDC-IDRI"
 DETECT_PROCESSED_DATASET_PATH = LION_DATA_PATH.joinpath("processed/2detect")
 
 
+## Where results (trained models, checkpoints) go by default, set via the
+## optional LION_RESULTS_PATH environment variable: a solver without a
+## save_folder saves there. None if not set.
+_lion_results_path = os.environ.get("LION_RESULTS_PATH")
+LION_RESULTS_PATH = (
+    None
+    if _lion_results_path is None
+    else pathlib.Path(_lion_results_path).expanduser().resolve()
+)
+
+
+def results_path(relative) -> pathlib.Path:
+    """A path inside ``LION_RESULTS_PATH``, e.g. ``results_path("LPD/model")``.
+    Saved parameters write paths inside it this way, as for ``data_path``."""
+    root = os.environ.get("LION_RESULTS_PATH")
+    if root is None:
+        raise RuntimeError(
+            f"'{relative}' is inside LION_RESULTS_PATH, which is not set. Set it to "
+            "your results folder, e.g. export LION_RESULTS_PATH=/path/to/results"
+        )
+    return pathlib.Path(root).expanduser().resolve().joinpath(relative)
+
+
 def data_path(relative) -> pathlib.Path:
     """A path inside ``LION_DATA_PATH``, e.g. ``data_path("processed/LIDC-IDRI")``.
     Saved parameters write paths inside ``LION_DATA_PATH`` this way (see

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import functools
 import random
-from typing import Callable
+from typing import Callable, Optional
 
 import torch
 from torch.optim.optimizer import Optimizer
@@ -22,6 +23,26 @@ def get_rotation_matrix(angle: float):
     return torch.tensor([[c, -s], [s, c]])
 
 
+class RotationGroup:
+    """The rotations of an image by the multiples of ``360 / cardinality``
+    degrees, as a sequence of functions (``random.choice`` picks one). Kept as
+    its ``cardinality``, so solver parameters holding it can be saved."""
+
+    def __init__(self, cardinality: int = 360):
+        if 360 % cardinality != 0:
+            raise ValueError(f"cardinality must divide 360, got {cardinality}")
+        self.cardinality = cardinality
+
+    def __len__(self):
+        return self.cardinality
+
+    def __getitem__(self, i):
+        if not -self.cardinality <= i < self.cardinality:
+            raise IndexError(i)
+        i %= self.cardinality
+        return functools.partial(rotate, angle=i * (360 / self.cardinality))
+
+
 class EquivariantSolver(LIONsolver):
     def __init__(
         self,
@@ -32,9 +53,17 @@ class EquivariantSolver(LIONsolver):
         verbose: bool = True,
         device: torch.device = None,
         solver_params: SolverParams | None = None,
+        seed: Optional[int] = 0,
     ) -> None:
         super().__init__(
-            model, optimizer, loss_fn, geometry, verbose, device, solver_params
+            model,
+            optimizer,
+            loss_fn,
+            geometry,
+            verbose,
+            device,
+            solver_params,
+            seed=seed,
         )
         self.transformation_group = self.solver_params.transformation_group
         self.alpha = self.solver_params.equivariance_strength
@@ -46,13 +75,8 @@ class EquivariantSolver(LIONsolver):
         self.AT = to_autograd(self.op.T, num_extra_dims=1)
 
     @staticmethod
-    def rotation_group(cardinality: int):
-        assert 360 % cardinality == 0
-        angle_increment = 360 / cardinality
-
-        return [
-            lambda x, i=i: rotate(x, i * angle_increment) for i in range(cardinality)
-        ]
+    def rotation_group(cardinality: int) -> RotationGroup:
+        return RotationGroup(cardinality)
 
     @staticmethod
     def default_parameters() -> LIONParameter:

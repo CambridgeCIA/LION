@@ -68,9 +68,17 @@ ALLOWED_TARGETS = (
     "pathlib.Path",
     "functools.partial",
     "LION.utils.paths.data_path",
+    "LION.utils.paths.results_path",
 )
-# Constructor arguments that describe where an object runs, not what it is.
-RUNTIME_ARGUMENTS = ("device", "verbose")
+# Constructor arguments that describe where an object runs, not what it is
+# (save_folder: where this machine writes its results).
+RUNTIME_ARGUMENTS = ("device", "verbose", "save_folder")
+# Paths inside these folders (environment variables) are written relative to
+# them, as calls to these functions, so they mean the same place on any machine.
+LION_FOLDERS = {
+    "LION_DATA_PATH": "LION.utils.paths.data_path",
+    "LION_RESULTS_PATH": "LION.utils.paths.results_path",
+}
 
 
 class SpecError(ValueError):
@@ -111,9 +119,10 @@ def encode(value):
             f"got shape {tuple(value.shape)}"
         )
     if isinstance(value, pathlib.PurePath):
-        relative = _relative_to_data_path(value)
-        if relative is not None:  # the same place on any machine
-            return {TARGET: "LION.utils.paths.data_path", ARGS: [relative]}
+        inside = _relative_to_lion_folder(value)
+        if inside is not None:  # the same place on any machine
+            function, relative = inside
+            return {TARGET: function, ARGS: [relative]}
         return {TARGET: "pathlib.Path", ARGS: [str(value)]}
     if isinstance(value, functools.partial):
         return {
@@ -149,17 +158,38 @@ def encode(value):
     return to_spec(value)
 
 
-def _relative_to_data_path(path):
-    """``path`` relative to ``LION_DATA_PATH`` (a string), or None if it is
-    not inside it (or ``LION_DATA_PATH`` is not set)."""
-    root = os.environ.get("LION_DATA_PATH")
-    if root is None:
-        return None
-    root = pathlib.Path(root).expanduser().resolve()
+def encode_or_name(value, what: str = "it"):
+    """``encode(value)``, or, for a value a spec can't hold (a lambda, a class
+    that doesn't keep its arguments), ``{"unsaved": repr, "reason": ...}`` with
+    a warning. For records, which describe what they can and name the rest."""
     try:
-        return pathlib.Path(path).expanduser().resolve().relative_to(root).as_posix()
-    except ValueError:
-        return None
+        return encode(value)
+    except SpecError as error:
+        warnings.warn(
+            f"{value!r} can't be written as a spec, so the record only names {what} "
+            f"({error}). Use a LION class, or functools.partial of a LION function.",
+            stacklevel=3,
+        )
+        return {"unsaved": repr(value), "reason": str(error)}
+
+
+def _relative_to_lion_folder(path):
+    """``(function, relative path)`` for a path inside one of LION's folders
+    (``LION_FOLDERS``; the innermost, if they are nested), or None."""
+    found = None
+    path = pathlib.Path(path).expanduser().resolve()
+    for variable, function in LION_FOLDERS.items():
+        root = os.environ.get(variable)
+        if root is None:
+            continue
+        root = pathlib.Path(root).expanduser().resolve()
+        try:
+            relative = path.relative_to(root)
+        except ValueError:
+            continue
+        if found is None or len(relative.parts) < len(found[1].parts):
+            found = (function, relative)
+    return None if found is None else (found[0], found[1].as_posix())
 
 
 def to_spec(obj) -> dict:

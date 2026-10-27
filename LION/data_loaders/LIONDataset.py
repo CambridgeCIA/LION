@@ -6,7 +6,7 @@
 
 import warnings
 
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
 
 from LION.utils import spec
 from LION.data_loaders.data_record import (
@@ -43,7 +43,7 @@ class LIONDataset(Dataset):
         The dataset's samples are compared with the record's, and with
         ``check_files=True`` the contents of their files too (the record
         must have been made with ``hash_files=True``); a difference gives a
-        warning.
+        warning. A record of a ``Subset`` gives that ``Subset`` of the dataset.
         """
         if isinstance(source, dict) and spec.TARGET in source:
             return spec.instantiate(source, cls, LIONDataset, allow)
@@ -51,19 +51,22 @@ class LIONDataset(Dataset):
         dataset = spec.instantiate(
             recorded_spec(record, "dataset"), cls, LIONDataset, allow
         )
-        _check_samples(dataset, record)
+        indices = record.get("subset", {}).get("indices")
+        _check_samples(dataset, record, indices)
         if check_files:
             _check_files(dataset, record)
         if record.get("sinogram_transform") is not None:
             _warn_noise_left_out(dataset, record)
-        return dataset
+        return dataset if indices is None else Subset(dataset, indices)
 
 
-def _check_samples(dataset, record):
+def _check_samples(dataset, record, indices=None):
     if "samples" not in record or not hasattr(dataset, "sample_ids"):
         return
     saved = record["samples"]["ids"]
     now = list(dataset.sample_ids())
+    if indices is not None:
+        now = [now[i] for i in indices if i < len(now)]
     if now == saved:
         return
     missing = len(set(saved) - set(now))

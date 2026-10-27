@@ -31,6 +31,7 @@ class Proj2ProjSolver(LIONsolver):
         geometry: Geometry = None,
         verbose: bool = True,
         device: torch.device = None,
+        seed: Optional[int] = 0,
     ) -> None:
         super().__init__(
             model,
@@ -40,6 +41,7 @@ class Proj2ProjSolver(LIONsolver):
             verbose,
             device,
             solver_params=solver_params,
+            seed=seed,
         )
         warn_if_not_mse(loss_fn, "Proj2ProjSolver")
 

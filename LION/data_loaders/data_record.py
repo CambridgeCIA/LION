@@ -15,6 +15,9 @@ checked, from the record alone:
   experiment's spec and which split this is;
 - ``samples``: what each sample is (e.g. ``"LIDC-IDRI-0912/slice_37"``), in
   order, their number and a hash of the list;
+- ``subset``: for a ``torch.utils.data.Subset``, its ``indices`` into the
+  dataset it is taken from (whose record this is); ``samples`` lists the
+  subset's samples;
 - ``files`` (``hash_files=True``): a hash of the contents of the files the
   samples are read from, to check that two copies of the data are the same.
   It reads the data, so it is only computed when asked.
@@ -30,7 +33,8 @@ data are only made again on request, from the record or the model's file:
 """
 
 import hashlib
-import warnings
+
+from torch.utils.data import Subset
 
 from LION.utils import spec
 
@@ -70,15 +74,6 @@ def recorded_spec(record: dict, key: str) -> dict:
     return value
 
 
-def _unsaved(obj, error) -> dict:
-    warnings.warn(
-        f"{obj!r} can't be written as a spec, so the data record only names it "
-        f"({error}). Use a LION class or functools.partial of a LION function.",
-        stacklevel=3,
-    )
-    return {"unsaved": repr(obj), "reason": str(error)}
-
-
 def _sha256_of_lines(lines) -> str:
     return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()
 
@@ -98,27 +93,20 @@ def file_contents_hash(paths) -> str:
 
 def data_record(dataset, hash_files=False) -> dict:
     """The record of a LION dataset (see the module docstring)."""
+    if isinstance(dataset, Subset):
+        return _subset_record(dataset, hash_files)
     record = {RECORD_KEY: RECORD_VERSION}
 
     experiment = getattr(dataset, "experiment", None)
     if experiment is not None:
-        try:
-            record["experiment"] = spec.to_spec(experiment)
-        except spec.SpecError as error:
-            record["experiment"] = _unsaved(experiment, error)
+        record["experiment"] = spec.encode_or_name(experiment, "the experiment")
         record["split"] = getattr(dataset, "split", None)
 
-    try:
-        record["dataset"] = spec.to_spec(dataset)
-    except spec.SpecError as error:
-        record["dataset"] = _unsaved(dataset, error)
+    record["dataset"] = spec.encode_or_name(dataset, "the dataset")
 
     transform = getattr(dataset, "sinogram_transform", None)
     if transform is not None:
-        try:
-            record["sinogram_transform"] = spec.encode(transform)
-        except spec.SpecError as error:
-            record["sinogram_transform"] = _unsaved(transform, error)
+        record["sinogram_transform"] = spec.encode_or_name(transform, "the noise")
         record["sinogram_transform_seed"] = getattr(
             dataset, "sinogram_transform_seed", None
         )
@@ -138,4 +126,21 @@ def data_record(dataset, hash_files=False) -> dict:
             )
         files = list(dataset.sample_files())
         record["files"] = {"count": len(files), "sha256": file_contents_hash(files)}
+    return record
+
+
+def _subset_record(subset, hash_files) -> dict:
+    """A ``torch.utils.data.Subset``: the record of the dataset it is taken
+    from, with the subset's ``indices`` and its samples only. The file hash, if
+    asked, is of the whole dataset's files."""
+    record = data_record(subset.dataset, hash_files)
+    indices = [int(i) for i in subset.indices]
+    record["subset"] = {"indices": indices}
+    if "samples" in record:
+        ids = [record["samples"]["ids"][i] for i in indices]
+        record["samples"] = {
+            "count": len(ids),
+            "sha256": _sha256_of_lines(ids),
+            "ids": ids,
+        }
     return record

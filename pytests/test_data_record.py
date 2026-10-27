@@ -408,3 +408,17 @@ def test_read_record(lidc_folder, tmp_path, no_tomosipo):
     assert read_record(saved_model(tmp_path, record)) == record
     (tmp_path / "record.json").write_text(json.dumps(record))
     assert read_record(tmp_path / "record.json") == record
+
+
+def test_a_subset_is_recorded_and_made_again(lidc_folder, no_tomosipo):
+    data = lidc_dataset(lidc_folder, mode="train")
+    subset = torch.utils.data.Subset(data, [2, 0])
+    record = through_json(data_record(subset))
+    assert record["subset"] == {"indices": [2, 0]}
+    ids = data.sample_ids()
+    assert record["samples"]["ids"] == [ids[2], ids[0]]
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # the subset's samples match
+        made = LIONDataset.instantiate(record)
+    assert isinstance(made, torch.utils.data.Subset) and made.indices == [2, 0]
+    assert type(made.dataset) is lidc.LIDC_IDRI

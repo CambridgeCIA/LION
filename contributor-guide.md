@@ -16,6 +16,8 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
 - Pip-only installs (and CI) use the `standalone` extra.
 - Datasets live under `LION_DATA_PATH` (see the README and
   `LION/data_loaders/README.md`).
+- Results go to a solver's `save_folder`, by default `LION_RESULTS_PATH`
+  (optional). A `save_folder` is where a machine writes, so it isn't recorded.
 
 ## Tests
 
@@ -103,6 +105,18 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   loss is given, and warn (`warn_if_not_mse`).
 - Reconstruction is separate from training (`LION/reconstructors`) and uses
   `op.adjoint`, not autograd.
+- Solvers take a training `seed` (default 0; `None`: unseeded) and pass it to
+  `LIONsolver`, which seeds torch, numpy and Python's `random` when training
+  starts (`LION.utils.rng.seed_all`); checkpoints keep the random state, so a
+  resumed run continues the same way. Validation doesn't change training's
+  random numbers, and noise a solver adds in validation is drawn inside
+  `rng.seeded(seed, ...)`, the same in every validation.
+- Solvers write the record of their training (`LION/optimizers/training_record.py`)
+  in every file they save. Values a solver computes during the run (e.g. an
+  estimated noise level) are kept in `solver_params`, starting as `None`, so
+  they are recorded and come back on resume.
+- `LIONsolver.instantiate(file, model)` makes the solver from its own record;
+  data, validation, testing and saving are set as usual.
 
 ## Devices
 
