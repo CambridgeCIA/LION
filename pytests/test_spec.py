@@ -81,15 +81,15 @@ def parameter(**values):
 
 def model_classes():
     """Every LIONmodel in LION/models, found by file (some folders have no
-    __init__.py, which pkgutil skips)."""
+    __init__.py, which pkgutil skips). Files an import statement can't name
+    (e.g. in a folder called MS-D, left in old clones) are not LION's."""
     classes = set()
     root = pathlib.Path(LION.models.__path__[0])
     for path in sorted(root.rglob("*.py")):
-        if path.name == "__init__.py":
+        parts = path.relative_to(root).with_suffix("").parts
+        if path.name == "__init__.py" or not all(p.isidentifier() for p in parts):
             continue
-        name = ".".join(
-            ("LION", "models") + path.relative_to(root).with_suffix("").parts
-        )
+        name = ".".join(("LION", "models") + parts)
         module = importlib.import_module(name)
         for _, cls in inspect.getmembers(module, inspect.isclass):
             if (
