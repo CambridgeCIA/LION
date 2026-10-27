@@ -35,6 +35,8 @@ class CTProjectionOp(Operator):
                 "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"
             )
         check_geometry(geometry)
+        self.geometry = geometry
+        self.backend = backend
         if backend == "tomosipo":
             # Wrap the tomosipo operator
             ts = import_tomosipo("tomosipo", "CTProjectionOp")
