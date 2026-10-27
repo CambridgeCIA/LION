@@ -1,7 +1,19 @@
-"""Reproducability utilities."""
+"""Random numbers that can be reproduced.
+
+- ``seed_from_parts(*parts)``: a seed from strings (a stable hash).
+- ``seeded(seed, *parts, device=...)``: run code with torch's random numbers
+  seeded from ``seed`` and ``parts``, e.g. the noise of one data sample, so that
+  sample is the same in every epoch, run, order and DataLoader worker. The
+  global random state is restored afterwards.
+
+One seed gives the same numbers on the same device type and torch version.
+torch's CPU and CUDA generators are different algorithms, so CPU and GPU give
+different (statistically equivalent) numbers.
+"""
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import random
 from dataclasses import dataclass
@@ -11,7 +23,7 @@ import numpy as np
 import torch
 
 
-def seed_from_parts(*parts: str) -> int:
+def seed_from_parts(*parts) -> int:
     """Generate a reproducible seed from a list of string parts.
 
     Args:
@@ -20,11 +32,38 @@ def seed_from_parts(*parts: str) -> int:
     Returns:
         A reproducible seed.
     """
-    payload = "|".join(parts).encode("utf-8")
+    payload = "|".join(str(part) for part in parts).encode("utf-8")
     digest = hashlib.blake2b(payload, digest_size=8).digest()
     seed_u64 = int.from_bytes(digest, byteorder="little", signed=False)
     seed_u32 = seed_u64 % (2**32)
     return int(seed_u32)
+
+
+@contextlib.contextmanager
+def seeded(seed, *parts, device=None):
+    """Run the code in the ``with`` block with torch's random numbers seeded
+    from ``seed`` and ``parts`` (``seed_from_parts``), on the CPU and, if
+    ``device`` is a CUDA device, on it. The random state of those devices is
+    restored afterwards, so the rest of the program draws the numbers it would
+    have drawn anyway.
+
+    ``seed=None`` does nothing: the code draws from the global random state.
+
+        with seeded(0, "noise", patient_id, slice_index, device=sinogram.device):
+            noisy = sinogram_add_noise(sinogram)
+    """
+    if seed is None:
+        yield
+        return
+    device = torch.device(device if device is not None else "cpu")
+    cuda = [device] if device.type == "cuda" else []
+    value = seed_from_parts(seed, *parts)
+    with torch.random.fork_rng(devices=cuda):
+        torch.default_generator.manual_seed(value)
+        if cuda:
+            with torch.cuda.device(device):
+                torch.cuda.manual_seed(value)
+        yield
 
 
 def random_permutation(num_indices: int, seed: int) -> np.ndarray:

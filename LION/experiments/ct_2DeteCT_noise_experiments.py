@@ -56,4 +56,7 @@ class sample_delete_when_happy(CTNoiseExperiment):
         param.data_loader_params.noise_params.cross_talk = (
             0.05  # leave as is, from XCIST
         )
+        param.data_loader_params.noise_params.seed = (
+            0  # one noisy measurement per slice
+        )
         return param

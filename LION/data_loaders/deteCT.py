@@ -18,6 +18,7 @@ import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.CTtools.ct_utils import make_operator
 from LION.utils.tomosipo_import import import_tomosipo
+from LION.utils.rng import seeded
 
 # Low-dose (mode1) noise of 2DeteCT's two detectors, as the I0 of
 # deteCT.add_sinogram_noise that reproduces it when added to mode2: measured
@@ -366,6 +367,8 @@ class deteCT(Dataset):
         noise = LIONParameter()
         noise.I0 = dict(MODE1_I0_PER_DETECTOR) if I0 is None else I0
         noise.cross_talk = cross_talk
+        # Each slice's noise is drawn once (see __load_and_preprocess_sinogram__)
+        noise.seed = 0
         return noise
 
     def noise_I0(self, index):
@@ -454,9 +457,19 @@ class deteCT(Dataset):
             sinogram = -torch.log(sinogram)
 
         if self.add_noise:
-            sinogram = self.add_sinogram_noise(
-                sinogram, self.noise_I0(index), self.noise_params.cross_talk
-            )
+            # noise_params.seed: an integer gives each slice the same noise
+            # every time it is read (as a scan is measured once); None or
+            # missing: fresh noise each time
+            with seeded(
+                getattr(self.noise_params, "seed", None),
+                "2DeteCT",
+                slice_row["slice_identifier"],
+                mode,
+                device=sinogram.device,
+            ):
+                sinogram = self.add_sinogram_noise(
+                    sinogram, self.noise_I0(index), self.noise_params.cross_talk
+                )
 
         sinogram = torch.flip(sinogram, [2])
         sinogram = sinogram[:, self.angle_index, :]
