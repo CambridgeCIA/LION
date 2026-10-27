@@ -158,6 +158,13 @@ def encode(value):
     return to_spec(value)
 
 
+def is_unsaved(value) -> bool:
+    """A value a record could only name (``encode_or_name``)."""
+    if isinstance(value, LIONParameter):
+        value = vars(value)
+    return isinstance(value, dict) and "unsaved" in value
+
+
 def encode_or_name(value, what: str = "it"):
     """``encode(value)``, or, for a value a spec can't hold (a lambda, a class
     that doesn't keep its arguments), ``{"unsaved": repr, "reason": ...}`` with
@@ -324,9 +331,11 @@ def build_arguments(spec: dict, allow=()):
 
 
 def read(source) -> dict:
-    """Saved metadata: the path of a ``.json`` (or of a model's files, e.g.
-    ``"model.pt"`` or ``"model"``: its ``.json`` is read), or a dict already
-    read from one."""
+    """Saved metadata, as a dict: the path of a ``.json`` (or of a model's
+    files, e.g. ``"model.pt"`` or ``"model"``: its ``.json`` is read), a dict
+    already read from one, or a ``LIONParameter`` (e.g. a record)."""
+    if isinstance(source, LIONParameter):
+        return source.serialize()
     if isinstance(source, dict):
         return source
     path = pathlib.Path(source).with_suffix(".json")

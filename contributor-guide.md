@@ -75,6 +75,12 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   plain JSON lose them; code that reads such files converts them back, e.g.
   `as_model_parameter()` for models and `Geometry.init_from_parameter()` for
   geometries.
+- Records (what LION writes about a component: `data_record`, the training
+  record) are `LIONParameter`s too, read with attributes (`record.epochs.done`).
+  The specs inside them stay dicts (a dict with `"_target_"` is never turned
+  into a `LIONParameter`): they describe objects, made only on request
+  (`instantiate`). Records are saved as plain JSON and read back as
+  `LIONParameter`s.
 - A parameter name that `default_parameters()` doesn't have gives a warning
   (it isn't used: likely a typo).
 - A model's `.pt` holds only tensors and plain Python values (state dicts,

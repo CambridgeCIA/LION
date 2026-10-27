@@ -269,17 +269,17 @@ class Experiment(ABC):
         called on ``Experiment``, the class the record names (``allow``: see
         ``LION.utils.spec.build``).
 
-        ``Experiment.instantiate(f).get_dataset(record["split"])`` makes the
+        ``Experiment.instantiate(f).get_dataset(record.split)`` makes the
         data as they were: dataset, geometry and noise (with its seed).
         """
         if isinstance(source, dict) and spec.TARGET in source:
             return spec.instantiate(source, cls, Experiment, allow)
         record = read_record(source)
-        if "experiment" not in record:
+        if not hasattr(record, "experiment"):
             raise ValueError(
                 "these data were not made by an Experiment: make the dataset with "
                 "LIONDataset.instantiate(source) and set its noise from "
-                "record['sinogram_transform']"
+                "record.sinogram_transform"
             )
         return spec.instantiate(
             recorded_spec(record, "experiment"), cls, Experiment, allow

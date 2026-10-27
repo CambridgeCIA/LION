@@ -43,6 +43,7 @@ from LION.optimizers.training_record import (  # noqa: E402
     weights_sha256,
 )
 from LION.utils import paths, rng  # noqa: E402
+from LION.utils.parameter import LIONParameter  # noqa: E402
 from LION.utils.image_transforms import rotate  # noqa: E402
 from LION.utils.spec import build, encode, to_spec  # noqa: E402
 from pytests.helpers import small_dncnn  # noqa: E402
@@ -138,13 +139,19 @@ def test_record_in_every_saved_file(tmp_path):
     assert len(check["history"]["train_loss"]) == 2
 
 
-def test_record_is_read_back_as_it_is(tmp_path):
+def test_record_is_read_back_as_a_lion_parameter(tmp_path):
     solver = denoiser_solver(tmp_path)
-    solver.train(1)
+    solver.train(2)
     solver.save_final_results()
     _, options, _ = LIONmodel.load(tmp_path / "final", supress_warnings=True)
-    assert options.training == saved(tmp_path, "final")["training"]
-    assert read_training_record(tmp_path / "final") == options.training
+    record = options.training
+    assert isinstance(record, LIONParameter)
+    assert record.serialize() == saved(tmp_path, "final")["training"]
+    assert record.epochs.done == 2 and record.weights.kind == "final"
+    assert record.train.shuffle is True and record.validation.every == 1
+    assert isinstance(record.solver, dict) and isinstance(record.optimizer, dict)
+    assert isinstance(options.dataset_params, LIONParameter)
+    assert read_training_record(tmp_path / "final").serialize() == record.serialize()
 
 
 def test_validation_data_recorded_training_data_as_dataset_params(tmp_path):
@@ -405,7 +412,7 @@ def test_loader_settings():
 
 def test_subset_record():
     record = data_record(Subset(data(), [3, 1]))
-    assert record["subset"] == {"indices": [3, 1]}
+    assert record.subset.indices == [3, 1]
 
 
 def test_random_state_round_trip():

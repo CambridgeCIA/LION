@@ -201,7 +201,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self._data_records[key] = data_record(loader.dataset)
         return self._data_records[key]
 
-    def training_record(self, kind: str, epoch: int, value=None) -> dict:
+    def training_record(self, kind: str, epoch: int, value=None) -> LIONParameter:
         """The record of this training, for a file holding the ``kind``
         ("final", "best_validation", "checkpoint") weights after ``epoch``
         epochs (see ``LION.optimizers.training_record``)."""
@@ -248,7 +248,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             "train_loss": records.history(self.train_loss, epoch),
             "validation": records.history(self.validation_loss, epoch),
         }
-        return record
+        return LIONParameter(**record)
 
     def _training_data_record(self):
         """The training data's record: the model file's ``dataset_params``."""
@@ -271,14 +271,14 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         it makes the class the record names; on a solver class, that class.
         """
         record = records.read_training_record(source)
-        if "unsaved" in record["optimizer"]:
+        if spec.is_unsaved(record.optimizer):
             raise ValueError(
                 f"the record only names its optimizer, "
-                f"{record['optimizer']['unsaved']}: it can't be made again"
+                f"{record.optimizer.unsaved}: it can't be made again"
             )
         solver_spec = {
             k: v
-            for k, v in record["solver"].items()
+            for k, v in record.solver.items()
             if k == spec.TARGET or k not in arguments
         }
         unsaved = [
@@ -297,7 +297,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             )
         path, kwargs = spec.build_arguments(solver_spec, allow)
         target = spec.target_class(path, cls, LIONsolver, allow)
-        optimizer = spec.build(record["optimizer"], allow, params=model.parameters())
+        optimizer = spec.build(record.optimizer, allow, params=model.parameters())
         return target(model=model, optimizer=optimizer, **kwargs, **arguments)
 
     # This should return the default parameters of the solver
@@ -920,8 +920,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             record = records.read_training_record(data["file"])
         except (ValueError, OSError):
             return  # a checkpoint saved without a training record
-        self.initial_weights_sha256 = record.get("initial_weights_sha256")
-        saved = record["solver"].get("solver_params")
+        self.initial_weights_sha256 = getattr(record, "initial_weights_sha256", None)
+        saved = record.solver.get("solver_params")
         if not isinstance(saved, dict):
             return
         saved = {k: v for k, v in saved.items() if k not in spec._KEYS}

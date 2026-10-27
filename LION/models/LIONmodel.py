@@ -350,11 +350,11 @@ class LIONmodel(nn.Module, ABC):
             metadata["geometry"] = spec.encode(given_geometry)
         if is_data_record(dataset_params):
             # already JSON (LION.data_loaders.data_record), kept as it is
-            metadata["dataset_params"] = dataset_params
+            metadata["dataset_params"] = spec.read(dataset_params)  # as JSON
         elif dataset_params is not None:
             metadata["dataset_params"] = spec.encode(dataset_params)
         if is_training_record(training):
-            metadata["training"] = training
+            metadata["training"] = spec.read(training)  # as JSON
         elif training is not None:
             metadata["training"] = spec.encode(training)
 
@@ -467,9 +467,9 @@ class LIONmodel(nn.Module, ABC):
             options.geometry = kwargs["geometry"]
         for key in ("dataset_params", "training"):
             if is_data_record(saved.get(key)) or is_training_record(saved.get(key)):
-                # records are read as they are: making their components
+                # a record, whose specs stay dicts: making its components
                 # again (e.g. the dataset, which reads the data) is on request
-                setattr(options, key, saved[key])
+                setattr(options, key, LIONParameter(**saved[key]))
             elif key in saved:
                 setattr(options, key, spec.build(saved[key], allow))
         return target, kwargs, options

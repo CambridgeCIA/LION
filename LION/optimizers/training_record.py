@@ -26,7 +26,9 @@ best validation, checkpoints), next to the record of the training data
   (``null`` when not validated).
 
 What can't be written as a spec (a lambda loss) is named, with a warning.
-A record is plain JSON, saved and read back as it is.
+A record is a ``LIONParameter`` (``record.epochs.done``) whose specs
+(``record.solver``, ``record.optimizer``) stay dicts; it is saved as plain JSON
+and read back as a ``LIONParameter``, like the data record.
 """
 
 import hashlib
@@ -35,23 +37,27 @@ import math
 from torch.utils.data import RandomSampler, SequentialSampler
 
 from LION.utils import spec
+from LION.utils.parameter import LIONParameter
 
 RECORD_KEY = "lion_training_record"
 RECORD_VERSION = 1
 
 
 def is_training_record(value) -> bool:
+    """A training record, as a ``LIONParameter`` or as the dict read from JSON."""
+    if isinstance(value, LIONParameter):
+        return hasattr(value, RECORD_KEY)
     return isinstance(value, dict) and RECORD_KEY in value
 
 
-def read_training_record(source) -> dict:
+def read_training_record(source) -> LIONParameter:
     """The training record in ``source``: a record, a model's metadata holding
     one (as its ``training``), or the path of a ``.json`` with either."""
     saved = spec.read(source)
     if is_training_record(saved):
-        return saved
+        return LIONParameter(**saved)
     if is_training_record(saved.get("training")):
-        return saved["training"]
+        return LIONParameter(**saved["training"])
     raise ValueError(
         "no training record found: give a record, or the file of a model a "
         "LION solver saved"

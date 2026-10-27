@@ -51,19 +51,20 @@ class LIONDataset(Dataset):
         dataset = spec.instantiate(
             recorded_spec(record, "dataset"), cls, LIONDataset, allow
         )
-        indices = record.get("subset", {}).get("indices")
+        subset = getattr(record, "subset", None)
+        indices = None if subset is None else subset.indices
         _check_samples(dataset, record, indices)
         if check_files:
             _check_files(dataset, record)
-        if record.get("sinogram_transform") is not None:
+        if getattr(record, "sinogram_transform", None) is not None:
             _warn_noise_left_out(dataset, record)
         return dataset if indices is None else Subset(dataset, indices)
 
 
 def _check_samples(dataset, record, indices=None):
-    if "samples" not in record or not hasattr(dataset, "sample_ids"):
+    if not hasattr(record, "samples") or not hasattr(dataset, "sample_ids"):
         return
-    saved = record["samples"]["ids"]
+    saved = record.samples.ids
     now = list(dataset.sample_ids())
     if indices is not None:
         now = [now[i] for i in indices if i < len(now)]
@@ -84,14 +85,14 @@ def _check_samples(dataset, record, indices=None):
 
 
 def _check_files(dataset, record):
-    if "files" not in record:
+    if not hasattr(record, "files"):
         raise ValueError(
             "the record has no hash of the files' contents: it was made without "
             "data_record(dataset, hash_files=True)"
         )
     if not hasattr(dataset, "sample_files"):
         raise ValueError(f"{type(dataset).__name__} does not list its files")
-    if file_contents_hash(dataset.sample_files()) != record["files"]["sha256"]:
+    if file_contents_hash(dataset.sample_files()) != record.files.sha256:
         warnings.warn(
             f"{type(dataset).__name__}: the contents of its files differ from the "
             "record's: these are not the same data (e.g. pre-processed with other "
@@ -101,28 +102,29 @@ def _check_files(dataset, record):
 
 
 def _warn_noise_left_out(dataset, record):
-    noise = record["sinogram_transform"]
-    if "unsaved" in noise:
-        name = noise["unsaved"]
+    noise = record.sinogram_transform
+    if spec.is_unsaved(noise):
+        name = noise.unsaved
     else:
         name = noise.get(spec.TARGET, "")
         if name == "functools.partial":
             name = noise[spec.ARGS][0][spec.TARGET]
-    if "experiment" in record:
+    if hasattr(record, "experiment"):
         how = (
             "For the data with their noise, make the experiment: "
-            f"Experiment.instantiate(source).get_dataset({record.get('split')!r})."
+            f"Experiment.instantiate(source).get_dataset({record.split!r})."
         )
     else:
         how = (
             "To add it: dataset.set_sinogram_transform("
-            "build(record['sinogram_transform']), "
-            "seed=record['sinogram_transform_seed']), with "
+            "build(record.sinogram_transform), "
+            "seed=record.sinogram_transform_seed), with "
             "LION.utils.spec.build and record = read_record(source)."
         )
+    seed = getattr(record, "sinogram_transform_seed", None)
     warnings.warn(
         f"{type(dataset).__name__} is made without the noise its recorded data had "
-        f"({name}, seed {record.get('sinogram_transform_seed')}): noise is part of "
+        f"({name}, seed {seed}): noise is part of "
         f"the experiment, not the dataset. {how}",
         stacklevel=3,
     )
