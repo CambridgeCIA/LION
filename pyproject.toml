@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta:__legacy__"
 [tool.setuptools-git-versioning]
 count_commits_from_version_file = true
 enabled = true
-version_file = "src/LION/VERSION"
+version_file = "LION/VERSION"
 template = "{tag}{env:LIONVERSIONSUFFIX:''}"
 dev_template = "{tag}{env:LIONVERSIONSUFFIX:''}"
 dirty_template = "{tag}+dirty{sha}"

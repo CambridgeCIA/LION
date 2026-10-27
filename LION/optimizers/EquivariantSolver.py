@@ -54,6 +54,7 @@ class EquivariantSolver(LIONsolver):
         device: torch.device = None,
         solver_params: SolverParams | None = None,
         seed: Optional[int] = 0,
+        deterministic: bool = False,
     ) -> None:
         super().__init__(
             model,
@@ -64,6 +65,7 @@ class EquivariantSolver(LIONsolver):
             device,
             solver_params,
             seed=seed,
+            deterministic=deterministic,
         )
         self.transformation_group = self.solver_params.transformation_group
         self.alpha = self.solver_params.equivariance_strength

@@ -16,6 +16,8 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
 - Pip-only installs (and CI) use the `standalone` extra.
 - Datasets live under `LION_DATA_PATH` (see the README and
   `LION/data_loaders/README.md`).
+- LION's version is the file `LION/VERSION` (`LION.__version__`; the package
+  build reads it too).
 - Results go to a solver's `save_folder`, by default `LION_RESULTS_PATH`
   (optional). A `save_folder` is where a machine writes, so it isn't recorded.
 
@@ -121,6 +123,13 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   in every file they save. Values a solver computes during the run (e.g. an
   estimated noise level) are kept in `solver_params`, starting as `None`, so
   they are recorded and come back on resume.
+- Solvers take `deterministic` (default False): torch's deterministic
+  algorithms, so same-seed GPU runs give the same model (slower). Off, GPU runs
+  with the same seed differ slightly.
+- Every model file records the environment it was saved in
+  (`LION/utils/environment.py`: LION's version, commit and uncommitted changes,
+  torch/numpy/CT backends, GPU and driver, determinism settings); loading a file
+  saved with other LION code warns.
 - `LIONsolver.instantiate(file, model)` makes the solver from its own record;
   data, validation, testing and saving are set as usual.
 

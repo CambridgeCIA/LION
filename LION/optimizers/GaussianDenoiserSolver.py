@@ -35,6 +35,7 @@ class GaussianDenoiserSolver(LIONsolver):
         save_folder: str = None,
         noise_level: float | np.ndarray = 0.05,
         seed: Optional[int] = 0,
+        deterministic: bool = False,
     ):
 
         super().__init__(
@@ -47,6 +48,7 @@ class GaussianDenoiserSolver(LIONsolver):
             solver_params=SolverParams(),
             save_folder=save_folder,
             seed=seed,
+            deterministic=deterministic,
         )
         if verbose:
             print("Gaussian Denoiser solver training on device: ", self.device)
