@@ -94,11 +94,13 @@ def random_state() -> dict:
 
 def set_random_state(state: dict) -> None:
     """Restore the generators from ``random_state()``. CUDA states are only
-    restored on a machine with as many CUDA devices."""
-    torch.set_rng_state(state["torch"])
+    restored on a machine with as many CUDA devices. The states may have been
+    loaded onto a GPU (``torch.load(map_location=...)``): torch takes them as
+    CPU tensors."""
+    torch.set_rng_state(state["torch"].cpu())
     if state["cuda"] and torch.cuda.is_available():
         if len(state["cuda"]) == torch.cuda.device_count():
-            torch.cuda.set_rng_state_all(state["cuda"])
+            torch.cuda.set_rng_state_all([s.cpu() for s in state["cuda"]])
     name, keys, position, has_gauss, cached_gauss = state["numpy"]
     np.random.set_state(
         (name, np.asarray(keys, dtype=np.uint32), position, has_gauss, cached_gauss)

@@ -430,6 +430,22 @@ def test_random_state_round_trip():
     assert expected[2] == again[2]
 
 
+@pytest.mark.cuda
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_random_state_loaded_onto_the_gpu():
+    """Checkpoints are loaded with map_location=default_device(), so on a GPU
+    machine the saved states come back as CUDA tensors."""
+    rng.seed_all(3)
+    state = rng.random_state()
+    expected = torch.rand(3), torch.rand(3, device="cuda")
+    on_gpu = dict(state, torch=state["torch"].cuda())
+    on_gpu["cuda"] = [s.cuda() for s in state["cuda"]]
+    torch.rand(5), torch.rand(5, device="cuda")
+    rng.set_random_state(on_gpu)
+    assert torch.equal(torch.rand(3), expected[0])
+    assert torch.equal(torch.rand(3, device="cuda"), expected[1])
+
+
 def test_rotation_group_is_the_same_as_before():
     group = EquivariantSolver.default_parameters().transformation_group
     assert isinstance(group, RotationGroup) and len(group) == 360
