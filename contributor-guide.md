@@ -64,6 +64,11 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   as the call that builds it (a spec, `LION/utils/spec.py`) from those
   attributes, so it can be built again from its file alone. A class that can't
   follow the rule defines `spec_kwargs()`.
+- `X.instantiate(source)` makes a component as a saved file describes it
+  (models with new weights; `X.load(source)` also restores the weights).
+  Called on a base class (`LIONmodel`, `LIONDataset`, `Experiment`) it makes
+  the class the file names. New base classes get the same method, through
+  `LION.utils.spec.instantiate`.
 - Specs keep classes, tuples, numpy arrays and enums. Parameter files saved as
   plain JSON lose them; code that reads such files converts them back, e.g.
   `as_model_parameter()` for models and `Geometry.init_from_parameter()` for
@@ -116,6 +121,16 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
 - Simulated CT data are densities (`ct_utils.from_HU_to_density`) in mm
   geometries. Noise is added with `ct_utils.sinogram_add_noise`, whose
   physical model is the default.
+- Data loaders derive from `LIONDataset` (a torch `Dataset` with
+  `instantiate()`, nothing else), keep their constructor arguments under the
+  same names (`mode`, `parameters`, the geometry) and list their samples
+  (`sample_ids()`, `sample_files()`), so `data_record(dataset)`
+  (`LION/data_loaders/data_record.py`) can describe them; data are on
+  `default_device()`. A noise function is a LION function or a
+  `functools.partial` of one (not a lambda), so it can be recorded.
+- Noise is part of the experiment, not the dataset: `LIONDataset.instantiate`
+  makes a dataset without it; `Experiment.instantiate(...).get_dataset(split)`
+  makes the data with it.
 - Random numbers that make up the data (e.g. simulated noise) are drawn inside
   `LION.utils.rng.seeded(seed, <sample identity>)`, so each sample is the same
   every time it is read. Randomness of training (shuffling, noise a solver

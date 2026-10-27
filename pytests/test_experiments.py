@@ -294,7 +294,7 @@ def test_lidc_uses_legacy_selection_for_old_parameters(saved_before):
     if saved_before:
         del params.legacy_slice_selection
     dataset = lidc.LIDC_IDRI.__new__(lidc.LIDC_IDRI)  # no data needed
-    dataset.params = params
+    dataset.parameters = params
     selected = dataset.get_slices_to_load(["p"], {"p": NON_NODULE}, {"p": []}, 5, 0.5)
     assert len(selected["p"]) == (0 if saved_before else 5)
 

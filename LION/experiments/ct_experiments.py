@@ -60,6 +60,7 @@ sparse presets (300 mm, 900-pixel detector) on slices of each scan's own
 pixel spacing. Parameter files saved before keep their geometry.
 """
 
+import functools
 import numpy as np
 import torch
 import pathlib
@@ -71,6 +72,8 @@ import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 from LION.data_loaders.deteCT import deteCT
+from LION.data_loaders.data_record import data_record, read_record, recorded_spec
+from LION.utils import spec
 
 # Photons per detector pixel in vacuum of the simulated experiments (physical
 # noise model, water at 80 keV; see Experiment.noise_parameters). Chosen by
@@ -103,7 +106,7 @@ class Experiment(ABC):
             if dataset == "2DeteCT":
                 self.param.data_loader_params.path_to_dataset = pathlib.Path(datafolder)
             else:
-                self.param.data_loader_params.folder = datafolder
+                self.param.data_loader_params.folder = pathlib.Path(datafolder)
         # parameters loaded from a JSON file have the geometry as a plain
         # LIONParameter; operators and models need a Geometry
         if self.experiment_params.geometry is not None and not isinstance(
@@ -127,8 +130,13 @@ class Experiment(ABC):
                 ),
                 min_counts=getattr(noise, "min_counts", 1.0),
             )
-            self.sino_fun = lambda sino, I0=noise.I0, sigma=noise.sigma, sigma_blur=noise.sigma_blur: ct.sinogram_add_noise(
-                sino, I0=I0, sigma=sigma, sigma_blur=sigma_blur, **kwargs
+            # a partial (not a lambda), so the dataset's record can hold it
+            self.sino_fun = functools.partial(
+                ct.sinogram_add_noise,
+                I0=noise.I0,
+                sigma=noise.sigma,
+                sigma_blur=noise.sigma_blur,
+                **kwargs,
             )
 
     @staticmethod
@@ -226,14 +234,56 @@ class Experiment(ABC):
             f"{name} is not possible with the measured 2DeteCT data: {reason}"
         )
 
+    SPLITS = ("train", "validation", "test")
+
+    def get_dataset(self, split):
+        """The dataset of a split ("train", "validation" or "test"). It keeps
+        the experiment and the split (``dataset.experiment``,
+        ``dataset.split``), which its record (``data_record``) includes."""
+        if split not in self.SPLITS:
+            raise ValueError(f"split must be one of {self.SPLITS}, got {split!r}")
+        dataset = self.__get_dataset(split)
+        dataset.experiment = self
+        dataset.split = split
+        return dataset
+
     def get_training_dataset(self):
-        return self.__get_dataset("train")
+        return self.get_dataset("train")
 
     def get_validation_dataset(self):
-        return self.__get_dataset("validation")
+        return self.get_dataset("validation")
 
     def get_testing_dataset(self):
-        return self.__get_dataset("test")
+        return self.get_dataset("test")
+
+    def data_record(self, split, hash_files=False):
+        """The record of a split's data: this experiment, the split, the
+        dataset, its noise, its samples (``LION.data_loaders.data_record``)."""
+        return data_record(self.get_dataset(split), hash_files=hash_files)
+
+    @classmethod
+    def instantiate(cls, source, *, allow=()):
+        """The experiment a saved file describes. ``source``: a data record,
+        a model's file (or the dict read from it) saved with one, or the
+        experiment's spec. Called on an experiment class it makes that class;
+        called on ``Experiment``, the class the record names (``allow``: see
+        ``LION.utils.spec.build``).
+
+        ``Experiment.instantiate(f).get_dataset(record["split"])`` makes the
+        data as they were: dataset, geometry and noise (with its seed).
+        """
+        if isinstance(source, dict) and spec.TARGET in source:
+            return spec.instantiate(source, cls, Experiment, allow)
+        record = read_record(source)
+        if "experiment" not in record:
+            raise ValueError(
+                "these data were not made by an Experiment: make the dataset with "
+                "LIONDataset.instantiate(source) and set its noise from "
+                "record['sinogram_transform']"
+            )
+        return spec.instantiate(
+            recorded_spec(record, "experiment"), cls, Experiment, allow
+        )
 
     def __str__(self):
         return f"Experiment parameters: \n {self.param} \n Dataset: \n {self.dataset} \n Geometry parameters: \n {self.geometry}"

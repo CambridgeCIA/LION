@@ -81,15 +81,15 @@ def parameter(**values):
 
 def model_classes():
     """Every LIONmodel in LION/models, found by file (some folders have no
-    __init__.py, which pkgutil skips)."""
+    __init__.py, which pkgutil skips). Files an import statement can't name
+    (e.g. in a folder called MS-D, left in old clones) are not LION's."""
     classes = set()
     root = pathlib.Path(LION.models.__path__[0])
     for path in sorted(root.rglob("*.py")):
-        if path.name == "__init__.py":
+        parts = path.relative_to(root).with_suffix("").parts
+        if path.name == "__init__.py" or not all(p.isidentifier() for p in parts):
             continue
-        name = ".".join(
-            ("LION", "models") + path.relative_to(root).with_suffix("").parts
-        )
+        name = ".".join(("LION", "models") + parts)
         module = importlib.import_module(name)
         for _, cls in inspect.getmembers(module, inspect.isclass):
             if (
@@ -396,8 +396,56 @@ def test_own_model_classes(tmp_path):
 
 def test_loading_as_another_class_warns(tmp_path):
     save(DnCNN(), tmp_path / "model")
-    with pytest.warns(UserWarning, match="loaded as a"):
+    with pytest.warns(UserWarning, match="made as a"):
         LocalModel.load(tmp_path / "model", supress_warnings=True)
+
+
+# --------------------------------------------------------------------------
+# instantiate(): the saved model with new weights
+
+
+def dncnn_with_other_parameters():
+    params = DnCNN.default_parameters()
+    params.blocks = 4
+    return DnCNN(params)
+
+
+@pytest.mark.parametrize("given", ["path", "pt", "json", "dict", "spec"])
+def test_instantiate_makes_the_saved_model_untrained(tmp_path, given):
+    torch.manual_seed(0)
+    model = dncnn_with_other_parameters()
+    save(model, tmp_path / "model")
+    saved = json.loads((tmp_path / "model.json").read_text())
+    source = {
+        "path": tmp_path / "model",
+        "pt": str(tmp_path / "model.pt"),
+        "json": tmp_path / "model.json",
+        "dict": saved,
+        "spec": saved["model"],
+    }[given]
+    made = LIONmodel.instantiate(source)
+    assert type(made) is DnCNN
+    assert same(model.model_parameters, made.model_parameters) == []
+    weights, new = model.state_dict(), made.state_dict()
+    assert weights.keys() == new.keys()
+    assert not all(torch.equal(weights[k], new[k]) for k in weights)
+
+
+def test_instantiate_on_a_class(tmp_path):
+    save(dncnn_with_other_parameters(), tmp_path / "model")
+    assert DnCNN.instantiate(tmp_path / "model").model_parameters.blocks == 4
+    with pytest.warns(UserWarning, match="made as a"):
+        LocalModel.instantiate(tmp_path / "model")
+    with pytest.raises(SpecError, match="not a LIONmodel"):
+        LIONmodel.instantiate({"_target_": "LION.utils.parameter.LIONParameter"})
+
+
+def test_instantiate_unversioned_file(tmp_path):
+    save_unversioned(GSD(), tmp_path / "model")
+    assert type(GSD.instantiate(tmp_path / "model")) is GSD
+    saved = json.loads((tmp_path / "model.json").read_text())
+    with pytest.raises(ValueError, match="give its file"):
+        GSD.instantiate(saved)
 
 
 def test_file_from_a_newer_lion(tmp_path):

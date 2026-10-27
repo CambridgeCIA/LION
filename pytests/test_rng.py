@@ -81,7 +81,9 @@ def noise(sinogram):
 
 def stand_in_projection(image):
     """A clean sinogram that depends on the image, without tomosipo."""
-    return (image.float().mean() + 2.0) * torch.ones(1, 90, 128) * 100
+    return (
+        (image.float().mean() + 2.0) * torch.ones(1, 90, 128, device=image.device) * 100
+    )
 
 
 @pytest.fixture
@@ -99,7 +101,6 @@ def lidc_data(tmp_path, no_tomosipo):
         geometry=lidc.LIDC_IDRI.default_geometry(), task="reconstruction"
     )
     params.folder = tmp_path
-    params.device = "cpu"
     return lidc.LIDC_IDRI("train", parameters=params)
 
 
@@ -119,6 +120,9 @@ def same(a, b):
 
 
 def test_seeded_slices_have_one_noisy_measurement(lidc_data):
+    # on the CPU: DataLoader workers can't use CUDA once the main process has
+    # (LION's loaders return data on their device)
+    lidc_data.device = torch.device("cpu")
     lidc_data.set_sinogram_transform(noise, seed=0)
     first = read_all(lidc_data)
     assert same(first, read_all(lidc_data, seed=None))  # the next epoch
@@ -183,7 +187,6 @@ def test_experiments_seed_the_noise(cls, tmp_path, no_tomosipo):
     fake_lidc(tmp_path, range(1, 11))
     params = cls.default_parameters()
     assert params.noise_params.seed == 0
-    params.data_loader_params.device = "cpu"
     experiment = cls(experiment_params=params, datafolder=tmp_path)
     assert experiment.get_training_dataset().sinogram_transform_seed == 0
 
@@ -193,7 +196,6 @@ def test_experiment_parameters_without_seed_keep_fresh_noise(tmp_path, no_tomosi
     fake_lidc(tmp_path, range(1, 11))
     params = ct_experiments.LowDoseCTRecon.default_parameters()
     del params.noise_params.seed
-    params.data_loader_params.device = "cpu"
     experiment = ct_experiments.LowDoseCTRecon(
         experiment_params=params, datafolder=tmp_path
     )

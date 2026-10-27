@@ -10,7 +10,6 @@ from pathlib import Path
 import pandas as pd
 import torch
 import numpy as np
-from torch.utils.data import Dataset
 import warnings
 from LION.utils.paths import DETECT_PROCESSED_DATASET_PATH
 from LION.utils.parameter import LIONParameter
@@ -19,6 +18,7 @@ import LION.CTtools.ct_utils as ct
 from LION.CTtools.ct_utils import make_operator
 from LION.utils.tomosipo_import import import_tomosipo
 from LION.utils.rng import seeded
+from LION.data_loaders.LIONDataset import LIONDataset
 
 # Low-dose (mode1) noise of 2DeteCT's two detectors, as the I0 of
 # deteCT.add_sinogram_noise that reproduces it when added to mode2: measured
@@ -28,7 +28,7 @@ from LION.utils.rng import seeded
 MODE1_I0_PER_DETECTOR = {1: 290, 2: 100}
 
 
-class deteCT(Dataset):
+class deteCT(LIONDataset):
     """
     The 2DeteCT dataset: 5,000 slices of 109 scanned samples (fruit, nuts and
     other objects), each measured in three modes:
@@ -66,6 +66,8 @@ class deteCT(Dataset):
     ):
         if parameters is None:
             parameters = self.default_parameters()
+        self.parameters = parameters
+        self.geometry_params = geometry_params
 
         # Get geometry default, or validate if given geometry is valid for 2DeteCT, as its raw sinogram data, we can't allow any geometry
         if geometry_params is None:
@@ -333,6 +335,22 @@ class deteCT(Dataset):
 
     def get_operator(self):
         return make_operator(self.geometry)
+
+    def sample_ids(self):
+        """What each sample is, in order: its slice identifier."""
+        return [str(i) for i in self.slice_dataframe["slice_identifier"]]
+
+    def sample_files(self):
+        """The files the samples are read from, in order: those of each
+        slice's input and target modes."""
+        files = []
+        modes = sorted({self.input_mode, self.target_mode})
+        for identifier in self.slice_dataframe["slice_identifier"]:
+            for mode in modes:
+                files += sorted(
+                    self.path_to_dataset.joinpath(str(identifier), mode).glob("*")
+                )
+        return files
 
     def set_sinogram_transform(self, sinogram_transform):
         self.sinogram_transform = sinogram_transform

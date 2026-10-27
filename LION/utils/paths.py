@@ -22,3 +22,10 @@ DETECT_PATH = LION_DATA_PATH.joinpath("raw/2detect")
 LUNA_PROCESSED_DATASET_PATH = LION_DATA_PATH.joinpath("processed/LUNA16")
 LIDC_IDRI_PROCESSED_DATASET_PATH = LION_DATA_PATH.joinpath("processed/LIDC-IDRI")
 DETECT_PROCESSED_DATASET_PATH = LION_DATA_PATH.joinpath("processed/2detect")
+
+
+def data_path(relative) -> pathlib.Path:
+    """A path inside ``LION_DATA_PATH``, e.g. ``data_path("processed/LIDC-IDRI")``.
+    Saved parameters write paths inside ``LION_DATA_PATH`` this way (see
+    ``LION.utils.spec``), so they point to the same data on any machine."""
+    return LION_DATA_PATH.joinpath(relative)
