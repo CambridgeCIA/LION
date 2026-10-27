@@ -121,7 +121,9 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   another method overrides `Experiment.baseline()`. `Comparison` runs several
   methods against the baseline, after checking their records: a model trained
   or validated on test data (by patient) is an error, another problem or other
-  LION code a warning.
+  LION code a warning. `comparison.save(folder)` writes the tables, per-sample
+  scores, figures (PDF and PNG) and its spec; plotting is matplotlib's
+  `Figure` (no pyplot state), imported only in `LION/evaluation/figures.py`.
 - Solvers take a training `seed` (default 0; `None`: unseeded) and pass it to
   `LIONsolver`, which seeds torch, numpy and Python's `random` when training
   starts (`LION.utils.rng.seed_all`); checkpoints keep the random state, so a

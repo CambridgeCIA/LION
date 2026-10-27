@@ -58,7 +58,7 @@ dependencies = [
 standalone = [
     "h5py",  # LION/data_loaders/LUNA16
     "imageio",  # LION/data_loaders/2deteCT
-    "matplotlib",
+    "matplotlib",  # LION/evaluation/figures.py, LION/data_loaders/LUNA16
     "natsort",  # LION/data_loaders/LUNA16
     "numpy<2.5",  # numpy 2.5 (and above) breaks spgl1 0.0.3 (currently latest version)
     "pandas",  # LION/data_loaders/deteCT.py

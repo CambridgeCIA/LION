@@ -8,6 +8,12 @@
 - ``Comparison``: several methods on one evaluation, against a baseline,
   after checking from the models' records that the comparison is fair (no
   test patient trained on; the same problem; the same code).
+  ``comparison.save(folder)`` writes it for a paper: tables (markdown, LaTeX,
+  CSV), per-sample scores, box plots, differences to the baseline, example
+  images (best/median/worst or chosen samples, zoom crops), and its spec
+  (``Comparison.instantiate(folder)``).
+- ``LION.evaluation.figures``: those figures as functions (matplotlib, only
+  imported there).
 - ``baseline(operator)``: the classical reconstruction of the modality (FDK
   for CT), which methods are compared with.
 - ``scores``, ``summary``, ``table``: the same, as functions.

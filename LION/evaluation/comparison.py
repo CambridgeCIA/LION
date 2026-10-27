@@ -23,9 +23,11 @@ baseline is the experiment's (``Experiment.baseline()``) or the modality's
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import pathlib
+import re
 import warnings
 
 from LION.data_loaders.data_record import read_record
@@ -41,6 +43,9 @@ from LION.utils.parameter import LIONParameter
 
 # Where the data were read from doesn't make another problem.
 _NOT_THE_PROBLEM = ("folder", "datafolder")
+
+RECORD_KEY = "lion_comparison"
+RECORD_VERSION = 1
 
 
 class Comparison:
@@ -156,9 +161,179 @@ class Comparison:
     def table(self, format: str = "markdown", digits: dict | None = None) -> str:
         """The records as a table (``LION.evaluation.table``), the baseline
         first."""
+        return table(list(self._records().values()), format=format, digits=digits)
+
+    # -- figures -----------------------------------------------------------
+
+    def baseline_name(self):
+        """The baseline's name (its row), or None without a baseline."""
+        if self.get_baseline() is None:
+            return None
+        return next(iter(self.named_methods()))
+
+    def figures(self) -> dict:
+        """The score plots, ``{file name: Figure}``: per metric, a box plot of
+        every method and, with a baseline, each method's per-sample difference
+        to it."""
+        from LION.evaluation.figures import box_plot, difference_plot
+
+        records = list(self._records().values())
+        baseline = self.baseline_name()
+        found = {}
+        for metric in records[0].summary.serialize():
+            name = _file_part(metric)
+            found[f"box_{name}"] = box_plot(records, metric, baseline)
+            if baseline is not None and len(records) > 1:
+                found[f"difference_{name}"] = difference_plot(records, metric, baseline)
+        return found
+
+    def chosen_samples(self, ids=None, by=None) -> dict:
+        """``{row label: sample id}``: the given ``ids``, or the samples where
+        the baseline (or the first method) scores best, median and worst on
+        ``by`` (default: the first metric)."""
+        from LION.evaluation.figures import chosen_samples
+
+        if ids is not None:
+            return {str(i): i for i in ids}
+        records = self._records()
+        reference = records[self.baseline_name() or next(iter(records))]
+        chosen = chosen_samples(reference, by)
+        return {f"{label}: {sample}": sample for label, sample in chosen.items()}
+
+    def images(self, ids=None, by=None, zoom=None, differences=False):
+        """Example images (``LION.evaluation.figures.example_images``): the
+        targets and every method's images of the chosen samples (see
+        ``chosen_samples``), each with its ``by`` score; ``zoom``:
+        ``[(row, col, height, width), ...]``; ``differences``: to the target."""
+        from LION.evaluation.figures import example_images, reconstructions
+
+        records = self._records()
+        chosen = self.chosen_samples(ids, by)
+        samples = list(dict.fromkeys(chosen.values()))
+        targets, outputs = reconstructions(
+            self.evaluation, self.named_methods(), samples, self.allow
+        )
+        metric = by or next(iter(next(iter(records.values())).summary.serialize()))
+        scores = {}
+        for name, record in records.items():
+            values = dict(zip(record.scores.ids, getattr(record.scores, metric)))
+            scores[name] = {
+                s: f"{metric} {values[s]:.{2 if abs(values[s]) >= 10 else 3}f}"
+                for s in samples
+                if values.get(s) is not None
+            }
+        labels = {}
+        for label, sample in chosen.items():
+            labels[sample] = (
+                labels[sample] + "\n" + label if sample in labels else label
+            )
+        data_range = next(iter(records.values())).data_range
+        return example_images(
+            targets,
+            outputs,
+            data_range=None if data_range is None else tuple(data_range),
+            zoom=zoom,
+            differences=differences,
+            labels=labels,
+            scores=scores,
+        )
+
+    # -- saving --------------------------------------------------------------
+
+    def save(self, folder, ids=None, by=None, zoom=None, differences=False):
+        """Writes the comparison to ``folder``: ``comparison.json`` (its spec,
+        to make it again with ``Comparison.instantiate(folder)``, and what was
+        drawn), ``records/`` (the test records), ``table.md``/``.tex``/
+        ``.csv``, ``scores.csv`` (per-sample scores: one row per sample, one
+        column per method and metric), and each figure as ``.pdf`` and
+        ``.png`` (``figures()``, and ``images.*`` of ``images(ids, by, zoom,
+        differences)``). Returns the folder."""
+        folder = pathlib.Path(folder)
+        (folder / "records").mkdir(parents=True, exist_ok=True)
+        records = self._records()
+        files = {}
+        for name, record in records.items():
+            path = pathlib.Path("records") / f"{_file_part(name)}.json"
+            (folder / path).write_text(json.dumps(record.serialize(), indent=1))
+            files[name] = str(path)
+        for format, suffix in (("markdown", "md"), ("latex", "tex"), ("csv", "csv")):
+            (folder / f"table.{suffix}").write_text(self.table(format))
+        _write_scores(folder / "scores.csv", records)
+        figures = dict(self.figures())
+        figures["images"] = self.images(ids, by, zoom, differences)
+        for name, figure in figures.items():
+            for suffix in ("pdf", "png"):
+                figure.savefig(
+                    folder / f"{name}.{suffix}", dpi=200, bbox_inches="tight"
+                )
+        written = {
+            RECORD_KEY: RECORD_VERSION,
+            "comparison": self.spec(),
+            "records": files,
+            "images": {
+                "samples": self.chosen_samples(ids, by),
+                "by": by,
+                "zoom": [list(z) for z in zoom or []],
+                "differences": differences,
+            },
+        }
+        (folder / "comparison.json").write_text(json.dumps(written, indent=1))
+        return folder
+
+    def spec(self) -> dict:
+        """This comparison's spec: its evaluation's, its methods and baseline
+        (files by path; methods made in the script only named)."""
+        methods = self.methods
+        if isinstance(methods, dict):
+            methods = {k: _method_spec(m, k) for k, m in methods.items()}
+        else:
+            methods = [_method_spec(m, "a method") for m in methods]
+        return {
+            spec.TARGET: spec.import_path(type(self)),
+            "evaluation": self.evaluation.spec(),
+            "methods": methods,
+            "baseline": _method_spec(self.baseline, "the baseline"),
+            "allow": list(self.allow),
+        }
+
+    @classmethod
+    def instantiate(cls, source, *, allow=(), **arguments):
+        """The comparison a saved one describes: ``source`` is the folder
+        ``save`` wrote, its ``comparison.json``, or a spec. ``arguments``
+        replace recorded ones; ``evaluation_arguments`` (a dict) are given to
+        the evaluation (e.g. ``{"save_folder": ...}``). ``allow``: modules
+        outside LION the file may name (the recorded ``allow`` isn't used: a
+        file can't widen what it may build)."""
+        from LION.evaluation.evaluation import Evaluation
+
+        if isinstance(source, (str, os.PathLike)) and pathlib.Path(source).is_dir():
+            source = pathlib.Path(source) / "comparison.json"
+        saved = spec.read(source)
+        written = saved.get("comparison", saved)
+        # only the caller widens what may be built, never the file
+        allow = tuple(allow)
+        evaluation_arguments = arguments.pop("evaluation_arguments", {})
+        if "methods" not in arguments:
+            methods = written["methods"]
+            if isinstance(methods, dict):
+                arguments["methods"] = {
+                    k: _built(v, k, allow) for k, v in methods.items()
+                }
+            else:
+                arguments["methods"] = [_built(v, "a method", allow) for v in methods]
+        if "baseline" not in arguments:
+            arguments["baseline"] = _built(written["baseline"], "the baseline", allow)
+        if "evaluation" not in arguments:
+            arguments["evaluation"] = Evaluation.instantiate(
+                written["evaluation"], allow=allow, **evaluation_arguments
+            )
+        arguments.setdefault("allow", allow)
+        return cls(**arguments)
+
+    def _records(self) -> dict:
         if self.records is None:
             self.run()
-        return table(list(self.records.values()), format=format, digits=digits)
+        return self.records
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +453,64 @@ def _records_of(x, allow):
             validation = _as_dict(x._data_record(x.validation_loader))
         return data, validation, None
     return None
+
+
+def _method_spec(x, what):
+    """A method's spec: a file by its path, a function by its import path. A
+    model, solver or reconstructor object is only named (with a warning): its
+    spec would make it with new weights, so give its file instead."""
+    if isinstance(x, (LIONmodel, LIONsolver, LIONReconstructor)):
+        warnings.warn(
+            f"{what} is a {type(x).__name__} made in the script: the comparison "
+            "can't be made again with it (its weights aren't in a spec); give "
+            "its file instead",
+            stacklevel=3,
+        )
+        return {"unsaved": repr(x), "reason": "an object with weights: give its file"}
+    return spec.encode_or_name(x, what)
+
+
+def _built(value, what, allow):
+    """A method (or baseline) from its spec; an error if only named."""
+    if spec.is_unsaved(value):
+        raise ValueError(
+            f"{what} was made in the script ({value['unsaved']}), so it can't be "
+            "made again: give it with instantiate(..., methods=...)"
+        )
+    return spec.build(value, allow)
+
+
+def _file_part(name) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", str(name)).strip("_") or "method"
+
+
+def _write_scores(path, records):
+    """Per-sample scores: one row per sample, one column per method and
+    metric (``"<method> <metric>"``)."""
+    columns, ids = [], None
+    for name, record in records.items():
+        if ids is None:
+            ids = list(record.scores.ids)
+        values = dict(zip(record.scores.ids, range(len(record.scores.ids))))
+        for metric in record.summary.serialize():
+            scores = getattr(record.scores, metric)
+            columns.append(
+                (
+                    f"{name} {metric}",
+                    [scores[values[i]] if i in values else None for i in ids],
+                )
+            )
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["sample"] + [c for c, _ in columns])
+        for k, sample in enumerate(ids or []):
+            writer.writerow(
+                [sample]
+                + [
+                    "" if v is None else repr(float(v))
+                    for _, v in ((c, vs[k]) for c, vs in columns)
+                ]
+            )
 
 
 def _name_of(x, operator, allow=()) -> str:
