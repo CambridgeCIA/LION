@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from tabnanny import verbose
-
 import torch
 from tqdm import tqdm
 
@@ -40,6 +38,10 @@ class DebiasOp(Operator):
         w: torch.Tensor,
         support_tol: float = 1e-3,
     ):
+        # nn.Module refuses to register a submodule before Module.__init__ has
+        # run, and ``op`` is one, so without this line every construction fails
+        # with "cannot assign module before Module.__init__() call".
+        super().__init__()
         self.op = op
         self.y = y
         self.w = w
@@ -113,6 +115,7 @@ def debias_ls(
     max_iter: int = 200,
     tol: float = 1e-5,
     progress_bar: bool = False,
+    verbose: bool = False,
 ) -> torch.Tensor:
     """Debiasing least squares on the support of w.
 
@@ -132,6 +135,9 @@ def debias_ls(
         Relative stopping threshold.
     progress_bar : bool
         Whether to show a progress bar. Default is False.
+    verbose : bool
+        Whether to print the objective and the relative change at every
+        iteration. Default is False.
 
     Returns
     -------
