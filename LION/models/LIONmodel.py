@@ -42,6 +42,7 @@ from abc import ABC, abstractmethod, ABCMeta
 
 # Some other imports
 import json
+import pickle
 import warnings
 from pathlib import Path
 import inspect
@@ -76,6 +77,56 @@ def as_model_parameter(params: LIONParameter) -> LIONModelParameter:
     if params.model_input_type is not None:
         params.model_input_type = ModelInputType(params.model_input_type)
     return params
+
+
+def _plain_numbers(value):
+    """A loss or epoch as Python numbers (a float, an int or a list of them),
+    which torch's safe loader reads; other values as they are."""
+    if isinstance(value, torch.Tensor):
+        value = value.detach().cpu().numpy()
+    if isinstance(value, (np.ndarray, np.generic, list, tuple)):
+        try:
+            return np.asarray(value).tolist()
+        except (TypeError, ValueError):
+            return value
+    return value
+
+
+def _safe_globals():
+    """What torch's safe loader may rebuild from a model's ``.pt``, besides
+    tensors and Python values: LION's parameter objects, paths and numpy
+    arrays, which some files hold. Rebuilding these runs no code from the file.
+    """
+    from numpy import dtypes
+
+    try:
+        from numpy._core import multiarray
+    except ImportError:  # numpy 1
+        from numpy.core import multiarray
+    import pathlib
+
+    allowed = [
+        LIONParameter,
+        LIONModelParameter,
+        ModelInputType,
+        ct.Geometry,
+        pathlib.Path,
+        pathlib.PosixPath,
+        pathlib.WindowsPath,
+        pathlib.PurePosixPath,
+        pathlib.PureWindowsPath,
+        np.ndarray,
+        np.dtype,
+        multiarray._reconstruct,
+        multiarray.scalar,
+    ]
+    allowed += [getattr(dtypes, n) for n in dir(dtypes) if n.endswith("DType")]
+    # numpy's functions as files written with numpy 1 name them
+    allowed += [
+        (multiarray._reconstruct, "numpy.core.multiarray._reconstruct"),
+        (multiarray.scalar, "numpy.core.multiarray.scalar"),
+    ]
+    return allowed
 
 
 class LIONmodel(nn.Module, ABC):
@@ -237,7 +288,6 @@ class LIONmodel(nn.Module, ABC):
         dataset_params = None
         if "dataset" in kwargs:
             dataset_params = kwargs.pop("dataset")
-            dic["dataset_params"] = dataset_params
 
         else:
             warnings.warn(
@@ -246,17 +296,17 @@ class LIONmodel(nn.Module, ABC):
         training = None
         if "training" in kwargs:
             training = kwargs.pop("training")
-            dic["training_params"] = training
 
         else:
             warnings.warn(
                 "\nExpected 'training' parameter! Only ignore if there has been no training.\n"
             )
 
+        # Plain numbers, so the file loads with torch.load(weights_only=True)
         if "loss" in kwargs:
-            dic["loss"] = kwargs.pop("loss")
+            dic["loss"] = _plain_numbers(kwargs.pop("loss"))
         if "epoch" in kwargs:
-            dic["epoch"] = kwargs.pop("epoch")
+            dic["epoch"] = _plain_numbers(kwargs.pop("epoch"))
         if "optimizer" in kwargs:
             dic["optimizer_state_dict"] = kwargs.pop("optimizer")
 
@@ -265,10 +315,8 @@ class LIONmodel(nn.Module, ABC):
         given_geometry = None
         if "geometry" in kwargs:
             geometry = given_geometry = kwargs.pop("geometry")
-            dic["geometry"] = geometry
         elif hasattr(self, "geometry") and self.geometry is not None:
             geometry = self.geometry
-            dic["geometry"] = geometry
         else:
             warnings.warn(
                 "Expected 'geometry' parameter! Only ignore if tomographic reconstruction was not part of the model."
@@ -320,7 +368,15 @@ class LIONmodel(nn.Module, ABC):
         )
 
     @staticmethod
-    def _load_data(fname, *, weights_only=False, supress_warnings=False):
+    def _load_data(fname, *, weights_only=True, supress_warnings=False):
+        """The contents of a model's ``.pt``.
+
+        ``weights_only=True`` (default) reads it with torch's safe loader, which
+        runs no code from the file: tensors, numbers, strings and containers,
+        plus the LION parameter objects and numpy arrays some files hold (see
+        ``_safe_globals``). ``weights_only=False`` reads any pickle: only for
+        files you trust.
+        """
         # Make it a Path if needed
         if isinstance(fname, str):
             fname = Path(fname)
@@ -330,11 +386,21 @@ class LIONmodel(nn.Module, ABC):
         elif fname.with_suffix(".pth").is_file():
             fname = fname.with_suffix(".pth")
         # Load the actual pythorch saved data
-        data = torch.load(
-            fname,
-            map_location=default_device(),
-            weights_only=weights_only,
-        )
+        if weights_only:
+            try:
+                with torch.serialization.safe_globals(_safe_globals()):
+                    data = torch.load(
+                        fname, map_location=default_device(), weights_only=True
+                    )
+            except pickle.UnpicklingError as error:
+                raise pickle.UnpicklingError(
+                    f"{fname} holds objects LION does not load safely. If you trust "
+                    "the file, load it with weights_only=False (it can run code)."
+                ) from error
+        else:
+            data = torch.load(fname, map_location=default_device(), weights_only=False)
+        if isinstance(data.get("loss"), list):
+            data["loss"] = np.asarray(data["loss"], dtype=float)
         if len(data) > 1 and not supress_warnings:
             # this should be only 1 thing, but you may be loading a checkpoint or may have saved more data.  Its OK, but we warn.
             warnings.warn(
@@ -442,7 +508,7 @@ class LIONmodel(nn.Module, ABC):
         return cls, kwargs, options
 
     @classmethod
-    def load(cls, fname, *, weights_only=False, supress_warnings=False, allow=()):
+    def load(cls, fname, *, weights_only=True, supress_warnings=False, allow=()):
         """
         Function that loads a model from memory: built from its ``.json``, with
         the weights of its ``.pt``.
@@ -450,7 +516,9 @@ class LIONmodel(nn.Module, ABC):
         Called on a model class (``FBPConvNet.load(f)``) it builds that class;
         called on ``LIONmodel`` (``LIONmodel.load(f)``) it builds the class the
         file names. ``allow``: module prefixes of your own model classes (see
-        ``LION.utils.spec.build``). Returns ``(model, options, data)``.
+        ``LION.utils.spec.build``). ``weights_only=False`` reads a ``.pt``
+        that holds other objects, which can run code: only for files you
+        trust. Returns ``(model, options, data)``.
         """
         # Make it a Path if needed
         if isinstance(fname, str):
@@ -471,14 +539,16 @@ class LIONmodel(nn.Module, ABC):
         return model, options, data
 
     @classmethod
-    def load_checkpoint(cls, fname, *, allow=()):
+    def load_checkpoint(cls, fname, *, weights_only=True, allow=()):
         # Make it a Path if needed
         if isinstance(fname, str):
             fname = Path(fname)
 
         target, kwargs, options = cls._read_model_file(fname, allow)
         # load data
-        data = LIONmodel._load_data(fname, supress_warnings=True)
+        data = LIONmodel._load_data(
+            fname, weights_only=weights_only, supress_warnings=True
+        )
         model = target(**kwargs)
         # Load the data into the model we created.
         model.to(default_device())

@@ -11,7 +11,9 @@ dependencies:
   # torch from conda too, so every compiled library uses conda's C++ runtime. A pip
   # torch loads the system's, and conda's scipy etc. then fail on machines with an
   # older system runtime ("CXXABI_1.3.15 not found").
-  - pytorch-gpu
+  # >= 2.6: torch.load(weights_only=True), with which LION loads model files, had a
+  # code-execution bug before 2.6 (CVE-2025-32434).
+  - pytorch-gpu>=2.6
   # LION does not import torchvision, but mrpro and spyrit (pip, pyproject.toml)
   # require it: from conda here, or pip would install it with a pip torch
   - torchvision
