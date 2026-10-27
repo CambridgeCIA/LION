@@ -6,13 +6,16 @@ import types
 
 import pytest
 import torch
-
-from LION.classical_algorithms import fista_l1, sirt
 from LION.classical_algorithms._batching import batched_reconstruction
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
+from LION.classical_algorithms.fista import fista_l1
+from LION.classical_algorithms.sirt import sirt
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
 from LION.exceptions.exceptions import NoDataException
-from LION.operators import CompositeOp, PhotocurrentMapOp, Subsampler, Wavelet2D
+from LION.operators.CompositeOp import CompositeOp
+from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
+from LION.operators.Wavelet2D import Wavelet2D
+
 from pytests.helpers import ImageMatrixOp
 
 # --------------------------------------------------------------------------

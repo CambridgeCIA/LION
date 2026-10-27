@@ -39,9 +39,9 @@ MODULES = [
 ]
 
 CALLS = [
-    "from LION.classical_algorithms import fdk; fdk(torch.zeros(1, 2, 3), Geometry.default_parameters())",
-    "from LION.classical_algorithms import sirt; sirt(torch.zeros(1, 2, 3), Geometry.default_parameters(), 2)",
-    "from LION.operators import CTProjectionOp; CTProjectionOp(Geometry.default_parameters())",
+    "from LION.classical_algorithms.fdk import fdk; fdk(torch.zeros(1, 2, 3), Geometry.default_parameters())",
+    "from LION.classical_algorithms.sirt import sirt; sirt(torch.zeros(1, 2, 3), Geometry.default_parameters(), 2)",
+    "from LION.operators.CTProjectionOp import CTProjectionOp; CTProjectionOp(Geometry.default_parameters())",
 ]
 
 # Setting a sys.modules entry to None makes any later import of it fail.

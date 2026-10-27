@@ -1,12 +1,10 @@
 """Small models and operators shared by several test files."""
 
-import torch
-
 from LION.models.CNNs.dncnn import DnCNN
 from LION.models.LIONmodel import ModelInputType
 from LION.models.PnP.gradient_step_denoiser import GSD
 from LION.models.PnP.gs_drunet import GSDRUNet
-from LION.operators import Operator
+from LION.operators.Operator import Operator
 
 
 class ImageMatrixOp(Operator):

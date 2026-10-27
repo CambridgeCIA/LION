@@ -1,11 +1,13 @@
 """FISTA algorithm for l1-regularized problems."""
 
+from __future__ import annotations
+
 import math
+from collections.abc import Callable
 
 import torch
-from tqdm import tqdm
 
-from LION.operators import Operator
+from LION.operators.Operator import Operator
 from LION.utils.math import power_method
 
 
@@ -18,18 +20,14 @@ def soft_threshold(v: torch.Tensor, tau: float) -> torch.Tensor:
 
         S_{\tau}(v) = \mathrm{sign}(v) \cdot \\max(|v| - \tau, 0)
 
-    Parameters
-    ----------
-    v : torch.Tensor
-        Input tensor.
-    tau : float
-        Threshold parameter.
+    Args:
+        v: Input tensor.
+        tau: Threshold parameter.
 
-    Returns
-    -------
-    torch.Tensor
+    Returns:
         Result after applying soft thresholding.
     """
+
     return torch.sign(v) * torch.clamp(torch.abs(v) - tau, min=0.0)
 
 
@@ -41,49 +39,33 @@ def fista_l1(
     tol: float = 1e-4,
     L: float | None = None,
     verbose: bool = False,
-    progress_bar: bool = False,
+    prog_bar: Callable | None = None,
 ) -> torch.Tensor:
     r"""Solve :math:`\min_w \tfrac12\lVert A w - y\rVert_2^2 + \lambda \lVert w\rVert_1`
     by FISTA.
 
     Implements the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) for
-    :math:`\ell_1`-regularised least squares [BeckTeboulle2009]_. FISTA is an
-    accelerated proximal-gradient method for composite objectives
-    :math:`f(w) + \lambda \lVert w\rVert_1` with smooth data-fidelity term
-    :math:`f(w) = \tfrac12\lVert A w - y\rVert_2^2`; see
-    [DaubechiesDefriseDeMol2004]_ for the original ISTA scheme and
+    :math:`\ell_1`-regularised least squares [BeckTeboulle2009]_. FISTA is an accelerated proximal-gradient method for
+    composite objectives :math:`f(w) + \lambda \lVert w\rVert_1` with smooth data-fidelity term
+    :math:`f(w) = \tfrac12\lVert A w - y\rVert_2^2`; see [DaubechiesDefriseDeMol2004]_ for the original ISTA scheme and
     [ParikhBoyd2014]_ for a general overview of proximal-gradient methods.
 
-    Parameters
-    ----------
-    op : Operator
-        Linear operator implementing the forward map and its adjoint. It is
-        called as ``op(w)`` and ``op.adjoint(r)``.
-    y : torch.Tensor
-        Measurements, shape ``(M,)``.
-    lam : float
-        :math:`\ell_1` regularisation parameter.
-    max_iter : int
-        Maximum number of iterations.
-    tol : float
-        Relative stopping threshold on :math:`w`. The iteration stops once
-        ``norm(w_next - w) / (norm(w) + 1e-8) < tol``.
-    L : float or None
-        Lipschitz constant of :math:`A^\top A`. If ``None``, estimated by a
-        power method on the normal operator :math:`A^\top A`, following the
-        standard practice in FISTA-type schemes [BeckTeboulle2009]_.
-    verbose : bool
-        If True, prints basic progress such as objective value and relative
-        change.
-    progress_bar : bool
-        If True, wraps the iteration in a ``tqdm`` progress bar.
+    Args:
+        op: Linear operator implementing the forward and adjoint. It is called as ``op(w)`` and ``op.adjoint(r)``.
+        y: Measurements, shape ``(M,)``.
+        lam: :math:`\ell_1` regularisation parameter.
+        max_iter: Maximum number of iterations.
+        tol: Relative stopping threshold on :math:`w`. The iteration stops once
+            ``norm(w_next - w) / (norm(w) + 1e-8) < tol``.
+        L: Lipschitz constant of :math:`A^\top A`. If ``None``, estimated by a power method on the normal operator
+        :math:`A^\top A`, following the standard practice in FISTA-type schemes [BeckTeboulle2009]_.
+        verbose: If True, prints basic progress such as objective value and relative change.
+        prog_bar: If True, wraps the iteration in a ``tqdm`` progress bar.
 
-    Returns
-    -------
-    w : torch.Tensor
-        Estimated coefficients, with the shape of ``op.adjoint(y)``.
+    Returns:
+        w: Estimated coefficient vector, with the shape of ``op.adjoint(y)``.
 
-    References
+    References:
     ----------
     .. [DaubechiesDefriseDeMol2004] I. Daubechies, M. Defrise, and C. De Mol,
        "An iterative thresholding algorithm for linear inverse problems with a
@@ -95,6 +77,7 @@ def fista_l1(
     .. [ParikhBoyd2014] N. Parikh and S. Boyd, "Proximal Algorithms",
        Foundations and Trends in Optimization, 1(3):127-239, 2014.
     """
+
     y = y.detach()
     device = y.device
 
@@ -110,9 +93,9 @@ def fista_l1(
     z = w.clone()
     t = 1.0
 
-    iterator = range(max_iter)
-    if progress_bar:
-        iterator = tqdm(iterator, desc="FISTA l1")
+    iterator = (
+        prog_bar(range(max_iter), desc="FISTA l1") if prog_bar else range(max_iter)
+    )
     for k in iterator:
         Az: torch.Tensor = op(z)
         grad = op.adjoint(Az - y)  # gradient of data term, same shape as w
