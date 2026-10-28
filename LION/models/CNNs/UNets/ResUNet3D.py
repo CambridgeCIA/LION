@@ -11,6 +11,7 @@ import torch.nn as nn
 from LION.models import LIONmodel
 from LION.models.LIONmodel import LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
+from LION.utils.citation import citation
 
 # Implementation of:
 
@@ -176,3 +177,23 @@ class ResUNet3D(LIONmodel.LIONmodel):
         res = self.block_last(res)
         res = torch.sigmoid(res)
         return res
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where ResUNet3D comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @article{yu2021lung,
+            title={Design of lung nodules segmentation and recognition algorithm based on deep learning},
+            author={Yu, Hui and Li, Jinqiu and Zhang, Lixin and Cao, Yuzhen and Yu, Xuyao and Sun, Jinglai},
+            journal={BMC Bioinformatics},
+            volume={22},
+            year={2021},
+            doi={10.1186/s12859-021-04234-0}
+            }
+            """,
+            mla="""
+            Yu, Hui, et al. "Design of lung nodules segmentation and recognition algorithm based on deep learning." BMC Bioinformatics 22 (2021).
+            """,
+        )

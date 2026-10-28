@@ -14,6 +14,7 @@ import LION.CTtools.ct_utils as ct_utils
 from LION.utils.tomosipo_import import import_tomosipo
 
 from LION.utils.image_transforms import gaussian_blur
+from LION.utils.citation import citation
 
 
 class Noisier2Inverse(LIONsolver):
@@ -98,3 +99,21 @@ class Noisier2Inverse(LIONsolver):
         input_recon = self.recon_fn(sinos, self.operator)
         output_recon = self.model(input_recon)
         return output_recon
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where Noisier2Inverse comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @article{gruber2025noisier2inverse,
+            title={Noisier2Inverse: Self-Supervised Learning for Image Reconstruction with Correlated Noise},
+            author={Gruber, Nadja and Schwab, Johannes and Haltmeier, Markus and Biguri, Ander and Dlaska, Clemens and Hwang, Gyeongha},
+            journal={arXiv preprint arXiv:2503.19468},
+            year={2025}
+            }
+            """,
+            mla="""
+            Gruber, Nadja, et al. "Noisier2Inverse: Self-Supervised Learning for Image Reconstruction with Correlated Noise." arXiv preprint arXiv:2503.19468 (2025).
+            """,
+        )

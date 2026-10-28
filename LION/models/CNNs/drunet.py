@@ -12,6 +12,7 @@ from inspect import getmembers, isfunction
 from typing import Optional
 
 import torch
+from LION.utils.citation import citation
 
 
 class ResBlock(torch.nn.Module):
@@ -236,35 +237,29 @@ class DRUNet(LIONmodel):
         return params
 
     @staticmethod
-    def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print(
-                "Zhang, Kai, Yawei, Li, Wangmeng, Zuo, Lei, Zhang, Luc, Van Gool, Radu, Timofte."
-            )
-            print('"Plug-and-Play Image Restoration With Deep Denoiser Prior".')
-            print(
-                "\x1b[3mIEEE Transactions on Pattern Analysis and Machine Intelligence\x1b[0m"
-            )
-            print("44. 10(2022): 6360-6376.")
-        elif cite_format == "bib":
-            print("@article{zhang2022plug,")
-            print(
-                "author={Zhang, Kai and Li, Yawei and Zuo, Wangmeng and Zhang, Lei and Van Gool, Luc and Timofte, Radu},"
-            )
-            print(
-                "journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},"
-            )
-            print("title={Plug-and-Play Image Restoration With Deep Denoiser Prior},")
-            print("year={2022},")
-            print("volume={44},")
-            print("number={10},")
-            print("pages={6360-6376},")
-            print("doi={10.1109/TPAMI.2021.3088914}")
-            print("}")
-        else:
-            raise ValueError(
-                f'`cite_format` "{cite_format}" is not understood, only "MLA" and "bib" are supported'
-            )
+    def cite(cite_format="bib"):
+        """Where DRUNet comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @article{zhang2022plug,
+            author={Zhang, Kai and Li, Yawei and Zuo, Wangmeng and Zhang, Lei and Van Gool, Luc and Timofte, Radu},
+            journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
+            title={Plug-and-Play Image Restoration With Deep Denoiser Prior},
+            year={2022},
+            volume={44},
+            number={10},
+            pages={6360-6376},
+            doi={10.1109/TPAMI.2021.3088914}
+            }
+            """,
+            mla="""
+            Zhang, Kai, Yawei, Li, Wangmeng, Zuo, Lei, Zhang, Luc, Van Gool, Radu, Timofte.
+            "Plug-and-Play Image Restoration With Deep Denoiser Prior".
+            IEEE Transactions on Pattern Analysis and Machine Intelligence
+            44. 10(2022): 6360-6376.
+            """,
+        )
 
     def forward(self, x0, noise_level: Optional[float] = None):
         if self.model_parameters.use_noise_level:

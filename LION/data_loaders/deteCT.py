@@ -19,6 +19,7 @@ from LION.CTtools.ct_utils import make_operator
 from LION.utils.tomosipo_import import import_tomosipo
 from LION.utils.rng import seeded
 from LION.data_loaders.LIONDataset import LIONDataset
+from LION.utils.citation import citation
 
 # Low-dose (mode1) noise of 2DeteCT's two detectors, as the I0 of
 # deteCT.add_sinogram_noise that reproduces it when added to mode2: measured
@@ -613,3 +614,24 @@ class deteCT(LIONDataset):
             return input, target
         else:
             return input, target, self.__load_and_preprocess_segmentation__(index)
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """The 2DeteCT dataset, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @article{kiss2023detect,
+            title={2DeteCT - A large 2D expandable, trainable, experimental Computed Tomography dataset for machine learning},
+            author={Kiss, Maximilian B and Coban, Sophia B and Batenburg, K Joost and van Leeuwen, Tristan and Lucka, Felix},
+            journal={Scientific Data},
+            volume={10},
+            pages={576},
+            year={2023},
+            doi={10.1038/s41597-023-02484-6}
+            }
+            """,
+            mla="""
+            Kiss, Maximilian B., Sophia B. Coban, K. Joost Batenburg, Tristan van Leeuwen, and Felix Lucka. "2DeteCT - A large 2D expandable, trainable, experimental Computed Tomography dataset for machine learning." Scientific Data 10 (2023): 576.
+            """,
+        )

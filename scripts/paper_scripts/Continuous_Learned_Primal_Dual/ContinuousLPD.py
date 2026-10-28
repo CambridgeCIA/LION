@@ -73,9 +73,8 @@ default_parameters.learned_step = True
 default_parameters.step_positive = True
 default_parameters.n_iters = 5
 model = cLPD(experiment.geometry, default_parameters)
-model.cite()
-model.cite("bib")
-
+print(model.cite("MLA"))
+print(model.cite("bib"))
 # %% Optimizer
 train_param = LIONParameter()
 

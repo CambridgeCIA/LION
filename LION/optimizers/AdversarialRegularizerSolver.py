@@ -18,6 +18,7 @@ from LION.CTtools.ct_geometry import Geometry
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
+from LION.utils.citation import citation
 
 
 class ARParams(SolverParams):
@@ -148,27 +149,26 @@ class ARSolver(LIONsolver):
         return self.wgan_loss(sino_batch, target_batch)
 
     @staticmethod
-    def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print("Lunz, Sebastian, Ozan Öktem, and Carola-Bibiane Schönlieb")
-            print('"Adversarial regularizers in inverse problems."')
-            print("neural information processing systems 31 (2018).")
-            print("arXiv:2008.02839 (2020).")
-        elif cite_format == "bib":
-            string = """
+    def cite(cite_format="bib"):
+        """Where ARSolver comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
             @article{lunz2018adversarial,
             title={Adversarial regularizers in inverse problems},
-            author={Lunz, Sebastian and {\"O}ktem, Ozan and Sch{\"o}nlieb, Carola-Bibiane},
+            author={Lunz, Sebastian and {\\"O}ktem, Ozan and Sch{\\"o}nlieb, Carola-Bibiane},
             journal={Advances in neural information processing systems},
             volume={31},
             year={2018}
             }
-            """
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+            """,
+            mla="""
+            Lunz, Sebastian, Ozan Öktem, and Carola-Bibiane Schönlieb
+            "Adversarial regularizers in inverse problems."
+            neural information processing systems 31 (2018).
+            arXiv:2008.02839 (2020).
+            """,
+        )
 
 
 def _needs(reconstructor, where):

@@ -37,7 +37,7 @@ model = UNet()
 
 # Create optimizer and loss function
 optimizer = Adam(model.parameters())
-SURE.cite()
+print(SURE.cite("MLA"))
 loss_fn = SURE(noise_std=0.07)
 
 # Initialize the solver as the other solvers in LION

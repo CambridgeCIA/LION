@@ -17,6 +17,7 @@ import torch
 import torch.nn as nn
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
+from LION.utils.citation import citation
 
 
 class MSD_Layer(nn.Module):
@@ -244,19 +245,14 @@ class MSDNet(LIONmodel):
         return params
 
     @staticmethod
-    def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print("Pelt, Daniël M., and James A. Sethian.")
-            print(
-                '"A mixed-scale dense convolutional neural network for image analysis."'
-            )
-            print("\x1b[3mProceedings of the National Academy of Sciences  \x1b[0m")
-            print("115.2 (2018): 254-259.")
-        elif cite_format == "bib":
-            string = """
+    def cite(cite_format="bib"):
+        """Where MSDNet comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
             @article{pelt2018mixed,
             title={A mixed-scale dense convolutional neural network for image analysis},
-            author={Pelt, Dani{\"e}l M and Sethian, James A},
+            author={Pelt, Dani{\\"e}l M and Sethian, James A},
             journal={Proceedings of the National Academy of Sciences},
             volume={115},
             number={2},
@@ -264,9 +260,11 @@ class MSDNet(LIONmodel):
             year={2018},
             publisher={National Acad Sciences}
             }
-            """
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+            """,
+            mla="""
+            Pelt, Daniël M., and James A. Sethian.
+            "A mixed-scale dense convolutional neural network for image analysis."
+            Proceedings of the National Academy of Sciences  
+            115.2 (2018): 254-259.
+            """,
+        )

@@ -60,6 +60,13 @@ class LIONDataset(Dataset):
             _warn_noise_left_out(dataset, record)
         return dataset if indices is None else Subset(dataset, indices)
 
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where the dataset comes from: its paper's citation, BibTeX ("bib") or
+        "MLA" (``LION.utils.citation``); None if it has none. Datasets
+        from a paper define it."""
+        return None
+
 
 def _check_samples(dataset, record, indices=None):
     if not hasattr(record, "samples") or not hasattr(dataset, "sample_ids"):

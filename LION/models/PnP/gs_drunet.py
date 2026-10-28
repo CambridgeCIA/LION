@@ -11,6 +11,7 @@ from LION.utils.parameter import LIONParameter
 
 from typing import Optional
 import torch
+from LION.utils.citation import citation
 
 
 class GSDRUNet(LIONmodel):
@@ -36,29 +37,24 @@ class GSDRUNet(LIONmodel):
         return params
 
     @staticmethod
-    def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print("Hurault, Samuel, Arthur, Leclaire, Nicolas, Papadakis.")
-            print('"Gradient Step Denoiser for Convergent Plug-and-Play."')
-            print(
-                "\x1b[3mInternational Conference on Learning Representations 2022\x1b[0m."
-            )
-
-        elif cite_format == "bib":
-            print("@inproceedings{hurault2022gradient,")
-            print("title = {Gradient Step Denoiser for Convergent Plug-and-Play},")
-            print(
-                "booktitle = {International {{Conference}} on {{Learning Representations}}},"
-            )
-            print(
-                "author = {Hurault, Samuel and Leclaire, Arthur and Papadakis, Nicolas},"
-            )
-            print("year = {2022}")
-            print("}")
-        else:
-            raise ValueError(
-                f'`cite_format` "{cite_format}" is not understood, only "MLA" and "bib" are supported'
-            )
+    def cite(cite_format="bib"):
+        """Where GSDRUNet comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @inproceedings{hurault2022gradient,
+            title = {Gradient Step Denoiser for Convergent Plug-and-Play},
+            booktitle = {International {{Conference}} on {{Learning Representations}}},
+            author = {Hurault, Samuel and Leclaire, Arthur and Papadakis, Nicolas},
+            year = {2022}
+            }
+            """,
+            mla="""
+            Hurault, Samuel, Arthur, Leclaire, Nicolas, Papadakis.
+            "Gradient Step Denoiser for Convergent Plug-and-Play."
+            International Conference on Learning Representations 2022.
+            """,
+        )
 
     def obj_grad(self, x, noise_level: Optional[float] = None):
         """g(x) = 0.5 ||x - N(x)||^2 and its gradient with respect to x."""

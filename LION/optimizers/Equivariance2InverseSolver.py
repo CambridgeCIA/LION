@@ -12,6 +12,7 @@ from LION.utils.parameter import LIONParameter
 from LION.utils.tomosipo_import import import_tomosipo
 import random
 from LION.utils.image_transforms import rotate
+from LION.utils.citation import citation
 
 
 # Parameters of the noise model of LION's E2I until Oct 2026
@@ -208,3 +209,21 @@ class Equivariance2InverseSolver(LIONsolver):
         input_recon = self.recon_fn(sinos, self.operator)
         output_recon = self.model(input_recon)
         return output_recon
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where Equivariance2Inverse comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @article{schut2025equivariance2inverse,
+            title={Equivariance2Inverse: A Practical Self-Supervised CT Reconstruction Method Benchmarked on Real, Limited-Angle, and Blurred Data},
+            author={Schut, Dirk Elias and Graas, Adriaan and van Liere, Robert and van Leeuwen, Tristan},
+            journal={arXiv preprint arXiv:2510.23317},
+            year={2025}
+            }
+            """,
+            mla="""
+            Schut, Dirk Elias, Adriaan Graas, Robert van Liere, and Tristan van Leeuwen. "Equivariance2Inverse: A Practical Self-Supervised CT Reconstruction Method Benchmarked on Real, Limited-Angle, and Blurred Data." arXiv preprint arXiv:2510.23317 (2025).
+            """,
+        )

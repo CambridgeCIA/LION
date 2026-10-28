@@ -37,8 +37,7 @@ optimizer = Adam(model.parameters())
 loss_fn = nn.MSELoss()
 
 
-Noise2InverseSolver.cite()
-
+print(Noise2InverseSolver.cite("MLA"))
 # LION's Noise2InverseSolver.
 n2i_params = Noise2InverseSolver.default_parameters()
 # Noise to inverse requires certain user specifications.

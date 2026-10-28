@@ -95,6 +95,11 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   with the CT geometry as `geometry`.
 - A model from a paper follows the paper and the authors' code. Where it
   deviates, the docstring says so.
+- A component from a paper or a dataset (a model, solver, reconstructor,
+  dataset) defines `cite(cite_format="bib")`, returning its citation as text
+  (BibTeX, or "MLA") with `LION.utils.citation.citation`; the base classes
+  return None. It is where the component comes from, not the citation of a
+  result made with it.
 - Models accept a plain `LIONParameter` (converted by `as_model_parameter()`), so
   a model can build another from nested parameters, and loading works at any
   depth.

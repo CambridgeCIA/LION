@@ -20,6 +20,7 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.models.CNNs.UNets.Unet import UNet
 from LION.classical_algorithms.fdk import fdk
+from LION.utils.citation import citation
 
 
 class ItNet(LIONmodel):
@@ -96,30 +97,27 @@ class ItNet(LIONmodel):
         return param
 
     @staticmethod
-    def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print("Martin Genzel, Ingo Guhring, Jan Macdonald, and Maximilian März. ")
-            print(
-                '""Near-exact recovery for tomographic inverse problems via deep learning." '
-            )
-            print("\x1B[3m ICML 2022 \x1B[0m")
-            print("(pp. 7368-7381). PMLR")
-
-        elif cite_format == "bib":
-            string = """
+    def cite(cite_format="bib"):
+        """Where ItNet comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
             @inproceedings{genzel2022near,
             title={Near-exact recovery for tomographic inverse problems via deep learning},
-            author={Genzel, Martin and G{\"u}hring, Ingo and Macdonald, Jan and M{\"a}rz, Maximilian},
+            author={Genzel, Martin and G{\\"u}hring, Ingo and Macdonald, Jan and M{\\"a}rz, Maximilian},
             booktitle={International Conference on Machine Learning},
             pages={7368--7381},
             year={2022},
             organization={PMLR}
-            }"""
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+            }
+            """,
+            mla="""
+            Martin Genzel, Ingo Guhring, Jan Macdonald, and Maximilian März. 
+            ""Near-exact recovery for tomographic inverse problems via deep learning." 
+             ICML 2022 
+            (pp. 7368-7381). PMLR
+            """,
+        )
 
     def forward(self, sino):
         # Start from FDK (the input data needs no gradient)

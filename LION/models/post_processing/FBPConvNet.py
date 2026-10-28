@@ -12,6 +12,7 @@ import torch.nn as nn
 from LION.models.LIONmodel import LIONModelParameter, LIONmodel, ModelInputType
 import LION.CTtools.ct_geometry as ct
 from LION.classical_algorithms.fdk import fdk
+from LION.utils.citation import citation
 
 # Implementation of:
 
@@ -205,16 +206,11 @@ class FBPConvNet(LIONmodel):
         return params
 
     @staticmethod
-    def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print(" Jin, Kyong Hwan, et al.")
-            print(
-                '"Deep convolutional neural network for inverse problems in imaging."'
-            )
-            print("\x1b[3mIEEE Transactions on Image Processing \x1b[0m")
-            print(" 26.9 (2017): 4509-4522.")
-        elif cite_format == "bib":
-            string = """
+    def cite(cite_format="bib"):
+        """Where FBPConvNet comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
             @article{jin2017deep,
             title={Deep convolutional neural network for inverse problems in imaging},
             author={Jin, Kyong Hwan and McCann, Michael T and Froustey, Emmanuel and Unser, Michael},
@@ -224,12 +220,15 @@ class FBPConvNet(LIONmodel):
             pages={4509--4522},
             year={2017},
             publisher={IEEE}
-            }"""
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+            }
+            """,
+            mla="""
+             Jin, Kyong Hwan, et al.
+            "Deep convolutional neural network for inverse problems in imaging."
+            IEEE Transactions on Image Processing 
+             26.9 (2017): 4509-4522.
+            """,
+        )
 
     def forward(self, x):
         B, C, W, H = x.shape

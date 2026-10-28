@@ -75,8 +75,7 @@ solver = EquivariantSolver(
     device=device,
 )
 
-solver.cite()
-
+print(solver.cite("MLA"))
 # set data
 solver.set_training(lidc_dataloader)
 solver.set_saving(savefolder, final_result_fname)

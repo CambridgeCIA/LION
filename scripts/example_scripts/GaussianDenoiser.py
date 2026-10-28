@@ -64,8 +64,7 @@ params.use_noise_level = (
     False  # This is important for the denoiser to work with noise level input
 )
 model = DRUNet(params)
-model.cite()
-
+print(model.cite("MLA"))
 model.set_normalisation(normalisation_type="dataset", dataset=lidc_dataloader)
 # %% Optimizer
 train_param = LIONParameter()

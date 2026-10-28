@@ -10,6 +10,7 @@ from LION.models.LIONmodel import LIONmodel
 from LION.operators import CTProjectionOp, Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.parameter import LIONParameter
+from LION.models.learned_regularizer.AR import AR
 
 
 class LearnedRegularizerReconstructor(LIONReconstructor):
@@ -121,6 +122,11 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
             x = candidate
             step /= self.parameters.backtracking  # let the step grow again
         return x
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """The variational reconstruction with a learned regulariser of the adversarial regulariser paper; the regulariser has its own."""
+        return AR.cite(cite_format)
 
 
 def estimate_alpha(

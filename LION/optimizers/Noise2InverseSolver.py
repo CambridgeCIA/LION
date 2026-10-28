@@ -10,6 +10,7 @@ from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_utils as ct
+from LION.utils.citation import citation
 
 
 class Noise2InverseSolver(LIONsolver):
@@ -159,30 +160,25 @@ class Noise2InverseSolver(LIONsolver):
         return outputs
 
     @staticmethod
-    def cite(cite_format="MLA"):
-
-        if cite_format == "MLA":
-            print(
-                "Hendriksen, Allard Adriaan, Daniël Maria Pelt, and K. Joost Batenburg"
-            )
-            print(
-                ' "Noise2inverse: Self-supervised deep convolutional denoising for tomography."'
-            )
-            print("\x1B[3m  IEEE Transactions on Computational Imaging \x1B[0m")
-            print("6 (2020): 1320-1335.")
-        elif cite_format == "bib":
-            string = """
+    def cite(cite_format="bib"):
+        """Where Noise2InverseSolver comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
             @article{hendriksen2020noise2inverse,
             title={Noise2inverse: Self-supervised deep convolutional denoising for tomography},
-            author={Hendriksen, Allard Adriaan and Pelt, Dani{\"e}l Maria and Batenburg, K Joost},
+            author={Hendriksen, Allard Adriaan and Pelt, Dani{\\"e}l Maria and Batenburg, K Joost},
             journal={IEEE Transactions on Computational Imaging},
             volume={6},
             pages={1320--1335},
             year={2020},
             publisher={IEEE}
-            }"""
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+            }
+            """,
+            mla="""
+            Hendriksen, Allard Adriaan, Daniël Maria Pelt, and K. Joost Batenburg
+             "Noise2inverse: Self-supervised deep convolutional denoising for tomography."
+              IEEE Transactions on Computational Imaging 
+            6 (2020): 1320-1335.
+            """,
+        )

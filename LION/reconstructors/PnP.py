@@ -13,6 +13,7 @@ from LION.operators import CTProjectionOp, Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
+from LION.utils.citation import citation
 
 # The settings of each algorithm, and their defaults.
 ALGORITHMS = {
@@ -236,3 +237,23 @@ class PnP(LIONReconstructor):
             v = self._apply_prior(x + u, noise_level)
             u = u + (x - v)
         return x
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where Plug-and-Play comes from: its citation, BibTeX ("bib") or "MLA". The denoiser has its own."""
+        return citation(
+            cite_format,
+            bib="""
+            @inproceedings{venkatakrishnan2013plug,
+            title={Plug-and-Play priors for model based reconstruction},
+            author={Venkatakrishnan, Singanallur V and Bouman, Charles A and Wohlberg, Brendt},
+            booktitle={2013 IEEE Global Conference on Signal and Information Processing (GlobalSIP)},
+            pages={945--948},
+            year={2013},
+            doi={10.1109/GlobalSIP.2013.6737048}
+            }
+            """,
+            mla="""
+            Venkatakrishnan, Singanallur V., Charles A. Bouman, and Brendt Wohlberg. "Plug-and-Play priors for model based reconstruction." 2013 IEEE Global Conference on Signal and Information Processing (GlobalSIP) (2013): 945-948.
+            """,
+        )

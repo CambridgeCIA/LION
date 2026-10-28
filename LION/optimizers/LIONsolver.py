@@ -1159,3 +1159,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function should perform a single step of the optimization and return the loss
         """
         pass
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where the solver comes from: its paper's citation, BibTeX ("bib") or
+        "MLA" (``LION.utils.citation``); None if it has none. Solvers
+        from a paper define it."""
+        return None

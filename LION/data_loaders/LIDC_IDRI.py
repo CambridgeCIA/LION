@@ -24,6 +24,7 @@ from LION.utils.parameter import LIONParameter
 from LION.utils.device import default_device
 from LION.data_loaders.LIONDataset import LIONDataset
 from LION.utils.rng import seeded
+from LION.utils.citation import citation
 
 # The pre-processing (LIDC_IDRI/pre_process_lidc_idri.py, resampling.py)
 # resamples every slice to this pixel spacing on 512x512: 500 mm, the largest
@@ -838,3 +839,30 @@ class LIDC_IDRI(LIONDataset):
             return self.patients_diagnosis_dictionary[patient_id]
         else:
             raise NotImplementedError
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """The LIDC-IDRI dataset: the paper and the data (TCIA), BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @article{armato2011lidc,
+            title={The Lung Image Database Consortium (LIDC) and Image Database Resource Initiative (IDRI): a completed reference database of lung nodules on CT scans},
+            author={Armato III, Samuel G and McLennan, Geoffrey and Bidaut, Luc and others},
+            journal={Medical Physics},
+            volume={38},
+            number={2},
+            pages={915--931},
+            year={2011}
+            }
+            @misc{lidc2015data,
+            title={Data From LIDC-IDRI},
+            howpublished={The Cancer Imaging Archive},
+            doi={10.7937/K9/TCIA.2015.LO9QL9SX}
+            }
+            """,
+            mla="""
+            Armato III, Samuel G., et al. "The Lung Image Database Consortium (LIDC) and Image Database Resource Initiative (IDRI): a completed reference database of lung nodules on CT scans." Medical Physics 38.2 (2011): 915-931.
+            Data From LIDC-IDRI. The Cancer Imaging Archive. doi:10.7937/K9/TCIA.2015.LO9QL9SX
+            """,
+        )
