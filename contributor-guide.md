@@ -108,7 +108,12 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   the model with the best validation value accordingly.
 - Validation and testing go through `solver._forward()`, which for most
   solvers is `LIONsolver.model_forward()`: FDK for image-domain models, plus
-  the model's normalisation.
+  the model's normalisation; a solver whose method defines its own
+  reconstruction (e.g. Noise2Inverse's splits) overrides it. Solvers don't
+  hold reconstructors: where validation needs one (e.g. a learned
+  regulariser, whose training loss isn't a reconstruction metric), it is made
+  outside and given, `set_validation(..., reconstructor=...)`, and the solver
+  uses it with the model being trained. `ARSolver` requires one.
 - Self-supervised losses that are only derived for the MSE use the MSE whatever
   loss is given, and warn (`warn_if_not_mse`).
 - Reconstruction is separate from training (`LION/reconstructors`) and uses

@@ -159,9 +159,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.validation_fn: Optional[Callable] = None
         self.validation_freq: Optional[int] = None
         self.validation_loss: Optional[np.ndarray] = None
+        self.validation_reconstructor = None
 
         self.test_loader: Optional[DataLoader] = None
         self.testing_fn: Optional[Callable] = None
+        self.testing_reconstructor = None
 
         self.current_epoch: int = 0
 
@@ -257,6 +259,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 "every": self.validation_freq,
                 "function": spec.encode_or_name(self.validation_fn, "it"),
             }
+            if self.validation_reconstructor is not None:
+                record["validation"]["reconstructor"] = spec.encode_or_name(
+                    self.validation_reconstructor, "the validation reconstructor"
+                )
         record["epochs"] = {"asked": self.n_epochs, "done": epoch}
         record["weights"] = {"kind": kind, "epoch": epoch}
         if value is not None:
@@ -339,6 +345,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         validation_freq: int,
         validation_fn: Optional[Callable] = None,
         validation_fname: Optional[str] = None,
+        reconstructor=None,
     ):
         """
         This function sets the validation data.
@@ -348,6 +355,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         value, unless ``validation_fn`` has ``higher_is_better = True`` (as
         LION's PSNR and SSIM metrics do; any function can set it, e.g.
         ``my_metric.higher_is_better = True``).
+
+        ``reconstructor``: a reconstructor (``LION.reconstructors``) to
+        reconstruct the validation data with, using the model being trained
+        (set as its ``model``); otherwise the solver's own ``_forward``. It is
+        made outside the solver, with its own parameters, and recorded.
         """
         self.validation_loader = validation_loader
         self.validation_freq = validation_freq
@@ -355,15 +367,30 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             validation_fn if validation_fn is not None else self.loss_fn
         )
         self.validation_fname = validation_fname
+        self.validation_reconstructor = reconstructor
 
     def set_testing(
-        self, test_loader: DataLoader, testing_fn: Optional[Callable] = None
+        self,
+        test_loader: DataLoader,
+        testing_fn: Optional[Callable] = None,
+        reconstructor=None,
     ):
         """
-        This function sets the testing data
+        This function sets the testing data. ``reconstructor``: as in
+        ``set_validation``.
         """
         self.test_loader = test_loader
         self.testing_fn = testing_fn if testing_fn is not None else self.loss_fn
+        self.testing_reconstructor = reconstructor
+
+    def _reconstruct(self, data, reconstructor=None):
+        """``data`` reconstructed with the model being trained: through
+        ``reconstructor`` (given the model) if there is one, otherwise the
+        solver's ``_forward``."""
+        if reconstructor is None:
+            return self._forward(data)
+        reconstructor.model = self.model
+        return reconstructor.reconstruct(data)
 
     def set_saving(self, save_folder: str | pathlib.Path, final_result_fname: str):
         """Sets save_folder and filename for saving final result and min_val result
@@ -851,7 +878,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         with torch.no_grad():
             test_loss = np.array([])
             for data, target in tqdm(self.test_loader):
-                output = self._forward(data.to(self.device))
+                output = self._reconstruct(
+                    data.to(self.device), self.testing_reconstructor
+                )
                 test_loss = np.append(
                     test_loss,
                     self.testing_fn(output, target.to(self.device)).cpu().numpy(),
@@ -916,10 +945,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                     (0, self.current_epoch - len(self.validation_loss)),
                     constant_values=np.nan,
                 )
-            self.validation_loss[
-                self.current_epoch - 1
-            ] = self.model._read_min_validation(
-                self.save_folder.joinpath(self.validation_fname)
+            self.validation_loss[self.current_epoch - 1] = (
+                self.model._read_min_validation(
+                    self.save_folder.joinpath(self.validation_fname)
+                )
             )
             if self.verbose:
                 print(
@@ -1100,7 +1129,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         validation_loss = np.array([])
         for data, targets in tqdm(self.validation_loader):
-            outputs = self._forward(data.to(self.device))
+            outputs = self._reconstruct(
+                data.to(self.device), self.validation_reconstructor
+            )
             # same argument order as the training loss: (output, target)
             validation_loss = np.append(
                 validation_loss,

@@ -141,6 +141,13 @@ def _from_file(path, operator, allow):
         )
     except (ValueError, spec.SpecError, KeyError, AttributeError):
         solver_class = None
+    needed = getattr(solver_class, "reconstructed_with", None)
+    if needed is not None:
+        raise ValueError(
+            f"{path} was trained by {solver_class.__name__}: it reconstructs only "
+            f"through a {needed}. Evaluate that, with this model: "
+            f"{needed}(operator, model, parameters)"
+        )
     if solver_class is not None and solver_class._forward is not LIONsolver._forward:
         solver = LIONsolver.instantiate(path, model, allow=allow, verbose=False)
         made = method(solver, operator)
