@@ -89,6 +89,32 @@ class Normalisation:
         if self.type == "none":
             return x  # return input if no normalization is set
 
+    def normalise_measurements(self, y, op=None):
+        """The measurements of the normalised images, by linearity: if images
+        are mapped to (x - min) / s, measurements y = A x are mapped to
+        (y - A(min)) / s, A(min) being the measurements of an image of value
+        min everywhere (computed with ``op``; none needed when min is 0). For
+        models that take measurements; the operator is unchanged. Not defined
+        for "sample" (an image's range isn't known before reconstructing)."""
+        if self.type == "none":
+            return y
+        if self.type == "sample":
+            raise ValueError(
+                "a 'sample' normalisation can't be applied to measurements: an "
+                "image's range isn't known before reconstructing it"
+            )
+        if self.xmin != 0:
+            if op is None:
+                raise ValueError(
+                    "normalising measurements with a range that doesn't start "
+                    "at 0 needs the operator"
+                )
+            constant = torch.full(
+                tuple(op.domain_shape), float(self.xmin), dtype=y.dtype, device=y.device
+            )
+            y = y - op(constant)
+        return y / _nonzero(self.xmax - self.xmin)
+
     def unnormalise(self, x, reference=None):
         """Undo ``normalise``. ``reference``: the input that was normalised
         (a "sample" normalisation maps ``x`` back to its range; without it,

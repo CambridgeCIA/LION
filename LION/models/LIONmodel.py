@@ -226,13 +226,20 @@ class LIONmodel(nn.Module, ABC):
         "custom" (``data_range``) or "none". It is one of the model's
         parameters (``model_parameters.normalisation``: its type, and range
         for "dataset" and "custom"), so it is saved and made again with the
-        model."""
-        if self.get_input_type() == ModelInputType.SINOGRAM:
-            warnings.warn(
-                """Normalization will not be carried out on this model,
-                as it takes inputs in the measurement domain. 
-                As such inputs cannot be normalized in the image domain before being passed to the model.
-                In such a case, normalization should be implemented within the model itself"""
+        model.
+
+        A model that takes measurements (sinograms) gets them mapped as the
+        images are, by linearity (``Normalisation.normalise_measurements``),
+        and its output is mapped back; its operator is unchanged. "sample"
+        isn't defined for such models."""
+        if (
+            self.get_input_type() == ModelInputType.SINOGRAM
+            and normalisation_type == "sample"
+        ):
+            raise ValueError(
+                f"{type(self).__name__} takes measurements: a 'sample' "
+                "normalisation isn't defined for it (an image's range isn't "
+                "known before reconstructing); use 'dataset' or 'custom'"
             )
         if normalisation_type == "dataset" and dataset is None:
             raise NoDataException("dataloader not set: Please call set_training")

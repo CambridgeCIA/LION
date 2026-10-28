@@ -130,6 +130,15 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   `default_parameters()` and `reconstruct_sample(y, x0, prog_bar)`, and reads
   its settings from `self.parameters`. Its spec holds the operator and the
   parameters, not the model; `instantiate(source, model)` makes it again.
+  `ForwardReconstructor(operator, model)` is a model's own forward pass
+  (`model_forward`, as the solvers train it).
+- A model's normalisation (`set_normalisation()`: the model's
+  `model_parameters.normalisation`, saved and made with it) is applied
+  wherever the model is used: inputs normalised, outputs mapped back
+  (`unnormalise(x, reference)`). Models that take measurements get them
+  mapped by the same factor as the images (by linearity; operators
+  unchanged); "sample" isn't defined for them. Models don't normalise
+  inside `forward()`: whoever calls them does.
 - Methods are evaluated with `LION.evaluation` (`Evaluation`, outside the
   solvers): every test sample, PSNR/SSIM/HaarPSI by default with one range for
   the test set, records saved and reused. The classical baseline of each
