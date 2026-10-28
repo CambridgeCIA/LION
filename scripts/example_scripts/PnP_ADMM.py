@@ -98,16 +98,17 @@ def denoiser_fn_admm(ct_image: torch.Tensor) -> torch.Tensor:
     return denoiser_fn(ct_image, sigma=0.06)
 
 
-reconstructor = PnP(experiment.geometry, prior_fn=denoiser_fn_admm, algorithm="ADMM")
+parameters = PnP.default_parameters("ADMM")
+parameters.max_iter = 10
+parameters.eta = 5e3  # ADMM step size
+parameters.cg_max_iter = 100
+parameters.cg_tol = 1e-7
+reconstructor = PnP(experiment.geometry, denoiser_fn_admm, parameters)
 
 # %% [markdown]
 # ## Perform Plug-and-Play reconstruction
 
 # %%
-admm_iterations = 10
-admm_step_size = 5e3
-cg_max_iter = 100
-cg_tol = 1e-7
 
 for i, (sino, target) in tqdm(
     enumerate(lidc_testing_dataset),
@@ -124,14 +125,7 @@ for i, (sino, target) in tqdm(
     denoised = denoiser_fn(recon.clone()).unsqueeze(0)
 
     # PnP reconstruction
-    pnp_admm_result = reconstructor.reconstruct_sample(
-        sino.squeeze(0),
-        eta=admm_step_size,
-        max_iter=admm_iterations,
-        cg_max_iter=cg_max_iter,
-        cg_tol=cg_tol,
-        prog_bar=True,
-    ).unsqueeze(0)
+    pnp_admm_result = reconstructor.reconstruct(sino, prog_bar=True)
 
     n_subplots = 4
     plt.figure(figsize=(n_subplots * 4, 4))

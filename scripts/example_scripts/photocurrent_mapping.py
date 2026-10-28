@@ -256,23 +256,19 @@ def denoiser_fn(x: GrayscaleImage2D) -> GrayscaleImage2D:
 def run_pnp_admm(
     pcm_op: PhotocurrentMapOp, pcm_measurement: Measurement1D
 ) -> GrayscaleImage2D:
-    admm_iterations = 100
-    admm_step_size = 1e5
-    cg_max_iter = 100
-    cg_tol = 1e-7
+    parameters = PnP.default_parameters("ADMM")
+    parameters.max_iter = 100
+    parameters.eta = 1e5  # ADMM step size
+    parameters.cg_max_iter = 100
+    parameters.cg_tol = 1e-7
 
     print(
-        f"Running PnP-ADMM reconstruction: {admm_iterations} iterations, cg_max_iter={cg_max_iter}..."
+        f"Running PnP-ADMM reconstruction: {parameters.max_iter} iterations, "
+        f"cg_max_iter={parameters.cg_max_iter}..."
     )
 
-    pnp = PnP(physics=pcm_op, prior_fn=denoiser_fn, algorithm="ADMM")
-    return pnp.admm_algorithm(
-        measurement=pcm_measurement,
-        eta=admm_step_size,
-        max_iter=admm_iterations,
-        cg_max_iter=cg_max_iter,
-        cg_tol=cg_tol,
-    )
+    pnp = PnP(pcm_op, denoiser_fn, parameters)
+    return pnp.reconstruct(pcm_measurement)
 
 
 # %%

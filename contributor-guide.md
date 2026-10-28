@@ -108,11 +108,28 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   the model with the best validation value accordingly.
 - Validation and testing go through `solver._forward()`, which for most
   solvers is `LIONsolver.model_forward()`: FDK for image-domain models, plus
-  the model's normalisation.
+  the model's normalisation; a solver whose method defines its own
+  reconstruction (e.g. Noise2Inverse's splits) overrides it. Solvers don't
+  hold reconstructors: where validation needs one (e.g. a learned
+  regulariser, whose training loss isn't a reconstruction metric), it is made
+  outside and given, `set_validation(..., reconstructor=...)`, and the solver
+  uses it with the model being trained. `ARSolver` requires one.
 - Self-supervised losses that are only derived for the MSE use the MSE whatever
   loss is given, and warn (`warn_if_not_mse`).
 - Reconstruction is separate from training (`LION/reconstructors`) and uses
   `op.adjoint`, not autograd.
+- A reconstructor is made with everything that decides its result, then run:
+  `PnP(operator, model, parameters).reconstruct(y)`. `operator` is a CT
+  `Geometry` or any `Operator` (`self.op` is the operator to compute with);
+  `model` is the network (optional when made, e.g. by `instantiate`, set
+  later with `.model = ...`; running without one is an error); `parameters`
+  holds every setting of the algorithm, from the class's
+  `default_parameters()`. `reconstruct` takes only the data, a starting image
+  `x0` and `prog_bar`, so a reconstructor with its parameters is one recorded
+  method. A new reconstructor derives from `LIONReconstructor`, defines
+  `default_parameters()` and `reconstruct_sample(y, x0, prog_bar)`, and reads
+  its settings from `self.parameters`. Its spec holds the operator and the
+  parameters, not the model; `instantiate(source, model)` makes it again.
 - Methods are evaluated with `LION.evaluation` (`Evaluation`, outside the
   solvers): every test sample, PSNR/SSIM/HaarPSI by default with one range for
   the test set, records saved and reused. The classical baseline of each

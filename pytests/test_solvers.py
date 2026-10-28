@@ -410,8 +410,9 @@ def test_gaussian_denoiser_noise_level(noise_level):
 
 
 # --------------------------------------------------------------------------
-# ARSolver trains the regulariser; validation and testing reconstruct with
-# LearnedRegularizerReconstructor (here with an identity "CT" operator)
+# ARSolver trains the regulariser; validation and testing reconstruct with a
+# LearnedRegularizerReconstructor made outside it (here with an identity "CT"
+# operator)
 
 
 class IdentityOp(Operator):
@@ -451,14 +452,20 @@ def make_ar_solver(**params):
     )
 
 
-def test_default_parameters(identity_ct):
-    model = small_dncnn()
-    solver = ar_module.ARSolver(
-        model,
-        torch.optim.Adam(model.parameters()),
-        geometry=Geometry.default_parameters(),
-    )
-    assert solver.reconstructor.n_steps == ar_module.ARParams().n_steps
+def learned_reconstructor(**settings):
+    """Made outside the solver, without a model."""
+    from LION.reconstructors import LearnedRegularizerReconstructor
+
+    parameters = LearnedRegularizerReconstructor.default_parameters()
+    parameters.n_steps, parameters.step_size = 2, 1e-2
+    for name, value in settings.items():
+        setattr(parameters, name, value)
+    return LearnedRegularizerReconstructor(IdentityOp(), parameters=parameters)
+
+
+def test_ar_parameters_are_the_training_ones(identity_ct):
+    assert vars(ar_module.ARParams()) == {"lambd_gp": 0.1}
+    assert not hasattr(make_ar_solver(), "reconstructor")
 
 
 def test_training_step(identity_ct):
@@ -469,36 +476,66 @@ def test_training_step(identity_ct):
     assert torch.isfinite(loss)
 
 
-def test_test_reports_one_value_per_batch_and_estimates_alpha(identity_ct):
-    solver = make_ar_solver(n_steps=4, step_size=1e-2)
-    data = loader(n=6, batch_size=2)
-    solver.set_testing(data, testing_fn=torch.nn.MSELoss())
-    losses = solver.test()
-    assert losses.shape == (3,)
-    expected_alpha = torch.stack(
-        [torch.linalg.vector_norm(y - x) for xb, yb in data for x, y in zip(xb, yb)]
-    ).mean()
-    assert solver.reconstructor.alpha == pytest.approx(expected_alpha.item(), rel=1e-5)
+def test_ar_validation_and_testing_need_a_reconstructor(identity_ct):
+    solver = make_ar_solver()
+    with pytest.raises(LIONSolverException, match="needs a reconstructor"):
+        solver.set_validation(loader(), validation_freq=1)
+    with pytest.raises(LIONSolverException, match="needs a reconstructor"):
+        solver.set_testing(loader())
+
+
+def test_testing_reconstructs_with_the_model_being_trained(identity_ct):
+    solver = make_ar_solver()
+    reconstructor = learned_reconstructor(alpha=0.5)
+    solver.set_testing(loader(n=6, batch_size=2), reconstructor=reconstructor)
+    assert solver.test().shape == (3,)
+    assert reconstructor.model is solver.model
+    assert reconstructor.parameters.alpha == 0.5  # its settings are its own
 
 
 def test_validation_uses_the_reconstructor(identity_ct, tmp_path):
-    solver = make_ar_solver(n_steps=2, step_size=1e-2)
+    solver = make_ar_solver()
+    reconstructor = learned_reconstructor()
     calls = []
-    original = solver.reconstructor.reconstruct
-    solver.reconstructor.reconstruct = lambda d: calls.append(d.shape) or original(d)
+    original = reconstructor.reconstruct
+    reconstructor.reconstruct = lambda d: calls.append(d.shape) or original(d)
     solver.set_saving(tmp_path, "model")
-    solver.set_validation(loader(n=4, batch_size=2), validation_freq=1)
+    solver.set_validation(
+        loader(n=4, batch_size=2), validation_freq=1, reconstructor=reconstructor
+    )
     assert solver.validate() > 0
     assert calls == [torch.Size([2, 1, 8, 8])] * 2
+    # recorded with the training, by its spec (not the model)
+    written = solver.training_record("final", 0).serialize()["validation"]
+    assert written["reconstructor"]["parameters"]["n_steps"] == 2
+    assert "model" not in written["reconstructor"]
 
 
 def test_default_metrics_are_reconstruction_mse(identity_ct, tmp_path):
     solver = make_ar_solver()
     solver.set_saving(tmp_path, "model")
-    solver.set_validation(loader(), validation_freq=1)
-    solver.set_testing(loader())
+    solver.set_validation(loader(), 1, reconstructor=learned_reconstructor())
+    solver.set_testing(loader(), reconstructor=learned_reconstructor())
     assert isinstance(solver.validation_fn, torch.nn.MSELoss)
     assert isinstance(solver.testing_fn, torch.nn.MSELoss)
+
+
+def test_any_solver_can_validate_through_a_reconstructor(tmp_path):
+    """The reconstructor is optional for other solvers: given one, validation
+    reconstructs through it with the model being trained."""
+    solver = make_solver()
+    reconstructor = learned_reconstructor()
+    seen = []
+    original = reconstructor.reconstruct
+    reconstructor.reconstruct = lambda d: seen.append(reconstructor.model) or original(
+        d
+    )
+    solver.set_saving(tmp_path, "model")
+    solver.set_validation(
+        loader(n=2, batch_size=2), 1, torch.nn.MSELoss(), reconstructor=reconstructor
+    )
+    solver.validate()
+    assert seen == [solver.model]
 
 
 # --------------------------------------------------------------------------
@@ -718,3 +755,17 @@ def test_equivariant_solver_gradient_goes_through_the_second_fdk(monkeypatch):
     loss = solver.mini_batch_step(torch.rand(2, 1, 8, 8), None)
     loss.backward()
     assert calls == [False, True]  # the data's FDK needs no gradient
+
+
+def test_an_ar_model_file_alone_is_not_a_method(identity_ct, tmp_path):
+    from LION.evaluation import method
+
+    solver = make_ar_solver()
+    solver.set_training(loader(n=2, batch_size=2))
+    solver.set_saving(tmp_path, "regulariser")
+    solver.train(1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        solver.save_final_results()
+    with pytest.raises(ValueError, match="through a LearnedRegularizerReconstructor"):
+        method(tmp_path / "regulariser", allow=["pytests."])

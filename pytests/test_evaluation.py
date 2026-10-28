@@ -39,7 +39,7 @@ from LION.optimizers.training_record import weights_sha256  # noqa: E402
 from LION.reconstructors.LIONreconstructor import LIONReconstructor  # noqa: E402
 from LION.utils.normaliser import Normalisation  # noqa: E402
 from LION.utils.parameter import LIONParameter  # noqa: E402
-from pytests.helpers import ImageMatrixOp, small_dncnn  # noqa: E402
+from pytests.helpers import ImageMatrixOp, ScaleOp, small_dncnn  # noqa: E402
 
 pytestmark = [
     pytest.mark.filterwarnings("ignore:.*Expected '(dataset|training|geometry)'"),
@@ -113,20 +113,20 @@ def test_a_function_gets_the_operator():
 
 
 class Doubling(LIONReconstructor):
-    def __init__(self, operator):
-        super().__init__(operator)
-        self.model = small_dncnn(ModelInputType.SINOGRAM)
-
-    def reconstruct_sample(self, sino, **kwargs):
-        return 2 * sino
+    def reconstruct_sample(self, y, x0=None, prog_bar=False):
+        return 2 * y
 
 
 def test_a_reconstructor():
-    reconstructor = Doubling(ImageMatrixOp(torch.eye(4), (1, 2, 2), (1, 2, 2)))
+    net = small_dncnn(ModelInputType.SINOGRAM)
+    reconstructor = Doubling(ScaleOp(1.0, (1, 2, 2)), net)
     run = method(reconstructor)
     torch.testing.assert_close(run(torch.ones(1, 2, 2)), 2 * torch.ones(1, 2, 2))
     assert run.record["kind"] == "reconstructor"
-    assert len(run.record["models"]) == 1
+    assert run.record["model"]["weights_sha256"] == weights_sha256(net)
+    assert run.modules == (net,)
+    # recorded by its spec: operator and parameters, not the model
+    assert set(run.record["reconstructor"]) == {"_target_", "operator", "parameters"}
 
 
 @pytest.fixture

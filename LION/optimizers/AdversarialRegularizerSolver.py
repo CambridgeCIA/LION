@@ -18,10 +18,6 @@ from LION.CTtools.ct_geometry import Geometry
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
-from LION.reconstructors.LearnedRegularizerReconstructor import (
-    LearnedRegularizerReconstructor,
-    estimate_alpha,
-)
 
 
 class ARParams(SolverParams):
@@ -29,32 +25,24 @@ class ARParams(SolverParams):
 
     Args:
         lambd_gp: Weight of the gradient penalty in the WGAN training loss.
-        n_steps, step_size, backtracking: Settings of the variational
-            reconstruction used for validation and testing (see
-            LearnedRegularizerReconstructor).
     """
 
-    def __init__(
-        self,
-        lambd_gp: float = 1e-1,
-        n_steps: int = 150,
-        step_size: float = 1e-6,
-        backtracking: float = 0.95,
-    ):
+    def __init__(self, lambd_gp: float = 1e-1):
         super().__init__()
         self.lambd_gp = lambd_gp
-        self.n_steps = n_steps
-        self.step_size = step_size
-        self.backtracking = backtracking
 
 
 class ARSolver(LIONsolver):
     """Trains an adversarial regulariser (Lunz et al., 2018).
 
     Training compares clean images with FDK reconstructions (WGAN loss with
-    gradient penalty). Validation and testing reconstruct with the regulariser
-    being trained, through LearnedRegularizerReconstructor; use that class
-    directly to reconstruct with a trained regulariser.
+    gradient penalty). The WGAN loss doesn't measure reconstructions, so
+    validation and testing reconstruct with a ``LearnedRegularizerReconstructor``
+    you make and give (``set_validation(..., reconstructor=...)``): the
+    solver uses it with the regulariser being trained. Its settings (e.g.
+    ``alpha``, which ``estimate_alpha`` estimates as in the paper) are the
+    reconstructor's. To reconstruct with a trained regulariser, use the same
+    class with the model.
     """
 
     def __init__(
@@ -79,13 +67,10 @@ class ARSolver(LIONsolver):
             seed=seed,
             deterministic=deterministic,
         )
-        self.reconstructor = LearnedRegularizerReconstructor(
-            self.op,
-            self.model,
-            n_steps=self.solver_params.n_steps,
-            step_size=self.solver_params.step_size,
-            backtracking=self.solver_params.backtracking,
-        )
+
+    # Its models reconstruct only through a reconstructor (LION.evaluation
+    # refuses their files alone).
+    reconstructed_with = "LearnedRegularizerReconstructor"
 
     @staticmethod
     def default_parameters() -> ARParams:
@@ -97,38 +82,28 @@ class ARSolver(LIONsolver):
         validation_freq,
         validation_fn=None,
         validation_fname=None,
+        reconstructor=None,
     ):
-        # The training loss (WGAN) is not a reconstruction metric: by default,
-        # validate with the MSE between reconstruction and target.
+        """As ``LIONsolver.set_validation``; ``reconstructor`` (a
+        ``LearnedRegularizerReconstructor``) is needed. By default, validate
+        with the MSE between reconstruction and target."""
+        _needs(reconstructor, "set_validation")
         if validation_fn is None:
             validation_fn = torch.nn.MSELoss()
         super().set_validation(
-            validation_loader, validation_freq, validation_fn, validation_fname
+            validation_loader,
+            validation_freq,
+            validation_fn,
+            validation_fname,
+            reconstructor,
         )
 
-    def set_testing(self, test_loader, testing_fn=None):
+    def set_testing(self, test_loader, testing_fn=None, reconstructor=None):
+        """As ``LIONsolver.set_testing``; ``reconstructor`` is needed."""
+        _needs(reconstructor, "set_testing")
         if testing_fn is None:
             testing_fn = torch.nn.MSELoss()
-        super().set_testing(test_loader, testing_fn)
-
-    def _forward(self, data: torch.Tensor) -> torch.Tensor:
-        # validation and testing reconstruct with the current regulariser
-        return self.reconstructor.reconstruct(data)
-
-    def _set_alpha(self, loader):
-        self.reconstructor.alpha = estimate_alpha(self.op, loader, self.device)
-        if self.verbose:
-            print(f"Estimated alpha: {self.reconstructor.alpha}")
-
-    def validate(self):
-        if self.validation_loader is not None:
-            self._set_alpha(self.validation_loader)
-        return super().validate()
-
-    def test(self):
-        if self.test_loader is not None:
-            self._set_alpha(self.test_loader)
-        return super().test()
+        super().set_testing(test_loader, testing_fn, reconstructor)
 
     def wgan_loss(self, sino_batch, target_batch):
         bad_recon = fdk(sino_batch, self.op)
@@ -194,3 +169,13 @@ class ARSolver(LIONsolver):
             raise AttributeError(
                 'cite_format not understood, only "MLA" and "bib" supported'
             )
+
+
+def _needs(reconstructor, where):
+    if reconstructor is None:
+        raise LIONSolverException(
+            f"ARSolver.{where} needs a reconstructor: the regulariser alone "
+            "doesn't reconstruct. Give e.g. "
+            "reconstructor=LearnedRegularizerReconstructor(operator, "
+            "parameters=...) (alpha: estimate_alpha(op, loader))"
+        )

@@ -30,13 +30,15 @@ import pathlib
 import re
 import warnings
 
+import torch
+
 from LION.data_loaders.data_record import read_record
 from LION.evaluation.evaluation import _default_name, table
 from LION.evaluation.methods import baseline as modality_baseline
 from LION.evaluation.methods import method
 from LION.models.LIONmodel import LIONmodel
 from LION.optimizers.LIONsolver import LIONsolver
-from LION.optimizers.training_record import read_training_record
+from LION.optimizers.training_record import read_training_record, weights_sha256
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils import environment, spec
 from LION.utils.parameter import LIONParameter
@@ -107,7 +109,8 @@ class Comparison:
         for name, m in self.named_methods().items():
             found = _records_of(m, self.allow)
             if found is None:
-                if isinstance(m, (LIONmodel, LIONReconstructor)):
+                network = m.model if isinstance(m, LIONReconstructor) else m
+                if isinstance(network, torch.nn.Module):
                     notes.append(
                         f"{name}: no record of its training, so it can't be "
                         "checked (give its file instead)"
@@ -429,7 +432,12 @@ def _as_dict(record):
 
 def _records_of(x, allow):
     """``(training data, validation data, LION code difference)`` of a model
-    file or a solver; None for methods without records."""
+    file or a solver, or of the file a model (also a reconstructor's) was
+    loaded from; None for methods without records."""
+    if isinstance(x, LIONReconstructor):
+        x = x.model
+    if getattr(x, "source_file", None) is not None:
+        x = x.source_file
     if isinstance(x, (str, os.PathLike)):
         path = pathlib.Path(x)
         saved = spec.read(path)
@@ -456,9 +464,15 @@ def _records_of(x, allow):
 
 
 def _method_spec(x, what):
-    """A method's spec: a file by its path, a function by its import path. A
-    model, solver or reconstructor object is only named (with a warning): its
-    spec would make it with new weights, so give its file instead."""
+    """A method's spec: a file by its path, a function by its import path, a
+    reconstructor by its spec and its model's file (or function). A model or
+    solver object, or a reconstructor whose network wasn't loaded from a file,
+    is only named (with a warning): its spec would make it with new weights,
+    so give its file instead."""
+    if isinstance(x, LIONReconstructor):
+        written = _reconstructor_spec(x, what)
+        if written is not None:
+            return written
     if isinstance(x, (LIONmodel, LIONsolver, LIONReconstructor)):
         warnings.warn(
             f"{what} is a {type(x).__name__} made in the script: the comparison "
@@ -470,12 +484,42 @@ def _method_spec(x, what):
     return spec.encode_or_name(x, what)
 
 
+def _reconstructor_spec(x, what):
+    """``{"lion_reconstructor": spec, "model_file" or "model": ...}``, or None
+    if its model is a network made in the script."""
+    written = {"lion_reconstructor": spec.encode_or_name(x, what)}
+    model = x.model
+    if isinstance(model, torch.nn.Module):
+        if getattr(model, "source_file", None) is None:
+            return None
+        written["model_file"] = spec.encode(pathlib.Path(model.source_file))
+        written["weights_sha256"] = weights_sha256(model)
+    else:
+        written["model"] = spec.encode_or_name(model, f"{what}'s model")
+    return written
+
+
 def _built(value, what, allow):
     """A method (or baseline) from its spec; an error if only named."""
     if spec.is_unsaved(value):
         raise ValueError(
             f"{what} was made in the script ({value['unsaved']}), so it can't be "
             "made again: give it with instantiate(..., methods=...)"
+        )
+    if isinstance(value, dict) and "lion_reconstructor" in value:
+        if "model_file" in value:
+            path = spec.build(value["model_file"], allow)
+            model = LIONmodel.load(path, allow=allow, supress_warnings=True)[0]
+            if weights_sha256(model) != value.get("weights_sha256"):
+                warnings.warn(
+                    f"{what}'s model file {path} now has other weights than when "
+                    "the comparison was saved",
+                    stacklevel=3,
+                )
+        else:
+            model = _built(value["model"], f"{what}'s model", allow)
+        return LIONReconstructor.instantiate(
+            value["lion_reconstructor"], model, allow=allow
         )
     return spec.build(value, allow)
 

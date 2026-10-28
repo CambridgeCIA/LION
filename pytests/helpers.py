@@ -40,6 +40,33 @@ class ImageMatrixOp(Operator):
         return self._range_shape
 
 
+class ScaleOp(Operator):
+    """y = factor * x on images of ``shape``: an operator that keeps its
+    arguments, so it can be written as a spec (unlike ImageMatrixOp's matrix)."""
+
+    def __init__(self, factor, shape):
+        super().__init__()
+        self.factor = factor
+        self.shape = tuple(shape)
+
+    def __call__(self, x, out=None):
+        return self.forward(x)
+
+    def forward(self, x):
+        return self.factor * x
+
+    def adjoint(self, y):
+        return self.factor * y
+
+    @property
+    def domain_shape(self):
+        return self.shape
+
+    @property
+    def range_shape(self):
+        return self.shape
+
+
 def small_dncnn(input_type=ModelInputType.IMAGE):
     params = DnCNN.default_parameters()
     params.blocks = 3

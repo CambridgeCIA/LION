@@ -16,8 +16,9 @@ best validation, checkpoints), next to the record of the training data
   ``initial_weights_sha256``, a hash of the weights training started from;
 - ``train``: how the training data were fed (``batch_size``, ``shuffle``,
   ``drop_last``); the data themselves are the file's ``dataset_params``;
-- ``validation``: its data record, how they were fed, ``every`` (epochs) and
-  the validation ``function``;
+- ``validation``: its data record, how they were fed, ``every`` (epochs),
+  the validation ``function``, and the ``reconstructor`` it reconstructs with
+  (its spec: operator and parameters), if one was given;
 - ``epochs``: ``asked`` (``train(n)``) and ``done``;
 - ``weights``: which weights the file holds: ``kind`` ("final",
   "best_validation", "checkpoint"), after which ``epoch`` (counted from 1), and

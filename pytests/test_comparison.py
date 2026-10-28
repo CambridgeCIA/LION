@@ -243,3 +243,65 @@ def test_models_without_records_are_said(tmp_path):
         "net: no record of its training, so it can't be checked (give its file "
         "instead)"
     ]
+
+
+# --------------------------------------------------------------------------
+# Reconstructors: checked and recorded through their model's file
+
+
+def fbs(model):
+    from LION.reconstructors import PnP
+    from pytests.helpers import ScaleOp
+
+    parameters = PnP.default_parameters("FBS")
+    parameters.max_iter = 2
+    return PnP(ScaleOp(1.0, (1, 8, 8)), model, parameters)
+
+
+def loaded(path):
+    from LION.models.LIONmodel import LIONmodel
+
+    return LIONmodel.load(path, supress_warnings=True)[0]
+
+
+def test_a_reconstructors_model_file_is_checked(no_ct, tmp_path):
+    path = trained(tmp_path, Slices("test"))
+    model = loaded(path)
+    assert model.source_file == path
+    with pytest.raises(ValueError, match="pnp was trained on"):
+        Comparison(evaluation(tmp_path), {"pnp": fbs(model)}, baseline=False).check()
+
+
+def test_a_reconstructor_is_saved_and_made_again(no_ct, tmp_path):
+    path = trained(tmp_path, Slices("train"))
+    made = Comparison(
+        evaluation(tmp_path),
+        {"pnp": fbs(loaded(path)), "pnp_as_is": fbs(as_is_image)},
+        baseline=False,
+    )
+    folder = made.save(tmp_path / "paper")
+    again = Comparison.instantiate(
+        folder,
+        allow=["pytests."],
+        evaluation_arguments={"save_folder": tmp_path / "results", "device": "cpu"},
+    )
+    assert again.methods["pnp"].model.source_file == path
+    assert again.methods["pnp_as_is"].model is as_is_image
+    assert again.table() == made.table()  # the same methods: results read again
+
+
+def test_a_changed_model_file_warns(no_ct, tmp_path):
+    path = trained(tmp_path, Slices("train"))
+    folder = Comparison(
+        evaluation(tmp_path), {"pnp": fbs(loaded(path))}, baseline=False
+    ).save(tmp_path / "paper")
+    trained(tmp_path, Slices("train"), seed=1)  # other weights, same file
+    with pytest.warns(UserWarning, match="other weights"):
+        Comparison.instantiate(
+            folder, allow=["pytests."], evaluation_arguments={"device": "cpu"}
+        )
+
+
+def as_is_image(x):
+    """A prior that changes nothing."""
+    return x
