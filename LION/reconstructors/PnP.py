@@ -2,90 +2,89 @@
 
 from __future__ import annotations
 
-from typing import Callable, Literal
-
 import numpy as np
 import torch
 from tqdm import tqdm
 
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
 from LION.classical_algorithms.fdk import fdk
-from LION.CTtools.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel
 from LION.operators import CTProjectionOp, Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
+from LION.utils.parameter import LIONParameter
+
+# The settings of each algorithm, and their defaults.
+ALGORITHMS = {
+    "ADMM": dict(eta=1e-4, max_iter=10, cg_max_iter=100, cg_tol=1e-7, noise_level=None),
+    "HQS": dict(
+        lambda_=0.23,
+        mu=0.1,
+        max_iter=100,
+        noise_level=None,
+        cg_max_iter=100,
+        cg_tol=1e-7,
+    ),
+    "FBS": dict(step_size=None, max_iter=10, noise_level=None),
+}
 
 
 class PnP(LIONReconstructor):
-    def __init__(
-        self,
-        physics: Geometry | Operator,
-        prior_fn: Callable[[torch.Tensor], torch.Tensor],
-        algorithm: Literal["ADMM", "HQS", "FBS"] = "ADMM",
-    ):
-        """
-        Plug-and-Play Reconstructor using a denoiser as prior.
+    """Plug-and-Play reconstruction with a denoiser (``model``) as the prior.
 
-        Parameters
-        ----------
-        physics : Geometry or Operator
-            The physics of the imaging system.
-            This can be either a CT Geometry object or a pre-defined Operator.
-            If a Geometry is provided, the corresponding CT operator will be created.
-        prior_fn : Callable[[torch.Tensor], torch.Tensor]
-            The prior for plug-and-play, for example, a pre-trained denoiser model.
-            A LIONmodel prior is called on a batch of one image (with its
-            normalisation, and the noise level if it uses one). Any other callable
-            is called on the image as it is (the operator's domain shape) and
-            must return the same shape.
-        algorithm : Literal["ADMM", "HQS", "FBS"], optional
-            The reconstruction algorithm to use. See the options in the notes below. Default is "ADMM".
+    ``PnP(operator, model, parameters)``, with ``parameters`` from
+    ``PnP.default_parameters(algorithm)``:
 
-        Notes
-        -----
-        The following algorithms are implemented:
-        - "ADMM": Alternating Direction Method of Multipliers
-        - "HQS": Half Quadratic Splitting
-        - "FBS": Forward-Backward Splitting
-        """
-        super().__init__(physics)
-        self.model = prior_fn
+    - ``algorithm``: "ADMM" (Alternating Direction Method of Multipliers),
+      "HQS" (Half Quadratic Splitting) or "FBS" (Forward-Backward Splitting);
+    - that algorithm's settings (see ``admm_algorithm``, ``hqs_algorithm``,
+      ``forward_backward_splitting``). A setting missing from the parameters
+      has its default.
+
+    ``model``: the denoiser. A LIONmodel prior is called on a batch of one
+    image (with its normalisation, and the noise level if it uses one). Any
+    other callable is called on the image as it is (the operator's domain
+    shape) and must return the same shape.
+    """
+
+    def __init__(self, operator, model=None, parameters=None):
+        super().__init__(operator, model, parameters)
+        algorithm = getattr(self.parameters, "algorithm", None)
+        if algorithm not in ALGORITHMS:
+            raise ValueError(
+                f"Unknown algorithm: {algorithm!r} (one of {', '.join(ALGORITHMS)})"
+            )
         self._op_norm = None  # ||A||, computed once when first needed (FBS)
 
-        if algorithm == "HQS":
-            # Half Quadratic Splitting, as from the paper "Plug-and-Play Image Restoration with Deep Denoiser Prior"
-            self.algorithm = "HQS"  # Half Quadratic Splitting
-        elif algorithm == "FBS" or algorithm == "ForwardBackwardSplitting":
-            self.algorithm = "FBS"  # Forward-Backward Splitting
-        elif algorithm == "ADMM":
-            self.algorithm = "ADMM"  # Alternating Direction Method of Multipliers
-        else:
-            raise ValueError(f"Unknown algorithm: {algorithm}")
+    @staticmethod
+    def default_parameters(algorithm="ADMM") -> LIONParameter:
+        """``algorithm`` and its settings, with their defaults."""
+        if algorithm not in ALGORITHMS:
+            raise ValueError(
+                f"Unknown algorithm: {algorithm!r} (one of {', '.join(ALGORITHMS)})"
+            )
+        return LIONParameter(algorithm=algorithm, **ALGORITHMS[algorithm])
 
-    def reconstruct_sample(
-        self,
-        sino,
-        *,
-        prog_bar: bool = False,
-        **kwargs,
-    ):
-        """
-        Reconstruct one measurement (e.g. a (C, angles, detectors) sinogram)
-        with the selected algorithm. Extra keyword arguments are passed to it.
+    def setting(self, name):
+        """A setting of the algorithm: from the parameters, or its default."""
+        return getattr(
+            self.parameters, name, ALGORITHMS[self.parameters.algorithm][name]
+        )
 
-        :param sino: Measurement tensor, in the range of the operator.
-        :return: Reconstructed image tensor, in the domain of the operator.
-        """
+    def reconstruct_sample(self, sino, x0=None, prog_bar: bool = False):
+        """Reconstruct one measurement (e.g. a (C, angles, detectors)
+        sinogram) with the algorithm and settings in ``self.parameters``."""
         if not isinstance(sino, torch.Tensor):
             raise TypeError("Sinogram must be a torch.Tensor")
-        if self.algorithm == "HQS":
-            return self.hqs_algorithm(sino, prog_bar=prog_bar, **kwargs)
-        if self.algorithm == "FBS":
-            return self.forward_backward_splitting(sino, prog_bar=prog_bar, **kwargs)
-        if self.algorithm == "ADMM":
-            return self.admm_algorithm(sino, prog_bar=prog_bar, **kwargs)
-        raise ValueError(f"Unknown algorithm: {self.algorithm}")
+        algorithm = self.parameters.algorithm
+        settings = {k: self.setting(k) for k in ALGORITHMS[algorithm]}
+        if algorithm == "HQS":
+            return self.hqs_algorithm(sino, x0=x0, prog_bar=prog_bar, **settings)
+        if algorithm == "FBS":
+            return self.forward_backward_splitting(
+                sino, x0=x0, prog_bar=prog_bar, **settings
+            )
+        return self.admm_algorithm(sino, x0=x0, prog_bar=prog_bar, **settings)
 
     # ------------------------------------------------------------------ helpers
     def _uses_noise_level(self) -> bool:

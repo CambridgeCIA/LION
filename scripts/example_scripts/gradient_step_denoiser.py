@@ -145,7 +145,9 @@ model.eval()
 
 from LION.reconstructors.PnP import PnP
 
-reconstructor = PnP(experiment.geometry, model, algorithm="FBS")
+parameters = PnP.default_parameters("FBS")
+parameters.max_iter = 5
+reconstructor = PnP(experiment.geometry, model, parameters)
 
 for i, (sino, target) in enumerate(lidc_dataloader):
     for noise_level in [0.001, 0.0001, 0.0000]:
@@ -161,9 +163,8 @@ for i, (sino, target) in enumerate(lidc_dataloader):
         denoised = model.unnormalise(denoised)
 
         # PnP recon
-        pnp = reconstructor.reconstruct(
-            sino.to(device), noise_level=noise_level, max_iter=5
-        )
+        reconstructor.parameters.noise_level = noise_level
+        pnp = reconstructor.reconstruct(sino.to(device))
 
         plt.figure()
         plt.subplot(1, 4, 1)

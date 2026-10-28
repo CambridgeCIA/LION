@@ -6,13 +6,13 @@
 # =============================================================================
 
 
-#%% This is a base class for LION models.
+# %% This is a base class for LION models.
 #
 # All classes must derive from this one.
 # It definest a bunch of auxiliary functions
 #
 
-#%% Imports
+# %% Imports
 
 # You will want to import LIONParameter, as all models must save and use Parameters.
 from enum import Enum
@@ -563,7 +563,8 @@ class LIONmodel(nn.Module, ABC):
         file names. ``allow``: module prefixes of your own model classes (see
         ``LION.utils.spec.build``). ``weights_only=False`` reads a ``.pt``
         that holds other objects, which can run code: only for files you
-        trust. Returns ``(model, options, data)``.
+        trust. Returns ``(model, options, data)``; the model keeps its file
+        as ``model.source_file`` (without suffix).
         """
         # Make it a Path if needed
         if isinstance(fname, str):
@@ -580,6 +581,8 @@ class LIONmodel(nn.Module, ABC):
         # Load the data into the model we created.
         model.to(default_device())
         model.load_state_dict(data.pop("model_state_dict"))
+        # where it came from, so records of methods using it can name the file
+        model.source_file = fname.with_suffix("")
 
         return model, options, data
 

@@ -79,12 +79,12 @@ class ARSolver(LIONsolver):
             seed=seed,
             deterministic=deterministic,
         )
+        parameters = LearnedRegularizerReconstructor.default_parameters()
+        parameters.n_steps = self.solver_params.n_steps
+        parameters.step_size = self.solver_params.step_size
+        parameters.backtracking = self.solver_params.backtracking
         self.reconstructor = LearnedRegularizerReconstructor(
-            self.op,
-            self.model,
-            n_steps=self.solver_params.n_steps,
-            step_size=self.solver_params.step_size,
-            backtracking=self.solver_params.backtracking,
+            self.op, self.model, parameters
         )
 
     @staticmethod
@@ -116,9 +116,11 @@ class ARSolver(LIONsolver):
         return self.reconstructor.reconstruct(data)
 
     def _set_alpha(self, loader):
-        self.reconstructor.alpha = estimate_alpha(self.op, loader, self.device)
+        self.reconstructor.parameters.alpha = estimate_alpha(
+            self.op, loader, self.device
+        )
         if self.verbose:
-            print(f"Estimated alpha: {self.reconstructor.alpha}")
+            print(f"Estimated alpha: {self.reconstructor.parameters.alpha}")
 
     def validate(self):
         if self.validation_loader is not None:

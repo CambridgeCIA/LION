@@ -15,7 +15,7 @@ when two evaluations ran the same method):
   (e.g. Noise2Inverse's), that solver's;
 - a solver: its own reconstruction (``solver._forward``);
 - a reconstructor (``PnP``, ``LearnedRegularizerReconstructor``): its
-  ``reconstruct``;
+  ``reconstruct``, recorded as its spec (operator, parameters) and its model;
 - a function ``f(y, operator)``, e.g. ``fdk``, or ``functools.partial(tv_min,
   lam=...)``.
 
@@ -63,17 +63,13 @@ def method(x, operator=None, *, allow=()):
             x,
         )
     if isinstance(x, LIONReconstructor):
-        modules = [
-            v
-            for v in vars(x).values()
-            if isinstance(v, torch.nn.Module) and not isinstance(v, Operator)
-        ]
+        modules = [x.model] if isinstance(x.model, torch.nn.Module) else []
         return _make(
             x.reconstruct,
             {
                 "kind": "reconstructor",
                 "reconstructor": spec.encode_or_name(x, "the reconstructor"),
-                "models": [_model_identity(m) for m in modules],
+                "model": _identity(x.model),
             },
             *modules,
         )
@@ -114,11 +110,27 @@ def _source_hash(function):
     return hashlib.sha256(source.encode("utf-8")).hexdigest()
 
 
-def _model_identity(model) -> dict:
+def _identity(model):
+    """A reconstructor's model: a network by its spec and weights, a function
+    by its spec and source; None if it has none."""
+    if model is None:
+        return None
+    if isinstance(model, torch.nn.Module):
+        return _model_identity(model)
     return {
+        "function": spec.encode_or_name(model, "the model"),
+        "source_sha256": _source_hash(model),
+    }
+
+
+def _model_identity(model) -> dict:
+    identity = {
         "spec": spec.encode_or_name(model, "the model"),
         "weights_sha256": weights_sha256(model),
     }
+    if getattr(model, "source_file", None) is not None:
+        identity["file"] = spec.encode(pathlib.Path(model.source_file))
+    return identity
 
 
 def _from_file(path, operator, allow):

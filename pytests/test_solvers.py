@@ -458,7 +458,7 @@ def test_default_parameters(identity_ct):
         torch.optim.Adam(model.parameters()),
         geometry=Geometry.default_parameters(),
     )
-    assert solver.reconstructor.n_steps == ar_module.ARParams().n_steps
+    assert solver.reconstructor.parameters.n_steps == ar_module.ARParams().n_steps
 
 
 def test_training_step(identity_ct):
@@ -478,7 +478,9 @@ def test_test_reports_one_value_per_batch_and_estimates_alpha(identity_ct):
     expected_alpha = torch.stack(
         [torch.linalg.vector_norm(y - x) for xb, yb in data for x, y in zip(xb, yb)]
     ).mean()
-    assert solver.reconstructor.alpha == pytest.approx(expected_alpha.item(), rel=1e-5)
+    assert solver.reconstructor.parameters.alpha == pytest.approx(
+        expected_alpha.item(), rel=1e-5
+    )
 
 
 def test_validation_uses_the_reconstructor(identity_ct, tmp_path):
