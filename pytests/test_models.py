@@ -1,6 +1,8 @@
 """Models: construction with default parameters, save/load round trips, UNet,
 ItNet and the gradient-step denoisers. All on CPU, without a CT operator."""
 
+import warnings
+
 import numpy as np
 import pytest
 import torch
@@ -19,6 +21,7 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.models.post_processing.FBPConvNet import FBPConvNet
 from LION.models.post_processing.FBPConvNetImage import FBPConvNetImage
 from LION.models.post_processing.FBPMSDNet import FBPMSDNet
+from LION.utils import spec
 from LION.utils.parameter import LIONParameter
 from pytests.helpers import ImageMatrixOp, small_gsd, small_gsdrunet
 
@@ -229,6 +232,42 @@ def test_the_normalisation_is_in_checkpoints(tmp_path):
 def test_a_model_without_normalisation_loads_without(tmp_path):
     _save(DnCNN(), tmp_path / "model")
     assert DnCNN.load(tmp_path / "model", supress_warnings=True)[0].normalisator is None
+
+
+def test_the_normalisation_is_a_parameter():
+    """It is in the model's parameters (so its spec), and made with it."""
+    model = DnCNN()
+    model.set_normalisation("custom", data_range=(0.0, 4.0))
+    assert vars(model.model_parameters.normalisation) == {
+        "type": "custom",
+        "range": [0.0, 4.0],
+    }
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # not an "unknown parameter"
+        made = LIONmodel.instantiate(spec.to_spec(model))
+    assert made.normalisator.record() == {"type": "custom", "range": [0.0, 4.0]}
+    # parameters without it (files saved before): no normalisation
+    assert DnCNN(DnCNN.default_parameters()).normalisator is None
+
+
+def test_sample_normalisation_maps_back_with_the_inputs_range():
+    from LION.utils.normaliser import Normalisation
+
+    sample = Normalisation("sample")
+    a, b = torch.rand(1, 1, 4, 4), 10 * torch.rand(1, 1, 4, 4)
+    normalised_a = sample.normalise(a)
+    sample.normalise(b)  # something else normalised in between
+    torch.testing.assert_close(sample.unnormalise(normalised_a, a), a)
+
+
+def test_acr_does_not_normalise_its_inputs_itself():
+    torch.manual_seed(0)
+    model = ACR()
+    x = torch.rand(1, 1, 32, 32)
+    with torch.no_grad():
+        plain = model(x)
+        model.set_normalisation("custom", data_range=(0.0, 10.0))
+        torch.testing.assert_close(model(x), plain)
 
 
 def test_nested_model_parameters_load(tmp_path):

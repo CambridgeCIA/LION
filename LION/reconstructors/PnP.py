@@ -105,7 +105,7 @@ class PnP(LIONReconstructor):
             out = self.model(x_in, noise_level=noise_level)
         else:
             out = self.model(x_in)
-        return self.model.unnormalise(out).squeeze(0)
+        return self.model.unnormalise(out, x.unsqueeze(0)).squeeze(0)
 
     def initial_guess(self, sino: torch.Tensor) -> torch.Tensor:
         """FDK for CT operators, zeros otherwise (the default start of HQS/FBS)."""

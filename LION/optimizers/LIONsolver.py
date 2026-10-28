@@ -85,8 +85,7 @@ def model_forward(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:
     if model.get_input_type() == ModelInputType.IMAGE:
         data = fdk(data, op)
         if getattr(model, "normalisator", None) is not None:
-            data = model.normalise(data)
-            return model.unnormalise(model(data))
+            return model.unnormalise(model(model.normalise(data)), data)
     return model(data)
 
 

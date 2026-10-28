@@ -170,14 +170,21 @@ class LIONmodel(nn.Module, ABC):
         else:
             # A name the model doesn't know is not used: likely a typo
             spec.warn_unknown_names(
-                type(self).__name__, model_parameters, self.default_parameters()
+                type(self).__name__,
+                model_parameters,
+                self.default_parameters(),
+                ignore=("normalisation",),
             )
         model_parameters = as_model_parameter(model_parameters)
         # Pass all relevant parameters to internal storage.
         self.geometry = geometry
         self.model_parameters = model_parameters
-        # Set by set_normalisation(); None means inputs are used as they are.
-        self.normalisator = None
+        # The normalisation the model is trained and used with (a parameter,
+        # written by set_normalisation()); None: inputs are used as they are.
+        recorded = getattr(model_parameters, "normalisation", None)
+        self.normalisator = (
+            None if recorded is None else Normalisation.from_record(recorded)
+        )
 
     # This should return the parameters from the paper the model is from
     @staticmethod
@@ -213,6 +220,13 @@ class LIONmodel(nn.Module, ABC):
     def set_normalisation(
         self, normalisation_type="sample", dataset=None, data_range=None
     ):
+        """Normalise the model's inputs (and map its outputs back), in
+        training and whenever it is used: "sample" (each image's own range),
+        "dataset" (the targets' range over ``dataset``, computed now),
+        "custom" (``data_range``) or "none". It is one of the model's
+        parameters (``model_parameters.normalisation``: its type, and range
+        for "dataset" and "custom"), so it is saved and made again with the
+        model."""
         if self.get_input_type() == ModelInputType.SINOGRAM:
             warnings.warn(
                 """Normalization will not be carried out on this model,
@@ -224,6 +238,9 @@ class LIONmodel(nn.Module, ABC):
             raise NoDataException("dataloader not set: Please call set_training")
 
         self.normalisator = Normalisation(normalisation_type, dataset, data_range)
+        self.model_parameters.normalisation = LIONParameter(
+            **self.normalisator.record()
+        )
 
     def normalise(self, x):
         """Normalise ``x`` as set by ``set_normalisation()`` (identity if unset)."""
@@ -231,11 +248,13 @@ class LIONmodel(nn.Module, ABC):
             return x
         return self.normalisator.normalise(x)
 
-    def unnormalise(self, x, target=None):
-        """Undo ``normalise()`` (identity if no normalisation is set)."""
+    def unnormalise(self, x, reference=None):
+        """Undo ``normalise()`` (identity if no normalisation is set).
+        ``reference``: the input that was normalised, whose own range a
+        "sample" normalisation maps back to."""
         if getattr(self, "normalisator", None) is None:
             return x
-        return self.normalisator.unnormalise(x, target)
+        return self.normalisator.unnormalise(x, reference)
 
     # All classes should have this method. This is the example for Learned Primal Dual.
     # You can obtain this exact text from Google Scholar's page of the paper.
@@ -351,9 +370,6 @@ class LIONmodel(nn.Module, ABC):
         metadata["environment"] = environment.environment_record(
             None if first is None else first.device
         ).serialize()
-        # The normalisation it was trained with: reconstructing needs the same
-        if getattr(self, "normalisator", None) is not None:
-            metadata["normalisation"] = self.normalisator.record()
         # A geometry given here describes the data (e.g. for a model without one)
         if given_geometry is not None:
             metadata["geometry"] = spec.encode(given_geometry)
@@ -477,8 +493,6 @@ class LIONmodel(nn.Module, ABC):
                     "Loading may fail, or the model may behave differently.\n"
                 )
         options.model_name = path.rsplit(".", 1)[-1]
-        if saved.get("normalisation") is not None:
-            options.normalisation = saved["normalisation"]
         options.model_parameters = kwargs.get("model_parameters")
         if "geometry" in saved:
             options.geometry = spec.build(saved["geometry"], allow)
@@ -586,7 +600,6 @@ class LIONmodel(nn.Module, ABC):
         # Load the data into the model we created.
         model.to(default_device())
         model.load_state_dict(data.pop("model_state_dict"))
-        _restore_normalisation(model, options)
         # where it came from, so records of methods using it can name the file
         model.source_file = fname.with_suffix("")
 
@@ -607,7 +620,6 @@ class LIONmodel(nn.Module, ABC):
         # Load the data into the model we created.
         model.to(default_device())
         model.load_state_dict(data.pop("model_state_dict"))
-        _restore_normalisation(model, options)
 
         return model, options.unpack(), data
 
@@ -681,12 +693,3 @@ class LIONmodel(nn.Module, ABC):
             else:
                 loss = loss[0]
         return loss
-
-
-def _restore_normalisation(model, options):
-    """The normalisation a model file records (the one it was trained with)."""
-    recorded = getattr(options, "normalisation", None)
-    if recorded is not None:
-        if not isinstance(recorded, dict):
-            recorded = vars(recorded)
-        model.normalisator = Normalisation.from_record(recorded)

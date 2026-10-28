@@ -71,7 +71,10 @@ class Normalisation:
 
     @staticmethod
     def from_record(record) -> "Normalisation":
-        """The normalisation ``record()`` describes (without its dataset)."""
+        """The normalisation ``record()`` describes (without its dataset); a
+        dict or a ``LIONParameter``."""
+        if not isinstance(record, dict):
+            record = vars(record)
         return Normalisation(record["type"], data_range=record.get("range"))
 
     def normalise(self, x):
@@ -86,19 +89,17 @@ class Normalisation:
         if self.type == "none":
             return x  # return input if no normalization is set
 
-    def unnormalise(self, x, target=None):
+    def unnormalise(self, x, reference=None):
+        """Undo ``normalise``. ``reference``: the input that was normalised
+        (a "sample" normalisation maps ``x`` back to its range; without it,
+        to the range of the last ``normalise`` call)."""
         if self.type == "dataset" or self.type == "custom":
             return (x * (self.xmax - self.xmin)) + self.xmin
         if self.type == "sample":
-            if target is None:
+            if reference is None:
                 return (x * (self.last_max - self.last_min)) + self.last_min
-            else:
-                return (
-                    x
-                    * (
-                        target.amax(dim=(2, 3), keepdim=True)
-                        - target.amin(dim=(2, 3), keepdim=True)
-                    )
-                ) + target.amin(dim=(2, 3), keepdim=True)
+            low = reference.amin(dim=(2, 3), keepdim=True)
+            high = reference.amax(dim=(2, 3), keepdim=True)
+            return x * (high - low) + low
         if self.type == "none":
             return x
