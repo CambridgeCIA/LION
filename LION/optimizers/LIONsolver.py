@@ -945,10 +945,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                     (0, self.current_epoch - len(self.validation_loss)),
                     constant_values=np.nan,
                 )
-            self.validation_loss[self.current_epoch - 1] = (
-                self.model._read_min_validation(
-                    self.save_folder.joinpath(self.validation_fname)
-                )
+            self.validation_loss[
+                self.current_epoch - 1
+            ] = self.model._read_min_validation(
+                self.save_folder.joinpath(self.validation_fname)
             )
             if self.verbose:
                 print(
