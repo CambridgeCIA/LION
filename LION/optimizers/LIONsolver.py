@@ -75,17 +75,23 @@ def warn_if_not_mse(loss_fn, solver_name: str):
 
 
 def model_forward(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:
-    """Run ``model`` on a batch of measurements, as the solvers do.
+    """Run ``model`` on a batch of measurements, as the solvers do (and
+    ``LION.reconstructors.ForwardReconstructor``).
 
     Image-domain models get an FDK reconstruction (with operator ``op``) as
-    input. If the model has a normalisation set, its input is normalised and
-    its output mapped back, so the output is in the units of the target.
-    Sinogram-domain models get the measurements as they are (``op`` unused).
+    input. Sinogram-domain models get the measurements. With a normalisation
+    set (``model.set_normalisation()``), the input is normalised (for
+    measurements: as the images are, by linearity) and the output mapped
+    back, so the output is in the units of the target.
     """
+    normalisation = getattr(model, "normalisator", None)
     if model.get_input_type() == ModelInputType.IMAGE:
         data = fdk(data, op)
-        if getattr(model, "normalisator", None) is not None:
+        if normalisation is not None:
             return model.unnormalise(model(model.normalise(data)), data)
+        return model(data)
+    if normalisation is not None:
+        return model.unnormalise(model(normalisation.normalise_measurements(data, op)))
     return model(data)
 
 

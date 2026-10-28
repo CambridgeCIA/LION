@@ -318,3 +318,77 @@ def test_made_again_from_a_test_record(tmp_path, monkeypatch):
     assert type(again) is PnP and again.parameters.max_iter == 2
     with pytest.warns(UserWarning, match="other weights"):
         LIONReconstructor.instantiate(record, small_dncnn(), allow=["pytests."])
+
+
+# --------------------------------------------------------------------------
+# ForwardReconstructor: a model's forward pass, as the solvers train it; and
+# normalisation of the measurements for sinogram-domain models
+
+
+@pytest.fixture
+def fdk_as_adjoint(monkeypatch):
+    """FDK stand-in on CPU: the adjoint."""
+    import LION.optimizers.LIONsolver as lion_solver
+
+    monkeypatch.setattr(lion_solver, "fdk", lambda y, op: op.adjoint(y))
+
+
+def test_forward_reconstructor_is_the_solvers_forward(fdk_as_adjoint):
+    from LION.models.LIONmodel import ModelInputType
+    from LION.optimizers.LIONsolver import model_forward
+    from LION.reconstructors import ForwardReconstructor
+
+    op = ScaleOp(2.0, (1, 8, 8))
+    y = torch.rand(3, 1, 8, 8)
+    for input_type in (ModelInputType.IMAGE, ModelInputType.SINOGRAM):
+        torch.manual_seed(0)
+        model = small_dncnn(input_type).eval()
+        model.set_normalisation("custom", data_range=(0.0, 4.0))
+        recon = ForwardReconstructor(op, model)
+        with torch.no_grad():
+            expected = model_forward(model, y, op)
+            torch.testing.assert_close(recon.reconstruct(y), expected)  # a batch
+            torch.testing.assert_close(recon.reconstruct(y[1]), expected[1])  # one
+    assert set(spec.to_spec(recon)) == {"_target_", "operator", "parameters"}
+    with pytest.raises(ValueError, match="has no model"):
+        ForwardReconstructor(op).reconstruct(y)
+
+
+def test_sinogram_models_get_measurements_normalised_as_the_images(fdk_as_adjoint):
+    """Images mapped to (x - min) / s means measurements mapped to
+    (y - A(min)) / s, by linearity; the output is mapped back."""
+    from LION.models.LIONmodel import ModelInputType
+    from LION.optimizers.LIONsolver import model_forward
+
+    op = ScaleOp(3.0, (1, 8, 8))
+    model = small_dncnn(ModelInputType.SINOGRAM).eval()
+    seen = []
+    model.register_forward_pre_hook(lambda m, args: seen.append(args[0].clone()))
+    y = torch.rand(2, 1, 8, 8)
+    for low, high in ((0.0, 4.0), (1.0, 5.0)):
+        model.set_normalisation("custom", data_range=(low, high))
+        with torch.no_grad():
+            out = model_forward(model, y, op)
+            raw = model(model.normalisator.normalise_measurements(y, op))
+        torch.testing.assert_close(seen[-2], (y - 3.0 * low) / (high - low))
+        torch.testing.assert_close(out, raw * (high - low) + low)  # mapped back
+    with pytest.raises(ValueError, match="needs the operator"):
+        model.normalisator.normalise_measurements(y)  # min isn't 0, no operator
+    with pytest.raises(ValueError, match="'sample' normalisation isn't defined"):
+        model.set_normalisation("sample")
+
+
+def test_a_forward_reconstructor_is_evaluated_and_saved(tmp_path, fdk_as_adjoint):
+    from LION.evaluation import Evaluation
+    from LION.models.LIONmodel import ModelInputType
+    from LION.reconstructors import ForwardReconstructor
+    from pytests.test_evaluation import data
+
+    op = ScaleOp(1.0, (1, 16, 16))
+    recon = ForwardReconstructor(op, small_dncnn(ModelInputType.SINOGRAM).eval())
+    evaluation = Evaluation(
+        dataset=data(), operator=op, save_folder=tmp_path, device="cpu"
+    )
+    record = evaluation.run(recon, "forward")
+    assert record.method.reconstructor["_target_"].endswith("ForwardReconstructor")
+    assert len(list(tmp_path.glob("forward-*.json"))) == 1
