@@ -182,6 +182,55 @@ def test_load_round_trip(tmp_path):
         torch.testing.assert_close(loaded.state_dict()[key].cpu(), value.cpu())
 
 
+@pytest.mark.parametrize(
+    "normalisation, expected",
+    [
+        (dict(normalisation_type="custom", data_range=(0.0, 10.0)), [0.0, 10.0]),
+        (dict(normalisation_type="sample"), None),
+        (
+            dict(
+                normalisation_type="dataset",
+                dataset=[(None, torch.tensor([-1.0, 3.0])), (None, torch.tensor(2.0))],
+            ),
+            [-1.0, 3.0],
+        ),
+    ],
+)
+def test_the_normalisation_is_saved_and_loaded(tmp_path, normalisation, expected):
+    """A model reconstructs with the normalisation it was trained with, so its
+    file keeps it (a "dataset" one by its range: the dataset isn't needed)."""
+    model = DnCNN()
+    model.set_normalisation(**normalisation)
+    _save(model, tmp_path / "model")
+    loaded, _, _ = DnCNN.load(tmp_path / "model", supress_warnings=True)
+    assert loaded.normalisator.record() == {
+        "type": normalisation["normalisation_type"],
+        "range": expected,
+    }
+    x = 4 * torch.rand(1, 1, 8, 8)
+    torch.testing.assert_close(loaded.normalise(x), model.normalise(x))
+
+
+def test_the_normalisation_is_in_checkpoints(tmp_path):
+    model = DnCNN()
+    model.set_normalisation("custom", data_range=(0.0, 2.0))
+    model.save_checkpoint(
+        tmp_path / "checkpoint",
+        epoch=1,
+        loss=0.5,
+        optimizer=torch.optim.SGD(model.parameters(), lr=0.1),
+        training_param=LIONParameter(),
+        dataset=LIONParameter(name="test"),
+    )
+    loaded, _, _ = DnCNN.load_checkpoint(tmp_path / "checkpoint")
+    assert loaded.normalisator.record() == {"type": "custom", "range": [0.0, 2.0]}
+
+
+def test_a_model_without_normalisation_loads_without(tmp_path):
+    _save(DnCNN(), tmp_path / "model")
+    assert DnCNN.load(tmp_path / "model", supress_warnings=True)[0].normalisator is None
+
+
 def test_nested_model_parameters_load(tmp_path):
     """GSD keeps its backbone's parameters inside its own: loaded from JSON
     they are plain LIONParameters, which the backbone must accept."""

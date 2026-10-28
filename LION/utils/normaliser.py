@@ -34,7 +34,10 @@ class Normalisation:
         ], "Invalid normalization type"
         self.type = normalisation_type
 
-        if self.type == "dataset":
+        if self.type == "dataset" and dataset is None and data_range is not None:
+            # the dataset's range, computed before (e.g. read from a model file)
+            self.xmin, self.xmax = float(data_range[0]), float(data_range[1])
+        elif self.type == "dataset":
             assert (
                 dataset is not None
             ), "Dataset must be provided for dataset normalization"
@@ -58,6 +61,18 @@ class Normalisation:
 
         self.last_max = np.inf
         self.last_min = -np.inf
+
+    def record(self) -> dict:
+        """What makes this normalisation again (``from_record``): its type,
+        and its range for "dataset" and "custom"."""
+        if self.type in ("dataset", "custom"):
+            return {"type": self.type, "range": [float(self.xmin), float(self.xmax)]}
+        return {"type": self.type, "range": None}
+
+    @staticmethod
+    def from_record(record) -> "Normalisation":
+        """The normalisation ``record()`` describes (without its dataset)."""
+        return Normalisation(record["type"], data_range=record.get("range"))
 
     def normalise(self, x):
         # assume x is a torch tensor

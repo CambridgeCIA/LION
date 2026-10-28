@@ -351,6 +351,9 @@ class LIONmodel(nn.Module, ABC):
         metadata["environment"] = environment.environment_record(
             None if first is None else first.device
         ).serialize()
+        # The normalisation it was trained with: reconstructing needs the same
+        if getattr(self, "normalisator", None) is not None:
+            metadata["normalisation"] = self.normalisator.record()
         # A geometry given here describes the data (e.g. for a model without one)
         if given_geometry is not None:
             metadata["geometry"] = spec.encode(given_geometry)
@@ -474,6 +477,8 @@ class LIONmodel(nn.Module, ABC):
                     "Loading may fail, or the model may behave differently.\n"
                 )
         options.model_name = path.rsplit(".", 1)[-1]
+        if saved.get("normalisation") is not None:
+            options.normalisation = saved["normalisation"]
         options.model_parameters = kwargs.get("model_parameters")
         if "geometry" in saved:
             options.geometry = spec.build(saved["geometry"], allow)
@@ -581,6 +586,7 @@ class LIONmodel(nn.Module, ABC):
         # Load the data into the model we created.
         model.to(default_device())
         model.load_state_dict(data.pop("model_state_dict"))
+        _restore_normalisation(model, options)
         # where it came from, so records of methods using it can name the file
         model.source_file = fname.with_suffix("")
 
@@ -601,6 +607,7 @@ class LIONmodel(nn.Module, ABC):
         # Load the data into the model we created.
         model.to(default_device())
         model.load_state_dict(data.pop("model_state_dict"))
+        _restore_normalisation(model, options)
 
         return model, options.unpack(), data
 
@@ -674,3 +681,12 @@ class LIONmodel(nn.Module, ABC):
             else:
                 loss = loss[0]
         return loss
+
+
+def _restore_normalisation(model, options):
+    """The normalisation a model file records (the one it was trained with)."""
+    recorded = getattr(options, "normalisation", None)
+    if recorded is not None:
+        if not isinstance(recorded, dict):
+            recorded = vars(recorded)
+        model.normalisator = Normalisation.from_record(recorded)
