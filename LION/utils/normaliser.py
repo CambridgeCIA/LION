@@ -34,7 +34,10 @@ class Normalisation:
         ], "Invalid normalization type"
         self.type = normalisation_type
 
-        if self.type == "dataset":
+        if self.type == "dataset" and dataset is None and data_range is not None:
+            # the dataset's range, computed before (e.g. read from a model file)
+            self.xmin, self.xmax = float(data_range[0]), float(data_range[1])
+        elif self.type == "dataset":
             assert (
                 dataset is not None
             ), "Dataset must be provided for dataset normalization"
@@ -59,6 +62,21 @@ class Normalisation:
         self.last_max = np.inf
         self.last_min = -np.inf
 
+    def record(self) -> dict:
+        """What makes this normalisation again (``from_record``): its type,
+        and its range for "dataset" and "custom"."""
+        if self.type in ("dataset", "custom"):
+            return {"type": self.type, "range": [float(self.xmin), float(self.xmax)]}
+        return {"type": self.type, "range": None}
+
+    @staticmethod
+    def from_record(record) -> "Normalisation":
+        """The normalisation ``record()`` describes (without its dataset); a
+        dict or a ``LIONParameter``."""
+        if not isinstance(record, dict):
+            record = vars(record)
+        return Normalisation(record["type"], data_range=record.get("range"))
+
     def normalise(self, x):
         # assume x is a torch tensor
         if self.type == "sample":
@@ -71,19 +89,17 @@ class Normalisation:
         if self.type == "none":
             return x  # return input if no normalization is set
 
-    def unnormalise(self, x, target=None):
+    def unnormalise(self, x, reference=None):
+        """Undo ``normalise``. ``reference``: the input that was normalised
+        (a "sample" normalisation maps ``x`` back to its range; without it,
+        to the range of the last ``normalise`` call)."""
         if self.type == "dataset" or self.type == "custom":
             return (x * (self.xmax - self.xmin)) + self.xmin
         if self.type == "sample":
-            if target is None:
+            if reference is None:
                 return (x * (self.last_max - self.last_min)) + self.last_min
-            else:
-                return (
-                    x
-                    * (
-                        target.amax(dim=(2, 3), keepdim=True)
-                        - target.amin(dim=(2, 3), keepdim=True)
-                    )
-                ) + target.amin(dim=(2, 3), keepdim=True)
+            low = reference.amin(dim=(2, 3), keepdim=True)
+            high = reference.amax(dim=(2, 3), keepdim=True)
+            return x * (high - low) + low
         if self.type == "none":
             return x

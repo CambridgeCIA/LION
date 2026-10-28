@@ -162,8 +162,8 @@ class ACR(LIONmodel):
         return self.initialize_weights(min_val, max_val)
 
     def forward(self, x):
-        # x = fdk(self.op, x)
-        x = self.normalise(x)
+        # its inputs are normalised by whoever calls it (the solver, the
+        # reconstructor), as for every model
         z = self.first_layer(x)
         z = self.first_activation(z)
         for i in range(self.model_parameters.layers):
