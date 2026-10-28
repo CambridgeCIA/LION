@@ -325,7 +325,9 @@ def test_dataset_normalisation_reads_only_the_samples():
 def test_normalisations(tmp_path):
     clean = data().clean
     by_dataset = evaluation(tmp_path).run(as_is)
-    assert by_dataset.data_range == pytest.approx([clean.min(), clean.max()])
+    assert by_dataset.data_range == pytest.approx(
+        [float(clean.min()), float(clean.max())]
+    )
     assert evaluation(tmp_path, normalisation="sample").run(as_is).data_range is None
     fixed = evaluation(tmp_path, normalisation=(0.0, 2.0)).run(as_is)
     assert fixed.data_range == [0.0, 2.0]
