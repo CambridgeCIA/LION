@@ -75,6 +75,10 @@ The supported Datasets are `2DeteCT`, `LIDC-IDRI`,
 
 [Read more about the Datasets and how to download them here](LION/data_loaders/README.md)
 
+## Metadata and reproducibility
+
+Every model LION saves records how to make it again: the model, the data and how they were simulated, the training, and the code and machine. From these records LION makes any component again (or changes it and trains again), compares models fairly, and publishes a model as a self-contained package. [Read how it works](metadata.md).
+
 ## Models/Methods
 
 LION supports all types of data-driven methods for CT reconstructions. They can, as a general taxonomy, be described as:

@@ -56,6 +56,10 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
 
 ## Parameters and backwards compatibility
 
+What LION records about its components, and how they are made again, is
+described in `metadata.md`; the rules below are what makes a component take
+part.
+
 - Models, solvers, experiments and data loaders take a `LIONParameter`, with a
   static `default_parameters()`.
 - **A parameter that is missing means the old behaviour.** When a change alters
