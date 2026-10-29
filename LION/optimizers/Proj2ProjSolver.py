@@ -12,6 +12,7 @@ from LION.optimizers.LIONsolver import LIONsolver, warn_if_not_mse
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_utils as ct_utils
 from LION.utils.tomosipo_import import import_tomosipo
+from LION.utils.citation import citation
 
 
 class Proj2ProjSolver(LIONsolver):
@@ -116,3 +117,24 @@ class Proj2ProjSolver(LIONsolver):
         input_recon = self.recon_fn(sinos, self.operator)
         output_recon = self.model(input_recon)
         return output_recon
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where Proj2Proj comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @article{unal2024proj2proj,
+            title={Proj2Proj: self-supervised low-dose CT reconstruction},
+            author={Unal, Mehmet Ozan and Ertas, Metin and Yildirim, Isa},
+            journal={PeerJ Computer Science},
+            volume={10},
+            pages={e1849},
+            year={2024},
+            doi={10.7717/peerj-cs.1849}
+            }
+            """,
+            mla="""
+            Unal, Mehmet Ozan, Metin Ertas, and Isa Yildirim. "Proj2Proj: self-supervised low-dose CT reconstruction." PeerJ Computer Science 10 (2024): e1849.
+            """,
+        )

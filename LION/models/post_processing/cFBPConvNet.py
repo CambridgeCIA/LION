@@ -15,6 +15,7 @@ import LION.CTtools.ct_geometry as ct
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
+from LION.utils.citation import citation
 
 # Implementation of: continuous version of FBPConvNet
 
@@ -456,25 +457,25 @@ class cFBPConvNet(LIONmodel):
         return params
 
     @staticmethod
-    def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print("Runkel, Christina, Ander Biguri, and Carola-Bibiane Schönlieb.")
-            print('"Continuous Learned Primal Dual"')
-            print("\x1B[3m ArXiv \x1B[0m")
-            print("(2024): 2405.02478.")
-        elif cite_format == "bib":
-            string = """
+    def cite(cite_format="bib"):
+        """Where cFBPConvNet comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
             @article{runkel2024continuous,
             title={Continuous Learned Primal Dual},
-            author={Runkel, Christina and Biguri, Ander and Sch{\"o}nlieb, Carola-Bibiane},
+            author={Runkel, Christina and Biguri, Ander and Sch{\\"o}nlieb, Carola-Bibiane},
             journal={arXiv preprint arXiv:2405.02478},
             year={2024}
-            }"""
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+            }
+            """,
+            mla="""
+            Runkel, Christina, Ander Biguri, and Carola-Bibiane Schönlieb.
+            "Continuous Learned Primal Dual"
+             ArXiv 
+            (2024): 2405.02478.
+            """,
+        )
 
     def forward(self, x):
         """x: FDK reconstructions, (B, 1, H, W)."""

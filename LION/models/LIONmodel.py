@@ -263,35 +263,12 @@ class LIONmodel(nn.Module, ABC):
             return x
         return self.normalisator.unnormalise(x, reference)
 
-    # All classes should have this method. This is the example for Learned Primal Dual.
-    # You can obtain this exact text from Google Scholar's page of the paper.
     @staticmethod
-    def cite(cite_format="MLA"):
-        print("cite not implemented for selected method")
-        pass
-
-    #     if cite_format == "MLA":
-    #         print("Adler, Jonas, and Ozan Öktem.")
-    #         print('"Learned primal-dual reconstruction."')
-    #         print("\x1B[3mIEEE transactions on medical imaging \x1B[0m")
-    #         print("37.6 (2018): 1322-1332.")
-    #     elif cite_format == "bib":
-    #         string = """
-    #         @article{adler2018learned,
-    #         title={Learned primal-dual reconstruction},
-    #         author={Adler, Jonas and {\"O}ktem, Ozan},
-    #         journal={IEEE transactions on medical imaging},
-    #         volume={37},
-    #         number={6},
-    #         pages={1322--1332},
-    #         year={2018},
-    #         publisher={IEEE}
-    #         }"""
-    #         print(string)
-    #     else:
-    #         raise AttributeError(
-    #             'cite_format not understood, only "MLA" and "bib" supported'
-    #         )
+    def cite(cite_format="bib"):
+        """Where the model comes from: its paper's citation, BibTeX ("bib") or
+        "MLA" (``LION.utils.citation``); None if it has none. Models from a
+        paper define it."""
+        return None
 
     # This shoudl save all relevant information to completely reproduce models
     def save(self, fname, **kwargs):

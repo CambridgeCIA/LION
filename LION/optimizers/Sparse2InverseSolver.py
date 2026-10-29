@@ -14,6 +14,7 @@ from LION.optimizers.LIONsolver import LIONsolver
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_utils as ct_utils
 from LION.utils.tomosipo_import import import_tomosipo
+from LION.utils.citation import citation
 
 
 class Sparse2InverseSolver(LIONsolver):
@@ -165,3 +166,21 @@ class Sparse2InverseSolver(LIONsolver):
             outputs += self.model(mean_recon)
         outputs /= len(subgroup_recons)
         return outputs
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where Sparse2Inverse comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @article{gruber2024sparse2inverse,
+            title={Sparse2Inverse: Self-supervised inversion of sparse-view CT data},
+            author={Gruber, Nadja and Schwab, Johannes and Gizewski, Elke and Haltmeier, Markus},
+            journal={arXiv preprint arXiv:2402.16921},
+            year={2024}
+            }
+            """,
+            mla="""
+            Gruber, Nadja, Johannes Schwab, Elke Gizewski, and Markus Haltmeier. "Sparse2Inverse: Self-supervised inversion of sparse-view CT data." arXiv preprint arXiv:2402.16921 (2024).
+            """,
+        )

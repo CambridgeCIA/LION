@@ -12,6 +12,7 @@ from collections import OrderedDict
 
 from LION.utils.parameter import LIONParameter
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
+from LION.utils.citation import citation
 
 ##Code for UNet
 class UNet(LIONmodel):
@@ -185,3 +186,25 @@ class UNet(LIONmodel):
         param.norm_after_second_conv = True
 
         return param
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where UNet comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @inproceedings{ronneberger2015unet,
+            title={U-Net: Convolutional Networks for Biomedical Image Segmentation},
+            author={Ronneberger, Olaf and Fischer, Philipp and Brox, Thomas},
+            booktitle={Medical Image Computing and Computer-Assisted Intervention (MICCAI)},
+            series={LNCS},
+            volume={9351},
+            pages={234--241},
+            publisher={Springer},
+            year={2015}
+            }
+            """,
+            mla="""
+            Ronneberger, Olaf, Philipp Fischer, and Thomas Brox. "U-Net: Convolutional Networks for Biomedical Image Segmentation." Medical Image Computing and Computer-Assisted Intervention (MICCAI), LNCS 9351 (2015): 234-241.
+            """,
+        )

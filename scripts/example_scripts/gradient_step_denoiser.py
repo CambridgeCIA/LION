@@ -60,8 +60,7 @@ lidc_test = DataLoader(lidc_dataset_test, batch_size, shuffle=False)
 from LION.models.PnP.gradient_step_denoiser import GSD
 
 model = GSD()
-model.cite()
-
+print(model.cite("MLA"))
 model.set_normalisation(normalisation_type="dataset", dataset=lidc_dataloader)
 # %% Optimizer
 train_param = LIONParameter()

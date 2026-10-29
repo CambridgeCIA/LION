@@ -14,6 +14,7 @@ from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.utils.parameter import LIONParameter
 from LION.utils.image_transforms import rotate
 from LION.utils.tomosipo_import import import_tomosipo
+from LION.utils.citation import citation
 
 
 def get_rotation_matrix(angle: float):
@@ -114,26 +115,23 @@ class EquivariantSolver(LIONsolver):
         # data consistency + equivariance
 
     @staticmethod
-    def cite(cite_format="MLA"):
-
-        if cite_format == "MLA":
-            print("Chen, Dongdong, Julián Tachella, and Mike E. Davies.")
-            print('"Equivariant imaging: Learning beyond the range space."')
-            print(
-                "\x1b[3m Proceedings of the IEEE/CVF International Conference on Computer Vision. \x1b[0m"
-            )
-            print("2021")
-        elif cite_format == "bib":
-            string = """
+    def cite(cite_format="bib"):
+        """Where EquivariantSolver comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
             @inproceedings{chen2021equivariant,
             title={Equivariant imaging: Learning beyond the range space},
-            author={Chen, Dongdong and Tachella, Juli{\'a}n and Davies, Mike E},
+            author={Chen, Dongdong and Tachella, Juli{'a}n and Davies, Mike E},
             booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
             pages={4379--4388},
             year={2021}
-            }"""
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+            }
+            """,
+            mla="""
+            Chen, Dongdong, Julián Tachella, and Mike E. Davies.
+            "Equivariant imaging: Learning beyond the range space."
+             Proceedings of the IEEE/CVF International Conference on Computer Vision. 
+            2021
+            """,
+        )

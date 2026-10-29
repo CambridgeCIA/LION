@@ -21,3 +21,8 @@ class FBPMSDNet(LIONmodel):
 
     def forward(self, x):
         return self.net(fdk(x, self.op))
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """FBPMSDNet is FDK followed by an MSD network: the MSD network's citation."""
+        return MSDNet.cite(cite_format)

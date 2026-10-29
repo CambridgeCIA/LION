@@ -23,6 +23,7 @@ from torch.nn import (
 )
 from torch.nn.functional import pad
 import json
+from LION.utils.citation import citation
 
 # from model import ModelBase
 
@@ -269,3 +270,23 @@ class DeepFBPNetwork(LIONmodel):
         x = self.denoising_output(x)
 
         return x
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where DeepFBP comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @article{tan2024deepfbp,
+            title={Deep Filtered Back Projection for CT Reconstruction},
+            author={Tan, X. and Liu, Xuan and Xiang, Kai and Wang, Jing and Tan, Shan},
+            journal={IEEE Access},
+            volume={12},
+            year={2024},
+            doi={10.1109/ACCESS.2024.3357355}
+            }
+            """,
+            mla="""
+            Tan, X., Xuan Liu, Kai Xiang, Jing Wang, and Shan Tan. "Deep Filtered Back Projection for CT Reconstruction." IEEE Access 12 (2024).
+            """,
+        )

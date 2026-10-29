@@ -146,6 +146,13 @@ class LIONReconstructor(ABC):
             _check_model(model, recorded_model)
         return target(**kwargs, **arguments, model=model)
 
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where the reconstructor comes from: its paper's citation, BibTeX ("bib") or
+        "MLA" (``LION.utils.citation``); None if it has none. Reconstructors
+        from a paper define it."""
+        return None
+
 
 def _check_model(model, recorded):
     """Warn if ``model`` isn't the one a record names (by its weights)."""

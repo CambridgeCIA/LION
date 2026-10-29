@@ -11,6 +11,7 @@ from LION.utils.parameter import LIONParameter
 
 from inspect import getmembers, isfunction
 import torch
+from LION.utils.citation import citation
 
 
 class DnCNN(LIONmodel):
@@ -79,34 +80,30 @@ class DnCNN(LIONmodel):
         return params
 
     @staticmethod
-    def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print("Zhang, Kai, Wangmeng, Zuo, Yunjin, Chen, Deyu, Meng, Lei, Zhang.")
-            print(
-                '"Beyond a Gaussian Denoiser: Residual Learning of Deep CNN for Image Denoising".'
-            )
-            print("\x1b[3mIEEE Transactions on Image Processing\x1b[0m")
-            print("26. 7(2017): 3142–3155.")
-        elif cite_format == "bib":
-            print("@article{zhang2017beyond,")
-            print(
-                "title = {Beyond a {{Gaussian Denoiser}}: {{Residual Learning}} of {{Deep CNN}} for {{Image Denoising}}},"
-            )
-            print(
-                "author = {Zhang, Kai and Zuo, Wangmeng and Chen, Yunjin and Meng, Deyu and Zhang, Lei},"
-            )
-            print("year = {2017},")
-            print("journal = {IEEE Transactions on Image Processing},")
-            print("volume = {26},")
-            print("number = {7},")
-            print("pages = {3142--3155},")
-            print("issn = {1057-7149},")
-            print("doi = {10.1109/TIP.2017.2662206}")
-            print("}")
-        else:
-            raise ValueError(
-                f'`cite_format` "{cite_format}" is not understood, only "MLA" and "bib" are supported'
-            )
+    def cite(cite_format="bib"):
+        """Where DnCNN comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @article{zhang2017beyond,
+            title = {Beyond a {{Gaussian Denoiser}}: {{Residual Learning}} of {{Deep CNN}} for {{Image Denoising}}},
+            author = {Zhang, Kai and Zuo, Wangmeng and Chen, Yunjin and Meng, Deyu and Zhang, Lei},
+            year = {2017},
+            journal = {IEEE Transactions on Image Processing},
+            volume = {26},
+            number = {7},
+            pages = {3142--3155},
+            issn = {1057-7149},
+            doi = {10.1109/TIP.2017.2662206}
+            }
+            """,
+            mla="""
+            Zhang, Kai, Wangmeng, Zuo, Yunjin, Chen, Deyu, Meng, Lei, Zhang.
+            "Beyond a Gaussian Denoiser: Residual Learning of Deep CNN for Image Denoising".
+            IEEE Transactions on Image Processing
+            26. 7(2017): 3142–3155.
+            """,
+        )
 
     def forward(self, x):
         z = self._act(self.lift(x))

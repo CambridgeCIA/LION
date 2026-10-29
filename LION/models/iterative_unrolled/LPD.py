@@ -24,6 +24,7 @@ from LION.utils.tomosipo_import import import_tomosipo
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from LION.utils.citation import citation
 
 
 def fdk(op, sino):
@@ -251,29 +252,29 @@ class LPD(LIONmodel):
         return f + out
 
     @staticmethod
-    def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print("Adler, Jonas, and Öktem, Ozan.")
-            print('"Learned primal-dual reconstruction."')
-            print("\x1B[3mIEEE transactions on medical imaging \x1B[0m")
-            print("37.6 (2018): 1322-1332.")
-        elif cite_format == "bib":
-            string = """
+    def cite(cite_format="bib"):
+        """Where LPD comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
             @article{adler2018learned,
             title={Learned primal-dual reconstruction},
-            author={Adler, Jonas and {\"O}ktem, Ozan},
+            author={Adler, Jonas and {\\"O}ktem, Ozan},
             journal={IEEE transactions on medical imaging},
             volume={37},
             number={6},
             pages={1322--1332},
             year={2018},
             publisher={IEEE}
-            }"""
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+            }
+            """,
+            mla="""
+            Adler, Jonas, and Öktem, Ozan.
+            "Learned primal-dual reconstruction."
+            IEEE transactions on medical imaging 
+            37.6 (2018): 1322-1332.
+            """,
+        )
 
     def forward(self, g):
         """

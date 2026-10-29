@@ -23,6 +23,7 @@ from LION.utils.tomosipo_import import import_tomosipo
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from LION.utils.citation import citation
 
 
 def fdk(op, sino):
@@ -79,31 +80,29 @@ class LG(LIONmodel):
         return LG_params
 
     @staticmethod
-    def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print("Adler, Jonas, and Öktem, Ozan.")
-            print(
-                '"Solving ill-posed inverse problems using iterative deep neural networks."'
-            )
-            print("Inverse Problems")
-            print("33.12 (2017): 124007.")
-        elif cite_format == "bib":
-            string = """
+    def cite(cite_format="bib"):
+        """Where LG comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
             @article{adler2017solving,
             title={Solving ill-posed inverse problems using iterative deep neural networks},
-            author={Adler, Jonas and {\"O}ktem, Ozan},
+            author={Adler, Jonas and {\\"O}ktem, Ozan},
             journal={Inverse Problems},
             volume={33},
             number={12},
             pages={124007},
             year={2017},
             publisher={IOP Publishing}
-            }"""
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+            }
+            """,
+            mla="""
+            Adler, Jonas, and Öktem, Ozan.
+            "Solving ill-posed inverse problems using iterative deep neural networks."
+            Inverse Problems
+            33.12 (2017): 124007.
+            """,
+        )
 
     def gradientTVnorm2D(self, f):
         Gx = torch.diff(f, dim=2)

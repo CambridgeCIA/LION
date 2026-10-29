@@ -13,6 +13,7 @@ from LION.models.LIONmodel import LIONmodel, ModelInputType, LIONModelParameter
 import LION.CTtools.ct_geometry as ct
 import torch.nn.utils.parametrize as P
 from LION.utils.math import power_method
+from LION.utils.citation import citation
 
 
 class Positive(nn.Module):
@@ -188,24 +189,21 @@ class ACR(LIONmodel):
         return params
 
     @staticmethod
-    def cite(cite_format="MLA"):
-        if cite_format == "MLA":
-            print(
-                'MMukherjee, Subhadip and Dittmer, S{"o}ren and Shumaylov, Zakhar and Lunz, Sebastian and {"O}ktem, Ozan and Sch{"o}nlieb, Carola-Bibiane'
-            )
-            print('"Learned convex regularizers for inverse problems"')
-            print("arXiv preprint arXiv:2008.02839 (2020)")
-            print("arXiv:2008.02839 (2020).")
-        elif cite_format == "bib":
-            string = """
+    def cite(cite_format="bib"):
+        """Where ACR comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
             @article{mukherjee2020learned,
             title={Learned convex regularizers for inverse problems},
-            author={Mukherjee, Subhadip and Dittmer, S{\"o}ren and Shumaylov, Zakhar and Lunz, Sebastian and {\"O}ktem, Ozan and Sch{\"o}nlieb, Carola-Bibiane},
+            author={Mukherjee, Subhadip and Dittmer, S{\\"o}ren and Shumaylov, Zakhar and Lunz, Sebastian and {\\"O}ktem, Ozan and Sch{\\"o}nlieb, Carola-Bibiane},
             journal={arXiv preprint arXiv:2008.02839},
             year={2020}}
-            """
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+            """,
+            mla="""
+            MMukherjee, Subhadip and Dittmer, S{\\"o}ren and Shumaylov, Zakhar and Lunz, Sebastian and {\\"O}ktem, Ozan and Sch{\\"o}nlieb, Carola-Bibiane
+            "Learned convex regularizers for inverse problems"
+            arXiv preprint arXiv:2008.02839 (2020)
+            arXiv:2008.02839 (2020).
+            """,
+        )

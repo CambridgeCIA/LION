@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch
 import warnings
 from LION.models.LIONmodel import ModelInputType
+from LION.utils.citation import citation
 
 
 class SURE(nn.Module):
@@ -45,24 +46,22 @@ class SURE(nn.Module):
         return torch.max(y) / 1000
 
     @staticmethod
-    def cite(cite_format="MLA"):
-
-        if cite_format == "MLA":
-            print("Metzler, Christopher A., et al.")
-            print('"Unsupervised learning with Steins unbiased risk estimator."')
-            print("\x1B[3m  arXiv preprint arXiv:1805.10531 \x1B[0m")
-            print("2018")
-
-        elif cite_format == "bib":
-            string = """
+    def cite(cite_format="bib"):
+        """Where SURE comes from: its citation, BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
             @article{metzler2018unsupervised,
             title={Unsupervised learning with Stein's unbiased risk estimator},
             author={Metzler, Christopher A and Mousavi, Ali and Heckel, Reinhard and Baraniuk, Richard G},
             journal={arXiv preprint arXiv:1805.10531},
             year={2018}
-            }"""
-            print(string)
-        else:
-            raise AttributeError(
-                'cite_format not understood, only "MLA" and "bib" supported'
-            )
+            }
+            """,
+            mla="""
+            Metzler, Christopher A., et al.
+            "Unsupervised learning with Steins unbiased risk estimator."
+              arXiv preprint arXiv:1805.10531 
+            2018
+            """,
+        )
