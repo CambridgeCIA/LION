@@ -358,9 +358,6 @@ class deteCT(LIONDataset):
                 )
         return files
 
-    def set_sinogram_transform(self, sinogram_transform):
-        self.sinogram_transform = sinogram_transform
-
     def compute_sample_dataframe(self):
         unique_identifiers = self.slice_dataframe["sample_index"].unique()
         record = {"sample_index": [], "first_slice": [], "last_slice": []}
