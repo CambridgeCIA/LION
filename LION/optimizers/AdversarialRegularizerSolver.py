@@ -21,8 +21,8 @@ from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.utils.citation import citation
 
 
-class ARParams(SolverParams):
-    """Parameters of ARSolver.
+class AdversarialRegularizerParams(SolverParams):
+    """Parameters of AdversarialRegularizerSolver.
 
     Args:
         lambd_gp: Weight of the gradient penalty in the WGAN training loss.
@@ -33,7 +33,7 @@ class ARParams(SolverParams):
         self.lambd_gp = lambd_gp
 
 
-class ARSolver(LIONsolver):
+class AdversarialRegularizerSolver(LIONsolver):
     """Trains an adversarial regulariser (Lunz et al., 2018).
 
     Training compares clean images with FDK reconstructions (WGAN loss with
@@ -53,7 +53,7 @@ class ARSolver(LIONsolver):
         geometry: Geometry = None,
         verbose: bool = True,
         device: torch.device = None,
-        solver_params: ARParams | None = None,
+        solver_params: AdversarialRegularizerParams | None = None,
         seed: Optional[int] = 0,
         deterministic: bool = False,
     ) -> None:
@@ -74,8 +74,8 @@ class ARSolver(LIONsolver):
     reconstructed_with = "LearnedRegularizerReconstructor"
 
     @staticmethod
-    def default_parameters() -> ARParams:
-        return ARParams()
+    def default_parameters() -> AdversarialRegularizerParams:
+        return AdversarialRegularizerParams()
 
     def set_validation(
         self,
@@ -150,7 +150,7 @@ class ARSolver(LIONsolver):
 
     @staticmethod
     def cite(cite_format="bib"):
-        """Where ARSolver comes from: its citation, BibTeX ("bib") or "MLA"."""
+        """Where AdversarialRegularizerSolver comes from: its citation, BibTeX ("bib") or "MLA"."""
         return citation(
             cite_format,
             bib="""
@@ -174,7 +174,7 @@ class ARSolver(LIONsolver):
 def _needs(reconstructor, where):
     if reconstructor is None:
         raise LIONSolverException(
-            f"ARSolver.{where} needs a reconstructor: the regulariser alone "
+            f"AdversarialRegularizerSolver.{where} needs a reconstructor: the regulariser alone "
             "doesn't reconstruct. Give e.g. "
             "reconstructor=LearnedRegularizerReconstructor(operator, "
             "parameters=...) (alpha: estimate_alpha(op, loader))"

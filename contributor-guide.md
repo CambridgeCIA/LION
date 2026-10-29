@@ -118,7 +118,7 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   hold reconstructors: where validation needs one (e.g. a learned
   regulariser, whose training loss isn't a reconstruction metric), it is made
   outside and given, `set_validation(..., reconstructor=...)`, and the solver
-  uses it with the model being trained. `ARSolver` requires one.
+  uses it with the model being trained. `AdversarialRegularizerSolver` requires one.
 - Self-supervised losses that are only derived for the MSE use the MSE whatever
   loss is given, and warn (`warn_if_not_mse`).
 - Reconstruction is separate from training (`LION/reconstructors`) and uses

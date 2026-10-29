@@ -410,7 +410,7 @@ def test_gaussian_denoiser_noise_level(noise_level):
 
 
 # --------------------------------------------------------------------------
-# ARSolver trains the regulariser; validation and testing reconstruct with a
+# AdversarialRegularizerSolver trains the regulariser; validation and testing reconstruct with a
 # LearnedRegularizerReconstructor made outside it (here with an identity "CT"
 # operator)
 
@@ -442,12 +442,12 @@ def identity_ct(monkeypatch):
 
 def make_ar_solver(**params):
     model = small_dncnn()
-    return ar_module.ARSolver(
+    return ar_module.AdversarialRegularizerSolver(
         model,
         torch.optim.Adam(model.parameters()),
         geometry=Geometry.default_parameters(),
         device=torch.device("cpu"),
-        solver_params=ar_module.ARParams(**params),
+        solver_params=ar_module.AdversarialRegularizerParams(**params),
         verbose=False,
     )
 
@@ -464,7 +464,7 @@ def learned_reconstructor(**settings):
 
 
 def test_ar_parameters_are_the_training_ones(identity_ct):
-    assert vars(ar_module.ARParams()) == {"lambd_gp": 0.1}
+    assert vars(ar_module.AdversarialRegularizerParams()) == {"lambd_gp": 0.1}
     assert not hasattr(make_ar_solver(), "reconstructor")
 
 
