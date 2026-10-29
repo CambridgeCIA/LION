@@ -26,7 +26,6 @@ from LION.utils.parameter import LIONParameter
 from pytests.helpers import ImageMatrixOp, small_gsd, small_gsdrunet
 
 # Saving a model without geometry warns about it; that is expected for DnCNN.
-pytestmark = pytest.mark.filterwarnings("ignore:Expected 'geometry' parameter")
 
 # Constructing some of the older models warns (deprecations etc.); not tested here.
 ignore_warnings = pytest.mark.filterwarnings("ignore")
@@ -149,7 +148,10 @@ def _json_normalised(params):
 def test_model_parameter_defaults():
     params = LIONModelParameter()
     assert params.model_input_type is None
-    assert params.normalisator is None
+    # files saved before 30 Oct 2026 have an unused "normalisator": no warning
+    params = DnCNN.default_parameters()
+    params.normalisator = None
+    DnCNN(params)
 
 
 def test_model_parameter_kwargs_are_not_overwritten():

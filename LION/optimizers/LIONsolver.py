@@ -1011,10 +1011,14 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
     def _resume_from(self, data):
         """Continue the run a checkpoint was saved from: its random state, the
-        hash of its initial weights, and the values the solver computed
-        during the run (``solver_params`` that are ``None`` here)."""
+        model's initial random state and how its initial weights are made
+        (those of the run, not of the model made to resume it), and the values
+        the solver computed during the run (``solver_params`` that are
+        ``None`` here)."""
         if self.seed is not None and "random_state" in data:
             rng.set_random_state(data["random_state"])
+        if data.get("initial_random_state") is not None:
+            self.model.initial_random_state = data["initial_random_state"].cpu()
         try:
             record = records.read_training_record(data["file"])
         except (ValueError, OSError):

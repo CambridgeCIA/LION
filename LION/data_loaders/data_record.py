@@ -140,14 +140,25 @@ def _record(dataset, hash_files) -> dict:
 
 def _subset_record(subset, hash_files) -> dict:
     """A ``torch.utils.data.Subset``: the record of the dataset it is taken
-    from, with the subset's ``indices`` and its samples only. The file hash, if
-    asked, is of the whole dataset's files."""
+    from, with the subset's ``indices`` into it and its samples only (a subset
+    of a subset: its indices into the whole dataset). The file hash, if asked,
+    is of the whole dataset's files."""
     record = _record(subset.dataset, hash_files)
     indices = [int(i) for i in subset.indices]
+    if "subset" in record:  # a subset of a subset: indices into the whole dataset
+        inner = record["subset"]["indices"]
+        indices = [inner[i] for i in indices]
     record["subset"] = {"indices": indices}
     if "samples" in record:
-        record["samples"] = _samples(subset.dataset, indices)
+        record["samples"] = _samples(_whole(subset), indices)
     return record
+
+
+def _whole(dataset):
+    """The dataset a (subset of a) subset is taken from."""
+    while isinstance(dataset, Subset):
+        dataset = dataset.dataset
+    return dataset
 
 
 def _ids_and_groups(dataset):

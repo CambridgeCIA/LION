@@ -23,8 +23,6 @@ from LION.data_loaders.data_record import is_data_record
 from LION.optimizers.training_record import is_training_record
 from LION.utils import environment, rng
 
-# We will need utilities
-import LION.utils.utils as ai_utils
 from LION.utils.normaliser import Normalisation
 from LION.utils.device import default_device
 from LION.utils.tomosipo_import import import_tomosipo
@@ -62,7 +60,6 @@ class LIONModelParameter(LIONParameter):
         # Set defaults before applying kwargs, so values passed in (e.g. when
         # loading from file) are not overwritten.
         self.model_input_type = None
-        self.normalisator = None
         super().__init__(**kwargs)
 
 
@@ -177,7 +174,9 @@ class LIONmodel(nn.Module, ABC):
                 type(self).__name__,
                 model_parameters,
                 self.default_parameters(),
-                ignore=("normalisation",),
+                # normalisator: an unused parameter files saved before 30 Oct
+                # 2026 have (the normalisation is "normalisation")
+                ignore=("normalisation", "normalisator"),
             )
         model_parameters = as_model_parameter(model_parameters)
         # Pass all relevant parameters to internal storage.
@@ -285,7 +284,7 @@ class LIONmodel(nn.Module, ABC):
         - 'training': the record of the training (``LION.optimizers.training_record``,
           written by the solvers), saved and read back as it is; or a
           LIONParameter describing the training algorithm and procedures
-        - 'geometry': If the model itself has no scan geometry parameter, but the dataset was created with some geometry
+        - 'geometry' (optional): the geometry of the data, for a model without one
 
         If you want to save the model for training later (i.e. checkpoiting), use save_checkpoint()
         """
@@ -328,17 +327,9 @@ class LIONmodel(nn.Module, ABC):
         if "random_state" in kwargs:  # LION.utils.rng.random_state(), for resuming
             dic["random_state"] = kwargs.pop("random_state")
 
-        # (optional)
-        geometry = None
-        given_geometry = None
-        if "geometry" in kwargs:
-            geometry = given_geometry = kwargs.pop("geometry")
-        elif hasattr(self, "geometry") and self.geometry is not None:
-            geometry = self.geometry
-        else:
-            warnings.warn(
-                "Expected 'geometry' parameter! Only ignore if tomographic reconstruction was not part of the model."
-            )
+        # (optional) the geometry of the data, for a model without one (the
+        # data record has it too)
+        given_geometry = kwargs.pop("geometry", None)
 
         if kwargs:  # if not empty yet
             raise ValueError(
@@ -348,14 +339,9 @@ class LIONmodel(nn.Module, ABC):
         # The model's metadata: the spec that builds it again (see
         # LION.utils.spec), and what is known of its data and training.
         metadata = {"lion_format": spec.FORMAT_VERSION}
-        # We should always save models with the git hash they were created. Models may change, and if loading at some point breaks
-        # we need to at least know exactly when the model was saved, to at least be able to reproduce.
-        try:
-            metadata["commit_hash"] = ai_utils.get_git_revision_hash()
-        except Exception:
-            warnings.warn("\nCould not get git hash.\n")
         metadata["model"] = spec.to_spec(self)
-        # LION's code, the main packages and the machine (LION.utils.environment)
+        # LION's code (version, commit, uncommitted changes), the main
+        # packages and the machine (LION.utils.environment)
         first = next(self.parameters(), None)
         metadata["environment"] = environment.environment_record(
             None if first is None else first.device
@@ -429,7 +415,8 @@ class LIONmodel(nn.Module, ABC):
             data = torch.load(fname, map_location=default_device(), weights_only=False)
         if isinstance(data.get("loss"), list):
             data["loss"] = np.asarray(data["loss"], dtype=float)
-        if len(data) > 1 and not supress_warnings:
+        # the weights and the random state they were made from are the model
+        if len(set(data) - {"initial_random_state"}) > 1 and not supress_warnings:
             # this should be only 1 thing, but you may be loading a checkpoint or may have saved more data.  Its OK, but we warn.
             warnings.warn(
                 "\nSaved file contains more than 1 object, but only model_state_dict is being loaded.\n Call load_checkpoint() to load checkpointed model.\n"
@@ -472,7 +459,7 @@ class LIONmodel(nn.Module, ABC):
 
         options = LIONParameter()
         options.lion_format = saved["lion_format"]
-        if "commit_hash" in saved:
+        if "commit_hash" in saved:  # files saved before 30 Oct 2026
             options.commit_hash = saved["commit_hash"]
         if "environment" in saved:
             options.environment = LIONParameter(**saved["environment"])
@@ -513,29 +500,6 @@ class LIONmodel(nn.Module, ABC):
             options.model_parameters = as_model_parameter(options.model_parameters)
         if hasattr(options, "geometry"):
             options.geometry = ct.Geometry.init_from_parameter(options.geometry)
-        # Error check
-        ################################
-        # Check if model has been changed since save.
-        # if not hasattr(options, "commit_hash") and not supress_warnings:
-        #     warnings.warn(
-        #         "\nNo commit hash found. This model was not saved with the standard AItomotools function and it will likely fail to load.\n"
-        #     )
-        # else:
-        #     curr_commit_hash = ai_utils.get_git_revision_hash()
-        #     curr_class_path = cls.current_file()
-        #     curr_aitomomodel_path = Path(__file__)
-        #     if (
-        #         ai_utils.check_if_file_changed_git(
-        #             curr_class_path, options.commit_hash, curr_commit_hash
-        #         )
-        #         or ai_utils.check_if_file_changed_git(
-        #             curr_aitomomodel_path, options.commit_hash, curr_commit_hash
-        #         )
-        #         and not supress_warnings
-        #     ):
-        #         warnings.warn(
-        #             f"\nThe code for the model has changed since it was saved, loading it may fail. This model was saved in {options.commit_hash}\n"
-        #         )
         # Check if model name matches the one that is loading it
         if options.model_name != cls.__name__:
             warnings.warn(

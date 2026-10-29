@@ -42,7 +42,7 @@ from LION.utils.parameter import LIONParameter  # noqa: E402
 from pytests.helpers import ImageMatrixOp, ScaleOp, small_dncnn  # noqa: E402
 
 pytestmark = [
-    pytest.mark.filterwarnings("ignore:.*Expected '(dataset|training|geometry)'"),
+    pytest.mark.filterwarnings("ignore:.*Expected '(dataset|training)'"),
     # TensorDatasets (and lambdas) can't be specs: records name them
     pytest.mark.filterwarnings("ignore:.*can't be written as a spec"),
 ]

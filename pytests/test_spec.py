@@ -36,7 +36,7 @@ from LION.models.PnP.gradient_step_denoiser import GSD
 from LION.models.PnP.gs_drunet import GSDRUNet
 from LION.utils.parameter import LIONParameter
 from LION.utils.spec import SpecError, build, encode, to_spec
-from pytests.helpers import ImageMatrixOp
+from pytests.helpers import ImageMatrixOp, small_dncnn
 
 
 def same(a, b, where="") -> list:
@@ -619,3 +619,13 @@ def test_files_from_numpy_1_are_allowed():
         "numpy.core.multiarray._reconstruct",
         "numpy.core.multiarray.scalar",
     } <= names
+
+
+def test_a_saved_model_loads_without_warnings(tmp_path):
+    """Its file holds the weights and the random state they were made from."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # saved without data or training
+        small_dncnn().save(tmp_path / "model")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        LIONmodel.load(tmp_path / "model")

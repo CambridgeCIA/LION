@@ -44,7 +44,7 @@ from LION.utils import environment, spec
 from LION.utils.parameter import LIONParameter
 
 # Where the data were read from doesn't make another problem.
-_NOT_THE_PROBLEM = ("folder", "datafolder")
+_NOT_THE_PROBLEM = ("folder", "datafolder", "path_to_dataset")
 
 RECORD_KEY = "lion_comparison"
 RECORD_VERSION = 1

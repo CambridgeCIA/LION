@@ -474,3 +474,16 @@ def test_detect_groups_are_the_physical_samples(tmp_path):
     test = data_record(fake_detect(tmp_path, "test"))
     assert training.samples.groups == [f"sample_{i}" for i in range(8)]
     assert test.samples.groups == ["sample_9"]
+
+
+def test_a_subset_of_a_subset_records_indices_into_the_whole_dataset():
+    from torch.utils.data import Subset
+
+    from pytests.test_comparison import Slices
+
+    dataset = Slices("train")
+    ids = dataset.sample_ids()
+    nested = Subset(Subset(Subset(dataset, [7, 6, 5, 4, 3, 2]), [0, 2, 4]), [1, 2])
+    record = data_record(nested)
+    assert record.subset.indices == [5, 3]
+    assert record.samples.ids == [ids[5], ids[3]]

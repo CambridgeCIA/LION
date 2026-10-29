@@ -30,9 +30,7 @@ from pytests.helpers import ScaleOp, small_dncnn  # noqa: E402
 from pytests.test_data_record import stand_in_projection  # noqa: E402
 from pytests.test_lidc_resampling import fake_lidc  # noqa: E402
 
-pytestmark = pytest.mark.filterwarnings(
-    "ignore:.*Expected '(dataset|training|geometry)'"
-)
+pytestmark = pytest.mark.filterwarnings("ignore:.*Expected '(dataset|training)'")
 
 
 def same(a, b) -> bool:

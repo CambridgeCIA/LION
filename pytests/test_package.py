@@ -32,7 +32,7 @@ from pytests.helpers import ScaleOp, small_dncnn  # noqa: E402
 from pytests.test_lidc_resampling import fake_lidc  # noqa: E402
 
 pytestmark = [
-    pytest.mark.filterwarnings("ignore:.*Expected '(dataset|training|geometry)'"),
+    pytest.mark.filterwarnings("ignore:.*Expected '(dataset|training)'"),
 ]
 
 
@@ -579,3 +579,14 @@ def test_build_with_a_test_and_a_device(trained, tmp_path):
     assert built.evaluation.device == torch.device("cpu")
     record = built.evaluation.run(built.model, save=False)
     assert record.scores.ids == p.records.test.scores.ids
+
+
+def test_the_best_validation_file_is_published_and_trained_again(trained, tmp_path):
+    file, _ = trained
+    best = file.parent / f"{file.name}_min_val"
+    folder = published(best, tmp_path / "package")
+    written = json.loads((folder / "package.json").read_text())
+    p = package.load(folder)
+    assert p.records.training.weights.kind == "best_validation"
+    model = package.train_again(p, tmp_path / "again")
+    assert weights_sha256(model) == written["weights_sha256"]
