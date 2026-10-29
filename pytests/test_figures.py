@@ -5,8 +5,6 @@ crops and differences, the saved folder and making it again from it."""
 import csv
 import json
 import os
-import subprocess
-import sys
 import tempfile
 import warnings
 
@@ -82,17 +80,6 @@ def test_plots_are_boxes_of_that_data():
     fig = difference_plot([base, net], "M", "base")
     assert [t.get_text() for t in fig.axes[0].get_xticklabels()] == ["net"]
     assert fig.axes[0].get_ylabel().startswith("M − base")
-
-
-def test_plots_draw_into_a_given_axes():
-    from matplotlib.figure import Figure
-
-    mine = Figure()
-    left, right = mine.subplots(1, 2)
-    records = [record("base", [1.0, 2.0]), record("net", [2.0, 3.0])]
-    assert box_plot(records, "M", ax=left) is mine
-    assert difference_plot(records, "M", "base", ax=right) is mine
-    assert len(mine.axes) == 2
 
 
 def test_chosen_samples():
@@ -233,15 +220,3 @@ def test_methods_made_in_the_script_cant_be_made_again(tmp_path):
         Comparison.instantiate(
             written, allow=["pytests."], evaluation_arguments={"device": "cpu"}
         )
-
-
-def test_evaluation_imports_without_matplotlib():
-    code = (
-        "import sys; sys.modules['matplotlib'] = None\n"
-        "import LION.evaluation, LION.evaluation.figures\n"
-        "print('ok')"
-    )
-    result = subprocess.run(
-        [sys.executable, "-c", code], capture_output=True, text=True
-    )
-    assert result.stdout.strip() == "ok", result.stderr

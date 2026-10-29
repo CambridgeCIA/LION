@@ -40,21 +40,6 @@ class JSONParamEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def get_git_revision_hash() -> str:
-    """Commit hash of the LION code in use (not of the current working directory).
-
-    Raises if LION is not a git checkout (e.g. installed from a wheel).
-    """
-    lion_folder = Path(__file__).resolve().parent
-    return (
-        subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=lion_folder, stderr=subprocess.DEVNULL
-        )
-        .decode("ascii")
-        .strip()
-    )
-
-
 # Run cmd line
 def run_cmd(cmd, verbose=True, *args, **kwargs):
     if verbose:
@@ -70,12 +55,6 @@ def run_cmd(cmd, verbose=True, *args, **kwargs):
     if verbose:
         print(std_out.strip(), std_err)
     return std_out.strip()
-
-
-def check_if_file_changed_git(fname, hash1, hash2) -> bool:
-    bash_command = f"git diff --name-only {hash1} {hash2} {fname}"
-    out = run_cmd(bash_command, verbose=False)
-    return bool(out)
 
 
 # This replaces standard python warnings with a custom format

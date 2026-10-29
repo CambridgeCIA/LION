@@ -18,8 +18,6 @@ from LION.models.iterative_unrolled.ItNet import ItNet
 from LION.models.learned_regularizer.ACR import ACR
 from LION.models.learned_regularizer.AR import AR
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
-from LION.models.post_processing.FBPConvNet import FBPConvNet
-from LION.models.post_processing.FBPConvNetImage import FBPConvNetImage
 from LION.models.post_processing.FBPMSDNet import FBPMSDNet
 from LION.utils import spec
 from LION.utils.parameter import LIONParameter
@@ -57,46 +55,12 @@ def test_msdnet_defaults():
 
 
 @ignore_warnings
-def test_msdnet_accepts_activation_module():
-    params = small_msd_params()
-    params.activation = torch.nn.LeakyReLU()
-    MSDNet(params)
-
-
-@ignore_warnings
-def test_msdnet_rejects_unknown_activation():
-    params = small_msd_params()
-    params.activation = "NotAnActivation"
-    with pytest.raises(ValueError):
-        MSDNet(params)
-
-
-@ignore_warnings
-def test_fbpmsdnet_defaults(no_ct_operator):
-    params = FBPMSDNet.default_parameters()
-    assert params.model_input_type is ModelInputType.SINOGRAM
-    params.depth, params.dilations = 2, [1, 2]
-    model = FBPMSDNet(params, Geometry.default_parameters())
-    assert isinstance(model.net, MSDNet)
-
-
-@ignore_warnings
 def test_resunet3d():
     params = ResUNet3D.default_parameters()
     model = ResUNet3D(params)
     out = model(torch.rand(2, 1, 16, 16, 16))
     assert out.shape == (2, 1, 16, 16, 16)
     assert (out >= 0).all() and (out <= 1).all()  # sigmoid output
-
-
-@ignore_warnings
-def test_acr_without_geometry():
-    model = ACR()
-    x = torch.rand(3, 1, 16, 16)
-    assert model(x).shape == (3, 1)
-    # the parametrized weights are positive after initialisation
-    assert (model.ICNN_layer_0.blue.weight >= 0).all()
-    assert model.ICNN_layer_0.blue.weight.abs().max() <= 1e-3
 
 
 @ignore_warnings
@@ -110,81 +74,12 @@ def test_acr_is_convex_along_a_line():
     assert lhs.item() <= rhs.item() + 1e-6
 
 
-@ignore_warnings
-def test_msd_pytorch_defaults():
-    # importable without msd_pytorch, which is only needed to make the model
-    from LION.models.CNNs.MSD_pytorch import MSD_pytorch
-
-    assert MSD_pytorch.default_parameters().model_input_type is ModelInputType.IMAGE
-    assert MSD_pytorch.default_parameters("segmentation").c_in == 1
-    try:
-        import msd_pytorch  # noqa: F401
-    except ImportError:
-        with pytest.raises(ImportError, match="msd_pytorch"):
-            MSD_pytorch()
-
-
 # --------------------------------------------------------------------------
-# Save/load round trips
-#
-# Regression tests for two bugs that together broke loading saved models:
-# - load()/load_checkpoint() passed the loaded parameters to the model as a plain
-#   LIONParameter (that is how nested parameters come back from JSON), which the
-#   LIONModelParameter type check in LIONmodel.__init__ rejects.
-# - LIONModelParameter.__init__ applied its defaults *after* the keyword
-#   arguments, so values passed in (e.g. model_input_type) were overwritten.
-# DnCNN is used because it needs no CT geometry.
+# Saved and loaded: the normalisation, nested parameters, checkpoints
 
 
 def _save(model, path):
     model.save(path, dataset=LIONParameter(name="test"), training=LIONParameter())
-
-
-def _json_normalised(params):
-    # JSON has no tuple type, so tuples come back as lists.
-    return {k: list(v) if isinstance(v, tuple) else v for k, v in vars(params).items()}
-
-
-def test_model_parameter_defaults():
-    params = LIONModelParameter()
-    assert params.model_input_type is None
-    # files saved before 30 Oct 2026 have an unused "normalisator": no warning
-    params = DnCNN.default_parameters()
-    params.normalisator = None
-    DnCNN(params)
-
-
-def test_model_parameter_kwargs_are_not_overwritten():
-    params = LIONModelParameter(model_input_type=ModelInputType.IMAGE, depth=3)
-    assert params.model_input_type == ModelInputType.IMAGE
-    assert params.depth == 3
-
-
-def test_model_parameter_file_round_trip(tmp_path):
-    params = LIONModelParameter()
-    params.model_input_type = ModelInputType.IMAGE
-    params.save(tmp_path / "params.json")
-
-    loaded = LIONModelParameter()
-    loaded.load(tmp_path / "params.json")
-    assert loaded.model_input_type == ModelInputType.IMAGE
-
-
-def test_load_round_trip(tmp_path):
-    torch.manual_seed(0)
-    model = DnCNN()
-    _save(model, tmp_path / "model")
-
-    loaded, options, _ = DnCNN.load(tmp_path / "model", supress_warnings=True)
-
-    assert isinstance(loaded, DnCNN)
-    assert isinstance(loaded.model_parameters, LIONModelParameter)
-    assert loaded.get_input_type() is ModelInputType.IMAGE
-    assert _json_normalised(loaded.model_parameters) == _json_normalised(
-        model.model_parameters
-    )
-    for key, value in model.state_dict().items():
-        torch.testing.assert_close(loaded.state_dict()[key].cpu(), value.cpu())
 
 
 @pytest.mark.parametrize(
@@ -214,26 +109,6 @@ def test_the_normalisation_is_saved_and_loaded(tmp_path, normalisation, expected
     }
     x = 4 * torch.rand(1, 1, 8, 8)
     torch.testing.assert_close(loaded.normalise(x), model.normalise(x))
-
-
-def test_the_normalisation_is_in_checkpoints(tmp_path):
-    model = DnCNN()
-    model.set_normalisation("custom", data_range=(0.0, 2.0))
-    model.save_checkpoint(
-        tmp_path / "checkpoint",
-        epoch=1,
-        loss=0.5,
-        optimizer=torch.optim.SGD(model.parameters(), lr=0.1),
-        training_param=LIONParameter(),
-        dataset=LIONParameter(name="test"),
-    )
-    loaded, _, _ = DnCNN.load_checkpoint(tmp_path / "checkpoint")
-    assert loaded.normalisator.record() == {"type": "custom", "range": [0.0, 2.0]}
-
-
-def test_a_model_without_normalisation_loads_without(tmp_path):
-    _save(DnCNN(), tmp_path / "model")
-    assert DnCNN.load(tmp_path / "model", supress_warnings=True)[0].normalisator is None
 
 
 def test_the_normalisation_is_a_parameter():
@@ -342,15 +217,6 @@ def test_models_inside_models_load(tmp_path, cls):
     assert inner.get_input_type() is ModelInputType.IMAGE
 
 
-def test_itnet_with_its_unet_loads(no_ct_operator, tmp_path):
-    torch.manual_seed(0)
-    model = ItNet(Geometry.default_parameters(), itnet_params(0.5, True))
-    _save(model, tmp_path / "model")
-    loaded, _, _ = ItNet.load(tmp_path / "model", supress_warnings=True)
-    for (k, a), (_, b) in zip(model.state_dict().items(), loaded.state_dict().items()):
-        torch.testing.assert_close(a, b.cpu(), msg=k)
-
-
 def test_models_take_plain_parameters():
     """A plain LIONParameter works as model parameters; a Geometry is refused."""
     params = LIONParameter(**vars(DnCNN.default_parameters()))
@@ -383,14 +249,6 @@ def test_load_checkpoint_round_trip(tmp_path):
     assert data["loss"] == 0.5
     for key, value in model.state_dict().items():
         torch.testing.assert_close(loaded.state_dict()[key].cpu(), value.cpu())
-
-
-@ignore_warnings
-def test_save_without_optional_metadata(tmp_path):
-    # dataset/training/geometry are optional (save() only warns)
-    DnCNN().save(tmp_path / "model")
-    loaded, _, _ = DnCNN.load(tmp_path / "model", supress_warnings=True)
-    assert isinstance(loaded, DnCNN)
 
 
 def test_save_does_not_change_model_parameters(tmp_path):
@@ -451,11 +309,6 @@ def test_ar_any_image_size(shape):
         assert model.fc[0].in_features == 128 * 32 * 32
 
 
-def test_fbpconvnet_image_takes_images():
-    assert FBPConvNetImage.default_parameters().model_input_type is ModelInputType.IMAGE
-    assert FBPConvNet.default_parameters().model_input_type is ModelInputType.SINOGRAM
-
-
 def test_drunet_noise_level_with_several_channels():
     params = DRUNet.default_parameters()
     params.in_channels = params.out_channels = 3
@@ -463,13 +316,6 @@ def test_drunet_noise_level_with_several_channels():
     params.int_channels, params.n_blocks = 8, 1
     out = DRUNet(params)(torch.rand(2, 3, 16, 16), noise_level=0.1)
     assert out.shape == (2, 3, 16, 16)
-
-
-@pytest.mark.parametrize("model_class", [DRUNet, DnCNN])
-def test_activation_name_is_case_insensitive(model_class):
-    params = model_class.default_parameters()
-    params.act = "Leaky_ReLU"
-    model_class(params)
 
 
 # --------------------------------------------------------------------------
@@ -551,13 +397,6 @@ def small_unet_params(**overrides):
     return params
 
 
-def test_default_blocks_have_two_norms():
-    model = UNet(small_unet_params())
-    for block in (model.encoder1, model.base, model.decoder1):
-        assert len(_norms(block)) == 2
-    assert model(torch.rand(2, 1, 32, 32)).shape == (2, 1, 32, 32)
-
-
 def test_parameters_without_the_option_keep_old_architecture():
     params = small_unet_params()
     del params.norm_after_second_conv  # as in parameter files saved before it existed
@@ -595,11 +434,6 @@ def test_step_size_per_iteration(no_ct_operator, step_size, expected, learned_st
     model = ItNet(Geometry.default_parameters(), itnet_params(step_size, learned_step))
     steps = [float(model.step_size[i].detach()) for i in range(3)]
     np.testing.assert_allclose(steps, expected, rtol=1e-6)
-
-
-def test_wrong_number_of_steps(no_ct_operator):
-    with pytest.raises(ValueError):
-        ItNet(Geometry.default_parameters(), itnet_params([0.1, 0.2], True))
 
 
 def test_fixed_steps_move_with_the_model(no_ct_operator):

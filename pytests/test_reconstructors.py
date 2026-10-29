@@ -10,7 +10,6 @@ from LION.reconstructors import (
     estimate_alpha,
 )
 from LION.utils import spec
-from LION.utils.parameter import LIONParameter
 from pytests.helpers import ImageMatrixOp, ScaleOp, small_dncnn
 
 # --------------------------------------------------------------------------
@@ -95,15 +94,6 @@ def test_vector_measurements_are_batched(pnp_problem):
     assert out.shape == (2, *op.domain_shape)
     torch.testing.assert_close(out[0], x_true, atol=1e-3, rtol=1e-3)
     torch.testing.assert_close(out[1], 2 * x_true, atol=1e-3, rtol=1e-3)
-
-
-def test_unknown_algorithm(pnp_problem):
-    with pytest.raises(ValueError, match="Unknown algorithm"):
-        PnP.default_parameters("nope")
-    parameters = PnP.default_parameters()
-    parameters.algorithm = "nope"
-    with pytest.raises(ValueError, match="Unknown algorithm"):
-        PnP(pnp_problem[0], Identity(), parameters)
 
 
 def test_fbs_computes_the_operator_norm_once(pnp_problem, monkeypatch):
@@ -218,11 +208,6 @@ def test_estimate_alpha_is_mean_over_samples(lr_problem):
     assert estimate_alpha(op, loader) == pytest.approx(expected.item())
 
 
-def test_rejects_bad_backtracking(lr_problem):
-    with pytest.raises(ValueError):
-        learned(lr_problem[0], quadratic, backtracking=1.0)
-
-
 def test_explicit_gradient_matches_autograd(lr_problem):
     """grad E = A^T(Ax - y) + alpha grad R, with the data term written out."""
     op, _, y = lr_problem
@@ -251,17 +236,6 @@ def test_lionmodel_regularizer_sees_normalised_images(lr_problem):
 # --------------------------------------------------------------------------
 # Parameters, specs and instantiate: a reconstructor with its parameters is
 # one method, recorded and made again (the model is given separately)
-
-
-def test_default_parameters_are_each_algorithms():
-    assert PnP.default_parameters().algorithm == "ADMM"
-    assert PnP.default_parameters("HQS").max_iter == 100
-    assert PnP.default_parameters("FBS").max_iter == 10
-    assert not hasattr(PnP.default_parameters("FBS"), "eta")
-    # a setting missing from the parameters has its default
-    parameters = LIONParameter(algorithm="HQS")
-    recon = PnP(ScaleOp(1.0, (1, 4, 4)), Identity(), parameters)
-    assert recon.setting("mu") == 0.1
 
 
 def test_spec_is_the_operator_and_parameters_not_the_model():

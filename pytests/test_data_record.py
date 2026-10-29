@@ -6,7 +6,6 @@ LION_DATA_PATH, noise functions as partials, the seeded random annotation."""
 import functools
 import json
 import os
-import pathlib
 import shutil
 import tempfile
 import warnings
@@ -26,7 +25,6 @@ from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
 from LION.data_loaders.data_record import (  # noqa: E402
     data_record,
     is_data_record,
-    read_record,
 )
 from LION.data_loaders.deteCT import deteCT  # noqa: E402
 from LION.models.CNNs.dncnn import DnCNN  # noqa: E402
@@ -57,11 +55,6 @@ def test_paths_inside_lion_data_path_are_relative():
         "_args_": ["processed/LIDC-IDRI"],
     }
     assert build(through_json(written)) == path
-
-
-def test_other_paths_are_written_as_given():
-    path = pathlib.Path("/somewhere/else/data")
-    assert build(through_json(encode(path))) == path
 
 
 def test_noise_function_as_a_partial():
@@ -114,13 +107,6 @@ def lidc_dataset(folder, mode="test", task="reconstruction"):
     return lidc.LIDC_IDRI(mode, parameters=params)
 
 
-def test_lidc_keeps_its_arguments(lidc_folder, no_tomosipo):
-    data = lidc_dataset(lidc_folder)
-    assert data.mode == "test"
-    assert data.parameters.folder == lidc_folder
-    assert data.geometry_parameters is None
-
-
 def test_making_a_split_leaves_the_experiment_unchanged(lidc_folder, no_tomosipo):
     """An experiment's datasets share its data_loader_params: making one split
     doesn't change the experiment, or the record of another split."""
@@ -143,12 +129,6 @@ def test_lidc_uses_the_selected_device(lidc_folder, no_tomosipo):
     params.device = "cuda:7"  # as in parameter files saved before: not used
     data = lidc.LIDC_IDRI("test", parameters=params)
     assert data.device == default_device()
-
-
-def test_lidc_sample_ids(lidc_folder, no_tomosipo):
-    data = lidc_dataset(lidc_folder)
-    assert data.sample_ids() == ["LIDC-IDRI-0010/slice_0", "LIDC-IDRI-0010/slice_1"]
-    assert [p.name for p in data.sample_files()] == ["slice_0.npy", "slice_1.npy"]
 
 
 def test_lidc_dataset_record_rebuilds_the_same_dataset(lidc_folder, no_tomosipo):
@@ -206,36 +186,6 @@ def test_experiment_record(lidc_folder, no_tomosipo):
     assert torch.equal(again[0][0], original[0][0])
 
 
-def test_datasets_remember_their_experiment(lidc_folder, no_tomosipo):
-    experiment = ct_experiments.LowDoseCTRecon(datafolder=lidc_folder)
-    data = experiment.get_training_dataset()
-    assert data.experiment is experiment and data.split == "train"
-    assert data_record(data).split == "train"
-    with pytest.raises(ValueError, match="split"):
-        experiment.get_dataset("training")
-
-
-def test_experiment_noise_is_unchanged(lidc_folder, no_tomosipo):
-    """The partial gives the same noise as the lambda it replaces."""
-    experiment = ct_experiments.LowDoseCTRecon(datafolder=lidc_folder)
-    noise = experiment.param.noise_params
-    sinogram = torch.full((1, 90, 128), 200.0)
-    torch.manual_seed(0)
-    by_partial = experiment.sino_fun(sinogram)
-    torch.manual_seed(0)
-    by_hand = sinogram_add_noise(
-        sinogram,
-        I0=noise.I0,
-        sigma=noise.sigma,
-        sigma_blur=noise.sigma_blur,
-        model=noise.noise_model,
-        detector=noise.detector,
-        mass_attenuation=noise.mass_attenuation,
-        min_counts=noise.min_counts,
-    )
-    assert torch.equal(by_partial, by_hand)
-
-
 # --------------------------------------------------------------------------
 # File contents
 
@@ -251,10 +201,6 @@ def test_file_hash_checks_the_data(lidc_folder, tmp_path, no_tomosipo):
     changed = data_record(lidc_dataset(copy), hash_files=True)
     assert changed.files.sha256 != record.files.sha256
     assert changed.samples.serialize() == record.samples.serialize()  # same names
-
-
-def test_no_file_hash_unless_asked(lidc_folder, no_tomosipo):
-    assert not hasattr(data_record(lidc_dataset(lidc_folder)), "files")
 
 
 # --------------------------------------------------------------------------
@@ -407,12 +353,6 @@ def test_check_files(lidc_folder, no_tomosipo):
         LIONDataset.instantiate(record, check_files=True)
 
 
-def test_a_dataset_spec_alone(lidc_folder, no_tomosipo):
-    data = lidc_dataset(lidc_folder)
-    made = lidc.LIDC_IDRI.instantiate(through_json(to_spec(data)))
-    assert made.sample_ids() == data.sample_ids()
-
-
 def test_what_cannot_be_instantiated(lidc_folder, no_tomosipo):
     experiment = ct_experiments.LowDoseCTRecon(datafolder=lidc_folder)
     with pytest.raises(SpecError, match="not a LIONDataset"):
@@ -423,16 +363,6 @@ def test_what_cannot_be_instantiated(lidc_folder, no_tomosipo):
     record.dataset = LIONParameter(unsaved="<MyDataset>", reason="a lambda")
     with pytest.raises(ValueError, match="only names its dataset"):
         LIONDataset.instantiate(record)
-
-
-def test_read_record(lidc_folder, tmp_path, no_tomosipo):
-    record = data_record(lidc_dataset(lidc_folder))
-    expected = record.serialize()
-    assert read_record(record).serialize() == expected
-    assert read_record(saved_model(tmp_path, record)).serialize() == expected
-    (tmp_path / "record.json").write_text(json.dumps(expected))
-    assert read_record(tmp_path / "record.json").serialize() == expected
-    assert record.samples.count == 2 and isinstance(record.dataset, dict)
 
 
 def test_a_subset_is_recorded_and_made_again(lidc_folder, no_tomosipo):

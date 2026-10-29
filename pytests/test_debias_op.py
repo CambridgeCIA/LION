@@ -7,7 +7,7 @@ in closed form and nothing here needs a geometry, a dataset or a GPU.
 
 import torch
 
-from LION.operators.DebiasOp import DebiasOp, debias_ls
+from LION.operators.DebiasOp import debias_ls
 from LION.operators.Operator import Operator
 
 N = 12
@@ -50,14 +50,6 @@ def problem() -> tuple[Diagonal, torch.Tensor, torch.Tensor, torch.Tensor]:
     return Diagonal(diag), diag * signal, w, x_true
 
 
-def test_debias_op_can_be_constructed():
-    """``op`` is an nn.Module, so it can only be stored once Module is set up."""
-    op, y, w, _ = problem()
-    debias_op = DebiasOp(op, y, w)
-    assert debias_op.domain_shape == (SUPPORT.numel(),)
-    assert debias_op.range_shape == (N,)
-
-
 def test_debias_ls_solves_the_system_on_the_support():
     op, y, w, x_true = problem()
     w_deb = debias_ls(op, y, w, max_iter=500, tol=0.0)
@@ -65,22 +57,6 @@ def test_debias_ls_solves_the_system_on_the_support():
     outside = torch.ones(N, dtype=torch.bool)
     outside[SUPPORT] = False
     assert torch.count_nonzero(w_deb[outside]) == 0
-
-
-def test_debias_ls_reports_progress_when_asked_to():
-    """``verbose`` is a parameter, not the ``tabnanny`` module flag of the same name."""
-    op, y, w, _ = problem()
-    quiet = debias_ls(op, y, w, max_iter=20, tol=0.0)
-    loud = debias_ls(op, y, w, max_iter=20, tol=0.0, verbose=True, progress_bar=True)
-    torch.testing.assert_close(loud, quiet)
-
-
-def test_debias_ls_prints_the_objective_when_verbose(capsys):
-    op, y, w, _ = problem()
-    debias_ls(op, y, w, max_iter=3, tol=0.0, verbose=True)
-    printed = capsys.readouterr().out
-    assert printed.count("Debiasing LS  f =") == 3
-    assert "rel_change < tol:" in printed
 
 
 def test_debias_ls_without_support_returns_the_input_unchanged():

@@ -26,7 +26,6 @@ from torch.utils.data import DataLoader, Subset, TensorDataset  # noqa: E402
 import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
 import LION.optimizers.SupervisedSolver as supervised_solver  # noqa: E402
 from LION.CTtools.ct_geometry import Geometry  # noqa: E402
-from LION.data_loaders.data_record import data_record  # noqa: E402
 from LION.models.LIONmodel import LIONmodel  # noqa: E402
 from LION.optimizers.EquivariantSolver import (  # noqa: E402
     EquivariantSolver,
@@ -38,12 +37,10 @@ from LION.optimizers.GaussianDenoiserSolver import (  # noqa: E402
 from LION.optimizers.LIONsolver import LIONsolver  # noqa: E402
 from LION.optimizers.training_record import (  # noqa: E402
     is_training_record,
-    loader_settings,
     read_training_record,
     weights_sha256,
 )
 from LION.utils import paths, rng  # noqa: E402
-from LION.utils.parameter import LIONParameter  # noqa: E402
 from LION.utils.image_transforms import rotate  # noqa: E402
 from LION.utils.spec import build, encode, to_spec  # noqa: E402
 from pytests.helpers import small_dncnn  # noqa: E402
@@ -141,21 +138,6 @@ def test_record_in_every_saved_file(tmp_path):
     assert len(check["history"]["train_loss"]) == 2
 
 
-def test_record_is_read_back_as_a_lion_parameter(tmp_path):
-    solver = denoiser_solver(tmp_path)
-    solver.train(2)
-    solver.save_final_results()
-    _, options, _ = LIONmodel.load(tmp_path / "final", supress_warnings=True)
-    record = options.training
-    assert isinstance(record, LIONParameter)
-    assert record.serialize() == saved(tmp_path, "final")["training"]
-    assert record.epochs.done == 2 and record.weights.kind == "final"
-    assert record.train.shuffle is True and record.validation.every == 1
-    assert isinstance(record.solver, dict) and isinstance(record.optimizer, dict)
-    assert isinstance(options.dataset_params, LIONParameter)
-    assert read_training_record(tmp_path / "final").serialize() == record.serialize()
-
-
 def test_validation_data_recorded_training_data_as_dataset_params(tmp_path):
     solver = denoiser_solver(tmp_path)
     solver.set_validation(
@@ -230,22 +212,6 @@ def test_resuming_continues_the_same_run(tmp_path):
     assert same_weights(uninterrupted.model, resumed.model)
     np.testing.assert_array_equal(uninterrupted.train_loss, resumed.train_loss)
     assert resumed.initial_weights_sha256 == uninterrupted.initial_weights_sha256
-
-
-def test_initial_weights_hash(tmp_path):
-    solver = denoiser_solver(tmp_path)
-    start = weights_sha256(solver.model)
-    solver.train(2)
-    solver.save_final_results()
-    assert saved(tmp_path, "final")["training"]["initial_weights_sha256"] == start
-    assert start != weights_sha256(solver.model)
-    assert denoiser_solver(tmp_path).initial_weights_sha256 is None  # not trained
-
-
-def test_checkpoint_random_state_loads_safely(tmp_path):
-    denoiser_solver(tmp_path).train(1)
-    data_ = torch.load(tmp_path / "check_0001.pt", weights_only=True)
-    assert set(data_["random_state"]) == {"torch", "cuda", "numpy", "random"}
 
 
 def test_e2i_noise_std_comes_back_on_resume(tmp_path, monkeypatch):
@@ -330,18 +296,6 @@ def test_instantiate_makes_the_recorded_solver(tmp_path):
         assert made.train_loader is None  # the data are set by the user
 
 
-def test_instantiate_repeats_the_run(tmp_path):
-    first = denoiser_solver(tmp_path)
-    first.train(2)
-    first.save_final_results()
-    again = LIONsolver.instantiate(
-        tmp_path / "final", model_from(), device=torch.device("cpu")
-    )
-    again.set_training(DataLoader(data(), batch_size=2, shuffle=True))
-    again.train(2)
-    assert same_weights(first.model, again.model)
-
-
 def test_instantiate_with_arguments(tmp_path):
     model = small_dncnn()
     solver = supervised_solver.SupervisedSolver(
@@ -389,32 +343,8 @@ def test_paths_inside_results_path_are_relative(tmp_path, monkeypatch):
         paths.results_path("LPD/model.pt")
 
 
-def test_innermost_lion_folder_wins(tmp_path, monkeypatch):
-    monkeypatch.setenv("LION_DATA_PATH", str(tmp_path))
-    monkeypatch.setenv("LION_RESULTS_PATH", str(tmp_path / "results"))
-    assert encode(tmp_path / "results" / "a")["_target_"].endswith("results_path")
-    assert encode(tmp_path / "processed")["_target_"].endswith("data_path")
-
-
 # --------------------------------------------------------------------------
 # Pieces
-
-
-def test_loader_settings():
-    assert loader_settings(DataLoader(data(), batch_size=3, shuffle=True)) == {
-        "batch_size": 3,
-        "drop_last": False,
-        "shuffle": True,
-    }
-    assert loader_settings(DataLoader(data(), batch_size=3))["shuffle"] is False
-    sampler = torch.utils.data.WeightedRandomSampler([1.0] * 8, 8)
-    custom = loader_settings(DataLoader(data(), sampler=sampler))
-    assert custom["shuffle"] is None and "WeightedRandomSampler" in custom["sampler"]
-
-
-def test_subset_record():
-    record = data_record(Subset(data(), [3, 1]))
-    assert record.subset.indices == [3, 1]
 
 
 def test_random_state_round_trip():

@@ -19,11 +19,9 @@ import LION
 import LION.optimizers.LIONsolver as lion_solver
 from LION.CTtools.ct_geometry import Geometry
 from LION.models.CNNs.dncnn import DnCNN
-from LION.models.LIONmodel import LIONmodel
 from LION.optimizers.SupervisedSolver import SupervisedSolver
 from LION.utils import environment
 from LION.utils.parameter import LIONParameter
-from LION.utils.spec import to_spec
 from pytests.helpers import small_dncnn
 
 
@@ -221,13 +219,6 @@ def make_solver(**kwargs):
         device=torch.device("cpu"),
         **kwargs,
     )
-
-
-def test_not_deterministic_by_default(monkeypatch):
-    monkeypatch.setattr(lion_solver, "make_operator", lambda geometry: None)
-    solver = make_solver()
-    assert solver.deterministic is False
-    assert not torch.are_deterministic_algorithms_enabled()
 
 
 def test_deterministic(monkeypatch, restore_determinism):

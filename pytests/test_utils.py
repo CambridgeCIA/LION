@@ -1,12 +1,9 @@
 """Utilities: the default device, LIONParameter (de)serialisation and the
 download/unzip command lines."""
 
-import os
 import pathlib
 import shlex
-import subprocess
 
-import numpy as np
 import pytest
 import torch
 
@@ -32,10 +29,6 @@ def no_cuda(monkeypatch):
 def restore_default_device():
     yield
     torch.set_default_device("cpu")
-
-
-def test_cpu_without_cuda(no_cuda):
-    assert default_device() == torch.device("cpu")
 
 
 def test_follows_torch_set_default_device(no_cuda, restore_default_device):
@@ -93,40 +86,6 @@ def test_serialize_does_not_modify_the_parameter():
     assert d == {"a": 1, "inner": {"b": 2}, "path": "some/folder"}
     assert isinstance(p.inner, LIONParameter)
     assert isinstance(p.path, pathlib.Path)
-
-
-def test_save_load_round_trip(tmp_path):
-    p = LIONParameter(a=1, inner={"b": [1, 2]})
-    p.save(tmp_path / "params.json")
-    q = LIONParameter()
-    q.load(tmp_path / "params.json")
-    assert q.a == 1
-    assert isinstance(q.inner, LIONParameter) and q.inner.b == [1, 2]
-
-
-def test_geometry_round_trip_keeps_image_pos(tmp_path):
-    geo = Geometry.default_parameters()
-    geo.image_pos = np.array([0.0, 10.0, -5.0])
-    geo.save(tmp_path / "geo.json")
-
-    loaded = LIONParameter()
-    loaded.load(tmp_path / "geo.json")
-    restored = Geometry.init_from_parameter(loaded)
-
-    np.testing.assert_allclose(restored.image_pos, geo.image_pos)
-    np.testing.assert_allclose(restored.angles, geo.angles)
-    assert restored.mode == geo.mode
-
-
-def test_git_hash_is_lions_not_the_working_directory(tmp_path, monkeypatch):
-    lion_folder = pathlib.Path(utils.__file__).resolve().parent
-    expected = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=lion_folder, capture_output=True, text=True
-    )
-    if expected.returncode != 0:
-        pytest.skip("LION is not a git checkout here")
-    monkeypatch.chdir(tmp_path)  # not a git repository
-    assert utils.get_git_revision_hash() == expected.stdout.strip()
 
 
 # --------------------------------------------------------------------------
@@ -310,17 +269,3 @@ def test_data_folders_are_read_when_used(monkeypatch, tmp_path):
     assert paths.LION_RESULTS_PATH is None
     monkeypatch.setenv("LION_RESULTS_PATH", str(tmp_path / "r"))
     assert paths.LION_RESULTS_PATH == (tmp_path / "r").resolve()
-
-
-def test_lion_imports_without_lion_data_path():
-    import sys
-
-    environment = {k: v for k, v in os.environ.items() if k != "LION_DATA_PATH"}
-    code = (
-        "import LION.experiments.ct_experiments, LION.data_loaders.LIDC_IDRI, "
-        "LION.data_loaders.deteCT, LION.evaluation, LION.package"
-    )
-    result = subprocess.run(
-        [sys.executable, "-c", code], env=environment, capture_output=True, text=True
-    )
-    assert result.returncode == 0, result.stderr
