@@ -10,7 +10,7 @@ import sys
 import tempfile
 import types
 
-# LION.utils.paths requires LION_DATA_PATH at import time
+# the datasets' default folders are in LION_DATA_PATH
 os.environ.setdefault("LION_DATA_PATH", tempfile.mkdtemp())
 
 import numpy as np  # noqa: E402

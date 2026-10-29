@@ -9,7 +9,7 @@
 import torch
 from torch.utils.data import Dataset
 
-from LION.utils.paths import LUNA_PROCESSED_DATASET_PATH
+from LION.utils import paths
 from LION.CTtools.ct_geometry import Geometry
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_utils as ct
@@ -47,10 +47,10 @@ class Luna16Dataset(Dataset):
         self.sinogram_transform = sinogram_transform
         self.image_transform = image_transform
 
-        self.samples_path = LUNA_PROCESSED_DATASET_PATH.joinpath(mode)
+        self.samples_path = paths.LUNA_PROCESSED_DATASET_PATH.joinpath(mode)
         self.images_list = list(self.samples_path.glob("image_*"))
         self.pre_processing_params = LIONParameter().load(
-            LUNA_PROCESSED_DATASET_PATH.joinpath("parameter.json")
+            paths.LUNA_PROCESSED_DATASET_PATH.joinpath("parameter.json")
         )
 
     def __len__(self):

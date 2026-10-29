@@ -4,7 +4,7 @@ data loaders: one noisy measurement per slice when a seed is given."""
 import os
 import tempfile
 
-# LION.utils.paths requires LION_DATA_PATH at import time
+# the datasets' default folders are in LION_DATA_PATH
 os.environ.setdefault("LION_DATA_PATH", tempfile.gettempdir())
 
 import numpy as np  # noqa: E402
