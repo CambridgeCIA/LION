@@ -124,18 +124,7 @@ class LIONReconstructor(ABC):
         ``arguments`` replace recorded ones. Called on ``LIONReconstructor``
         it makes the class the spec names; on a reconstructor class, that
         class."""
-        saved = spec.read(source)
-        recorded_model = None
-        if "lion_test_record" in saved:
-            method = saved["method"]
-            if method.get("kind") != "reconstructor":
-                raise ValueError(f"the test record is of a {method.get('kind')}")
-            saved, recorded_model = method["reconstructor"], method.get("model")
-        if spec.is_unsaved(saved):
-            raise ValueError(
-                f"the record only names the reconstructor ({saved['unsaved']}): "
-                "it can't be made again"
-            )
+        saved, recorded_model = _recorded(source)
         written = {
             k: v for k, v in saved.items() if k == spec.TARGET or k not in arguments
         }
@@ -146,12 +135,38 @@ class LIONReconstructor(ABC):
             _check_model(model, recorded_model)
         return target(**kwargs, **arguments, model=model)
 
+    @classmethod
+    def parameters_from_file(cls, source, *, allow=()):
+        """What ``default_parameters()`` gives, as ``source`` (as in
+        ``instantiate``) recorded it: the algorithm's settings, to change and
+        make the reconstructor with (``PnP(operator, model, parameters)``)."""
+        saved, _ = _recorded(source)
+        return spec.parameters(saved, "parameters", cls, LIONReconstructor, allow)
+
     @staticmethod
     def cite(cite_format="bib"):
         """Where the reconstructor comes from: its paper's citation, BibTeX ("bib") or
         "MLA" (``LION.utils.citation``); None if it has none. Reconstructors
         from a paper define it."""
         return None
+
+
+def _recorded(source):
+    """The reconstructor's spec in ``source`` (a spec, a test record or its
+    file), and the model the test record names (or None)."""
+    saved = spec.read(source)
+    recorded_model = None
+    if "lion_test_record" in saved:
+        method = saved["method"]
+        if method.get("kind") != "reconstructor":
+            raise ValueError(f"the test record is of a {method.get('kind')}")
+        saved, recorded_model = method["reconstructor"], method.get("model")
+    if spec.is_unsaved(saved):
+        raise ValueError(
+            f"the record only names the reconstructor ({saved['unsaved']}): "
+            "it can't be made again"
+        )
+    return saved, recorded_model
 
 
 def _check_model(model, recorded):

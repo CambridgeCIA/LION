@@ -28,13 +28,13 @@ class LIONDataset(Dataset):
     """
 
     @classmethod
-    def instantiate(cls, source, *, check_files=False, allow=()):
+    def instantiate(cls, source, *, check_files=False, allow=(), **arguments):
         """The dataset a saved file describes.
 
         ``source``: a data record, a model's file (or the dict read from it)
-        saved with one, or the dataset's spec (or its file). Called on a dataset class it
-        makes that class; called on ``LIONDataset``, the class the record
-        names (``allow``: see ``LION.utils.spec.build``).
+        saved with one, or the dataset's spec (or its file). Called on a
+        dataset class it makes that class; called on ``LIONDataset``, the
+        class the record names (``allow``: see ``LION.utils.spec.build``).
 
         The dataset is made alone, **without noise**: noise is part of the
         experiment. If the record's data had noise, a warning says how to get
@@ -44,14 +44,21 @@ class LIONDataset(Dataset):
         ``check_files=True`` the contents of their files too (the record
         must have been made with ``hash_files=True``); a difference gives a
         warning. A record of a ``Subset`` gives that ``Subset`` of the dataset.
+
+        ``arguments`` replace recorded ones (e.g. ``parameters`` from
+        ``parameters_from_file``, changed). That makes another dataset: the
+        whole of it, not compared with the record (its ``subset``, if any,
+        is ``record.subset.indices``).
         """
         saved = spec.read(source)
         if spec.TARGET in saved:
-            return spec.instantiate(saved, cls, LIONDataset, allow)
+            return spec.instantiate(saved, cls, LIONDataset, allow, **arguments)
         record = read_record(saved)
         dataset = spec.instantiate(
-            recorded_spec(record, "dataset"), cls, LIONDataset, allow
+            recorded_spec(record, "dataset"), cls, LIONDataset, allow, **arguments
         )
+        if arguments:
+            return dataset
         subset = getattr(record, "subset", None)
         indices = None if subset is None else subset.indices
         _check_samples(dataset, record, indices)
@@ -60,6 +67,18 @@ class LIONDataset(Dataset):
         if getattr(record, "sinogram_transform", None) is not None:
             _warn_noise_left_out(dataset, record)
         return dataset if indices is None else Subset(dataset, indices)
+
+    @classmethod
+    def parameters_from_file(cls, source, *, allow=()):
+        """What ``default_parameters()`` gives, as ``source`` (as in
+        ``instantiate``) recorded it: the dataset's parameters, to change and
+        make the dataset with (``LIDC_IDRI(mode, geometry, parameters)``, or
+        ``instantiate(source, parameters=parameters)``)."""
+        saved = spec.read(source)
+        written = saved if spec.TARGET in saved else None
+        if written is None:
+            written = recorded_spec(read_record(saved), "dataset")
+        return spec.parameters(written, "parameters", cls, LIONDataset, allow)
 
     @staticmethod
     def cite(cite_format="bib"):

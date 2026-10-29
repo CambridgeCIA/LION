@@ -365,11 +365,24 @@ def target_class(path: str, cls, base, allow=()):
     return cls
 
 
-def instantiate(spec: dict, cls, base, allow=()):
-    """Make the component a spec describes, as ``cls`` (see ``target_class``).
-    Used by the ``instantiate()`` class methods of LION's components."""
-    path, kwargs = build_arguments(spec, allow)
-    return target_class(path, cls, base, allow)(**kwargs)
+def instantiate(spec: dict, cls, base, allow=(), **arguments):
+    """Make the component a spec describes, as ``cls`` (see ``target_class``);
+    ``arguments`` replace recorded ones. Used by the ``instantiate()`` class
+    methods of LION's components."""
+    written = {k: v for k, v in spec.items() if k == TARGET or k not in arguments}
+    path, kwargs = build_arguments(written, allow)
+    return target_class(path, cls, base, allow)(**kwargs, **arguments)
+
+
+def parameters(spec: dict, name: str, cls, base, allow=()):
+    """What the component's ``default_parameters()`` gives, as the spec records
+    it (its argument ``name``, e.g. ``"model_parameters"``), to change and make
+    the component with. The class's defaults if the spec has none (it was made
+    with them). Used by the ``parameters_from_file()`` class methods."""
+    target = target_class(spec[TARGET], cls, base, allow)
+    if spec.get(name) is None:
+        return target.default_parameters()
+    return build(spec[name], allow)
 
 
 def unknown_names(
