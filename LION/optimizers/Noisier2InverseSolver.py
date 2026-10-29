@@ -17,7 +17,7 @@ from LION.utils.image_transforms import gaussian_blur
 from LION.utils.citation import citation
 
 
-class Noisier2Inverse(LIONsolver):
+class Noisier2InverseSolver(LIONsolver):
     """Noisier2Inverse.
 
     The training loss is the mean squared error: the target y - M estimates the

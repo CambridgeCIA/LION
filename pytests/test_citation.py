@@ -29,7 +29,7 @@ FROM_A_PAPER = [
     "LION.optimizers.Noise2InverseSolver.Noise2InverseSolver",
     "LION.optimizers.Proj2ProjSolver.Proj2ProjSolver",
     "LION.optimizers.Sparse2InverseSolver.Sparse2InverseSolver",
-    "LION.optimizers.Noisier2Inverse.Noisier2Inverse",
+    "LION.optimizers.Noisier2InverseSolver.Noisier2InverseSolver",
     "LION.optimizers.Equivariance2InverseSolver.Equivariance2InverseSolver",
     "LION.reconstructors.PnP.PnP",
     "LION.reconstructors.LearnedRegularizerReconstructor.LearnedRegularizerReconstructor",

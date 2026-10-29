@@ -28,7 +28,7 @@ MODULES = [
     "LION.optimizers.SupervisedSolver",
     "LION.optimizers.EquivariantSolver",
     "LION.optimizers.AdversarialRegularizerSolver",
-    "LION.optimizers.Noisier2Inverse",
+    "LION.optimizers.Noisier2InverseSolver",
     "LION.optimizers.Proj2ProjSolver",
     "LION.models.iterative_unrolled.LG",
     "LION.models.iterative_unrolled.LPD",
@@ -119,7 +119,7 @@ def test_ct_functions_say_what_is_missing(missing_backend_errors, call):
 # backends, imported on first use like tomosipo. Optimizers that need tomosipo
 # at import time are left out (they fail at import without it).
 LIGHT_MODULES = MODULES + [
-    "LION.optimizers.Noisier2Inverse",
+    "LION.optimizers.Noisier2InverseSolver",
     "LION.optimizers.Noise2InverseSolver",
     "LION.metrics.haarpsi",
 ]
