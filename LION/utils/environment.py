@@ -177,8 +177,8 @@ def _git_root(folder):
     return None if top is None else pathlib.Path(top.strip()).resolve()
 
 
-@functools.lru_cache(maxsize=None)
 def _pushed(root, commit) -> bool:
+    # not cached: the commit may be pushed while a program (a notebook) runs
     branches = _git(root, "branch", "-r", "--contains", commit) if commit else None
     return bool(branches and branches.strip())
 

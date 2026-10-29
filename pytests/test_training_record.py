@@ -530,6 +530,12 @@ def test_a_resumed_run_keeps_how_its_initial_weights_are_made(tmp_path):
     resumed.train(2)
     assert resumed.initial_weights == {"from": "random_state"}
     assert resumed.initial_weights_sha256 == first.initial_weights_sha256
+    # and the file keeps the run's random state, not the resuming model's
+    resumed.save_final_results()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # no "aren't the recorded ones"
+        again = LIONmodel.instantiate(tmp_path / "final", initial_weights=True)
+    assert weights_sha256(again) == first.initial_weights_sha256
 
 
 def test_a_run_is_repeated_from_its_file_alone(tmp_path):

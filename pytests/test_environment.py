@@ -117,7 +117,6 @@ def repository(tmp_path):
     git(root, "add", ".")
     git(root, "commit", "-q", "-m", "first")
     environment._git_root.cache_clear()
-    environment._pushed.cache_clear()
     return root
 
 
@@ -160,6 +159,8 @@ def test_pushed(repository, tmp_path):
     (repository / "pkg" / "a.py").write_text("A = 2\n")
     git(repository, "commit", "-q", "-am", "second")  # not pushed
     assert environment.code_state(repository / "pkg")["pushed"] is False
+    git(repository, "push", "-q", "origin", "main")  # pushed while it runs
+    assert environment.code_state(repository / "pkg")["pushed"] is True
 
 
 def test_not_a_checkout(tmp_path):

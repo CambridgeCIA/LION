@@ -27,7 +27,7 @@ from pytests.helpers import ImageMatrixOp  # noqa: E402
 from pytests.test_evaluation import as_is, make_solver, model  # noqa: E402
 
 pytestmark = [
-    pytest.mark.filterwarnings("ignore:.*Expected '(dataset|training|geometry)'"),
+    pytest.mark.filterwarnings("ignore:.*Expected '(dataset|training)'"),
     pytest.mark.filterwarnings("ignore:.*can't be written as a spec"),
 ]
 
