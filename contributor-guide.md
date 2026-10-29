@@ -197,7 +197,9 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   records, in one folder. It publishes only what LION alone can make again:
   LION's classes (and torch's layers, losses and optimizers), from LION code
   that is committed and pushed. A new component works with it when its
-  records do (`spec_kwargs()`, `cite()`).
+  records do (`spec_kwargs()`, `cite()`). `load(folder)` gives a package's
+  recorded arguments to change, `build` makes them, and `train_again`
+  trains the model again from them.
 
 ## Devices
 
