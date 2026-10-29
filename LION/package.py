@@ -25,8 +25,19 @@ optional: its test record (``Evaluation.run``), the record's file, or an
     README.md              a model card, generated from the records (edit it: it isn't checksummed)
 
 Each file is made again by its own ``instantiate`` (``LIONmodel``,
-``Experiment``, ``LIONDataset``, ``LIONsolver``, ``Evaluation``); the model
-card shows how to train the model again from them.
+``Experiment``, ``LIONDataset``, ``LIONsolver``, ``Evaluation``). A package
+is used whole with:
+
+    package = load("lpd_package")      # the recorded arguments, to change; nothing made
+    package.model.model_parameters.n_iters = 5
+    package.experiment.experiment_params.noise_params.I0 = 5000
+    built = build(package)             # the model, experiment, data, solver, evaluation
+    built = load_and_build("lpd_package")       # as published
+    model = train_again(package, "retrained")   # trained again, changed or not
+
+``load`` warns about files changed since publishing and LION code other than
+the model's. Things run where the model was trained unless ``device=`` says
+otherwise. The model card shows the same, and the code step by step.
 
 ``publish`` refuses, with an error and before writing anything:
 
@@ -181,6 +192,260 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
         model_card(saved, written, model, test), encoding="utf-8"
     )
     return folder
+
+
+# ---------------------------------------------------------------------------
+# Using a package
+
+
+def load(folder) -> LIONParameter:
+    """A package's components as their recorded arguments, to change before
+    ``build`` makes them (nothing is made here):
+
+    - ``model``: the model's arguments (``model_parameters``, and e.g.
+      ``geometry``);
+    - ``experiment``: the experiment's (``experiment_params``, ``dataset``);
+    - ``training_data``, ``validation_data``: which data: ``split`` and
+      ``subset`` (indices, or None); ``validation_data`` is None if it wasn't
+      validated;
+    - ``solver``: the solver's arguments (``loss_fn``, ``seed``,
+      ``solver_params``, ...), and ``optimizer``: its hyperparameters (``lr``);
+    - ``training``: ``batch_size``, ``shuffle``, ``drop_last`` and ``epochs``
+      (those done);
+    - ``validation``: ``batch_size``, ``every``, ``function`` and
+      ``reconstructor`` (its arguments, or None); None if not validated;
+    - ``evaluation``: the test's evaluation's arguments; None without a test;
+    - ``device``: where it was trained; ``folder``; ``records``: the
+      ``training``, ``data`` and ``test`` records and ``package.json``, as read.
+
+    The classes are the recorded ones (another class's parameters come from
+    its ``parameters_from_file``). Files changed since the package was
+    published, and LION code other than the model was saved with, give a
+    warning.
+    """
+    from LION.optimizers.training_record import read_training_record
+
+    folder = pathlib.Path(folder)
+    written = json.loads((folder / "package.json").read_text(encoding="utf-8"))
+    _warn_changed_files(folder, written)
+    saved = spec.read(folder / written["files"]["model"])
+    difference = environment.code_differences(saved.get("environment") or {})
+    if difference is not None:
+        warnings.warn(f"{folder}: {difference}", stacklevel=2)
+    training, data = saved["training"], saved["dataset_params"]
+    test = None
+    if "test" in written["files"]:
+        test = spec.read(folder / written["files"]["test"])
+
+    package = LIONParameter()
+    package.folder = folder
+    package.device = (saved.get("environment") or {}).get("device", {}).get("type")
+    package.model = _arguments(saved["model"])
+    package.experiment = _arguments(data["experiment"])
+    package.training_data = _which(data, data)
+    package.solver = _arguments(training["solver"])
+    package.optimizer = _arguments(training["optimizer"])
+    feed = training["train"]
+    package.training = LIONParameter()
+    package.training.batch_size = feed["batch_size"]
+    package.training.shuffle = feed["shuffle"]
+    package.training.drop_last = feed["drop_last"]
+    package.training.epochs = training["epochs"]["done"]
+    package.validation_data = package.validation = None
+    validation = training.get("validation")
+    if validation is not None:
+        package.validation_data = _which(validation["data"], data)
+        package.validation = LIONParameter()
+        package.validation.batch_size = validation["batch_size"]
+        package.validation.every = validation["every"]
+        package.validation.function = spec.build(validation["function"])
+        package.validation.reconstructor = (
+            None
+            if validation.get("reconstructor") is None
+            else _arguments(validation["reconstructor"])
+        )
+    package.evaluation = None if test is None else _arguments(test["evaluation"])
+    package.records = LIONParameter()
+    package.records.training = read_training_record(saved)
+    package.records.data = LIONParameter(**data)
+    package.records.test = None if test is None else LIONParameter(**test)
+    package.records.package = LIONParameter(**written)
+    return package
+
+
+def build(package, *, device=None, initial_weights=False) -> LIONParameter:
+    """The components a package (``load``) describes, made, changed or not:
+    ``model``, ``experiment``, ``training_data``, ``validation_data``,
+    ``solver`` (with ``model``, its training and validation data set; not its
+    saving), ``evaluation`` (None without a test) and ``device``.
+
+    The model has its trained weights, or, with ``initial_weights=True``, the
+    weights its training started from; a model whose arguments were changed
+    has new, random ones (it is to be trained). ``device``: where the
+    solver and the evaluation run; by default where it was trained (the CPU
+    if that was a GPU and there is none).
+    """
+    from torch.utils.data import DataLoader, Subset
+
+    from LION.data_loaders.LIONDataset import _check_samples
+    from LION.evaluation.evaluation import Evaluation
+    from LION.models.LIONmodel import LIONmodel
+
+    folder = package.folder
+    written = package.records.package.files
+    saved = spec.read(folder / written.model)
+    device = _device(package.device if device is None else device)
+
+    model_file = folder / written.model
+    if _changed(package.model, saved["model"]):
+        model = spec.resolve(saved["model"][spec.TARGET])(**vars(package.model))
+    elif initial_weights:
+        model = LIONmodel.instantiate(model_file, initial_weights=True)
+    else:
+        model = LIONmodel.load(model_file, supress_warnings=True)[0]
+
+    data = saved["dataset_params"]
+    experiment = _made(data["experiment"], package.experiment)
+    same_experiment = not _changed(package.experiment, data["experiment"])
+
+    def made(which, record):
+        dataset = experiment.get_dataset(which.split)
+        if same_experiment and which.split == record["split"]:
+            recorded = (record.get("subset") or {}).get("indices")
+            if which.subset == recorded:
+                _check_samples(dataset, LIONParameter(**record), which.subset)
+        return dataset if which.subset is None else Subset(dataset, which.subset)
+
+    training = saved["training"]
+    training_data = made(package.training_data, data)
+    validation_data = None
+    if package.validation_data is not None:
+        validation_data = made(package.validation_data, training["validation"]["data"])
+
+    optimizer = spec.resolve(training["optimizer"][spec.TARGET])(
+        model.parameters(), **vars(package.optimizer)
+    )
+    solver = spec.resolve(training["solver"][spec.TARGET])(
+        model=model, optimizer=optimizer, device=device, **vars(package.solver)
+    )
+    t = package.training
+    solver.set_training(
+        DataLoader(
+            training_data,
+            batch_size=t.batch_size,
+            shuffle=t.shuffle,
+            drop_last=t.drop_last,
+        )
+    )
+    if package.validation is not None:
+        v = package.validation
+        reconstructor = None
+        if v.reconstructor is not None:
+            reconstructor = _made(
+                training["validation"]["reconstructor"], v.reconstructor
+            )
+        solver.set_validation(
+            DataLoader(validation_data, batch_size=v.batch_size),
+            v.every,
+            v.function,
+            reconstructor=reconstructor,
+        )
+
+    evaluation = None
+    if package.evaluation is not None:
+        evaluation = Evaluation(**vars(package.evaluation), device=device)
+
+    built = LIONParameter()
+    built.model = model
+    built.experiment = experiment
+    built.training_data = training_data
+    built.validation_data = validation_data
+    built.solver = solver
+    built.evaluation = evaluation
+    built.device = device
+    return built
+
+
+def load_and_build(folder, *, device=None) -> LIONParameter:
+    """``build(load(folder))``: the package's components, as published."""
+    return build(load(folder), device=device)
+
+
+def train_again(package, save_folder, name="model", *, device=None):
+    """Train the model of ``package`` (a ``load``-ed package, changed or not,
+    or its folder) again, from its initial weights (new ones if its arguments
+    were changed), for its epochs; saved as ``save_folder/name``, as a solver
+    saves (``name`` and, if validated, its best validation). Returns the
+    trained model. ``device``: as in ``build``."""
+    if not isinstance(package, LIONParameter):
+        package = load(package)
+    built = build(package, device=device, initial_weights=True)
+    save_folder = pathlib.Path(save_folder)
+    save_folder.mkdir(parents=True, exist_ok=True)
+    built.solver.set_saving(save_folder, name)
+    built.solver.train(package.training.epochs)
+    built.solver.save_final_results()
+    return built.model
+
+
+def _warn_changed_files(folder, written):
+    changed = []
+    for name, digest in written["sha256"].items():
+        path = folder / name
+        if not path.is_file():
+            changed.append(f"{name} (missing)")
+        elif file_sha256(path) != digest:
+            changed.append(name)
+    if changed:
+        warnings.warn(
+            f"{folder}: changed since it was published: {', '.join(changed)}",
+            stacklevel=3,
+        )
+
+
+def _arguments(written) -> LIONParameter:
+    """A spec's arguments, made (a LIONParameter of them), without its call."""
+    _, kwargs = spec.build_arguments(written)
+    arguments = LIONParameter()
+    for name, value in kwargs.items():
+        setattr(arguments, name, value)
+    return arguments
+
+
+def _which(record, training) -> LIONParameter:
+    """Which data a record describes: its ``split`` and ``subset`` indices."""
+    which = LIONParameter()
+    which.split = record["split"]
+    which.subset = (record.get("subset") or {}).get("indices")
+    if record.get("experiment") != training.get("experiment"):
+        warnings.warn(
+            "the validation data were made by another experiment than the "
+            "training data: they are made with the training's",
+            stacklevel=3,
+        )
+    return which
+
+
+def _changed(arguments, written) -> bool:
+    """Whether ``arguments`` (``_arguments(written)``, maybe changed) differ
+    from the recorded ones."""
+    recorded = {k: v for k, v in written.items() if k != spec.TARGET}
+    return {k: spec.encode(v) for k, v in vars(arguments).items()} != recorded
+
+
+def _made(written, arguments):
+    """The object ``written`` names, made with ``arguments``."""
+    return spec.resolve(written[spec.TARGET])(**vars(arguments))
+
+
+def _device(device):
+    import torch
+
+    device = torch.device(device or "cpu")
+    if device.type == "cuda" and not torch.cuda.is_available():
+        warnings.warn("trained on a GPU, but there is none here: on the CPU")
+        return torch.device("cpu")
+    return device
 
 
 # ---------------------------------------------------------------------------
@@ -569,6 +834,25 @@ def _retraining(saved, files) -> list:
     device = ((saved.get("environment") or {}).get("device") or {}).get("type", "cpu")
     lines = [
         "In the package's folder, from its files alone:",
+        "",
+        "```python",
+        "from LION.package import train_again",
+        "",
+        'model = train_again(".", "retrained")',
+        "```",
+        "",
+        "To change something first (the model, the experiment, the solver, "
+        "the optimizer, the training):",
+        "",
+        "```python",
+        "from LION.package import load, train_again",
+        "",
+        'package = load(".")',
+        "package.training.epochs = 2 * package.training.epochs  # for example",
+        'model = train_again(package, "retrained")',
+        "```",
+        "",
+        "### Step by step",
         "",
         "```python",
         "import pathlib",

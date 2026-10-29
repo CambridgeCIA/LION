@@ -203,7 +203,7 @@ def test_the_package_trains_the_model_again(trained, tmp_path, monkeypatch):
     file, _ = trained
     folder = published(file, tmp_path / "package")
     card = (folder / "README.md").read_text()
-    code = re.search(r"## Training it again.*?```python\n(.*?)```", card, re.S)
+    code = re.search(r"### Step by step.*?```python\n(.*?)```", card, re.S)
     monkeypatch.chdir(folder)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -453,3 +453,129 @@ def test_a_test_on_another_problem_is_a_note(trained, tmp_path):
     written = json.loads((folder / "package.json").read_text())
     assert len(written["notes"]) == 1
     assert written["notes"][0].startswith("it was tested on another problem")
+
+
+# ---------------------------------------------------------------------------
+# Using a package: load, build, train_again
+
+
+def published_package(trained, tmp_path, **kwargs):
+    return published(trained[0], tmp_path / "package", **kwargs)
+
+
+def test_load_gives_the_recorded_arguments(trained, tmp_path):
+    folder = published_package(trained, tmp_path)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # nothing changed
+        p = package.load(folder)
+    assert p.model.model_parameters.blocks == 3
+    assert p.model.model_parameters.model_input_type == ModelInputType.SINOGRAM
+    assert p.experiment.experiment_params.noise_params.I0 == 11000
+    assert (p.training_data.split, p.training_data.subset) == ("train", [0, 2, 3, 5])
+    assert (p.validation_data.split, p.validation_data.subset) == ("validation", None)
+    assert p.solver.seed == 0 and isinstance(p.solver.loss_fn, torch.nn.MSELoss)
+    assert p.optimizer.lr == 1e-3
+    t = p.training
+    assert (t.batch_size, t.shuffle, t.drop_last, t.epochs) == (2, True, False, 2)
+    assert p.validation.every == 1 and p.validation.reconstructor is None
+    assert p.evaluation is None and p.records.test is None
+    assert p.device == "cpu"
+    assert p.records.training.epochs.done == 2
+
+
+def test_load_warns_about_changed_files_and_other_code(trained, tmp_path, monkeypatch):
+    folder = published_package(trained, tmp_path)
+    (folder / "README.md").write_text("my notes")  # not checksummed
+    with open(folder / "solver.json", "a") as f:
+        f.write(" ")
+    (folder / "experiment.json").unlink()
+    with pytest.warns(UserWarning, match="changed since it was published") as seen:
+        package.load(folder)
+    message = str(seen[0].message)
+    assert "solver.json" in message and "experiment.json (missing)" in message
+    assert "README" not in message
+    folder = published(trained[0], tmp_path / "again")
+    monkeypatch.setattr(
+        environment, "code_differences", lambda record: "it was saved with other code"
+    )
+    with pytest.warns(UserWarning, match="saved with other code"):
+        package.load(folder)
+
+
+def test_load_and_build_as_published(trained, tmp_path):
+    folder = published_package(trained, tmp_path)
+    built = package.load_and_build(folder)
+    written = json.loads((folder / "package.json").read_text())
+    assert weights_sha256(built.model) == written["weights_sha256"]
+    assert type(built.experiment) is ct_experiments.LowDoseCTRecon
+    assert isinstance(built.training_data, Subset)
+    assert built.training_data.indices == [0, 2, 3, 5]
+    assert len(built.validation_data) == 2
+    assert type(built.solver) is SupervisedSolver and built.solver.model is built.model
+    assert built.solver.train_loader.batch_size == 2
+    assert built.solver.validation_freq == 1
+    assert built.evaluation is None
+    assert built.device == torch.device("cpu")
+
+
+def test_train_again_gives_the_published_model(trained, tmp_path):
+    folder = published_package(trained, tmp_path)
+    model = package.train_again(folder, tmp_path / "again")
+    written = json.loads((folder / "package.json").read_text())
+    assert weights_sha256(model) == written["weights_sha256"]
+    saved = LIONmodel.load(tmp_path / "again" / "model", supress_warnings=True)[0]
+    assert weights_sha256(saved) == written["weights_sha256"]
+
+
+def test_train_again_with_changes(trained, tmp_path):
+    folder = published_package(trained, tmp_path)
+    p = package.load(folder)
+    p.model.model_parameters.blocks = 2
+    p.experiment.experiment_params.noise_params.I0 = 5000
+    p.optimizer.lr = 1e-2
+    p.training.epochs = 1
+    p.training_data.subset = [0, 1]
+    built = package.build(p)
+    assert built.model.model_parameters.blocks == 2
+    model = package.train_again(p, tmp_path / "changed")
+    assert model.model_parameters.blocks == 2
+    saved = json.loads((tmp_path / "changed" / "model.json").read_text())
+    assert saved["model"]["model_parameters"]["blocks"] == 2
+    experiment = saved["dataset_params"]["experiment"]["experiment_params"]
+    assert experiment["noise_params"]["I0"] == 5000
+    assert saved["dataset_params"]["subset"]["indices"] == [0, 1]
+    assert saved["training"]["optimizer"]["lr"] == 1e-2
+    assert saved["training"]["epochs"]["done"] == 1
+
+
+def test_built_weights(trained, tmp_path):
+    """Trained, initial (the recorded ones), or new for a changed model."""
+    folder = published_package(trained, tmp_path)
+    p = package.load(folder)
+    record = p.records.training
+    trained_weights = json.loads((folder / "package.json").read_text())
+    initial = package.build(p, initial_weights=True).model
+    assert weights_sha256(initial) == record.initial_weights_sha256
+    assert weights_sha256(package.build(p).model) == trained_weights["weights_sha256"]
+    p.model.model_parameters.bias_free = True
+    changed = package.build(p, initial_weights=True).model
+    assert changed.model_parameters.bias_free
+    assert weights_sha256(changed) != record.initial_weights_sha256
+
+
+def test_build_with_a_test_and_a_device(trained, tmp_path):
+    file, data_folder = trained
+    evaluation = Evaluation(
+        ct_experiments.LowDoseCTRecon(datafolder=data_folder),
+        samples=2,
+        save_folder=None,
+        device="cpu",
+    )
+    folder = published(file, tmp_path / "package", evaluation=evaluation)
+    p = package.load(folder)
+    assert p.evaluation.samples == 2 and p.records.test.data.split == "test"
+    built = package.build(p, device="cpu")
+    assert isinstance(built.evaluation, Evaluation)
+    assert built.evaluation.device == torch.device("cpu")
+    record = built.evaluation.run(built.model, save=False)
+    assert record.scores.ids == p.records.test.scores.ids
