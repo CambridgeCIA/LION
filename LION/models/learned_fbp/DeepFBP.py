@@ -273,7 +273,9 @@ class DeepFBPNetwork(LIONmodel):
 
     @staticmethod
     def cite(cite_format="bib"):
-        """Where DeepFBP comes from: its citation, BibTeX ("bib") or "MLA"."""
+        """Where DeepFBP comes from: the paper that proposed it (Tan et al.)
+        and the MPhil thesis that reproduced it in LION (Sainz Bear),
+        BibTeX ("bib") or "MLA"."""
         return citation(
             cite_format,
             bib="""
@@ -285,8 +287,16 @@ class DeepFBPNetwork(LIONmodel):
             year={2024},
             doi={10.1109/ACCESS.2024.3357355}
             }
+            @mastersthesis{sainzbear2025deepfbp,
+            title={Deep Filtered Back Projection for CT Reconstruction},
+            author={Sainz Bear, Andrea},
+            school={Department of Applied Mathematics and Theoretical Physics (DAMTP), University of Cambridge},
+            type={MPhil thesis (Data Intensive Science)},
+            year={2025}
+            }
             """,
             mla="""
             Tan, X., Xuan Liu, Kai Xiang, Jing Wang, and Shan Tan. "Deep Filtered Back Projection for CT Reconstruction." IEEE Access 12 (2024).
+            Sainz Bear, Andrea. "Deep Filtered Back Projection for CT Reconstruction." MPhil thesis (Data Intensive Science), DAMTP, University of Cambridge, 2025.
             """,
         )
