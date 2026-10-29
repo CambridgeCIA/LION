@@ -20,8 +20,6 @@ sys.modules["ts_algorithms"] = MagicMock()
 class Geometry:
     """Minimal Geometry stub for isinstance checks."""
 
-    pass
-
 
 ct_geom = MagicMock()
 ct_geom.Geometry = Geometry
@@ -36,8 +34,6 @@ sys.modules["LION.operators.CTProjectionOp"] = MagicMock()
 
 class NoDataException(Exception):
     """Stub matching LION.exceptions.exceptions.NoDataException."""
-
-    pass
 
 
 exceptions = MagicMock()

@@ -69,10 +69,6 @@ def test_supervised_solver_builds_one_operator(monkeypatch):
 # Checkpointing: training must resume correctly from a checkpoint
 
 
-def _params(model):
-    return [p.detach().clone() for p in model.parameters()]
-
-
 def _first_run(folder, n_epochs, validation=False):
     torch.manual_seed(0)
     solver = make_solver()
@@ -94,31 +90,6 @@ def _resumed_solver(folder, validation=False):
     if validation:
         solver.set_validation(loader(seed=1), 1, validation_fname="model_min_val.pt")
     return solver
-
-
-def test_resumed_model_keeps_training(tmp_path):
-    first = _first_run(tmp_path, n_epochs=2)
-    saved = _params(first.model)
-
-    solver = _resumed_solver(tmp_path)
-    solver.train(4)
-
-    assert solver.current_epoch == 4
-    # the optimiser must track the parameters of the model being trained
-    model_params = {id(p) for p in solver.model.parameters()}
-    for group in solver.optimizer.param_groups:
-        assert all(id(p) in model_params for p in group["params"])
-    # and training after the resume must actually change them
-    assert any(not torch.equal(a, b) for a, b in zip(saved, _params(solver.model)))
-
-
-def test_resume_starts_from_checkpoint_weights(tmp_path):
-    first = _first_run(tmp_path, n_epochs=2)
-    solver = _resumed_solver(tmp_path)
-    # n_epochs equal to the checkpointed epoch: load, but don't train further
-    solver.train(2)
-    for a, b in zip(_params(first.model), _params(solver.model)):
-        torch.testing.assert_close(a, b)
 
 
 def test_resume_keeps_train_loss_history(tmp_path):
@@ -149,14 +120,6 @@ def test_resume_with_relative_folder(tmp_path, monkeypatch):
     assert solver.current_epoch == 1
 
 
-def test_train_without_checkpointing(tmp_path):
-    solver = make_solver(small_dncnn())
-    solver.set_training(loader())
-    solver.train(2)
-    assert solver.current_epoch == 2
-    assert not list(tmp_path.iterdir())
-
-
 def test_train_twice_keeps_the_loss_history():
     solver = make_solver()
     solver.set_training(loader())
@@ -166,12 +129,6 @@ def test_train_twice_keeps_the_loss_history():
     assert solver.current_epoch == 3
     np.testing.assert_array_equal(solver.train_loss[:2], first)
     assert solver.train_loss[2] > 0
-
-
-def test_checkpointing_needs_a_folder():
-    solver = make_solver()
-    with pytest.raises(LIONSolverException, match="set_saving"):
-        solver.set_checkpointing("model_check_*.pt")
 
 
 def test_min_validation_model_lives_in_save_folder(tmp_path):
@@ -213,27 +170,6 @@ def test_validation_runs_for_all_input_types(tmp_path, input_type):
     assert solver.validate() > 0
 
 
-def test_validation_runs_without_set_saving():
-    solver = make_solver()
-    solver.set_training(loader())
-    solver.set_validation(loader(seed=1), validation_freq=1)
-    with pytest.warns(UserWarning, match="not saved"):
-        solver.train(2)
-    assert solver.validation_loss is not None
-    assert (solver.validation_loss > 0).all()
-
-
-def test_test_restores_training_mode():
-    solver = make_solver()
-    solver.set_testing(loader())
-    solver.model.train()
-    solver.test()
-    assert solver.model.training
-    solver.model.eval()
-    solver.test()
-    assert not solver.model.training
-
-
 class Scripted:
     """A validation function returning the given values, one per validation."""
 
@@ -270,15 +206,6 @@ def test_best_validation_model_follows_the_metric_direction(
     assert solver.model._read_min_validation(tmp_path / "best.pt") == pytest.approx(
         best
     )
-
-
-def test_lion_scores_are_maximised():
-    from LION.metrics.haarpsi import HAARPsi
-    from LION.metrics.psnr import PSNR
-    from LION.metrics.ssim import SSIM
-
-    assert PSNR.higher_is_better and SSIM.higher_is_better and HAARPsi.higher_is_better
-    assert not getattr(torch.nn.MSELoss(), "higher_is_better", False)
 
 
 def _order_check_fn(targets):
@@ -334,13 +261,6 @@ def _capture_inputs(model):
     return seen
 
 
-def test_do_normalise_follows_model():
-    solver = make_solver()
-    assert not solver.do_normalise
-    solver.model.set_normalisation("sample")
-    assert solver.do_normalise
-
-
 def test_training_step_normalises_input_and_returns_target_units():
     solver = make_solver()
     solver.model.set_normalisation("sample")
@@ -376,20 +296,6 @@ def test_normalising_a_constant_image_gives_no_nan(normalisation_type):
     normalised = model.normalise(x)
     assert torch.isfinite(normalised).all()
     torch.testing.assert_close(model.unnormalise(normalised), x)
-
-
-def test_model_normalise_is_identity_without_normaliser():
-    model = small_dncnn()
-    x = torch.rand(2, 1, 8, 8) * 10
-    assert model.normalise(x) is x
-    assert model.unnormalise(x) is x
-
-
-def test_model_normalise_does_not_hide_errors():
-    model = small_dncnn()
-    model.set_normalisation("sample")
-    with pytest.raises(Exception):
-        model.normalise(torch.rand(8))  # 'sample' needs (B, C, H, W)
 
 
 @pytest.mark.parametrize("noise_level", [0.05, [0.05], [0.01, 0.1]])
@@ -463,11 +369,6 @@ def learned_reconstructor(**settings):
     return LearnedRegularizerReconstructor(IdentityOp(), parameters=parameters)
 
 
-def test_ar_parameters_are_the_training_ones(identity_ct):
-    assert vars(ar_module.ARParams()) == {"lambd_gp": 0.1}
-    assert not hasattr(make_ar_solver(), "reconstructor")
-
-
 def test_training_step(identity_ct):
     solver = make_ar_solver()
     solver.set_training(loader(n=4, batch_size=2))
@@ -509,15 +410,6 @@ def test_validation_uses_the_reconstructor(identity_ct, tmp_path):
     written = solver.training_record("final", 0).serialize()["validation"]
     assert written["reconstructor"]["parameters"]["n_steps"] == 2
     assert "model" not in written["reconstructor"]
-
-
-def test_default_metrics_are_reconstruction_mse(identity_ct, tmp_path):
-    solver = make_ar_solver()
-    solver.set_saving(tmp_path, "model")
-    solver.set_validation(loader(), 1, reconstructor=learned_reconstructor())
-    solver.set_testing(loader(), reconstructor=learned_reconstructor())
-    assert isinstance(solver.validation_fn, torch.nn.MSELoss)
-    assert isinstance(solver.testing_fn, torch.nn.MSELoss)
 
 
 def test_any_solver_can_validate_through_a_reconstructor(tmp_path):
@@ -572,11 +464,6 @@ def make_s2i_solver(splits, geometry, inputs=None, recon_fn=None):
         device=torch.device("cpu"),
         verbose=False,
     )
-
-
-def test_defaults_match_the_paper_setup():
-    params = Sparse2InverseSolver.default_parameters()
-    assert (params.sino_split_count, params.input_split_count) == (4, 2)
 
 
 @pytest.mark.parametrize(

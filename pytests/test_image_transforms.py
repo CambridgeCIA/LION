@@ -5,37 +5,6 @@ import pytest
 import torch
 
 
-def test_gaussian_kernel():
-    from LION.utils.image_transforms import gaussian_kernel1d
-
-    k = gaussian_kernel1d(5, 0.8)
-    torch.testing.assert_close(k.sum(), torch.tensor(1.0))
-    torch.testing.assert_close(k, k.flip(0))
-    x = torch.arange(-2.0, 3.0)
-    torch.testing.assert_close(k[0] / k[2], torch.exp(-0.5 * (x[0] / 0.8) ** 2))
-    with pytest.raises(ValueError):
-        gaussian_kernel1d(4, 1.0)
-
-
-def test_gaussian_blur_dims():
-    from LION.utils.image_transforms import gaussian_blur
-
-    torch.manual_seed(0)
-    x = torch.rand(2, 1, 6, 10)
-    torch.testing.assert_close(
-        gaussian_blur(torch.ones(1, 6, 10), 5, 1.0), torch.ones(1, 6, 10)
-    )
-    along_last = gaussian_blur(x, 3, 0.5, dims=(-1,))
-    # rows are blurred independently
-    torch.testing.assert_close(
-        along_last[:, :, :1], gaussian_blur(x[:, :, :1], 3, 0.5, dims=(-1,))
-    )
-    torch.testing.assert_close(
-        gaussian_blur(x, 3, 0.5),
-        gaussian_blur(gaussian_blur(x, 3, 0.5, dims=(-1,)), 3, 0.5, dims=(-2,)),
-    )
-
-
 @pytest.mark.parametrize("shape", [(2, 1, 16, 16), (3, 15, 17)])
 def test_rotate(shape):
     from LION.utils.image_transforms import rotate

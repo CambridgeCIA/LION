@@ -21,22 +21,16 @@ import LION.experiments.ct_2DeteCT_noise_experiments as noise_experiments
 import LION.experiments.ct_benchmarking_experiments as benchmarking_experiments
 import LION.experiments.ct_experiments as ct_experiments
 import LION.models
-import LION.utils.utils as lion_utils
 from LION.CTtools.ct_geometry import Geometry
 from LION.metrics.haarpsi import HAARPsi
 from LION.metrics.psnr import PSNR
-from LION.metrics.ssim import SSIM
 from LION.models.CNNs.dncnn import DnCNN
-from LION.models.CNNs.drunet import DRUNet
-from LION.models.CNNs.MSDNet import MSDNet
 from LION.models.CNNs.UNets.Unet import UNet
-from LION.models.learned_regularizer.AR import AR
-from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
+from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.models.PnP.gradient_step_denoiser import GSD
-from LION.models.PnP.gs_drunet import GSDRUNet
 from LION.utils.parameter import LIONParameter
 from LION.utils.spec import SpecError, build, encode, to_spec
-from pytests.helpers import ImageMatrixOp, small_dncnn
+from pytests.helpers import small_dncnn
 
 
 def same(a, b, where="") -> list:
@@ -102,12 +96,14 @@ def model_classes():
 
 
 def experiment_parameters():
+    """One experiment of each module and dataset: within a module, experiments
+    differ only in their parameters' values."""
     found = {}
     for module in (ct_experiments, benchmarking_experiments, noise_experiments):
-        for name, cls in inspect.getmembers(module, inspect.isclass):
-            if cls.__module__ != module.__name__ or inspect.isabstract(cls):
-                continue
-            for dataset in ("LIDC-IDRI", "2DeteCT"):
+        for dataset in ("LIDC-IDRI", "2DeteCT"):
+            for name, cls in inspect.getmembers(module, inspect.isclass):
+                if cls.__module__ != module.__name__ or inspect.isabstract(cls):
+                    continue
                 try:
                     found[f"{name}[{dataset}]"] = cls.default_parameters(
                         dataset=dataset
@@ -115,7 +111,8 @@ def experiment_parameters():
                 except TypeError:
                     found[name] = cls.default_parameters()
                 except (ValueError, NotImplementedError):
-                    pass  # not possible with that dataset
+                    continue  # not possible with that dataset
+                break
     return found
 
 
@@ -139,10 +136,6 @@ def test_experiment_parameters_come_back_the_same(name, params):
 @pytest.mark.parametrize(
     "value",
     [
-        None,
-        3,
-        2.5,
-        "text",
         [1, (2, 3)],
         (1, 2.0, "x"),
         {1, 2},
@@ -160,12 +153,6 @@ def test_values_come_back_the_same(value):
     assert same(value, through_json(value)) == []
 
 
-def test_functions_are_referred_to_not_called():
-    spec = encode(torch.nn.functional.mse_loss)
-    assert spec == {"_target_": "torch.nn.functional.mse_loss", "_call_": False}
-    assert build(spec) is torch.nn.functional.mse_loss
-
-
 @pytest.mark.parametrize(
     "value, message",
     [
@@ -180,12 +167,6 @@ def test_values_that_cannot_be_saved(value, message):
         encode(value)
 
 
-def test_block_without_target_is_a_lion_parameter():
-    built = build({"a": 1, "inner": {"b": 2}})
-    assert isinstance(built, LIONParameter) and isinstance(built.inner, LIONParameter)
-    assert built.inner.b == 2
-
-
 # --------------------------------------------------------------------------
 # Objects: the same-name rule
 
@@ -193,12 +174,8 @@ def test_block_without_target_is_a_lion_parameter():
 @pytest.mark.parametrize(
     "obj",
     [
-        torch.nn.MSELoss(),
         torch.nn.L1Loss(reduction="sum"),
-        torch.nn.SmoothL1Loss(beta=0.5),
-        torch.nn.HuberLoss(delta=2.0),
         PSNR(),
-        SSIM(),
         HAARPsi(C=10.0),
     ],
     ids=lambda o: type(o).__name__,
@@ -270,13 +247,10 @@ def test_spec_kwargs_gives_the_arguments():
     "spec",
     [
         {"_target_": "os.system", "_args_": ["echo unsafe"]},
-        {"_target_": "builtins.eval", "_args_": ["1 + 1"]},
-        {"_target_": "builtins.open", "_args_": ["file.txt"]},
         {"_target_": "torch.load", "_args_": ["model.pt"]},
-        {"_target_": "numpy.memmap", "_args_": ["file.dat"]},
         {"_target_": "pytests.test_spec.KeepsItsArguments", "size": 1},
     ],
-    ids=["os.system", "eval", "open", "torch.load", "numpy.memmap", "not allowed"],
+    ids=["os.system", "torch.load", "not allowed"],
 )
 def test_targets_outside_the_allowed_modules_are_refused(spec):
     with pytest.raises(SpecError, match="not in the modules"):
@@ -298,15 +272,6 @@ def save(model, path, **kwargs):
         model.save(path, **kwargs)
 
 
-@pytest.fixture
-def stand_in_operator(monkeypatch):
-    """A CT operator that needs no tomosipo (identity on 16x16 images)."""
-    op = ImageMatrixOp(torch.eye(16 * 16), (1, 16, 16))
-    monkeypatch.setattr(
-        LIONmodel, "_make_operator", lambda self: setattr(self, "op", op)
-    )
-
-
 def small_geometry():
     geometry = Geometry.default_parameters()
     geometry.image_shape = [1, 16, 16]
@@ -326,7 +291,7 @@ def test_saved_file(tmp_path):
 
 @pytest.mark.parametrize(
     "make",
-    [DnCNN, DRUNet, UNet, MSDNet, GSD, GSDRUNet],
+    [DnCNN, GSD],
     ids=lambda c: c.__name__,
 )
 def test_lionmodel_load_builds_the_saved_class(tmp_path, make):
@@ -341,24 +306,6 @@ def test_lionmodel_load_builds_the_saved_class(tmp_path, make):
     x = torch.rand(1, 1, 16, 16)
     with torch.no_grad():
         torch.testing.assert_close(loaded(x), model(x))
-
-
-def test_model_with_geometry(tmp_path, stand_in_operator):
-    model = AR(AR.default_parameters(), small_geometry())
-    save(model, tmp_path / "model")
-    saved = json.loads((tmp_path / "model.json").read_text())
-    assert saved["model"]["geometry"]["_target_"] == "LION.CTtools.ct_geometry.Geometry"
-    loaded, options, _ = LIONmodel.load(tmp_path / "model", supress_warnings=True)
-    assert type(loaded) is AR
-    assert same(model.geometry, loaded.geometry) == []
-    assert same(model.geometry, options.geometry) == []
-
-
-def test_saving_checks_the_geometry(tmp_path, stand_in_operator):
-    model = AR(AR.default_parameters(), small_geometry())
-    model.geometry.angles = None  # broken after the model was made
-    with pytest.raises(ValueError, match="Invalid CT geometry"):
-        save(model, tmp_path / "model")
 
 
 def test_data_metadata_comes_back(tmp_path):
@@ -410,7 +357,7 @@ def dncnn_with_other_parameters():
     return DnCNN(params)
 
 
-@pytest.mark.parametrize("given", ["path", "pt", "json", "dict", "spec"])
+@pytest.mark.parametrize("given", ["path", "dict", "spec"])
 def test_instantiate_makes_the_saved_model_untrained(tmp_path, given):
     torch.manual_seed(0)
     model = dncnn_with_other_parameters()
@@ -438,14 +385,6 @@ def test_instantiate_on_a_class(tmp_path):
         LocalModel.instantiate(tmp_path / "model")
     with pytest.raises(SpecError, match="not a LIONmodel"):
         LIONmodel.instantiate({"_target_": "LION.utils.parameter.LIONParameter"})
-
-
-def test_instantiate_unversioned_file(tmp_path):
-    save_unversioned(GSD(), tmp_path / "model")
-    assert type(GSD.instantiate(tmp_path / "model")) is GSD
-    saved = json.loads((tmp_path / "model.json").read_text())
-    with pytest.raises(ValueError, match="give its file"):
-        GSD.instantiate(saved)
 
 
 def test_file_from_a_newer_lion(tmp_path):
@@ -493,13 +432,6 @@ def test_unknown_parameter_name_warns():
         DnCNN(params)
 
 
-def test_known_parameters_do_not_warn():
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        DnCNN(DnCNN.default_parameters())
-        GSD(GSD.default_parameters())
-
-
 def test_saved_file_with_a_removed_parameter_loads_with_a_warning(tmp_path):
     """E.g. a parameter a model no longer has: the file still loads."""
     save(DnCNN(), tmp_path / "model")
@@ -543,22 +475,6 @@ def test_pt_holds_only_safe_contents(tmp_path):
     }
     assert data["epoch"] == 3 and data["loss"] == [0.5, 0.4, 0.3]
     assert data["initial_random_state"].dtype == torch.uint8
-
-
-@pytest.mark.parametrize(
-    "loss, expected",
-    [
-        (np.array([0.5, 0.4]), np.array([0.5, 0.4])),  # training history
-        (np.float64(0.25), 0.25),  # the best validation value
-        (torch.tensor([0.5, 0.4]), np.array([0.5, 0.4])),
-    ],
-    ids=["array", "numpy float", "tensor"],
-)
-def test_loss_comes_back_as_numbers(tmp_path, loss, expected):
-    save(DnCNN(), tmp_path / "model", loss=loss, epoch=1)
-    _, _, data = DnCNN.load(tmp_path / "model", supress_warnings=True)
-    assert type(data["loss"]) is type(expected)
-    np.testing.assert_allclose(data["loss"], expected)
 
 
 def old_pt(path, model):

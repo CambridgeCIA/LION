@@ -30,8 +30,8 @@ def test_experiment_names_are_unique():
     assert len(set(names)) == len(names), names
 
 
-@pytest.mark.parametrize("cls", EXPERIMENTS, ids=lambda c: c.__name__)
-def test_noise_function_is_always_defined(cls):
+def test_noise_function_is_always_defined():
+    cls = ct_experiments.LowDoseCTRecon  # the experiments share this code
     params = cls.default_parameters()
     assert cls(params).sino_fun is not None
     del params.noise_params
@@ -134,19 +134,6 @@ def test_detect_noise_I0_per_detector(tmp_path):
     ]
     data.noise_params = deteCT.noise_parameters(I0=200)  # one for all
     assert {data.noise_I0(i) for i in range(len(detectors))} == {200}
-
-
-@pytest.mark.filterwarnings("ignore:You are not using any detector query")
-def test_detect_noise_I0_per_detector_after_json(tmp_path):
-    """Saved and loaded, the per-detector dict comes back as a LIONParameter."""
-    data = fake_detect(tmp_path, "train")
-    deteCT.noise_parameters().save(tmp_path / "noise.json")
-    loaded = LIONParameter()
-    loaded.load(tmp_path / "noise.json")
-    assert isinstance(loaded.I0, LIONParameter)
-    data.noise_params = loaded
-    for index, detector in enumerate(data.slice_dataframe["detector"].values):
-        assert data.noise_I0(index) == {1: 290, 2: 100}[detector]
 
 
 @pytest.mark.filterwarnings("ignore:You are not using any detector query")

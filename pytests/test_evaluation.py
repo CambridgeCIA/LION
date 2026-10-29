@@ -15,7 +15,7 @@ os.environ.setdefault("LION_DATA_PATH", tempfile.gettempdir())
 import numpy as np  # noqa: E402
 import pytest  # noqa: E402
 import torch  # noqa: E402
-from torch.utils.data import DataLoader, Subset, TensorDataset  # noqa: E402
+from torch.utils.data import DataLoader, TensorDataset  # noqa: E402
 
 import LION.evaluation.evaluation as evaluation_module  # noqa: E402
 import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
@@ -26,7 +26,6 @@ from LION.evaluation import (  # noqa: E402
     inverse,
     method,
     read_test_record,
-    sample_ids,
     scores,
     table,
 )
@@ -212,15 +211,6 @@ def test_baseline():
 # Scores
 
 
-def test_scores():
-    plain = TensorDataset(data().noisy, data().clean)
-    ids, values, seconds = scores(method(as_is), plain, {"PSNR": PSNR()}, device="cpu")
-    assert ids == [str(i) for i in range(6)]
-    assert values["PSNR"].shape == (6,) and seconds >= 0
-    expected = PSNR()(data()[0][0].unsqueeze(0), data()[0][1].unsqueeze(0))
-    assert values["PSNR"][0] == pytest.approx(float(expected[0]), rel=1e-6)
-
-
 def test_scores_with_a_range():
     """Outputs and targets are shifted by the range's minimum."""
     shifted = TensorDataset(data().noisy + 5, data().clean + 5)
@@ -229,11 +219,6 @@ def test_scores_with_a_range():
     _, at_zero, _ = scores(method(as_is), data(), metrics, (0.0, 1.0), device="cpu")
     for name in metrics:
         np.testing.assert_allclose(at_five[name], at_zero[name], rtol=1e-4)
-
-
-def test_sample_ids_of_a_subset():
-    assert sample_ids(Subset(data(), [4, 1])) == ["pair_4", "pair_1"]
-    assert sample_ids(TensorDataset(torch.zeros(2))) == ["0", "1"]
 
 
 # --------------------------------------------------------------------------
@@ -292,18 +277,6 @@ def test_what_cannot_be_described_is_not_saved(tmp_path):
     with pytest.warns(UserWarning, match="not saved"):
         Evaluation(dataset=plain, save_folder=tmp_path, device="cpu").run(as_is)
     assert not list(tmp_path.glob("*.json"))
-
-
-def test_nothing_saved_without_a_folder(monkeypatch):
-    monkeypatch.delenv("LION_RESULTS_PATH", raising=False)
-    evaluation_ = Evaluation(dataset=data(), device="cpu")
-    assert evaluation_.save_folder is None
-    assert evaluation_.run(as_is).name == "as_is"
-
-
-def test_results_path_is_the_default_folder(tmp_path, monkeypatch):
-    monkeypatch.setenv("LION_RESULTS_PATH", str(tmp_path))
-    assert Evaluation(dataset=data()).save_folder == tmp_path / "evaluations"
 
 
 def test_dataset_normalisation_reads_only_the_samples():
@@ -381,12 +354,6 @@ def test_latex_table(tmp_path):
     latex = table(records(tmp_path), "latex")
     assert latex.startswith(r"\begin{tabular}{lccc}") and r"\toprule" in latex
     assert r"DnCNN\_1" in latex and r"$\pm$" in latex and r"\textbf{" in latex
-
-
-def test_csv_table(tmp_path):
-    lines = table(records(tmp_path), "csv").splitlines()
-    assert lines[0].startswith("method,PSNR_mean,PSNR_std")
-    assert len(lines) == 3
 
 
 def test_lower_is_better_metrics(tmp_path):

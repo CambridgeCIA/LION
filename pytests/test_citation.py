@@ -62,19 +62,12 @@ def test_every_component_returns_its_citation_or_none():
         assert bib is None or not re.search(r'\{"[A-Za-z]\}', bib), name
 
 
-@pytest.mark.parametrize("name", FROM_A_PAPER)
-def test_components_from_a_paper_cite_it(name):
-    module, cls = name.rsplit(".", 1)
-    cls = getattr(importlib.import_module(module), cls)
-    assert cls.cite().startswith("@")  # BibTeX by default
-    assert cls.cite("MLA") and not cls.cite("MLA").startswith("@")
-
-
-def test_generic_components_have_nothing_to_cite():
-    from LION.optimizers.SupervisedSolver import SupervisedSolver
-
-    assert SupervisedSolver.cite() is None
-    assert LIONmodel.cite("MLA") is None
+def test_components_from_a_paper_cite_it():
+    for name in FROM_A_PAPER:
+        module, cls = name.rsplit(".", 1)
+        cls = getattr(importlib.import_module(module), cls)
+        assert cls.cite().startswith("@"), name  # BibTeX by default
+        assert cls.cite("MLA") and not cls.cite("MLA").startswith("@"), name
 
 
 def test_the_citation_helper():

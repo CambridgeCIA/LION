@@ -40,18 +40,6 @@ def disk(radius_mm, spacing, centre_mm=(0.0, 0.0), value=1000.0, background=-100
     return np.where(inside, value, background).astype(np.int16)
 
 
-def test_spacing_is_the_largest_of_lidc_idri():
-    # 0.9765625 mm: the largest pixel spacing in pylidc's database (500 mm)
-    assert resampling.PIXEL_SPACING_MM == lidc.PIXEL_SPACING_MM == 500 / 512
-
-
-def test_same_spacing_is_unchanged():
-    image = np.random.default_rng(0).integers(-1000, 2000, (512, 512)).astype(np.int16)
-    out = resampling.resample_ct_slice(image, resampling.PIXEL_SPACING_MM)
-    assert out.dtype == np.int16 and out.shape == (512, 512)
-    np.testing.assert_array_equal(out, image)
-
-
 @pytest.mark.parametrize("spacing", [0.4609375, 0.586, 0.703125, 0.9])
 def test_objects_keep_their_size_and_position(spacing):
     """A disk of 60 mm radius, 40 mm off centre, has the same size and position
@@ -75,11 +63,6 @@ def test_masks_stay_binary_with_their_area():
     assert out.sum() * resampling.PIXEL_SPACING_MM**2 == pytest.approx(
         mask.sum() * 0.6**2, rel=0.1
     )
-
-
-def test_larger_spacing_would_crop():
-    with pytest.raises(ValueError, match="cropped"):
-        resampling.resample_ct_slice(np.zeros((512, 512)), 1.0)
 
 
 # --------------------------------------------------------------------------

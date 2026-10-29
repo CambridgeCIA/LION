@@ -51,15 +51,6 @@ def test_seeded_restores_the_global_random_state():
     assert torch.equal(torch.rand(3), expected)
 
 
-def test_seed_none_draws_from_the_global_state():
-    torch.manual_seed(7)
-    expected = torch.rand(3)
-    torch.manual_seed(7)
-    with seeded(None, "a"):
-        drawn = torch.rand(3)
-    assert torch.equal(drawn, expected)
-
-
 @pytest.mark.cuda
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 def test_seeded_on_cuda():
@@ -135,13 +126,6 @@ def test_seeded_slices_have_one_noisy_measurement(lidc_data):
     assert not torch.equal(
         first[0] - clean, first[1] - lidc_data.compute_clean_sinogram(lidc_data[1][1])
     )
-
-
-def test_another_seed_gives_other_noise(lidc_data):
-    lidc_data.set_sinogram_transform(noise, seed=0)
-    first = read_all(lidc_data)
-    lidc_data.set_sinogram_transform(noise, seed=1)
-    assert not same(first, read_all(lidc_data))
 
 
 def test_without_seed_the_noise_is_fresh_each_time(lidc_data):

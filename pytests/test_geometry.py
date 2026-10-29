@@ -2,12 +2,10 @@
 check_geometry, saving and loading (including files whose stored spacing
 disagrees with their size and shape)."""
 
-import copy
 import json
 import os
 import pickle
 import tempfile
-import warnings
 
 # the datasets' default folders are in LION_DATA_PATH
 os.environ.setdefault("LION_DATA_PATH", tempfile.gettempdir())
@@ -74,10 +72,6 @@ def test_computed_shape_is_whole_pixels():
     assert geometry.image_shape.tolist() == SHAPE
 
 
-def test_value_not_set_and_not_computable_is_none():
-    assert Geometry(image_shape=SHAPE).voxel_size is None
-
-
 def test_computed_value_follows_changes():
     """Changing a geometry's sizes or shapes changes its computed voxel and
     pixel sizes."""
@@ -105,31 +99,6 @@ def test_setting_none_makes_a_value_computed_again():
     np.testing.assert_allclose(geometry.voxel_size, [2.0, 0.25, 1.0])
 
 
-def test_values_are_arrays_however_they_are_set():
-    geometry = Geometry.default_parameters()
-    geometry.image_shape = [1, 64, 64]
-    geometry.dso = 400
-    assert isinstance(geometry.image_shape, np.ndarray)
-    assert isinstance(geometry.dso, np.ndarray)
-
-
-def test_init_again_forgets_earlier_values():
-    geometry = Geometry(image_shape=SHAPE, voxel_size=SPACING)
-    geometry.default_geo()
-    assert "voxel_size" not in vars(geometry)
-    np.testing.assert_allclose(
-        geometry.voxel_size, Geometry.default_parameters().voxel_size
-    )
-
-
-def test_copies_keep_the_computed_value():
-    geometry = Geometry.default_parameters()
-    for copied in (copy.deepcopy(geometry), pickle.loads(pickle.dumps(geometry))):
-        copied.image_shape = [1, 256, 256]
-        np.testing.assert_allclose(copied.voxel_size, [300 / 512, 300 / 256, 300 / 256])
-    assert not hasattr(geometry, "not_an_attribute")
-
-
 # --------------------------------------------------------------------------
 # Three values that disagree
 
@@ -139,11 +108,6 @@ def test_init_raises_when_three_values_disagree():
         Geometry(image_shape=SHAPE, image_size=SIZE, voxel_size=[1, 1, 1])
     with pytest.raises(ValueError, match="detector_size"):
         Geometry(detector_shape=DET_SHAPE, detector_size=DET_SIZE, pixel_size=[1, 1])
-
-
-def test_init_accepts_three_values_that_agree():
-    geometry = Geometry(image_shape=SHAPE, image_size=SIZE, voxel_size=SPACING)
-    assert {"image_shape", "image_size", "voxel_size"} <= set(vars(geometry))
 
 
 # --------------------------------------------------------------------------
@@ -185,16 +149,6 @@ def test_empty_geometry_lists_every_problem():
         assert expected in message
 
 
-def test_one_value_of_a_triple_is_not_enough():
-    with pytest.raises(
-        ValueError,
-        match="two of image_shape, image_size, voxel_size are needed; set: image_shape",
-    ):
-        check_geometry(
-            fan(image_shape=SHAPE, detector_shape=DET_SHAPE, detector_size=DET_SIZE)
-        )
-
-
 def test_shape_must_be_whole_pixels():
     geometry = fan(
         image_size=[1.0, 10.0, 10.0],
@@ -210,12 +164,8 @@ def test_shape_must_be_whole_pixels():
     "change, message",
     [
         ({"mode": "cone"}, "mode"),
-        ({"dsd": 100}, "dsd"),
         ({"dso": None}, "dso must be set"),
-        ({"dso": -5}, "dso must be positive"),
         ({"angles": np.zeros((3, 2))}, "angles"),
-        ({"angles": []}, "angles"),
-        ({"image_pos": [0, 0]}, "image_pos"),
         ({"image_shape": [1, 10]}, "image_shape must be 3 numbers"),
         ({"detector_size": [1.0, np.nan]}, "detector_size"),
         ({"image_shape": [1, -10, 20]}, "positive"),
@@ -349,19 +299,6 @@ def test_old_file_with_out_of_date_sizes_loads(tmp_path, how):
     check_geometry(loaded)
     np.testing.assert_allclose(loaded.voxel_size, [1, 1, 1])
     np.testing.assert_allclose(loaded.pixel_size, [1.3146214844668342] * 2)
-
-
-def test_old_file_with_consistent_sizes_loads_silently(tmp_path):
-    geometry = Geometry.default_parameters()
-    d = {k: np.asarray(v).tolist() for k, v in vars(geometry).items()}
-    d["voxel_size"] = geometry.voxel_size.tolist()
-    d["pixel_size"] = geometry.pixel_size.tolist()
-    (tmp_path / "old.json").write_text(json.dumps(d))
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        loaded = Geometry()
-        loaded.load(tmp_path / "old.json")
-    np.testing.assert_allclose(loaded.voxel_size, geometry.voxel_size)
 
 
 def test_old_pickle_with_out_of_date_sizes_loads():

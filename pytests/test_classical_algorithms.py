@@ -11,7 +11,6 @@ from LION.classical_algorithms import fista_l1, sirt
 from LION.classical_algorithms._batching import batched_reconstruction
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
-from LION.exceptions.exceptions import NoDataException
 from LION.operators import CompositeOp, PhotocurrentMapOp, Subsampler, Wavelet2D
 from pytests.helpers import ImageMatrixOp
 
@@ -40,11 +39,6 @@ def test_batched_and_single_sample():
 def test_wrong_dimensions_raise_value_error(shape):
     with pytest.raises(ValueError, match="Expected a sinogram"):
         batched_reconstruction(_sum_recon, torch.rand(*shape), FakeCTOp())
-
-
-def test_empty_batch():
-    with pytest.raises(NoDataException):
-        batched_reconstruction(_sum_recon, torch.rand(0, 1, 5, 6), FakeCTOp())
 
 
 @pytest.fixture

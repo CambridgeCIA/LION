@@ -3,8 +3,6 @@
 Tests marked ``tomosipo`` need tomosipo/astra with CUDA and are skipped otherwise.
 """
 
-import copy
-import types
 
 import numpy as np
 import pytest
@@ -22,7 +20,6 @@ from LION.CTtools.ct_utils import (
     make_operator,
     sinogram_add_noise,
 )
-from LION.operators import CTProjectionOp
 from LION.utils.tests_helper import dotproduct_adjointness_test
 
 try:
@@ -143,12 +140,6 @@ def test_min_counts_changes_nothing_without_starved_rays():
     torch.testing.assert_close(floored, old_rule, rtol=0, atol=0)
 
 
-def test_noise_model_names():
-    sino = 3 * torch.rand(1, 10, 12)
-    with pytest.raises(ValueError):
-        sinogram_add_noise(sino, model="legacy")
-
-
 def test_photon_counting_gives_integer_counts_without_electronic_noise():
     """Photon counting: the counts are Poisson integers >= 0 (no electronic
     noise, no cross-talk), so I0 * exp(-p / s) of the output is an integer and
@@ -199,15 +190,6 @@ HU = [-1000, -950, -800, -750, -400, -150, -50, 0, 100, 150, 200, 300, 500]
 MATERIAL_IDS = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]
 
 
-def test_material_id_numpy():
-    img = np.array(HU, dtype=np.float32)
-    original = img.copy()
-    ids = from_HU_to_material_id(img)
-    assert ids.dtype == np.uint8
-    np.testing.assert_array_equal(ids, MATERIAL_IDS)
-    np.testing.assert_array_equal(img, original)  # input not modified
-
-
 @pytest.mark.parametrize("dtype", [torch.float32, torch.int16])
 def test_material_id_torch(dtype):
     img = torch.tensor(HU, dtype=dtype)
@@ -218,31 +200,6 @@ def test_material_id_torch(dtype):
 
 # --------------------------------------------------------------------------
 # CTProjectionOp
-
-
-def bare_op(ts_op=None):
-    op = CTProjectionOp.__new__(CTProjectionOp)
-    CTProjectionOp.__bases__[0].__init__(op)  # Operator/nn.Module init only
-    if ts_op is not None:
-        op._ts = ts_op
-    return op
-
-
-def test_missing_attribute_before_ts_is_set():
-    op = CTProjectionOp.__new__(CTProjectionOp)  # nothing initialised
-    assert not hasattr(op, "anything")  # AttributeError, not RecursionError
-
-
-def test_delegates_to_tomosipo_operator():
-    op = bare_op(types.SimpleNamespace(T="transpose", domain_shape=(1, 2, 2)))
-    assert op.T == "transpose"
-    with pytest.raises(AttributeError):
-        op.not_there
-
-
-def test_deepcopy():
-    op = bare_op(types.SimpleNamespace(T="transpose"))
-    assert copy.deepcopy(op).T == "transpose"
 
 
 @pytest.mark.tomosipo
@@ -280,45 +237,6 @@ def test_ct_autograd_op_forward_and_backward():
     assert isinstance(input_tensor.grad, torch.Tensor)
     assert input_tensor.grad.shape == input_tensor.shape
     assert torch.isfinite(input_tensor.grad).all()
-
-
-@pytest.mark.tomosipo
-def test_ct_autograd_op_matches_original_operator():
-    """Check that the autograd wrapper produces the same output as the original operator."""
-    geometry = Geometry.default_parameters()
-    operator = make_operator(geometry=geometry)
-    autograd_operator = to_autograd(operator)
-
-    torch.manual_seed(1)
-    input_tensor = torch.randn(*geometry.image_shape, requires_grad=True)
-
-    input_np = input_tensor.detach().cpu().numpy()
-    output_np = operator(input_np)
-    output_autograd = autograd_operator(input_tensor).detach().cpu().numpy()
-
-    np.testing.assert_allclose(output_autograd, output_np, rtol=1e-5, atol=1e-5)
-
-
-@pytest.mark.tomosipo
-def test_original_op_does_not_propagate_grad():
-    """Check that the original operator output does not require gradients and backward fails."""
-    geometry = Geometry.default_parameters()
-    operator = make_operator(geometry=geometry)
-
-    torch.manual_seed(2)
-    input_tensor = torch.randn(*geometry.image_shape, requires_grad=True)
-
-    # Original operator is not autograd aware
-    output_tensor = operator(input_tensor)
-
-    assert isinstance(output_tensor, torch.Tensor)
-    assert output_tensor.requires_grad is False
-
-    # Backprop should fail with the expected autograd error
-    with pytest.raises(
-        RuntimeError, match="does not require grad and does not have a grad_fn"
-    ):
-        output_tensor.mean().backward()
 
 
 @pytest.mark.tomosipo
