@@ -21,7 +21,7 @@ from LION.utils.parameter import LIONParameter
 import LION.utils.spec as spec
 from LION.data_loaders.data_record import is_data_record
 from LION.optimizers.training_record import is_training_record
-from LION.utils import environment
+from LION.utils import environment, rng
 
 # We will need utilities
 import LION.utils.utils as ai_utils
@@ -149,6 +149,10 @@ class LIONmodel(nn.Module, ABC):
     ):
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
+        # torch's random state before the model's layers draw their initial
+        # weights: made again from it, the model has the same initial weights
+        # (instantiate(..., initial_weights=True)); saved with the model
+        self.initial_random_state = torch.get_rng_state()
 
         if geometry is not None and not isinstance(geometry, ct.Geometry):
             raise TypeError(
@@ -292,6 +296,8 @@ class LIONmodel(nn.Module, ABC):
         # Create dict of saved data:
         ##########################
         dic = {"model_state_dict": self.state_dict()}
+        if getattr(self, "initial_random_state", None) is not None:
+            dic["initial_random_state"] = self.initial_random_state.cpu()
 
         # Parse kwargs
         ################
@@ -543,7 +549,7 @@ class LIONmodel(nn.Module, ABC):
         return cls, kwargs, options
 
     @classmethod
-    def instantiate(cls, source, *, allow=()):
+    def instantiate(cls, source, *, allow=(), initial_weights=False):
         """The model a saved file describes, with its saved parameters and new
         (untrained) weights. ``load()`` is this plus the saved weights.
 
@@ -551,9 +557,16 @@ class LIONmodel(nn.Module, ABC):
         ``"model.pt"``: the ``.json`` is read), the dict read from it, or the
         model's spec. Called on a model class it makes that class; called on
         ``LIONmodel``, the class the file names (``allow`` as in ``load``).
+
+        ``initial_weights=True`` (``source`` a file a solver saved): the
+        weights its training started from, as its training record says: made
+        again from the random state saved with the model, or read from the
+        initial weights the solver saved; checked against the recorded hash.
         """
         target, kwargs, _ = cls._read_model_file(source, allow)
-        return target(**kwargs)
+        if not initial_weights:
+            return target(**kwargs)
+        return _with_initial_weights(target, kwargs, source)
 
     @classmethod
     def load(cls, fname, *, weights_only=True, supress_warnings=False, allow=()):
@@ -584,6 +597,7 @@ class LIONmodel(nn.Module, ABC):
         # Load the data into the model we created.
         model.to(default_device())
         model.load_state_dict(data.pop("model_state_dict"))
+        model.initial_random_state = _saved_random_state(data)
         # where it came from, so records of methods using it can name the file
         model.source_file = fname.with_suffix("")
 
@@ -604,6 +618,7 @@ class LIONmodel(nn.Module, ABC):
         # Load the data into the model we created.
         model.to(default_device())
         model.load_state_dict(data.pop("model_state_dict"))
+        model.initial_random_state = _saved_random_state(data)
 
         return model, options.unpack(), data
 
@@ -677,3 +692,58 @@ class LIONmodel(nn.Module, ABC):
             else:
                 loss = loss[0]
         return loss
+
+
+def made_from_random_state(target, kwargs, state):
+    """``target(**kwargs)`` made with torch's random state ``state`` (so with
+    the initial weights a model made from that state had), leaving the
+    program's random numbers as they were."""
+    saved = rng.random_state()
+    try:
+        torch.set_rng_state(state.cpu())
+        return target(**kwargs)
+    finally:
+        rng.set_random_state(saved)
+
+
+def _saved_random_state(data):
+    """The random state a model file saved (None for files saved before)."""
+    state = data.pop("initial_random_state", None)
+    return None if state is None else state.cpu()
+
+
+def _with_initial_weights(target, kwargs, source):
+    """The model ``source`` describes, with the initial weights of its
+    training (see ``LIONmodel.instantiate``)."""
+    from LION.optimizers.training_record import read_training_record, weights_sha256
+
+    training = read_training_record(source)
+    how = getattr(training, "initial_weights", None)
+    how = vars(how) if isinstance(how, LIONParameter) else how
+    made_from = (how or {}).get("from")
+    if made_from == "random_state":
+        state = LIONmodel._load_data(source, supress_warnings=True).get(
+            "initial_random_state"
+        )
+        if state is None:
+            raise ValueError(f"{source} has no saved random state")
+        model = made_from_random_state(target, kwargs, state)
+    elif made_from == "file":
+        model = target(**kwargs)
+        path = Path(source).parent / how["file"]
+        model.load_state_dict(
+            torch.load(path, map_location=default_device(), weights_only=True)
+        )
+    else:
+        raise ValueError(
+            f"{source}'s training record doesn't say how to make its initial "
+            "weights again (saved before LION recorded it, or without a save "
+            "folder)"
+        )
+    if weights_sha256(model) != getattr(training, "initial_weights_sha256", None):
+        warnings.warn(
+            f"the initial weights made again from {source} aren't the recorded "
+            "ones (other code, or another machine)",
+            stacklevel=3,
+        )
+    return model

@@ -99,7 +99,9 @@ def weights(model):
 
 
 def same_weights(a, b):
-    return all(torch.equal(x, y) for x, y in zip(weights(a), weights(b)))
+    """Equal weights, wherever each model is (``LIONmodel.load`` puts a model
+    on the default device, the GPU if there is one)."""
+    return all(torch.equal(x.cpu(), y.cpu()) for x, y in zip(weights(a), weights(b)))
 
 
 def saved(folder, name):
@@ -461,3 +463,109 @@ def test_rotation_group_is_the_same_as_before():
     assert [random.choice(range(360)) for _ in range(3)] == [
         round(p.keywords["angle"]) for p in picked
     ]
+
+
+# --------------------------------------------------------------------------
+# The initial weights: made again from the random state saved with the model,
+# or saved by the solver when they can't be
+
+
+def test_the_model_keeps_the_random_state_it_was_made_with(tmp_path):
+    torch.manual_seed(5)
+    state = torch.get_rng_state()
+    model = small_dncnn()
+    torch.testing.assert_close(model.initial_random_state, state)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        model.save(tmp_path / "model")
+    loaded = LIONmodel.load(tmp_path / "model", supress_warnings=True)[0]
+    torch.testing.assert_close(loaded.initial_random_state, state)
+
+
+def test_initial_weights_from_the_random_state(tmp_path):
+    torch.rand(7)  # whatever the script drew before making the model
+    solver = denoiser_solver(tmp_path)
+    initial = weights_sha256(solver.model)
+    solver.train(1)
+    solver.save_final_results()
+    record = read_training_record(tmp_path / "final")
+    assert vars(record.initial_weights) == {"from": "random_state"}
+    assert record.initial_weights_sha256 == initial
+    assert not (tmp_path / "final_initial.pt").exists()  # nothing to save
+    # made again: the same initial weights; the program's random numbers untouched
+    before = torch.get_rng_state()
+    again = LIONmodel.instantiate(tmp_path / "final", initial_weights=True)
+    assert weights_sha256(again) == initial
+    assert torch.equal(torch.get_rng_state(), before)
+
+
+def test_initial_weights_saved_when_they_cant_be_made_again(tmp_path):
+    """A custom (or pretrained) start: the solver saves the initial weights."""
+    solver = denoiser_solver(tmp_path)
+    with torch.no_grad():
+        for p in solver.model.parameters():
+            p.mul_(0.5)
+    initial = weights_sha256(solver.model)
+    solver.train(1)
+    solver.save_final_results()
+    record = read_training_record(tmp_path / "final")
+    assert vars(record.initial_weights) == {"from": "file", "file": "final_initial.pt"}
+    again = LIONmodel.instantiate(tmp_path / "final", initial_weights=True)
+    assert weights_sha256(again) == initial
+
+
+def test_without_a_save_folder_they_cant_be_saved():
+    solver = denoiser_solver(validation=False)
+    with torch.no_grad():
+        next(solver.model.parameters()).mul_(0.5)
+    with pytest.warns(UserWarning, match="can't be repeated exactly"):
+        solver.train(1)
+    assert solver.initial_weights == {"from": None}
+
+
+def test_a_resumed_run_keeps_how_its_initial_weights_are_made(tmp_path):
+    first = denoiser_solver(tmp_path)
+    first.train(1)
+    resumed = denoiser_solver(tmp_path, init_seed=3)  # another model: resumed
+    resumed.train(2)
+    assert resumed.initial_weights == {"from": "random_state"}
+    assert resumed.initial_weights_sha256 == first.initial_weights_sha256
+
+
+def test_a_run_is_repeated_from_its_file_alone(tmp_path):
+    """Everything a training needs is in its file: the data (a LION dataset),
+    the model's initial weights, the solver, its seed and settings."""
+    from LION.data_loaders.LIONDataset import LIONDataset
+    from pytests.test_evaluation import data as pairs
+
+    torch.rand(11)  # the script's own random numbers, before the model
+    model = small_dncnn()
+    solver = supervised_solver.SupervisedSolver(
+        model,
+        torch.optim.Adam(model.parameters(), lr=1e-2),
+        torch.nn.MSELoss(),
+        geometry=Geometry.default_parameters(),
+        device=torch.device("cpu"),
+    )
+    solver.set_training(DataLoader(pairs(), batch_size=2, shuffle=True))
+    (tmp_path / "a").mkdir()
+    solver.set_saving(tmp_path / "a", "final")
+    solver.train(2)
+    solver.save_final_results()
+
+    file = tmp_path / "a" / "final"
+    record = read_training_record(file)
+    again = LIONmodel.instantiate(file, initial_weights=True)
+    # where it runs isn't recorded: given, as when the run was made
+    repeat = LIONsolver.instantiate(
+        file, again, allow=["pytests."], device=torch.device("cpu")
+    )
+    repeat.set_training(
+        DataLoader(
+            LIONDataset.instantiate(file, allow=["pytests."]),
+            batch_size=record.train.batch_size,
+            shuffle=record.train.shuffle,
+        )
+    )
+    repeat.train(record.epochs.asked)
+    assert same_weights(repeat.model, LIONmodel.load(file, supress_warnings=True)[0])

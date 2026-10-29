@@ -186,6 +186,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             torch.backends.cudnn.benchmark = False
         self.n_epochs: Optional[int] = None
         self.initial_weights_sha256: Optional[str] = None
+        # how the initial weights can be made again (see _initial_weights)
+        self.initial_weights: Optional[dict] = None
         self._data_records = {}
 
         self.do_load_checkpoint: bool = False
@@ -254,6 +256,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             "optimizer": spec.encode_or_name(self.optimizer, "the optimizer"),
             "seed": self.seed,
             "initial_weights_sha256": self.initial_weights_sha256,
+            "initial_weights": self.initial_weights,
         }
         if self.train_loader is not None:
             record["train"] = records.loader_settings(self.train_loader)
@@ -961,6 +964,41 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 )
         return self.current_epoch
 
+    def _initial_weights(self) -> dict:
+        """How the weights training starts from can be made again, for the
+        training record: ``{"from": "random_state"}`` if the model made again
+        from the random state saved with it (``LIONmodel.__init__``) has
+        exactly these weights (checked here, once); otherwise (a custom or
+        pretrained start, layers made on a GPU or with numpy's random numbers)
+        the weights are saved next to the results, ``{"from": "file", "file":
+        "<name>_initial.pt"}``; ``{"from": None}`` if there is no save folder
+        to save them in."""
+        from LION.models.LIONmodel import made_from_random_state
+
+        state = getattr(self.model, "initial_random_state", None)
+        if state is not None:
+            try:
+                written = spec.to_spec(self.model)
+                module = type(self.model).__module__.split(".")[0] + "."
+                path, kwargs = spec.build_arguments(written, allow=(module,))
+                target = spec.resolve(path, allow=(module,))
+                made = made_from_random_state(target, kwargs, state)
+                if records.weights_sha256(made) == self.initial_weights_sha256:
+                    return {"from": "random_state"}
+            except Exception:  # can't be made again from its spec
+                pass
+        if self.save_folder is None or self.final_result_fname is None:
+            warnings.warn(
+                "the initial weights can't be made again from the model's random "
+                "state, and there is no save folder (set_saving) to save them in: "
+                "this training can't be repeated exactly",
+                stacklevel=3,
+            )
+            return {"from": None}
+        name = f"{pathlib.Path(self.final_result_fname).stem}_initial.pt"
+        torch.save(self.model.state_dict(), self.save_folder / name)
+        return {"from": "file", "file": name}
+
     def _resume_from(self, data):
         """Continue the run a checkpoint was saved from: its random state, the
         hash of its initial weights, and the values the solver computed
@@ -972,6 +1010,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         except (ValueError, OSError):
             return  # a checkpoint saved without a training record
         self.initial_weights_sha256 = getattr(record, "initial_weights_sha256", None)
+        initial = getattr(record, "initial_weights", None)
+        self.initial_weights = (
+            vars(initial) if isinstance(initial, LIONParameter) else initial
+        )
         saved = record.solver.get("solver_params")
         if not isinstance(saved, dict):
             return
@@ -1073,6 +1115,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                         "seed=None for an unseeded run)"
                     )
             self.initial_weights_sha256 = records.weights_sha256(self.model)
+            self.initial_weights = self._initial_weights()
 
         self.model.train()
         # train loop

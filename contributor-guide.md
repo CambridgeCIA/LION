@@ -167,6 +167,14 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   in every file they save. Values a solver computes during the run (e.g. an
   estimated noise level) are kept in `solver_params`, starting as `None`, so
   they are recorded and come back on resume.
+- A model keeps torch's random state from when it was made
+  (`initial_random_state`, saved with it), so its initial weights can be made
+  again. When training starts, the solver checks that they can (making the
+  model again from that state) and records how in the training record
+  (`initial_weights`); when they can't (a custom or pretrained start), it
+  saves them next to the results. `LIONmodel.instantiate(file,
+  initial_weights=True)` makes a model with them. Models draw their initial
+  weights from torch's CPU generator.
 - Solvers take `deterministic` (default False): torch's deterministic
   algorithms, so same-seed GPU runs give the same model (slower). Off, GPU runs
   with the same seed differ slightly.

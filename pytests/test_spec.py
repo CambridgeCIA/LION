@@ -534,8 +534,15 @@ def test_pt_holds_only_safe_contents(tmp_path):
         )
     # torch's own safe loader, with nothing extra allowed
     data = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
-    assert set(data) == {"model_state_dict", "optimizer_state_dict", "epoch", "loss"}
+    assert set(data) == {
+        "model_state_dict",
+        "optimizer_state_dict",
+        "epoch",
+        "loss",
+        "initial_random_state",  # torch's random state when the model was made
+    }
     assert data["epoch"] == 3 and data["loss"] == [0.5, 0.4, 0.3]
+    assert data["initial_random_state"].dtype == torch.uint8
 
 
 @pytest.mark.parametrize(
