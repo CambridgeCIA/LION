@@ -184,6 +184,12 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   saved with other LION code warns.
 - `LIONsolver.instantiate(file, model)` makes the solver from its own record;
   data, validation, testing and saving are set as usual.
+- `LION.package.publish(model_file, folder, evaluation=None)` writes everything
+  a trained model needs to be made, trained again and tested, from these
+  records, in one folder. It publishes only what LION alone can make again:
+  LION's classes (and torch's layers, losses and optimizers), from LION code
+  that is committed and pushed. A new component works with it when its
+  records do (`spec_kwargs()`, `cite()`).
 
 ## Devices
 

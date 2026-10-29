@@ -245,7 +245,9 @@ def _constructor_arguments(obj) -> dict:
 # Building
 
 
-def _is_allowed(path: str, allow) -> bool:
+def is_allowed(path: str, allow=()) -> bool:
+    """Whether ``build`` may import ``path`` (``ALLOWED_MODULES``,
+    ``ALLOWED_TARGETS``, and the module prefixes in ``allow``)."""
     return path in ALLOWED_TARGETS or path.startswith(
         tuple(ALLOWED_MODULES) + tuple(allow)
     )
@@ -253,7 +255,7 @@ def _is_allowed(path: str, allow) -> bool:
 
 def resolve(path: str, allow=()):
     """The class or function at an import path, if it is allowed."""
-    if not isinstance(path, str) or not _is_allowed(path, allow):
+    if not isinstance(path, str) or not is_allowed(path, allow):
         raise SpecError(
             f"'{path}' is not in the modules a spec may use ({', '.join(ALLOWED_MODULES)} "
             "and a few builtins). To build your own classes, pass their module, e.g. "
