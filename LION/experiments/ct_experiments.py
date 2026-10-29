@@ -272,16 +272,17 @@ class Experiment(ABC):
     def instantiate(cls, source, *, allow=()):
         """The experiment a saved file describes. ``source``: a data record,
         a model's file (or the dict read from it) saved with one, or the
-        experiment's spec. Called on an experiment class it makes that class;
-        called on ``Experiment``, the class the record names (``allow``: see
-        ``LION.utils.spec.build``).
+        experiment's spec or its file (a package's ``experiment.json``). Called
+        on an experiment class it makes that class; called on ``Experiment``,
+        the class the record names (``allow``: see ``LION.utils.spec.build``).
 
         ``Experiment.instantiate(f).get_dataset(record.split)`` makes the
         data as they were: dataset, geometry and noise (with its seed).
         """
-        if isinstance(source, dict) and spec.TARGET in source:
-            return spec.instantiate(source, cls, Experiment, allow)
-        record = read_record(source)
+        saved = spec.read(source)
+        if spec.TARGET in saved:
+            return spec.instantiate(saved, cls, Experiment, allow)
+        record = read_record(saved)
         if not hasattr(record, "experiment"):
             raise ValueError(
                 "these data were not made by an Experiment: make the dataset with "

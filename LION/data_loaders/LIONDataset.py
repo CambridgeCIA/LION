@@ -32,7 +32,7 @@ class LIONDataset(Dataset):
         """The dataset a saved file describes.
 
         ``source``: a data record, a model's file (or the dict read from it)
-        saved with one, or the dataset's spec. Called on a dataset class it
+        saved with one, or the dataset's spec (or its file). Called on a dataset class it
         makes that class; called on ``LIONDataset``, the class the record
         names (``allow``: see ``LION.utils.spec.build``).
 
@@ -45,9 +45,10 @@ class LIONDataset(Dataset):
         must have been made with ``hash_files=True``); a difference gives a
         warning. A record of a ``Subset`` gives that ``Subset`` of the dataset.
         """
-        if isinstance(source, dict) and spec.TARGET in source:
-            return spec.instantiate(source, cls, LIONDataset, allow)
-        record = read_record(source)
+        saved = spec.read(source)
+        if spec.TARGET in saved:
+            return spec.instantiate(saved, cls, LIONDataset, allow)
+        record = read_record(saved)
         dataset = spec.instantiate(
             recorded_spec(record, "dataset"), cls, LIONDataset, allow
         )
