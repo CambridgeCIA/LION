@@ -57,12 +57,6 @@ def run_cmd(cmd, verbose=True, *args, **kwargs):
     return std_out.strip()
 
 
-# This replaces standard python warnings with a custom format
-def custom_format_warning(msg, *args, **kwargs):
-    # ignore everything except the message
-    return str(msg) + "\n"
-
-
 def str2bool(v):
     if isinstance(v, bool):
         return v
