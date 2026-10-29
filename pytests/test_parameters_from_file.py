@@ -204,3 +204,17 @@ def test_a_reconstructors_parameters_from_its_spec():
         written, allow=["pytests."], parameters=again
     )
     assert type(changed) is PnP and changed.parameters.max_iter == 7
+
+
+def test_another_experiments_parameters_warn():
+    """The experiments differ only in their parameters: made with another's,
+    it would be that experiment, recorded under the wrong class."""
+    parameters = ct_experiments.LowDoseCTRecon.default_parameters()
+    with pytest.warns(UserWarning, match="are LowDoseCTRecon's"):
+        ct_experiments.ExtremeLowDoseCTRecon(parameters)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        ct_experiments.LowDoseCTRecon(parameters)  # its own
+        ct_experiments.ExtremeLowDoseCTRecon()  # its defaults
+        parameters.name = "Low dose, my detector"  # another experiment
+        ct_experiments.ExtremeLowDoseCTRecon(parameters)

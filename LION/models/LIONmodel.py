@@ -586,7 +586,11 @@ class LIONmodel(nn.Module, ABC):
 
             parameters = LPD.parameters_from_file("model")
             parameters.n_iters = 5
-            model = LPD(geometry, parameters)   # or LPD.instantiate("model", model_parameters=parameters)
+            model = LPD.instantiate("model", model_parameters=parameters)
+
+        ``instantiate`` makes the class the file records, with its other
+        arguments (e.g. the geometry); ``LPD(geometry, parameters)`` works too.
+        Called on a model class, a file of another class gives a warning.
         """
         target, kwargs, _ = cls._read_model_file(source, allow)
         if kwargs.get("model_parameters") is None:
