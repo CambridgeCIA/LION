@@ -18,7 +18,7 @@ import numpy as np
 import json
 
 
-from LION.utils.paths import LIDC_IDRI_PROCESSED_DATASET_PATH
+from LION.utils import paths
 import LION.CTtools.ct_utils as ct
 from LION.utils.parameter import LIONParameter
 from LION.utils.device import default_device
@@ -566,7 +566,7 @@ class LIDC_IDRI(LIONDataset):
         # left out the last two patients; see LIDC_IDRI.patient_list
         param.legacy_patient_list = False
         param.task = task
-        param.folder = LIDC_IDRI_PROCESSED_DATASET_PATH
+        param.folder = paths.LIDC_IDRI_PROCESSED_DATASET_PATH
         if task == "reconstruction" and geometry is None:
             raise ValueError(
                 "For reconstruction task geometry needs to be input to default_parameters(geometry=geometry_param)"

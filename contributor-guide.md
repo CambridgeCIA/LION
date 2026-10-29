@@ -15,7 +15,9 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   pure-Python packages only.
 - Pip-only installs (and CI) use the `standalone` extra.
 - Datasets live under `LION_DATA_PATH` (see the README and
-  `LION/data_loaders/README.md`).
+  `LION/data_loaders/README.md`). Code reads it, and `LION_RESULTS_PATH`, when
+  a path is used (`LION.utils.paths`: `data_path(...)`, or the named folders
+  such as `paths.LIDC_IDRI_PROCESSED_DATASET_PATH`), not at import.
 - LION's version is the file `LION/VERSION` (`LION.__version__`; the package
   build reads it too).
 - Results go to a solver's `save_folder`, by default `LION_RESULTS_PATH`

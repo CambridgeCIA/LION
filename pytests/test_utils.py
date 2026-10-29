@@ -1,6 +1,7 @@
 """Utilities: the default device, LIONParameter (de)serialisation and the
 download/unzip command lines."""
 
+import os
 import pathlib
 import shlex
 import subprocess
@@ -185,7 +186,7 @@ def test_7z_fallback_output_folder(commands, tmp_path):
 
 def _fake_ct(monkeypatch, tmp_path):
     """No CT: the operator is a string and FDK doubles the sinogram."""
-    monkeypatch.setenv("LION_DATA_PATH", str(tmp_path))  # needed to import experiments
+    monkeypatch.setenv("LION_DATA_PATH", str(tmp_path))  # datasets' folders
     import LION.optimizers.LIONsolver as lion_solver
     import LION.utils.test_model as test_model
 
@@ -277,3 +278,49 @@ def test_lion_parameter_keeps_specs_as_dicts():
     assert p.loss == spec and isinstance(p.loss, dict)
     assert isinstance(p.inner, LIONParameter) and p.inner.spec == spec
     assert p.serialize() == {"loss": spec, "inner": {"a": 1, "spec": spec}}
+
+
+# --------------------------------------------------------------------------
+# LION's folders
+
+
+def test_data_folders_are_read_when_used(monkeypatch, tmp_path):
+    """LION_DATA_PATH and LION_RESULTS_PATH are read when a path is used, as
+    saving reads them, so a saved path means the same folder when read."""
+    from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
+    from LION.utils import paths, spec
+
+    monkeypatch.setenv("LION_DATA_PATH", str(tmp_path / "a"))
+    assert paths.data_path("x") == (tmp_path / "a" / "x").resolve()
+    monkeypatch.setenv("LION_DATA_PATH", str(tmp_path / "b"))
+    folder = (tmp_path / "b" / "processed" / "LIDC-IDRI").resolve()
+    assert paths.LIDC_IDRI_PROCESSED_DATASET_PATH == folder
+    parameters = LIDC_IDRI.default_parameters(geometry=Geometry.default_parameters())
+    assert parameters.folder == folder
+    written = spec.encode(parameters.folder)
+    assert written == {
+        "_target_": "LION.utils.paths.data_path",
+        "_args_": ["processed/LIDC-IDRI"],
+    }
+    assert spec.build(written) == folder
+    monkeypatch.delenv("LION_DATA_PATH")
+    with pytest.raises(RuntimeError, match="LION_DATA_PATH is not set"):
+        paths.data_path("x")
+    monkeypatch.delenv("LION_RESULTS_PATH", raising=False)
+    assert paths.LION_RESULTS_PATH is None
+    monkeypatch.setenv("LION_RESULTS_PATH", str(tmp_path / "r"))
+    assert paths.LION_RESULTS_PATH == (tmp_path / "r").resolve()
+
+
+def test_lion_imports_without_lion_data_path():
+    import sys
+
+    environment = {k: v for k, v in os.environ.items() if k != "LION_DATA_PATH"}
+    code = (
+        "import LION.experiments.ct_experiments, LION.data_loaders.LIDC_IDRI, "
+        "LION.data_loaders.deteCT, LION.evaluation, LION.package"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], env=environment, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr

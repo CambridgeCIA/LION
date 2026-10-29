@@ -11,7 +11,7 @@ import pandas as pd
 import torch
 import numpy as np
 import warnings
-from LION.utils.paths import DETECT_PROCESSED_DATASET_PATH
+from LION.utils import paths
 from LION.utils.parameter import LIONParameter
 import LION.CTtools.ct_geometry as ctgeo
 import LION.CTtools.ct_utils as ct
@@ -231,7 +231,7 @@ class deteCT(LIONDataset):
     @staticmethod
     def default_parameters():
         param = LIONParameter()
-        param.path_to_dataset = DETECT_PROCESSED_DATASET_PATH
+        param.path_to_dataset = paths.DETECT_PROCESSED_DATASET_PATH
         param.input_mode = "mode2"
         param.target_mode = "mode2"
         param.task = "sino2recon"

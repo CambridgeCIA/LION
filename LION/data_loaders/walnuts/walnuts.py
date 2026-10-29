@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from LION.utils.paths import WALNUT_DATASET_PATH
+from LION.utils import paths
 
 
 def parse_index(index: int) -> str:
@@ -62,7 +62,7 @@ class WalnutDataset(Dataset):
         self.device = device
         self.middle_slices_only = middle_slices_only
 
-        walnut_path = WALNUT_DATASET_PATH.joinpath(f"Walnut{walnut_index}")
+        walnut_path = paths.WALNUT_DATASET_PATH.joinpath(f"Walnut{walnut_index}")
         projections_path = walnut_path.joinpath("Projections")
         reconstructions_path = walnut_path.joinpath("Reconstructions")
         self.tube_path = projections_path.joinpath(f"tubeV{tube_index}")

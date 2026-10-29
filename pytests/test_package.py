@@ -27,7 +27,7 @@ from LION.experiments import ct_experiments  # noqa: E402
 from LION.models.LIONmodel import LIONmodel, ModelInputType  # noqa: E402
 from LION.optimizers.SupervisedSolver import SupervisedSolver  # noqa: E402
 from LION.optimizers.training_record import weights_sha256  # noqa: E402
-from LION.utils import environment, paths  # noqa: E402
+from LION.utils import environment  # noqa: E402
 from pytests.helpers import ScaleOp, small_dncnn  # noqa: E402
 from pytests.test_lidc_resampling import fake_lidc  # noqa: E402
 
@@ -91,9 +91,7 @@ def trained(tmp_path_factory):
         values = np.random.default_rng(k).integers(-1000, 400, (512, 512))
         np.save(path, values.astype(np.int16))
     with pytest.MonkeyPatch.context() as monkeypatch:
-        # saving reads the variable; data_path() what it was at import
         monkeypatch.setenv("LION_DATA_PATH", str(root / "data"))
-        monkeypatch.setattr(paths, "LION_DATA_PATH", root / "data")
         patch(monkeypatch)
         yield train(root / "results", data_folder), data_folder
 
