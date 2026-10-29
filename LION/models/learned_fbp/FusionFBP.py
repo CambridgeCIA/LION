@@ -25,6 +25,7 @@ from torch.nn import (
 )
 from torch.nn.functional import pad
 import json
+from LION.utils.citation import citation
 
 # from .model import ModelBase
 
@@ -380,3 +381,23 @@ class FusionFBPNetwork(LIONmodel):
         x = self.denoiser(img)
 
         return x
+
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where FusionFBP comes from: the MPhil thesis that proposed it (Sainz
+        Bear), BibTeX ("bib") or "MLA"."""
+        return citation(
+            cite_format,
+            bib="""
+            @mastersthesis{sainzbear2025deepfbp,
+            title={Deep Filtered Back Projection for CT Reconstruction},
+            author={Sainz Bear, Andrea},
+            school={Department of Applied Mathematics and Theoretical Physics (DAMTP), University of Cambridge},
+            type={MPhil thesis (Data Intensive Science)},
+            year={2025}
+            }
+            """,
+            mla="""
+            Sainz Bear, Andrea. "Deep Filtered Back Projection for CT Reconstruction." MPhil thesis (Data Intensive Science), DAMTP, University of Cambridge, 2025.
+            """,
+        )
