@@ -554,8 +554,10 @@ def test_a_run_is_repeated_from_its_file_alone(tmp_path):
     file = tmp_path / "a" / "final"
     record = read_training_record(file)
     again = LIONmodel.instantiate(file, initial_weights=True)
-    repeat = LIONsolver.instantiate(file, again, allow=["pytests."])
-    repeat.device = torch.device("cpu")
+    # where it runs isn't recorded: given, as when the run was made
+    repeat = LIONsolver.instantiate(
+        file, again, allow=["pytests."], device=torch.device("cpu")
+    )
     repeat.set_training(
         DataLoader(
             LIONDataset.instantiate(file, allow=["pytests."]),
