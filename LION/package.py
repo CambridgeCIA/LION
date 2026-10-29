@@ -34,6 +34,9 @@ card shows how to train the model again from them.
   the code running now, the code that saved the model and the code that tested it;
 - a model file without a training record or a data record (one not saved by a
   LION solver from a LION dataset);
+- what training again would miss: initial weights that weren't saved, an
+  unseeded training (``seed=None``), data not made by an ``Experiment``, data
+  outside ``LION_DATA_PATH`` (another machine can't find them);
 - records naming code outside LION (other than torch's layers, losses and
   optimizers): a package is made again with LION alone, without ``allow=``;
 - records that could only name something (e.g. a lambda loss), which can't be
@@ -42,8 +45,9 @@ card shows how to train the model again from them.
   trained or validated on;
 - a folder that isn't empty.
 
-What can be made again but not exactly (e.g. initial weights that weren't
-saved) is a note, in ``package.json`` and the model card, and a warning.
+What a reader should know of a complete package (it was published in another
+environment than it was trained in, or tested on another problem) is a note,
+in ``package.json`` and the model card, and a warning.
 ``citations`` are each component's ``cite()``: where it comes from, not the
 work being published.
 """
@@ -114,6 +118,7 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
     test = _test_record(evaluation, model_file)
     problems += _code_problems(saved, test)
     problems += _not_made_again(saved, test)
+    problems += _not_repeatable(saved, test)
     if problems:  # before loading: the model may name code outside LION
         raise PublishError(_sentence(problems))
 
@@ -127,7 +132,7 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
         problems += _test_problems(test, weights, data, validation)
     if problems:
         raise PublishError(_sentence(problems))
-    notes = _notes(saved, test, initial)
+    notes = _notes(saved, test)
     for note in notes:
         warnings.warn(note, stacklevel=2)
 
@@ -141,9 +146,8 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
     if initial is not None:
         shutil.copyfile(initial, folder / initial.name)
         files["initial_weights"] = initial.name
-    if "experiment" in data and not spec.is_unsaved(data["experiment"]):
-        _write_json(folder / FILES["experiment"], data["experiment"])
-        files["experiment"] = FILES["experiment"]
+    _write_json(folder / FILES["experiment"], data["experiment"])
+    files["experiment"] = FILES["experiment"]
     _write_json(folder / FILES["training_data"], data)
     files["training_data"] = FILES["training_data"]
     if validation is not None:
@@ -293,34 +297,47 @@ def _test_problems(test, weights, data, validation) -> list:
     return problems
 
 
-def _notes(saved, test, initial) -> list:
-    """What can be made again, but not exactly, or isn't the usual case."""
-    from LION.evaluation.comparison import problem_differences
-
+def _not_repeatable(saved, test) -> list:
+    """What the package would miss to train the model again as it was: the
+    initial weights, the seed, the experiment that made the data, or data
+    any machine can find (in ``LION_DATA_PATH``)."""
     training, data = saved["training"], saved["dataset_params"]
-    notes = []
-    how = (training.get("initial_weights") or {}).get("from")
-    if how is None:
-        notes.append(
-            "the weights training started from can't be made again, so training "
-            "can be repeated, but not exactly"
+    validation = (training.get("validation") or {}).get("data")
+    problems = []
+    if (training.get("initial_weights") or {}).get("from") is None:
+        problems.append(
+            "the weights training started from weren't saved and can't be made "
+            "again from the model's random state: train it with a save folder "
+            "(set_saving), so the solver saves them"
         )
     if training.get("seed") is None:
-        notes.append("training wasn't seeded, so it can't be repeated exactly")
-    epochs = training.get("epochs") or {}
-    if epochs.get("done") is not None and epochs.get("done") != epochs.get("asked"):
-        notes.append(
-            f"training stopped after {epochs.get('done')} of {epochs.get('asked')} epochs"
-        )
-    if "experiment" not in data:
-        notes.append("the data weren't made by an Experiment")
+        problems.append("training wasn't seeded (seed=None): train it with a seed")
+    for what, record in (("training", data), ("validation", validation)):
+        if record is not None and "experiment" not in record:
+            problems.append(
+                f"the {what} data weren't made by an Experiment: make them with "
+                "experiment.get_dataset(split)"
+            )
+    records = [data, validation]
+    if test is not None:
+        records += [test.get("data"), test.get("evaluation")]
     paths = []
-    _absolute_paths(data, paths)
+    for record in records:
+        _absolute_paths(record, paths)
     if paths:
-        notes.append(
+        problems.append(
             "the data are read from a folder outside LION_DATA_PATH "
-            f"({', '.join(sorted(set(paths)))}): elsewhere, give the folder they are in"
+            f"({', '.join(sorted(set(paths)))}), which another machine can't find: "
+            "keep the data in LION_DATA_PATH"
         )
+    return problems
+
+
+def _notes(saved, test) -> list:
+    """What a reader should know, though the package is complete."""
+    from LION.evaluation.comparison import problem_differences
+
+    notes = []
     now = environment.environment_record().serialize()
     trained = saved.get("environment") or {}
     changed = [
@@ -336,7 +353,7 @@ def _notes(saved, test, initial) -> list:
             f"it was trained: {', '.join(changed)}"
         )
     if test is not None:
-        differences = problem_differences(test["data"], data)
+        differences = problem_differences(test["data"], saved["dataset_params"])
         if differences:
             notes.append(
                 "it was tested on another problem than it was trained on: "
@@ -551,13 +568,7 @@ def _retraining(saved, files) -> list:
     validation = training.get("validation")
     device = ((saved.get("environment") or {}).get("device") or {}).get("type", "cpu")
     lines = [
-        "In the package's folder, from its files alone"
-        + (
-            ""
-            if (training.get("initial_weights") or {}).get("from")
-            else " (but for the initial weights: see the notes)"
-        )
-        + ":",
+        "In the package's folder, from its files alone:",
         "",
         "```python",
         "import pathlib",
@@ -566,9 +577,7 @@ def _retraining(saved, files) -> list:
         "from torch.utils.data import DataLoader, Subset",
         "",
         "from LION.data_loaders.data_record import read_record",
-        "from LION.experiments.ct_experiments import Experiment"
-        if "experiment" in files
-        else "from LION.data_loaders.LIONDataset import LIONDataset",
+        "from LION.experiments.ct_experiments import Experiment",
         "from LION.models.LIONmodel import LIONmodel",
         "from LION.optimizers.LIONsolver import LIONsolver",
         "from LION.optimizers.training_record import read_training_record",
@@ -583,21 +592,14 @@ def _retraining(saved, files) -> list:
         "",
         "",
         "def data(file):",
+        '    """The data a record describes, made by its experiment."""',
         "    record = read_record(file)",
-    ]
-    if "experiment" in files:
-        lines += [
-            '    made = Experiment.instantiate("experiment.json").get_dataset(record.split)',
-            '    subset = getattr(record, "subset", None)',
-            "    return made if subset is None else Subset(made, subset.indices)",
-        ]
-    else:
-        lines.append("    return LIONDataset.instantiate(file)")
-    initial = bool((training.get("initial_weights") or {}).get("from"))
-    lines += [
+        "    made = Experiment.instantiate(file).get_dataset(record.split)",
+        '    subset = getattr(record, "subset", None)',
+        "    return made if subset is None else Subset(made, subset.indices)",
         "",
         "",
-        f'model = LIONmodel.instantiate("model", initial_weights={initial})',
+        'model = LIONmodel.instantiate("model", initial_weights=True)',
         "solver = LIONsolver.instantiate(",
         f'    "solver.json", model, device=torch.device("{device}")  # where it was trained',
         ")",
@@ -627,7 +629,7 @@ def _retraining(saved, files) -> list:
     lines += [
         'pathlib.Path("retrained").mkdir(exist_ok=True)',
         'solver.set_saving("retrained", "model")',
-        "solver.train(record.epochs.asked)",
+        "solver.train(record.epochs.done)",
         "solver.save_final_results()",
         "```",
     ]
@@ -690,7 +692,7 @@ def _training(training, data) -> list:
         + {
             "random_state": "made again from the random state saved with the model",
             "file": f"saved in `{(training.get('initial_weights') or {}).get('file')}`",
-        }.get(how, "not saved")
+        }[how]
         + "."
     )
     return lines

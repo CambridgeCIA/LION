@@ -381,23 +381,9 @@ def test_initial_weights_saved_by_the_solver_are_included(trained, tmp_path):
         published(tuned, tmp_path / "again")
 
 
-def test_what_cant_be_repeated_exactly_is_a_note(trained, tmp_path):
-    file = copy(trained[0], tmp_path / "copy")
-    edit(file, lambda saved: saved["training"].update({"initial_weights": None}))
-    with pytest.warns(UserWarning, match="can't be made again"):
-        folder = package.publish(file, tmp_path / "package")
-    written = json.loads((folder / "package.json").read_text())
-    assert written["notes"][0].startswith("the weights training started from")
-    card = (folder / "README.md").read_text()
-    assert "## Notes" in card and "(but for the initial weights" in card
-    assert 'LIONmodel.instantiate("model", initial_weights=False)' in card
-
-
-def test_data_outside_lion_data_path_is_a_note(trained, tmp_path):
-    """Saved where LION_DATA_PATH wasn't set, or another folder: the data's
-    folder is this machine's."""
-    file, data_folder = trained
-    file = copy(file, tmp_path / "copy")
+def absolute_data_paths(data_folder):
+    """A change to a saved file: its data paths written as this machine's (as
+    when saved without LION_DATA_PATH, or from another folder)."""
 
     def absolute(value):
         if isinstance(value, list):
@@ -408,8 +394,64 @@ def test_data_outside_lion_data_path_is_a_note(trained, tmp_path):
             return {"_target_": "pathlib.Path", "_args_": [str(data_folder)]}
         return {k: absolute(v) for k, v in value.items()}
 
-    edit(file, lambda saved: saved.update(absolute(saved)))
-    with pytest.warns(UserWarning, match="outside LION_DATA_PATH"):
+    return lambda saved: saved.update(absolute(saved))
+
+
+@pytest.mark.parametrize(
+    "change, refusal",
+    [
+        (
+            lambda saved: saved["training"].update({"initial_weights": None}),
+            "weights training started from weren't saved",
+        ),
+        (
+            lambda saved: saved["training"].pop("initial_weights"),
+            "weights training started from weren't saved",
+        ),
+        (lambda saved: saved["training"].update({"seed": None}), "wasn't seeded"),
+        (
+            lambda saved: saved["dataset_params"].pop("experiment"),
+            "training data weren't made by an Experiment",
+        ),
+        (
+            lambda saved: saved["training"]["validation"]["data"].pop("experiment"),
+            "validation data weren't made by an Experiment",
+        ),
+        ("absolute paths", "outside LION_DATA_PATH"),
+    ],
+)
+def test_what_training_again_would_miss_is_refused(trained, tmp_path, change, refusal):
+    file, data_folder = trained
+    file = copy(file, tmp_path / "copy")
+    if change == "absolute paths":
+        change = absolute_data_paths(data_folder)
+    edit(file, change)
+    with pytest.raises(package.PublishError, match=refusal):
+        published(file, tmp_path / "package")
+    assert not (tmp_path / "package").exists()
+
+
+def test_another_environment_is_a_note(trained, tmp_path):
+    file = copy(trained[0], tmp_path / "copy")
+    edit(file, lambda saved: saved["environment"]["packages"].update(torch="1.0"))
+    with pytest.warns(UserWarning, match="torch 1.0 -> "):
         folder = package.publish(file, tmp_path / "package")
     written = json.loads((folder / "package.json").read_text())
-    assert any(str(data_folder) in note for note in written["notes"])
+    assert written["notes"][0].startswith("environment.txt is where it was published")
+    card = (folder / "README.md").read_text()
+    assert "## Notes\n\n- Environment.txt is where" in card
+
+
+def test_a_test_on_another_problem_is_a_note(trained, tmp_path):
+    file, data_folder = trained
+    evaluation = Evaluation(
+        ct_experiments.ExtremeLowDoseCTRecon(datafolder=data_folder),
+        samples=2,
+        save_folder=None,
+        device="cpu",
+    )
+    with pytest.warns(UserWarning, match="tested on another problem"):
+        folder = package.publish(file, tmp_path / "package", evaluation=evaluation)
+    written = json.loads((folder / "package.json").read_text())
+    assert len(written["notes"]) == 1
+    assert written["notes"][0].startswith("it was tested on another problem")
