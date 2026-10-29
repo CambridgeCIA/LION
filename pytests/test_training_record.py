@@ -99,7 +99,9 @@ def weights(model):
 
 
 def same_weights(a, b):
-    return all(torch.equal(x, y) for x, y in zip(weights(a), weights(b)))
+    """Equal weights, wherever each model is (``LIONmodel.load`` puts a model
+    on the default device, the GPU if there is one)."""
+    return all(torch.equal(x.cpu(), y.cpu()) for x, y in zip(weights(a), weights(b)))
 
 
 def saved(folder, name):
