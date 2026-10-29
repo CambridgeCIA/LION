@@ -28,35 +28,3 @@ class CTNoiseExperiment(Experiment):
                 "CTNoiseExperiment experiments only supports 2DeteCT dataset, currently"
             )
         super().__init__(experiment_params, dataset, datafolder)
-
-
-class sample_delete_when_happy(CTNoiseExperiment):
-    def __init__(self, datafolder=None):
-        super().__init__(experiment_params=None, datafolder=datafolder)
-
-    @staticmethod
-    def default_parameters(dataset="2DeteCT"):
-        param = LIONParameter()
-
-        param.name = "xxxx"
-
-        # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
-
-        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
-
-        # Change the data loader to be sino2recon
-        param.data_loader_params.task = "sino2sino"
-        param.data_loader_params.input_mode = "mode2"
-        param.data_loader_params.target_mode = "mode1"
-
-        param.data_loader_params.add_noise = True
-        param.data_loader_params.noise_params = LIONParameter()
-        param.data_loader_params.noise_params.I0 = 10000
-        param.data_loader_params.noise_params.cross_talk = (
-            0.05  # leave as is, from XCIST
-        )
-        param.data_loader_params.noise_params.seed = (
-            0  # one noisy measurement per slice
-        )
-        return param
