@@ -14,6 +14,10 @@ best validation, checkpoints), next to the record of the training data
 - ``optimizer``: the optimizer's class and hyperparameters;
 - ``seed``: the training seed (``None``: unseeded), and
   ``initial_weights_sha256``, a hash of the weights training started from;
+- ``initial_weights``: how those can be made again (``LIONmodel.instantiate(
+  file, initial_weights=True)``): ``{"from": "random_state"}`` (the model made
+  again from the random state saved with it), ``{"from": "file", "file": ...}``
+  (saved next to the results), or ``{"from": None}``;
 - ``train``: how the training data were fed (``batch_size``, ``shuffle``,
   ``drop_last``); the data themselves are the file's ``dataset_params``;
 - ``validation``: its data record, how they were fed, ``every`` (epochs),
