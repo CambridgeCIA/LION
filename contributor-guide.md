@@ -74,7 +74,13 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   (models with new weights; `X.load(source)` also restores the weights).
   Called on a base class (`LIONmodel`, `LIONDataset`, `Experiment`) it makes
   the class the file names. New base classes get the same method, through
-  `LION.utils.spec.instantiate`.
+  `LION.utils.spec.instantiate`. `X.instantiate(source, **arguments)`
+  replaces recorded arguments.
+- `X.parameters_from_file(source)` gives what `X.default_parameters()` gives,
+  as a file recorded it, to change and make the component with
+  (`LION.utils.spec.parameters`). Each base class names the argument that
+  holds them: `model_parameters` (models), `experiment_params`,
+  `parameters` (data loaders, reconstructors), `solver_params`.
 - Specs keep classes, tuples, numpy arrays and enums. Parameter files saved as
   plain JSON lose them; code that reads such files converts them back, e.g.
   `as_model_parameter()` for models and `Geometry.init_from_parameter()` for

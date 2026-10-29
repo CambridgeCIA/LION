@@ -549,7 +549,7 @@ class LIONmodel(nn.Module, ABC):
         return cls, kwargs, options
 
     @classmethod
-    def instantiate(cls, source, *, allow=(), initial_weights=False):
+    def instantiate(cls, source, *, allow=(), initial_weights=False, **arguments):
         """The model a saved file describes, with its saved parameters and new
         (untrained) weights. ``load()`` is this plus the saved weights.
 
@@ -558,15 +558,44 @@ class LIONmodel(nn.Module, ABC):
         model's spec. Called on a model class it makes that class; called on
         ``LIONmodel``, the class the file names (``allow`` as in ``load``).
 
+        ``arguments`` replace recorded ones, e.g. ``model_parameters`` from
+        ``parameters_from_file``, changed, or ``geometry``.
+
         ``initial_weights=True`` (``source`` a file a solver saved): the
         weights its training started from, as its training record says: made
         again from the random state saved with the model, or read from the
         initial weights the solver saved; checked against the recorded hash.
+        Not with ``arguments``: a changed model is trained from new weights.
         """
         target, kwargs, _ = cls._read_model_file(source, allow)
+        if initial_weights and arguments:
+            raise ValueError(
+                "initial_weights=True makes the recorded model's initial weights: "
+                "a model with other arguments starts from new ones"
+            )
+        kwargs.update(arguments)
         if not initial_weights:
             return target(**kwargs)
         return _with_initial_weights(target, kwargs, source)
+
+    @classmethod
+    def parameters_from_file(cls, source, *, allow=()):
+        """What ``default_parameters()`` gives, as ``source`` (as in
+        ``instantiate``) recorded it: the model's parameters, to change and
+        make a model with, e.g.
+
+            parameters = LPD.parameters_from_file("model")
+            parameters.n_iters = 5
+            model = LPD.instantiate("model", model_parameters=parameters)
+
+        ``instantiate`` makes the class the file records, with its other
+        arguments (e.g. the geometry); ``LPD(geometry, parameters)`` works too.
+        Called on a model class, a file of another class gives a warning.
+        """
+        target, kwargs, _ = cls._read_model_file(source, allow)
+        if kwargs.get("model_parameters") is None:
+            return target.default_parameters()
+        return kwargs["model_parameters"]
 
     @classmethod
     def load(cls, fname, *, weights_only=True, supress_warnings=False, allow=()):

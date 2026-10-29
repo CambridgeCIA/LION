@@ -101,6 +101,7 @@ class Experiment(ABC):
             self.experiment_params = self.default_parameters(dataset=dataset)
         else:
             self.experiment_params = experiment_params
+            _warn_if_anothers(type(self), experiment_params, dataset)
         self.param = self.experiment_params
         if datafolder is not None:
             if dataset == "2DeteCT":
@@ -269,19 +270,47 @@ class Experiment(ABC):
         return data_record(self.get_dataset(split), hash_files=hash_files)
 
     @classmethod
-    def instantiate(cls, source, *, allow=()):
+    def instantiate(cls, source, *, allow=(), **arguments):
         """The experiment a saved file describes. ``source``: a data record,
         a model's file (or the dict read from it) saved with one, or the
         experiment's spec or its file (a package's ``experiment.json``). Called
         on an experiment class it makes that class; called on ``Experiment``,
         the class the record names (``allow``: see ``LION.utils.spec.build``).
+        ``arguments`` replace recorded ones (e.g. ``experiment_params`` from
+        ``parameters_from_file``, changed; ``datafolder``).
 
         ``Experiment.instantiate(f).get_dataset(record.split)`` makes the
         data as they were: dataset, geometry and noise (with its seed).
         """
+        return spec.instantiate(
+            cls._recorded(source), cls, Experiment, allow, **arguments
+        )
+
+    @classmethod
+    def parameters_from_file(cls, source, *, allow=()):
+        """What ``default_parameters()`` gives, as ``source`` (as in
+        ``instantiate``) recorded it: the experiment's parameters (geometry,
+        noise, data), to change and make the experiment with, e.g.
+
+            parameters = Experiment.parameters_from_file("model")
+            parameters.noise_params.I0 = 5000
+            experiment = Experiment.instantiate("model", experiment_params=parameters)
+
+        ``instantiate`` makes the class the file records. Made by hand, the
+        class is the one named; another experiment's parameters give a
+        warning (the experiments differ only in their parameters, so it would
+        be that experiment, recorded under the wrong class).
+        """
+        return spec.parameters(
+            cls._recorded(source), "experiment_params", cls, Experiment, allow
+        )
+
+    @staticmethod
+    def _recorded(source) -> dict:
+        """The experiment's spec in ``source`` (see ``instantiate``)."""
         saved = spec.read(source)
         if spec.TARGET in saved:
-            return spec.instantiate(saved, cls, Experiment, allow)
+            return saved
         record = read_record(saved)
         if not hasattr(record, "experiment"):
             raise ValueError(
@@ -289,9 +318,7 @@ class Experiment(ABC):
                 "LIONDataset.instantiate(source) and set its noise from "
                 "record.sinogram_transform"
             )
-        return spec.instantiate(
-            recorded_spec(record, "experiment"), cls, Experiment, allow
-        )
+        return recorded_spec(record, "experiment")
 
     def __str__(self):
         return f"Experiment parameters: \n {self.param} \n Dataset: \n {self.dataset} \n Geometry parameters: \n {self.geometry}"
@@ -304,6 +331,40 @@ class Experiment(ABC):
             return deteCT.default_parameters()
         else:
             raise NotImplementedError(f"Dataset {dataset} not implemented")
+
+
+def _warn_if_anothers(cls, parameters, dataset):
+    """Warn if ``parameters`` are another experiment class's (their name is
+    that class's default name): the experiments differ only in their
+    parameters, so this is that experiment, recorded under the wrong class."""
+    owner = _default_names(dataset).get(getattr(parameters, "name", None))
+    if owner is not None and owner is not cls:
+        warnings.warn(
+            f"these parameters are {owner.__name__}'s ({parameters.name!r}): "
+            f"made as {cls.__name__}, it is that experiment recorded as "
+            f"{cls.__name__}. Make it with {owner.__name__} (or "
+            "Experiment.instantiate(file, experiment_params=...)), or rename "
+            "the parameters if they are another experiment",
+            stacklevel=3,
+        )
+
+
+def _default_names(dataset) -> dict:
+    """``{default name: experiment class}`` of LION's experiments."""
+    names = {}
+    for cls in _subclasses(Experiment):
+        try:
+            name = cls.default_parameters(dataset=dataset).name
+        except Exception:  # e.g. not possible with this dataset
+            continue
+        names.setdefault(name, cls)
+    return names
+
+
+def _subclasses(cls):
+    for sub in cls.__subclasses__():
+        yield sub
+        yield from _subclasses(sub)
 
 
 class ExtremeLowDoseCTRecon(Experiment):

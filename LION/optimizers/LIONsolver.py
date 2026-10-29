@@ -331,6 +331,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         optimizer = spec.build(record.optimizer, allow, params=model.parameters())
         return target(model=model, optimizer=optimizer, **kwargs, **arguments)
 
+    @classmethod
+    def parameters_from_file(cls, source, *, allow=()):
+        """What ``default_parameters()`` gives, as ``source`` (a model file a
+        solver saved, or its training record) recorded it: the solver's
+        ``solver_params``, to change and make the solver with
+        (``instantiate(source, model, solver_params=parameters)``). The
+        defaults for a solver that takes none (e.g. ``SupervisedSolver``)."""
+        record = records.read_training_record(source)
+        return spec.parameters(record.solver, "solver_params", cls, LIONsolver, allow)
+
     # This should return the default parameters of the solver
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
