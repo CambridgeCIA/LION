@@ -16,27 +16,37 @@ LION is a modular Python/PyTorch research library for learned tomographic recons
 
 ### Main Package: `LION/`
 
-- `LION/data_loaders/`: Dataset implementations, downloading and preprocessing.
-- `LION/models/`: Neural network architectures and learned reconstruction methods.
-- `LION/operators/`: Forward operators, adjoint operators and mathematical imaging operators.
-- `LION/solvers/`: Iterative reconstruction algorithms and optimization methods.
-- `LION/experiments/`: Experiment configurations, geometries, noise models and acquisition settings.
-- `LION/utils/`: Shared utilities used by the main package.
+- `LION/CTtools/`: CT geometry (`Geometry`), the CT operator (`make_operator`), simulated sinogram noise and HU conversions.
+- `LION/classical_algorithms/`: Classical reconstruction: FDK, SIRT, FISTA, conjugate gradient, TV minimisation, SPGL1.
+- `LION/data_loaders/`: Datasets (`LIONDataset` and the loaders derived from it), their data records, and per-dataset download and preprocessing scripts (`LIDC_IDRI/`, `2deteCT/`, `walnuts/`).
+- `LION/evaluation/`: Testing trained methods: `Evaluation`, `Comparison`, tables and figures.
+- `LION/exceptions/`: LION's exceptions.
+- `LION/experiments/`: Experiments: geometry, noise, doses and data for each benchmark problem.
+- `LION/losses/`: Loss functions (SURE).
+- `LION/metrics/`: Image quality metrics (PSNR, SSIM, HaarPSI).
+- `LION/models/`: Neural networks and learned reconstruction methods (`LIONmodel` and the models derived from it), by type: `CNNs/`, `post_processing/`, `iterative_unrolled/`, `learned_regularizer/`, `PnP/`, `fully_learned/`, `learned_fbp/`.
+- `LION/operators/`: Forward operators (`Operator`): CT projection, Walsh-Hadamard, wavelets, photocurrent mapping, composite operators.
+- `LION/optimizers/`: Training: `LIONsolver` and the solvers derived from it (supervised, self-supervised, adversarial, ...), and the training record.
+- `LION/reconstructors/`: Reconstructing with trained models (`LIONReconstructor`): PnP, learned regulariser, forward.
+- `LION/utils/`: Shared utilities: parameters, specs, paths, device, random seeds, normalisation, citations, environment record.
+- `LION/package.py`: Publishing and loading trained models (`publish`, `load`, `build`, `train_again`).
 
 ### Supporting Directories
 
-- `pytests/`: Automated tests. Keep tests in this directory rather than creating a new `tests/` directory.
-- `demos/`: Demonstrations, examples and usage notebooks.
-- `scripts/`: Standalone execution and development scripts.
-- `utils/`: Repository-level supporting utilities.
-- `misc/`: Miscellaneous and experimental code.
-- `.github/workflows/`: CI workflows and automated testing.
+- `pytests/`: Automated tests, flat. Keep tests in this directory rather than creating a new `tests/` directory.
+- `demos/`: Demonstrations and usage notebooks.
+- `scripts/`: Standalone scripts: example scripts, paper scripts, hackathon scripts, data generation.
+- `utils/`: Repository-level shell scripts for saving and updating conda environments.
+- `misc/`: Miscellaneous files (e.g. environment exports from holly, the lab's GPU machine).
+- `.github/workflows/`: CI workflows (CPU tests, pre-commit).
 
 ### Documentation and Configuration
 
 - `README.md`: Project overview and installation.
 - `CLAUDE.md`: AI development instructions.
 - `contributor-guide.md`: Coding conventions and contribution guidelines.
+- `metadata.md`: The metadata and reproducibility system (records, specs, publishing).
+- `papers_in_LION.md`: Papers whose methods LION implements.
 - `developers.md`: Developer documentation.
 - `pyproject.toml`: Python project configuration.
 - `setup.py`: Package installation configuration.
