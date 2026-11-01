@@ -29,8 +29,8 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   `pytests/helpers.py`, fixtures in `pytests/conftest.py`.
 - Every fix or feature comes with a test, and a fix with a test that fails
   without it.
-- Run them with `pytest pytests/`. `pytest-xdist` comes with `[dev]`; without
-  it, add `-o addopts=""`.
+- Run them with `pytest pytests/`. Add `-n auto` to run them in parallel
+  (`pytest-xdist` comes with `[dev]`), as CI does.
 - Tests that need tomosipo/astra or CUDA are marked `@pytest.mark.tomosipo` or
   `@pytest.mark.cuda` and are skipped where those are missing. CI runs on CPU
   only, so run the GPU tests yourself when you touch CT code.

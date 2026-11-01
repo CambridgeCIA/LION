@@ -123,7 +123,6 @@ filterwarnings = [
     "ignore:pkg_resources is deprecated as an API:UserWarning",  # ignore warning when importing pytorch_wavelets (if not tests will fail)
     "ignore:Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning",  # ignore warning when importing pytorch_wavelets (if not tests will fail)
 ]
-addopts = "-n auto --dist loadfile --maxprocesses=8"
 markers = [
     "cuda : Tests only to be run when cuda device is available",  # Add argument `-m "not cuda"` to the `pytest` command line to skip tests with this marker
     "tomosipo : Tests that need tomosipo/astra; skipped automatically when tomosipo cannot be imported",
