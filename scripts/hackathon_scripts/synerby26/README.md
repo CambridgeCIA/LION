@@ -12,13 +12,22 @@ The workflow is divided into two main steps to ensure version compatibility:
 - Training a neural network for self-supervised denoising (`lion`): `python noise2inverse_foam.py`.
 
 Create the environment with the specific version of Python for generating the
-dataset, activate the environment and install the necessary stuff:
+dataset, activate the environment and install the necessary stuff
+(foam_ct_phantom is not on PyPI):
 
 ```sh
 conda create -n foam_env python=3.9
 conda activate foam_env
-pip install foam-ct-phantom h5py numpy torch
+conda install -c conda-forge foam_ct_phantom h5py numpy
 ```
+
+The data's geometry is `GEOMETRY` in `generate_foam_dataset.py`, as LION's
+`Geometry` takes it: any 2D fan- or parallel-beam geometry with a square image
+(default: fan beam over 360°, 900 detector pixels). The script saves it as
+`geometry.json` next to the data, and `noise2inverse_foam.py` reconstructs with it.
+Each sample is a slice of the foam: `gt_XXXX.h5` holds the image (`image`: 0 in
+bubbles, 1 in the material, attenuation per mm) and `sino_XXXX.h5` its sinogram
+(`sinogram`: angles × detector pixels, in LION's conventions).
 
 For installing LION:
 

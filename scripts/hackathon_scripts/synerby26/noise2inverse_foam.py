@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 import h5py
 import LION.CTtools.ct_utils as ct_utils
@@ -39,9 +40,6 @@ class FoamLike(Dataset):
         self.path_to_dataset = parameters.path_to_dataset
         self.mode = mode
 
-        self.target_angles = parameters.geometry.angles
-        self.num_target_angles = len(self.target_angles)
-
         all_sino = sorted(glob.glob(os.path.join(self.path_to_dataset, "sino_*.h5")))
         all_gt = sorted(glob.glob(os.path.join(self.path_to_dataset, "gt_*.h5")))
 
@@ -64,18 +62,10 @@ class FoamLike(Dataset):
         return len(self.sino_files)
 
     def __getitem__(self, index):
-        f_sino = h5py.File(self.sino_files[index], "r")
-
-        total_in_file = 720
-        step = total_in_file // self.num_target_angles
-
-        sino = f_sino["projs"][::step, :, 0].astype(np.float32)
-        sino = sino[: self.num_target_angles, :]
-        f_sino.close()
-
-        f_gt = h5py.File(self.gt_files[index], "r")
-        gt = f_gt["volume"][0, :, :].astype(np.float32)
-        f_gt.close()
+        with h5py.File(self.sino_files[index], "r") as f:
+            sino = f["sinogram"][:].astype(np.float32)
+        with h5py.File(self.gt_files[index], "r") as f:
+            gt = f["image"][:].astype(np.float32)
 
         input_tensor = torch.from_numpy(sino).unsqueeze(0)
         target_tensor = torch.from_numpy(gt).unsqueeze(0)
@@ -83,20 +73,12 @@ class FoamLike(Dataset):
         return input_tensor, target_tensor
 
 
-# Number of angles
-n_angles = 360
-
-# Geometry of the experiment
-geometry = ctgeo.Geometry(
-    image_shape=[1, 512, 512],
-    image_size=[300 / 512, 300, 300],
-    detector_shape=[1, 900],
-    detector_size=[1, 900],
-    dso=575,
-    dsd=1050,
-    mode="fan",
-    angles=np.linspace(0, 2 * np.pi, n_angles, endpoint=False),
-)
+# Geometry of the experiment: the one the data were made with
+# (generate_foam_dataset.py writes it)
+with open(os.path.join(OUTPUT_DIR, "geometry.json")) as f:
+    geometry_values = json.load(f)
+geometry_values["angles"] = np.array(geometry_values["angles"])
+geometry = ctgeo.Geometry(**geometry_values)
 
 params = LIONParameter()
 params.geometry = geometry
@@ -128,8 +110,8 @@ for i in range(30):
         ks_value=3,
         model="relative",
     )
-    noisy_list_y.append(y.view(1, 360, 900))
-    target_list.append(target.view(1, 512, 512))
+    noisy_list_y.append(y.view(sino_clean.shape))
+    target_list.append(target)
     if i == 0:
         print(f"Min sino_clean: {sino_clean.min().item():.4f}")
         print(f"Max sino_clean: {sino_clean.max().item():.4f}")
