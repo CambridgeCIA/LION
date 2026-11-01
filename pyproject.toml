@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=42", "wheel", "setuptools-git-versioning>=2.0,<3"]
-build-backend = "setuptools.build_meta:__legacy__"
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools-git-versioning]
 count_commits_from_version_file = true
@@ -13,12 +13,17 @@ dirty_template = "{tag}+dirty{sha}"
 [tool.setuptools]
 include-package-data = true
 
+[tool.setuptools.packages.find]
+include = ["LION*"]  # not scripts/, demos/, pytests/ or misc/
+
 [tool.setuptools.package-data]
 "LION" = ["VERSION"]
 
 [project]
 name = "LION"
-description = ""
+description = "Tomographic tools for AI-driven reconstruction"
+authors = [{ name = "Ander Biguri", email = "ander.biguri@gmail.com" }]
+keywords = ["CT", "AI"]
 readme = "README.md"
 requires-python = ">=3.10, <3.13"  # 3.10+: LION uses `X | Y` types at runtime and dataclass(kw_only=...). <3.13: numpy 1.x might be needed
 license = { file = "LICENSE.txt" }
