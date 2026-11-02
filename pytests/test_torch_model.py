@@ -51,3 +51,46 @@ def test_torch_model_loads_your_own_module_when_allowed(tmp_path):
     )
     x = torch.rand(1, 1, 8, 8)
     torch.testing.assert_close(loaded.cpu().eval()(x), model(x))
+
+
+class SigmaKeyword(torch.nn.Module):
+    """A denoiser taking the noise level as ``sigma`` (as deepinv's do)."""
+
+    def forward(self, x, sigma=None):
+        return x * sigma
+
+
+class TwoChannels(torch.nn.Module):
+    """A denoiser taking the noise level as a second input channel."""
+
+    def forward(self, x):
+        return x[:, :1] * x[:, 1:]
+
+
+def test_torch_model_finds_the_noise_level_keyword():
+    from pytests.helpers import NoiseLevelConvolution
+
+    assert TorchModel(NoiseLevelConvolution).takes_noise_level()
+    model = TorchModel(SigmaKeyword)
+    assert model.takes_noise_level()
+    x = torch.ones(1, 1, 4, 4)
+    torch.testing.assert_close(model(x, noise_level=0.5), x * 0.5)
+    assert not TorchModel(TwoConvolutions, {"channels": 2}).takes_noise_level()
+
+
+def test_torch_model_gives_the_noise_level_as_a_channel(tmp_path, monkeypatch):
+    from LION.models import torch_model
+
+    x = torch.ones(1, 1, 4, 4)
+    assert not TorchModel(TwoChannels).takes_noise_level()
+    model = TorchModel(TwoChannels, noise_level="channel")
+    torch.testing.assert_close(model(x, noise_level=0.5), x * 0.5)
+    _save(model, tmp_path / "model")  # how it takes it is saved with it
+    loaded, _, _ = TorchModel.load(
+        tmp_path / "model", supress_warnings=True, allow=["pytests."]
+    )
+    torch.testing.assert_close(loaded.cpu()(x, noise_level=0.5), x * 0.5)
+
+    path = f"{TwoChannels.__module__}.TwoChannels"
+    monkeypatch.setitem(torch_model.NOISE_LEVEL, path, "channel")
+    assert TorchModel(TwoChannels).takes_noise_level()
