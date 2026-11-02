@@ -20,7 +20,7 @@ from typing import Optional
 from LION.utils.parameter import LIONParameter
 import LION.utils.spec as spec
 from LION.data_loaders.data_record import is_data_record
-from LION.optimizers.training_record import is_training_record
+from LION.optimizers.training_record import is_training_record, weights_sha256
 from LION.utils import environment, rng
 
 from LION.utils.normaliser import Normalisation
@@ -593,6 +593,9 @@ class LIONmodel(nn.Module, ABC):
         model.initial_random_state = _saved_random_state(data)
         # where it came from, so records of methods using it can name the file
         model.source_file = fname.with_suffix("")
+        # the loaded weights' hash: training that starts from them records
+        # this file as where they come from (fine-tuning)
+        model.source_weights_sha256 = weights_sha256(model)
 
         return model, options, data
 
@@ -708,7 +711,7 @@ def _saved_random_state(data):
 def _with_initial_weights(target, kwargs, source):
     """The model ``source`` describes, with the initial weights of its
     training (see ``LIONmodel.instantiate``)."""
-    from LION.optimizers.training_record import read_training_record, weights_sha256
+    from LION.optimizers.training_record import read_training_record
 
     training = read_training_record(source)
     how = getattr(training, "initial_weights", None)

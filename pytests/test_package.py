@@ -54,14 +54,16 @@ def stand_ins(monkeypatch):
     patch(monkeypatch)
 
 
-def train(folder, data_folder, name="final", start=None):
+def train(folder, data_folder, name="final", start=None, start_file=None):
     """A small sinogram-domain DnCNN trained 2 epochs on 4 fake LIDC slices,
     validated every epoch, saved as ``folder/name``; ``start``: weights to
-    start from (else new ones)."""
+    start from (else new ones), or ``start_file``: a model file to fine-tune."""
     experiment = ct_experiments.LowDoseCTRecon(datafolder=data_folder)
     model = small_dncnn(ModelInputType.SINOGRAM)
     if start is not None:
         model.load_state_dict(start)
+    if start_file is not None:
+        model = LIONmodel.load(start_file, supress_warnings=True)[0]
     solver = SupervisedSolver(
         model,
         torch.optim.Adam(model.parameters(), lr=1e-3),
@@ -663,3 +665,51 @@ def test_a_reconstructor_whose_model_has_no_file_is_refused(trained, tmp_path):
     ForwardReconstructor(geometry, small_dncnn()).save(tmp_path / "forward")
     with pytest.raises(package.PublishError, match="wasn't loaded from a LION model"):
         published(tmp_path / "forward", tmp_path / "package")
+
+
+# ---------------------------------------------------------------------------
+# A fine-tuned model, published with its original's records
+
+
+def fine_tuned(trained, tmp_path):
+    """A copy of the trained model, and a model fine-tuned from the copy."""
+    file, data_folder = trained
+    original = copy(file, tmp_path / "original")
+    return original, train(tmp_path / "tuned", data_folder, start_file=original)
+
+
+def test_a_fine_tuned_model_is_published_with_its_original(trained, tmp_path):
+    original, tuned = fine_tuned(trained, tmp_path)
+    folder = published(tuned, tmp_path / "package")
+    written = json.loads((folder / "package.json").read_text())
+    assert written["files"]["origins"] == ["origin/model.json"]
+    assert "origin/model.json" in written["sha256"]
+    assert json.loads((folder / "origin" / "model.json").read_text()) == json.loads(
+        original.with_suffix(".json").read_text()
+    )
+    card = (folder / "README.md").read_text()
+    assert "## Fine-tuned from" in card and str(original) in card
+    p = package.load(folder)
+    assert p.records.origins[0].training.epochs.done == 2
+    assert p.records.training.initial_weights.origin.weights_sha256
+
+
+def test_a_fine_tuned_models_original_is_checked(trained, tmp_path):
+    original, tuned = fine_tuned(trained, tmp_path)
+    edit(original, lambda saved: saved["training"].update({"seed": None}))
+    with pytest.raises(package.PublishError, match="the original model .*seeded"):
+        published(tuned, tmp_path / "package")
+    for suffix in (".json", ".pt"):
+        original.with_suffix(suffix).unlink()
+    with pytest.raises(package.PublishError, match="is missing"):
+        published(tuned, tmp_path / "package")
+
+
+def test_weights_of_unknown_origin_are_a_note(trained, tmp_path):
+    file, data_folder = trained
+    start = LIONmodel.load(file, supress_warnings=True)[0].state_dict()
+    tuned = train(tmp_path / "tuned", data_folder, "tuned", start=start)
+    folder = published(tuned, tmp_path / "package")
+    written = json.loads((folder / "package.json").read_text())
+    assert any("origin isn't recorded" in note for note in written["notes"])
+    assert "origins" not in written["files"]

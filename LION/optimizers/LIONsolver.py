@@ -978,7 +978,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         pretrained start, layers made on a GPU or with numpy's random numbers)
         the weights are saved next to the results, ``{"from": "file", "file":
         "<name>_initial.pt"}``; ``{"from": None}`` if there is no save folder
-        to save them in."""
+        to save them in. With saved or unsaved weights, ``origin`` is the
+        model file they were loaded from (``LIONmodel.load``) and its weights
+        hash: a fine-tuned model's original. Weights that didn't come from a
+        LION model file (e.g. ``load_state_dict``) have ``origin: None``, with
+        a warning."""
         from LION.models.LIONmodel import made_from_random_state
 
         state = getattr(self.model, "initial_random_state", None)
@@ -993,6 +997,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                     return {"from": "random_state"}
             except Exception:  # can't be made again from its spec
                 pass
+        origin = self._origin()
         if self.save_folder is None or self.final_result_fname is None:
             warnings.warn(
                 "the initial weights can't be made again from the model's random "
@@ -1000,10 +1005,28 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 "this training can't be repeated exactly",
                 stacklevel=3,
             )
-            return {"from": None}
+            return {"from": None, "origin": origin}
         name = f"{pathlib.Path(self.final_result_fname).stem}_initial.pt"
         torch.save(self.model.state_dict(), self.save_folder / name)
-        return {"from": "file", "file": name}
+        return {"from": "file", "file": name, "origin": origin}
+
+    def _origin(self):
+        """The LION model file the model's weights were loaded from, if they
+        still are that file's (see ``_initial_weights``)."""
+        source = getattr(self.model, "source_file", None)
+        loaded = getattr(self.model, "source_weights_sha256", None)
+        if source is not None and loaded == self.initial_weights_sha256:
+            return {
+                "file": spec.encode(pathlib.Path(source)),
+                "weights_sha256": loaded,
+            }
+        warnings.warn(
+            "the weights training starts from aren't a model made from its random "
+            "state, nor loaded from a LION model file (LIONmodel.load): they are "
+            "saved, but where they come from isn't recorded",
+            stacklevel=4,
+        )
+        return None
 
     def _resume_from(self, data):
         """Continue the run a checkpoint was saved from: its random state, the
