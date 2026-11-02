@@ -21,7 +21,6 @@ dependencies:
   - kornia
   - torchdiffeq
   - torchmetrics  # example scripts
-  - h5py
   - imageio
   - matplotlib
   - numpy<2.5  # numpy 2.5 (and above) breaks spgl1 0.0.3 (currently latest version)
