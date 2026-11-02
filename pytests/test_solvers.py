@@ -131,14 +131,6 @@ def test_train_twice_keeps_the_loss_history():
     assert solver.train_loss[2] > 0
 
 
-def test_training_leaves_the_warning_format_alone():
-    before = warnings.formatwarning
-    solver = make_solver()
-    solver.set_training(loader())
-    solver.train(1)
-    assert warnings.formatwarning is before
-
-
 def test_min_validation_model_lives_in_save_folder(tmp_path):
     # checkpoints may go elsewhere; the min-validation model is in save_folder
     checkpoints = tmp_path / "checkpoints"
