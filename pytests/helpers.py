@@ -87,9 +87,18 @@ def small_gsd_dncnn():
     return GSD(denoiser=small_dncnn())
 
 
+class NoiseLevelConvolution(torch.nn.Module):
+    """A plain torch denoiser that takes the noise level, as an extra input
+    channel (as DRUNet does)."""
+
+    def __init__(self):
+        super().__init__()
+        self.conv = torch.nn.Conv2d(2, 1, 3, padding=1)
+
+    def forward(self, x, noise_level):
+        return self.conv(torch.cat((x, noise_level * torch.ones_like(x)), dim=1))
+
+
 def small_gsd_noise_channel():
-    """GSD giving the noise level to a plain torch denoiser as a channel."""
-    params = GSD.default_parameters()
-    params.use_noise_level = True
-    conv = {"in_channels": 2, "out_channels": 1, "kernel_size": 3, "padding": 1}
-    return GSD(params, denoiser=TorchModel(torch.nn.Conv2d, conv))
+    """GSD whose denoiser takes the noise level."""
+    return GSD(denoiser=TorchModel(NoiseLevelConvolution))

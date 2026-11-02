@@ -220,6 +220,13 @@ class LIONmodel(nn.Module, ABC):
     def get_input_type(self) -> ModelInputType:
         return self.model_parameters.model_input_type
 
+    def takes_noise_level(self) -> bool:
+        """Whether the model is called with the noise level of its input,
+        ``model(x, noise_level=...)``: its parameters' ``use_noise_level``
+        (e.g. DRUNet's). A model that decides otherwise (e.g. GSD, from its
+        denoiser) says so by overriding this."""
+        return bool(getattr(self.model_parameters, "use_noise_level", False))
+
     def set_normalisation(
         self, normalisation_type="sample", dataset=None, data_range=None
     ):

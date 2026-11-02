@@ -2,6 +2,7 @@
 # License : GPL-3
 # =============================================================================
 
+import inspect
 from typing import Optional
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
@@ -26,7 +27,9 @@ class TorchModel(LIONmodel):
     hold (numbers, strings, lists, dicts, LION parameters, ...), not tensors.
 
     ``model_parameters``: LION's own (``model_input_type``, IMAGE by default).
-    ``forward`` passes everything to the module.
+    ``forward`` passes everything to the module. The model takes a noise level
+    (``takes_noise_level()``) if the module's ``forward`` has a ``noise_level``
+    argument.
     """
 
     def __init__(
@@ -45,6 +48,9 @@ class TorchModel(LIONmodel):
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
         return params
+
+    def takes_noise_level(self) -> bool:
+        return "noise_level" in inspect.signature(self.module.forward).parameters
 
     def forward(self, *args, **kwargs):
         return self.module(*args, **kwargs)

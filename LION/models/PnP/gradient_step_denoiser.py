@@ -9,7 +9,6 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 
 import copy
-import inspect
 import torch
 import importlib
 from LION.utils.citation import citation
@@ -24,11 +23,8 @@ class GSD(LIONmodel):
     ``model_parameters.backbone_model`` (default DRUNet) made with
     ``model_parameters.backbone_params``.
 
-    The noise level: with ``model_parameters.use_noise_level``, GSD gives it to
-    N as an extra input channel, constant at the noise level (so N takes one
-    more input channel than the image has). Otherwise N gets it as an argument
-    if its ``forward`` takes ``noise_level`` (e.g. DRUNet), and not at all if
-    not.
+    The noise level: GSD takes one if N does (``N.takes_noise_level()``), and
+    passes it on; how N uses it (e.g. DRUNet's extra input channel) is N's.
     """
 
     def __init__(self, model_parameters: LIONParameter = None, denoiser=None):
@@ -51,9 +47,6 @@ class GSD(LIONmodel):
             self.model_parameters.backbone_params = None
 
         self._backbone_model = denoiser
-        self._takes_noise_level = (
-            "noise_level" in inspect.signature(denoiser.forward).parameters
-        )
 
     def spec_kwargs(self) -> dict:
         """GSD's constructor arguments: its parameters, and the denoiser when
@@ -81,8 +74,6 @@ class GSD(LIONmodel):
         params.backbone_model = "DRUNet"
         params.backbone_params = backbone_params
         params.model_input_type = ModelInputType.IMAGE
-        # True: the noise level goes to the denoiser as an extra input channel
-        params.use_noise_level = False
 
         return params
 
@@ -112,13 +103,8 @@ class GSD(LIONmodel):
         # when called under torch.no_grad() (validation, testing, PnP).
         with torch.enable_grad():
             x = x.detach().requires_grad_(True)
-            if getattr(self.model_parameters, "use_noise_level", False):
-                if noise_level is None:
-                    raise ValueError("GSD has use_noise_level: give it the noise level")
-                level = torch.ones_like(x[:, :1]) * noise_level
-                denoised = self._backbone_model(torch.cat((x, level), dim=1))
-            elif self._takes_noise_level:
-                denoised = self._backbone_model(x, noise_level)
+            if self.takes_noise_level():
+                denoised = self._backbone_model(x, noise_level=noise_level)
             else:
                 denoised = self._backbone_model(x)
             obj = 0.5 * torch.sum((denoised - x) ** 2)
@@ -130,6 +116,10 @@ class GSD(LIONmodel):
                 retain_graph=self.training,
             )[0]
         return obj, grad
+
+    def takes_noise_level(self) -> bool:
+        """Whether GSD takes a noise level: if its denoiser does."""
+        return self._backbone_model.takes_noise_level()
 
     def forward(self, x, noise_level: float = None):
         _, grad = self.grad(x, noise_level)

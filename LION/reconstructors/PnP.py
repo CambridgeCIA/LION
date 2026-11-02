@@ -88,10 +88,6 @@ class PnP(LIONReconstructor):
         return self.admm_algorithm(sino, x0=x0, prog_bar=prog_bar, **settings)
 
     # ------------------------------------------------------------------ helpers
-    def _uses_noise_level(self) -> bool:
-        params = getattr(self.model, "model_parameters", None)
-        return bool(getattr(params, "use_noise_level", False))
-
     def _apply_prior(self, x: torch.Tensor, noise_level=None) -> torch.Tensor:
         """Apply the prior to an image ``x`` with the operator's domain shape.
 
@@ -102,7 +98,7 @@ class PnP(LIONReconstructor):
         if not isinstance(self.model, LIONmodel):
             return self.model(x)
         x_in = self.model.normalise(x.unsqueeze(0))
-        if self._uses_noise_level():
+        if self.model.takes_noise_level():
             out = self.model(x_in, noise_level=noise_level)
         else:
             out = self.model(x_in)
