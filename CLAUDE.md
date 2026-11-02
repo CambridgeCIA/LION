@@ -38,8 +38,7 @@ LION is a modular Python/PyTorch research library for learned tomographic recons
 - `CLAUDE.md`: AI development instructions.
 - `contributor-guide.md`: Coding conventions and contribution guidelines.
 - `developers.md`: Developer documentation.
-- `pyproject.toml`: Python project configuration.
-- `setup.py`: Package installation configuration.
+- `pyproject.toml`: Python project and package installation configuration.
 - `env_base.yml`: Conda environment configuration.
 
 ## Development efficiency
