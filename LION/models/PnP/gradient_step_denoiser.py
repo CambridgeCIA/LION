@@ -8,21 +8,54 @@
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 
+import copy
+import inspect
 import torch
 import importlib
 from LION.utils.citation import citation
 
 
 class GSD(LIONmodel):
-    def __init__(self, model_parameters: LIONParameter = None):
+    """The gradient step denoiser: x - grad g(x), with g(x) = 0.5 ||x - N(x)||^2
+    for a denoiser N (Hurault et al., 2022).
+
+    ``denoiser``: N, any LIONmodel (to use a plain torch module, wrap it in a
+    LIONmodel). Without it, N is the CNN ``model_parameters.backbone_model``
+    (default DRUNet) made with ``model_parameters.backbone_params``. N gets the
+    noise level if its ``forward`` takes ``noise_level``.
+    """
+
+    def __init__(self, model_parameters: LIONParameter = None, denoiser=None):
         super().__init__(model_parameters)
 
-        denoiser = getattr(
-            importlib.import_module("LION.models.CNNs"),
-            self.model_parameters.backbone_model,
+        self._denoiser_given = denoiser is not None
+        if denoiser is None:
+            denoiser = getattr(
+                importlib.import_module("LION.models.CNNs"),
+                self.model_parameters.backbone_model,
+            )(self.model_parameters.backbone_params)
+        elif not isinstance(denoiser, LIONmodel):
+            raise TypeError(
+                f"GSD's denoiser must be a LIONmodel, got {type(denoiser).__name__}: "
+                "wrap it in a LIONmodel, so that it can be saved and made again"
+            )
+        else:  # the backbone parameters describe the default denoiser only
+            self.model_parameters = copy.copy(self.model_parameters)
+            self.model_parameters.backbone_model = None
+            self.model_parameters.backbone_params = None
+
+        self._backbone_model = denoiser
+        self._takes_noise_level = (
+            "noise_level" in inspect.signature(denoiser.forward).parameters
         )
 
-        self._backbone_model = denoiser(self.model_parameters.backbone_params)
+    def spec_kwargs(self) -> dict:
+        """GSD's constructor arguments: its parameters, and the denoiser when
+        one was given (it is saved inside GSD's spec)."""
+        kwargs = {"model_parameters": self.model_parameters}
+        if self._denoiser_given:
+            kwargs["denoiser"] = self._backbone_model
+        return kwargs
 
     @staticmethod
     def default_parameters():
@@ -71,7 +104,11 @@ class GSD(LIONmodel):
         # when called under torch.no_grad() (validation, testing, PnP).
         with torch.enable_grad():
             x = x.detach().requires_grad_(True)
-            obj = 0.5 * torch.sum((self._backbone_model(x, noise_level) - x) ** 2)
+            if self._takes_noise_level:
+                denoised = self._backbone_model(x, noise_level)
+            else:
+                denoised = self._backbone_model(x)
+            obj = 0.5 * torch.sum((denoised - x) ** 2)
             grad = torch.autograd.grad(
                 obj,
                 x,

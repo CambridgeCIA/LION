@@ -26,7 +26,7 @@ from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.operators import Operator
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver
-from pytests.helpers import small_dncnn, small_gsd, small_gsdrunet
+from pytests.helpers import small_dncnn, small_gsd, small_gsd_dncnn
 
 pytestmark = pytest.mark.filterwarnings("ignore")
 
@@ -238,7 +238,7 @@ def test_validation_and_test_take_output_then_target(tmp_path, input_type):
     assert seen == [True, True]
 
 
-@pytest.mark.parametrize("make_model", [small_gsd, small_gsdrunet])
+@pytest.mark.parametrize("make_model", [small_gsd, small_gsd_dncnn])
 def test_gradient_step_denoisers_validate_and_test(tmp_path, make_model):
     """Validation/testing run under torch.no_grad(); gradient-step denoisers
     enable autograd themselves, so they work too."""
