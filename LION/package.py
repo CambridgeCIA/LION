@@ -9,7 +9,8 @@ and test it, in one folder (a package), from the records LION saved.
     publish("results/lpd/final", "lpd_package", evaluation="results/evaluations/lpd-1234.json")
 
 ``publish(model_file, folder, evaluation=None)``: ``model_file`` is a model a
-LION solver saved (``"final"``, ``.json`` or ``.pt``); ``evaluation`` is
+LION solver saved (``"final"``, ``.json`` or ``.pt``), or a reconstructor's
+file (``reconstructor.save``: its model with it); ``evaluation`` is
 optional: its test record (``Evaluation.run``), the record's file, or an
 ``Evaluation``, which is then run on the model. The package:
 
@@ -20,6 +21,7 @@ optional: its test record (``Evaluation.run``), the record's file, or an
     data/validation.json   the validation data's record, if it was validated
     solver.json            the training record: solver, optimizer, seed, settings, history
     test.json              the test record, if an evaluation was given
+    reconstructor.json     the reconstructor, if one is published (its model: model)
     environment.txt        the packages installed where it was published (conda's and Python's)
     package.json           the contents and their sha256, the citations, LION's version and commit, notes
     README.md              a model card, generated from the records (edit it: it isn't checksummed)
@@ -89,6 +91,7 @@ FILES = {
     "validation_data": "data/validation.json",
     "solver": "solver.json",
     "test": "test.json",
+    "reconstructor": "reconstructor.json",
     "environment": "environment.txt",
 }
 
@@ -99,11 +102,17 @@ class PublishError(ValueError):
 
 def publish(model_file, folder, evaluation=None) -> pathlib.Path:
     """Write the package of ``model_file`` in ``folder`` (see the module
-    docstring); returns the folder."""
+    docstring); returns the folder. ``model_file`` can be a reconstructor's
+    file (``reconstructor.save``): its model is published, with the
+    reconstructor."""
     from LION.models.LIONmodel import LIONmodel
     from LION.optimizers.training_record import weights_sha256
 
-    model_file = pathlib.Path(model_file).with_suffix("")
+    source = pathlib.Path(model_file).with_suffix("")
+    reconstructor = _reconstructor_record(source)
+    model_file = source
+    if reconstructor is not None:
+        model_file = _reconstructors_model_file(reconstructor, source)
     folder = pathlib.Path(folder)
     for suffix in (".json", ".pt"):
         if not model_file.with_suffix(suffix).is_file():
@@ -126,9 +135,9 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
     if problems:
         raise PublishError(_sentence(problems))
 
-    test = _test_record(evaluation, model_file)
-    problems += _code_problems(saved, test)
-    problems += _not_made_again(saved, test)
+    test = _test_record(evaluation, source)
+    problems += _code_problems(saved, test, reconstructor)
+    problems += _not_made_again(saved, test, reconstructor)
     problems += _not_repeatable(saved, test)
     if problems:  # before loading: the model may name code outside LION
         raise PublishError(_sentence(problems))
@@ -140,7 +149,13 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
     initial = _initial_weights_file(model_file, training)
     validation = (training.get("validation") or {}).get("data")
     if test is not None:
-        problems += _test_problems(test, weights, data, validation)
+        problems += _test_problems(test, weights, data, validation, reconstructor)
+    if reconstructor is not None:
+        if reconstructor["model"].get("weights_sha256") != weights:
+            problems.append(
+                "the reconstructor was saved with other weights than its model "
+                "file has now"
+            )
     if problems:
         raise PublishError(_sentence(problems))
     notes = _notes(saved, test)
@@ -169,6 +184,14 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
     if test is not None:
         _write_json(folder / FILES["test"], test)
         files["test"] = FILES["test"]
+    if reconstructor is not None:  # its model: the package's
+        written_reconstructor = dict(reconstructor)
+        written_reconstructor["model"] = {
+            "file": spec.encode(pathlib.Path(files["model"])),
+            "weights_sha256": weights,
+        }
+        _write_json(folder / FILES["reconstructor"], written_reconstructor)
+        files["reconstructor"] = FILES["reconstructor"]
     (folder / FILES["environment"]).write_text(environment_list(), encoding="utf-8")
     files["environment"] = FILES["environment"]
 
@@ -184,12 +207,12 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
         "lion": _lion(saved.get("environment")),
         "published_with": _lion(environment.environment_record().serialize()),
         "published": datetime.date.today().isoformat(),
-        "citations": citations(saved, test),
+        "citations": citations(saved, test, reconstructor),
         "notes": notes,
     }
     _write_json(folder / "package.json", written)
     (folder / "README.md").write_text(
-        model_card(saved, written, model, test), encoding="utf-8"
+        model_card(saved, written, model, test, reconstructor), encoding="utf-8"
     )
     return folder
 
@@ -215,6 +238,8 @@ def load(folder) -> LIONParameter:
     - ``validation``: ``batch_size``, ``every``, ``function`` and
       ``reconstructor`` (its arguments, or None); None if not validated;
     - ``evaluation``: the test's evaluation's arguments; None without a test;
+    - ``reconstructor``: the reconstructor's arguments (``operator``,
+      ``parameters``); None without one;
     - ``device``: where it was trained; ``folder``; ``records``: the
       ``training``, ``data`` and ``test`` records and ``package.json``, as read.
 
@@ -265,10 +290,19 @@ def load(folder) -> LIONParameter:
             else _arguments(validation["reconstructor"])
         )
     package.evaluation = None if test is None else _arguments(test["evaluation"])
+    reconstructor = None
+    if "reconstructor" in written["files"]:
+        reconstructor = spec.read(folder / written["files"]["reconstructor"])
+    package.reconstructor = (
+        None if reconstructor is None else _arguments(reconstructor["reconstructor"])
+    )
     package.records = LIONParameter()
     package.records.training = read_training_record(saved)
     package.records.data = LIONParameter(**data)
     package.records.test = None if test is None else LIONParameter(**test)
+    package.records.reconstructor = (
+        None if reconstructor is None else LIONParameter(**reconstructor)
+    )
     package.records.package = LIONParameter(**written)
     return package
 
@@ -277,7 +311,8 @@ def build(package, *, device=None, initial_weights=False) -> LIONParameter:
     """The components a package (``load``) describes, made, changed or not:
     ``model``, ``experiment``, ``training_data``, ``validation_data``,
     ``solver`` (with ``model``, its training and validation data set; not its
-    saving), ``evaluation`` (None without a test) and ``device``.
+    saving), ``evaluation`` (None without a test), ``reconstructor`` (with
+    the model; None without one) and ``device``.
 
     The model has its trained weights, or, with ``initial_weights=True``, the
     weights its training started from; a model whose arguments were changed
@@ -354,6 +389,11 @@ def build(package, *, device=None, initial_weights=False) -> LIONParameter:
     evaluation = None
     if package.evaluation is not None:
         evaluation = Evaluation(**vars(package.evaluation), device=device)
+    reconstructor = None
+    if getattr(package, "reconstructor", None) is not None:
+        written = package.records.reconstructor.reconstructor
+        reconstructor = _made(written, package.reconstructor)
+        reconstructor.model = model
 
     built = LIONParameter()
     built.model = model
@@ -362,6 +402,7 @@ def build(package, *, device=None, initial_weights=False) -> LIONParameter:
     built.validation_data = validation_data
     built.solver = solver
     built.evaluation = evaluation
+    built.reconstructor = reconstructor
     built.device = device
     return built
 
@@ -452,6 +493,31 @@ def _device(device):
 # Checks
 
 
+def _reconstructor_record(source):
+    """The record of a reconstructor's file, or None (a model's file)."""
+    from LION.reconstructors.LIONreconstructor import RECORD_KEY
+
+    path = source.with_suffix(".json")
+    if not path.is_file():
+        return None
+    saved = spec.read(path)
+    return saved if RECORD_KEY in saved else None
+
+
+def _reconstructors_model_file(reconstructor, source):
+    """The file a reconstructor's model was loaded from."""
+    reference = reconstructor.get("model") or {}
+    if "file" not in reference:
+        raise PublishError(
+            "the reconstructor's model wasn't loaded from a LION model file "
+            "(LIONmodel.load), so there is no model to publish with it"
+        )
+    path = spec.build(reference["file"])
+    if not path.is_absolute():
+        path = source.parent / path
+    return path.with_suffix("")
+
+
 def _test_record(evaluation, model_file):
     """The test record ``evaluation`` gives (see ``publish``), as a dict."""
     if evaluation is None:
@@ -465,14 +531,18 @@ def _test_record(evaluation, model_file):
     return record.serialize()
 
 
-def _code_problems(saved, test) -> list:
+def _code_problems(saved, test, reconstructor=None) -> list:
     """LION code that isn't committed and pushed, now and when the model was
-    saved and tested."""
+    saved and tested (and the reconstructor saved)."""
     problems = []
     for when, record in (
         ("now", environment.environment_record()),
         ("when the model was saved", saved.get("environment")),
         ("when it was tested", None if test is None else test.get("environment")),
+        (
+            "when the reconstructor was saved",
+            None if reconstructor is None else reconstructor.get("environment"),
+        ),
     ):
         if record is None:
             if when == "when the model was saved":
@@ -485,13 +555,15 @@ def _code_problems(saved, test) -> list:
     return problems
 
 
-def _not_made_again(saved, test) -> list:
+def _not_made_again(saved, test, reconstructor=None) -> list:
     """What the records name outside LION, or could only name."""
     parts = {
         "the model": saved.get("model"),
         "the data": saved.get("dataset_params"),
         "the training": saved.get("training"),
     }
+    if reconstructor is not None:
+        parts["the reconstructor"] = reconstructor.get("reconstructor")
     if test is not None:
         parts["the test"] = {k: test.get(k) for k in ("method", "evaluation", "data")}
         parts["the test's metrics"] = test.get("metrics")
@@ -541,11 +613,22 @@ def _initial_weights_file(model_file, training):
     return path
 
 
-def _test_problems(test, weights, data, validation) -> list:
+def _test_problems(test, weights, data, validation, reconstructor=None) -> list:
     from LION.evaluation.comparison import shared_samples
 
     problems = []
-    tested = (test.get("method") or {}).get("model")
+    method = test.get("method") or {}
+    tested = method.get("model")
+    if reconstructor is not None and (
+        method.get("kind") != "reconstructor"
+        or method.get("reconstructor") != reconstructor["reconstructor"]
+    ):
+        problems.append("the test record is of another method than the reconstructor")
+    elif reconstructor is None and method.get("kind") == "reconstructor":
+        problems.append(
+            "the test record is of a reconstructor: publish the reconstructor's "
+            "file (reconstructor.save)"
+        )
     if not isinstance(tested, dict) or "weights_sha256" not in tested:
         problems.append("the test record isn't of a model")
     elif tested["weights_sha256"] != weights:
@@ -643,7 +726,7 @@ def _absolute_paths(value, found):
 # What a package holds
 
 
-def citations(saved, test=None) -> list:
+def citations(saved, test=None, reconstructor=None) -> list:
     """Where the model and its components come from: each one's ``cite()``
     (BibTeX), once each, as ``{"of": ..., "class": ..., "bibtex": ...}``."""
     training, data = saved.get("training") or {}, saved.get("dataset_params") or {}
@@ -656,6 +739,8 @@ def citations(saved, test=None) -> list:
     ]
     if test is not None:
         components.append(("test", (test.get("method") or {}).get("reconstructor")))
+    if reconstructor is not None:
+        components.append(("reconstructor", reconstructor.get("reconstructor")))
     found, texts = [], set()
     for role, written in components:
         target = written.get(spec.TARGET) if isinstance(written, dict) else None
@@ -727,7 +812,7 @@ def _sentence(problems) -> str:
 # The model card
 
 
-def model_card(saved, package, model, test=None) -> str:
+def model_card(saved, package, model, test=None, reconstructor=None) -> str:
     """The README of a package: what it is, from its records."""
     training, data = saved["training"], saved["dataset_params"]
     files = package["files"]
@@ -737,6 +822,8 @@ def model_card(saved, package, model, test=None) -> str:
     title = f"{model_class} trained on {dataset}"
     if experiment is not None:
         title += f": {experiment.param.name}"
+    if reconstructor is not None:
+        title = f"{_name(reconstructor['reconstructor'])} with a {title}"
 
     lines = [
         f"# {title}",
@@ -756,6 +843,22 @@ def model_card(saved, package, model, test=None) -> str:
     normalisation = _normalisation(saved["model"])
     if normalisation:
         lines.append(f"- Normalisation: {normalisation}.")
+    if reconstructor is not None:
+        written = reconstructor["reconstructor"]
+        settings = written.get("parameters") or {}
+        settings = ", ".join(
+            f"{k} {v}"
+            for k, v in settings.items()
+            if k not in spec._KEYS and not isinstance(v, dict)
+        )
+        lines += [
+            "",
+            "## The reconstruction",
+            "",
+            f"- `{written[spec.TARGET]}`, with the model"
+            + (f": {settings}" if settings else "")
+            + " (`reconstructor.json`).",
+        ]
 
     lines += ["", "## The problem", ""]
     if experiment is not None:
@@ -810,6 +913,19 @@ def model_card(saved, package, model, test=None) -> str:
         'model, _, _ = LIONmodel.load("model")',
         "```",
     ]
+    if reconstructor is not None:
+        lines += [
+            "",
+            "Reconstructing with it, as published (or with another model: "
+            '`LIONReconstructor.instantiate("reconstructor", model)`):',
+            "",
+            "```python",
+            "from LION.reconstructors import LIONReconstructor",
+            "",
+            'reconstructor = LIONReconstructor.load("reconstructor")',
+            "images = reconstructor.reconstruct(measurements)",
+            "```",
+        ]
     lines += ["", "## Training it again", ""]
     lines += _retraining(saved, files)
 

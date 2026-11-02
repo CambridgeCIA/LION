@@ -366,3 +366,86 @@ def test_a_forward_reconstructor_is_evaluated_and_saved(tmp_path, fdk_as_adjoint
     record = evaluation.run(recon, "forward")
     assert record.method.reconstructor["_target_"].endswith("ForwardReconstructor")
     assert len(list(tmp_path.glob("forward-*.json"))) == 1
+
+
+# --------------------------------------------------------------------------
+# A reconstructor's own file: save, load, instantiate
+
+
+def loaded_dncnn(folder, name="model"):
+    """A small DnCNN saved to ``folder/name`` and loaded from it."""
+    import warnings
+
+    from LION.models.LIONmodel import LIONmodel
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # saved without data or training
+        small_dncnn().save(folder / name)
+    return LIONmodel.load(folder / name, supress_warnings=True)[0]
+
+
+def test_saved_and_loaded_with_its_model(tmp_path):
+    import json
+
+    from LION.optimizers.training_record import weights_sha256
+
+    model = loaded_dncnn(tmp_path)
+    recon = pnp(ScaleOp(2.0, (1, 4, 4)), model, "HQS", max_iter=3)
+    recon.save(tmp_path / "pnp")
+    written = json.loads((tmp_path / "pnp.json").read_text())
+    assert set(written["model"]) == {"file", "weights_sha256"}  # no weights
+    again = LIONReconstructor.load(tmp_path / "pnp", allow=["pytests."])
+    assert type(again) is PnP and again.source_file == tmp_path / "pnp"
+    assert vars(again.parameters) == vars(recon.parameters)
+    assert weights_sha256(again.model) == weights_sha256(model)
+    assert PnP.parameters_from_file(tmp_path / "pnp").max_iter == 3
+
+
+def test_made_from_its_file_without_its_model(tmp_path):
+    recon = pnp(ScaleOp(2.0, (1, 4, 4)), loaded_dncnn(tmp_path), "HQS")
+    recon.save(tmp_path / "pnp")
+    again = LIONReconstructor.instantiate(tmp_path / "pnp", allow=["pytests."])
+    assert again.model is None
+    with pytest.raises(ValueError, match="has no model"):
+        again.reconstruct(torch.rand(1, 4, 4))
+    # another model, under the same settings
+    with pytest.warns(UserWarning, match="other weights"):
+        LIONReconstructor.instantiate(
+            tmp_path / "pnp", small_dncnn(), allow=["pytests."]
+        )
+
+
+def test_a_model_not_from_a_file_is_given_again(tmp_path):
+    recon = pnp(ScaleOp(2.0, (1, 4, 4)), small_dncnn(), "HQS")
+    recon.save(tmp_path / "pnp")
+    with pytest.warns(UserWarning, match="wasn't loaded from a file"):
+        again = LIONReconstructor.load(tmp_path / "pnp", allow=["pytests."])
+    assert again.model is None
+
+
+def test_its_model_file_changed_since_warns(tmp_path):
+    import warnings
+
+    recon = pnp(ScaleOp(2.0, (1, 4, 4)), loaded_dncnn(tmp_path), "HQS")
+    recon.save(tmp_path / "pnp")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        small_dncnn().save(tmp_path / "model")  # other weights, same file
+    with pytest.warns(UserWarning, match="other weights"):
+        LIONReconstructor.load(tmp_path / "pnp", allow=["pytests."])
+
+
+def test_its_file_is_a_method_and_names_it_in_comparisons(tmp_path):
+    from LION.evaluation import method
+    from LION.evaluation.comparison import _method_spec
+
+    op = ScaleOp(2.0, (1, 4, 4))
+    recon = pnp(op, Identity(), "HQS", max_iter=3)
+    recon.save(tmp_path / "pnp")
+    made = method(tmp_path / "pnp", op, allow=["pytests."])
+    assert made.record["kind"] == "reconstructor"
+    assert made.record["reconstructor"]["parameters"]["max_iter"] == 3
+    loaded = LIONReconstructor.load(tmp_path / "pnp", allow=["pytests."])
+    assert spec.build(_method_spec(loaded, "it")) == tmp_path / "pnp"
+    loaded.parameters.max_iter = 10  # no longer what its file says
+    assert "lion_reconstructor" in _method_spec(loaded, "it")

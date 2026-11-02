@@ -25,6 +25,12 @@ model: a model's spec would make it with new weights. Records of an evaluation
 keep the model's identity (spec and weights hash) next to it, and
 ``instantiate(source, model)`` checks the model given against it.
 
+``reconstructor.save(file)`` writes its own record, ``file.json``: its spec,
+the file its model was loaded from (``LIONmodel.load``) and the model's
+weights hash, and the environment. The weights stay in the model's file.
+``LIONReconstructor.load(file)`` makes it again with that model;
+``instantiate(file)`` makes it without one (give it another model).
+
 A new reconstructor derives from this class, defines ``default_parameters()``
 and ``reconstruct_sample(y, x0, prog_bar)``, and reads its settings from
 ``self.parameters``.
@@ -32,6 +38,8 @@ and ``reconstruct_sample(y, x0, prog_bar)``, and reads its settings from
 
 from __future__ import annotations
 
+import json
+import pathlib
 import warnings
 from abc import ABC, abstractmethod
 
@@ -42,6 +50,9 @@ from LION.CTtools.ct_utils import make_operator
 from LION.operators import Operator
 from LION.utils import spec
 from LION.utils.parameter import LIONParameter
+
+RECORD_KEY = "lion_reconstructor_record"
+RECORD_VERSION = 1
 
 
 class LIONReconstructor(ABC):
@@ -115,12 +126,53 @@ class LIONReconstructor(ABC):
         kwargs.pop("model", None)
         return kwargs
 
+    def save(self, fname):
+        """Write this reconstructor's record to ``fname`` (``.json``): its
+        spec (operator and parameters), its model by the file it was loaded
+        from and its weights hash (a model made in the script: only the hash;
+        a function: its spec), and the environment. Made again by ``load``
+        (with its model) or ``instantiate`` (without)."""
+        from LION.utils import environment
+
+        model = self.model
+        device = None
+        if isinstance(model, torch.nn.Module):
+            first = next(model.parameters(), None)
+            device = None if first is None else first.device
+        written = {
+            RECORD_KEY: RECORD_VERSION,
+            "reconstructor": spec.to_spec(self),
+            "model": _model_reference(model),
+            "environment": environment.environment_record(device).serialize(),
+        }
+        path = pathlib.Path(fname).with_suffix(".json")
+        path.write_text(json.dumps(written, indent=1), encoding="utf-8")
+
+    @classmethod
+    def load(cls, fname, *, allow=()):
+        """The reconstructor ``fname`` (a file ``save`` wrote) describes, with
+        its model loaded from the recorded file (a warning if its weights
+        changed since). A model that wasn't loaded from a file can't be:
+        then it has no model (a warning; give it one). A model file given by
+        a relative path is relative to ``fname``'s folder. ``allow``: as in
+        ``LION.utils.spec.build``. The reconstructor keeps its file as
+        ``source_file``."""
+        fname = pathlib.Path(fname)
+        saved = spec.read(fname)
+        if RECORD_KEY not in saved:
+            raise ValueError(f"{fname} isn't a reconstructor's file (save())")
+        model = _load_model(saved.get("model"), fname, allow)
+        reconstructor = cls.instantiate(saved, model, allow=allow)
+        reconstructor.source_file = fname.with_suffix("")
+        return reconstructor
+
     @classmethod
     def instantiate(cls, source, model=None, *, allow=(), **arguments):
-        """The reconstructor ``source`` describes: its spec, or a test record
-        (``LION.evaluation``) of it, or that record's file. ``model``: the
-        trained model to use (optional: set it later with ``.model = ...``);
-        with a test record, a warning if its weights aren't the recorded ones.
+        """The reconstructor ``source`` describes: its file (``save``), its
+        spec, or a test record (``LION.evaluation``) of it, or that record's
+        file. ``model``: the trained model to use (optional: set it later with
+        ``.model = ...``); with a file or a test record, a warning if its
+        weights aren't the recorded ones.
         ``arguments`` replace recorded ones. Called on ``LIONReconstructor``
         it makes the class the spec names; on a reconstructor class, that
         class."""
@@ -152,11 +204,13 @@ class LIONReconstructor(ABC):
 
 
 def _recorded(source):
-    """The reconstructor's spec in ``source`` (a spec, a test record or its
-    file), and the model the test record names (or None)."""
+    """The reconstructor's spec in ``source`` (its file, a spec, a test
+    record or its file), and the model the record names (or None)."""
     saved = spec.read(source)
     recorded_model = None
-    if "lion_test_record" in saved:
+    if RECORD_KEY in saved:
+        saved, recorded_model = saved["reconstructor"], saved.get("model")
+    elif "lion_test_record" in saved:
         method = saved["method"]
         if method.get("kind") != "reconstructor":
             raise ValueError(f"the test record is of a {method.get('kind')}")
@@ -167,6 +221,49 @@ def _recorded(source):
             "it can't be made again"
         )
     return saved, recorded_model
+
+
+def _model_reference(model):
+    """A reconstructor's model in its file: a network by the file it was
+    loaded from (if it was) and its weights hash; a function by its spec."""
+    if model is None:
+        return None
+    if isinstance(model, torch.nn.Module):
+        from LION.optimizers.training_record import weights_sha256
+
+        reference = {"weights_sha256": weights_sha256(model)}
+        if getattr(model, "source_file", None) is not None:
+            reference["file"] = spec.encode(pathlib.Path(model.source_file))
+        return reference
+    return {"function": spec.encode_or_name(model, "the model")}
+
+
+def _load_model(reference, fname, allow):
+    """The model a reconstructor's file refers to (see ``_model_reference``)."""
+    if reference is None:
+        return None
+    if "function" in reference:
+        if spec.is_unsaved(reference["function"]):
+            warnings.warn(
+                f"{fname}: its model, {reference['function']['unsaved']}, could "
+                "only be named: give it (reconstructor.model = ...)",
+                stacklevel=3,
+            )
+            return None
+        return spec.build(reference["function"], allow)
+    if "file" not in reference:
+        warnings.warn(
+            f"{fname}: its model wasn't loaded from a file, so it can't be "
+            "loaded: give it (reconstructor.model = ...)",
+            stacklevel=3,
+        )
+        return None
+    from LION.models.LIONmodel import LIONmodel
+
+    path = spec.build(reference["file"], allow)
+    if not path.is_absolute():
+        path = fname.parent / path
+    return LIONmodel.load(path, allow=allow, supress_warnings=True)[0]
 
 
 def _check_model(model, recorded):

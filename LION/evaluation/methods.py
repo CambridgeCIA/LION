@@ -13,6 +13,8 @@ when two evaluations ran the same method):
 - a model's file (``"model"``, ``.json``, ``.pt``): the model with its weights;
   if its training record names a solver with its own way of reconstructing
   (e.g. Noise2Inverse's), that solver's;
+- a reconstructor's file (``reconstructor.save``): the reconstructor, with
+  its model loaded from its file;
 - a solver: its own reconstruction (``solver._forward``);
 - a reconstructor (``PnP``, ``LearnedRegularizerReconstructor``): its
   ``reconstruct``, recorded as its spec (operator, parameters) and its model;
@@ -134,6 +136,12 @@ def _model_identity(model) -> dict:
 
 
 def _from_file(path, operator, allow):
+    from LION.reconstructors.LIONreconstructor import RECORD_KEY
+
+    if RECORD_KEY in spec.read(path):
+        made = method(LIONReconstructor.load(path, allow=allow), operator)
+        made.record["file"] = spec.encode(path.with_suffix(""))
+        return made
     model, _, _ = LIONmodel.load(path, allow=allow, supress_warnings=True)
     try:
         solver_class = spec.resolve(
