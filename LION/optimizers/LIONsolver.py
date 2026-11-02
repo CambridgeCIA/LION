@@ -30,9 +30,6 @@ from LION.optimizers import training_record as records
 # Lionmodels
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 
-# Some utils
-from LION.utils.utils import custom_format_warning
-
 # some numerical standard imports, e.g.
 import numpy as np
 import torch
@@ -766,7 +763,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function checks if an attribute exists, and sets it if needed
         """
         assert isinstance(attr, str), "attr must be a string"
-        warnings.formatwarning = custom_format_warning
 
         if not hasattr(self, attr) or getattr(self, attr) is None:
             if autofill:

@@ -20,12 +20,10 @@ import pathlib
 DATA_FOLDERS = {
     "LION_DATA_PATH": "",
     # as downloaded
-    "LUNA_DATASET_PATH": "raw/LUNA16",
     "WALNUT_DATASET_PATH": "raw/walnuts",
     "LIDC_IDRI_PATH": "raw/LIDC-IDRI",
     "DETECT_PATH": "raw/2detect",
     # ready for training
-    "LUNA_PROCESSED_DATASET_PATH": "processed/LUNA16",
     "LIDC_IDRI_PROCESSED_DATASET_PATH": "processed/LIDC-IDRI",
     "DETECT_PROCESSED_DATASET_PATH": "processed/2detect",
 }

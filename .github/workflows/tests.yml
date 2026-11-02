@@ -23,4 +23,5 @@ jobs:
         python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
         python -m pip install -e ".[tests,standalone]"
     - name: Run tests
-      run: python -m pytest  # testpaths = pytests/
+      # testpaths = pytests/; in parallel with pytest-xdist (in `tests`)
+      run: python -m pytest -n auto --dist loadfile --maxprocesses=8
