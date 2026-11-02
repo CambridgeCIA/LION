@@ -67,10 +67,13 @@ def model_from(init_seed=0):
     return small_dncnn()
 
 
-def denoiser_solver(folder=None, init_seed=0, seed=0, lr=1e-2, validation=True):
+def denoiser_solver(
+    folder=None, init_seed=0, seed=0, lr=1e-2, validation=True, model=None
+):
     """A GaussianDenoiserSolver (random noise in every batch) on shuffled data,
-    checkpointing every epoch: its training uses torch's random numbers."""
-    model = model_from(init_seed)
+    checkpointing every epoch: its training uses torch's random numbers.
+    ``model``: the model to train (default: a new one)."""
+    model = model_from(init_seed) if model is None else model
     solver = GaussianDenoiserSolver(
         model,
         torch.optim.Adam(model.parameters(), lr=lr),
@@ -436,10 +439,15 @@ def test_initial_weights_saved_when_they_cant_be_made_again(tmp_path):
         for p in solver.model.parameters():
             p.mul_(0.5)
     initial = weights_sha256(solver.model)
-    solver.train(1)
+    with pytest.warns(UserWarning, match="where they come from isn't recorded"):
+        solver.train(1)
     solver.save_final_results()
     record = read_training_record(tmp_path / "final")
-    assert vars(record.initial_weights) == {"from": "file", "file": "final_initial.pt"}
+    assert vars(record.initial_weights) == {
+        "from": "file",
+        "file": "final_initial.pt",
+        "origin": None,
+    }
     again = LIONmodel.instantiate(tmp_path / "final", initial_weights=True)
     assert weights_sha256(again) == initial
 
@@ -450,7 +458,7 @@ def test_without_a_save_folder_they_cant_be_saved():
         next(solver.model.parameters()).mul_(0.5)
     with pytest.warns(UserWarning, match="can't be repeated exactly"):
         solver.train(1)
-    assert solver.initial_weights == {"from": None}
+    assert solver.initial_weights == {"from": None, "origin": None}
 
 
 def test_a_resumed_run_keeps_how_its_initial_weights_are_made(tmp_path):
@@ -505,3 +513,37 @@ def test_a_run_is_repeated_from_its_file_alone(tmp_path):
     )
     repeat.train(record.epochs.asked)
     assert same_weights(repeat.model, LIONmodel.load(file, supress_warnings=True)[0])
+
+
+def test_a_fine_tuned_model_records_its_original(tmp_path):
+    """Trained from a model loaded from its file: the training record names
+    that file and its weights' hash."""
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    first = denoiser_solver(tmp_path / "a", validation=False)
+    first.train(1)
+    first.save_final_results()
+    loaded = LIONmodel.load(tmp_path / "a" / "final", supress_warnings=True)[0]
+    tuned = denoiser_solver(tmp_path / "b", validation=False, model=loaded)
+    tuned.train(1)
+    tuned.save_final_results()
+    how = read_training_record(tmp_path / "b" / "final").initial_weights
+    assert how.serialize() == {
+        "from": "file",
+        "file": "final_initial.pt",
+        "origin": {
+            "file": encode(tmp_path / "a" / "final"),
+            "weights_sha256": weights_sha256(
+                LIONmodel.load(tmp_path / "a" / "final", supress_warnings=True)[0]
+            ),
+        },
+    }
+    # weights changed after loading: they aren't that file's any more
+    again = LIONmodel.load(tmp_path / "a" / "final", supress_warnings=True)[0]
+    with torch.no_grad():
+        next(again.parameters()).mul_(0.5)
+    (tmp_path / "c").mkdir()
+    changed = denoiser_solver(tmp_path / "c", validation=False, model=again)
+    with pytest.warns(UserWarning, match="where they come from isn't recorded"):
+        changed.train(1)
+    assert changed.initial_weights["origin"] is None

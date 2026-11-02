@@ -137,6 +137,11 @@ numbers are the same:
   custom start, layers made on a GPU), it saves the weights next to the
   results (`<name>_initial.pt`) and records `{"from": "file", ...}`.
   `LIONmodel.instantiate(file, initial_weights=True)` makes them again.
+- **Fine-tuning.** A model loaded with `LIONmodel.load` and trained again
+  records where its weights came from: `initial_weights.origin` is the
+  original's file and its weights hash, so a fine-tuned model's file leads
+  to its original's records. Weights loaded otherwise (e.g.
+  `load_state_dict`) are saved, with `origin: None` and a warning.
 - **Training's random numbers.** Solvers take a `seed` (default 0; `None`:
   unseeded) and seed torch, numpy and Python's `random` when training starts.
   Checkpoints keep the random state, so a resumed run continues exactly as the
@@ -237,9 +242,17 @@ lpd_package/
   - what training again would miss: unsaved initial weights, `seed=None`, data
     not made by an `Experiment`, or data outside `LION_DATA_PATH`;
   - a test of other weights, or on data the model was trained or validated on;
+  - for a fine-tuned model, an original (and its original, ...) that is
+    missing, has other weights than training started from, or would be refused
+    itself;
   - a folder that isn't empty.
+- **A fine-tuned model's originals** are in the package: their metadata as
+  `origin/model.json` (and `origin/origin/model.json`, ...), and the model card
+  lists them. `train_again` repeats the last training, from the saved initial
+  weights.
 - **Notes** (in `package.json` and the model card): a package published in
-  another environment than it was trained in, or tested on another problem.
+  another environment than it was trained in, tested on another problem, or
+  trained from weights whose origin isn't recorded.
 - **Citations** are each component's `cite()`: where the model, solver and
   dataset come from (their papers), not the work being published.
 - **The model card** describes the model, the problem, the training and the

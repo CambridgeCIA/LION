@@ -22,6 +22,8 @@ optional: its test record (``Evaluation.run``), the record's file, or an
     solver.json            the training record: solver, optimizer, seed, settings, history
     test.json              the test record, if an evaluation was given
     reconstructor.json     the reconstructor, if one is published (its model: model)
+    origin/model.json      for a fine-tuned model, its original's metadata (and
+                           origin/origin/model.json, ... for the original's original)
     environment.txt        the packages installed where it was published (conda's and Python's)
     package.json           the contents and their sha256, the citations, LION's version and commit, notes
     README.md              a model card, generated from the records (edit it: it isn't checksummed)
@@ -56,6 +58,9 @@ otherwise. The model card shows the same, and the code step by step.
   made again;
 - a test record of other weights than the model's, or test data the model was
   trained or validated on;
+- for a fine-tuned model, an original (and its original, ...) that is
+  missing, has other weights than training started from, or would be
+  refused itself;
 - a folder that isn't empty.
 
 What a reader should know of a complete package (it was published in another
@@ -150,6 +155,7 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
     validation = (training.get("validation") or {}).get("data")
     if test is not None:
         problems += _test_problems(test, weights, data, validation, reconstructor)
+    origins, origin_notes = _origins(model_file, training, problems)
     if reconstructor is not None:
         if reconstructor["model"].get("weights_sha256") != weights:
             problems.append(
@@ -158,7 +164,7 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
             )
     if problems:
         raise PublishError(_sentence(problems))
-    notes = _notes(saved, test)
+    notes = _notes(saved, test) + origin_notes
     for note in notes:
         warnings.warn(note, stacklevel=2)
 
@@ -184,6 +190,11 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
     if test is not None:
         _write_json(folder / FILES["test"], test)
         files["test"] = FILES["test"]
+    for depth, (path, original) in enumerate(origins, start=1):
+        written_origin = pathlib.Path(*["origin"] * depth, "model.json")
+        (folder / written_origin.parent).mkdir(parents=True, exist_ok=True)
+        _write_json(folder / written_origin, original)
+        files.setdefault("origins", []).append(written_origin.as_posix())
     if reconstructor is not None:  # its model: the package's
         written_reconstructor = dict(reconstructor)
         written_reconstructor["model"] = {
@@ -212,7 +223,8 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
     }
     _write_json(folder / "package.json", written)
     (folder / "README.md").write_text(
-        model_card(saved, written, model, test, reconstructor), encoding="utf-8"
+        model_card(saved, written, model, test, reconstructor, origins),
+        encoding="utf-8",
     )
     return folder
 
@@ -241,7 +253,8 @@ def load(folder) -> LIONParameter:
     - ``reconstructor``: the reconstructor's arguments (``operator``,
       ``parameters``); None without one;
     - ``device``: where it was trained; ``folder``; ``records``: the
-      ``training``, ``data`` and ``test`` records and ``package.json``, as read.
+      ``training``, ``data``, ``test`` and ``reconstructor`` records, the
+      ``origins`` of a fine-tuned model, and ``package.json``, as read.
 
     The classes are the recorded ones (another class's parameters come from
     its ``parameters_from_file``). Files changed since the package was
@@ -303,6 +316,10 @@ def load(folder) -> LIONParameter:
     package.records.reconstructor = (
         None if reconstructor is None else LIONParameter(**reconstructor)
     )
+    package.records.origins = [
+        LIONParameter(**spec.read(folder / path))
+        for path in written["files"].get("origins", [])
+    ]
     package.records.package = LIONParameter(**written)
     return package
 
@@ -493,6 +510,53 @@ def _device(device):
 # Checks
 
 
+def _origins(model_file, training, problems):
+    """The models a fine-tuned model comes from, ``[(file, metadata), ...]``
+    (its original, the original's original, ...), checked as the model is:
+    their records, code and weights; problems are added to ``problems``.
+    Returns them and notes (an origin that isn't recorded)."""
+    from LION.models.LIONmodel import LIONmodel
+    from LION.optimizers.training_record import weights_sha256
+
+    found, notes, seen = [], [], set()
+    how, where = training.get("initial_weights") or {}, model_file
+    while how.get("from") != "random_state":
+        origin = how.get("origin")
+        if not origin:
+            if how.get("from") == "file":
+                notes.append(
+                    f"the training of {where.name} started from weights whose "
+                    "origin isn't recorded (not loaded from a LION model file)"
+                )
+            break
+        path = spec.build(origin["file"]).with_suffix("")
+        what = f"the original model {path} (that {where.name} was fine-tuned from)"
+        if path in seen or not path.with_suffix(".json").is_file():
+            problems.append(f"{what} is missing: its records are needed")
+            break
+        seen.add(path)
+        original = spec.read(path)
+        if original.get("training") is None or original.get("dataset_params") is None:
+            problems.append(f"{what} has no training or data record")
+            break
+        own = (
+            _code_problems(original, None, now=False)
+            + _not_made_again(original, None)
+            + _not_repeatable(original, None)
+        )
+        problems += [f"{what}: {problem}" for problem in own]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            loaded, _, _ = LIONmodel.load(path, supress_warnings=True)
+        if weights_sha256(loaded) != origin.get("weights_sha256"):
+            problems.append(
+                f"{what} now has other weights than the training started from"
+            )
+        found.append((path, original))
+        how, where = original["training"].get("initial_weights") or {}, path
+    return found, notes
+
+
 def _reconstructor_record(source):
     """The record of a reconstructor's file, or None (a model's file)."""
     from LION.reconstructors.LIONreconstructor import RECORD_KEY
@@ -531,12 +595,12 @@ def _test_record(evaluation, model_file):
     return record.serialize()
 
 
-def _code_problems(saved, test, reconstructor=None) -> list:
+def _code_problems(saved, test, reconstructor=None, now=True) -> list:
     """LION code that isn't committed and pushed, now and when the model was
     saved and tested (and the reconstructor saved)."""
     problems = []
     for when, record in (
-        ("now", environment.environment_record()),
+        ("now", environment.environment_record() if now else None),
         ("when the model was saved", saved.get("environment")),
         ("when it was tested", None if test is None else test.get("environment")),
         (
@@ -812,7 +876,7 @@ def _sentence(problems) -> str:
 # The model card
 
 
-def model_card(saved, package, model, test=None, reconstructor=None) -> str:
+def model_card(saved, package, model, test=None, reconstructor=None, origins=()) -> str:
     """The README of a package: what it is, from its records."""
     training, data = saved["training"], saved["dataset_params"]
     files = package["files"]
@@ -878,6 +942,27 @@ def model_card(saved, package, model, test=None, reconstructor=None) -> str:
     lines += _training(training, data)
     trained_in = saved.get("environment") or {}
     lines.append(f"- Trained with {_environment(trained_in)}.")
+
+    if origins:
+        lines += [
+            "",
+            "## Fine-tuned from",
+            "",
+            "It was trained from the weights of the model below (each from the "
+            "next); their records are in the package:",
+            "",
+        ]
+        for depth, (path, original) in enumerate(origins, start=1):
+            data_o = original["dataset_params"]
+            training_o = original["training"]
+            epochs = (training_o.get("epochs") or {}).get("done")
+            dataset_o = _dataset_name(data_o, _built(data_o.get("experiment")))
+            lines.append(
+                f"{depth}. `{_name(original['model'])}` trained on {dataset_o}, "
+                f"{_samples(data_o)}, {_count(epochs, 'epoch')}, seed "
+                f"{training_o.get('seed')} (`{'origin/' * depth}model.json`; "
+                f"it was `{path}`)."
+            )
 
     if test is not None:
         from LION.evaluation.evaluation import table

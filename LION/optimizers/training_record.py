@@ -17,7 +17,10 @@ best validation, checkpoints), next to the record of the training data
 - ``initial_weights``: how those can be made again (``LIONmodel.instantiate(
   file, initial_weights=True)``): ``{"from": "random_state"}`` (the model made
   again from the random state saved with it), ``{"from": "file", "file": ...}``
-  (saved next to the results), or ``{"from": None}``;
+  (saved next to the results), or ``{"from": None}``; for weights that
+  weren't made from the random state, ``origin``: the model file they were
+  loaded from and its weights hash (a fine-tuned model's original), or None
+  if they didn't come from a LION model file;
 - ``train``: how the training data were fed (``batch_size``, ``shuffle``,
   ``drop_last``); the data themselves are the file's ``dataset_params``;
 - ``validation``: its data record, how they were fed, ``every`` (epochs),
