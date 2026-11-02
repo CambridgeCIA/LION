@@ -21,7 +21,7 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.models.post_processing.FBPMSDNet import FBPMSDNet
 from LION.utils import spec
 from LION.utils.parameter import LIONParameter
-from pytests.helpers import ImageMatrixOp, small_gsd, small_gsdrunet
+from pytests.helpers import ImageMatrixOp, small_gsd, small_gsd_dncnn
 
 # Saving a model without geometry warns about it; that is expected for DnCNN.
 
@@ -162,6 +162,27 @@ def test_nested_model_parameters_load(tmp_path):
     assert backbone.model_input_type is ModelInputType.IMAGE
     x = torch.rand(1, 1, 16, 16)
     torch.testing.assert_close(loaded(x), model(x))
+
+
+def test_gsd_saves_and_loads_its_denoiser(tmp_path):
+    from LION.models.PnP.gradient_step_denoiser import GSD
+
+    torch.manual_seed(0)
+    model = small_gsd_dncnn().eval()
+    assert model.model_parameters.backbone_params is None
+    _save(model, tmp_path / "model")
+    loaded, _, _ = GSD.load(tmp_path / "model", supress_warnings=True)
+    loaded = loaded.cpu().eval()
+    assert type(loaded._backbone_model).__name__ == "DnCNN"
+    x = torch.rand(1, 1, 16, 16)
+    torch.testing.assert_close(loaded(x), model(x))
+
+
+def test_gsd_denoiser_must_be_a_lion_model():
+    from LION.models.PnP.gradient_step_denoiser import GSD
+
+    with pytest.raises(TypeError, match="LIONmodel"):
+        GSD(denoiser=torch.nn.Conv2d(1, 1, 3, padding=1))
 
 
 class Middle(LIONmodel):
@@ -590,7 +611,7 @@ def test_lpd_learned_steps_positive_and_old_checkpoints_load(lpd_module, monkeyp
 # called under torch.no_grad() (validation, testing, PnP loops).
 
 
-@pytest.mark.parametrize("make_model", [small_gsd, small_gsdrunet])
+@pytest.mark.parametrize("make_model", [small_gsd, small_gsd_dncnn])
 def test_same_output_with_and_without_no_grad(make_model):
     torch.manual_seed(0)
     model = make_model().eval()
@@ -602,7 +623,7 @@ def test_same_output_with_and_without_no_grad(make_model):
     assert not out.requires_grad  # nothing leaks out of no_grad
 
 
-@pytest.mark.parametrize("make_model", [small_gsd, small_gsdrunet])
+@pytest.mark.parametrize("make_model", [small_gsd, small_gsd_dncnn])
 def test_training_still_backpropagates_to_weights(make_model):
     model = make_model().train()
     loss = model(torch.rand(2, 1, 16, 16)).pow(2).mean()

@@ -5,7 +5,6 @@ import torch
 from LION.models.CNNs.dncnn import DnCNN
 from LION.models.LIONmodel import ModelInputType
 from LION.models.PnP.gradient_step_denoiser import GSD
-from LION.models.PnP.gs_drunet import GSDRUNet
 from LION.operators import Operator
 
 
@@ -82,8 +81,6 @@ def small_gsd():
     return GSD(params)
 
 
-def small_gsdrunet():
-    params = GSDRUNet.default_parameters()
-    params.int_channels = 4
-    params.n_blocks = 1
-    return GSDRUNet(params)
+def small_gsd_dncnn():
+    """GSD with a denoiser that takes no noise level."""
+    return GSD(denoiser=small_dncnn())
