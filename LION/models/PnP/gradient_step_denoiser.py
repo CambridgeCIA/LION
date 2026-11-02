@@ -20,9 +20,15 @@ class GSD(LIONmodel):
     for a denoiser N (Hurault et al., 2022).
 
     ``denoiser``: N, any LIONmodel (to use a plain torch module, wrap it in a
-    LIONmodel). Without it, N is the CNN ``model_parameters.backbone_model``
-    (default DRUNet) made with ``model_parameters.backbone_params``. N gets the
-    noise level if its ``forward`` takes ``noise_level``.
+    LIONmodel, e.g. ``TorchModel``). Without it, N is the CNN
+    ``model_parameters.backbone_model`` (default DRUNet) made with
+    ``model_parameters.backbone_params``.
+
+    The noise level: with ``model_parameters.use_noise_level``, GSD gives it to
+    N as an extra input channel, constant at the noise level (so N takes one
+    more input channel than the image has). Otherwise N gets it as an argument
+    if its ``forward`` takes ``noise_level`` (e.g. DRUNet), and not at all if
+    not.
     """
 
     def __init__(self, model_parameters: LIONParameter = None, denoiser=None):
@@ -75,6 +81,8 @@ class GSD(LIONmodel):
         params.backbone_model = "DRUNet"
         params.backbone_params = backbone_params
         params.model_input_type = ModelInputType.IMAGE
+        # True: the noise level goes to the denoiser as an extra input channel
+        params.use_noise_level = False
 
         return params
 
@@ -104,7 +112,12 @@ class GSD(LIONmodel):
         # when called under torch.no_grad() (validation, testing, PnP).
         with torch.enable_grad():
             x = x.detach().requires_grad_(True)
-            if self._takes_noise_level:
+            if getattr(self.model_parameters, "use_noise_level", False):
+                if noise_level is None:
+                    raise ValueError("GSD has use_noise_level: give it the noise level")
+                level = torch.ones_like(x[:, :1]) * noise_level
+                denoised = self._backbone_model(torch.cat((x, level), dim=1))
+            elif self._takes_noise_level:
                 denoised = self._backbone_model(x, noise_level)
             else:
                 denoised = self._backbone_model(x)

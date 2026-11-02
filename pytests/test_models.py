@@ -178,6 +178,19 @@ def test_gsd_saves_and_loads_its_denoiser(tmp_path):
     torch.testing.assert_close(loaded(x), model(x))
 
 
+def test_gsd_gives_the_noise_level_as_a_channel():
+    from pytests.helpers import small_gsd_noise_channel
+
+    torch.manual_seed(0)
+    model = small_gsd_noise_channel().eval()
+    x = torch.rand(2, 1, 8, 8)
+    low, high = model(x, noise_level=0.01), model(x, noise_level=0.5)
+    assert low.shape == x.shape
+    assert not torch.allclose(low, high)
+    with pytest.raises(ValueError, match="noise level"):
+        model(x)
+
+
 def test_gsd_denoiser_must_be_a_lion_model():
     from LION.models.PnP.gradient_step_denoiser import GSD
 
