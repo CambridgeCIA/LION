@@ -434,6 +434,8 @@ def _records_of(x, allow):
     """``(training data, validation data, LION code difference)`` of a model
     file or a solver, or of the file a model (also a reconstructor's) was
     loaded from; None for methods without records."""
+    if isinstance(x, (str, os.PathLike)) and _is_reconstructor_file(x):
+        x = LIONReconstructor.load(x, allow=allow)
     if isinstance(x, LIONReconstructor):
         x = x.model
     if getattr(x, "source_file", None) is not None:
@@ -465,11 +467,14 @@ def _records_of(x, allow):
 
 def _method_spec(x, what):
     """A method's spec: a file by its path, a function by its import path, a
-    reconstructor by its spec and its model's file (or function). A model or
+    reconstructor by its own file (if it still is what the file says) or by
+    its spec and its model's file (or function). A model or
     solver object, or a reconstructor whose network wasn't loaded from a file,
     is only named (with a warning): its spec would make it with new weights,
     so give its file instead."""
     if isinstance(x, LIONReconstructor):
+        if _as_its_file_says(x):
+            return spec.encode(pathlib.Path(x.source_file))
         written = _reconstructor_spec(x, what)
         if written is not None:
             return written
@@ -522,6 +527,31 @@ def _built(value, what, allow):
             value["lion_reconstructor"], model, allow=allow
         )
     return spec.build(value, allow)
+
+
+def _as_its_file_says(reconstructor) -> bool:
+    """A reconstructor loaded from its file, with the settings and the model
+    weights its file records (not changed since)."""
+    if getattr(reconstructor, "source_file", None) is None:
+        return False
+    saved = spec.read(reconstructor.source_file)
+    now = json.loads(json.dumps(spec.encode_or_name(reconstructor, "it")))
+    if now != saved["reconstructor"]:
+        return False
+    model = reconstructor.model
+    expected = (saved.get("model") or {}).get("weights_sha256")
+    if isinstance(model, torch.nn.Module):
+        return weights_sha256(model) == expected
+    return True
+
+
+def _is_reconstructor_file(path) -> bool:
+    from LION.reconstructors.LIONreconstructor import RECORD_KEY
+
+    try:
+        return RECORD_KEY in spec.read(path)
+    except (OSError, ValueError):
+        return False
 
 
 def _file_part(name) -> str:

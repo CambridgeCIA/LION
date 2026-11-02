@@ -118,6 +118,7 @@ inside them stay dicts, describing objects that are made only when asked.
 | **Data record** (`LION/data_loaders/data_record.py`) | `data_record(dataset)`, `experiment.data_record(split)`; saved as a model file's `dataset_params` | the dataset's spec; the experiment and split, when made by one; the noise (`sinogram_transform`) and its seed; every sample's ID, their count and hash, and their groups (e.g. LIDC-IDRI's patients); a `Subset`'s indices; on request, a hash of the files' contents | `read_record(source)` |
 | **Training record** (`LION/optimizers/training_record.py`) | every solver, in every file it saves (final, best validation, checkpoint) | the solver's spec (its own arguments, `solver_params` with values it computed); the optimizer; the seed; how the initial weights are made again, and their hash; how data were fed (batch size, shuffle); validation (its data record, frequency, function, reconstructor); epochs asked and done; which weights the file holds; the loss history | `read_training_record(source)` |
 | **Environment record** (`LION/utils/environment.py`) | every model save, and every test | LION's version, commit, uncommitted files and whether the commit is pushed; the packages that change the numbers (torch, numpy, CT backends); CUDA, cuDNN and determinism settings; device, GPUs, driver; platform. Nothing personal (no host, user or paths) | `options.environment` |
+| **Reconstructor record** (`LION/reconstructors/LIONreconstructor.py`) | `reconstructor.save(file)` | the reconstructor's spec (operator and parameters); its model by the file it was loaded from and its weights hash (the weights stay in the model's file); the environment | `LIONReconstructor.load(file)` (with its model), `instantiate(file)` (without) |
 | **Test record** (`LION/evaluation/evaluation.py`) | `Evaluation.run(method)` | the method (e.g. a model's spec and weights hash); the evaluation's spec; the test data's record; the metrics; per-sample scores by sample ID; summary statistics; timing; the environment | `read_test_record(source)` |
 
 ## Repeating a training exactly
@@ -157,7 +158,7 @@ training or test record, a spec, or a package's files):
 | Experiment | `Experiment.instantiate(file)` | `Experiment.parameters_from_file(file)` | `Experiment.instantiate(file, experiment_params=parameters)` |
 | Dataset | `LIONDataset.instantiate(file)` (without noise; checked against the record's samples) | `LIDC_IDRI.parameters_from_file(file)` | `LIDC_IDRI.instantiate(file, parameters=parameters)` |
 | Solver | `LIONsolver.instantiate(file, model)` | `LIONsolver.parameters_from_file(file)` | `LIONsolver.instantiate(file, model, solver_params=parameters)` |
-| Reconstructor | `LIONReconstructor.instantiate(spec_or_test_record, model)` | `PnP.parameters_from_file(source)` | `PnP.instantiate(source, model, parameters=parameters)` |
+| Reconstructor | `LIONReconstructor.load(file)` (with its model); `LIONReconstructor.instantiate(file_spec_or_test_record, model=None)` (another model, or none: running without one is an error) | `PnP.parameters_from_file(source)` | `PnP.instantiate(source, model, parameters=parameters)` |
 | Evaluation | `Evaluation.instantiate(test_record)` | | `Evaluation.instantiate(test_record, samples=10)` |
 
 - Called on a base class (`LIONmodel`, `Experiment`, ...) these make the class
@@ -188,7 +189,7 @@ results as test records:
 from LION.evaluation import Comparison, Evaluation
 
 evaluation = Evaluation(LowDoseCTRecon())            # the experiment's test split, PSNR/SSIM/HaarPSI
-record = evaluation.run("results/lpd/final")          # a model file, a solver, a reconstructor or a function
+record = evaluation.run("results/lpd/final")          # a model or reconstructor file, a solver, a reconstructor or a function
 comparison = Comparison(evaluation, ["results/lpd/final", "results/fbpconvnet/final"])
 comparison.run()                                      # the baseline (FDK for CT) first
 comparison.save("comparison")                         # records, tables, per-sample scores, figures
@@ -210,6 +211,7 @@ again and test it, in one folder:
 ```python
 from LION.package import publish
 publish("results/lpd/final", "lpd_package", evaluation=evaluation)  # evaluation: optional
+publish("results/pnp", "pnp_package")   # a reconstructor's file: its model, and the reconstructor
 ```
 
 ```
@@ -221,6 +223,7 @@ lpd_package/
   data/validation.json   the validation data's record, if validated
   solver.json            the training record
   test.json              the test record, if an evaluation was given
+  reconstructor.json     the reconstructor, when one is published (its model: model)
   environment.txt        the packages installed where it was published (conda's and Python's)
   package.json           the files' sha256, the citations, LION's version and commit, notes
   README.md              a model card, generated (edit it freely: it isn't checksummed)
@@ -253,7 +256,7 @@ package.experiment.experiment_params.noise_params.I0 = 5000
 package.optimizer.lr = 1e-4
 package.training.epochs = 20
 
-built = build(package)               # model, experiment, data, solver (data set), evaluation
+built = build(package)               # model, experiment, data, solver (data set), evaluation, reconstructor
 built = load_and_build("lpd_package")        # as published
 model = train_again(package, "retrained")    # trained again, changed or not
 ```

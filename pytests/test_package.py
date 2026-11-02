@@ -41,7 +41,10 @@ def identity_operator(geometry):
 
 
 def patch(monkeypatch):
+    import LION.reconstructors.LIONreconstructor as reconstructors
+
     monkeypatch.setattr(ct_utils, "make_operator", identity_operator)
+    monkeypatch.setattr(reconstructors, "make_operator", identity_operator)
     monkeypatch.setattr(lion_solver, "make_operator", lambda geometry: None)
     monkeypatch.setattr(environment, "publish_problems", lambda record: [])
 
@@ -590,3 +593,73 @@ def test_the_best_validation_file_is_published_and_trained_again(trained, tmp_pa
     assert p.records.training.weights.kind == "best_validation"
     model = package.train_again(p, tmp_path / "again")
     assert weights_sha256(model) == written["weights_sha256"]
+
+
+# ---------------------------------------------------------------------------
+# A reconstructor, published with its model
+
+
+def saved_reconstructor(trained, tmp_path, kind="PnP"):
+    """A reconstructor with the trained model (loaded from its file), saved."""
+    from LION.reconstructors import ForwardReconstructor, PnP
+
+    file, data_folder = trained
+    geometry = ct_experiments.LowDoseCTRecon(datafolder=data_folder).geometry
+    model = LIONmodel.load(file, supress_warnings=True)[0]
+    if kind == "PnP":
+        parameters = PnP.default_parameters("FBS")
+        parameters.max_iter = 2
+        reconstructor = PnP(geometry, model, parameters)
+    else:
+        reconstructor = ForwardReconstructor(geometry, model)
+    reconstructor.save(tmp_path / kind)
+    return tmp_path / kind
+
+
+def test_a_reconstructor_is_published_with_its_model(trained, tmp_path):
+    from LION.reconstructors import LIONReconstructor
+
+    folder = published(saved_reconstructor(trained, tmp_path), tmp_path / "package")
+    written = json.loads((folder / "package.json").read_text())
+    assert written["files"]["reconstructor"] == "reconstructor.json"
+    assert "reconstructor.json" in written["sha256"]
+    assert "LION.reconstructors.PnP.PnP" in [c["class"] for c in written["citations"]]
+    again = LIONReconstructor.load(folder / "reconstructor")
+    assert again.parameters.max_iter == 2
+    assert weights_sha256(again.model) == written["weights_sha256"]
+    card = (folder / "README.md").read_text()
+    assert card.startswith("# PnP with a DnCNN trained on LIDC-IDRI")
+    assert "## The reconstruction" in card
+    assert 'LIONReconstructor.load("reconstructor")' in card
+    p = package.load(folder)
+    assert p.reconstructor.parameters.max_iter == 2
+    built = package.build(p)
+    assert built.reconstructor.model is built.model
+
+
+def test_a_tested_reconstructor_is_published(trained, tmp_path):
+    file, data_folder = trained
+    source = saved_reconstructor(trained, tmp_path, kind="forward")
+    evaluation = Evaluation(
+        ct_experiments.LowDoseCTRecon(datafolder=data_folder),
+        samples=2,
+        save_folder=None,
+        device="cpu",
+    )
+    folder = published(source, tmp_path / "package", evaluation=evaluation)
+    test = json.loads((folder / "test.json").read_text())
+    assert test["method"]["kind"] == "reconstructor"
+    # its test isn't the model's
+    record = evaluation.run(source)
+    with pytest.raises(package.PublishError, match="publish the reconstructor's"):
+        published(file, tmp_path / "again", evaluation=record)
+
+
+def test_a_reconstructor_whose_model_has_no_file_is_refused(trained, tmp_path):
+    from LION.reconstructors import ForwardReconstructor
+
+    _, data_folder = trained
+    geometry = ct_experiments.LowDoseCTRecon(datafolder=data_folder).geometry
+    ForwardReconstructor(geometry, small_dncnn()).save(tmp_path / "forward")
+    with pytest.raises(package.PublishError, match="wasn't loaded from a LION model"):
+        published(tmp_path / "forward", tmp_path / "package")
