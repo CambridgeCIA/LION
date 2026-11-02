@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 import torch
 from tqdm import tqdm
 
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
 from LION.classical_algorithms.fdk import fdk
+from LION.CTtools.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel
 from LION.operators import CTProjectionOp, Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
+from LION.utils.citation import citation
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
-from LION.utils.citation import citation
 
 # The settings of each algorithm, and their defaults.
 ALGORITHMS = {
@@ -48,7 +51,12 @@ class PnP(LIONReconstructor):
     shape) and must return the same shape.
     """
 
-    def __init__(self, operator, model=None, parameters=None):
+    def __init__(
+        self,
+        operator: Operator | Geometry,
+        model=None,
+        parameters: LIONParameter | None = None,
+    ):
         super().__init__(operator, model, parameters)
         algorithm = getattr(self.parameters, "algorithm", None)
         if algorithm not in ALGORITHMS:
@@ -72,20 +80,40 @@ class PnP(LIONReconstructor):
             self.parameters, name, ALGORITHMS[self.parameters.algorithm][name]
         )
 
-    def reconstruct_sample(self, sino, x0=None, prog_bar: bool = False):
+    def reconstruct_sample(
+        self,
+        y: torch.Tensor,
+        x0: torch.Tensor | None = None,
+        prog_bar: Callable | bool = False,
+        **kwargs,
+    ) -> torch.Tensor:
         """Reconstruct one measurement (e.g. a (C, angles, detectors)
-        sinogram) with the algorithm and settings in ``self.parameters``."""
-        if not isinstance(sino, torch.Tensor):
-            raise TypeError("Sinogram must be a torch.Tensor")
+        sinogram) with the algorithm and settings in ``self.parameters``.
+
+        Args:
+            y: The measurement, in the operator's range shape.
+            x0: Initial image; ``initial_guess(y)`` if None.
+            prog_bar: Whether to display a progress bar. Use the provided callable or
+                `tqdm` if True.
+            kwargs: Additional algorithm settings to override the default settings for a
+            single call. Allows quick adjustment, e.g., during real usage if current
+            visual results are not satisfactory, without having to initiate a new
+            reconstructor object.
+
+        Returns:
+            The reconstruction, in the operator's domain shape.
+        """
         algorithm = self.parameters.algorithm
         settings = {k: self.setting(k) for k in ALGORITHMS[algorithm]}
+        # Merge any extra settings passed to this call.
+        settings.update(kwargs)
         if algorithm == "HQS":
-            return self.hqs_algorithm(sino, x0=x0, prog_bar=prog_bar, **settings)
+            return self.hqs_algorithm(y, x0=x0, prog_bar=prog_bar, **settings)
         if algorithm == "FBS":
             return self.forward_backward_splitting(
-                sino, x0=x0, prog_bar=prog_bar, **settings
+                y, x0=x0, prog_bar=prog_bar, **settings
             )
-        return self.admm_algorithm(sino, x0=x0, prog_bar=prog_bar, **settings)
+        return self.admm_algorithm(y, x0=x0, prog_bar=prog_bar, **settings)
 
     # ------------------------------------------------------------------ helpers
     def _uses_noise_level(self) -> bool:
@@ -137,10 +165,9 @@ class PnP(LIONReconstructor):
         cg_max_iter=100,
         cg_tol=1e-7,
         x0=None,
-        prog_bar: bool = False,
+        prog_bar: Callable | bool = False,
     ):
-        """
-        Half Quadratic Splitting, as in "Plug-and-Play Image Restoration with Deep
+        """Half Quadratic Splitting, as in "Plug-and-Play Image Restoration with Deep
         Denoiser Prior" (Zhang et al.). Alternates
 
             x = argmin ||A x - y||^2 / 2 + mu ||x - z||^2 / 2   (conjugate gradient)
@@ -164,7 +191,8 @@ class PnP(LIONReconstructor):
         z = x.clone()
         iterator = range(max_iter)
         if prog_bar:
-            iterator = tqdm(iterator, desc="HQS iterations")
+            prog_bar = tqdm if prog_bar is True else prog_bar
+            iterator = prog_bar(range(max_iter), desc="HQS iterations")
         for _ in iterator:
             x = self._solve_data_step(sino, z, mu, x, cg_max_iter, cg_tol)
             z = self._apply_prior(x, noise_level)
@@ -177,10 +205,9 @@ class PnP(LIONReconstructor):
         max_iter=10,
         noise_level=None,
         x0=None,
-        prog_bar: bool = False,
+        prog_bar: Callable | bool = False,
     ):
-        """
-        Forward-Backward Splitting: x = prior(x - step_size * A^T (A x - y)).
+        """Forward-Backward Splitting: x = prior(x - step_size * A^T (A x - y)).
 
         :param step_size: Gradient step; 1 / ||A||^2 if None (||A|| is computed
             once per reconstructor, on the first call).
@@ -194,7 +221,8 @@ class PnP(LIONReconstructor):
         x = self.initial_guess(sino) if x0 is None else x0
         iterator = range(max_iter)
         if prog_bar:
-            iterator = tqdm(iterator, desc="FBS iterations")
+            prog_bar = tqdm if prog_bar is True else prog_bar
+            iterator = prog_bar(range(max_iter), desc="FBS iterations")
         for _ in iterator:
             # TODO: would it not make sense to have an adaptive noise_level?
             step = x - step_size * self.op.adjoint(self.op(x) - sino)
@@ -210,10 +238,9 @@ class PnP(LIONReconstructor):
         cg_tol: float = 1e-7,
         noise_level=None,
         x0=None,
-        prog_bar: bool = False,
+        prog_bar: Callable | bool = False,
     ) -> torch.Tensor:
-        """
-        ADMM with the prior as the proximal step:
+        """ADMM with the prior as the proximal step:
 
             x = argmin ||A x - y||^2 / 2 + eta ||x - (v - u)||^2 / 2   (CG)
             v = prior(x + u)
@@ -231,7 +258,8 @@ class PnP(LIONReconstructor):
 
         iterator = range(max_iter)
         if prog_bar:
-            iterator = tqdm(iterator, desc="ADMM iterations")
+            prog_bar = tqdm if prog_bar is True else prog_bar
+            iterator = prog_bar(range(max_iter), desc="ADMM iterations")
         for _ in iterator:
             x = self._solve_data_step(measurement, v - u, eta, x, cg_max_iter, cg_tol)
             v = self._apply_prior(x + u, noise_level)

@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import torch
 
 from LION.optimizers.LIONsolver import model_forward
@@ -30,10 +32,25 @@ class ForwardReconstructor(LIONReconstructor):
         return LIONParameter()
 
     def reconstruct(
-        self, y: torch.Tensor, x0: torch.Tensor | None = None, prog_bar: bool = False
+        self,
+        y: torch.Tensor,
+        x0: torch.Tensor | None = None,
+        prog_bar: Callable | bool = False,
+        **kwargs,
     ) -> torch.Tensor:
         """Reconstruct measurements ``y``: one sample (the operator's range
-        shape) or a batch of them, in one forward pass."""
+        shape) or a batch of them, in one forward pass.
+
+        Args:
+            y: The batched measurement tensor.
+            x0: Optional initial estimation.
+            prog_bar: Whether to display a progress bar. Use the provided callable or
+                `tqdm` if True.
+            kwargs: Additional keyword arguments.
+
+        Returns:
+            The batched reconstruction tensor.
+        """
         if self.model is None:
             raise ValueError(
                 "ForwardReconstructor has no model: set it first "
@@ -43,5 +60,12 @@ class ForwardReconstructor(LIONReconstructor):
             return model_forward(self.model, y, self.op)
         return self.reconstruct_sample(y, x0, prog_bar)
 
-    def reconstruct_sample(self, y, x0=None, prog_bar=False):
+    def reconstruct_sample(
+        self,
+        y: torch.Tensor,
+        x0: torch.Tensor | None = None,
+        prog_bar: Callable | bool = False,
+        **kwargs,
+    ) -> torch.Tensor:
+        assert self.model is not None
         return model_forward(self.model, y.unsqueeze(0), self.op).squeeze(0)

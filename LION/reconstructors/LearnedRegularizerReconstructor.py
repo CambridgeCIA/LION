@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import torch
 from tqdm import tqdm
 
 from LION.classical_algorithms.fdk import fdk
+from LION.models.learned_regularizer.AR import AR
 from LION.models.LIONmodel import LIONmodel
-from LION.operators import CTProjectionOp, Operator
+from LION.operators.CTProjectionOp import CTProjectionOp
+from LION.operators.Operator import Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.parameter import LIONParameter
-from LION.models.learned_regularizer.AR import AR
 
 
 class LearnedRegularizerReconstructor(LIONReconstructor):
@@ -66,7 +69,7 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
             return data_term + self.parameters.alpha * self.regularizer_value(x)
 
     def gradient(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """grad E(x) = A^T (A x - y) + alpha grad R(x), for one sample.
+        """Compute grad E(x) = A^T (A x - y) + alpha grad R(x), for one sample.
 
         The data term's gradient is computed with the operator's own forward and
         adjoint; only the regulariser (a network) is differentiated by autograd.
@@ -90,31 +93,39 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
 
     def reconstruct_sample(
         self,
-        sino: torch.Tensor,
+        y: torch.Tensor,
         x0: torch.Tensor | None = None,
-        prog_bar: bool = False,
+        prog_bar: Callable | bool = False,
+        **kwargs,
     ) -> torch.Tensor:
-        """Reconstruct one measurement ``sino`` (e.g. (C, angles, detectors)).
+        """Reconstruct one measurement ``y`` (e.g. (C, angles, detectors)).
 
-        :param x0: Initial image; ``initial_guess(sino)`` if None.
-        :param prog_bar: Show a progress bar over the iterations.
-        :return: The reconstruction, in the operator's domain shape.
+        Args:
+            y: The measurement, in the operator's range shape.
+            x0: Initial image; ``initial_guess(y)`` if None.
+            prog_bar: Whether to display a progress bar. Use the provided callable or
+                `tqdm` if True.
+            kwargs: Additional keyword arguments.
+
+        Returns:
+            The reconstruction, in the operator's domain shape.
         """
-        x = (self.initial_guess(sino) if x0 is None else x0).detach().clone()
+        x = (self.initial_guess(y) if x0 is None else x0).detach().clone()
         step = self.parameters.step_size
         iterations = range(self.parameters.n_steps)
         if prog_bar:
-            iterations = tqdm(iterations, desc="Learned regulariser reconstruction")
+            prog_bar = tqdm if prog_bar is True else prog_bar
+            iterations = prog_bar(iterations, desc="Learned regulariser reconstruction")
         for _ in iterations:
-            energy = self.energy(x, sino)
-            grad = self.gradient(x, sino)
+            energy = self.energy(x, y)
+            grad = self.gradient(x, y)
             grad_norm2 = torch.sum(grad**2)
             if grad_norm2 == 0:
                 break
             # Armijo backtracking for the gradient step x - step * grad
             while True:
                 candidate = x - step * grad
-                if self.energy(candidate, sino) <= energy - 0.5 * step * grad_norm2:
+                if self.energy(candidate, y) <= energy - 0.5 * step * grad_norm2:
                     break
                 step *= self.parameters.backtracking
                 if step < torch.finfo(x.dtype).tiny:

@@ -8,19 +8,19 @@ import json
 import os
 import tempfile
 import warnings
+from collections.abc import Callable
 
 # the datasets' default folders are in LION_DATA_PATH
 os.environ.setdefault("LION_DATA_PATH", tempfile.gettempdir())
 
-import numpy as np  # noqa: E402
-import pytest  # noqa: E402
-import torch  # noqa: E402
-from torch.utils.data import DataLoader, TensorDataset  # noqa: E402
-
-import LION.evaluation.evaluation as evaluation_module  # noqa: E402
-import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
-from LION.CTtools.ct_geometry import Geometry  # noqa: E402
-from LION.evaluation import (  # noqa: E402
+import LION.evaluation.evaluation as evaluation_module
+import LION.optimizers.LIONsolver as lion_solver
+import numpy as np
+import pytest
+import torch
+from LION.CTtools.ct_geometry import Geometry
+from LION.data_loaders.LIONDataset import LIONDataset
+from LION.evaluation import (
     Evaluation,
     baseline,
     inverse,
@@ -29,16 +29,17 @@ from LION.evaluation import (  # noqa: E402
     scores,
     table,
 )
-from LION.metrics.psnr import PSNR  # noqa: E402
-from LION.metrics.ssim import SSIM  # noqa: E402
-from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
-from LION.models.LIONmodel import ModelInputType  # noqa: E402
-from LION.optimizers.SupervisedSolver import SupervisedSolver  # noqa: E402
-from LION.optimizers.training_record import weights_sha256  # noqa: E402
-from LION.reconstructors.LIONreconstructor import LIONReconstructor  # noqa: E402
-from LION.utils.normaliser import Normalisation  # noqa: E402
-from LION.utils.parameter import LIONParameter  # noqa: E402
-from pytests.helpers import ImageMatrixOp, ScaleOp, small_dncnn  # noqa: E402
+from LION.metrics.psnr import PSNR
+from LION.metrics.ssim import SSIM
+from LION.models.LIONmodel import ModelInputType
+from LION.optimizers.SupervisedSolver import SupervisedSolver
+from LION.optimizers.training_record import weights_sha256
+from LION.reconstructors.LIONreconstructor import LIONReconstructor
+from LION.utils.normaliser import Normalisation
+from LION.utils.parameter import LIONParameter
+from torch.utils.data import DataLoader, TensorDataset
+
+from pytests.helpers import ImageMatrixOp, ScaleOp, small_dncnn
 
 pytestmark = [
     pytest.mark.filterwarnings("ignore:.*Expected '(dataset|training)'"),
@@ -112,7 +113,13 @@ def test_a_function_gets_the_operator():
 
 
 class Doubling(LIONReconstructor):
-    def reconstruct_sample(self, y, x0=None, prog_bar=False):
+    def reconstruct_sample(
+        self,
+        y: torch.Tensor,
+        x0: torch.Tensor | None = None,
+        prog_bar: Callable | bool = False,
+        **kwargs,
+    ) -> torch.Tensor:
         return 2 * y
 
 
@@ -403,6 +410,7 @@ def test_an_experiment(tmp_path, monkeypatch):
     import LION.CTtools.ct_utils as ct_utils
     import LION.data_loaders.LIDC_IDRI as lidc
     import LION.experiments.ct_experiments as ct_experiments
+
     from pytests.test_data_record import stand_in_projection
     from pytests.test_lidc_resampling import fake_lidc
 

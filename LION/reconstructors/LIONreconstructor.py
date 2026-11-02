@@ -42,6 +42,7 @@ import json
 import pathlib
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 
 import torch
 
@@ -87,11 +88,26 @@ class LIONReconstructor(ABC):
     # -- running -------------------------------------------------------------
 
     def reconstruct(
-        self, y: torch.Tensor, x0: torch.Tensor | None = None, prog_bar: bool = False
+        self,
+        y: torch.Tensor,
+        x0: torch.Tensor | None = None,
+        prog_bar: Callable | bool = False,
+        **kwargs,
     ) -> torch.Tensor:
         """Reconstruct measurements ``y``: one sample (the operator's range
         shape) or a batch of them, each on its own. ``x0``: the starting
-        image(s), where the algorithm takes one."""
+        image(s), where the algorithm takes one.
+
+        Args:
+            y: The batched measurement tensor.
+            x0: Optional initial estimation.
+            prog_bar: Whether to display a progress bar. Use the provided callable or
+                `tqdm` if True.
+            kwargs: Additional keyword arguments.
+
+        Returns:
+            The batched reconstruction tensor.
+        """
         if self.model is None:
             raise ValueError(
                 f"{type(self).__name__} has no model: set it first "
@@ -105,23 +121,39 @@ class LIONReconstructor(ABC):
             )
             for i, sample in enumerate(y):
                 start = None if x0 is None else x0[i]
-                images[i] = self.reconstruct_sample(sample, start, prog_bar)
+                images[i] = self.reconstruct_sample(sample, start, prog_bar, **kwargs)
             return images
-        return self.reconstruct_sample(y, x0, prog_bar)
+        return self.reconstruct_sample(y, x0, prog_bar, **kwargs)
 
     @abstractmethod
     def reconstruct_sample(
-        self, y: torch.Tensor, x0: torch.Tensor | None, prog_bar: bool
+        self,
+        y: torch.Tensor,
+        x0: torch.Tensor | None,
+        prog_bar: Callable | bool = False,
+        **kwargs,
     ) -> torch.Tensor:
         """Reconstruct one measurement, with the settings in
-        ``self.parameters``."""
+        ``self.parameters``.
+
+        Args:
+            y: The measurement, in the operator's range shape.
+            x0: Optional initial estimation.
+            prog_bar: Whether to display a progress bar. Use the provided callable or
+                `tqdm` if True.
+            kwargs: Additional keyword arguments.
+
+        Returns:
+            The reconstruction, in the operator's domain shape.
+        """
 
     # -- records ---------------------------------------------------------------
 
     def spec_kwargs(self) -> dict:
         """The spec's arguments: the operator and the parameters, not the model
         (a model's spec would make it with new weights; see the module
-        docstring)."""
+        docstring).
+        """
         kwargs = spec._constructor_arguments(self)
         kwargs.pop("model", None)
         return kwargs
@@ -131,7 +163,8 @@ class LIONReconstructor(ABC):
         spec (operator and parameters), its model by the file it was loaded
         from and its weights hash (a model made in the script: only the hash;
         a function: its spec), and the environment. Made again by ``load``
-        (with its model) or ``instantiate`` (without)."""
+        (with its model) or ``instantiate`` (without).
+        """
         from LION.utils import environment
 
         model = self.model
@@ -156,7 +189,8 @@ class LIONReconstructor(ABC):
         then it has no model (a warning; give it one). A model file given by
         a relative path is relative to ``fname``'s folder. ``allow``: as in
         ``LION.utils.spec.build``. The reconstructor keeps its file as
-        ``source_file``."""
+        ``source_file``.
+        """
         fname = pathlib.Path(fname)
         saved = spec.read(fname)
         if RECORD_KEY not in saved:
@@ -175,7 +209,8 @@ class LIONReconstructor(ABC):
         weights aren't the recorded ones.
         ``arguments`` replace recorded ones. Called on ``LIONReconstructor``
         it makes the class the spec names; on a reconstructor class, that
-        class."""
+        class.
+        """
         saved, recorded_model = _recorded(source)
         written = {
             k: v for k, v in saved.items() if k == spec.TARGET or k not in arguments
@@ -191,7 +226,8 @@ class LIONReconstructor(ABC):
     def parameters_from_file(cls, source, *, allow=()):
         """What ``default_parameters()`` gives, as ``source`` (as in
         ``instantiate``) recorded it: the algorithm's settings, to change and
-        make the reconstructor with (``PnP(operator, model, parameters)``)."""
+        make the reconstructor with (``PnP(operator, model, parameters)``).
+        """
         saved, _ = _recorded(source)
         return spec.parameters(saved, "parameters", cls, LIONReconstructor, allow)
 
@@ -199,13 +235,15 @@ class LIONReconstructor(ABC):
     def cite(cite_format="bib"):
         """Where the reconstructor comes from: its paper's citation, BibTeX ("bib") or
         "MLA" (``LION.utils.citation``); None if it has none. Reconstructors
-        from a paper define it."""
+        from a paper define it.
+        """
         return None
 
 
 def _recorded(source):
     """The reconstructor's spec in ``source`` (its file, a spec, a test
-    record or its file), and the model the record names (or None)."""
+    record or its file), and the model the record names (or None).
+    """
     saved = spec.read(source)
     recorded_model = None
     if RECORD_KEY in saved:
@@ -225,7 +263,8 @@ def _recorded(source):
 
 def _model_reference(model):
     """A reconstructor's model in its file: a network by the file it was
-    loaded from (if it was) and its weights hash; a function by its spec."""
+    loaded from (if it was) and its weights hash; a function by its spec.
+    """
     if model is None:
         return None
     if isinstance(model, torch.nn.Module):
