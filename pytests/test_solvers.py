@@ -13,6 +13,8 @@ import types
 import warnings
 
 import numpy as np
+import importlib
+
 import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -40,7 +42,8 @@ pytestmark = pytest.mark.filterwarnings("ignore")
 def no_ct(monkeypatch):
     for module in (lion_solver, supervised_solver):
         monkeypatch.setattr(module, "make_operator", lambda geometry: None)
-        monkeypatch.setattr(module, "fdk", lambda sino, op: sino)
+    fdk_module = importlib.import_module("LION.classical_algorithms.fdk")
+    monkeypatch.setattr(fdk_module, "fdk", lambda sino, op: sino)
 
 
 def loader(n=4, batch_size=2, seed=0):

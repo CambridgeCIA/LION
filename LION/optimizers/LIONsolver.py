@@ -19,7 +19,6 @@ from typing import Callable, Optional
 from tqdm import tqdm
 from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
-from LION.classical_algorithms.fdk import fdk
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
 from LION.utils.parameter import LIONParameter
 from LION.utils.device import default_device
@@ -75,8 +74,7 @@ def initial_reconstruction(model: LIONmodel, data: torch.Tensor, op) -> torch.Te
     """The input of an image-domain ``model`` made from measurements ``data``:
     its ``model_parameters.initial_reconstruction`` (set with
     ``model.set_initial_reconstruction``), FDK by default."""
-    reconstruct = getattr(model.model_parameters, "initial_reconstruction", None)
-    return fdk(data, op) if reconstruct is None else reconstruct(data, op)
+    return model.initial_reconstruction(data, op)
 
 
 def model_forward(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:

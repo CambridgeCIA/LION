@@ -4,6 +4,8 @@ download/unzip command lines."""
 import pathlib
 import shlex
 
+import importlib
+
 import pytest
 import torch
 
@@ -157,7 +159,8 @@ def _fake_ct(monkeypatch, tmp_path):
         return 2 * sino
 
     monkeypatch.setattr(test_model, "make_operator", lambda geometry: "op")
-    monkeypatch.setattr(lion_solver, "fdk", fake_fdk)
+    fdk_module = importlib.import_module("LION.classical_algorithms.fdk")
+    monkeypatch.setattr(fdk_module, "fdk", fake_fdk)
     return fdk_inputs
 
 

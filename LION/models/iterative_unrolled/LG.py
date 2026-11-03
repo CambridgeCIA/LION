@@ -22,7 +22,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from LION.utils.citation import citation
-from LION.classical_algorithms.fdk import fdk
 
 
 class LGblock(nn.Module):
@@ -44,6 +43,8 @@ class LGblock(nn.Module):
 
 
 class LG(LIONmodel):
+    starts_from_reconstruction = True
+
     def __init__(self, geometry: ct.Geometry, model_parameters: LIONParameter = None):
         super().__init__(model_parameters, geometry)
         self.geometry = geometry
@@ -124,9 +125,7 @@ class LG(LIONmodel):
         B, C, W, H = x.shape
 
         f = x.new_zeros(B, 1, *self.geometry.image_shape[1:])
-        for i in range(B):
-            aux = fdk(x[i, :1], self.op)[0]  # FDK (FBP for parallel beam), clipped at 0
-            f[i] = aux
+        f[:] = self.initial_reconstruction(x[:, :1], self.op)  # FDK by default
 
         tmp = torch.zeros(f.shape).type_as(f)
         s = tmp.clone()

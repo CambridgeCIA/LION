@@ -4,6 +4,8 @@ ItNet and the gradient-step denoisers. All on CPU, without a CT operator."""
 import warnings
 
 import numpy as np
+import importlib
+
 import pytest
 import torch
 
@@ -556,7 +558,8 @@ def make_lpd(module, monkeypatch, calls=None, **params):
         self.op, self.A, self.AT = None, A, AT
 
     monkeypatch.setattr(LIONmodel, "_make_operator", make_operator)
-    monkeypatch.setattr(module, "fdk", lambda sino, op: torch.zeros(1, 8, 8))
+    fdk_module = importlib.import_module("LION.classical_algorithms.fdk")
+    monkeypatch.setattr(fdk_module, "fdk", lambda sino, op: torch.zeros(1, 8, 8))
     model_class = module.LPD if hasattr(module, "LPD") else module.cLPD
     p = model_class.default_parameters()
     p.n_iters, p.step_size = 2, 0.5
@@ -579,6 +582,29 @@ def test_lpd_channels_follow_the_parameters(lpd_module, monkeypatch):
     assert custom(sino).shape == (2, 1, 8, 8)
     with pytest.raises(ValueError, match="data_channels"):
         make_lpd(lpd_module, monkeypatch, data_channels=[7, 16, 16, 4])
+
+
+def constant_reconstruction(sino, op, value=0.0):
+    """An initial reconstruction for tests: a constant 8x8 image per sample."""
+    return torch.full((sino.shape[0], 1, 8, 8), value)
+
+
+@ignore_warnings
+@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
+def test_lpd_starts_from_its_initial_reconstruction(lpd_module, monkeypatch):
+    import functools
+
+    sino = torch.rand(2, 1, 6, 5)
+    model = make_lpd(lpd_module, monkeypatch)  # FDK stand-in: zeros
+    default = model(sino)
+    model.set_initial_reconstruction(
+        functools.partial(constant_reconstruction, value=0.0)
+    )
+    torch.testing.assert_close(model(sino), default)
+    model.set_initial_reconstruction(
+        functools.partial(constant_reconstruction, value=1.0)
+    )
+    assert not torch.allclose(model(sino), default)
 
 
 @ignore_warnings

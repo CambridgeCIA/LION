@@ -23,7 +23,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from LION.utils.citation import citation
-from LION.classical_algorithms.fdk import fdk
 
 
 class dataProximal(nn.Module):
@@ -136,6 +135,8 @@ def _check_channels(params):
 
 class LPD(LIONmodel):
     """Learned Primal Dual network"""
+
+    starts_from_reconstruction = True
 
     def __init__(
         self,
@@ -286,10 +287,8 @@ class LPD(LIONmodel):
         # initialize parameters
         h = g.new_zeros(B, n_dual, W, H)
         f_primal = g.new_zeros(B, n_primal, *self.geometry.image_shape[1:])
-        for i in range(B):
-            aux = fdk(g[i, :1], self.op)[0]  # FDK (FBP for parallel beam), clipped at 0
-            for channel in range(n_primal):
-                f_primal[i, channel] = aux
+        # every primal channel starts from the initial reconstruction (FDK by default)
+        f_primal[:] = self.initial_reconstruction(g[:, :1], self.op)
 
         for i in range(self.model_parameters.n_iters):
             primal_module = getattr(self, f"{i}_primal")

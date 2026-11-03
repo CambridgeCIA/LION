@@ -259,15 +259,25 @@ class LIONmodel(nn.Module, ABC):
             **self.normalisator.record()
         )
 
+    #: Whether the model, though it takes measurements, starts from a
+    #: reconstruction of them (e.g. LPD), which ``set_initial_reconstruction``
+    #: chooses as for image-domain models.
+    starts_from_reconstruction = False
+
     def set_initial_reconstruction(self, reconstruction):
-        """For a model that takes images: how its input is made from the
-        measurements, ``reconstruction(sinogram, operator)``, in training and
-        whenever it is used (``LION.optimizers.LIONsolver.model_forward``).
-        None: FDK (the default). It is one of the model's parameters
-        (``model_parameters.initial_reconstruction``), so it is saved and made
-        again with the model: a LION function or a ``functools.partial`` of
-        one, e.g. ``functools.partial(sirt, num_iterations=50)``."""
-        if self.get_input_type() != ModelInputType.IMAGE:
+        """How the model's initial reconstruction is made from the
+        measurements, ``reconstruction(sinogram, operator)``: the input of a
+        model that takes images (``LION.optimizers.LIONsolver.model_forward``),
+        or where a model like LPD starts (``starts_from_reconstruction``), in
+        training and whenever it is used. None: FDK (the default). It is one of
+        the model's parameters (``model_parameters.initial_reconstruction``),
+        so it is saved and made again with the model: a LION function or a
+        ``functools.partial`` of one, e.g.
+        ``functools.partial(sirt, num_iterations=50)``."""
+        if (
+            self.get_input_type() != ModelInputType.IMAGE
+            and not self.starts_from_reconstruction
+        ):
             raise ValueError(
                 f"{type(self).__name__} takes measurements: it has no initial "
                 "reconstruction"
@@ -275,6 +285,14 @@ class LIONmodel(nn.Module, ABC):
         if reconstruction is not None:
             spec.encode(reconstruction)  # raises if it can't be saved
         self.model_parameters.initial_reconstruction = reconstruction
+
+    def initial_reconstruction(self, sino, op):
+        """The model's initial reconstruction of the measurements ``sino``
+        (``set_initial_reconstruction``), FDK by default."""
+        from LION.classical_algorithms.fdk import fdk
+
+        reconstruct = getattr(self.model_parameters, "initial_reconstruction", None)
+        return fdk(sino, op) if reconstruct is None else reconstruct(sino, op)
 
     def normalise(self, x):
         """Normalise ``x`` as set by ``set_normalisation()`` (identity if unset)."""
