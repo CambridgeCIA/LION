@@ -329,8 +329,6 @@ def _check_channels(params):
 class cLPD(LIONmodel):
     """Learn Primal Dual network with continuous blocks"""
 
-    starts_from_reconstruction = True
-
     def __init__(
         self,
         geometry: ct.Geometry,
@@ -407,6 +405,8 @@ class cLPD(LIONmodel):
         # project the second primal channel in the dual step, as in Adler & Oktem
         params.dual_step_primal_channel = 1
         params.model_input_type = ModelInputType.SINOGRAM
+        # where the iterations start: None is FDK (set_initial_reconstruction)
+        params.initial_reconstruction = None
         return params
 
     @staticmethod
@@ -424,6 +424,8 @@ class cLPD(LIONmodel):
         # project the second primal channel in the dual step, as in Adler & Oktem
         params.dual_step_primal_channel = 1
         params.model_input_type = ModelInputType.SINOGRAM
+        # where the iterations start: None is FDK (set_initial_reconstruction)
+        params.initial_reconstruction = None
         return params
 
     @staticmethod

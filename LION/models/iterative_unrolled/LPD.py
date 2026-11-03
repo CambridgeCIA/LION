@@ -136,8 +136,6 @@ def _check_channels(params):
 class LPD(LIONmodel):
     """Learned Primal Dual network"""
 
-    starts_from_reconstruction = True
-
     def __init__(
         self,
         geometry: ct.Geometry,
@@ -214,6 +212,8 @@ class LPD(LIONmodel):
         # project the second primal channel in the dual step, as in Adler & Oktem
         LPD_params.dual_step_primal_channel = 1
         LPD_params.model_input_type = ModelInputType.SINOGRAM
+        # where the iterations start: None is FDK (set_initial_reconstruction)
+        LPD_params.initial_reconstruction = None
         return LPD_params
 
     @staticmethod
@@ -231,6 +231,8 @@ class LPD(LIONmodel):
         # project the second primal channel in the dual step, as in Adler & Oktem
         LPD_params.dual_step_primal_channel = 1
         LPD_params.model_input_type = ModelInputType.SINOGRAM
+        # where the iterations start: None is FDK (set_initial_reconstruction)
+        LPD_params.initial_reconstruction = None
         return LPD_params
 
     @staticmethod

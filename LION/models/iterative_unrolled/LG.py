@@ -43,8 +43,6 @@ class LGblock(nn.Module):
 
 
 class LG(LIONmodel):
-    starts_from_reconstruction = True
-
     def __init__(self, geometry: ct.Geometry, model_parameters: LIONParameter = None):
         super().__init__(model_parameters, geometry)
         self.geometry = geometry
@@ -71,6 +69,8 @@ class LG(LIONmodel):
         LG_params.channels = [8, 32, 32, 6]
         LG_params.n_iters = 5
         LG_params.model_input_type = ModelInputType.SINOGRAM
+        # where the iterations start: None is FDK (set_initial_reconstruction)
+        LG_params.initial_reconstruction = None
         return LG_params
 
     @staticmethod

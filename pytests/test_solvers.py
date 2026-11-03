@@ -715,13 +715,8 @@ def test_image_models_get_their_initial_reconstruction(tmp_path):
     torch.testing.assert_close(model_forward(loaded, y, op), expected)
 
 
-def test_initial_reconstruction_must_be_saveable_and_for_image_models():
-    from LION.models.LIONmodel import ModelInputType
+def test_initial_reconstruction_must_be_saveable():
     from LION.utils.spec import SpecError
 
     with pytest.raises(SpecError):
         small_dncnn().set_initial_reconstruction(lambda sino, op: sino)
-    with pytest.raises(ValueError, match="measurements"):
-        small_dncnn(ModelInputType.SINOGRAM).set_initial_reconstruction(
-            adjoint_reconstruction
-        )
