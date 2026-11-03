@@ -8,6 +8,7 @@ from typing import Optional
 import torch
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
+from LION.classical_algorithms.fdk import fdk
 from LION.utils.parameter import LIONParameter
 from LION.utils.spec import import_path
 
@@ -84,6 +85,8 @@ class TorchModel(LIONmodel):
     def default_parameters():
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
+        # how its input is made from measurements (set_initial_reconstruction)
+        params.initial_reconstruction = fdk
         return params
 
     def takes_noise_level(self) -> bool:

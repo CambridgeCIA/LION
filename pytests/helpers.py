@@ -102,3 +102,15 @@ class NoiseLevelConvolution(torch.nn.Module):
 def small_gsd_noise_channel():
     """GSD whose denoiser takes the noise level."""
     return GSD(denoiser=TorchModel(NoiseLevelConvolution))
+
+
+def replace_fdk(monkeypatch, stand_in):
+    """Make LION's ``fdk`` compute ``stand_in(sino, op)``, e.g. without the CT
+    backend. Models keep ``fdk`` itself in their parameters (their initial
+    reconstruction), so its inside is replaced, not the name."""
+    import importlib
+
+    fdk_module = importlib.import_module("LION.classical_algorithms.fdk")
+    monkeypatch.setattr(
+        fdk_module, "batched_reconstruction", lambda fn, sino, op: stand_in(sino, op)
+    )

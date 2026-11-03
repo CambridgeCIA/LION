@@ -4,6 +4,8 @@ download/unzip command lines."""
 import pathlib
 import shlex
 
+import importlib
+
 import pytest
 import torch
 
@@ -14,7 +16,7 @@ from LION.CTtools.ct_geometry import Geometry
 from LION.models.LIONmodel import ModelInputType
 from LION.utils.device import default_device
 from LION.utils.parameter import LIONParameter
-from pytests.helpers import small_dncnn
+from pytests.helpers import replace_fdk, small_dncnn
 
 # --------------------------------------------------------------------------
 # LION's default device follows torch.set_default_device / torch.cuda.set_device
@@ -157,7 +159,7 @@ def _fake_ct(monkeypatch, tmp_path):
         return 2 * sino
 
     monkeypatch.setattr(test_model, "make_operator", lambda geometry: "op")
-    monkeypatch.setattr(lion_solver, "fdk", fake_fdk)
+    replace_fdk(monkeypatch, fake_fdk)
     return fdk_inputs
 
 

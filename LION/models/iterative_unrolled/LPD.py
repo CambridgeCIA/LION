@@ -18,19 +18,12 @@ import numpy as np
 from pathlib import Path
 import warnings
 
-from LION.utils.tomosipo_import import import_tomosipo
-
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from LION.utils.citation import citation
-
-
-def fdk(op, sino):
-    """ts_algorithms' FDK, imported on first use (LION imports without the CT
-    backend)."""
-    return import_tomosipo("ts_algorithms", "LPD").fdk(op, sino)
+from LION.classical_algorithms.fdk import fdk
 
 
 class dataProximal(nn.Module):
@@ -220,6 +213,8 @@ class LPD(LIONmodel):
         # project the second primal channel in the dual step, as in Adler & Oktem
         LPD_params.dual_step_primal_channel = 1
         LPD_params.model_input_type = ModelInputType.SINOGRAM
+        # where the iterations start (set_initial_reconstruction)
+        LPD_params.initial_reconstruction = fdk
         return LPD_params
 
     @staticmethod
@@ -237,6 +232,8 @@ class LPD(LIONmodel):
         # project the second primal channel in the dual step, as in Adler & Oktem
         LPD_params.dual_step_primal_channel = 1
         LPD_params.model_input_type = ModelInputType.SINOGRAM
+        # where the iterations start (set_initial_reconstruction)
+        LPD_params.initial_reconstruction = fdk
         return LPD_params
 
     @staticmethod
@@ -293,11 +290,8 @@ class LPD(LIONmodel):
         # initialize parameters
         h = g.new_zeros(B, n_dual, W, H)
         f_primal = g.new_zeros(B, n_primal, *self.geometry.image_shape[1:])
-        for i in range(B):
-            aux = fdk(self.op, g[i, 0])
-            aux = torch.clip(aux, min=0)
-            for channel in range(n_primal):
-                f_primal[i, channel] = aux
+        # every primal channel starts from the initial reconstruction (FDK by default)
+        f_primal[:] = self.initial_reconstruction(g[:, :1], self.op)
 
         for i in range(self.model_parameters.n_iters):
             primal_module = getattr(self, f"{i}_primal")

@@ -411,9 +411,12 @@ def save_unversioned(model, path):
 def test_unversioned_file_loads_with_its_class(tmp_path):
     torch.manual_seed(0)
     model = GSD().eval()
+    # files saved before it had no initial reconstruction: they get FDK
+    del model.model_parameters.initial_reconstruction
     save_unversioned(model, tmp_path / "model")
     loaded, options, _ = GSD.load(tmp_path / "model", supress_warnings=True)
     assert options.model_name == "GSD"
+    assert not hasattr(loaded.model_parameters, "initial_reconstruction")
     x = torch.rand(1, 1, 16, 16)
     with torch.no_grad():
         torch.testing.assert_close(loaded.cpu().eval()(x), model(x))

@@ -302,9 +302,9 @@ def test_made_again_from_a_test_record(tmp_path, monkeypatch):
 @pytest.fixture
 def fdk_as_adjoint(monkeypatch):
     """FDK stand-in on CPU: the adjoint."""
-    import LION.optimizers.LIONsolver as lion_solver
+    from pytests.helpers import replace_fdk
 
-    monkeypatch.setattr(lion_solver, "fdk", lambda y, op: op.adjoint(y))
+    replace_fdk(monkeypatch, lambda y, op: op.adjoint(y))
 
 
 def test_forward_reconstructor_is_the_solvers_forward(fdk_as_adjoint):

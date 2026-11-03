@@ -17,19 +17,12 @@ import numpy as np
 from pathlib import Path
 import warnings
 
-from LION.utils.tomosipo_import import import_tomosipo
-
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from LION.utils.citation import citation
-
-
-def fdk(op, sino):
-    """ts_algorithms' FDK, imported on first use (LION imports without the CT
-    backend)."""
-    return import_tomosipo("ts_algorithms", "LG").fdk(op, sino)
+from LION.classical_algorithms.fdk import fdk
 
 
 class LGblock(nn.Module):
@@ -77,6 +70,8 @@ class LG(LIONmodel):
         LG_params.channels = [8, 32, 32, 6]
         LG_params.n_iters = 5
         LG_params.model_input_type = ModelInputType.SINOGRAM
+        # where the iterations start (set_initial_reconstruction)
+        LG_params.initial_reconstruction = fdk
         return LG_params
 
     @staticmethod
@@ -131,10 +126,7 @@ class LG(LIONmodel):
         B, C, W, H = x.shape
 
         f = x.new_zeros(B, 1, *self.geometry.image_shape[1:])
-        for i in range(B):
-            aux = fdk(self.op, x[i, 0])
-            aux = torch.clip(aux, min=0)
-            f[i] = aux
+        f[:] = self.initial_reconstruction(x[:, :1], self.op)  # FDK by default
 
         tmp = torch.zeros(f.shape).type_as(f)
         s = tmp.clone()

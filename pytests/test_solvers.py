@@ -13,6 +13,8 @@ import types
 import warnings
 
 import numpy as np
+import importlib
+
 import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -27,6 +29,7 @@ from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.operators import Operator
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver
 from pytests.helpers import (
+    replace_fdk,
     small_dncnn,
     small_gsd,
     small_gsd_dncnn,
@@ -40,7 +43,7 @@ pytestmark = pytest.mark.filterwarnings("ignore")
 def no_ct(monkeypatch):
     for module in (lion_solver, supervised_solver):
         monkeypatch.setattr(module, "make_operator", lambda geometry: None)
-        monkeypatch.setattr(module, "fdk", lambda sino, op: sino)
+    replace_fdk(monkeypatch, lambda sino, op: sino)
 
 
 def loader(n=4, batch_size=2, seed=0):
@@ -712,13 +715,8 @@ def test_image_models_get_their_initial_reconstruction(tmp_path):
     torch.testing.assert_close(model_forward(loaded, y, op), expected)
 
 
-def test_initial_reconstruction_must_be_saveable_and_for_image_models():
-    from LION.models.LIONmodel import ModelInputType
+def test_initial_reconstruction_must_be_saveable():
     from LION.utils.spec import SpecError
 
     with pytest.raises(SpecError):
         small_dncnn().set_initial_reconstruction(lambda sino, op: sino)
-    with pytest.raises(ValueError, match="measurements"):
-        small_dncnn(ModelInputType.SINOGRAM).set_initial_reconstruction(
-            adjoint_reconstruction
-        )
