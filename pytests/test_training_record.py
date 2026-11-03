@@ -44,7 +44,7 @@ from LION.optimizers.training_record import (  # noqa: E402
 from LION.utils import paths, rng  # noqa: E402
 from LION.utils.image_transforms import rotate  # noqa: E402
 from LION.utils.spec import build, encode, to_spec  # noqa: E402
-from pytests.helpers import replace_fdk, small_dncnn  # noqa: E402
+from pytests.helpers import CTStandIn, replace_fdk, small_dncnn  # noqa: E402
 
 pytestmark = pytest.mark.filterwarnings("ignore")
 
@@ -52,7 +52,7 @@ pytestmark = pytest.mark.filterwarnings("ignore")
 @pytest.fixture(autouse=True)
 def no_ct(monkeypatch):
     for module in (lion_solver, supervised_solver):
-        monkeypatch.setattr(module, "make_operator", lambda geometry: None)
+        monkeypatch.setattr(module, "make_operator", lambda geometry: CTStandIn())
     replace_fdk(monkeypatch, lambda sino, op: sino)
 
 

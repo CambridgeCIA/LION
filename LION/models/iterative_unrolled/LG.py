@@ -22,7 +22,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from LION.utils.citation import citation
-from LION.classical_algorithms.fdk import fdk
 
 
 class LGblock(nn.Module):
@@ -70,8 +69,6 @@ class LG(LIONmodel):
         LG_params.channels = [8, 32, 32, 6]
         LG_params.n_iters = 5
         LG_params.model_input_type = ModelInputType.SINOGRAM
-        # where the iterations start (set_initial_reconstruction)
-        LG_params.initial_reconstruction = fdk
         return LG_params
 
     @staticmethod
@@ -126,7 +123,9 @@ class LG(LIONmodel):
         B, C, W, H = x.shape
 
         f = x.new_zeros(B, 1, *self.geometry.image_shape[1:])
-        f[:] = self.initial_reconstruction(x[:, :1], self.op)  # FDK by default
+        f[:] = self.initial_reconstruction(
+            x[:, :1], self.op
+        )  # the operator's default (FDK for CT) unless set
 
         tmp = torch.zeros(f.shape).type_as(f)
         s = tmp.clone()

@@ -23,7 +23,13 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils import spec
 from LION.utils.parameter import LIONParameter
 from LION.models.PnP.gradient_step_denoiser import GSD
-from pytests.helpers import ImageMatrixOp, small_gsd, small_gsd_dncnn
+from pytests.helpers import (
+    CTStandIn,
+    ImageMatrixOp,
+    replace_fdk,
+    small_gsd,
+    small_gsd_dncnn,
+)
 
 # Saving a model without geometry warns about it; that is expected for DnCNN.
 
@@ -556,11 +562,11 @@ def make_lpd(module, monkeypatch, calls=None, **params):
         return (y.reshape(y.shape[0], -1) @ M).reshape(y.shape[0], 1, 8, 8)
 
     def make_operator(self):
-        self.op, self.A, self.AT = None, A, AT
+        self.op, self.A, self.AT = CTStandIn(), A, AT
 
     monkeypatch.setattr(LIONmodel, "_make_operator", make_operator)
-    # the FDK stand-in, as the default initial reconstruction
-    monkeypatch.setattr(module, "fdk", lambda sino, op: torch.zeros(1, 8, 8))
+    # the CT operator's default reconstruction (FDK): a stand-in
+    replace_fdk(monkeypatch, lambda sino, op: torch.zeros(1, 8, 8))
     model_class = module.LPD if hasattr(module, "LPD") else module.cLPD
     p = model_class.default_parameters()
     p.n_iters, p.step_size = 2, 0.5

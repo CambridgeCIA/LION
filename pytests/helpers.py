@@ -31,6 +31,11 @@ class ImageMatrixOp(Operator):
     def adjoint(self, y):
         return (self.A.T @ y.reshape(-1)).reshape(self._domain_shape)
 
+    def default_reconstruction(self, y):  # the adjoint, per sample
+        if y.dim() == len(self._range_shape) + 1:
+            return torch.stack([self.adjoint(s) for s in y])
+        return self.adjoint(y)
+
     @property
     def domain_shape(self):
         return self._domain_shape
@@ -57,6 +62,9 @@ class ScaleOp(Operator):
 
     def adjoint(self, y):
         return self.factor * y
+
+    def default_reconstruction(self, y):
+        return self.adjoint(y)
 
     @property
     def domain_shape(self):
@@ -114,3 +122,13 @@ def replace_fdk(monkeypatch, stand_in):
     monkeypatch.setattr(
         fdk_module, "batched_reconstruction", lambda fn, sino, op: stand_in(sino, op)
     )
+
+
+class CTStandIn:
+    """A stand-in CT operator, for tests without tomosipo: its default
+    reconstruction is LION's ``fdk`` (made a stand-in with ``replace_fdk``)."""
+
+    def default_reconstruction(self, y):
+        from LION.classical_algorithms.fdk import fdk
+
+        return fdk(y, self)

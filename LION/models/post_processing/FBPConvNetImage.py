@@ -7,7 +7,6 @@
 
 import torch
 from LION.models.LIONmodel import ModelInputType
-from LION.classical_algorithms.fdk import fdk
 from LION.models.post_processing.FBPConvNet import FBPConvNet
 
 
@@ -20,8 +19,6 @@ class FBPConvNetImage(FBPConvNet):
     def default_parameters():
         params = FBPConvNet.default_parameters()
         params.model_input_type = ModelInputType.IMAGE  # it takes images, not sinograms
-        # how its input is made from measurements (set_initial_reconstruction)
-        params.initial_reconstruction = fdk
         return params
 
     def forward(self, image):

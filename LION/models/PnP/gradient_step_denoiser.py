@@ -6,7 +6,6 @@
 # =============================================================================
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
-from LION.classical_algorithms.fdk import fdk
 from LION.utils.parameter import LIONParameter
 
 import copy
@@ -75,8 +74,6 @@ class GSD(LIONmodel):
         params.backbone_model = "DRUNet"
         params.backbone_params = backbone_params
         params.model_input_type = ModelInputType.IMAGE
-        # how its input is made from measurements (set_initial_reconstruction)
-        params.initial_reconstruction = fdk
 
         return params
 

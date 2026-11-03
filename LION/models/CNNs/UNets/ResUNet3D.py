@@ -9,7 +9,6 @@
 import torch
 import torch.nn as nn
 from LION.models import LIONmodel
-from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 from LION.utils.citation import citation
@@ -145,8 +144,6 @@ class ResUNet3D(LIONmodel.LIONmodel):
     def default_parameters():
         ResUNet3D = LIONModelParameter()
         ResUNet3D.model_input_type = ModelInputType.IMAGE
-        # how its input is made from measurements (set_initial_reconstruction)
-        ResUNet3D.initial_reconstruction = fdk
         ResUNet3D.down_1_channels = [1, 8, 8]
         ResUNet3D.down_2_channels = [8, 16, 16]
         ResUNet3D.down_3_channels = [16, 32, 32]

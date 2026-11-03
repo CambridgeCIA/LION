@@ -26,7 +26,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchdiffeq import odeint, odeint_adjoint
 from LION.utils.citation import citation
-from LION.classical_algorithms.fdk import fdk
 
 
 class ConvODEFunc(nn.Module):
@@ -406,8 +405,6 @@ class cLPD(LIONmodel):
         # project the second primal channel in the dual step, as in Adler & Oktem
         params.dual_step_primal_channel = 1
         params.model_input_type = ModelInputType.SINOGRAM
-        # where the iterations start (set_initial_reconstruction)
-        params.initial_reconstruction = fdk
         return params
 
     @staticmethod
@@ -425,8 +422,6 @@ class cLPD(LIONmodel):
         # project the second primal channel in the dual step, as in Adler & Oktem
         params.dual_step_primal_channel = 1
         params.model_input_type = ModelInputType.SINOGRAM
-        # where the iterations start (set_initial_reconstruction)
-        params.initial_reconstruction = fdk
         return params
 
     @staticmethod
@@ -480,7 +475,7 @@ class cLPD(LIONmodel):
         # initialize parameters
         h = g.new_zeros(B, n_dual, W, H)
         f_primal = g.new_zeros(B, n_primal, *self.geometry.image_shape[1:])
-        # every primal channel starts from the initial reconstruction (FDK by default)
+        # every primal channel starts from the initial reconstruction (the operator's default, FDK for CT, unless set)
         f_primal[:] = self.initial_reconstruction(g[:, :1], self.op)
 
         for i in range(self.model_parameters.n_iters):
