@@ -229,8 +229,9 @@ part.
   (`LION/data_loaders/data_record.py`) can describe them. Where samples come
   in groups that must stay in one split (LIDC-IDRI's patients, 2DeteCT's
   physical samples), `sample_groups()` gives each sample's, so evaluations
-  check leakage by group; data are on
-  `default_device()`. A noise function is a LION function or a
+  check leakage by group. Samples are returned on the CPU, as torch datasets
+  do (the solvers move them to their device); a loader may make them on
+  `default_device()`, e.g. to simulate sinograms there. A noise function is a LION function or a
   `functools.partial` of one (not a lambda), so it can be recorded.
 - Noise is part of the experiment, not the dataset: `LIONDataset.instantiate`
   makes a dataset without it; `Experiment.instantiate(...).get_dataset(split)`

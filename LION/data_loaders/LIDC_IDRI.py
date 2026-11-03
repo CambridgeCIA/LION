@@ -195,7 +195,9 @@ class LIDC_IDRI(LIONDataset):
             - legacy_patient_list (bool): True reproduces the patient list of LION before October 2026 (patients 1 to N for N folders), which left out patients 1011 and 1012 and was moved by leftover folders. Default False: the LIDC-IDRI-NNNN folders (missing in old parameter files, which then use the old list). See ``patient_list``.
             - clevel (float): Defines consensus level if annotation=consensus. Value between 0-1. Default is 0.5.
             - annotation_seed (int or None): with annotation="random", each nodule of each slice gets one annotation, the same every time it is read (see LION.utils.rng.seeded). None: a new one each time. Default 0.
-        The data are on LION's selected device, ``default_device()``.
+        Samples are made on LION's selected device, ``default_device()`` (the
+        sinograms and their noise are simulated there), and returned on the CPU,
+        as torch datasets do: the solvers move them to their device.
             - geometry: Geometry() type, if sinograms are requied (e.g. fo "reconstruction")
 
         """
@@ -236,7 +238,8 @@ class LIDC_IDRI(LIONDataset):
         self.sinogram_transform = None
         self.sinogram_transform_seed = None
         self.image_transform = None
-        # the device selected in LION (a device in parameter files is not used)
+        # where samples are made: the device selected in LION (a device in
+        # parameter files is not used); they are returned on the CPU
         self.device = default_device()
 
         if task in ["reconstruction"]:
@@ -819,7 +822,7 @@ class LIDC_IDRI(LIONDataset):
 
         if self.parameters.task in ["joint", "end_to_end", "segmentation"]:
             mask_tensor = self.get_mask_tensor(patient_id, slice_index_to_load)
-            return reconstruction_tensor, mask_tensor
+            return reconstruction_tensor.cpu(), mask_tensor.cpu()
 
         elif self.parameters.task == "reconstruction":
             sinogram = self.compute_clean_sinogram(reconstruction_tensor.float())
@@ -833,7 +836,7 @@ class LIDC_IDRI(LIONDataset):
                     device=sinogram.device,
                 ):
                     sinogram = self.sinogram_transform(sinogram)
-            return sinogram, reconstruction_tensor
+            return sinogram.cpu(), reconstruction_tensor.cpu()
 
         elif self.parameters.task == "diagnostic":
             return self.patients_diagnosis_dictionary[patient_id]

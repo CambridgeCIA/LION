@@ -111,8 +111,8 @@ def same(a, b):
 
 
 def test_seeded_slices_have_one_noisy_measurement(lidc_data):
-    # on the CPU: DataLoader workers can't use CUDA once the main process has
-    # (LION's loaders return data on their device)
+    # made on the CPU: DataLoader workers can't use CUDA once the main process
+    # has (LIDC-IDRI simulates its sinograms where it makes its samples)
     lidc_data.device = torch.device("cpu")
     lidc_data.set_sinogram_transform(noise, seed=0)
     first = read_all(lidc_data)

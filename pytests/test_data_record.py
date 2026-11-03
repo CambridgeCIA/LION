@@ -131,6 +131,14 @@ def test_lidc_uses_the_selected_device(lidc_folder, no_tomosipo):
     assert data.device == default_device()
 
 
+def test_lidc_returns_samples_on_the_cpu(lidc_folder, no_tomosipo):
+    """Made on the selected device, returned on the CPU (meaningful on a GPU)."""
+    params = lidc.LIDC_IDRI.default_parameters(task="segmentation")
+    params.folder = lidc_folder
+    image, mask = lidc.LIDC_IDRI("test", parameters=params)[0]
+    assert image.device.type == "cpu" and mask.device.type == "cpu"
+
+
 def test_lidc_dataset_record_rebuilds_the_same_dataset(lidc_folder, no_tomosipo):
     data = lidc_dataset(lidc_folder, mode="train")
     record = through_json(data_record(data))
