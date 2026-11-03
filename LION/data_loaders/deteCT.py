@@ -18,6 +18,7 @@ import LION.CTtools.ct_utils as ct
 from LION.CTtools.ct_utils import make_operator
 from LION.utils.tomosipo_import import import_tomosipo
 from LION.utils.rng import seeded
+from LION.utils.device import default_device
 from LION.data_loaders.LIONDataset import LIONDataset
 from LION.utils.citation import citation
 
@@ -57,6 +58,10 @@ class deteCT(LIONDataset):
     - a dict {detector: I0}: one I0 per detector, so that the simulated noise
       follows each detector's real noise. ``deteCT.noise_parameters()`` gives
       ``MODE1_I0_PER_DETECTOR``, which looks like mode1 on each detector.
+
+    Samples are returned on LION's selected device, ``default_device()``
+    (read and given their added noise on the CPU, so the noise doesn't depend
+    on the device).
     """
 
     def __init__(
@@ -69,6 +74,8 @@ class deteCT(LIONDataset):
             parameters = self.default_parameters()
         self.parameters = parameters
         self.geometry_params = geometry_params
+        # where samples are returned: the device selected in LION
+        self.device = default_device()
 
         # Get geometry default, or validate if given geometry is valid for 2DeteCT, as its raw sinogram data, we can't allow any geometry
         if geometry_params is None:
@@ -605,12 +612,17 @@ class deteCT(LIONDataset):
             target = self.__load_and_preprocess_segmentation__(index)
 
         if self.task == "groundtruth":
-            return target
+            return target.to(self.device)
 
         if self.task != "joint":
-            return input, target
+            return input.to(self.device), target.to(self.device)
         else:
-            return input, target, self.__load_and_preprocess_segmentation__(index)
+            segmentation = self.__load_and_preprocess_segmentation__(index)
+            return (
+                input.to(self.device),
+                target.to(self.device),
+                segmentation.to(self.device),
+            )
 
     @staticmethod
     def cite(cite_format="bib"):

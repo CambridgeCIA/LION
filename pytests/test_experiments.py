@@ -303,3 +303,30 @@ def test_experiment_from_saved_parameters_has_a_geometry(tmp_path, cls):
     assert list(experiment.geometry.detector_shape) == list(
         params.geometry.detector_shape
     )
+
+
+@pytest.mark.filterwarnings("ignore:You are not using any detector query")
+def test_detect_returns_samples_on_the_selected_device(tmp_path, monkeypatch):
+    import types
+
+    import torch
+
+    import LION.data_loaders.deteCT as detect_module
+
+    monkeypatch.setattr(detect_module, "default_device", lambda: torch.device("meta"))
+    monkeypatch.setattr(
+        detect_module,
+        "import_tomosipo",
+        lambda *names: types.SimpleNamespace(fdk=None, nag_ls=None),
+    )
+    data = fake_detect(tmp_path, "train")
+    data.task, data.input_mode, data.target_mode = "recon2recon", "mode2", "mode2"
+    data.do_recon = False
+    identifier = data.slice_dataframe.iloc[0]["slice_identifier"]
+    (tmp_path / identifier / "mode2").mkdir(parents=True)
+    np.save(
+        tmp_path / identifier / "mode2" / "reconstruction.npy", np.ones((1024, 1024))
+    )
+    data.geometry = data.get_default_geometry()
+    for tensor in data[0]:
+        assert tensor.device.type == "meta"
