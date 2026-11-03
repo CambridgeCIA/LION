@@ -198,6 +198,15 @@ def test_gsd_takes_a_noise_level_if_its_denoiser_does():
     assert GSD(params).takes_noise_level()  # DRUNet's own option
 
 
+def test_gsd_is_differentiable_with_respect_to_its_input():
+    """As in a network trained end to end: the gradient reaches the input,
+    through the denoiser's gradient too (not only through x - ...)."""
+    torch.manual_seed(0)
+    model = small_gsd_dncnn().eval().double()
+    x = torch.rand(1, 1, 4, 4, dtype=torch.double, requires_grad=True)
+    assert torch.autograd.gradcheck(model, (x,))  # matches finite differences
+
+
 def test_gsd_denoiser_must_be_a_lion_model():
     from LION.models.PnP.gradient_step_denoiser import GSD
 

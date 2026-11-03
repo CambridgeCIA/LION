@@ -98,11 +98,17 @@ class GSD(LIONmodel):
         )
 
     def grad(self, x: torch.Tensor, noise_level: float = None):
-        """g(x) = 0.5 ||x - N(x)||^2 and its gradient with respect to x."""
+        """g(x) = 0.5 ||x - N(x)||^2 and its gradient with respect to x.
+
+        Differentiable with respect to the weights in training, and with
+        respect to ``x`` when ``x`` requires a gradient (e.g. GSD inside a
+        network trained end to end)."""
         # The denoiser is defined through a gradient, so autograd is needed even
         # when called under torch.no_grad() (validation, testing, PnP).
         with torch.enable_grad():
-            x = x.detach().requires_grad_(True)
+            graph = self.training or x.requires_grad
+            if not x.requires_grad:
+                x = x.detach().requires_grad_(True)
             if self.takes_noise_level():
                 denoised = self._backbone_model(x, noise_level=noise_level)
             else:
@@ -112,8 +118,8 @@ class GSD(LIONmodel):
                 obj,
                 x,
                 torch.ones_like(obj),
-                create_graph=self.training,
-                retain_graph=self.training,
+                create_graph=graph,
+                retain_graph=graph,
             )[0]
         return obj, grad
 
