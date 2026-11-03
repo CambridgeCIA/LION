@@ -12,6 +12,7 @@ from collections import OrderedDict
 
 from LION.utils.parameter import LIONParameter
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
+from LION.classical_algorithms.fdk import fdk
 from LION.utils.citation import citation
 
 ##Code for UNet
@@ -175,6 +176,8 @@ class UNet(LIONmodel):
     def default_parameters():
         param = LIONModelParameter()
         param.model_input_type = ModelInputType.IMAGE
+        # how its input is made from measurements (set_initial_reconstruction)
+        param.initial_reconstruction = fdk
         param.inChan = 1
         param.outChan = 1
         param.baseDim = 32

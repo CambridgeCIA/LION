@@ -558,8 +558,8 @@ def make_lpd(module, monkeypatch, calls=None, **params):
         self.op, self.A, self.AT = None, A, AT
 
     monkeypatch.setattr(LIONmodel, "_make_operator", make_operator)
-    fdk_module = importlib.import_module("LION.classical_algorithms.fdk")
-    monkeypatch.setattr(fdk_module, "fdk", lambda sino, op: torch.zeros(1, 8, 8))
+    # the FDK stand-in, as the default initial reconstruction
+    monkeypatch.setattr(module, "fdk", lambda sino, op: torch.zeros(1, 8, 8))
     model_class = module.LPD if hasattr(module, "LPD") else module.cLPD
     p = model_class.default_parameters()
     p.n_iters, p.step_size = 2, 0.5

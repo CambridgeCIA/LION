@@ -22,6 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from LION.utils.citation import citation
+from LION.classical_algorithms.fdk import fdk
 
 
 class LGblock(nn.Module):
@@ -69,8 +70,8 @@ class LG(LIONmodel):
         LG_params.channels = [8, 32, 32, 6]
         LG_params.n_iters = 5
         LG_params.model_input_type = ModelInputType.SINOGRAM
-        # where the iterations start: None is FDK (set_initial_reconstruction)
-        LG_params.initial_reconstruction = None
+        # where the iterations start (set_initial_reconstruction)
+        LG_params.initial_reconstruction = fdk
         return LG_params
 
     @staticmethod

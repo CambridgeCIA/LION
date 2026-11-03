@@ -17,6 +17,7 @@ import torch
 import torch.nn as nn
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
+from LION.classical_algorithms.fdk import fdk
 from LION.utils.citation import citation
 
 
@@ -234,6 +235,8 @@ class MSDNet(LIONmodel):
 
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
+        # how its input is made from measurements (set_initial_reconstruction)
+        params.initial_reconstruction = fdk
         params.in_channels = 1
         params.width = 1
         params.depth = 100

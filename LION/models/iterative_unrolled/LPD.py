@@ -23,6 +23,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from LION.utils.citation import citation
+from LION.classical_algorithms.fdk import fdk
 
 
 class dataProximal(nn.Module):
@@ -212,8 +213,8 @@ class LPD(LIONmodel):
         # project the second primal channel in the dual step, as in Adler & Oktem
         LPD_params.dual_step_primal_channel = 1
         LPD_params.model_input_type = ModelInputType.SINOGRAM
-        # where the iterations start: None is FDK (set_initial_reconstruction)
-        LPD_params.initial_reconstruction = None
+        # where the iterations start (set_initial_reconstruction)
+        LPD_params.initial_reconstruction = fdk
         return LPD_params
 
     @staticmethod
@@ -231,8 +232,8 @@ class LPD(LIONmodel):
         # project the second primal channel in the dual step, as in Adler & Oktem
         LPD_params.dual_step_primal_channel = 1
         LPD_params.model_input_type = ModelInputType.SINOGRAM
-        # where the iterations start: None is FDK (set_initial_reconstruction)
-        LPD_params.initial_reconstruction = None
+        # where the iterations start (set_initial_reconstruction)
+        LPD_params.initial_reconstruction = fdk
         return LPD_params
 
     @staticmethod

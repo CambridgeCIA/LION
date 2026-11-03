@@ -264,23 +264,28 @@ class LIONmodel(nn.Module, ABC):
         measurements, ``reconstruction(sinogram, operator)``: the input of a
         model that takes images (``LION.optimizers.LIONsolver.model_forward``),
         or where a model that takes measurements and starts from a
-        reconstruction (e.g. LPD) starts. None: FDK (the default). It is one of
-        the model's parameters (``model_parameters.initial_reconstruction``),
-        so it is saved and made again with the model: a LION function or a
-        ``functools.partial`` of one, e.g.
-        ``functools.partial(sirt, num_iterations=50)``. Models that use no
-        reconstruction (e.g. the learned FBPs) don't use it."""
-        if reconstruction is not None:
-            spec.encode(reconstruction)  # raises if it can't be saved
+        reconstruction (e.g. LPD) starts. FDK by default (``fdk``; None sets
+        it too). It is one of the model's parameters
+        (``model_parameters.initial_reconstruction``), so it is saved and made
+        again with the model: a LION function or a ``functools.partial`` of
+        one, e.g. ``functools.partial(sirt, num_iterations=50)``. Models that
+        use no reconstruction (e.g. the learned FBPs) don't use it."""
+        if reconstruction is None:
+            from LION.classical_algorithms.fdk import fdk
+
+            reconstruction = fdk
+        spec.encode(reconstruction)  # raises if it can't be saved
         self.model_parameters.initial_reconstruction = reconstruction
 
     def initial_reconstruction(self, sino, op):
-        """The model's initial reconstruction of the measurements ``sino``
-        (``set_initial_reconstruction``), FDK by default."""
+        """The model's initial reconstruction of the measurements ``sino``:
+        ``model_parameters.initial_reconstruction`` (FDK where a model's
+        parameters don't have it: image-domain models that don't set it, and
+        files saved before it existed)."""
         from LION.classical_algorithms.fdk import fdk
 
-        reconstruct = getattr(self.model_parameters, "initial_reconstruction", None)
-        return fdk(sino, op) if reconstruct is None else reconstruct(sino, op)
+        reconstruct = getattr(self.model_parameters, "initial_reconstruction", fdk)
+        return reconstruct(sino, op)
 
     def normalise(self, x):
         """Normalise ``x`` as set by ``set_normalisation()`` (identity if unset)."""

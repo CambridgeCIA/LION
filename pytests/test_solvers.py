@@ -29,6 +29,7 @@ from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.operators import Operator
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver
 from pytests.helpers import (
+    replace_fdk,
     small_dncnn,
     small_gsd,
     small_gsd_dncnn,
@@ -42,8 +43,7 @@ pytestmark = pytest.mark.filterwarnings("ignore")
 def no_ct(monkeypatch):
     for module in (lion_solver, supervised_solver):
         monkeypatch.setattr(module, "make_operator", lambda geometry: None)
-    fdk_module = importlib.import_module("LION.classical_algorithms.fdk")
-    monkeypatch.setattr(fdk_module, "fdk", lambda sino, op: sino)
+    replace_fdk(monkeypatch, lambda sino, op: sino)
 
 
 def loader(n=4, batch_size=2, seed=0):

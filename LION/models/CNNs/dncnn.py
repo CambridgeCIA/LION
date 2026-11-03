@@ -6,6 +6,7 @@
 # =============================================================================
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
+from LION.classical_algorithms.fdk import fdk
 from LION.utils.parameter import LIONParameter
 
 
@@ -68,6 +69,8 @@ class DnCNN(LIONmodel):
     def default_parameters():
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
+        # how its input is made from measurements (set_initial_reconstruction)
+        params.initial_reconstruction = fdk
         params.in_channels = 1
         params.int_channels = 64
         params.kernel_size = (3, 3)

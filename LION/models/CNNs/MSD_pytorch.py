@@ -7,6 +7,7 @@
 
 
 from LION.models import LIONmodel
+from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 from LION.utils.citation import citation
@@ -63,6 +64,8 @@ class MSD_pytorch(LIONmodel.LIONmodel):
     def default_parameters(mode="regression"):
         param = LIONModelParameter()
         param.model_input_type = ModelInputType.IMAGE
+        # how its input is made from measurements (set_initial_reconstruction)
+        param.initial_reconstruction = fdk
         if mode == "regression":
             param.type = "regression"
             param.c_in = 1

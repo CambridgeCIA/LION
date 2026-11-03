@@ -6,6 +6,7 @@
 # =============================================================================
 import torch.nn as nn
 from LION.models.LIONmodel import LIONmodel, ModelInputType, LIONModelParameter
+from LION.classical_algorithms.fdk import fdk
 import LION.CTtools.ct_geometry as ct
 from LION.utils.citation import citation
 
@@ -50,6 +51,8 @@ class AR(LIONmodel):
     def default_parameters():
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
+        # how its input is made from measurements (set_initial_reconstruction)
+        params.initial_reconstruction = fdk
         return params
 
     @staticmethod
