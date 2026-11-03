@@ -14,7 +14,6 @@ from torchdiffeq import odeint, odeint_adjoint
 import LION.CTtools.ct_geometry as ct
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
-from LION.classical_algorithms.fdk import fdk
 from LION.utils.parameter import LIONParameter
 from LION.utils.citation import citation
 
@@ -435,8 +434,6 @@ class cFBPConvNet(LIONmodel):
     def default_parameters():
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
-        # how its input is made from measurements (set_initial_reconstruction)
-        params.initial_reconstruction = fdk
         params.down_1_channels = [64, 64, 64, 64]
         params.down_2_channels = [128, 128, 128]
         params.down_3_channels = [256, 256, 256]

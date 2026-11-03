@@ -108,6 +108,12 @@ class CTProjectionOp(Operator):
         """
         return self._ts._bp(y)
 
+    def default_reconstruction(self, y: torch.Tensor) -> torch.Tensor:
+        """FDK (fan or cone beam) or FBP (parallel beam), clipped at 0."""
+        from LION.classical_algorithms.fdk import fdk
+
+        return fdk(y, self)
+
     def __getattr__(self, name: str):
         """Delegate attribute access to the underlying tomosipo operator."""
         # nn.Module first (registered parameters, buffers, submodules)

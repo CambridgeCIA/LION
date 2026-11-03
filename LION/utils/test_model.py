@@ -65,7 +65,7 @@ def test_with_experiment(
 
     The model is run as the solvers run it in validation and testing
     (``LION.optimizers.LIONsolver.model_forward``): image-domain models get the
-    initial reconstruction (FDK by default) of the experiment's sinograms, normalised if the model has a
+    initial reconstruction (the operator's default, FDK for CT, unless set) of the experiment's sinograms, normalised if the model has a
     normalisation set. Solvers with their own reconstruction (e.g.
     Noise2Inverse, Equivariance2Inverse) evaluate differently: use their
     ``reconstruct``.

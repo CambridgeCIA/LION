@@ -421,3 +421,14 @@ def test_deepfusionbp_single_view_backprojections_match_the_operator():
     torch.testing.assert_close(
         views.sum(dim=1, keepdim=True), expected, rtol=1e-3, atol=1e-3
     )
+
+
+@pytest.mark.tomosipo
+def test_the_ct_operators_default_reconstruction_is_fdk():
+    geometry = Geometry.default_parameters()
+    operator = make_operator(geometry)
+    image = torch.rand(1, *geometry.image_shape[1:], device="cuda")
+    sino = operator(image).unsqueeze(0)
+    torch.testing.assert_close(
+        operator.default_reconstruction(sino), fdk(sino, operator)
+    )

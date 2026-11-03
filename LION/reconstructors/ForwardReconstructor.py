@@ -16,7 +16,7 @@ from LION.utils.parameter import LIONParameter
 class ForwardReconstructor(LIONReconstructor):
     """Reconstruct with a model's forward pass, as its solvers train it
     (``LION.optimizers.LIONsolver.model_forward``): image-domain models (e.g.
-    FBPConvNet) get a reconstruction first (FDK, or the model's
+    FBPConvNet) get a reconstruction first (the operator's default, FDK for CT, or the model's
     ``initial_reconstruction``), sinogram-domain models (e.g.
     LPD) the measurements; with the model's normalisation (its
     ``set_normalisation()``, saved with it), the input is normalised and the

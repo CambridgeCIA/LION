@@ -29,6 +29,7 @@ from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.operators import Operator
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver
 from pytests.helpers import (
+    CTStandIn,
     replace_fdk,
     small_dncnn,
     small_gsd,
@@ -42,7 +43,7 @@ pytestmark = pytest.mark.filterwarnings("ignore")
 @pytest.fixture(autouse=True)
 def no_ct(monkeypatch):
     for module in (lion_solver, supervised_solver):
-        monkeypatch.setattr(module, "make_operator", lambda geometry: None)
+        monkeypatch.setattr(module, "make_operator", lambda geometry: CTStandIn())
     replace_fdk(monkeypatch, lambda sino, op: sino)
 
 
@@ -720,3 +721,27 @@ def test_initial_reconstruction_must_be_saveable():
 
     with pytest.raises(SpecError):
         small_dncnn().set_initial_reconstruction(lambda sino, op: sino)
+
+
+def test_without_an_initial_reconstruction_a_model_starts_from_the_operators():
+    import functools
+
+    from LION.operators.Operator import Operator
+    from LION.optimizers.LIONsolver import model_forward
+    from pytests.helpers import ImageMatrixOp
+
+    torch.manual_seed(0)
+    op = ImageMatrixOp(torch.randn(30, 64), (1, 8, 8))
+    y = torch.randn(2, 30)
+    model = small_dncnn().eval()
+    assert not hasattr(model.model_parameters, "initial_reconstruction")
+    expected = model(op.default_reconstruction(y))
+    torch.testing.assert_close(model_forward(model, y, op), expected)
+
+    model.set_initial_reconstruction(functools.partial(adjoint_reconstruction, scale=2))
+    assert not torch.allclose(model_forward(model, y, op), expected)
+    model.set_initial_reconstruction(None)  # back to the operator's
+    torch.testing.assert_close(model_forward(model, y, op), expected)
+
+    with pytest.raises(NotImplementedError, match="no default reconstruction"):
+        Operator.default_reconstruction(op, y)  # an operator without one

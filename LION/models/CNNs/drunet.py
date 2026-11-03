@@ -6,7 +6,6 @@
 # =============================================================================
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
-from LION.classical_algorithms.fdk import fdk
 from LION.utils.parameter import LIONParameter
 
 from inspect import getmembers, isfunction
@@ -226,8 +225,6 @@ class DRUNet(LIONmodel):
     def default_parameters():
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
-        # how its input is made from measurements (set_initial_reconstruction)
-        params.initial_reconstruction = fdk
         params.in_channels = 1
         params.out_channels = 1
         params.int_channels = 64

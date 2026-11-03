@@ -10,7 +10,6 @@ from typing import Optional
 import torch
 import torch.nn as nn
 from LION.models.LIONmodel import LIONmodel, ModelInputType, LIONModelParameter
-from LION.classical_algorithms.fdk import fdk
 import LION.CTtools.ct_geometry as ct
 import torch.nn.utils.parametrize as P
 from LION.utils.math import power_method
@@ -187,8 +186,6 @@ class ACR(LIONmodel):
         # initial value of the L2 weight before softplus (softplus(-9) ~ 1e-4)
         params.l2_penalty = -9.0
         params.model_input_type = ModelInputType.IMAGE
-        # how its input is made from measurements (set_initial_reconstruction)
-        params.initial_reconstruction = fdk
         return params
 
     @staticmethod

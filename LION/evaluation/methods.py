@@ -9,7 +9,7 @@
 when two evaluations ran the same method):
 
 - a ``LIONmodel``: run as its solvers run it (``model_forward``: its initial
-  reconstruction, FDK by default, first for image-domain models, and its
+  reconstruction, the operator's default (FDK for CT) unless set, first for image-domain models, and its
   normalisation);
 - a model's file (``"model"``, ``.json``, ``.pt``): the model with its weights;
   if its training record names a solver with its own way of reconstructing
