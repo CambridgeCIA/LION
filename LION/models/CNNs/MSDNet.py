@@ -70,7 +70,7 @@ class MSDNet(LIONmodel):
     def __init__(
         self,
         model_parameters: Optional[LIONModelParameter] = None,
-        geometry=None,
+        operator_params=None,
     ) -> None:
         """Mixed-Scale Dense Neural Network based on:
         A mixed-scale dense convolutional neural network for image analysis, Daniël M. Pelt and James A. Sethian

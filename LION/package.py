@@ -238,7 +238,7 @@ def load(folder) -> LIONParameter:
     ``build`` makes them (nothing is made here):
 
     - ``model``: the model's arguments (``model_parameters``, and e.g.
-      ``geometry``);
+      ``operator_params``);
     - ``experiment``: the experiment's (``experiment_params``, ``dataset``);
     - ``training_data``, ``validation_data``: which data: ``split`` and
       ``subset`` (indices, or None); ``validation_data`` is None if it wasn't
@@ -931,9 +931,9 @@ def model_card(saved, package, model, test=None, reconstructor=None, origins=())
             f'"{experiment.param.name}".'
         )
     lines.append(f"- Dataset: {dataset} (`{_target(data.get('dataset'))}`).")
-    geometry = _geometry(experiment)
-    if geometry:
-        lines.append(f"- Geometry: {geometry}.")
+    operator_params = _geometry(experiment)
+    if operator_params:
+        lines.append(f"- Geometry: {operator_params}.")
     noise = _noise(data)
     if noise:
         lines.append(f"- Noise: {noise}.")
@@ -1263,15 +1263,15 @@ def _dataset_name(data, experiment) -> str:
 
 
 def _geometry(experiment) -> str:
-    geometry = getattr(experiment, "geometry", None)
-    if geometry is None:
+    operator_params = getattr(experiment, "operator_params", None)
+    if operator_params is None:
         return ""
-    parts = [f"{getattr(geometry, 'mode', '?')} beam"]
-    angles = getattr(geometry, "angles", None)
+    parts = [f"{getattr(operator_params, 'mode', '?')} beam"]
+    angles = getattr(operator_params, "angles", None)
     if angles is not None:
         parts.append(f"{len(angles)} angles")
     for name, label in (("detector_shape", "detector"), ("image_shape", "image")):
-        value = getattr(geometry, name, None)
+        value = getattr(operator_params, name, None)
         if value is not None:
             parts.append(f"{label} {'x'.join(str(int(v)) for v in value)}")
     return ", ".join(parts)

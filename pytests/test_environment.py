@@ -215,14 +215,14 @@ def make_solver(**kwargs):
         model,
         torch.optim.SGD(model.parameters(), lr=0.1),
         torch.nn.MSELoss(),
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
         **kwargs,
     )
 
 
 def test_deterministic(monkeypatch, restore_determinism):
-    monkeypatch.setattr(lion_solver, "make_operator", lambda geometry: None)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
     monkeypatch.delenv("CUBLAS_WORKSPACE_CONFIG", raising=False)
     solver = make_solver(deterministic=True)
     assert torch.are_deterministic_algorithms_enabled()

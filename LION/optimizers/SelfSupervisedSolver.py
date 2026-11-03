@@ -6,8 +6,7 @@ from torch.optim.optimizer import Optimizer
 import numpy as np
 
 # Import base class
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
+from LION.utils.parameter import OperatorParameters
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams, initial_reconstruction
@@ -29,7 +28,7 @@ class SelfSupervisedSolver(LIONsolver):
         model: LIONmodel,
         optimizer: Optimizer,
         loss_fn,
-        geometry: Geometry = None,
+        operator_params: OperatorParameters = None,
         verbose: bool = False,
         model_regularization=None,
         device: torch.device = None,
@@ -41,7 +40,7 @@ class SelfSupervisedSolver(LIONsolver):
             model,
             optimizer,
             loss_fn,
-            geometry=geometry,
+            operator_params=operator_params,
             verbose=verbose,
             device=device,
             solver_params=SolverParams(),

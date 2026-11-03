@@ -66,7 +66,7 @@ solver = Sparse2InverseSolver(
     optimizer,
     loss_fn,
     solver_params=s2i_params,
-    geometry=experiment.geometry,
+    operator_params=experiment.operator_params,
     verbose=True,
     device=device,
 )
@@ -99,7 +99,7 @@ solver_sparse = Sparse2InverseSolver(
     optimizer,
     loss_fn,
     solver_params=solver_params,
-    geometry=experiment.geometry,
+    operator_params=experiment.operator_params,
     verbose=False,
     device=device,
 )

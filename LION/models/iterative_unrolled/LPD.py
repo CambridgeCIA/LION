@@ -138,14 +138,14 @@ class LPD(LIONmodel):
 
     def __init__(
         self,
-        geometry: ct.Geometry,
+        operator_params: ct.Geometry,
         model_parameters: LIONParameter = None,
     ):
 
-        if geometry is None:
+        if operator_params is None:
             raise ValueError("Geometry parameters required. ")
 
-        super().__init__(model_parameters, geometry)
+        super().__init__(model_parameters, operator_params)
         # Pass all relevant parameters to internal storage.
         # AItomotmodel does this:
         # self.geometry = geometry
@@ -277,14 +277,17 @@ class LPD(LIONmodel):
         if C != 1:
             raise NotImplementedError("Only 2D CT images supported")
 
-        if len(self.geometry.angles) != W or self.geometry.detector_shape[1] != H:
+        if (
+            len(self.operator_params.angles) != W
+            or self.operator_params.detector_shape[1] != H
+        ):
             raise ValueError("geo description and sinogram size do not match")
 
         n_primal, n_dual, c = _check_channels(self.model_parameters)
 
         # initialize parameters
         h = g.new_zeros(B, n_dual, W, H)
-        f_primal = g.new_zeros(B, n_primal, *self.geometry.image_shape[1:])
+        f_primal = g.new_zeros(B, n_primal, *self.operator_params.image_shape[1:])
         # every primal channel starts from the initial reconstruction (the operator's default, FDK for CT, unless set)
         f_primal[:] = self.initial_reconstruction(g[:, :1], self.op)
 

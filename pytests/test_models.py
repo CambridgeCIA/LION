@@ -319,9 +319,9 @@ def test_save_does_not_change_model_parameters(tmp_path):
 
 
 def small_geometry(n=16):
-    geometry = Geometry.default_parameters()
-    geometry.image_shape = [1, n, n]
-    return geometry
+    operator_params = Geometry.default_parameters()
+    operator_params.image_shape = [1, n, n]
+    return operator_params
 
 
 @ignore_warnings
@@ -333,9 +333,9 @@ def small_geometry(n=16):
     ],
     ids=["AR", "ACR"],
 )
-def test_models_with_geometry_load(monkeypatch, tmp_path, make_model):
-    """load() passes the saved geometry as `geometry=`: every model must call
-    its geometry argument that."""
+def test_models_with_operator_params_load(monkeypatch, tmp_path, make_model):
+    """load() passes the saved operator parameters as `operator_params=`:
+    every model must call its argument that."""
     # a stand-in CT operator (identity on 16x16 images), so no tomosipo is needed
     op = ImageMatrixOp(torch.eye(16 * 16), (1, 16, 16))
     monkeypatch.setattr(
@@ -344,16 +344,76 @@ def test_models_with_geometry_load(monkeypatch, tmp_path, make_model):
     model = make_model()
     _save(model, tmp_path / "model")
     loaded, _, _ = type(model).load(tmp_path / "model", supress_warnings=True)
-    assert list(loaded.geometry.image_shape) == [1, 16, 16]
+    assert list(loaded.operator_params.image_shape) == [1, 16, 16]
     for key, value in model.state_dict().items():
         torch.testing.assert_close(loaded.state_dict()[key].cpu(), value.cpu())
 
 
+@ignore_warnings
+def test_files_with_the_old_name_of_the_operator_params_load(monkeypatch, tmp_path):
+    """Files saved before November 2026 call operator_params `geometry`, in
+    the model's spec and at the top of the file: they load."""
+    import json
+
+    op = ImageMatrixOp(torch.eye(16 * 16), (1, 16, 16))
+    monkeypatch.setattr(
+        LIONmodel, "_make_operator", lambda self: setattr(self, "op", op)
+    )
+    model = AR(AR.default_parameters(), small_geometry())
+    _save(model, tmp_path / "model")
+    path = tmp_path / "model.json"
+    saved = json.loads(path.read_text())
+    saved["model"]["geometry"] = saved["model"].pop("operator_params")
+    saved["geometry"] = saved["model"]["geometry"]
+    path.write_text(json.dumps(saved))
+    loaded, options, _ = AR.load(tmp_path / "model", supress_warnings=True)
+    assert list(loaded.operator_params.image_shape) == [1, 16, 16]
+    assert list(options.operator_params.image_shape) == [1, 16, 16]
+
+
+@ignore_warnings
+def test_unversioned_files_with_a_geometry_load(monkeypatch, tmp_path):
+    """Files from before lion_format kept the geometry as `geometry`."""
+    op = ImageMatrixOp(torch.eye(16 * 16), (1, 16, 16))
+    monkeypatch.setattr(
+        LIONmodel, "_make_operator", lambda self: setattr(self, "op", op)
+    )
+    model = AR(AR.default_parameters(), small_geometry())
+    options = LIONParameter()
+    options.commit_hash = "0" * 40
+    options.model_name = "AR"
+    options.model_parameters = model.model_parameters
+    options.geometry = small_geometry()
+    options.save(tmp_path / "model.json")
+    torch.save({"model_state_dict": model.state_dict()}, tmp_path / "model.pt")
+    loaded, _, _ = AR.load(tmp_path / "model", supress_warnings=True)
+    assert list(loaded.operator_params.image_shape) == [1, 16, 16]
+
+
+def test_old_names_of_the_operator_params_are_renamed_at_any_depth():
+    from LION.utils.parameter import with_current_names
+
+    old = {
+        "_target_": "LION.data_loaders.LIDC_IDRI.LIDC_IDRI",
+        "geometry_parameters": {"mode": "fan"},
+        "parameters": {"geometry": {"mode": "fan"}, "task": "reconstruction"},
+        "datasets": [{"geometry_params": None}],
+    }
+    assert with_current_names(old) == {
+        "_target_": "LION.data_loaders.LIDC_IDRI.LIDC_IDRI",
+        "operator_params": {"mode": "fan"},
+        "parameters": {"operator_params": {"mode": "fan"}, "task": "reconstruction"},
+        "datasets": [{"operator_params": None}],
+    }
+    current = {"operator_params": 1, "geometry": 2}  # a current name wins
+    assert with_current_names(current) == current
+
+
 @pytest.mark.parametrize("shape", [(512, 512), (362, 362), (100, 60)])
 def test_ar_any_image_size(shape):
-    geometry = Geometry.default_parameters()
-    geometry.image_shape = [1, *shape]
-    model = AR(AR.default_parameters(), geometry)
+    operator_params = Geometry.default_parameters()
+    operator_params.image_shape = [1, *shape]
+    model = AR(AR.default_parameters(), operator_params)
     assert model(torch.rand(2, 1, *shape)).shape == (2, 1)
     if shape == (512, 512):  # same layer as before for multiples of 16
         assert model.fc[0].in_features == 128 * 32 * 32
@@ -498,9 +558,9 @@ def test_data_step_is_differentiable(no_ct_operator, monkeypatch):
     so gradients reach the data-consistency term (checked with torch stand-ins:
     the CT operator is a fixed linear map, FDK its adjoint)."""
     torch.manual_seed(0)
-    geometry = Geometry.default_parameters()
-    model = ItNet(geometry, itnet_params(0.5, True))
-    H, W = geometry.image_shape[1:]
+    operator_params = Geometry.default_parameters()
+    model = ItNet(operator_params, itnet_params(0.5, True))
+    H, W = operator_params.image_shape[1:]
     M = torch.randn(10, H * W) / H
 
     def A(x):  # (B, 1, H, W) -> (B, 1, 1, 10), differentiable
@@ -542,11 +602,11 @@ def lpd_module(import_without_tomosipo, request):
 
 
 def lpd_geometry():
-    geometry = Geometry.default_parameters()
-    geometry.image_shape = [1, 8, 8]
-    geometry.angles = np.linspace(0, np.pi, 6, endpoint=False)
-    geometry.detector_shape = [1, 5]
-    return geometry
+    operator_params = Geometry.default_parameters()
+    operator_params.image_shape = [1, 8, 8]
+    operator_params.angles = np.linspace(0, np.pi, 6, endpoint=False)
+    operator_params.detector_shape = [1, 5]
+    return operator_params
 
 
 def make_lpd(module, monkeypatch, calls=None, **params):
@@ -704,11 +764,11 @@ def make_learned_fbp(module, class_name, monkeypatch, drop=(), **params):
         setattr(p, k, v)
     for k in drop:  # e.g. parameters that old parameter files don't have
         delattr(p, k)
-    geometry = Geometry.default_parameters()
-    geometry.image_shape = [1, 8, 8]
-    geometry.angles = np.linspace(0, np.pi, 6, endpoint=False)
-    geometry.detector_shape = [1, 5]
-    return model_class(geometry, p)
+    operator_params = Geometry.default_parameters()
+    operator_params.image_shape = [1, 8, 8]
+    operator_params.angles = np.linspace(0, np.pi, 6, endpoint=False)
+    operator_params.detector_shape = [1, 5]
+    return model_class(operator_params, p)
 
 
 LEARNED_FBPS = [

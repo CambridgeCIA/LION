@@ -32,7 +32,7 @@ class Noisier2InverseSolver(LIONsolver):
         optimizer: Optimizer,
         loss_fn,
         solver_params: Optional[LIONParameter] = None,
-        geometry: Geometry = None,
+        operator_params: Geometry = None,
         verbose: bool = True,
         device: torch.device = None,
         seed: Optional[int] = 0,
@@ -42,7 +42,7 @@ class Noisier2InverseSolver(LIONsolver):
             model,
             optimizer,
             loss_fn,
-            geometry,
+            operator_params,
             verbose,
             device,
             solver_params=solver_params,
@@ -52,7 +52,7 @@ class Noisier2InverseSolver(LIONsolver):
         warn_if_not_mse(loss_fn, "Noisier2Inverse")
 
         self.operator = self.op  # the base solver already built it
-        self.model.geometry = self.geometry
+        self.model.operator_params = self.operator_params
         self.model.operator = self.operator
         to_autograd = import_tomosipo(
             "tomosipo.torch_support", "Noisier2Inverse"

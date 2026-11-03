@@ -224,14 +224,14 @@ class cFBPConvNet(LIONmodel):
 
     def __init__(
         self,
-        geometry: Optional[ct.Geometry] = None,
+        operator_params: Optional[ct.Geometry] = None,
         model_parameters: LIONParameter = None,
     ):
 
         warn(
             "cFBPConvNet has not been trained and validated in LION yet, use with caution. \n If you manage to get it working, contact the authors."
         )
-        super().__init__(model_parameters, geometry)
+        super().__init__(model_parameters, operator_params)
         for name in ("tol", "ode_adjoint", "do_second_order", "solver"):
             setattr(
                 self.model_parameters,

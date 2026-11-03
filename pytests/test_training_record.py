@@ -52,7 +52,7 @@ pytestmark = pytest.mark.filterwarnings("ignore")
 @pytest.fixture(autouse=True)
 def no_ct(monkeypatch):
     for module in (lion_solver, supervised_solver):
-        monkeypatch.setattr(module, "make_operator", lambda geometry: CTStandIn())
+        monkeypatch.setattr(Geometry, "make_operator", lambda self: CTStandIn())
     replace_fdk(monkeypatch, lambda sino, op: sino)
 
 
@@ -79,7 +79,7 @@ def denoiser_solver(
         model,
         torch.optim.Adam(model.parameters(), lr=lr),
         torch.nn.MSELoss(),
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
         noise_level=[0.05, 0.2],
         seed=seed,
@@ -235,7 +235,7 @@ def test_e2i_noise_std_comes_back_on_resume(tmp_path, monkeypatch):
             torch.optim.SGD(model.parameters(), lr=1e-3),
             torch.nn.MSELoss(),
             solver_params=params,
-            geometry=Geometry.default_parameters(),
+            operator_params=Geometry.default_parameters(),
             device=torch.device("cpu"),
             verbose=False,
         )
@@ -306,7 +306,7 @@ def test_instantiate_with_arguments(tmp_path):
         model,
         torch.optim.SGD(model.parameters(), lr=0.1),
         lambda output, target: ((output - target) ** 2).mean(),  # can't be saved
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
     )
     solver.set_training(DataLoader(data(), batch_size=4))
@@ -489,7 +489,7 @@ def test_a_run_is_repeated_from_its_file_alone(tmp_path):
         model,
         torch.optim.Adam(model.parameters(), lr=1e-2),
         torch.nn.MSELoss(),
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
     )
     solver.set_training(DataLoader(pairs(), batch_size=2, shuffle=True))

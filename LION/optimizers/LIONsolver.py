@@ -17,10 +17,8 @@ from enum import Enum
 from typing import Callable, Optional
 
 from tqdm import tqdm
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
-from LION.utils.parameter import LIONParameter
+from LION.utils.parameter import LIONParameter, OperatorParameters
 from LION.utils.device import default_device
 from LION.utils import rng, spec
 from LION.data_loaders.data_record import data_record
@@ -107,7 +105,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         model: LIONmodel,
         optimizer: Optimizer,
         loss_fn: Callable,
-        geometry: Geometry = None,
+        operator_params: OperatorParameters = None,
         verbose: bool = True,
         device: torch.device = None,
         solver_params: Optional[SolverParams] = None,
@@ -149,13 +147,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model = model
         self.optimizer = optimizer
 
-        if hasattr(model, "geometry") and model.geometry is not None:
-            self.geometry = model.geometry
+        if getattr(model, "operator_params", None) is not None:
+            self.operator_params = model.operator_params
         else:
-            assert geometry is not None, "Geometry must be provided"
-            self.geometry = geometry
+            assert operator_params is not None, "operator_params must be provided"
+            self.operator_params = operator_params
 
-        self.op = make_operator(self.geometry)
+        self.op = self.operator_params.make_operator()
 
         self.train_loader: Optional[DataLoader] = None
         self.train_loss: np.ndarray = np.zeros(0)

@@ -126,16 +126,16 @@ class single_back_projections(Module):
             The LION geometry of the (sparse-view) data.
     """
 
-    def __init__(self, geometry):
+    def __init__(self, operator_params):
 
         super().__init__()
         to_autograd = import_tomosipo(
             "tomosipo.torch_support", "DeepFusionBP"
         ).to_autograd
-        angles = np.asarray(geometry.angles)
+        angles = np.asarray(operator_params.angles)
         self.tomosipo_geometries = []
         for i in range(len(angles)):
-            single_angle = copy.deepcopy(geometry)
+            single_angle = copy.deepcopy(operator_params)
             single_angle.angles = angles[i : i + 1]
             # (B, 1, 1, detectors) -> (B, 1, H, W), differentiable
             self.tomosipo_geometries.append(
@@ -386,13 +386,15 @@ class DeepFusionBPNetwork(LIONmodel):  # (Module) -> (LIONmodel)
             Reconstructed CT images of shape [B, 1, H, W].
     """
 
-    def __init__(self, geometry: ct.Geometry, model_parameters: LIONParameter = None):
-        super().__init__(model_parameters, geometry)
+    def __init__(
+        self, operator_params: ct.Geometry, model_parameters: LIONParameter = None
+    ):
+        super().__init__(model_parameters, operator_params)
 
         self._make_operator()
 
-        self.num_detectors = geometry.detector_shape[1]
-        self.view_angles = len(geometry.angles)
+        self.num_detectors = operator_params.detector_shape[1]
+        self.view_angles = len(operator_params.angles)
         # Padding parameters
         self.projection_size_padded = self.compute_projection_size_padded()
         self.padding = self.projection_size_padded - self.num_detectors
@@ -413,7 +415,7 @@ class DeepFusionBPNetwork(LIONmodel):  # (Module) -> (LIONmodel)
         self.interpolator_conv = Conv1d(1, 1, kernel_size=3, padding=1, bias=False)
 
         # Single views backprojection
-        self.back_projections = single_back_projections(geometry)
+        self.back_projections = single_back_projections(operator_params)
 
         # DBP_model for ct reconstructions
         self.dbp_layer = DBP_block(self.view_angles)

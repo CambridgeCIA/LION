@@ -273,9 +273,9 @@ def save(model, path, **kwargs):
 
 
 def small_geometry():
-    geometry = Geometry.default_parameters()
-    geometry.image_shape = [1, 16, 16]
-    return geometry
+    operator_params = Geometry.default_parameters()
+    operator_params.image_shape = [1, 16, 16]
+    return operator_params
 
 
 def test_saved_file(tmp_path):
@@ -315,14 +315,14 @@ def test_data_metadata_comes_back(tmp_path):
     save(
         DnCNN(),
         tmp_path / "model",
-        geometry=small_geometry(),
+        operator_params=small_geometry(),
         dataset=dataset,
         training=training,
     )
     _, options, _ = DnCNN.load(tmp_path / "model", supress_warnings=True)
     assert same(options.dataset_params, dataset) == []
     assert same(options.training, training) == []
-    assert same(options.geometry, small_geometry()) == []
+    assert same(options.operator_params, small_geometry()) == []
 
 
 class LocalModel(DnCNN):
@@ -455,7 +455,9 @@ def test_pt_holds_only_safe_contents(tmp_path):
     optimiser = torch.optim.Adam(model.parameters())
     model(torch.rand(1, 1, 8, 8)).sum().backward()
     optimiser.step()
-    save_kwargs = dict(dataset=LIONParameter(name="x"), geometry=small_geometry())
+    save_kwargs = dict(
+        dataset=LIONParameter(name="x"), operator_params=small_geometry()
+    )
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         model.save_checkpoint(

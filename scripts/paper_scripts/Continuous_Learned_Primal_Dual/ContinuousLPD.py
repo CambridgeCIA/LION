@@ -72,7 +72,7 @@ default_parameters = cLPD.default_parameters()
 default_parameters.learned_step = True
 default_parameters.step_positive = True
 default_parameters.n_iters = 5
-model = cLPD(experiment.geometry, default_parameters)
+model = cLPD(experiment.operator_params, default_parameters)
 print(model.cite("MLA"))
 print(model.cite("bib"))
 # %% Optimizer

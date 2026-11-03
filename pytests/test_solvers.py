@@ -43,7 +43,7 @@ pytestmark = pytest.mark.filterwarnings("ignore")
 @pytest.fixture(autouse=True)
 def no_ct(monkeypatch):
     for module in (lion_solver, supervised_solver):
-        monkeypatch.setattr(module, "make_operator", lambda geometry: CTStandIn())
+        monkeypatch.setattr(Geometry, "make_operator", lambda self: CTStandIn())
     replace_fdk(monkeypatch, lambda sino, op: sino)
 
 
@@ -60,7 +60,7 @@ def make_solver(model=None, lr=1e-2, **kwargs):
         model,
         torch.optim.SGD(model.parameters(), lr=lr),
         torch.nn.MSELoss(),
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
         **kwargs,
     )
@@ -68,7 +68,9 @@ def make_solver(model=None, lr=1e-2, **kwargs):
 
 def test_supervised_solver_builds_one_operator(monkeypatch):
     built = []
-    monkeypatch.setattr(lion_solver, "make_operator", lambda g: built.append(g) or "op")
+    monkeypatch.setattr(
+        Geometry, "make_operator", lambda self: built.append(self) or "op"
+    )
     solver = make_solver()
     assert built and len(built) == 1
     assert solver.op == "op"
@@ -316,7 +318,7 @@ def test_gaussian_denoiser_noise_level(noise_level):
         model,
         torch.optim.SGD(model.parameters(), lr=0.1),
         torch.nn.MSELoss(),
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
         noise_level=noise_level,
     )
@@ -333,7 +335,7 @@ def test_gaussian_denoiser_gives_gsd_the_noise_level_channel():
         model,
         torch.optim.SGD(model.parameters(), lr=0.1),
         torch.nn.MSELoss(),
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
     )
     target = torch.rand(2, 1, 8, 8)
@@ -367,7 +369,7 @@ class IdentityOp(Operator):
 
 @pytest.fixture
 def identity_ct(monkeypatch):
-    monkeypatch.setattr(lion_solver, "make_operator", lambda g: IdentityOp())
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: IdentityOp())
     monkeypatch.setattr(ar_module, "fdk", lambda sino, op: sino)
 
 
@@ -376,7 +378,7 @@ def make_ar_solver(**params):
     return ar_module.ARSolver(
         model,
         torch.optim.Adam(model.parameters()),
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
         solver_params=ar_module.ARParams(**params),
         verbose=False,
@@ -466,11 +468,11 @@ def fake_ct(monkeypatch):
     fake.to_autograd = lambda op, **kwargs: op
     monkeypatch.setitem(sys.modules, "tomosipo.torch_support", fake)
     monkeypatch.setitem(sys.modules, "tomosipo", types.ModuleType("tomosipo"))
-    monkeypatch.setattr(ct_utils, "make_operator", lambda g: np.asarray(g.angles))
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: np.asarray(self.angles))
     monkeypatch.setattr(LIONmodel, "_make_operator", lambda self: None)
 
 
-def make_s2i_solver(splits, geometry, inputs=None, recon_fn=None):
+def make_s2i_solver(splits, operator_params, inputs=None, recon_fn=None):
     params = Sparse2InverseSolver.default_parameters()
     params.sino_split_count = splits
     if inputs is None:
@@ -485,7 +487,7 @@ def make_s2i_solver(splits, geometry, inputs=None, recon_fn=None):
         torch.optim.SGD(model.parameters(), lr=0.1),
         torch.nn.MSELoss(),
         solver_params=params,
-        geometry=geometry,
+        operator_params=operator_params,
         device=torch.device("cpu"),
         verbose=False,
     )
@@ -495,9 +497,9 @@ def make_s2i_solver(splits, geometry, inputs=None, recon_fn=None):
     "splits, inputs", [(3, 1), (3, 2), (4, 1), (4, 2), (4, 3), (5, 2), (5, 3)]
 )
 def test_inputs_and_target_projectors(fake_ct, splits, inputs):
-    geometry = Geometry.default_parameters()  # 360 angles
-    solver = make_s2i_solver(splits, geometry, inputs)
-    angles = np.asarray(geometry.angles)
+    operator_params = Geometry.default_parameters()  # 360 angles
+    solver = make_s2i_solver(splits, operator_params, inputs)
+    angles = np.asarray(operator_params.angles)
 
     # the single input sinogram is split into interleaved angle subsets
     assert len(solver.sub_ops) == splits
@@ -516,7 +518,7 @@ def test_inputs_and_target_projectors(fake_ct, splits, inputs):
             solver.combo_ops_autograd[target], angles[expected]
         )
     # the solver's own geometry is not modified
-    assert len(solver.geometry.angles) == len(angles)
+    assert len(solver.operator_params.angles) == len(angles)
 
 
 def test_old_parameter_files_use_pairs(fake_ct):
@@ -547,8 +549,8 @@ def test_training_step_uses_each_combination(fake_ct, monkeypatch, splits, input
         calls.append(sub_sino.shape[2])
         return sub_sino.mean() * torch.ones(sub_sino.shape[0], 1, 8, 8)
 
-    geometry = Geometry.default_parameters()  # 360 angles
-    solver = make_s2i_solver(splits, geometry, inputs, recon_fn=recon_fn)
+    operator_params = Geometry.default_parameters()  # 360 angles
+    solver = make_s2i_solver(splits, operator_params, inputs, recon_fn=recon_fn)
     sinos = torch.rand(2, 1, 360, 8)
     loss = solver.mini_batch_step(sinos, None)
     assert torch.isfinite(loss) and loss > 0
@@ -560,15 +562,15 @@ def test_training_step_uses_each_combination(fake_ct, monkeypatch, splits, input
 def test_validation_and_test_use_the_reconstruction(fake_ct, tmp_path):
     """Self-supervised solvers validate and test their reconstruct() output
     (they used to return 0 from validate(), which crashed train())."""
-    geometry = Geometry.default_parameters()
-    geometry.image_shape = [1, 8, 8]
+    operator_params = Geometry.default_parameters()
+    operator_params.image_shape = [1, 8, 8]
     calls = []
 
     def recon_fn(sub_sino, op):
         calls.append(sub_sino.shape)
         return sub_sino.mean() * torch.ones(sub_sino.shape[0], 1, 8, 8)
 
-    solver = make_s2i_solver(4, geometry, 2, recon_fn=recon_fn)
+    solver = make_s2i_solver(4, operator_params, 2, recon_fn=recon_fn)
     sinos, images = torch.rand(4, 1, 360, 8), torch.rand(4, 1, 8, 8)
     data = DataLoader(TensorDataset(sinos, images), batch_size=2)
     solver.set_saving(tmp_path, "model")
@@ -601,14 +603,14 @@ def test_warn_if_not_mse():
 def make_n2i_solver(monkeypatch, params):
     import LION.optimizers.Noise2InverseSolver as n2i
 
-    monkeypatch.setattr(n2i.ct, "make_operator", lambda geometry: None)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
     model = small_dncnn()
     return n2i.Noise2InverseSolver(
         model,
         torch.optim.SGD(model.parameters(), lr=1e-2),
         torch.nn.MSELoss(),
         solver_params=params,
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
     )
 
@@ -648,7 +650,7 @@ def test_equivariant_solver_gradient_goes_through_the_second_fdk(monkeypatch):
         return sino if differentiable else sino.detach()
 
     monkeypatch.setattr(
-        lion_solver, "make_operator", lambda g: types.SimpleNamespace(T=None)
+        Geometry, "make_operator", lambda self: types.SimpleNamespace(T=None)
     )
     monkeypatch.setattr(ei, "fdk", fake_fdk)
     identity = types.SimpleNamespace(

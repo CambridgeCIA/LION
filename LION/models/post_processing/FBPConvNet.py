@@ -95,13 +95,15 @@ class Up(nn.Module):
 class FBPConvNet(LIONmodel):
     def __init__(
         self,
-        geometry: ct.Geometry,
+        operator_params: ct.Geometry,
         model_parameters: Optional[LIONModelParameter] = None,
     ):
 
-        assert geometry is not None, "Geometry parameters required for FBPConvNet."
+        assert (
+            operator_params is not None
+        ), "Geometry parameters required for FBPConvNet."
 
-        super().__init__(model_parameters, geometry)
+        super().__init__(model_parameters, operator_params)
         self._make_operator()
         # standard FBPConvNet (As per paper):
 

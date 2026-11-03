@@ -110,13 +110,13 @@ class Experiment(ABC):
                 self.param.data_loader_params.folder = pathlib.Path(datafolder)
         # parameters loaded from a JSON file have the geometry as a plain
         # LIONParameter; operators and models need a Geometry
-        if self.experiment_params.geometry is not None and not isinstance(
-            self.experiment_params.geometry, ctgeo.Geometry
+        if self.experiment_params.operator_params is not None and not isinstance(
+            self.experiment_params.operator_params, ctgeo.Geometry
         ):
-            self.experiment_params.geometry = ctgeo.Geometry.init_from_parameter(
-                self.experiment_params.geometry
+            self.experiment_params.operator_params = ctgeo.Geometry.init_from_parameter(
+                self.experiment_params.operator_params
             )
-        self.geometry = self.experiment_params.geometry
+        self.operator_params = self.experiment_params.operator_params
         self.dataset = dataset
         # Noise added to the simulated sinograms (None: clean sinograms)
         self.sino_fun = None
@@ -177,7 +177,7 @@ class Experiment(ABC):
             dataloader = LIDC_IDRI(
                 mode=mode,
                 parameters=self.param.data_loader_params,
-                geometry_parameters=self.geometry,
+                operator_params=self.operator_params,
             )
             dataloader.set_sinogram_transform(
                 self.sino_fun, seed=getattr(self.param.noise_params, "seed", None)
@@ -194,7 +194,7 @@ class Experiment(ABC):
                 )
             dataloader = deteCT(
                 mode=mode,
-                geometry_params=self.geometry,
+                operator_params=self.operator_params,
                 parameters=self.param.data_loader_params,
             )
         else:
@@ -221,8 +221,8 @@ class Experiment(ABC):
             )
         param = LIONParameter()
         param.name = f"{name}, on the measured 2DeteCT data"
-        param.geometry = deteCT.get_default_geometry()
-        param.geometry.angles = np.asarray(param.geometry.angles)[angles]
+        param.operator_params = deteCT.get_default_geometry()
+        param.operator_params.angles = np.asarray(param.operator_params.angles)[angles]
         param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
         param.data_loader_params.task = "sino2recon"
         param.data_loader_params.input_mode = input_modes[dose]
@@ -321,12 +321,12 @@ class Experiment(ABC):
         return recorded_spec(record, "experiment")
 
     def __str__(self):
-        return f"Experiment parameters: \n {self.param} \n Dataset: \n {self.dataset} \n Geometry parameters: \n {self.geometry}"
+        return f"Experiment parameters: \n {self.param} \n Dataset: \n {self.dataset} \n Geometry parameters: \n {self.operator_params}"
 
     @staticmethod
-    def get_dataset_parameters(dataset, geometry=None):
+    def get_dataset_parameters(dataset, operator_params=None):
         if dataset == "LIDC-IDRI":
-            return LIDC_IDRI.default_parameters(geometry=geometry)
+            return LIDC_IDRI.default_parameters(operator_params=operator_params)
         if dataset == "2DeteCT":
             return deteCT.default_parameters()
         else:
@@ -382,11 +382,11 @@ class ExtremeLowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Extremely low dose full angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = LIDC_IDRI.default_geometry()
+        param.operator_params = LIDC_IDRI.default_geometry()
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
         param.data_loader_params = Experiment.get_dataset_parameters(
-            dataset, geometry=param.geometry
+            dataset, operator_params=param.operator_params
         )
         return param
 
@@ -407,11 +407,11 @@ class LowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Low dose full angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = LIDC_IDRI.default_geometry()
+        param.operator_params = LIDC_IDRI.default_geometry()
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
         param.data_loader_params = Experiment.get_dataset_parameters(
-            dataset, geometry=param.geometry
+            dataset, operator_params=param.operator_params
         )
 
         return param
@@ -432,11 +432,11 @@ class LimitedAngleCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Clinical dose limited angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
+        param.operator_params = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
         param.data_loader_params = Experiment.get_dataset_parameters(
-            dataset, geometry=param.geometry
+            dataset, operator_params=param.operator_params
         )
 
         return param
@@ -457,14 +457,14 @@ class LimitedAngleLowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Low dose limited angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
+        param.operator_params = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
             param.data_loader_params = LIDC_IDRI.default_parameters(
-                geometry=param.geometry, task="reconstruction"
+                operator_params=param.operator_params, task="reconstruction"
             )
             param.data_loader_params.max_num_slices_per_patient = 5
         else:
@@ -487,14 +487,14 @@ class LimitedAngleExtremeLowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Extremely low dose limited angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
+        param.operator_params = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
             param.data_loader_params = LIDC_IDRI.default_parameters(
-                geometry=param.geometry, task="reconstruction"
+                operator_params=param.operator_params, task="reconstruction"
             )
             param.data_loader_params.max_num_slices_per_patient = 5
         else:
@@ -517,12 +517,12 @@ class SparseAngleCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Clinical dose sparse angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
+        param.operator_params = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
 
         param.data_loader_params = Experiment.get_dataset_parameters(
-            dataset, geometry=param.geometry
+            dataset, operator_params=param.operator_params
         )
 
         return param
@@ -543,14 +543,14 @@ class SparseAngleLowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Low dose sparse angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
+        param.operator_params = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
             param.data_loader_params = LIDC_IDRI.default_parameters(
-                geometry=param.geometry, task="reconstruction"
+                operator_params=param.operator_params, task="reconstruction"
             )
             param.data_loader_params.max_num_slices_per_patient = 5
         else:
@@ -573,14 +573,14 @@ class SparseAngleExtremeLowDoseCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Extremely low dose sparse angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
+        param.operator_params = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
 
         if dataset == "LIDC-IDRI":
             # Parameters for the LIDC-IDRI dataset
             param.data_loader_params = LIDC_IDRI.default_parameters(
-                geometry=param.geometry, task="reconstruction"
+                operator_params=param.operator_params, task="reconstruction"
             )
             param.data_loader_params.max_num_slices_per_patient = 5
         else:
@@ -603,12 +603,12 @@ class clinicalCTRecon(Experiment):
         param = LIONParameter()
         param.name = "Clinical dose full angular sampling experiment"
         # Parameters for the geometry
-        param.geometry = LIDC_IDRI.default_geometry()
+        param.operator_params = LIDC_IDRI.default_geometry()
         # Noise in the sinogram (see Experiment.noise_parameters)
         param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
 
         param.data_loader_params = Experiment.get_dataset_parameters(
-            dataset, geometry=param.geometry
+            dataset, operator_params=param.operator_params
         )
 
         return param

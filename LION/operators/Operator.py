@@ -67,6 +67,12 @@ class Operator(torch.nn.Module, ABC):
         """
         raise NotImplementedError("Adjoint method must be implemented by subclasses.")
 
+    def autograd(self):
+        """The operator and its adjoint as differentiable functions of batches
+        ``(forward, adjoint)``: for operators written in torch, themselves.
+        Operators that torch can't differentiate (e.g. CT's) wrap them."""
+        return self, self.adjoint
+
     def default_reconstruction(self, y: torch.Tensor) -> torch.Tensor:
         """The operator's usual reconstruction of measurements ``y`` (e.g. FDK
         for CT): where a model starts when its parameters don't set an initial

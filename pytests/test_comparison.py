@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader, Subset  # noqa: E402
 
 import LION.evaluation.comparison as comparison_module  # noqa: E402
 import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
+from LION.CTtools.ct_geometry import Geometry
 from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
 from LION.evaluation import (  # noqa: E402
     Comparison,
@@ -68,7 +69,7 @@ def doubling(y, operator):
 
 @pytest.fixture
 def no_ct(monkeypatch):
-    monkeypatch.setattr(lion_solver, "make_operator", lambda geometry: None)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
 
 
 def evaluation(folder, **kwargs):

@@ -20,6 +20,7 @@ import torch  # noqa: E402
 import LION.data_loaders.LIDC_IDRI as lidc  # noqa: E402
 import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
 import LION.utils.paths as paths  # noqa: E402
+from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import sinogram_add_noise  # noqa: E402
 from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
 from LION.data_loaders.data_record import (  # noqa: E402
@@ -87,7 +88,7 @@ def stand_in_projection(image):
 
 @pytest.fixture
 def no_tomosipo(monkeypatch):
-    monkeypatch.setattr(lidc.ct, "make_operator", lambda geometry: stand_in_projection)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: stand_in_projection)
 
 
 @pytest.fixture
@@ -101,8 +102,12 @@ def lidc_folder(tmp_path):
 
 
 def lidc_dataset(folder, mode="test", task="reconstruction"):
-    geometry = lidc.LIDC_IDRI.default_geometry() if task == "reconstruction" else None
-    params = lidc.LIDC_IDRI.default_parameters(geometry=geometry, task=task)
+    operator_params = (
+        lidc.LIDC_IDRI.default_geometry() if task == "reconstruction" else None
+    )
+    params = lidc.LIDC_IDRI.default_parameters(
+        operator_params=operator_params, task=task
+    )
     params.folder = folder
     return lidc.LIDC_IDRI(mode, parameters=params)
 
@@ -263,7 +268,7 @@ def test_random_annotation_is_seeded(annotated_folder):
 def test_detect_record(tmp_path):
     data = fake_detect(tmp_path, "train")
     assert data.parameters.path_to_dataset == tmp_path
-    assert data.geometry_params is None
+    assert data.operator_params is None
     record = through_json(data_record(data))
     assert record.samples.ids == list(data.slice_dataframe["slice_identifier"])
     rebuilt = deteCT.instantiate(record)

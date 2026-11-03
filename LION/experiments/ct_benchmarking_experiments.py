@@ -41,7 +41,7 @@ class GroundTruthCT(CTBenchmarkingExperiment):
         param.name = "Ground truths only, from Full Data CT reconstruction using the full angular sampling experiment from mode 2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
@@ -65,7 +65,7 @@ class FullDataCTRecon(CTBenchmarkingExperiment):
         param.name = "Full Data CT reconstruction using the full angular sampling experiment from mode 2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
 
@@ -90,10 +90,10 @@ class LimitedAngle150CTRecon(CTBenchmarkingExperiment):
         )
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geometry.angles = param.geometry.angles[
+        param.operator_params.angles = param.operator_params.angles[
             :1500
         ]  # to have projections 1 to 1,501
         # The data loader will automatically subsample the sinogram for you.
@@ -122,10 +122,10 @@ class LimitedAngle120CTRecon(CTBenchmarkingExperiment):
         )
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geometry.angles = param.geometry.angles[
+        param.operator_params.angles = param.operator_params.angles[
             :1200
         ]  # to have projections 1 to 1,201
         # The data loader will automatically subsample the sinogram for you.
@@ -152,10 +152,10 @@ class LimitedAngle90CTRecon(CTBenchmarkingExperiment):
         param.name = "90 degrees Limited Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geometry.angles = param.geometry.angles[
+        param.operator_params.angles = param.operator_params.angles[
             :900
         ]  # to have projections 1 to 901
         # The data loader will automatically subsample the sinogram for you.
@@ -182,10 +182,10 @@ class LimitedAngle60CTRecon(CTBenchmarkingExperiment):
         param.name = "60 degrees Limited Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geometry.angles = param.geometry.angles[
+        param.operator_params.angles = param.operator_params.angles[
             :600
         ]  # to have projections 1 to 601
         # The data loader will automatically subsample the sinogram for you.
@@ -212,10 +212,10 @@ class SparseAngle720CTRecon(CTBenchmarkingExperiment):
         param.name = "720 angles Sparse Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geometry.angles = param.geometry.angles[
+        param.operator_params.angles = param.operator_params.angles[
             ::5
         ]  # to have every 5th projection (in total 720)
         # The data loader will automatically subsample the sinogram for you.
@@ -242,10 +242,10 @@ class SparseAngle360CTRecon(CTBenchmarkingExperiment):
         param.name = "360 angles Sparse Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geometry.angles = param.geometry.angles[
+        param.operator_params.angles = param.operator_params.angles[
             ::10
         ]  # to have every 10th projection (in total 360)
         # The data loader will automatically subsample the sinogram for you.
@@ -272,10 +272,10 @@ class SparseAngle180CTRecon(CTBenchmarkingExperiment):
         param.name = "180 angles Sparse Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geometry.angles = param.geometry.angles[
+        param.operator_params.angles = param.operator_params.angles[
             ::20
         ]  # to have every 20th projection (in total 180)
         # The data loader will automatically subsample the sinogram for you.
@@ -302,10 +302,10 @@ class SparseAngle120CTRecon(CTBenchmarkingExperiment):
         param.name = "120 angles Sparse Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geometry.angles = param.geometry.angles[
+        param.operator_params.angles = param.operator_params.angles[
             ::30
         ]  # to have every 30th projection (in total 120)
         # The data loader will automatically subsample the sinogram for you.
@@ -332,10 +332,10 @@ class SparseAngle90CTRecon(CTBenchmarkingExperiment):
         param.name = "90 angles Sparse Angle CT reconstruction experiment from mode 2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geometry.angles = param.geometry.angles[
+        param.operator_params.angles = param.operator_params.angles[
             ::40
         ]  # to have every 40th projection (in total 90)
         # The data loader will automatically subsample the sinogram for you.
@@ -362,10 +362,10 @@ class SparseAngle60CTRecon(CTBenchmarkingExperiment):
         param.name = "60 angles Sparse Angle CT reconstruction experiment from mode2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # Changing the angles of the geometry in the 2DeteCT loading:
-        param.geometry.angles = param.geometry.angles[
+        param.operator_params.angles = param.operator_params.angles[
             ::60
         ]  # to have every 60th projection (in total 60)
         # The data loader will automatically subsample the sinogram for you.
@@ -392,7 +392,7 @@ class LowDoseCTRecon(CTBenchmarkingExperiment):
         param.name = "Denoising experiment with sinograms from mode1 and reconstructions from mode2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
@@ -416,7 +416,7 @@ class BeamHardeningCTRecon(CTBenchmarkingExperiment):
         param.name = "Beam Hardening Reduction experiment with sinograms from mode3 and reconstructions from mode2"
 
         # Parameters for the geometry
-        param.geometry = deteCT.get_default_geometry()
+        param.operator_params = deteCT.get_default_geometry()
 
         # leave this untouched
         param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")

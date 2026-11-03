@@ -16,6 +16,7 @@ import torch  # noqa: E402
 from torch.utils.data import Subset  # noqa: E402
 
 import LION.CTtools.ct_utils as ct_utils  # noqa: E402
+from LION.CTtools.ct_geometry import Geometry  # noqa: E402
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI  # noqa: E402
 from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
 from LION.experiments import ct_experiments  # noqa: E402
@@ -82,7 +83,7 @@ def test_a_changed_model_starts_from_new_weights(model_file):
 def data_record(tmp_path, monkeypatch):
     """The record of an experiment's training data (fake LIDC-IDRI, a
     stand-in projection)."""
-    monkeypatch.setattr(ct_utils, "make_operator", lambda g: stand_in_projection)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: stand_in_projection)
     folder = tmp_path / "LIDC-IDRI"
     folder.mkdir()
     fake_lidc(folder, range(1, 11))
@@ -164,7 +165,7 @@ def test_a_solver_made_with_changed_parameters(monkeypatch):
         to_autograd=lambda op, num_extra_dims: (lambda x: x)
     )
     monkeypatch.setattr(e2i, "import_tomosipo", lambda *args: identity)
-    monkeypatch.setattr(lion_solver, "make_operator", lambda geometry: None)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
     record = training_record(
         {
             "_target_": spec.import_path(e2i.Equivariance2InverseSolver),
@@ -183,7 +184,7 @@ def test_a_solver_made_with_changed_parameters(monkeypatch):
         record,
         small_dncnn(),
         solver_params=parameters,
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
     )
     assert type(solver) is e2i.Equivariance2InverseSolver

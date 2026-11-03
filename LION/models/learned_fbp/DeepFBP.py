@@ -138,12 +138,14 @@ class DeepFBPNetwork(LIONmodel):
             Computation device.
     """
 
-    def __init__(self, geometry: ct.Geometry, model_parameters: LIONParameter = None):
-        super().__init__(model_parameters, geometry)
+    def __init__(
+        self, operator_params: ct.Geometry, model_parameters: LIONParameter = None
+    ):
+        super().__init__(model_parameters, operator_params)
         self._make_operator()
 
-        self.num_detectors = geometry.detector_shape[1]
-        self.num_angles_ = len(geometry.angles)
+        self.num_detectors = operator_params.detector_shape[1]
+        self.num_angles_ = len(operator_params.angles)
 
         # Padding to reach power-of-two size for FFT
         self.projection_size_padded = self.compute_projection_size_padded()

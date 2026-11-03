@@ -49,7 +49,7 @@ lidc_testing_dataset = torch.utils.data.Subset(
 # Estimate the noise level from one sample of the dataset
 sino, target = lidc_testing_dataset[0]
 
-recon = fdk(sino, op=experiment.geometry)
+recon = fdk(sino, op=experiment.operator_params)
 diff = recon - target
 est_noise_std = diff.std().item()
 print(f"Estimated noise std: {est_noise_std:.4f}")
@@ -103,7 +103,7 @@ parameters.max_iter = 10
 parameters.eta = 5e3  # ADMM step size
 parameters.cg_max_iter = 100
 parameters.cg_tol = 1e-7
-reconstructor = PnP(experiment.geometry, denoiser_fn_admm, parameters)
+reconstructor = PnP(experiment.operator_params, denoiser_fn_admm, parameters)
 
 # %% [markdown]
 # ## Perform Plug-and-Play reconstruction
@@ -120,7 +120,7 @@ for i, (sino, target) in tqdm(
 
     sino = sino.to(device)
     target = target.to(device)
-    recon = fdk(sino, op=experiment.geometry)
+    recon = fdk(sino, op=experiment.operator_params)
 
     denoised = denoiser_fn(recon.clone()).unsqueeze(0)
 

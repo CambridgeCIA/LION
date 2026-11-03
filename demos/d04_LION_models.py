@@ -30,7 +30,7 @@ geo = ctgeo.Geometry.default_parameters()
 
 # All LIONmodels will have as optional input "model_parameters", these are parameters that define the model. If not give, the default (i.e. the papers) parameters will be used.
 # Some models also use the CT operators, and for those ones, like the LPD, the geometry of the operator has to be input.
-model_lpd = LPD(geometry_parameters=geo, model_parameters=None)
+model_lpd = LPD(operator_params=geo, model_parameters=None)
 
 # There are several models curently in LION, but lets not exhaustively showcase them here.
 # This is another example of a model, one that does not need geometry as input:
@@ -92,7 +92,7 @@ model_msd.save(
     "some_file.pt",
     dataset=dataset_params,
     training=training_params,
-    geometry=geo_params,
+    operator_params=geo_params,
 )
 
 # - save_checkpoint(filename, epoch, loss, optimizer, training_param,**kwargs). This fucntion is a wrapper of save(), but with mandatory parameters
@@ -105,7 +105,7 @@ model_msd.save_checkpoint(
     optimiser,
     training_param,
     dataset=dataset_params,
-    geometry=geo_params,
+    operator_params=geo_params,
 )
 
 # - get_parameter(). Returns parameter objects
@@ -149,7 +149,7 @@ import torch
 class DummyModel(LIONmodel):
     def __init__(
         self,
-        geometry_parameters: ctgeo.Geometry,
+        operator_params: ctgeo.Geometry,
         model_parameters: LIONModelParameter = None,
     ):
 
@@ -157,7 +157,7 @@ class DummyModel(LIONmodel):
         # and it will put the parameters in self.model_parameters
 
         # If a geometry is given, then self.geometry is set, and allows you to use the operator and autograd it.
-        super().__init__(model_parameters, geometry_parameters)  # initialize LIONmodel
+        super().__init__(model_parameters, operator_params)  # initialize LIONmodel
 
         # you may want to e.g. have pytorch compatible operators
         self._make_operator()  # done!

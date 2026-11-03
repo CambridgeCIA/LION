@@ -32,14 +32,14 @@ def plot_distribution(t, bins=30):
 
 
 #%%
-def plot_box(tensors, labels, dose, geometry, title, save):
+def plot_box(tensors, labels, dose, operator_params, title, save):
     data = [t.numpy().flatten() for t in tensors]
     plt.boxplot(data, labels=labels)
-    plt.title(geometry)
+    plt.title(operator_params)
     plt.ylabel(title)
     if save:
         plt.savefig(
-            f"/home/cr661/rds/hpc-work/store/LION/trained_models/{DOSE}_dose/results/results_cLPDIN_LPD/{title}_{dose}_{geometry}.png"
+            f"/home/cr661/rds/hpc-work/store/LION/trained_models/{DOSE}_dose/results/results_cLPDIN_LPD/{title}_{dose}_{operator_params}.png"
         )
     plt.show()
 
@@ -67,7 +67,7 @@ for i in out:
 plot_box(
     [out[0], out[1], out[2]],
     ["cLPD", "LPD", "FDK"],
-    geometry=GEOMETRY,
+    operator_params=GEOMETRY,
     dose=DOSE,
     title="SSIM",
     save=True,
@@ -77,7 +77,7 @@ plot_box(
 plot_box(
     [out[3], out[4], out[5]],
     ["cLPD", "LPD", "FDK"],
-    geometry=GEOMETRY,
+    operator_params=GEOMETRY,
     dose=DOSE,
     title="PSNR",
     save=True,

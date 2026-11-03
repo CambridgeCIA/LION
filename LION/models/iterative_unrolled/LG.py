@@ -43,9 +43,11 @@ class LGblock(nn.Module):
 
 
 class LG(LIONmodel):
-    def __init__(self, geometry: ct.Geometry, model_parameters: LIONParameter = None):
-        super().__init__(model_parameters, geometry)
-        self.geometry = geometry
+    def __init__(
+        self, operator_params: ct.Geometry, model_parameters: LIONParameter = None
+    ):
+        super().__init__(model_parameters, operator_params)
+        self.operator_params = operator_params
         self.channels = self.model_parameters.channels
         self.M = self.channels[-1] - 1
         self.n_iters = self.model_parameters.n_iters
@@ -122,7 +124,7 @@ class LG(LIONmodel):
 
         B, C, W, H = x.shape
 
-        f = x.new_zeros(B, 1, *self.geometry.image_shape[1:])
+        f = x.new_zeros(B, 1, *self.operator_params.image_shape[1:])
         f[:] = self.initial_reconstruction(
             x[:, :1], self.op
         )  # the operator's default (FDK for CT) unless set
