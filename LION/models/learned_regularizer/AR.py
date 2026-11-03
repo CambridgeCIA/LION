@@ -32,8 +32,11 @@ class AR(LIONmodel):
             self.leaky_relu,
         )
 
-        # each of the 4 stride-2 convolutions (kernel 5, padding 2) maps n to ceil(n / 2)
-        height, width = self.operator_params.domain_shape[-2:]
+        # The fully connected layer is sized by the image (the operator's
+        # domain): each of the 4 stride-2 convolutions (kernel 5, padding 2)
+        # maps n to ceil(n / 2)
+        self._make_operator()
+        height, width = self.op.domain_shape[-2:]
         for _ in range(4):
             height, width = (height + 1) // 2, (width + 1) // 2
         self.fc = nn.Sequential(

@@ -115,17 +115,11 @@ class LIONParameter:
 
 class OperatorParameters(LIONParameter):
     """The parameters of an operator, which make it again: one class per kind
-    of operator (e.g. ``LION.CTtools.ct_geometry.Geometry`` for CT). Components
-    that need an operator take its parameters (``operator_params``) and call
-    ``make_operator()``, so they work with any kind."""
+    of operator. For CT, it's the ``Geometry`` (``LION.CTtools.ct_geometry``):
+    wherever LION asks for ``operator_params``, a CT user gives their geometry.
 
-    @property
-    def domain_shape(self) -> tuple:
-        """The shape of the operator's domain (the image), without making the
-        operator: e.g. for a model that sizes its layers by it."""
-        raise NotImplementedError(
-            f"{type(self).__name__} doesn't say its domain shape: define domain_shape"
-        )
+    Components that need an operator take its parameters (``operator_params``)
+    and call ``make_operator()``, so they work with any kind of operator."""
 
     def make_operator(self):
         """The operator these parameters describe."""

@@ -334,7 +334,9 @@ class cLPD(LIONmodel):
         model_parameters: LIONParameter = None,
     ):
         if operator_params is None:
-            raise ValueError("Geometry parameters required. ")
+            raise ValueError(
+                "operator_params required: the parameters of the operator (for CT, the geometry)"
+            )
 
         super().__init__(model_parameters, operator_params)
         # Pass all relevant parameters to internal storage.

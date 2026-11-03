@@ -18,6 +18,15 @@ class Operator(torch.nn.Module, ABC):
     This class defines a common interface for all operators in LION. The most important API includes
     ``forward``, ``adjoint``, and ``domain_shape`` / ``range_shape``.
 
+    LION uses the general words, as an operator can be anything:
+
+    - **domain**: what the operator is applied to, usually the image ``x``;
+    - **range**: what it gives, the measurements ``y``.
+
+    In CT, the operator is the projection: its domain is the image (the
+    geometry's ``image_shape``) and its range the sinogram. Some operators'
+    domains are not images, e.g. a wavelet synthesis's is its coefficients.
+
     This class should be subclassed to implement specific operators.
 
     Attributes:
@@ -111,22 +120,16 @@ class Operator(torch.nn.Module, ABC):
 
     @property
     def domain_shape(self) -> tuple[int, ...]:
-        """Get the shape of the image domain.
-
-        Returns:
-            Shape of the image domain.
-        """
+        """The shape of the operator's domain: what it is applied to, usually
+        the image (in CT, the geometry's ``image_shape``)."""
         raise NotImplementedError(
             "property `domain_shape` must be implemented by subclasses."
         )
 
     @property
     def range_shape(self) -> tuple[int, ...]:
-        """Get the shape of the data (measurement) domain.
-
-        Returns:
-            Shape of the data (measurement) domain.
-        """
+        """The shape of the operator's range: the measurements it gives (in
+        CT, the sinogram)."""
         raise NotImplementedError(
             "property `range_shape` must be implemented by subclasses."
         )

@@ -113,6 +113,14 @@ part.
   (`make_operator()`), and an operator deriving from `Operator` that gives its
   default reconstruction (`default_reconstruction()`, e.g. FDK for CT) and its
   differentiable form (`autograd()`).
+- **Words: general in general code, the operator's own in its code.** Code
+  that works with any operator says `operator_params`, domain (the image) and
+  range (the measurements), and types them `OperatorParameters`/`Operator`.
+  CT-only code says `Geometry`, `image_shape`, angles and sinogram, and types
+  them `Geometry`. Don't add aliases (a `measurement_shape` next to
+  `range_shape`): one name per thing. Where a general argument meets users,
+  its docstring says what it is for CT (e.g. "for CT, the geometry"); the
+  table in the README's Operators section is the glossary.
 - A model from a paper follows the paper and the authors' code. Where it
   deviates, the docstring says so.
 - A component from a paper or a dataset (a model, solver, reconstructor,

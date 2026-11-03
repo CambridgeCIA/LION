@@ -100,6 +100,13 @@ def model_forward(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:
 
 
 class LIONsolver(ABC, metaclass=ABCMeta):
+    """Base class for the solvers, which train a ``model``.
+
+    ``operator_params``: the parameters of the operator the measurements come
+    from (an ``OperatorParameters``; **for CT, the geometry**). Not needed when
+    the model has them: the solver takes the model's.
+    """
+
     def __init__(
         self,
         model: LIONmodel,

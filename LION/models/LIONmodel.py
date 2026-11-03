@@ -129,7 +129,15 @@ def _safe_globals():
 
 class LIONmodel(nn.Module, ABC):
     """
-    Base class for all models in the toolbox,
+    Base class for all models in the toolbox.
+
+    ``model_parameters``: the model's own parameters (``default_parameters()``).
+
+    ``operator_params``: the parameters of the operator the model uses, for
+    models that use one (an ``OperatorParameters``). **For CT, it's the
+    geometry**: ``LPD(geometry)`` or ``LPD(operator_params=geometry)``. The
+    model makes its operator from them (``self.op``): its domain is the image,
+    its range the measurements (the sinogram, in CT).
     """
 
     # Initialization of the models should have only "LIONParameter()" classes. These should be "topic-wise", with at minimum 1 parameter object being passed.

@@ -664,15 +664,6 @@ def test_lpd_checks_the_measurements_against_its_operator(lpd_module, monkeypatc
         model(torch.rand(2, 1, 7, 5))
 
 
-def test_operator_parameters_give_their_domain_shape():
-    from LION.utils.parameter import OperatorParameters
-
-    geometry = Geometry.default_parameters()
-    assert geometry.domain_shape == tuple(geometry.image_shape)
-    with pytest.raises(NotImplementedError, match="domain_shape"):
-        OperatorParameters().domain_shape
-
-
 @ignore_warnings
 @pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
 def test_lpd_starts_from_its_initial_reconstruction(lpd_module, monkeypatch):
