@@ -176,7 +176,7 @@ class LIONmodel(nn.Module, ABC):
                 self.default_parameters(),
                 # normalisator: an unused parameter files saved before 30 Oct
                 # 2026 have (the normalisation is "normalisation")
-                ignore=("normalisation", "normalisator"),
+                ignore=("normalisation", "normalisator", "initial_reconstruction"),
             )
         model_parameters = as_model_parameter(model_parameters)
         # Pass all relevant parameters to internal storage.
@@ -258,6 +258,23 @@ class LIONmodel(nn.Module, ABC):
         self.model_parameters.normalisation = LIONParameter(
             **self.normalisator.record()
         )
+
+    def set_initial_reconstruction(self, reconstruction):
+        """For a model that takes images: how its input is made from the
+        measurements, ``reconstruction(sinogram, operator)``, in training and
+        whenever it is used (``LION.optimizers.LIONsolver.model_forward``).
+        None: FDK (the default). It is one of the model's parameters
+        (``model_parameters.initial_reconstruction``), so it is saved and made
+        again with the model: a LION function or a ``functools.partial`` of
+        one, e.g. ``functools.partial(sirt, num_iterations=50)``."""
+        if self.get_input_type() != ModelInputType.IMAGE:
+            raise ValueError(
+                f"{type(self).__name__} takes measurements: it has no initial "
+                "reconstruction"
+            )
+        if reconstruction is not None:
+            spec.encode(reconstruction)  # raises if it can't be saved
+        self.model_parameters.initial_reconstruction = reconstruction
 
     def normalise(self, x):
         """Normalise ``x`` as set by ``set_normalisation()`` (identity if unset)."""
