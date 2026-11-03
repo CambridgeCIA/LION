@@ -25,7 +25,6 @@ FROM_A_PAPER = [
     "LION.models.CNNs.dncnn.DnCNN",
     "LION.models.iterative_unrolled.LPD.LPD",
     "LION.models.post_processing.FBPConvNetImage.FBPConvNetImage",
-    "LION.models.post_processing.FBPMSDNet.FBPMSDNet",
     "LION.optimizers.Noise2InverseSolver.Noise2InverseSolver",
     "LION.optimizers.Proj2ProjSolver.Proj2ProjSolver",
     "LION.optimizers.Sparse2InverseSolver.Sparse2InverseSolver",
