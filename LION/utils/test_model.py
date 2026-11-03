@@ -4,7 +4,6 @@ import torch
 from torch.utils.data import DataLoader, RandomSampler
 import matplotlib.pyplot as plt
 from LION.models.LIONmodel import LIONmodel, ModelInputType
-from LION.CTtools.ct_utils import make_operator
 from LION.optimizers.LIONsolver import model_forward
 import LION.experiments.ct_experiments as ct_experiments
 from typing import Type
@@ -103,7 +102,7 @@ def test_with_experiment(
     # the CT operator, for the FDK input of image-domain models
     op = None
     if model.get_input_type() == ModelInputType.IMAGE:
-        op = make_operator(experiment.geometry)
+        op = experiment.operator_params.make_operator()
     with torch.no_grad():
         pred = model_forward(model, data, op)
 

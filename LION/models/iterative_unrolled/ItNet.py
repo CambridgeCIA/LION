@@ -24,11 +24,13 @@ from LION.utils.citation import citation
 
 
 class ItNet(LIONmodel):
-    def __init__(self, geometry: ct.Geometry, model_parameters: LIONParameter = None):
-        if geometry is None:
+    def __init__(
+        self, operator_params: ct.Geometry, model_parameters: LIONParameter = None
+    ):
+        if operator_params is None:
             raise ValueError("Geometry parameters required. ")
 
-        super().__init__(model_parameters, geometry)
+        super().__init__(model_parameters, operator_params)
 
         # Create layers per iteration
         for i in range(self.model_parameters.n_iters):

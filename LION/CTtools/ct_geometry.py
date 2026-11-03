@@ -12,7 +12,7 @@ import warnings
 
 import numpy as np
 
-from LION.utils.parameter import LIONParameter
+from LION.utils.parameter import LIONParameter, OperatorParameters
 
 # Each triple (shape, size, spacing) is fixed by any two of its values:
 # size = shape * spacing.
@@ -64,7 +64,7 @@ def _agree(a, b) -> bool:
         return False
 
 
-class Geometry(LIONParameter):
+class Geometry(OperatorParameters):
     """
     Class holding a CT geometry.
 
@@ -151,6 +151,12 @@ class Geometry(LIONParameter):
         that were set, not the computed ones."""
         check_geometry(self)
         return super().serialize()
+
+    def make_operator(self):
+        """The CT operator for this geometry (``CTProjectionOp``)."""
+        from LION.operators.CTProjectionOp import CTProjectionOp
+
+        return CTProjectionOp(self)
 
     def load(self, fname):
         """Load a geometry saved as JSON (see ``init_from_parameter``)."""

@@ -285,7 +285,7 @@ def from_HU_to_material_id(img):
 
 
 def make_operator(geometry: Geometry) -> CTProjectionOp:
-    return CTProjectionOp(geometry)
+    return geometry.make_operator()
 
 
 def forward_projection(

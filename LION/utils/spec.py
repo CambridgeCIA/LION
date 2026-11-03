@@ -44,7 +44,7 @@ import warnings
 import numpy as np
 import torch
 
-from LION.utils.parameter import LIONParameter
+from LION.utils.parameter import LIONParameter, with_current_names
 
 TARGET = "_target_"
 ARGS = "_args_"
@@ -342,7 +342,7 @@ def read(source) -> dict:
         return source
     path = pathlib.Path(source).with_suffix(".json")
     with open(path, encoding="utf-8") as f:
-        return json.load(f)
+        return with_current_names(json.load(f))
 
 
 def target_class(path: str, cls, base, allow=()):

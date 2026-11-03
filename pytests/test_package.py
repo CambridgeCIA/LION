@@ -21,6 +21,7 @@ from torch.utils.data import DataLoader, Subset  # noqa: E402
 
 import LION.CTtools.ct_utils as ct_utils  # noqa: E402
 import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
+from LION.CTtools.ct_geometry import Geometry
 from LION import package  # noqa: E402
 from LION.evaluation import Evaluation  # noqa: E402
 from LION.experiments import ct_experiments  # noqa: E402
@@ -36,16 +37,14 @@ pytestmark = [
 ]
 
 
-def identity_operator(geometry):
+def identity_operator(operator_params):
     return ScaleOp(1.0, (1, 512, 512))
 
 
 def patch(monkeypatch):
     import LION.reconstructors.LIONreconstructor as reconstructors
 
-    monkeypatch.setattr(ct_utils, "make_operator", identity_operator)
-    monkeypatch.setattr(reconstructors, "make_operator", identity_operator)
-    monkeypatch.setattr(lion_solver, "make_operator", lambda geometry: None)
+    monkeypatch.setattr(Geometry, "make_operator", identity_operator)
     monkeypatch.setattr(environment, "publish_problems", lambda record: [])
 
 
@@ -68,7 +67,7 @@ def train(folder, data_folder, name="final", start=None, start_file=None):
         model,
         torch.optim.Adam(model.parameters(), lr=1e-3),
         torch.nn.MSELoss(),
-        geometry=experiment.geometry,
+        operator_params=experiment.operator_params,
         device=torch.device("cpu"),
         verbose=False,
     )
@@ -606,14 +605,16 @@ def saved_reconstructor(trained, tmp_path, kind="PnP"):
     from LION.reconstructors import ForwardReconstructor, PnP
 
     file, data_folder = trained
-    geometry = ct_experiments.LowDoseCTRecon(datafolder=data_folder).geometry
+    operator_params = ct_experiments.LowDoseCTRecon(
+        datafolder=data_folder
+    ).operator_params
     model = LIONmodel.load(file, supress_warnings=True)[0]
     if kind == "PnP":
         parameters = PnP.default_parameters("FBS")
         parameters.max_iter = 2
-        reconstructor = PnP(geometry, model, parameters)
+        reconstructor = PnP(operator_params, model, parameters)
     else:
-        reconstructor = ForwardReconstructor(geometry, model)
+        reconstructor = ForwardReconstructor(operator_params, model)
     reconstructor.save(tmp_path / kind)
     return tmp_path / kind
 
@@ -661,8 +662,10 @@ def test_a_reconstructor_whose_model_has_no_file_is_refused(trained, tmp_path):
     from LION.reconstructors import ForwardReconstructor
 
     _, data_folder = trained
-    geometry = ct_experiments.LowDoseCTRecon(datafolder=data_folder).geometry
-    ForwardReconstructor(geometry, small_dncnn()).save(tmp_path / "forward")
+    operator_params = ct_experiments.LowDoseCTRecon(
+        datafolder=data_folder
+    ).operator_params
+    ForwardReconstructor(operator_params, small_dncnn()).save(tmp_path / "forward")
     with pytest.raises(package.PublishError, match="wasn't loaded from a LION model"):
         published(tmp_path / "forward", tmp_path / "package")
 

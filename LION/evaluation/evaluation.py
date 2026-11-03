@@ -136,9 +136,7 @@ class Evaluation:
             if self.operator is not None:
                 self._operator = self.operator
             elif self.experiment is not None:
-                from LION.CTtools.ct_utils import make_operator
-
-                self._operator = make_operator(self.experiment.geometry)
+                self._operator = self.experiment.operator_params.make_operator()
         return self._operator
 
     # -- running -----------------------------------------------------------

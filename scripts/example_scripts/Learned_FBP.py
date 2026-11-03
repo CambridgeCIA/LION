@@ -74,17 +74,19 @@ from LION.models.learned_fbp.FusionFBP import FusionFBPNetwork
 # selects default parameters and create models
 default_parameters_DeepFBP = DeepFBPNetwork.default_parameters()
 default_parameters_DeepFBP.n_iters = 5
-model_DeepFBP = DeepFBPNetwork(experiment.geometry, default_parameters_DeepFBP)
+model_DeepFBP = DeepFBPNetwork(experiment.operator_params, default_parameters_DeepFBP)
 
 default_parameters_DeepFusionBP = DeepFusionBPNetwork.default_parameters()
 default_parameters_DeepFusionBP.n_iters = 5
 model_DeepFusionBP = DeepFusionBPNetwork(
-    experiment.geometry, default_parameters_DeepFusionBP
+    experiment.operator_params, default_parameters_DeepFusionBP
 )
 
 default_parameters_FusionFBP = FusionFBPNetwork.default_parameters()
 default_parameters_FusionFBP.n_iters = 5
-model_FusionFBP = FusionFBPNetwork(experiment.geometry, default_parameters_FusionFBP)
+model_FusionFBP = FusionFBPNetwork(
+    experiment.operator_params, default_parameters_FusionFBP
+)
 
 
 # Define general optimizer

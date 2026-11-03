@@ -70,7 +70,7 @@ part.
   exception is when the old behaviour was simply wrong; then say so in the
   docstring.
 - **Components keep each constructor argument as an attribute of the same
-  name** (`self.model_parameters`, `self.geometry`, ...). LION saves a component
+  name** (`self.model_parameters`, `self.operator_params`, ...). LION saves a component
   as the call that builds it (a spec, `LION/utils/spec.py`) from those
   attributes, so it can be built again from its file alone. A class that can't
   follow the rule defines `spec_kwargs()`.
@@ -103,8 +103,24 @@ part.
 
 ## Models
 
-- Models derive from `LIONmodel` and take `(model_parameters, geometry=None)`,
-  with the CT geometry as `geometry`.
+- Models derive from `LIONmodel` and take `(model_parameters, operator_params=None)`:
+  the parameters of the operator they use (e.g. a CT `Geometry`). Components
+  that need an operator (models, solvers, datasets, experiments) take its
+  parameters as `operator_params` and make it with
+  `operator_params.make_operator()`, so they work with any kind of operator.
+- Each kind of operator has a parameter class deriving from
+  `OperatorParameters` (`LION/utils/parameter.py`) that makes it
+  (`make_operator()`), and an operator deriving from `Operator` that gives its
+  default reconstruction (`default_reconstruction()`, e.g. FDK for CT) and its
+  differentiable form (`autograd()`).
+- **Words: general in general code, the operator's own in its code.** Code
+  that works with any operator says `operator_params`, domain (the image) and
+  range (the measurements), and types them `OperatorParameters`/`Operator`.
+  CT-only code says `Geometry`, `image_shape`, angles and sinogram, and types
+  them `Geometry`. Don't add aliases (a `measurement_shape` next to
+  `range_shape`): one name per thing. Where a general argument meets users,
+  its docstring says what it is for CT (e.g. "for CT, the geometry"); the
+  table in the README's Operators section is the glossary.
 - A model from a paper follows the paper and the authors' code. Where it
   deviates, the docstring says so.
 - A component from a paper or a dataset (a model, solver, reconstructor,

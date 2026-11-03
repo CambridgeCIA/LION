@@ -70,7 +70,7 @@ solver = EquivariantSolver(
     model,
     optimiser,
     loss_fn,
-    experiment.geometry,
+    experiment.operator_params,
     verbose=False,
     device=device,
 )

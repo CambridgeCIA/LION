@@ -67,23 +67,23 @@ class deteCT(LIONDataset):
     def __init__(
         self,
         mode,
-        geometry_params: ct.Geometry = None,
+        operator_params: ct.Geometry = None,
         parameters: LIONParameter = None,
     ):
         if parameters is None:
             parameters = self.default_parameters()
         self.parameters = parameters
-        self.geometry_params = geometry_params
+        self.operator_params = operator_params
         # where samples are returned: the device selected in LION
         self.device = default_device()
 
         # Get geometry default, or validate if given geometry is valid for 2DeteCT, as its raw sinogram data, we can't allow any geometry
-        if geometry_params is None:
+        if operator_params is None:
             self.geometry = self.get_default_geometry()
             self.angle_index = list(range(len(self.geometry.angles)))
         else:
-            self.angle_index = self.__is_valid_geo(geometry_params)
-            self.geometry = geometry_params
+            self.angle_index = self.__is_valid_geo(operator_params)
+            self.geometry = operator_params
 
         if parameters.query == "" and (
             not parameters.flat_field_correction or not parameters.dark_field_correction

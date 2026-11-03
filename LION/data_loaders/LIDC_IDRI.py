@@ -147,7 +147,7 @@ class LIDC_IDRI(LIONDataset):
     def __init__(
         self,
         mode,
-        geometry_parameters: ct.Geometry = None,
+        operator_params: ct.Geometry = None,
         parameters: LIONParameter = None,
     ):
         """
@@ -208,10 +208,10 @@ class LIDC_IDRI(LIONDataset):
         ], f'Wrong mode argument, must be in ["train", "validation", "test"]'
 
         if parameters is None:
-            parameters = LIDC_IDRI.default_parameters(geometry=geometry_parameters)
+            parameters = LIDC_IDRI.default_parameters(operator_params=operator_params)
         self.parameters = parameters
         self.mode = mode
-        self.geometry_parameters = geometry_parameters
+        self.operator_params = operator_params
 
         task = self.parameters.task
         assert task in [
@@ -227,8 +227,8 @@ class LIDC_IDRI(LIONDataset):
 
         if (
             task in ["reconstruction"]
-            and geometry_parameters is None
-            and self.parameters.geometry is None
+            and operator_params is None
+            and self.parameters.operator_params is None
         ):
             raise ValueError("geometry input required for recosntruction modes")
 
@@ -247,17 +247,17 @@ class LIDC_IDRI(LIONDataset):
             self.image_transform = ct.from_HU_to_normal
 
         # parameters loaded from JSON have the geometry as a plain LIONParameter
-        if self.parameters.geometry is not None and not isinstance(
-            self.parameters.geometry, ct.Geometry
+        if self.parameters.operator_params is not None and not isinstance(
+            self.parameters.operator_params, ct.Geometry
         ):
-            self.parameters.geometry = ct.Geometry.init_from_parameter(
-                self.parameters.geometry
+            self.parameters.operator_params = ct.Geometry.init_from_parameter(
+                self.parameters.operator_params
             )
-        if geometry_parameters is not None:
-            self.parameters.geometry = geometry_parameters
-            self.operator = ct.make_operator(geometry_parameters)
-        elif self.parameters.geometry is not None:
-            self.operator = ct.make_operator(self.parameters.geometry)
+        if operator_params is not None:
+            self.parameters.operator_params = operator_params
+            self.operator = ct.make_operator(operator_params)
+        elif self.parameters.operator_params is not None:
+            self.operator = ct.make_operator(self.parameters.operator_params)
         # Start of Patient pre-processing
 
         self.path_to_processed_dataset = pathlib.Path(self.parameters.folder)
@@ -512,10 +512,10 @@ class LIDC_IDRI(LIONDataset):
     def check_geometry(self):
         """Warn if the geometry's pixel size is not the data's pixel spacing:
         then sizes, and the physical noise model's path lengths, are wrong."""
-        geometry = self.parameters.geometry
-        if self.pixel_spacing_mm is None or geometry is None:
+        operator_params = self.parameters.operator_params
+        if self.pixel_spacing_mm is None or operator_params is None:
             return
-        pixel_size = geometry.image_size[-1] / geometry.image_shape[-1]
+        pixel_size = operator_params.image_size[-1] / operator_params.image_shape[-1]
         if not math.isclose(pixel_size, self.pixel_spacing_mm, rel_tol=1e-6):
             warnings.warn(
                 f"The geometry's pixel size ({pixel_size:.4g} mm) is not the pixel "
@@ -549,7 +549,7 @@ class LIDC_IDRI(LIONDataset):
         )
 
     @staticmethod
-    def default_parameters(geometry=None, task="reconstruction"):
+    def default_parameters(operator_params=None, task="reconstruction"):
         param = LIONParameter()
         param.name = "LIDC-IDRI Data Loader"
         param.training_proportion = 0.8
@@ -567,7 +567,7 @@ class LIDC_IDRI(LIONDataset):
         param.legacy_patient_list = False
         param.task = task
         param.folder = paths.LIDC_IDRI_PROCESSED_DATASET_PATH
-        if task == "reconstruction" and geometry is None:
+        if task == "reconstruction" and operator_params is None:
             raise ValueError(
                 "For reconstruction task geometry needs to be input to default_parameters(geometry=geometry_param)"
             )
@@ -577,7 +577,7 @@ class LIDC_IDRI(LIONDataset):
         param.annotation = "consensus"
         # annotation="random": the seed of each slice's choice (see rng.seeded)
         param.annotation_seed = 0
-        param.geometry = geometry
+        param.operator_params = operator_params
         return param
 
     def get_slices_to_load(

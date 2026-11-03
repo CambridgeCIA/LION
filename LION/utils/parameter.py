@@ -85,7 +85,7 @@ class LIONParameter:
         if isinstance(fname, str):
             fname = Path(fname)
         with open(fname, encoding="utf-8") as f:
-            d = json.load(f)
+            d = with_current_names(json.load(f))
         self.__init__(**d)
 
     def __str__(self):
@@ -111,3 +111,38 @@ class LIONParameter:
             else:
                 delattr(self, key)
         return attributes
+
+
+class OperatorParameters(LIONParameter):
+    """The parameters of an operator, which make it again: one class per kind
+    of operator. For CT, it's the ``Geometry`` (``LION.CTtools.ct_geometry``):
+    wherever LION asks for ``operator_params``, a CT user gives their geometry.
+
+    Components that need an operator take its parameters (``operator_params``)
+    and call ``make_operator()``, so they work with any kind of operator."""
+
+    def make_operator(self):
+        """The operator these parameters describe."""
+        raise NotImplementedError(
+            f"{type(self).__name__} doesn't say how to make its operator: "
+            "define make_operator()"
+        )
+
+
+#: Names files saved before November 2026 used for the operator's parameters.
+OLD_OPERATOR_NAMES = ("geometry", "geometry_params", "geometry_parameters")
+
+
+def with_current_names(value):
+    """A record read from a file, with the old names of the operator's
+    parameters (``OLD_OPERATOR_NAMES``, at any depth) as ``operator_params``."""
+    if isinstance(value, list):
+        return [with_current_names(v) for v in value]
+    if not isinstance(value, dict):
+        return value
+    renamed = {}
+    for key, item in value.items():
+        if key in OLD_OPERATOR_NAMES and "operator_params" not in value:
+            key = "operator_params"
+        renamed[key] = with_current_names(item)
+    return renamed

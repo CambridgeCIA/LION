@@ -17,7 +17,7 @@ from pytests.helpers import small_dncnn
 
 @pytest.fixture(autouse=True)
 def no_ct(monkeypatch):
-    monkeypatch.setattr(lion_solver, "make_operator", lambda geometry: None)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
 
 
 # the authors' measured point response of 2DeteCT's detector 1 (dataset_consts.py)
@@ -79,7 +79,7 @@ def make_e2i_solver(monkeypatch, params=None):
         torch.optim.SGD(model.parameters(), lr=1e-2),
         torch.nn.MSELoss(),
         solver_params=params,
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
         verbose=False,
     )

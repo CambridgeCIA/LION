@@ -14,6 +14,7 @@ from torch.utils.data import DataLoader  # noqa: E402
 
 import LION.data_loaders.LIDC_IDRI as lidc  # noqa: E402
 import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
+from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import sinogram_add_noise  # noqa: E402
 from LION.data_loaders.deteCT import deteCT  # noqa: E402
 from LION.utils.rng import seed_from_parts, seeded  # noqa: E402
@@ -79,7 +80,7 @@ def stand_in_projection(image):
 
 @pytest.fixture
 def no_tomosipo(monkeypatch):
-    monkeypatch.setattr(lidc.ct, "make_operator", lambda geometry: stand_in_projection)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: stand_in_projection)
 
 
 @pytest.fixture
@@ -89,7 +90,7 @@ def lidc_data(tmp_path, no_tomosipo):
     for k, path in enumerate(sorted(tmp_path.glob("LIDC-IDRI-*/slice_*.npy"))):
         np.save(path, np.full((512, 512), -500 + k, np.int16))
     params = lidc.LIDC_IDRI.default_parameters(
-        geometry=lidc.LIDC_IDRI.default_geometry(), task="reconstruction"
+        operator_params=lidc.LIDC_IDRI.default_geometry(), task="reconstruction"
     )
     params.folder = tmp_path
     return lidc.LIDC_IDRI("train", parameters=params)
@@ -193,8 +194,8 @@ def test_experiment_parameters_without_seed_keep_fresh_noise(tmp_path, no_tomosi
 @pytest.fixture
 def detect_data(tmp_path):
     data = fake_detect(tmp_path, "train")
-    geometry = deteCT.get_default_geometry()
-    n_angles, n_det = len(geometry.angles), geometry.detector_shape[-1]
+    operator_params = deteCT.get_default_geometry()
+    n_angles, n_det = len(operator_params.angles), operator_params.detector_shape[-1]
     for k in range(3):
         folder = tmp_path / f"slice{k:05d}" / "mode2"
         folder.mkdir(parents=True)

@@ -10,7 +10,7 @@ A reconstructor is made with everything that decides its result, then run:
     pnp = PnP(operator, model, parameters)   # parameters: PnP.default_parameters()
     images = pnp.reconstruct(measurements)
 
-- ``operator``: a CT ``Geometry`` (the CT operator is made from it) or any LION
+- ``operator``: operator parameters (e.g. a CT ``Geometry``; the operator is made from them) or any LION
   ``Operator``; kept as given, and as ``self.op`` to compute with;
 - ``model``: the trained network (or any function of an image). Optional: a
   reconstructor can be made without one (``instantiate``) and given it later
@@ -45,11 +45,9 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
 from LION.operators import Operator
 from LION.utils import spec
-from LION.utils.parameter import LIONParameter
+from LION.utils.parameter import LIONParameter, OperatorParameters
 
 RECORD_KEY = "lion_reconstructor_record"
 RECORD_VERSION = 1
@@ -60,17 +58,18 @@ class LIONReconstructor(ABC):
 
     def __init__(
         self,
-        operator: Geometry | Operator,
+        operator: OperatorParameters | Operator,
         model=None,
         parameters: LIONParameter | None = None,
     ):
         if isinstance(operator, Operator):
             self.op = operator
-        elif isinstance(operator, Geometry):
-            self.op = make_operator(operator)
+        elif isinstance(operator, OperatorParameters):
+            self.op = operator.make_operator()
         else:
             raise ValueError(
-                "operator must be a LION Operator or a CT Geometry, not "
+                "operator must be a LION Operator or operator parameters "
+                "(OperatorParameters, e.g. a CT Geometry), not "
                 f"{type(operator).__name__}"
             )
         self.operator = operator

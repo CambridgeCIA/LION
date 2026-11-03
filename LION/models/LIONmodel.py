@@ -17,7 +17,7 @@
 # You will want to import LIONParameter, as all models must save and use Parameters.
 from enum import Enum
 from typing import Optional
-from LION.utils.parameter import LIONParameter
+from LION.utils.parameter import LIONParameter, OperatorParameters
 import LION.utils.spec as spec
 from LION.data_loaders.data_record import is_data_record
 from LION.optimizers.training_record import is_training_record, weights_sha256
@@ -25,12 +25,10 @@ from LION.utils import environment, rng
 
 from LION.utils.normaliser import Normalisation
 from LION.utils.device import default_device
-from LION.utils.tomosipo_import import import_tomosipo
 from LION.exceptions.exceptions import NoDataException
 
 # (optional) Given this is a tomography library, it is likely that you will want to load geometries of the tomogprahic problem you are solving, e.g. a ct_geometry
 import LION.CTtools.ct_geometry as ct
-import LION.CTtools.ct_utils as ct_utils
 
 # some numerical standard imports, e.g.
 import numpy as np
@@ -131,18 +129,26 @@ def _safe_globals():
 
 class LIONmodel(nn.Module, ABC):
     """
-    Base class for all models in the toolbox,
+    Base class for all models in the toolbox.
+
+    ``model_parameters``: the model's own parameters (``default_parameters()``).
+
+    ``operator_params``: the parameters of the operator the model uses, for
+    models that use one (an ``OperatorParameters``). **For CT, it's the
+    geometry**: ``LPD(geometry)`` or ``LPD(operator_params=geometry)``. The
+    model makes its operator from them (``self.op``): its domain is the image,
+    its range the measurements (the sinogram, in CT).
     """
 
     # Initialization of the models should have only "LIONParameter()" classes. These should be "topic-wise", with at minimum 1 parameter object being passed.
     # e.g. a Unet will have only 1 parameter (model_parameters), but the Learned Primal Dual will have 2, one for the model parameters and another one
-    # for the geometry parameters of the inverse problem.
+    # for the operator parameters of the inverse problem.
     def __init__(
         self,
         model_parameters: Optional[LIONModelParameter],  # model parameters
-        geometry: Optional[
-            ct.Geometry
-        ] = None,  # (optional) if your model uses an operator, you may need its parameters. e.g. ct geometry parameters for tomosipo operators
+        # (optional) the parameters of the operator the model uses (an
+        # OperatorParameters, e.g. a CT Geometry), which make it
+        operator_params: Optional[OperatorParameters] = None,
     ):
         super().__init__()  # Initialize parent classes.
         __metaclass__ = ABCMeta  # make class abstract.
@@ -151,19 +157,23 @@ class LIONmodel(nn.Module, ABC):
         # (instantiate(..., initial_weights=True)); saved with the model
         self.initial_random_state = torch.get_rng_state()
 
-        if geometry is not None and not isinstance(geometry, ct.Geometry):
+        if operator_params is not None and not isinstance(
+            operator_params, OperatorParameters
+        ):
             raise TypeError(
-                f"Expected geometry to be of type Geometry or None, but got {type(geometry).__name__}. "
+                "Expected operator_params to be operator parameters "
+                f"(OperatorParameters, e.g. a CT Geometry) or None, but got {type(operator_params).__name__}. "
                 "If you passed positional arguments to the model, please verify their order matches the model's __init__ signature."
             )
 
-        # A Geometry is a LIONParameter too: catch it passed in the wrong place.
-        if isinstance(model_parameters, ct.Geometry) or not (
+        # Operator parameters are LIONParameters too: catch them passed in the
+        # wrong place.
+        if isinstance(model_parameters, OperatorParameters) or not (
             model_parameters is None or isinstance(model_parameters, LIONParameter)
         ):
             raise TypeError(
                 f"Expected model_parameters to be of type LIONModelParameter or None, but got {type(model_parameters).__name__}. "
-                "Ensure you are not accidentally passing a Geometry object as model_parameters."
+                "Ensure you are not accidentally passing operator parameters (e.g. a Geometry) as model_parameters."
             )
 
         if model_parameters is None:
@@ -180,7 +190,7 @@ class LIONmodel(nn.Module, ABC):
             )
         model_parameters = as_model_parameter(model_parameters)
         # Pass all relevant parameters to internal storage.
-        self.geometry = geometry
+        self.operator_params = operator_params
         self.model_parameters = model_parameters
         # The normalisation the model is trained and used with (a parameter,
         # written by set_normalisation()); None: inputs are used as they are.
@@ -199,21 +209,17 @@ class LIONmodel(nn.Module, ABC):
     def _make_operator(self):
         # if self.model_parameters.mode.lower() != "ct":
         #     raise NotImplementedError("Only CT operators supported")
-        if hasattr(self, "geometry") and self.geometry is not None:
-            to_autograd = import_tomosipo(
-                "tomosipo.torch_support", f"{type(self).__name__}._make_operator"
-            ).to_autograd
-
-            self.op = ct_utils.make_operator(self.geometry)
-            self.A = to_autograd(self.op, num_extra_dims=1)
-            self.AT = to_autograd(self.op.T, num_extra_dims=1)
+        if getattr(self, "operator_params", None) is not None:
+            self.op = self.operator_params.make_operator()
+            # the operator and its adjoint, differentiable (Operator.autograd)
+            self.A, self.AT = self.op.autograd()
         else:
-            raise AttributeError("Can't make operator without geometry parameters.")
+            raise AttributeError("Can't make operator without operator parameters.")
 
     # All classes should have this method, just change the amount of Parameters it returns of you have more/less
     def get_parameters(self):
-        if self.geometry is not None:
-            return self.model_parameters, self.geometry
+        if self.operator_params is not None:
+            return self.model_parameters, self.operator_params
         else:
             return self.model_parameters
 
@@ -319,7 +325,8 @@ class LIONmodel(nn.Module, ABC):
         - 'training': the record of the training (``LION.optimizers.training_record``,
           written by the solvers), saved and read back as it is; or a
           LIONParameter describing the training algorithm and procedures
-        - 'geometry' (optional): the geometry of the data, for a model without one
+        - 'operator_params' (optional): the operator's parameters (e.g. the CT
+          geometry) of the data, for a model without them
 
         If you want to save the model for training later (i.e. checkpoiting), use save_checkpoint()
         """
@@ -362,9 +369,9 @@ class LIONmodel(nn.Module, ABC):
         if "random_state" in kwargs:  # LION.utils.rng.random_state(), for resuming
             dic["random_state"] = kwargs.pop("random_state")
 
-        # (optional) the geometry of the data, for a model without one (the
-        # data record has it too)
-        given_geometry = kwargs.pop("geometry", None)
+        # (optional) the operator's parameters of the data, for a model
+        # without them (the data record has them too)
+        given_operator_params = kwargs.pop("operator_params", None)
 
         if kwargs:  # if not empty yet
             raise ValueError(
@@ -381,9 +388,10 @@ class LIONmodel(nn.Module, ABC):
         metadata["environment"] = environment.environment_record(
             None if first is None else first.device
         ).serialize()
-        # A geometry given here describes the data (e.g. for a model without one)
-        if given_geometry is not None:
-            metadata["geometry"] = spec.encode(given_geometry)
+        # Operator parameters given here describe the data (e.g. for a model
+        # without them)
+        if given_operator_params is not None:
+            metadata["operator_params"] = spec.encode(given_operator_params)
         if is_data_record(dataset_params):
             # already JSON (LION.data_loaders.data_record), kept as it is
             metadata["dataset_params"] = spec.read(dataset_params)  # as JSON
@@ -506,10 +514,10 @@ class LIONmodel(nn.Module, ABC):
                 )
         options.model_name = path.rsplit(".", 1)[-1]
         options.model_parameters = kwargs.get("model_parameters")
-        if "geometry" in saved:
-            options.geometry = spec.build(saved["geometry"], allow)
-        elif kwargs.get("geometry") is not None:
-            options.geometry = kwargs["geometry"]
+        if "operator_params" in saved:
+            options.operator_params = spec.build(saved["operator_params"], allow)
+        elif kwargs.get("operator_params") is not None:
+            options.operator_params = kwargs["operator_params"]
         for key in ("dataset_params", "training"):
             if is_data_record(saved.get(key)) or is_training_record(saved.get(key)):
                 # a record, whose specs stay dicts: making its components
@@ -533,18 +541,20 @@ class LIONmodel(nn.Module, ABC):
         # JSON loads nested parameters back as plain LIONParameter
         if isinstance(getattr(options, "model_parameters", None), LIONParameter):
             options.model_parameters = as_model_parameter(options.model_parameters)
-        if hasattr(options, "geometry"):
-            options.geometry = ct.Geometry.init_from_parameter(options.geometry)
+        if hasattr(options, "operator_params"):  # files from before: CT geometries
+            options.operator_params = ct.Geometry.init_from_parameter(
+                options.operator_params
+            )
         # Check if model name matches the one that is loading it
         if options.model_name != cls.__name__:
             warnings.warn(
                 f"\nSaved model is from a class with a different name than current, likely load will fail. \nCurrent class name: {cls.__name__}, Saved model class name: {options.model_name}\n"
             )
-        # Some models need geometry, some others not.
+        # Some models need operator parameters, some others not.
         kwargs = {"model_parameters": options.model_parameters}
         sig = inspect.signature(cls.__init__)
-        if hasattr(options, "geometry") and "geometry" in sig.parameters:
-            kwargs["geometry"] = options.geometry
+        if hasattr(options, "operator_params") and "operator_params" in sig.parameters:
+            kwargs["operator_params"] = options.operator_params
         return cls, kwargs, options
 
     @classmethod
@@ -558,7 +568,7 @@ class LIONmodel(nn.Module, ABC):
         ``LIONmodel``, the class the file names (``allow`` as in ``load``).
 
         ``arguments`` replace recorded ones, e.g. ``model_parameters`` from
-        ``parameters_from_file``, changed, or ``geometry``.
+        ``parameters_from_file``, changed, or ``operator_params``.
 
         ``initial_weights=True`` (``source`` a file a solver saved): the
         weights its training started from, as its training record says: made
@@ -588,7 +598,8 @@ class LIONmodel(nn.Module, ABC):
             model = LPD.instantiate("model", model_parameters=parameters)
 
         ``instantiate`` makes the class the file records, with its other
-        arguments (e.g. the geometry); ``LPD(geometry, parameters)`` works too.
+        arguments (e.g. the operator's parameters); ``LPD(operator_params,
+        parameters)`` works too.
         Called on a model class, a file of another class gives a warning.
         """
         target, kwargs, _ = cls._read_model_file(source, allow)

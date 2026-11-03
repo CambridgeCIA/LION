@@ -130,7 +130,7 @@ def test_a_reconstructor():
 
 @pytest.fixture
 def no_ct(monkeypatch):
-    monkeypatch.setattr(lion_solver, "make_operator", lambda geometry: None)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
 
 
 def make_solver(cls=SupervisedSolver, m=None):
@@ -139,7 +139,7 @@ def make_solver(cls=SupervisedSolver, m=None):
         m,
         torch.optim.SGD(m.parameters(), lr=0.01),
         torch.nn.MSELoss(),
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
     )
 
@@ -408,7 +408,7 @@ def test_an_experiment(tmp_path, monkeypatch):
 
     # the loader projects with it, and the evaluation gives it to methods
     assert lidc.ct is ct_utils
-    monkeypatch.setattr(ct_utils, "make_operator", lambda g: stand_in_projection)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: stand_in_projection)
     folder = tmp_path / "LIDC-IDRI"
     folder.mkdir()
     fake_lidc(folder, range(1, 11))

@@ -46,29 +46,27 @@ def test_follows_torch_cuda_set_device(monkeypatch):
 
 
 def test_solver_uses_default_device(monkeypatch, restore_default_device):
-    monkeypatch.setattr(lion_solver, "make_operator", lambda geometry: None)
-    monkeypatch.setattr(supervised_solver, "make_operator", lambda geometry: None)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
     torch.set_default_device("meta")
     model = small_dncnn()
     solver = supervised_solver.SupervisedSolver(
         model,
         torch.optim.SGD(model.parameters(), lr=0.1),
         torch.nn.MSELoss(),
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
     )
     assert solver.device == torch.device("meta")
     assert next(solver.model.parameters()).device == torch.device("meta")
 
 
 def test_explicit_device_wins(monkeypatch):
-    monkeypatch.setattr(lion_solver, "make_operator", lambda geometry: None)
-    monkeypatch.setattr(supervised_solver, "make_operator", lambda geometry: None)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
     model = small_dncnn()
     solver = supervised_solver.SupervisedSolver(
         model,
         torch.optim.SGD(model.parameters(), lr=0.1),
         torch.nn.MSELoss(),
-        geometry=Geometry.default_parameters(),
+        operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
     )
     assert solver.device == torch.device("cpu")
@@ -159,7 +157,7 @@ def _fake_ct(monkeypatch, tmp_path):
         fdk_inputs.append(sino)
         return 2 * sino
 
-    monkeypatch.setattr(test_model, "make_operator", lambda geometry: operator)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: operator)
     replace_fdk(monkeypatch, fake_fdk)
     return fdk_inputs
 
@@ -180,7 +178,7 @@ def test_test_with_experiment_evaluates_in_eval_mode(monkeypatch, tmp_path):
             return model, None, None
 
     class Experiment:
-        geometry = None
+        operator_params = Geometry.default_parameters()
 
         def get_testing_dataset(self):
             return TensorDataset(torch.rand(4, 1, 8, 8), torch.rand(4, 1, 8, 8))
@@ -213,7 +211,7 @@ def test_test_with_experiment_runs_models_as_the_solvers(
             return model, None, None
 
     class Experiment:
-        geometry = None
+        operator_params = Geometry.default_parameters()
 
         def get_testing_dataset(self):
             return TensorDataset(sino, torch.rand(1, 1, 8, 8))
@@ -257,7 +255,9 @@ def test_data_folders_are_read_when_used(monkeypatch, tmp_path):
     monkeypatch.setenv("LION_DATA_PATH", str(tmp_path / "b"))
     folder = (tmp_path / "b" / "processed" / "LIDC-IDRI").resolve()
     assert paths.LIDC_IDRI_PROCESSED_DATASET_PATH == folder
-    parameters = LIDC_IDRI.default_parameters(geometry=Geometry.default_parameters())
+    parameters = LIDC_IDRI.default_parameters(
+        operator_params=Geometry.default_parameters()
+    )
     assert parameters.folder == folder
     written = spec.encode(parameters.folder)
     assert written == {

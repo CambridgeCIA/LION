@@ -84,7 +84,7 @@ optimiser = torch.optim.Adam(
 sino, target = next(iter(lidc_dataloader))
 from LION.classical_algorithms.fdk import fdk
 
-recon = fdk(sino, op=experiment.geometry)
+recon = fdk(sino, op=experiment.operator_params)
 diff = recon - target
 max_noise_std = diff.std().item()
 
@@ -103,7 +103,7 @@ solver = SupervisedSolver(
     model,
     optimiser,
     loss_fcn,
-    geometry=experiment.geometry,
+    operator_params=experiment.operator_params,
     verbose=True,
     save_folder=savefolder,
 )
@@ -146,14 +146,14 @@ from LION.reconstructors.PnP import PnP
 
 parameters = PnP.default_parameters("FBS")
 parameters.max_iter = 5
-reconstructor = PnP(experiment.geometry, model, parameters)
+reconstructor = PnP(experiment.operator_params, model, parameters)
 
 for i, (sino, target) in enumerate(lidc_dataloader):
     for noise_level in [0.001, 0.0001, 0.0000]:
         print(f"Testing with noise level: {noise_level}")
         sino = sino.to(device)
         target = target.to(device)
-        recon = fdk(sino, op=experiment.geometry)
+        recon = fdk(sino, op=experiment.operator_params)
         # normalize recon
         recon = model.normalise(recon)
         denoised = model(recon, noise_level=noise_level)

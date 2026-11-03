@@ -20,7 +20,7 @@ class Noise2InverseSolver(LIONsolver):
         optimizer: Optimizer,
         loss_fn,
         solver_params: Optional[LIONParameter] = None,
-        geometry: Geometry = None,
+        operator_params: Geometry = None,
         verbose: bool = True,
         device: torch.device = None,
         seed: Optional[int] = 0,
@@ -30,7 +30,7 @@ class Noise2InverseSolver(LIONsolver):
             model,
             optimizer,
             loss_fn,
-            geometry,
+            operator_params,
             verbose,
             device,
             solver_params=solver_params,
@@ -62,13 +62,13 @@ class Noise2InverseSolver(LIONsolver):
     def _make_sub_operators(self) -> list:
         ops = []
         # maintain a copy of the original angles to restore later
-        angles = self.geometry.angles.copy()
+        angles = self.operator_params.angles.copy()
         for k in range(self.sino_split_count):
-            self.geometry.angles = angles[k :: self.sino_split_count]
-            sub_op = ct.make_operator(self.geometry)
+            self.operator_params.angles = angles[k :: self.sino_split_count]
+            sub_op = ct.make_operator(self.operator_params)
             ops.append(sub_op)
         # restore self.geometry.angles
-        self.geometry.angles = angles
+        self.operator_params.angles = angles
         return ops
 
     def _calculate_noisy_sub_recons(self, sinos):
@@ -140,7 +140,7 @@ class Noise2InverseSolver(LIONsolver):
         noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)  # b, split, c, w, h
 
         outputs = torch.zeros(
-            (sinos.shape[0], *self.geometry.image_shape), device=self.device
+            (sinos.shape[0], *self.operator_params.image_shape), device=self.device
         )
 
         for _, J in enumerate(self.cali_J):

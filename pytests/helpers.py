@@ -126,7 +126,12 @@ def replace_fdk(monkeypatch, stand_in):
 
 class CTStandIn:
     """A stand-in CT operator, for tests without tomosipo: its default
-    reconstruction is LION's ``fdk`` (made a stand-in with ``replace_fdk``)."""
+    reconstruction is LION's ``fdk`` (made a stand-in with ``replace_fdk``),
+    with the given domain and range shapes."""
+
+    def __init__(self, domain_shape=None, range_shape=None):
+        self.domain_shape = domain_shape
+        self.range_shape = range_shape
 
     def default_reconstruction(self, y):
         from LION.classical_algorithms.fdk import fdk

@@ -100,6 +100,19 @@ Originally designed for tomographic reconstruction tasks, specifically Computed 
 LION has been extended to work with more operators.
 [Read more about operators here](LION/operators/_README.rst)
 
+As LION isn't only CT, its general code uses general words. For CT, they mean:
+
+| LION says | In CT |
+|---|---|
+| `operator_params` (an `OperatorParameters`) | the geometry (`Geometry`) |
+| the operator (`Operator`, `operator_params.make_operator()`) | the projector (`CTProjectionOp`) |
+| domain (`op.domain_shape`) | the image (`geometry.image_shape`) |
+| range (`op.range_shape`), measurements | the sinogram |
+| the operator's default reconstruction | FDK |
+
+So a CT model is made from its geometry, e.g. `LPD(geometry)`, and a solver
+takes `operator_params=geometry`.
+
 ## Developers
 
 Read [`developers.md`](developers.md)

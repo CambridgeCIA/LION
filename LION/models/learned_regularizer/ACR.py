@@ -9,8 +9,8 @@
 from typing import Optional
 import torch
 import torch.nn as nn
+from LION.utils.parameter import OperatorParameters
 from LION.models.LIONmodel import LIONmodel, ModelInputType, LIONModelParameter
-import LION.CTtools.ct_geometry as ct
 import torch.nn.utils.parametrize as P
 from LION.utils.math import power_method
 from LION.utils.citation import citation
@@ -79,11 +79,11 @@ class L2net(nn.Module):
 class ACR(LIONmodel):
     def __init__(
         self,
-        geometry: Optional[ct.Geometry] = None,
+        operator_params: Optional[OperatorParameters] = None,
         model_parameters: Optional[LIONModelParameter] = None,
     ):
 
-        super().__init__(model_parameters, geometry)
+        super().__init__(model_parameters, operator_params)
         params = self.model_parameters  # defaults filled in by LIONmodel
         # First Conv
         self.first_layer = nn.Conv2d(
@@ -126,7 +126,7 @@ class ACR(LIONmodel):
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
         self.L2 = L2net(params.l2_penalty)
         self.initialize_weights()
-        if self.geometry is not None:
+        if self.operator_params is not None:
             # Step size for gradient descent on the variational problem
             self._make_operator()
             self.op_norm = power_method(self.op)

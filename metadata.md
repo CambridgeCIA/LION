@@ -303,7 +303,7 @@ A new model, dataset, experiment, solver or reconstructor takes part when:
   `LIONsolver`, `LIONReconstructor`), which gives it `instantiate`,
   `parameters_from_file` and its records;
 - it keeps each constructor argument as an attribute of the same name
-  (`self.model_parameters`, `self.geometry`), or defines `spec_kwargs()`;
+  (`self.model_parameters`, `self.operator_params`), or defines `spec_kwargs()`;
 - its settings are a `LIONParameter` with a static `default_parameters()`; a
   setting added later reads `getattr(parameters, "name", <old behaviour>)`, so
   files saved before keep giving their results;

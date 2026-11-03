@@ -155,23 +155,28 @@ def test_old_dataset_is_resampled_in_place(preprocessing, tmp_path):
 
 
 def test_default_geometry_covers_the_field_of_view():
-    geometry = lidc.LIDC_IDRI.default_geometry()
-    assert list(geometry.image_shape) == [1, 512, 512]
-    assert geometry.image_size[-1] / geometry.image_shape[-1] == lidc.PIXEL_SPACING_MM
+    operator_params = lidc.LIDC_IDRI.default_geometry()
+    assert list(operator_params.image_shape) == [1, 512, 512]
+    assert (
+        operator_params.image_size[-1] / operator_params.image_shape[-1]
+        == lidc.PIXEL_SPACING_MM
+    )
     # radius of the circle the fan beam sees: dso * sin(half fan angle)
-    half_fan = np.arctan(geometry.detector_size[-1] / 2 / geometry.dsd)
-    assert geometry.dso * np.sin(half_fan) >= 250  # the 500 mm field of view
-    assert len(geometry.angles) == 360
+    half_fan = np.arctan(operator_params.detector_size[-1] / 2 / operator_params.dsd)
+    assert operator_params.dso * np.sin(half_fan) >= 250  # the 500 mm field of view
+    assert len(operator_params.angles) == 360
 
 
 def test_loader_warns_if_the_geometry_does_not_match():
     dataset = lidc.LIDC_IDRI.__new__(lidc.LIDC_IDRI)  # no data needed
     dataset.pixel_spacing_mm = lidc.PIXEL_SPACING_MM
     dataset.parameters = types.SimpleNamespace(
-        geometry=lidc.LIDC_IDRI.default_geometry()
+        operator_params=lidc.LIDC_IDRI.default_geometry()
     )
     dataset.check_geometry()  # no warning
-    dataset.parameters.geometry = ct_experiments.ctgeo.Geometry.default_parameters()
+    dataset.parameters.operator_params = (
+        ct_experiments.ctgeo.Geometry.default_parameters()
+    )
     with pytest.warns(UserWarning, match="pixel size"):
         dataset.check_geometry()
 
@@ -185,10 +190,13 @@ def test_loader_warns_if_the_geometry_does_not_match():
     ],
 )
 def test_lidc_experiments_use_the_lidc_geometry_with_the_same_angles(cls, preset):
-    geometry = cls.default_parameters().geometry
+    operator_params = cls.default_parameters().operator_params
     old = getattr(ct_experiments.ctgeo.Geometry, preset)()
-    np.testing.assert_allclose(geometry.angles, old.angles)
-    assert geometry.image_size[-1] == 500 and geometry.detector_shape[-1] == 1024
+    np.testing.assert_allclose(operator_params.angles, old.angles)
+    assert (
+        operator_params.image_size[-1] == 500
+        and operator_params.detector_shape[-1] == 1024
+    )
 
 
 def test_new_patients_are_resampled(preprocessing, tmp_path):

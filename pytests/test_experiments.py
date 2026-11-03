@@ -139,8 +139,8 @@ def test_detect_noise_I0_per_detector(tmp_path):
 @pytest.mark.filterwarnings("ignore:You are not using any detector query")
 def test_detect_loader_adds_noise_with_the_slice_I0(tmp_path, monkeypatch):
     data = fake_detect(tmp_path, "train")  # slices 0-2: the first sample
-    geometry = deteCT.get_default_geometry()
-    n_angles, n_det = len(geometry.angles), geometry.detector_shape[-1]
+    operator_params = deteCT.get_default_geometry()
+    n_angles, n_det = len(operator_params.angles), operator_params.detector_shape[-1]
     for k in range(3):
         folder = tmp_path / f"slice{k:05d}" / "mode2"
         folder.mkdir(parents=True)
@@ -209,11 +209,11 @@ def test_ct_experiments_on_2detect(cls):
     n_angles, input_mode = expected
     params = cls.default_parameters(dataset="2DeteCT")
     measured = np.asarray(deteCT.get_default_geometry().angles)
-    angles = np.asarray(params.geometry.angles)
+    angles = np.asarray(params.operator_params.angles)
     assert len(angles) == n_angles
     assert np.isin(angles, measured).all()  # only measured angles
     if n_angles < 3600:  # sparse/limited: same sampling as the simulated experiment
-        simulated = np.asarray(cls.default_parameters().geometry.angles)
+        simulated = np.asarray(cls.default_parameters().operator_params.angles)
         np.testing.assert_allclose(
             np.abs(np.diff(angles)), np.abs(np.diff(simulated)), atol=1e-9
         )
@@ -296,12 +296,14 @@ def test_experiment_from_saved_parameters_has_a_geometry(tmp_path, cls):
     params.save(tmp_path / "experiment.json")
     loaded = LIONParameter()
     loaded.load(tmp_path / "experiment.json")
-    assert not isinstance(loaded.geometry, ct_experiments.ctgeo.Geometry)
+    assert not isinstance(loaded.operator_params, ct_experiments.ctgeo.Geometry)
     experiment = cls(loaded)
-    assert isinstance(experiment.geometry, ct_experiments.ctgeo.Geometry)
-    np.testing.assert_allclose(experiment.geometry.angles, params.geometry.angles)
-    assert list(experiment.geometry.detector_shape) == list(
-        params.geometry.detector_shape
+    assert isinstance(experiment.operator_params, ct_experiments.ctgeo.Geometry)
+    np.testing.assert_allclose(
+        experiment.operator_params.angles, params.operator_params.angles
+    )
+    assert list(experiment.operator_params.detector_shape) == list(
+        params.operator_params.detector_shape
     )
 
 
@@ -327,6 +329,6 @@ def test_detect_returns_samples_on_the_selected_device(tmp_path, monkeypatch):
     np.save(
         tmp_path / identifier / "mode2" / "reconstruction.npy", np.ones((1024, 1024))
     )
-    data.geometry = data.get_default_geometry()
+    data.operator_params = data.get_default_geometry()
     for tensor in data[0]:
         assert tensor.device.type == "meta"

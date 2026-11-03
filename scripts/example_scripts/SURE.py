@@ -45,7 +45,7 @@ solver = SelfSupervisedSolver(
     model,
     optimizer,
     loss_fn,
-    geometry=experiment.geometry,
+    operator_params=experiment.operator_params,
 )
 
 
@@ -66,7 +66,7 @@ solver.clean_checkpoints()
 testing_dataset = experiment.get_training_dataset()
 testing_dataloader = DataLoader(testing_dataset, 1, False)
 sino, target = next(iter(testing_dataloader))
-noisy = fdk(sino, experiment.geometry)
+noisy = fdk(sino, experiment.operator_params)
 solver.model.eval()
 output = solver.model(noisy)
 
