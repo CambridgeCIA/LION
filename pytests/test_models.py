@@ -21,6 +21,7 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.models.post_processing.FBPMSDNet import FBPMSDNet
 from LION.utils import spec
 from LION.utils.parameter import LIONParameter
+from LION.models.PnP.gradient_step_denoiser import GSD
 from pytests.helpers import ImageMatrixOp, small_gsd, small_gsd_dncnn
 
 # Saving a model without geometry warns about it; that is expected for DnCNN.
@@ -176,6 +177,25 @@ def test_gsd_saves_and_loads_its_denoiser(tmp_path):
     assert type(loaded._backbone_model).__name__ == "DnCNN"
     x = torch.rand(1, 1, 16, 16)
     torch.testing.assert_close(loaded(x), model(x))
+
+
+def test_gsd_takes_a_noise_level_if_its_denoiser_does():
+    from pytests.helpers import small_gsd_noise_channel
+
+    torch.manual_seed(0)
+    model = small_gsd_noise_channel().eval()
+    assert model.takes_noise_level()
+    x = torch.rand(2, 1, 8, 8)
+    low, high = model(x, noise_level=0.01), model(x, noise_level=0.5)
+    assert low.shape == x.shape
+    assert not torch.allclose(low, high)
+
+    assert not small_gsd_dncnn().takes_noise_level()
+    params = GSD.default_parameters()
+    assert not GSD(params).takes_noise_level()
+    params.backbone_params.use_noise_level = True
+    params.backbone_params.in_channels = 1
+    assert GSD(params).takes_noise_level()  # DRUNet's own option
 
 
 def test_gsd_denoiser_must_be_a_lion_model():

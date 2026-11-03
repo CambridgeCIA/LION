@@ -26,7 +26,12 @@ from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.operators import Operator
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver
-from pytests.helpers import small_dncnn, small_gsd, small_gsd_dncnn
+from pytests.helpers import (
+    small_dncnn,
+    small_gsd,
+    small_gsd_dncnn,
+    small_gsd_noise_channel,
+)
 
 pytestmark = pytest.mark.filterwarnings("ignore")
 
@@ -313,6 +318,22 @@ def test_gaussian_denoiser_noise_level(noise_level):
     )
     assert solver.noise_level.shape == (2,)
     assert solver.noise_level[0] == np.atleast_1d(noise_level)[0]
+
+
+def test_gaussian_denoiser_gives_gsd_the_noise_level_channel():
+    from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
+
+    torch.manual_seed(0)
+    model = small_gsd_noise_channel()
+    solver = GaussianDenoiserSolver(
+        model,
+        torch.optim.SGD(model.parameters(), lr=0.1),
+        torch.nn.MSELoss(),
+        geometry=Geometry.default_parameters(),
+        device=torch.device("cpu"),
+    )
+    target = torch.rand(2, 1, 8, 8)
+    assert torch.isfinite(solver.mini_batch_step(None, target))
 
 
 # --------------------------------------------------------------------------

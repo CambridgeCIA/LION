@@ -5,6 +5,7 @@ import torch
 from LION.models.CNNs.dncnn import DnCNN
 from LION.models.LIONmodel import ModelInputType
 from LION.models.PnP.gradient_step_denoiser import GSD
+from LION.models.torch_model import TorchModel
 from LION.operators import Operator
 
 
@@ -84,3 +85,20 @@ def small_gsd():
 def small_gsd_dncnn():
     """GSD with a denoiser that takes no noise level."""
     return GSD(denoiser=small_dncnn())
+
+
+class NoiseLevelConvolution(torch.nn.Module):
+    """A plain torch denoiser that takes the noise level, as an extra input
+    channel (as DRUNet does)."""
+
+    def __init__(self):
+        super().__init__()
+        self.conv = torch.nn.Conv2d(2, 1, 3, padding=1)
+
+    def forward(self, x, noise_level):
+        return self.conv(torch.cat((x, noise_level * torch.ones_like(x)), dim=1))
+
+
+def small_gsd_noise_channel():
+    """GSD whose denoiser takes the noise level."""
+    return GSD(denoiser=TorchModel(NoiseLevelConvolution))

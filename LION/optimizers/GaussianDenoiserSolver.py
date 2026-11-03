@@ -88,10 +88,7 @@ class GaussianDenoiserSolver(LIONsolver):
         y = target + noise_level * torch.randn_like(target)
 
         # if the model accepts noise level as input
-        if (
-            hasattr(self.model.model_parameters, "use_noise_level")
-            and self.model.model_parameters.use_noise_level
-        ):
+        if self.model.takes_noise_level():
             output = self.model(y, noise_level=noise_level)
         else:
             output = self.model(y)
@@ -160,10 +157,7 @@ class GaussianDenoiserSolver(LIONsolver):
                     y = data + noise_level * torch.randn_like(data)
 
                 # if the model accepts noise level as input
-                if (
-                    hasattr(self.model.model_parameters, "use_noise_level")
-                    and self.model.model_parameters.use_noise_level
-                ):
+                if self.model.takes_noise_level():
                     outputs = self.model(y, noise_level=noise_level)
                 else:
                     outputs = self.model(y)

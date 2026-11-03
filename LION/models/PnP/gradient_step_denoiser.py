@@ -9,7 +9,6 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 
 import copy
-import inspect
 import torch
 import importlib
 from LION.utils.citation import citation
@@ -20,9 +19,12 @@ class GSD(LIONmodel):
     for a denoiser N (Hurault et al., 2022).
 
     ``denoiser``: N, any LIONmodel (to use a plain torch module, wrap it in a
-    LIONmodel). Without it, N is the CNN ``model_parameters.backbone_model``
-    (default DRUNet) made with ``model_parameters.backbone_params``. N gets the
-    noise level if its ``forward`` takes ``noise_level``.
+    LIONmodel, e.g. ``TorchModel``). Without it, N is the CNN
+    ``model_parameters.backbone_model`` (default DRUNet) made with
+    ``model_parameters.backbone_params``.
+
+    The noise level: GSD takes one if N does (``N.takes_noise_level()``), and
+    passes it on; how N uses it (e.g. DRUNet's extra input channel) is N's.
     """
 
     def __init__(self, model_parameters: LIONParameter = None, denoiser=None):
@@ -45,9 +47,6 @@ class GSD(LIONmodel):
             self.model_parameters.backbone_params = None
 
         self._backbone_model = denoiser
-        self._takes_noise_level = (
-            "noise_level" in inspect.signature(denoiser.forward).parameters
-        )
 
     def spec_kwargs(self) -> dict:
         """GSD's constructor arguments: its parameters, and the denoiser when
@@ -104,8 +103,8 @@ class GSD(LIONmodel):
         # when called under torch.no_grad() (validation, testing, PnP).
         with torch.enable_grad():
             x = x.detach().requires_grad_(True)
-            if self._takes_noise_level:
-                denoised = self._backbone_model(x, noise_level)
+            if self.takes_noise_level():
+                denoised = self._backbone_model(x, noise_level=noise_level)
             else:
                 denoised = self._backbone_model(x)
             obj = 0.5 * torch.sum((denoised - x) ** 2)
@@ -117,6 +116,10 @@ class GSD(LIONmodel):
                 retain_graph=self.training,
             )[0]
         return obj, grad
+
+    def takes_noise_level(self) -> bool:
+        """Whether GSD takes a noise level: if its denoiser does."""
+        return self._backbone_model.takes_noise_level()
 
     def forward(self, x, noise_level: float = None):
         _, grad = self.grad(x, noise_level)
