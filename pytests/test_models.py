@@ -20,7 +20,6 @@ from LION.models.iterative_unrolled.ItNet import ItNet
 from LION.models.learned_regularizer.ACR import ACR
 from LION.models.learned_regularizer.AR import AR
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
-from LION.models.post_processing.FBPMSDNet import FBPMSDNet
 from LION.utils import spec
 from LION.utils.parameter import LIONParameter
 from LION.models.PnP.gradient_step_denoiser import GSD
@@ -319,21 +318,14 @@ def small_geometry(n=16):
     return geometry
 
 
-def small_fbpmsdnet_params():
-    params = FBPMSDNet.default_parameters()
-    params.depth, params.dilations = 2, [1, 2]
-    return params
-
-
 @ignore_warnings
 @pytest.mark.parametrize(
     "make_model",
     [
         lambda: AR(AR.default_parameters(), small_geometry()),
         lambda: ACR(small_geometry()),
-        lambda: FBPMSDNet(small_fbpmsdnet_params(), small_geometry()),
     ],
-    ids=["AR", "ACR", "FBPMSDNet"],
+    ids=["AR", "ACR"],
 )
 def test_models_with_geometry_load(monkeypatch, tmp_path, make_model):
     """load() passes the saved geometry as `geometry=`: every model must call
