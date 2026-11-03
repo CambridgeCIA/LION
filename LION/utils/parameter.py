@@ -119,6 +119,14 @@ class OperatorParameters(LIONParameter):
     that need an operator take its parameters (``operator_params``) and call
     ``make_operator()``, so they work with any kind."""
 
+    @property
+    def domain_shape(self) -> tuple:
+        """The shape of the operator's domain (the image), without making the
+        operator: e.g. for a model that sizes its layers by it."""
+        raise NotImplementedError(
+            f"{type(self).__name__} doesn't say its domain shape: define domain_shape"
+        )
+
     def make_operator(self):
         """The operator these parameters describe."""
         raise NotImplementedError(

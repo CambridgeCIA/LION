@@ -11,10 +11,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchdiffeq import odeint, odeint_adjoint
-import LION.CTtools.ct_geometry as ct
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
-from LION.utils.parameter import LIONParameter
+from LION.utils.parameter import LIONParameter, OperatorParameters
 from LION.utils.citation import citation
 
 # Implementation of: continuous version of FBPConvNet
@@ -224,7 +223,7 @@ class cFBPConvNet(LIONmodel):
 
     def __init__(
         self,
-        operator_params: Optional[ct.Geometry] = None,
+        operator_params: Optional[OperatorParameters] = None,
         model_parameters: LIONParameter = None,
     ):
 

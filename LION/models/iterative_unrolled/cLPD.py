@@ -9,8 +9,7 @@
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.utils.math import power_method
-from LION.utils.parameter import LIONParameter
-import LION.CTtools.ct_geometry as ct
+from LION.utils.parameter import LIONParameter, OperatorParameters
 
 # import LION.CTtools.ct_utils as ct_utils
 # import LION.utils.utils as ai_utils
@@ -331,7 +330,7 @@ class cLPD(LIONmodel):
 
     def __init__(
         self,
-        operator_params: ct.Geometry,
+        operator_params: OperatorParameters,
         model_parameters: LIONParameter = None,
     ):
         if operator_params is None:
@@ -467,17 +466,17 @@ class cLPD(LIONmodel):
         if C != 1:
             raise NotImplementedError("Only 2D CT images supported")
 
-        if (
-            len(self.operator_params.angles) != W
-            or self.operator_params.detector_shape[1] != H
-        ):
-            raise ValueError("geo description and sinogram size do not match")
+        if tuple(g.shape[1:]) != tuple(self.op.range_shape):
+            raise ValueError(
+                f"measurements of shape {tuple(g.shape[1:])} don't match the "
+                f"operator's range {tuple(self.op.range_shape)}"
+            )
 
         n_primal, n_dual, c = _check_channels(self.model_parameters)
 
         # initialize parameters
         h = g.new_zeros(B, n_dual, W, H)
-        f_primal = g.new_zeros(B, n_primal, *self.operator_params.image_shape[1:])
+        f_primal = g.new_zeros(B, n_primal, *self.op.domain_shape[1:])
         # every primal channel starts from the initial reconstruction (the operator's default, FDK for CT, unless set)
         f_primal[:] = self.initial_reconstruction(g[:, :1], self.op)
 

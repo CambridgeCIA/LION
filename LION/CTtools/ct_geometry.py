@@ -152,6 +152,11 @@ class Geometry(OperatorParameters):
         check_geometry(self)
         return super().serialize()
 
+    @property
+    def domain_shape(self) -> tuple:
+        """The image's shape, ``image_shape`` (the CT operator's domain)."""
+        return tuple(self.image_shape)
+
     def make_operator(self):
         """The CT operator for this geometry (``CTProjectionOp``)."""
         from LION.operators.CTProjectionOp import CTProjectionOp

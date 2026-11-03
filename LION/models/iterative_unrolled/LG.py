@@ -8,8 +8,7 @@
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.utils.math import power_method
-from LION.utils.parameter import LIONParameter
-import LION.CTtools.ct_geometry as ct
+from LION.utils.parameter import LIONParameter, OperatorParameters
 import LION.CTtools.ct_utils as ct_utils
 import LION.utils.utils as ai_utils
 
@@ -44,7 +43,9 @@ class LGblock(nn.Module):
 
 class LG(LIONmodel):
     def __init__(
-        self, operator_params: ct.Geometry, model_parameters: LIONParameter = None
+        self,
+        operator_params: OperatorParameters,
+        model_parameters: LIONParameter = None,
     ):
         super().__init__(model_parameters, operator_params)
         self.operator_params = operator_params
@@ -124,7 +125,7 @@ class LG(LIONmodel):
 
         B, C, W, H = x.shape
 
-        f = x.new_zeros(B, 1, *self.operator_params.image_shape[1:])
+        f = x.new_zeros(B, 1, *self.op.domain_shape[1:])
         f[:] = self.initial_reconstruction(
             x[:, :1], self.op
         )  # the operator's default (FDK for CT) unless set

@@ -5,14 +5,14 @@
 # Modifications: Ander Biguri, Zakhar Shumaylov, Charlie Shoebridge
 # =============================================================================
 import torch.nn as nn
+from LION.utils.parameter import OperatorParameters
 from LION.models.LIONmodel import LIONmodel, ModelInputType, LIONModelParameter
-import LION.CTtools.ct_geometry as ct
 from LION.utils.citation import citation
 
 
 class AR(LIONmodel):
     def __init__(
-        self, model_parameters: LIONModelParameter, operator_params: ct.Geometry
+        self, model_parameters: LIONModelParameter, operator_params: OperatorParameters
     ):
         super().__init__(model_parameters, operator_params)
 
@@ -33,7 +33,7 @@ class AR(LIONmodel):
         )
 
         # each of the 4 stride-2 convolutions (kernel 5, padding 2) maps n to ceil(n / 2)
-        height, width = self.operator_params.image_shape[-2:]
+        height, width = self.operator_params.domain_shape[-2:]
         for _ in range(4):
             height, width = (height + 1) // 2, (width + 1) // 2
         self.fc = nn.Sequential(

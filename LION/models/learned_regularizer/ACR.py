@@ -9,8 +9,8 @@
 from typing import Optional
 import torch
 import torch.nn as nn
+from LION.utils.parameter import OperatorParameters
 from LION.models.LIONmodel import LIONmodel, ModelInputType, LIONModelParameter
-import LION.CTtools.ct_geometry as ct
 import torch.nn.utils.parametrize as P
 from LION.utils.math import power_method
 from LION.utils.citation import citation
@@ -79,7 +79,7 @@ class L2net(nn.Module):
 class ACR(LIONmodel):
     def __init__(
         self,
-        operator_params: Optional[ct.Geometry] = None,
+        operator_params: Optional[OperatorParameters] = None,
         model_parameters: Optional[LIONModelParameter] = None,
     ):
 

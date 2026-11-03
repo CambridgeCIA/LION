@@ -622,7 +622,7 @@ def make_lpd(module, monkeypatch, calls=None, **params):
         return (y.reshape(y.shape[0], -1) @ M).reshape(y.shape[0], 1, 8, 8)
 
     def make_operator(self):
-        self.op, self.A, self.AT = CTStandIn(), A, AT
+        self.op, self.A, self.AT = CTStandIn((1, 8, 8), (1, 6, 5)), A, AT
 
     monkeypatch.setattr(LIONmodel, "_make_operator", make_operator)
     # the CT operator's default reconstruction (FDK): a stand-in
@@ -654,6 +654,23 @@ def test_lpd_channels_follow_the_parameters(lpd_module, monkeypatch):
 def constant_reconstruction(sino, op, value=0.0):
     """An initial reconstruction for tests: a constant 8x8 image per sample."""
     return torch.full((sino.shape[0], 1, 8, 8), value)
+
+
+@ignore_warnings
+@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
+def test_lpd_checks_the_measurements_against_its_operator(lpd_module, monkeypatch):
+    model = make_lpd(lpd_module, monkeypatch)  # operator range (1, 6, 5)
+    with pytest.raises(ValueError, match="operator's range"):
+        model(torch.rand(2, 1, 7, 5))
+
+
+def test_operator_parameters_give_their_domain_shape():
+    from LION.utils.parameter import OperatorParameters
+
+    geometry = Geometry.default_parameters()
+    assert geometry.domain_shape == tuple(geometry.image_shape)
+    with pytest.raises(NotImplementedError, match="domain_shape"):
+        OperatorParameters().domain_shape
 
 
 @ignore_warnings
