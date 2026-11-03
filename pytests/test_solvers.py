@@ -8,7 +8,6 @@ image-domain models. Neither matters for these tests, so the ``no_ct`` fixture
 
 import itertools
 import pathlib
-import sys
 import types
 import warnings
 
@@ -28,6 +27,7 @@ from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.operators import Operator
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver
+from LION.utils.parameter import OperatorParameters
 from pytests.helpers import (
     CTStandIn,
     replace_fdk,
@@ -461,14 +461,31 @@ def test_any_solver_can_validate_through_a_reconstructor(tmp_path):
 # Sparse2Inverse sub-operators for any number of angular splits
 
 
+class AnglesOp:
+    """A stand-in CT operator: the angles it was made with. It projects an
+    image to a constant sinogram over its angles (the image's mean), and its
+    default reconstruction is the sinogram's mean."""
+
+    def __init__(self, geometry):
+        self.angles = np.asarray(geometry.angles)
+        self.domain_shape = tuple(geometry.image_shape)
+        self.reconstructed = 0
+
+    def __call__(self, image):
+        return image.mean() * torch.ones(1, 1, len(self.angles), 8)
+
+    def autograd(self):
+        return self, None
+
+    def default_reconstruction(self, y):
+        self.reconstructed += 1
+        return y.mean() * torch.ones(y.shape[0], *self.domain_shape)
+
+
 @pytest.fixture
 def fake_ct(monkeypatch):
-    """Operators are replaced by the angles they were built with."""
-    fake = types.ModuleType("tomosipo.torch_support")
-    fake.to_autograd = lambda op, **kwargs: op
-    monkeypatch.setitem(sys.modules, "tomosipo.torch_support", fake)
-    monkeypatch.setitem(sys.modules, "tomosipo", types.ModuleType("tomosipo"))
-    monkeypatch.setattr(Geometry, "make_operator", lambda self: np.asarray(self.angles))
+    """CT operators are replaced by AnglesOp."""
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: AnglesOp(self))
     monkeypatch.setattr(LIONmodel, "_make_operator", lambda self: None)
 
 
@@ -504,7 +521,7 @@ def test_inputs_and_target_projectors(fake_ct, splits, inputs):
     # the single input sinogram is split into interleaved angle subsets
     assert len(solver.sub_ops) == splits
     for i, sub_op in enumerate(solver.sub_ops):
-        np.testing.assert_array_equal(sub_op, angles[i::splits])
+        np.testing.assert_array_equal(sub_op.angles, angles[i::splits])
 
     # every combination of `inputs` splits is a network input...
     assert solver.split_combinations == list(
@@ -515,7 +532,7 @@ def test_inputs_and_target_projectors(fake_ct, splits, inputs):
         target = tuple(s for s in range(splits) if s not in combo)
         expected = sorted(i for s in target for i in range(s, len(angles), splits))
         np.testing.assert_array_equal(
-            solver.combo_ops_autograd[target], angles[expected]
+            solver.combo_ops_autograd[target].angles, angles[expected]
         )
     # the solver's own geometry is not modified
     assert len(solver.operator_params.angles) == len(angles)
@@ -537,12 +554,6 @@ def test_at_least_one_split_left_as_target(fake_ct, splits, inputs):
 def test_training_step_uses_each_combination(fake_ct, monkeypatch, splits, inputs):
     """One mini-batch: p sub-reconstructions per combination, averaged, then
     compared with the held-out projections."""
-    # projectors return a constant sinogram over their angles, depending on the image
-    monkeypatch.setitem(
-        sys.modules["tomosipo.torch_support"].__dict__,
-        "to_autograd",
-        lambda op, **kw: (lambda img: img.mean() * torch.ones(1, 1, len(op), 8)),
-    )
     calls = []
 
     def recon_fn(sub_sino, op):
@@ -585,6 +596,48 @@ def test_validation_and_test_use_the_reconstruction(fake_ct, tmp_path):
     assert calls  # the sub-reconstructions were computed
 
 
+class UnsplittableParams(OperatorParameters):
+    """Operator parameters without the splitting methods."""
+
+    def make_operator(self):
+        return types.SimpleNamespace(domain_shape=(1, 8, 8))
+
+
+@pytest.mark.parametrize("splitting_solver", ["Noise2Inverse", "Sparse2Inverse"])
+def test_splitting_needs_operator_params_that_can_be_split(
+    fake_ct, monkeypatch, splitting_solver
+):
+    """Noise2Inverse and Sparse2Inverse refuse, when made, operators they can't
+    split, and more splits than measurement units."""
+    from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
+
+    def make(operator_params, splits=4):
+        if splitting_solver == "Sparse2Inverse":
+            return make_s2i_solver(splits, operator_params, 2)
+        params = Noise2InverseSolver.default_parameters()
+        params.sino_split_count = splits
+        return make_n2i_solver(monkeypatch, params, operator_params)
+
+    with pytest.raises(NotImplementedError, match="can't be split"):
+        make(UnsplittableParams())
+    few_angles = Geometry.default_parameters()
+    few_angles.angles = few_angles.angles[:3]
+    with pytest.raises(ValueError, match="sino_split_count=4"):
+        make(few_angles)
+
+
+def test_sparse2inverse_reconstructs_each_split_with_its_operator(fake_ct):
+    operator_params = Geometry.default_parameters()
+    operator_params.image_shape = [1, 8, 8]
+    solver = make_s2i_solver(
+        4, operator_params, 2, recon_fn=lambda y, op: op.default_reconstruction(y)
+    )
+    out = solver.reconstruct(torch.rand(2, 1, 360, 8))
+    assert out.shape == (2, 1, 8, 8)
+    # each split is in 3 of the 6 pairs
+    assert [op.reconstructed for op in solver.sub_ops] == [3, 3, 3, 3]
+
+
 def test_warn_if_not_mse():
     """Noisier2Inverse, Proj2Proj and E2I train with the MSE whatever loss is
     given (their derivations need it) and say so if it is another one."""
@@ -600,19 +653,40 @@ def test_warn_if_not_mse():
 # Noise2Inverse
 
 
-def make_n2i_solver(monkeypatch, params):
+def make_n2i_solver(monkeypatch, params, operator_params=None):
     import LION.optimizers.Noise2InverseSolver as n2i
 
-    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: AnglesOp(self))
     model = small_dncnn()
     return n2i.Noise2InverseSolver(
         model,
         torch.optim.SGD(model.parameters(), lr=1e-2),
         torch.nn.MSELoss(),
         solver_params=params,
-        operator_params=Geometry.default_parameters(),
+        operator_params=operator_params or Geometry.default_parameters(),
         device=torch.device("cpu"),
+        verbose=False,
     )
+
+
+def test_noise2inverse_splits_through_the_operator_params(monkeypatch):
+    """Noise2Inverse splits the geometry and the sinograms through the
+    operator parameters, and reconstructs each split with its own operator."""
+    from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
+
+    operator_params = Geometry.default_parameters()  # 360 angles
+    operator_params.image_shape = [1, 8, 8]
+    angles = np.asarray(operator_params.angles)
+    params = Noise2InverseSolver.default_parameters()
+    params.recon_fn = lambda y, op: op.default_reconstruction(y)
+    solver = make_n2i_solver(monkeypatch, params, operator_params)
+    for j, sub_op in enumerate(solver.sub_ops):
+        np.testing.assert_array_equal(sub_op.angles, angles[j::4])
+    assert len(solver.operator_params.angles) == len(angles)  # not changed
+
+    out = solver.reconstruct(torch.rand(2, 1, 360, 8))
+    assert out.shape == (2, 1, 8, 8)
+    assert [op.reconstructed for op in solver.sub_ops] == [1, 1, 1, 1]
 
 
 def test_noise2inverse_J_sets_follow_the_split_count(monkeypatch):

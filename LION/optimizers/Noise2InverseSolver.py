@@ -2,25 +2,32 @@ from typing import Callable, Optional
 import warnings
 import numpy as np
 from tqdm import tqdm
-from LION.CTtools.ct_geometry import Geometry
 from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
 import torch
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver
-from LION.utils.parameter import LIONParameter
-import LION.CTtools.ct_utils as ct
+from LION.utils.parameter import LIONParameter, OperatorParameters
 from LION.utils.citation import citation
 
 
 class Noise2InverseSolver(LIONsolver):
+    """Noise2Inverse: the measurements are split into ``sino_split_count``
+    interleaved parts (for CT, every k-th angle), each reconstructed with
+    ``recon_fn`` (FDK by default), and the model learns to map the mean of some
+    parts' reconstructions to the mean of the others'.
+
+    Works with any operator whose parameters can be split
+    (``OperatorParameters.split``); others raise when the solver is made.
+    """
+
     def __init__(
         self,
         model: LIONmodel,
         optimizer: Optimizer,
         loss_fn,
         solver_params: Optional[LIONParameter] = None,
-        operator_params: Geometry = None,
+        operator_params: OperatorParameters = None,
         verbose: bool = True,
         device: torch.device = None,
         seed: Optional[int] = 0,
@@ -60,24 +67,26 @@ class Noise2InverseSolver(LIONsolver):
         raise NotImplementedError("Sorry, not implemented this yet!")
 
     def _make_sub_operators(self) -> list:
-        ops = []
-        # maintain a copy of the original angles to restore later
-        angles = self.operator_params.angles.copy()
-        for k in range(self.sino_split_count):
-            self.operator_params.angles = angles[k :: self.sino_split_count]
-            sub_op = ct.make_operator(self.operator_params)
-            ops.append(sub_op)
-        # restore self.geometry.angles
-        self.operator_params.angles = angles
-        return ops
+        """One operator per split: split j has every k-th measurement unit
+        (for CT, angle), starting at unit j."""
+        n, k = self.operator_params.split_count, self.sino_split_count
+        if k > n:
+            raise ValueError(
+                f"Can't split {n} measurement units into sino_split_count={k} parts"
+            )
+        self.split_indices = [list(range(j, n, k)) for j in range(k)]
+        return [
+            self.operator_params.split(indices).make_operator()
+            for indices in self.split_indices
+        ]
 
     def _calculate_noisy_sub_recons(self, sinos):
         # sinos is batched
         bad_recons = None
         for j in range(self.sino_split_count):
-            sub_sino_j = sinos[
-                :, :, j :: self.sino_split_count, :
-            ]  # is this right? What is sinos.shape? B, C, W, H? Yes, it is.
+            sub_sino_j = self.operator_params.split_measurements(
+                sinos, self.split_indices[j]
+            )
             # expect recon_fn to be batched
             sub_recon_j = self.recon_fn(sub_sino_j, self.sub_ops[j])
             if bad_recons is None:
@@ -140,7 +149,7 @@ class Noise2InverseSolver(LIONsolver):
         noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)  # b, split, c, w, h
 
         outputs = torch.zeros(
-            (sinos.shape[0], *self.operator_params.image_shape), device=self.device
+            (sinos.shape[0], *self.op.domain_shape), device=self.device
         )
 
         for _, J in enumerate(self.cali_J):

@@ -328,3 +328,37 @@ def test_detect_geometry_sizes():
         geometry.pixel_size, geometry.detector_size / geometry.detector_shape
     )
     assert geometry.pixel_size[1] == pytest.approx(1.3146214844668342)
+
+
+def test_geometry_splits_along_its_angles():
+    """A geometry splits into the geometries of some of its angles, and the
+    sinogram into those angles' projections, batched or not."""
+    import torch
+
+    geometry = Geometry.default_parameters()
+    n = len(geometry.angles)
+    assert geometry.split_count == n
+    indices = list(range(1, n, 4))
+    sub = geometry.split(indices)
+    np.testing.assert_array_equal(sub.angles, np.asarray(geometry.angles)[indices])
+    assert len(geometry.angles) == n  # the geometry itself is not changed
+    np.testing.assert_array_equal(sub.image_shape, geometry.image_shape)
+
+    sino = torch.arange(float(n)).view(1, n, 1).expand(1, n, 3)  # value = angle
+    for y in (sino, sino.unsqueeze(0)):
+        sub_y = geometry.split_measurements(y, indices)
+        assert sub_y.shape[-2:] == (len(indices), 3)
+        assert sub_y[..., :, 0].flatten().tolist() == indices
+
+
+def test_operator_parameters_that_cant_be_split_say_so():
+    import torch
+    from LION.utils.parameter import OperatorParameters
+
+    params = OperatorParameters()
+    with pytest.raises(NotImplementedError, match="can't be split"):
+        params.split_count
+    with pytest.raises(NotImplementedError, match="can't be split"):
+        params.split([0])
+    with pytest.raises(NotImplementedError, match="can't be split"):
+        params.split_measurements(torch.zeros(1), [0])

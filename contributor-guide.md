@@ -113,6 +113,11 @@ part.
   (`make_operator()`), and an operator deriving from `Operator` that gives its
   default reconstruction (`default_reconstruction()`, e.g. FDK for CT) and its
   differentiable form (`autograd()`).
+- Methods that use parts of the measurements (Noise2Inverse, Sparse2Inverse)
+  split through the operator's parameters: `split_count` (for CT, the number
+  of angles), `split(indices)` (new parameters for those units only) and
+  `split_measurements(y, indices)`. A kind of operator that can't be split
+  doesn't define them, and the base class raises saying so.
 - **Words: general in general code, the operator's own in its code.** Code
   that works with any operator says `operator_params`, domain (the image) and
   range (the measurements), and types them `OperatorParameters`/`Operator`.
