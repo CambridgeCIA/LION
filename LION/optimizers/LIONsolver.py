@@ -71,19 +71,28 @@ def warn_if_not_mse(loss_fn, solver_name: str):
         )
 
 
+def initial_reconstruction(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:
+    """The input of an image-domain ``model`` made from measurements ``data``:
+    its ``model_parameters.initial_reconstruction`` (set with
+    ``model.set_initial_reconstruction``), FDK by default."""
+    reconstruct = getattr(model.model_parameters, "initial_reconstruction", None)
+    return fdk(data, op) if reconstruct is None else reconstruct(data, op)
+
+
 def model_forward(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:
     """Run ``model`` on a batch of measurements, as the solvers do (and
     ``LION.reconstructors.ForwardReconstructor``).
 
-    Image-domain models get an FDK reconstruction (with operator ``op``) as
-    input. Sinogram-domain models get the measurements. With a normalisation
+    Image-domain models get a reconstruction (with operator ``op``) as input:
+    FDK, or the model's own (``initial_reconstruction``). Sinogram-domain models
+    get the measurements. With a normalisation
     set (``model.set_normalisation()``), the input is normalised (for
     measurements: as the images are, by linearity) and the output mapped
     back, so the output is in the units of the target.
     """
     normalisation = getattr(model, "normalisator", None)
     if model.get_input_type() == ModelInputType.IMAGE:
-        data = fdk(data, op)
+        data = initial_reconstruction(model, data, op)
         if normalisation is not None:
             return model.unnormalise(model(model.normalise(data)), data)
         return model(data)

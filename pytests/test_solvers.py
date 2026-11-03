@@ -677,3 +677,48 @@ def test_an_ar_model_file_alone_is_not_a_method(identity_ct, tmp_path):
         solver.save_final_results()
     with pytest.raises(ValueError, match="through a LearnedRegularizerReconstructor"):
         method(tmp_path / "regulariser", allow=["pytests."])
+
+
+# --------------------------------------------------------------------------
+# An image-domain model's input: FDK, or its own initial reconstruction
+
+
+def adjoint_reconstruction(sino, op, scale=1.0):
+    """A reconstruction for tests (any (sinogram, operator) function will do)."""
+    return scale * torch.stack([op.adjoint(s) for s in sino])
+
+
+def test_image_models_get_their_initial_reconstruction(tmp_path):
+    import functools
+
+    from LION.optimizers.LIONsolver import model_forward
+    from LION.utils.parameter import LIONParameter
+    from pytests.helpers import ImageMatrixOp
+
+    torch.manual_seed(0)
+    op = ImageMatrixOp(torch.randn(30, 64), (1, 8, 8))
+    y = torch.randn(2, 30)
+    model = small_dncnn().eval()
+    model.set_initial_reconstruction(functools.partial(adjoint_reconstruction, scale=2))
+    expected = model(adjoint_reconstruction(y, op, scale=2))
+    torch.testing.assert_close(model_forward(model, y, op), expected)
+
+    # saved and made again with the model
+    model.save(tmp_path / "model", dataset=LIONParameter(), training=LIONParameter())
+    loaded, _, _ = type(model).load(
+        tmp_path / "model", supress_warnings=True, allow=["pytests."]
+    )
+    loaded = loaded.cpu().eval()
+    torch.testing.assert_close(model_forward(loaded, y, op), expected)
+
+
+def test_initial_reconstruction_must_be_saveable_and_for_image_models():
+    from LION.models.LIONmodel import ModelInputType
+    from LION.utils.spec import SpecError
+
+    with pytest.raises(SpecError):
+        small_dncnn().set_initial_reconstruction(lambda sino, op: sino)
+    with pytest.raises(ValueError, match="measurements"):
+        small_dncnn(ModelInputType.SINOGRAM).set_initial_reconstruction(
+            adjoint_reconstruction
+        )

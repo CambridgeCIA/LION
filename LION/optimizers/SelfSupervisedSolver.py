@@ -10,8 +10,7 @@ from LION.CTtools.ct_geometry import Geometry
 from LION.CTtools.ct_utils import make_operator
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel
-from LION.optimizers.LIONsolver import LIONsolver, SolverParams
-from LION.classical_algorithms.fdk import fdk
+from LION.optimizers.LIONsolver import LIONsolver, SolverParams, initial_reconstruction
 from LION.models.LIONmodel import ModelInputType
 
 # standard imports
@@ -59,7 +58,7 @@ class SelfSupervisedSolver(LIONsolver):
         """
         # Forward pass
         if self.model.get_input_type() == ModelInputType.IMAGE:
-            data = fdk(sino, self.op)
+            data = initial_reconstruction(self.model, sino, self.op)
             if self.do_normalise:
                 data = self.model.normalise(data)
         else:
