@@ -20,20 +20,13 @@ import numpy as np
 from pathlib import Path
 import warnings
 
-from LION.utils.tomosipo_import import import_tomosipo
-
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchdiffeq import odeint, odeint_adjoint
 from LION.utils.citation import citation
-
-
-def fdk(op, sino):
-    """ts_algorithms' FDK, imported on first use (LION imports without the CT
-    backend)."""
-    return import_tomosipo("ts_algorithms", "cLPD").fdk(op, sino)
+from LION.classical_algorithms.fdk import fdk
 
 
 class ConvODEFunc(nn.Module):
@@ -484,8 +477,7 @@ class cLPD(LIONmodel):
         h = g.new_zeros(B, n_dual, W, H)
         f_primal = g.new_zeros(B, n_primal, *self.geometry.image_shape[1:])
         for i in range(B):
-            aux = fdk(self.op, g[i, 0])
-            aux = torch.clip(aux, min=0)
+            aux = fdk(g[i, :1], self.op)[0]  # FDK (FBP for parallel beam), clipped at 0
             for channel in range(n_primal):
                 f_primal[i, channel] = aux
 
