@@ -123,9 +123,6 @@ part.
   and generic algorithms in `LION/classical_algorithms/`. Code that works with
   any operator asks the operator (e.g. `op.default_reconstruction(y)`) rather
   than importing a kind's folder.
-- **Moving a module:** add its old → new import path to
-  `LION.utils.spec.MOVED_MODULES`, so files that name it by its old path
-  still load. Leave no alias module behind.
 - Each kind of operator has a parameter class deriving from
   `OperatorParameters` (`LION/utils/parameter.py`) that makes it
   (`make_operator()`), and an operator deriving from `Operator` that gives its

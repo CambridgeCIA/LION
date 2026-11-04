@@ -106,13 +106,6 @@ to a class or function without calling it. The keys follow Hydra's
   a few builtins (`spec.ALLOWED_MODULES`, `ALLOWED_TARGETS`). Your own classes
   are allowed by passing their module: `allow=["my_package."]`. A file never
   widens what may be built; only the caller does.
-- **Moved modules.** Files name classes and functions by import path, so when
-  a LION module moves, the old path goes into `spec.MOVED_MODULES` (old →
-  new), and files written before build what is there now. The same table
-  serves pickles in a model's `.pt` (a `Geometry` saved under
-  `LION.CTtools.ct_geometry`). E.g. `LION.CTtools.*`, `fdk`, `sirt`, `tv_min`
-  and `CTProjectionOp` moved to `LION.operators.ct`, and photocurrent mapping
-  to `LION.operators.pcm`, in Nov 2026.
 
 ## The records
 

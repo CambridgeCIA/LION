@@ -47,7 +47,6 @@ from abc import ABC, abstractmethod, ABCMeta
 # Some other imports
 import json
 import pickle
-import types
 import warnings
 from pathlib import Path
 import inspect
@@ -135,12 +134,6 @@ def _safe_globals():
         (multiarray._reconstruct, "numpy.core.multiarray._reconstruct"),
         (multiarray.scalar, "numpy.core.multiarray.scalar"),
     ]
-    # LION's classes as files written before their modules moved name them
-    for obj in list(allowed):
-        if not isinstance(obj, tuple):
-            for old, new in spec.MOVED_MODULES.items():
-                if obj.__module__ == new:
-                    allowed.append((obj, f"{old}.{obj.__qualname__}"))
     return allowed
 
 
@@ -492,18 +485,7 @@ class LIONmodel(nn.Module, ABC):
                     "the file, load it with weights_only=False (it can run code)."
                 ) from error
         else:
-            # pickles from before LION's modules moved name them as they were
-            moved = types.SimpleNamespace(
-                Unpickler=spec.MovedModulesUnpickler,
-                load=lambda f, **kw: spec.MovedModulesUnpickler(f, **kw).load(),
-                __name__="pickle",
-            )
-            data = torch.load(
-                fname,
-                map_location=default_device(),
-                weights_only=False,
-                pickle_module=moved,
-            )
+            data = torch.load(fname, map_location=default_device(), weights_only=False)
         if isinstance(data.get("loss"), list):
             data["loss"] = np.asarray(data["loss"], dtype=float)
         # the weights and the random state they were made from are the model
