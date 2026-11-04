@@ -2,14 +2,14 @@ from typing import Callable, Optional
 import warnings
 import numpy as np
 from tqdm import tqdm
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel
 import torch
 import torch.nn.functional as F
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver, warn_if_not_mse
 from LION.utils.parameter import LIONParameter
-import LION.CTtools.ct_utils as ct_utils
+import LION.operators.ct.ct_utils as ct_utils
 from LION.utils.tomosipo_import import import_tomosipo
 from LION.utils.citation import citation
 

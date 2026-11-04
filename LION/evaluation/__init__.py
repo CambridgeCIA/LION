@@ -15,8 +15,8 @@
 - ``LION.evaluation.figures``: those figures as functions, in plain matplotlib
   (only imported there), and their data (``per_sample``,
   ``per_sample_differences``) for any other plot.
-- ``baseline(operator)``: the classical reconstruction of the modality (FDK
-  for CT), which methods are compared with.
+- ``baseline(operator)``: what methods are compared with, the operator's
+  default reconstruction (FDK for CT, the inverse for an operator with one).
 - ``scores``, ``summary``, ``table``: the same, as functions.
 """
 
@@ -35,14 +35,13 @@ from LION.evaluation.evaluation import (
     summary,
     table,
 )
-from LION.evaluation.methods import baseline, inverse, method
+from LION.evaluation.methods import baseline, method
 
 __all__ = [
     "Comparison",
     "Evaluation",
     "baseline",
     "default_metrics",
-    "inverse",
     "is_test_record",
     "method",
     "problem_differences",

@@ -6,10 +6,10 @@ WIP
 
 <pre>
 ./AItomotools     : The toolbox
-├── CTtools                 -> Tools for Computed Tomography specifically
 ├── data_loaders            -> Tools for 1) preprocessing data 2) loading data for training
 ├── metrics                 -> Tools to evaluate performance
 ├── models                  -> Machine Learning reconstruction models
+├── operators               -> Forward operators; ct/ and pcm/ for each kind
 └── utils                   -> Other type of generic utils
 
 ./demos           : Folder with demos to learn about the toolbox. Please add demos about your new functionality

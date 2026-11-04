@@ -21,7 +21,7 @@ import LION.experiments.ct_2DeteCT_noise_experiments as noise_experiments
 import LION.experiments.ct_benchmarking_experiments as benchmarking_experiments
 import LION.experiments.ct_experiments as ct_experiments
 import LION.models
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION.metrics.haarpsi import HAARPsi
 from LION.metrics.psnr import PSNR
 from LION.models.CNNs.dncnn import DnCNN
@@ -397,34 +397,17 @@ def test_file_from_a_newer_lion(tmp_path):
         DnCNN.load(tmp_path / "model", supress_warnings=True)
 
 
-def save_unversioned(model, path):
-    """A model saved as LION did without ``lion_format``: the parameters as
-    plain JSON and the class by name."""
-    options = LIONParameter()
-    options.commit_hash = "0" * 40
-    options.model_name = type(model).__name__
-    options.model_parameters = model.model_parameters
-    options.save(path.with_suffix(".json"))
-    torch.save({"model_state_dict": model.state_dict()}, path.with_suffix(".pt"))
-
-
-def test_unversioned_file_loads_with_its_class(tmp_path):
-    torch.manual_seed(0)
-    model = GSD().eval()
-    # without an initial reconstruction: the operator's default
-    save_unversioned(model, tmp_path / "model")
-    loaded, options, _ = GSD.load(tmp_path / "model", supress_warnings=True)
-    assert options.model_name == "GSD"
-    assert loaded.model_parameters.initial_reconstruction == "default"
-    x = torch.rand(1, 1, 16, 16)
-    with torch.no_grad():
-        torch.testing.assert_close(loaded.cpu().eval()(x), model(x))
-    with pytest.raises(ValueError, match="names its model class only by name"):
-        LIONmodel.load(tmp_path / "model", supress_warnings=True)
-
-
-# --------------------------------------------------------------------------
-# Unknown parameter names
+def test_files_from_before_specs_are_refused(tmp_path):
+    """A model's .json without lion_format (saved before LION's metadata)
+    isn't read."""
+    model = small_dncnn()
+    save(model, tmp_path / "model")
+    path = tmp_path / "model.json"
+    saved = json.loads(path.read_text())
+    del saved["lion_format"]
+    path.write_text(json.dumps(saved))
+    with pytest.raises(ValueError, match="no 'lion_format'"):
+        DnCNN.load(tmp_path / "model", supress_warnings=True)
 
 
 def test_unknown_parameter_name_warns():
@@ -479,36 +462,6 @@ def test_pt_holds_only_safe_contents(tmp_path):
     }
     assert data["epoch"] == 3 and data["loss"] == [0.5, 0.4, 0.3]
     assert data["initial_random_state"].dtype == torch.uint8
-
-
-def old_pt(path, model):
-    """A .pt as LION saved it with pickled parameter objects, a geometry, a
-    path and numpy values."""
-    torch.save(
-        {
-            "model_state_dict": model.state_dict(),
-            "dataset_params": LIONParameter(folder=pathlib.Path("/data/LIDC-IDRI")),
-            "training_params": LIONParameter(epochs=3),
-            "geometry": Geometry.default_parameters(),
-            "loss": np.array([0.5, 0.4], dtype=np.float32),
-            "epoch": 3,
-        },
-        path,
-    )
-
-
-def test_old_pt_loads_safely(tmp_path):
-    model = DnCNN()
-    save(model, tmp_path / "model")
-    old_pt(tmp_path / "model.pt", model)
-    with pytest.raises(pickle.UnpicklingError):  # torch alone refuses it
-        torch.load(tmp_path / "model.pt", weights_only=True)
-    loaded, _, data = DnCNN.load(tmp_path / "model", supress_warnings=True)
-    assert isinstance(data["geometry"], Geometry)
-    assert data["dataset_params"].folder == pathlib.Path("/data/LIDC-IDRI")
-    np.testing.assert_allclose(data["loss"], [0.5, 0.4])
-    for key, value in model.state_dict().items():
-        torch.testing.assert_close(loaded.state_dict()[key].cpu(), value.cpu())
 
 
 class NotAllowed:

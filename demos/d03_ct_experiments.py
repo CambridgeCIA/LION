@@ -56,7 +56,7 @@ experiment = ct_experiments.SparseAngleCTRecon()
 # Important uses are: passing CT geometry to other functions
 experiment.geo
 # e.g. you may want to forward project some image, or make a CT operator (see d_01)
-from LION.CTtools.ct_utils import make_operator
+from LION.operators.ct.ct_utils import make_operator
 
 op = make_operator(experiment.geo)
 
@@ -85,8 +85,8 @@ from LION.experiments.ct_experiments import Experiment
 
 # Import other classes you will need (these are imported in LION/experiments/ct_experiments.py)
 from LION.utils.parameter import LIONParameter
-import LION.CTtools.ct_geometry as ctgeo
-import LION.CTtools.ct_utils as ct
+import LION.operators.ct.ct_geometry as ctgeo
+import LION.operators.ct.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 
 

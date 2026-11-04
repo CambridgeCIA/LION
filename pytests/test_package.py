@@ -19,9 +19,9 @@ import pytest  # noqa: E402
 import torch  # noqa: E402
 from torch.utils.data import DataLoader, Subset  # noqa: E402
 
-import LION.CTtools.ct_utils as ct_utils  # noqa: E402
+import LION.operators.ct.ct_utils as ct_utils  # noqa: E402
 import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION import package  # noqa: E402
 from LION.evaluation import Evaluation  # noqa: E402
 from LION.experiments import ct_experiments  # noqa: E402
@@ -602,6 +602,7 @@ def test_the_best_validation_file_is_published_and_trained_again(trained, tmp_pa
 
 def saved_reconstructor(trained, tmp_path, kind="PnP"):
     """A reconstructor with the trained model (loaded from its file), saved."""
+    from LION.operators.ct import fdk
     from LION.reconstructors import ForwardReconstructor, PnP
 
     file, data_folder = trained
@@ -612,6 +613,9 @@ def saved_reconstructor(trained, tmp_path, kind="PnP"):
     if kind == "PnP":
         parameters = PnP.default_parameters("FBS")
         parameters.max_iter = 2
+        # CT's default (the stand-in operator's is a test function, which
+        # can't be published)
+        parameters.initial_reconstruction = fdk
         reconstructor = PnP(operator_params, model, parameters)
     else:
         reconstructor = ForwardReconstructor(operator_params, model)

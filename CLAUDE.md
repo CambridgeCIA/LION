@@ -16,8 +16,7 @@ LION is a modular Python/PyTorch research library for learned tomographic recons
 
 ### Main Package: `LION/`
 
-- `LION/CTtools/`: CT geometry (`Geometry`), the CT operator (`make_operator`), simulated sinogram noise and HU conversions.
-- `LION/classical_algorithms/`: Classical reconstruction: FDK, SIRT, FISTA, conjugate gradient, TV minimisation, SPGL1.
+- `LION/classical_algorithms/`: Classical reconstruction for any operator: FISTA, conjugate gradient, SPGL1.
 - `LION/data_loaders/`: Datasets (`LIONDataset` and the loaders derived from it), their data records, and per-dataset download and preprocessing scripts (`LIDC_IDRI/`, `2deteCT/`, `walnuts/`).
 - `LION/evaluation/`: Testing trained methods: `Evaluation`, `Comparison`, tables and figures.
 - `LION/exceptions/`: LION's exceptions.
@@ -25,7 +24,9 @@ LION is a modular Python/PyTorch research library for learned tomographic recons
 - `LION/losses/`: Loss functions (SURE).
 - `LION/metrics/`: Image quality metrics (PSNR, SSIM, HaarPSI).
 - `LION/models/`: Neural networks and learned reconstruction methods (`LIONmodel` and the models derived from it), by type: `CNNs/`, `post_processing/`, `iterative_unrolled/`, `learned_regularizer/`, `PnP/`, `fully_learned/`, `learned_fbp/`.
-- `LION/operators/`: Forward operators (`Operator`): CT projection, Walsh-Hadamard, wavelets, photocurrent mapping, composite operators.
+- `LION/operators/`: Forward operators. Generic ones here (`Operator`, wavelets, composite and debiasing operators); each kind of operator has its own folder with its parameters, operator and reconstructions:
+  - `ct/`: computed tomography: the geometry (`Geometry`, the CT operator's parameters), `CTProjectionOp`, simulated sinogram noise and HU conversions (`ct_utils`), FDK, SIRT and TV minimisation.
+  - `pcm/`: photocurrent mapping: `PhotocurrentMapOp`, its `Subsampler`, the Walsh-Hadamard transform.
 - `LION/optimizers/`: Training: `LIONsolver` and the solvers derived from it (supervised, self-supervised, adversarial, ...), and the training record.
 - `LION/reconstructors/`: Reconstructing with trained models (`LIONReconstructor`): PnP, learned regulariser, forward.
 - `LION/utils/`: Shared utilities: parameters, specs, paths, device, random seeds, normalisation, citations, environment record.

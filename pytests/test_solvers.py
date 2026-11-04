@@ -19,11 +19,11 @@ import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-import LION.CTtools.ct_utils as ct_utils
+import LION.operators.ct.ct_utils as ct_utils
 import LION.optimizers.AdversarialRegularizerSolver as ar_module
 import LION.optimizers.LIONsolver as lion_solver
 import LION.optimizers.SupervisedSolver as supervised_solver
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.operators import Operator
@@ -351,6 +351,11 @@ def test_gaussian_denoiser_gives_gsd_the_noise_level_channel():
 # operator)
 
 
+def identity_reconstruction(y, op):
+    """IdentityOp's default reconstruction: the measurements as they are."""
+    return y
+
+
 class IdentityOp(Operator):
     def __call__(self, x, out=None):
         return x
@@ -360,6 +365,9 @@ class IdentityOp(Operator):
 
     def adjoint(self, y):
         return y
+
+    def default_reconstruction_fn(self):
+        return identity_reconstruction
 
     @property
     def domain_shape(self):
@@ -373,7 +381,6 @@ class IdentityOp(Operator):
 @pytest.fixture
 def identity_ct(monkeypatch):
     monkeypatch.setattr(Geometry, "make_operator", lambda self: IdentityOp())
-    monkeypatch.setattr(ar_module, "fdk", lambda sino, op: sino)
 
 
 def make_ar_solver(**params):
@@ -500,9 +507,7 @@ def fake_ct(monkeypatch):
 def make_s2i_solver(splits, operator_params, inputs=None, recon_fn=None):
     params = Sparse2InverseSolver.default_parameters()
     params.sino_split_count = splits
-    if inputs is None:
-        del params.input_split_count  # parameter files from before it existed
-    else:
+    if inputs is not None:
         params.input_split_count = inputs
     if recon_fn is not None:
         params.recon_fn = recon_fn
@@ -544,12 +549,6 @@ def test_inputs_and_target_projectors(fake_ct, splits, inputs):
         )
     # the solver's own geometry is not modified
     assert len(solver.operator_params.angles) == len(angles)
-
-
-def test_old_parameter_files_use_pairs(fake_ct):
-    solver = make_s2i_solver(4, Geometry.default_parameters(), inputs=None)
-    assert solver.input_split_count == 2
-    assert solver.split_combinations == solver.two_two_strategy(4)
 
 
 @pytest.mark.parametrize("splits, inputs", [(2, 2), (4, 4), (4, 0), (1, 1)])
@@ -667,11 +666,18 @@ def test_solvers_list_recon_fn_as_default(solver_name):
     assert solver_class.default_parameters().recon_fn == "default"
 
 
+def test_the_ar_solver_reconstructs_with_the_operators_default(identity_ct):
+    """The AR solver's "bad" reconstructions are recon_fn's: "default", the
+    operator's default reconstruction (here the identity's)."""
+    assert ar_module.ARSolver.default_parameters().recon_fn == "default"
+    solver = make_ar_solver()
+    assert solver.solver_params.recon_fn is identity_reconstruction
+
+
 def test_the_default_recon_fn_is_replaced_by_the_operators(fake_ct):
     """When the solver is made, "default" becomes the operator's default
     reconstruction function, so the record says which was used. A given
-    recon_fn is kept, one missing (files from before) is the default, and
-    another string is refused."""
+    recon_fn is kept, and another string is refused."""
     solver = make_s2i_solver(4, Geometry.default_parameters(), 2)
     assert solver.solver_params.recon_fn is mean_reconstruction
     record = spec.encode(solver.solver_params)
@@ -680,20 +686,6 @@ def test_the_default_recon_fn_is_replaced_by_the_operators(fake_ct):
     given = functools.partial(mean_reconstruction)
     solver = make_s2i_solver(4, Geometry.default_parameters(), 2, recon_fn=given)
     assert solver.solver_params.recon_fn is given
-
-    params = Sparse2InverseSolver.default_parameters()
-    del params.recon_fn
-    model = small_dncnn()
-    solver = Sparse2InverseSolver(
-        model,
-        torch.optim.SGD(model.parameters(), lr=0.1),
-        torch.nn.MSELoss(),
-        solver_params=params,
-        operator_params=Geometry.default_parameters(),
-        device=torch.device("cpu"),
-        verbose=False,
-    )
-    assert solver.solver_params.recon_fn is mean_reconstruction
 
     with pytest.raises(ValueError, match='"default"'):
         make_s2i_solver(4, Geometry.default_parameters(), 2, recon_fn="fdk")

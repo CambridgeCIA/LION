@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import tomosipo as ts
 import matplotlib.pyplot as plt
-import LION.CTtools.ct_utils as ct
+import LION.operators.ct.ct_utils as ct
 import pathlib
 
 #%% Demo on how to create a sinogram from an image and simulate projections, for 2D, using tomosipo and LION
@@ -25,7 +25,7 @@ import pathlib
 # LION uses tomosipo.
 
 #%% 0: The short version because you don't have time to read all this
-import LION.CTtools.ct_geometry as ctgeo
+import LION.operators.ct.ct_geometry as ctgeo
 
 # 0.0: have an image:
 phantom = np.zeros((512, 512))
@@ -52,7 +52,7 @@ phantom[200:250, 200:250] = 300
 phantom = np.expand_dims(phantom, 0)
 
 # CT images can be in different units. The phantom avobe has been defined in Hounsfield Units (HUs)
-# CTtools.ct_utils has a series of functions to transfrom from 3 units: Hounsfield Units (HUs), linear attenuation coefficien (mus) or normalized images
+# LION.operators.ct.ct_utils has a series of functions to transfrom from 3 units: Hounsfield Units (HUs), linear attenuation coefficien (mus) or normalized images
 
 phantom_mu = ct.from_HU_to_mu(phantom)
 phantom_normal = ct.from_HU_to_normal(phantom)
@@ -84,7 +84,7 @@ A = ts.operator(vg, pg)
 #%% 3: Using Geometry class.
 # The above example shows how to define tomosipo operators, but for LION, you should be using the Parameter class (see demo 2 for more info),
 # in particular the CT Geometry class. This provides easy to use pre-defined geometries
-import LION.CTtools.ct_geometry as ctgeo
+import LION.operators.ct.ct_geometry as ctgeo
 
 # Create empty Geometry
 geo = ctgeo.Geometry()

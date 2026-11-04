@@ -28,7 +28,8 @@ training=...)`):
 
 - **`model.json`**: the metadata, plain JSON written by LION (read-only in
   intent):
-  - `lion_format`: the metadata format's version;
+  - `lion_format`: the metadata format's version (a file without it, from
+    before LION's metadata, isn't read);
   - `model`: the model's spec (its class and parameters, see below);
   - `environment`: the environment record (LION's code, packages, machine);
   - `dataset_params`: the data record of the training data;

@@ -17,7 +17,7 @@ import torch
 
 import LION
 import LION.optimizers.LIONsolver as lion_solver
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION.models.CNNs.dncnn import DnCNN
 from LION.optimizers.SupervisedSolver import SupervisedSolver
 from LION.utils import environment

@@ -15,8 +15,8 @@ import pytest  # noqa: E402
 import torch  # noqa: E402
 from torch.utils.data import Subset  # noqa: E402
 
-import LION.CTtools.ct_utils as ct_utils  # noqa: E402
-from LION.CTtools.ct_geometry import Geometry  # noqa: E402
+import LION.operators.ct.ct_utils as ct_utils  # noqa: E402
+from LION.operators.ct.ct_geometry import Geometry  # noqa: E402
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI  # noqa: E402
 from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
 from LION.experiments import ct_experiments  # noqa: E402
@@ -158,7 +158,7 @@ def test_a_solver_made_with_changed_parameters(monkeypatch):
 
     import LION.optimizers.Equivariance2InverseSolver as e2i
     import LION.optimizers.LIONsolver as lion_solver
-    from LION.CTtools.ct_geometry import Geometry
+    from LION.operators.ct.ct_geometry import Geometry
 
     identity = types.SimpleNamespace(
         to_autograd=lambda op, num_extra_dims: (lambda x: x)
@@ -196,10 +196,14 @@ def test_a_reconstructors_parameters_from_its_spec():
     parameters = PnP.default_parameters("HQS")
     parameters.max_iter = 3
     written = spec.to_spec(PnP(ScaleOp(2.0, (1, 4, 4)), None, parameters))
-    again = PnP.parameters_from_file(written)
+    # the initial reconstruction recorded is the test operator's, in pytests
+    again = PnP.parameters_from_file(written, allow=["pytests."])
     assert same(again, parameters)
     again.max_iter = 7
-    assert LIONReconstructor.parameters_from_file(written).max_iter == 3
+    assert (
+        LIONReconstructor.parameters_from_file(written, allow=["pytests."]).max_iter
+        == 3
+    )
     changed = LIONReconstructor.instantiate(
         written, allow=["pytests."], parameters=again
     )

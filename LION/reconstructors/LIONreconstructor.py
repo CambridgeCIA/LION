@@ -47,7 +47,12 @@ import torch
 
 from LION.operators import Operator
 from LION.utils import spec
-from LION.utils.parameter import LIONParameter, OperatorParameters
+from LION.utils.parameter import (
+    DEFAULT_RECONSTRUCTION,
+    LIONParameter,
+    OperatorParameters,
+    resolve_reconstruction,
+)
 
 RECORD_KEY = "lion_reconstructor_record"
 RECORD_VERSION = 1
@@ -77,11 +82,41 @@ class LIONReconstructor(ABC):
         self.parameters = (
             self.default_parameters() if parameters is None else parameters
         )
+        self._resolve_initial_reconstruction()
 
     @staticmethod
     def default_parameters() -> LIONParameter:
         """The algorithm's settings (none here; reconstructors define theirs)."""
         return LIONParameter()
+
+    def _resolve_initial_reconstruction(self):
+        """Replace a ``"default"`` initial reconstruction (for reconstructors
+        whose parameters list one) by the operator's default reconstruction
+        function, so the record says which was used. An operator without one
+        leaves it "default": ``initial_guess`` then says what to do."""
+        value = getattr(self.parameters, "initial_reconstruction", None)
+        if value != DEFAULT_RECONSTRUCTION:
+            return
+        try:
+            self.parameters.initial_reconstruction = resolve_reconstruction(
+                value, self.op, "initial_reconstruction"
+            )
+        except NotImplementedError:
+            pass
+
+    def initial_guess(self, y: torch.Tensor) -> torch.Tensor:
+        """Where the algorithm starts for measurements ``y``: the parameters'
+        ``initial_reconstruction(y, op)``. Its default, ``"default"``, is the
+        operator's default reconstruction (FDK for CT)."""
+        self._resolve_initial_reconstruction()
+        value = getattr(self.parameters, "initial_reconstruction", None)
+        if value is None or value == DEFAULT_RECONSTRUCTION:
+            raise ValueError(
+                f"{type(self.op).__name__} has no default reconstruction: set the "
+                "parameters' initial_reconstruction, a function f(y, op), or give "
+                "x0 (the starting image)"
+            )
+        return value(y, self.op)
 
     # -- running -------------------------------------------------------------
 

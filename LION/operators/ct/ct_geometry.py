@@ -155,7 +155,7 @@ class Geometry(OperatorParameters):
 
     def make_operator(self):
         """The CT operator for this geometry (``CTProjectionOp``)."""
-        from LION.operators.CTProjectionOp import CTProjectionOp
+        from LION.operators.ct.CTProjectionOp import CTProjectionOp
 
         return CTProjectionOp(self)
 
@@ -384,7 +384,7 @@ def check_geometry(geometry: Geometry) -> None:
     """
     if not isinstance(geometry, Geometry):
         raise ValueError(
-            f"Expected a LION.CTtools.ct_geometry.Geometry, got {type(geometry).__name__}"
+            f"Expected a LION.operators.ct.ct_geometry.Geometry, got {type(geometry).__name__}"
         )
     problems = []
 

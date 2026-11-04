@@ -19,7 +19,7 @@ import pytest
 MODULES = [
     "LION.operators",
     "LION.classical_algorithms",
-    "LION.CTtools.ct_utils",
+    "LION.operators.ct.ct_utils",
     "LION.models.LIONmodel",
     "LION.models.CNNs.dncnn",
     "LION.models.CNNs.drunet",
@@ -46,11 +46,11 @@ MODULES = [
 
 # a call that needs a backend, and what its error must say
 CALLS = {
-    "from LION.classical_algorithms import fdk; fdk(torch.zeros(1, 2, 3), Geometry.default_parameters())": "CT backend",
-    "from LION.classical_algorithms import sirt; sirt(torch.zeros(1, 2, 3), Geometry.default_parameters(), 2)": "CT backend",
-    "from LION.operators import CTProjectionOp; CTProjectionOp(Geometry.default_parameters())": "CT backend",
+    "from LION.operators.ct import fdk; fdk(torch.zeros(1, 2, 3), Geometry.default_parameters())": "CT backend",
+    "from LION.operators.ct import sirt; sirt(torch.zeros(1, 2, 3), Geometry.default_parameters(), 2)": "CT backend",
+    "from LION.operators.ct import CTProjectionOp; CTProjectionOp(Geometry.default_parameters())": "CT backend",
     "from LION.utils.mrpro_import import import_mrpro; import_mrpro('mrpro', 'MrproLinearOp')": "MRI backend (mrpro)",
-    "from LION.operators.WalshHadamard2D import fwht; fwht(torch.zeros(4))": "spyrit",
+    "from LION.operators.pcm.WalshHadamard2D import fwht; fwht(torch.zeros(4))": "spyrit",
 }
 
 # Setting a sys.modules entry to None makes any later import of it fail.
@@ -103,7 +103,7 @@ def missing_backend_errors():
     """{call: ImportError message or None} for CT functions called without tomosipo."""
     return run_isolated(
         f"""
-        from LION.CTtools.ct_geometry import Geometry
+        from LION.operators.ct.ct_geometry import Geometry
         errors = {{}}
         for call in {list(CALLS)!r}:
             try:
@@ -119,6 +119,33 @@ def missing_backend_errors():
 @pytest.mark.parametrize("module", MODULES)
 def test_imports_without_tomosipo(import_errors, module):
     assert import_errors[module] is None, import_errors[module]
+
+
+# Modules that others import early: each must import first, on its own (an
+# import cycle shows only when the cycle's module is imported first).
+FIRST_IMPORTS = [
+    "LION.utils.math",
+    "LION.utils.spec",
+    "LION.operators.ct.ct_geometry",
+    "LION.operators.pcm",
+    "LION.models.iterative_unrolled.LPD",
+    "LION.optimizers.LIONsolver",
+]
+
+
+@pytest.mark.parametrize("module", FIRST_IMPORTS)
+def test_imports_first_on_its_own(module):
+    error = run_isolated(
+        f"""
+        import traceback
+        try:
+            __import__({module!r})
+            print(json.dumps(None))
+        except Exception:
+            print(json.dumps(traceback.format_exc()))
+        """
+    )
+    assert error is None, error
 
 
 @pytest.mark.parametrize("call, says", CALLS.items(), ids=lambda v: v[:40])

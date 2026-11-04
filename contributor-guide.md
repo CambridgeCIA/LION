@@ -67,11 +67,14 @@ part.
 - **Records say what happened, not "the default".** A value that depends on
   something only known later (e.g. the operator) is listed as a placeholder
   and replaced by the real value when it is known, so it is saved as that.
-  E.g. `"default"` for a reconstruction (a model's `initial_reconstruction`,
-  a solver's `recon_fn`) becomes the operator's default reconstruction
+  E.g. `"default"` for a reconstruction (a model's or a reconstructor's
+  `initial_reconstruction`, a solver's `recon_fn`) becomes the operator's
+  default reconstruction
   function, `fdk` for CT (`LION.utils.parameter.resolve_reconstruction`);
   E2I's `noise_std = None` becomes the estimated value.
-- **A parameter that is missing means the old behaviour.** When a change alters
+- **A parameter that is missing means the old behaviour** (from v1.0; until
+  then LION keeps no backwards compatibility, so parameters are read as
+  `params.name`). When a change alters
   results (a data split, a noise model, a model's architecture), add a
   parameter for it whose default in `default_parameters()` is the new
   behaviour, and read it with `getattr(params, "name", <old behaviour>)`. That
@@ -117,6 +120,12 @@ part.
   that need an operator (models, solvers, datasets, experiments) take its
   parameters as `operator_params` and make it with
   `operator_params.make_operator()`, so they work with any kind of operator.
+- **Each kind of operator has its own folder**, `LION/operators/<kind>/`
+  (`ct/`, `pcm/`): its parameters, operator, noise and the reconstructions
+  only it has (e.g. FDK in `ct/`). Generic operators stay in `LION/operators/`
+  and generic algorithms in `LION/classical_algorithms/`. Code that works with
+  any operator asks the operator (e.g. `op.default_reconstruction(y)`) rather
+  than importing a kind's folder.
 - Each kind of operator has a parameter class deriving from
   `OperatorParameters` (`LION/utils/parameter.py`) that makes it
   (`make_operator()`), and an operator deriving from `Operator` that gives its
@@ -155,7 +164,8 @@ part.
   score per sample. Scores set `higher_is_better = True`, and the solvers keep
   the model with the best validation value accordingly.
 - Validation and testing go through `solver._forward()`, which for most
-  solvers is `LIONsolver.model_forward()`: FDK for image-domain models, plus
+  solvers is `LIONsolver.model_forward()`: the model's initial reconstruction
+  for image-domain models (the operator's default, FDK for CT), plus
   the model's normalisation; a solver whose method defines its own
   reconstruction (e.g. Noise2Inverse's splits) overrides it. Solvers don't
   hold reconstructors: where validation needs one (e.g. a learned
@@ -189,9 +199,10 @@ part.
   inside `forward()`: whoever calls them does.
 - Methods are evaluated with `LION.evaluation` (`Evaluation`, outside the
   solvers): every test sample, PSNR/SSIM/HaarPSI by default with one range for
-  the test set, records saved and reused. The classical baseline of each
-  modality is `LION.evaluation.baseline(operator)` (CT: FDK): add new
-  modalities there, not on the operator; an experiment whose standard is
+  the test set, records saved and reused. The baseline is
+  `LION.evaluation.baseline(operator)`, the operator's default reconstruction
+  (`default_reconstruction_fn()`: FDK for CT, the inverse for an operator with
+  one): a new kind of operator defines it; an experiment whose standard is
   another method overrides `Experiment.baseline()`. `Comparison` runs several
   methods against the baseline, after checking their records: a model trained
   or validated on test data (by patient) is an error, another problem or other

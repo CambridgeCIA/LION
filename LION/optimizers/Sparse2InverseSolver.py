@@ -53,8 +53,7 @@ class Sparse2InverseSolver(LIONsolver):
         # of them (every p-subset is used); the target is the measurements of
         # the remaining ones.
         self.sino_split_count = self.solver_params.sino_split_count  # k
-        # parameter files from before input_split_count existed used p = 2
-        self.input_split_count = getattr(self.solver_params, "input_split_count", 2)
+        self.input_split_count = self.solver_params.input_split_count
         k, p = self.sino_split_count, self.input_split_count
         if not 1 <= p < k:
             # at least one split must be left over as the target
@@ -72,11 +71,6 @@ class Sparse2InverseSolver(LIONsolver):
         """All combinations of ``input_split_count`` of the ``sino_split_count``
         splits, e.g. (0, 1), (0, 2), ... for 2 of 4."""
         return list(itertools.combinations(range(sino_split_count), input_split_count))
-
-    @classmethod
-    def two_two_strategy(cls, sino_split_count) -> list[tuple[int, ...]]:
-        """All pairs of splits (input_split_count = 2). Kept for compatibility."""
-        return cls.input_combinations(sino_split_count, 2)
 
     def _complement(self, combo) -> tuple[int, ...]:
         """Splits not in ``combo``: their projections are the training target."""

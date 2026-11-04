@@ -8,9 +8,9 @@ import numpy as np
 import pytest
 import torch
 
-from LION.classical_algorithms import fdk
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import (
+from LION.operators.ct import fdk
+from LION.operators.ct.ct_geometry import Geometry
+from LION.operators.ct.ct_utils import (
     DEFAULT_MASS_ATTENUATION,
     WATER_MASS_ATTENUATION,
     from_HU_to_density,
@@ -359,7 +359,7 @@ def test_backward_goes_through_the_forward_projector(geometry):
     from ts_algorithms.fbp import filter_sino
     from ts_algorithms.fdk import fdk_weigh_projections
 
-    from LION.classical_algorithms.fdk import _is_cone_beam
+    from LION.operators.ct.fdk import _is_cone_beam
 
     torch.manual_seed(0)
     op = make_operator(geometry)

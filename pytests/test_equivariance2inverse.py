@@ -10,7 +10,7 @@ import pytest
 import torch
 
 import LION.optimizers.LIONsolver as lion_solver
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION.utils.parameter import LIONParameter
 from pytests.helpers import small_dncnn
 

@@ -10,7 +10,7 @@ import pytest
 import torch
 
 import LION.models.iterative_unrolled.ItNet as itnet_module
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION.models.CNNs.dncnn import DnCNN
 from LION.models.CNNs.drunet import DRUNet
 from LION.models.CNNs.MSDNet import MSDNet
@@ -371,25 +371,6 @@ def test_files_with_the_old_name_of_the_operator_params_load(monkeypatch, tmp_pa
     assert list(options.operator_params.image_shape) == [1, 16, 16]
 
 
-@ignore_warnings
-def test_unversioned_files_with_a_geometry_load(monkeypatch, tmp_path):
-    """Files from before lion_format kept the geometry as `geometry`."""
-    op = ImageMatrixOp(torch.eye(16 * 16), (1, 16, 16))
-    monkeypatch.setattr(
-        LIONmodel, "_make_operator", lambda self: setattr(self, "op", op)
-    )
-    model = AR(AR.default_parameters(), small_geometry())
-    options = LIONParameter()
-    options.commit_hash = "0" * 40
-    options.model_name = "AR"
-    options.model_parameters = model.model_parameters
-    options.geometry = small_geometry()
-    options.save(tmp_path / "model.json")
-    torch.save({"model_state_dict": model.state_dict()}, tmp_path / "model.pt")
-    loaded, _, _ = AR.load(tmp_path / "model", supress_warnings=True)
-    assert list(loaded.operator_params.image_shape) == [1, 16, 16]
-
-
 def test_old_names_of_the_operator_params_are_renamed_at_any_depth():
     from LION.utils.parameter import with_current_names
 
@@ -475,21 +456,17 @@ def test_cfbpconvnet_runs_on_images(tmp_path):
 
 
 @ignore_warnings
-def test_cfbpconvnet_old_tuple_parameters_and_second_order():
+def test_cfbpconvnet_second_order_is_not_implemented():
     from LION.models.post_processing.cFBPConvNet import cFBPConvNet
 
-    # parameter files written with the old defaults stored 1-tuples
-    old = small_cfbpconvnet_params(
-        tol=(1e-3,), ode_adjoint=(False,), do_second_order=(False,), solver=("rk4",)
-    )
-    model = cFBPConvNet(model_parameters=old)
+    model = cFBPConvNet(model_parameters=small_cfbpconvnet_params(solver="rk4"))
     assert model.second_order is False and model.solver == "rk4"
     with pytest.raises(NotImplementedError, match="second-order"):
         cFBPConvNet(model_parameters=small_cfbpconvnet_params(do_second_order=True))
 
 
 # --------------------------------------------------------------------------
-# UNet: conv-norm-relu twice; old single-norm checkpoints still load
+# UNet: conv-norm-relu twice, or the old single norm
 
 
 def _norms(block):
@@ -507,9 +484,9 @@ def small_unet_params(**overrides):
     return params
 
 
-def test_parameters_without_the_option_keep_old_architecture():
+def test_without_the_option_the_old_architecture():
     params = small_unet_params()
-    del params.norm_after_second_conv  # as in parameter files saved before it existed
+    params.norm_after_second_conv = False  # the single-norm blocks of before
     model = UNet(params)
     assert _norms(model.encoder1) == ["enc1gn1"]
 
@@ -684,18 +661,16 @@ def test_lpd_starts_from_its_initial_reconstruction(lpd_module, monkeypatch):
 
 @ignore_warnings
 @pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
-@pytest.mark.parametrize("channel, saved_before", [(1, False), (0, True)])
+@pytest.mark.parametrize("channel", [1, 0])
 def test_lpd_dual_step_projects_the_chosen_primal_channel(
-    lpd_module, monkeypatch, channel, saved_before
+    lpd_module, monkeypatch, channel
 ):
-    """Adler & Oktem project primal channel 1 in the dual step; parameter files
-    from before the option existed keep LION's old channel 0."""
+    """Adler & Oktem project primal channel 1 in the dual step (the default);
+    0 is LION's old channel."""
     calls = []
     model = make_lpd(lpd_module, monkeypatch, calls)
-    if saved_before:
-        del model.model_parameters.dual_step_primal_channel
-    else:
-        assert model.model_parameters.dual_step_primal_channel == channel
+    assert model.model_parameters.dual_step_primal_channel == 1
+    model.model_parameters.dual_step_primal_channel = channel
 
     class ChannelIndex(torch.nn.Module):  # primal update: channel k gets k + 1
         def forward(self, x):
@@ -711,7 +686,7 @@ def test_lpd_dual_step_projects_the_chosen_primal_channel(
 
 @ignore_warnings
 @pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
-def test_lpd_learned_steps_positive_and_old_checkpoints_load(lpd_module, monkeypatch):
+def test_lpd_learned_steps_positive(lpd_module, monkeypatch):
     sino = torch.rand(1, 1, 6, 5)
     model = make_lpd(lpd_module, monkeypatch, learned_step=True, step_positive=True)
     assert not hasattr(model, "lambda_primal")
@@ -720,11 +695,6 @@ def test_lpd_learned_steps_positive_and_old_checkpoints_load(lpd_module, monkeyp
         for step in model.lambda_dual:
             step.neg_()  # a negative learned step is used as its absolute value
         torch.testing.assert_close(model(sino), out_positive)
-
-    # checkpoints from before lambda_primal was removed
-    state = model.state_dict()
-    state.update({f"lambda_primal.{i}": torch.ones(1) for i in range(2)})
-    model.load_state_dict(state, strict=True)
 
 
 # --------------------------------------------------------------------------
@@ -756,7 +726,7 @@ def test_training_still_backpropagates_to_weights(make_model):
 # Learned FBPs (DeepFBP, FusionFBP), with a matrix "CT" operator on CPU
 
 
-def make_learned_fbp(module, class_name, monkeypatch, drop=(), **params):
+def make_learned_fbp(module, class_name, monkeypatch, **params):
     torch.manual_seed(0)
     M = torch.randn(30, 64) / 8  # 8x8 images -> 6 angles x 5 detectors
 
@@ -770,8 +740,6 @@ def make_learned_fbp(module, class_name, monkeypatch, drop=(), **params):
     p = model_class.default_parameters()
     for k, v in params.items():
         setattr(p, k, v)
-    for k in drop:  # e.g. parameters that old parameter files don't have
-        delattr(p, k)
     operator_params = Geometry.default_parameters()
     operator_params.image_shape = [1, 8, 8]
     operator_params.angles = np.linspace(0, np.pi, 6, endpoint=False)
@@ -787,16 +755,17 @@ LEARNED_FBPS = [
 
 @ignore_warnings
 @pytest.mark.parametrize("module_name, class_name", LEARNED_FBPS)
-@pytest.mark.parametrize("saved_before", [False, True])
+@pytest.mark.parametrize("twice", [True, False])
 def test_learned_fbp_fft_padding(
-    import_without_tomosipo, monkeypatch, module_name, class_name, saved_before
+    import_without_tomosipo, monkeypatch, module_name, class_name, twice
 ):
-    """The filter's FFT length is >= 2x the detectors (no wrap-around);
-    parameter files from before the option keep the old length."""
+    """The filter's FFT length is >= 2x the detectors (no wrap-around) by
+    default; fft_padding_twice_detectors = False keeps the old length."""
     module = import_without_tomosipo(module_name)
-    drop = ["fft_padding_twice_detectors"] if saved_before else []
-    model = make_learned_fbp(module, class_name, monkeypatch, drop=drop)
-    expected = 8 if saved_before else 16  # 5 detectors: 2^3 >= 5, 2^4 >= 10
+    model = make_learned_fbp(
+        module, class_name, monkeypatch, fft_padding_twice_detectors=twice
+    )
+    expected = 16 if twice else 8  # 5 detectors: 2^4 >= 10, 2^3 >= 5
     assert model.projection_size_padded == expected
     assert model.learnable_filter.weights.shape[-1] == expected
     assert model(torch.rand(2, 1, 6, 5)).shape == (2, 1, 8, 8)

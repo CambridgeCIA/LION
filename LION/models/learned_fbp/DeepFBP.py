@@ -2,8 +2,8 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
-import LION.CTtools.ct_geometry as ct
-import LION.CTtools.ct_utils as ct_utils
+import LION.operators.ct.ct_geometry as ct
+import LION.operators.ct.ct_utils as ct_utils
 import LION.utils.utils as ai_utils
 
 # new
@@ -187,12 +187,12 @@ class DeepFBPNetwork(LIONmodel):
         """
         FFT length for the filter: the next power of two of at least twice the
         number of detectors, so that filtering is not circular (wrap-around).
-        Parameter files from before ``fft_padding_twice_detectors`` existed use
-        the old length, the next power of two of the number of detectors (no
-        padding at all when that is already a power of two).
+        ``fft_padding_twice_detectors = False`` gives the old length, the next
+        power of two of the number of detectors (no padding at all when that is
+        already a power of two).
         """
         n = self.num_detectors
-        if getattr(self.model_parameters, "fft_padding_twice_detectors", False):
+        if self.model_parameters.fft_padding_twice_detectors:
             n = 2 * n
         return 2 ** int(
             torch.ceil(torch.log2(torch.tensor(n, dtype=torch.float32))).item()

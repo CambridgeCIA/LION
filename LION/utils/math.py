@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import torch
 
-from LION.operators.Operator import Operator
+if TYPE_CHECKING:  # LION.operators imports this module (DebiasOp)
+    from LION.operators.Operator import Operator
 
 
 def power_method(

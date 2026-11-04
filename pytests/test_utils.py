@@ -12,7 +12,7 @@ import torch
 import LION.optimizers.LIONsolver as lion_solver
 import LION.optimizers.SupervisedSolver as supervised_solver
 import LION.utils.utils as utils
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import ModelInputType
 from LION.utils.device import default_device
 from LION.utils.parameter import LIONParameter

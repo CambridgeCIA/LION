@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader, Subset  # noqa: E402
 
 import LION.evaluation.comparison as comparison_module  # noqa: E402
 import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
 from LION.evaluation import (  # noqa: E402
     Comparison,
@@ -24,6 +24,7 @@ from LION.evaluation import (  # noqa: E402
     shared_samples,
 )
 from LION.experiments import ct_experiments  # noqa: E402
+from LION.operators import Operator
 from pytests.helpers import ImageMatrixOp  # noqa: E402
 from pytests.test_evaluation import as_is, make_solver, model  # noqa: E402
 
@@ -118,6 +119,10 @@ def test_names_given_or_made(tmp_path):
 
 
 class Invertible(ImageMatrixOp):
+    """An operator whose default reconstruction is its inverse."""
+
+    default_reconstruction_fn = Operator.default_reconstruction_fn
+
     def inverse(self, y):
         return y
 
@@ -135,7 +140,7 @@ class Problem:
 def test_the_default_baseline(tmp_path):
     op = Invertible(torch.eye(64), (1, 8, 8))
     by_operator = Comparison(evaluation(tmp_path, operator=op), [as_is])
-    assert list(by_operator.named_methods()) == ["inverse", "as_is"]
+    assert list(by_operator.named_methods()) == ["inverse_reconstruction", "as_is"]
     by_experiment = Comparison(
         Evaluation(Problem(), operator=op, save_folder=None, device="cpu"), [as_is]
     )

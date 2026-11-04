@@ -21,13 +21,13 @@ class Geometry:
 
 ct_geom = MagicMock()
 ct_geom.Geometry = Geometry
-sys.modules["LION.CTtools.ct_geometry"] = ct_geom
+sys.modules["LION.operators.ct.ct_geometry"] = ct_geom
 
-sys.modules["LION.CTtools.ct_utils"] = MagicMock()
-sys.modules["LION.CTtools.ct_utils"].make_operator = lambda op: op
+sys.modules["LION.operators.ct.ct_utils"] = MagicMock()
+sys.modules["LION.operators.ct.ct_utils"].make_operator = lambda op: op
 
 sys.modules["LION.operators"] = MagicMock()
-sys.modules["LION.operators.CTProjectionOp"] = MagicMock()
+sys.modules["LION.operators.ct.CTProjectionOp"] = MagicMock()
 
 
 class NoDataException(Exception):
@@ -43,11 +43,11 @@ import importlib.util
 import torch
 
 _spec = importlib.util.spec_from_file_location(
-    "LION.classical_algorithms.tv_min",
-    "LION/classical_algorithms/tv_min.py",
+    "LION.operators.ct.tv_min",
+    "LION/operators/ct/tv_min.py",
 )
 _tv_mod = importlib.util.module_from_spec(_spec)
-sys.modules["LION.classical_algorithms.tv_min"] = _tv_mod
+sys.modules["LION.operators.ct.tv_min"] = _tv_mod
 _spec.loader.exec_module(_tv_mod)
 
 tv_min = _tv_mod.tv_min

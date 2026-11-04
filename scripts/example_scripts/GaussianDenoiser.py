@@ -86,7 +86,7 @@ optimiser = torch.optim.Adam(
 
 # Estimate the maximum noise level from one sample of the training data
 sino, target = next(iter(lidc_dataloader))
-from LION.classical_algorithms.fdk import fdk
+from LION.operators.ct.fdk import fdk
 
 recon = fdk(sino, op=experiment.operator_params)
 diff = recon - target
@@ -138,7 +138,7 @@ def my_ssim(x, y):
 
 
 # Test
-from LION.classical_algorithms.fdk import fdk
+from LION.operators.ct.fdk import fdk
 
 model = solver.get_model()
 

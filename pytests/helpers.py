@@ -124,7 +124,7 @@ def replace_fdk(monkeypatch, stand_in):
     reconstruction), so its inside is replaced, not the name."""
     import importlib
 
-    fdk_module = importlib.import_module("LION.classical_algorithms.fdk")
+    fdk_module = importlib.import_module("LION.operators.ct.fdk")
     monkeypatch.setattr(
         fdk_module, "batched_reconstruction", lambda fn, sino, op: stand_in(sino, op)
     )
@@ -140,7 +140,7 @@ class CTStandIn:
         self.range_shape = range_shape
 
     def default_reconstruction_fn(self):
-        from LION.classical_algorithms.fdk import fdk
+        from LION.operators.ct.fdk import fdk
 
         return fdk
 

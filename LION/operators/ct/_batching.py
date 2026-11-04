@@ -6,8 +6,8 @@ from typing import Callable
 
 import torch
 
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
+from LION.operators.ct.ct_geometry import Geometry
+from LION.operators.ct.ct_utils import make_operator
 from LION.exceptions.exceptions import NoDataException
 from LION.operators.Operator import Operator
 

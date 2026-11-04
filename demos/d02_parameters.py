@@ -49,7 +49,7 @@ os.remove("fruit.json")
 # The tool provides (and you can make) special LIONParameters sets (that inherit from LIONParameter class).
 # In particular, for CT, we have the Geometry() class, describing a CT geometry.
 # You can load it as:
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 
 # it also has a default
 geo = Geometry.default_parameters()

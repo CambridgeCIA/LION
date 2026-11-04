@@ -14,8 +14,8 @@ from torch.utils.data import DataLoader  # noqa: E402
 
 import LION.data_loaders.LIDC_IDRI as lidc  # noqa: E402
 import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import sinogram_add_noise  # noqa: E402
+from LION.operators.ct.ct_geometry import Geometry
+from LION.operators.ct.ct_utils import sinogram_add_noise  # noqa: E402
 from LION.data_loaders.deteCT import deteCT  # noqa: E402
 from LION.utils.rng import seed_from_parts, seeded  # noqa: E402
 from pytests.test_experiments import fake_detect  # noqa: E402

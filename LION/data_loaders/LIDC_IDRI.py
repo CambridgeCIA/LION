@@ -19,7 +19,7 @@ import json
 
 
 from LION.utils import paths
-import LION.CTtools.ct_utils as ct
+import LION.operators.ct.ct_utils as ct
 from LION.utils.parameter import LIONParameter
 from LION.utils.device import default_device
 from LION.data_loaders.LIONDataset import LIONDataset
@@ -191,8 +191,8 @@ class LIDC_IDRI(LIONDataset):
             - annotation (str): Defines what annotation mode to use. Distinguish between "random" and "consensus". Default "consensus"
             - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. -1 takes all slices we have of each patient and pcg_slices_nodule gets ignored. Default is 5.
             - pcg_slices_nodule (float): Defines percentage of slices with nodule in dataset. 0 meaning "no nodules at all" and 1 meaning "just take slices that contain annotated nodules". Only used if max_num_slices_per_patient != -1. If a patient has too few slices of one kind, more of the other kind are taken. Default is 0.5.
-            - legacy_slice_selection (bool): True reproduces the selection of LION before October 2026, which left out patients without nodule slices. Default False (missing in old parameter files, which then use the old selection).
-            - legacy_patient_list (bool): True reproduces the patient list of LION before October 2026 (patients 1 to N for N folders), which left out patients 1011 and 1012 and was moved by leftover folders. Default False: the LIDC-IDRI-NNNN folders (missing in old parameter files, which then use the old list). See ``patient_list``.
+            - legacy_slice_selection (bool): True reproduces the selection of LION before October 2026, which left out patients without nodule slices. Default False.
+            - legacy_patient_list (bool): True reproduces the patient list of LION before October 2026 (patients 1 to N for N folders), which left out patients 1011 and 1012 and was moved by leftover folders. Default False: the LIDC-IDRI-NNNN folders. See ``patient_list``.
             - clevel (float): Defines consensus level if annotation=consensus. Value between 0-1. Default is 0.5.
             - annotation_seed (int or None): with annotation="random", each nodule of each slice gets one annotation, the same every time it is read (see LION.utils.rng.seeded). None: a new one each time. Default 0.
         The data are on LION's selected device, ``default_device()``.
@@ -278,7 +278,7 @@ class LIDC_IDRI(LIONDataset):
         )
         self.patient_ids_all, self.total_patients = self.patient_list(
             self.path_to_processed_dataset,
-            legacy=getattr(self.parameters, "legacy_patient_list", True),
+            legacy=self.parameters.legacy_patient_list,
         )
         self.num_slices_per_patient = self.parameters.max_num_slices_per_patient
         self.pcg_slices_nodule = self.parameters.pcg_slices_nodule
@@ -605,8 +605,7 @@ class LIDC_IDRI(LIONDataset):
             {}
         )  # Empty dict which should contain patient id as key and slice ids as array of values
 
-        # parameter files from before legacy_slice_selection existed used the old rule
-        legacy = getattr(self.parameters, "legacy_slice_selection", True)
+        legacy = self.parameters.legacy_slice_selection
         for patient_id in patient_list:  # Loop over every patient
             patient_id_to_slices_to_load_dict[patient_id] = select_slices(
                 non_nodule_slices_dict[patient_id],
@@ -707,9 +706,9 @@ class LIDC_IDRI(LIONDataset):
 
                     # annotation_seed: each nodule of each slice gets one
                     # annotation, the same every time it is read; None or
-                    # missing: a new one each time
+                    # (or None) a new one each time
                     with seeded(
-                        getattr(self.parameters, "annotation_seed", None),
+                        self.parameters.annotation_seed,
                         "LIDC-IDRI-annotation",
                         patient_id,
                         slice_index,

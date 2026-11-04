@@ -13,8 +13,8 @@ import numpy as np
 import torch
 
 # AItomotools imports
-from LION.CTtools.ct_geometry import Geometry
-from LION.operators.CTProjectionOp import CTProjectionOp
+from LION.operators.ct.ct_geometry import Geometry
+from LION.operators.ct.CTProjectionOp import CTProjectionOp
 from LION.utils.device import default_device
 from LION.utils.image_transforms import gaussian_blur
 

@@ -13,9 +13,9 @@ import numpy as np
 import warnings
 from LION.utils import paths
 from LION.utils.parameter import LIONParameter
-import LION.CTtools.ct_geometry as ctgeo
-import LION.CTtools.ct_utils as ct
-from LION.CTtools.ct_utils import make_operator
+import LION.operators.ct.ct_geometry as ctgeo
+import LION.operators.ct.ct_utils as ct
+from LION.operators.ct.ct_utils import make_operator
 from LION.utils.tomosipo_import import import_tomosipo
 from LION.utils.rng import seeded
 from LION.utils.device import default_device

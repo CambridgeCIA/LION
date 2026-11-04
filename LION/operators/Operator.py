@@ -10,6 +10,13 @@ from LION.utils.common_primitives import DeviceLikeType
 from LION.utils.mrpro_import import import_mrpro
 
 
+def inverse_reconstruction(y: torch.Tensor, op: "Operator") -> torch.Tensor:
+    """The operator's own inverse (or pseudo-inverse) of ``y``: the default
+    reconstruction of operators that have one (e.g. the Walsh-Hadamard
+    transform)."""
+    return op.inverse(y)
+
+
 class Operator(torch.nn.Module, ABC):
     """Base class for operators in LION.
 
@@ -85,9 +92,14 @@ class Operator(torch.nn.Module, ABC):
     def default_reconstruction_fn(self):
         """The operator's usual reconstruction, as a function ``f(y, op)`` of
         measurements and operator that a record can name (e.g. ``fdk`` for
-        CT). It is what ``"default"`` stands for in a model's
+        CT). It is what ``"default"`` stands for in a model's or reconstructor's
         ``initial_reconstruction`` and a solver's ``recon_fn``, and they record
-        it in its place. Operators that have one define it."""
+        it in its place; it is also the baseline methods are compared with
+        (``LION.evaluation.baseline``). An operator with an inverse
+        (``inverse()``) has that, ``inverse_reconstruction``; others that have
+        one define it."""
+        if type(self).inverse is not Operator.inverse:
+            return inverse_reconstruction
         raise NotImplementedError(
             f"{type(self).__name__} has no default reconstruction: set the "
             "model's initial reconstruction (model.set_initial_reconstruction) "

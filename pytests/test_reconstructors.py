@@ -9,6 +9,7 @@ from LION.reconstructors import (
     PnP,
     estimate_alpha,
 )
+from LION.operators import Operator
 from LION.utils import spec
 from pytests.helpers import ImageMatrixOp, ScaleOp, small_dncnn
 
@@ -398,7 +399,8 @@ def test_saved_and_loaded_with_its_model(tmp_path):
     assert type(again) is PnP and again.source_file == tmp_path / "pnp"
     assert vars(again.parameters) == vars(recon.parameters)
     assert weights_sha256(again.model) == weights_sha256(model)
-    assert PnP.parameters_from_file(tmp_path / "pnp").max_iter == 3
+    # the initial reconstruction recorded is the test operator's, in pytests
+    assert PnP.parameters_from_file(tmp_path / "pnp", allow=["pytests."]).max_iter == 3
 
 
 def test_made_from_its_file_without_its_model(tmp_path):
@@ -449,3 +451,67 @@ def test_its_file_is_a_method_and_names_it_in_comparisons(tmp_path):
     assert spec.build(_method_spec(loaded, "it")) == tmp_path / "pnp"
     loaded.parameters.max_iter = 10  # no longer what its file says
     assert "lion_reconstructor" in _method_spec(loaded, "it")
+
+
+# ---------------------------------------------------------------------------
+# Where the algorithms start
+
+
+@pytest.mark.parametrize("make", ["ADMM", "HQS", "FBS", "learned"])
+def test_reconstructors_start_from_the_operators_default(pnp_problem, make):
+    """PnP (every algorithm) and the learned regulariser reconstructor list
+    initial_reconstruction: "default", replaced by the operator's default
+    reconstruction function when made, so their record says which was used.
+    Their initial guess is it."""
+    from pytests.helpers import adjoint_reconstruction
+
+    op, _, y = pnp_problem
+    if make == "learned":
+        defaults = LearnedRegularizerReconstructor.default_parameters()
+        recon = learned(op, quadratic)
+    else:
+        defaults = PnP.default_parameters(make)
+        recon = pnp(op, small_dncnn(), make)
+    assert defaults.initial_reconstruction == "default"
+    assert recon.parameters.initial_reconstruction is adjoint_reconstruction
+    record = spec.encode(recon.parameters)
+    assert record["initial_reconstruction"][spec.TARGET].endswith(
+        "adjoint_reconstruction"
+    )
+    torch.testing.assert_close(recon.initial_guess(y), op.adjoint(y))
+
+
+def test_admm_starts_from_the_initial_guess(pnp_problem):
+    """ADMM's first step starts from initial_guess, as HQS and FBS do."""
+    op, _, y = pnp_problem
+    seen = []
+
+    def start(y, op):
+        seen.append(y)
+        return op.adjoint(y)
+
+    recon = pnp(op, small_dncnn(), "ADMM", max_iter=1, initial_reconstruction=start)
+    recon.reconstruct_sample(y)
+    assert len(seen) == 1
+
+
+def test_an_operator_without_a_default_needs_a_start(pnp_problem):
+    """Made with an operator without a default reconstruction, a
+    reconstructor keeps "default" and asks for a start when it needs one;
+    given x0, or its own initial_reconstruction, it runs."""
+    op, _, y = pnp_problem
+
+    class NoDefault(type(op)):
+        def default_reconstruction_fn(self):
+            return Operator.default_reconstruction_fn(self)
+
+    plain = NoDefault(op.A, op.domain_shape)
+    recon = learned(plain, quadratic, n_steps=1)
+    assert recon.parameters.initial_reconstruction == "default"
+    with pytest.raises(ValueError, match="has no default reconstruction"):
+        recon.reconstruct_sample(y)
+    recon.reconstruct_sample(y, x0=torch.zeros(op.domain_shape))
+    recon = learned(
+        plain, quadratic, n_steps=1, initial_reconstruction=lambda y, op: op.adjoint(y)
+    )
+    recon.reconstruct_sample(y)

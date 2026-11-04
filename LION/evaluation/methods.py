@@ -22,8 +22,8 @@ when two evaluations ran the same method):
 - a function ``f(y, operator)``, e.g. ``fdk``, or ``functools.partial(tv_min,
   lam=...)``.
 
-``baseline(operator)`` is the classical reconstruction methods are compared
-with, which depends on the modality (one line each below).
+``baseline(operator)`` is what methods are compared with: the operator's
+default reconstruction.
 """
 
 from __future__ import annotations
@@ -36,7 +36,6 @@ import pathlib
 import torch
 
 from LION.models.LIONmodel import LIONmodel
-from LION.operators.Operator import Operator
 from LION.optimizers.LIONsolver import LIONsolver, model_forward
 from LION.optimizers.training_record import read_training_record, weights_sha256
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
@@ -170,31 +169,15 @@ def _from_file(path, operator, allow):
 # The baseline: the classical reconstruction of each modality
 
 
-def inverse(y, operator):
-    """The operator's own inverse (or pseudo-inverse), e.g. for the
-    Walsh-Hadamard transform."""
-    return operator.inverse(y)
-
-
 def baseline(operator):
-    """The classical reconstruction methods are compared with, for
-    ``operator``'s modality, as a function ``f(y, operator)``:
-
-    - CT (``CTProjectionOp``): FDK (FBP for parallel beam);
-    - an operator with its own ``inverse()``: that;
-    - otherwise there is no standard one: give it yourself.
-    """
-    from LION.classical_algorithms.fdk import fdk
-    from LION.operators.CTProjectionOp import CTProjectionOp
-
-    if isinstance(operator, CTProjectionOp):
-        return fdk
-    if (
-        isinstance(operator, Operator)
-        and type(operator).inverse is not Operator.inverse
-    ):
-        return inverse
-    raise ValueError(
-        f"no standard baseline for {type(operator).__name__}: give the "
-        "reconstruction to compare with yourself, as a function f(y, operator)"
-    )
+    """The classical reconstruction methods are compared with, as a function
+    ``f(y, operator)``: the operator's default reconstruction
+    (``Operator.default_reconstruction_fn``): FDK for CT, the inverse for an
+    operator that has one. Without one, give it yourself."""
+    try:
+        return operator.default_reconstruction_fn()
+    except (AttributeError, NotImplementedError):
+        raise ValueError(
+            f"no standard baseline for {type(operator).__name__}: give the "
+            "reconstruction to compare with yourself, as a function f(y, operator)"
+        ) from None
