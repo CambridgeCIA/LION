@@ -210,16 +210,23 @@ class LIONmodel(nn.Module, ABC):
         pass
 
     # makes operator and make it pytorch compatible.
-    def _make_operator(self):
-        # if self.model_parameters.mode.lower() != "ct":
-        #     raise NotImplementedError("Only CT operators supported")
-        if getattr(self, "operator_params", None) is not None:
-            self.op = self.operator_params.make_operator()
-            # the operator and its adjoint, differentiable (Operator.autograd)
-            self.A, self.AT = self.op.autograd()
-            self._resolve_initial_reconstruction(self.op)
-        else:
+    def _make_operator(self, autograd: bool = False):
+        """Make the model's operator, ``self.op``, from its parameters. With
+        ``autograd=True``, for models whose gradients go through the operator
+        (e.g. LPD), also ``self.A`` and ``self.AT``: the operator and its
+        adjoint as torch autograd functions (``Operator.autograd``). An
+        operator without them can't be used by such a model: it raises here."""
+        if getattr(self, "operator_params", None) is None:
             raise AttributeError("Can't make operator without operator parameters.")
+        self.op = self.operator_params.make_operator()
+        if autograd:
+            try:
+                self.A, self.AT = self.op.autograd()
+            except NotImplementedError as error:
+                raise NotImplementedError(
+                    f"{type(self).__name__}'s gradients go through its operator: {error}"
+                ) from None
+        self._resolve_initial_reconstruction(self.op)
 
     # All classes should have this method, just change the amount of Parameters it returns of you have more/less
     def get_parameters(self):

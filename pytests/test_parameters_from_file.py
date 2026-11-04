@@ -160,10 +160,6 @@ def test_a_solver_made_with_changed_parameters(monkeypatch):
     import LION.optimizers.LIONsolver as lion_solver
     from LION.operators.ct.ct_geometry import Geometry
 
-    identity = types.SimpleNamespace(
-        to_autograd=lambda op, num_extra_dims: (lambda x: x)
-    )
-    monkeypatch.setattr(e2i, "import_tomosipo", lambda *args: identity)
     from pytests.helpers import ScaleOp
 
     monkeypatch.setattr(Geometry, "make_operator", lambda self: ScaleOp(1, (1, 8, 8)))

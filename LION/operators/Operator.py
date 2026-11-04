@@ -84,10 +84,18 @@ class Operator(torch.nn.Module, ABC):
         raise NotImplementedError("Adjoint method must be implemented by subclasses.")
 
     def autograd(self):
-        """The operator and its adjoint as differentiable functions of batches
-        ``(forward, adjoint)``: for operators written in torch, themselves.
-        Operators that torch can't differentiate (e.g. CT's) wrap them."""
-        return self, self.adjoint
+        """The operator and its adjoint as torch autograd functions of batches,
+        ``(forward, adjoint)``: functions whose gradients torch knows (the
+        gradient of A is A^T, and of A^T is A), for models and solvers whose
+        gradients go through the operator (e.g. LPD, Sparse2Inverse). CT's
+        wraps tomosipo's operator with ``to_autograd``. An operator that can
+        be differentiated defines it; the others can't be used there."""
+        raise NotImplementedError(
+            f"{type(self).__name__} has no autograd(): it can't be used where "
+            "gradients go through the operator. An operator that can be "
+            "differentiated defines autograd(), returning its forward and adjoint "
+            "as torch autograd functions (as tomosipo's to_autograd does for CT)"
+        )
 
     def default_reconstruction_fn(self):
         """The operator's usual reconstruction, as a function ``f(y, op)`` of

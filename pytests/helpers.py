@@ -42,6 +42,9 @@ class ImageMatrixOp(Operator):
     def default_reconstruction_fn(self):  # the adjoint, per sample
         return adjoint_reconstruction
 
+    def autograd(self):  # plain torch: torch differentiates it as it is
+        return self, self.adjoint
+
     @property
     def domain_shape(self):
         return self._domain_shape
@@ -71,6 +74,9 @@ class ScaleOp(Operator):
 
     def default_reconstruction_fn(self):
         return adjoint_reconstruction
+
+    def autograd(self):  # plain torch: torch differentiates it as it is
+        return self, self.adjoint
 
     @property
     def domain_shape(self):
@@ -146,3 +152,28 @@ class CTStandIn:
 
     def default_reconstruction(self, y):
         return self.default_reconstruction_fn()(y, self)
+
+
+class IdentityStandIn:
+    """A stand-in operator that is the identity on ``shape``, with autograd
+    (for solvers whose gradients go through the operator), without CT."""
+
+    def __init__(self, shape=(1, 16, 16)):
+        self.domain_shape = self.range_shape = tuple(shape)
+
+    def __call__(self, x):
+        return x
+
+    def adjoint(self, y):
+        return y
+
+    def autograd(self):
+        return self, self.adjoint
+
+    def default_reconstruction_fn(self):
+        return identity_reconstruction
+
+
+def identity_reconstruction(y, op):
+    """The measurements as they are: IdentityStandIn's default reconstruction."""
+    return y

@@ -40,7 +40,7 @@ ignore_warnings = pytest.mark.filterwarnings("ignore")
 @pytest.fixture
 def no_ct_operator(monkeypatch):
     """Building the CT operator needs tomosipo; it is not what is tested here."""
-    monkeypatch.setattr(LIONmodel, "_make_operator", lambda self: None)
+    monkeypatch.setattr(LIONmodel, "_make_operator", lambda self, autograd=False: None)
 
 
 # --------------------------------------------------------------------------
@@ -339,7 +339,9 @@ def test_models_with_operator_params_load(monkeypatch, tmp_path, make_model):
     # a stand-in CT operator (identity on 16x16 images), so no tomosipo is needed
     op = ImageMatrixOp(torch.eye(16 * 16), (1, 16, 16))
     monkeypatch.setattr(
-        LIONmodel, "_make_operator", lambda self: setattr(self, "op", op)
+        LIONmodel,
+        "_make_operator",
+        lambda self, autograd=False: setattr(self, "op", op),
     )
     model = make_model()
     _save(model, tmp_path / "model")
@@ -357,7 +359,9 @@ def test_files_with_the_old_name_of_the_operator_params_load(monkeypatch, tmp_pa
 
     op = ImageMatrixOp(torch.eye(16 * 16), (1, 16, 16))
     monkeypatch.setattr(
-        LIONmodel, "_make_operator", lambda self: setattr(self, "op", op)
+        LIONmodel,
+        "_make_operator",
+        lambda self, autograd=False: setattr(self, "op", op),
     )
     model = AR(AR.default_parameters(), small_geometry())
     _save(model, tmp_path / "model")
@@ -598,7 +602,7 @@ def make_lpd(module, monkeypatch, calls=None, **params):
     def AT(y):
         return (y.reshape(y.shape[0], -1) @ M).reshape(y.shape[0], 1, 8, 8)
 
-    def make_operator(self):
+    def make_operator(self, autograd=False):
         self.op, self.A, self.AT = CTStandIn((1, 8, 8), (1, 6, 5)), A, AT
 
     monkeypatch.setattr(LIONmodel, "_make_operator", make_operator)
@@ -730,7 +734,7 @@ def make_learned_fbp(module, class_name, monkeypatch, **params):
     torch.manual_seed(0)
     M = torch.randn(30, 64) / 8  # 8x8 images -> 6 angles x 5 detectors
 
-    def make_operator(self):
+    def make_operator(self, autograd=False):
         self.op = None
         self.A = lambda x: (x.reshape(x.shape[0], -1) @ M.T).reshape(-1, 1, 6, 5)
         self.AT = lambda y: (y.reshape(y.shape[0], -1) @ M).reshape(-1, 1, 8, 8)
@@ -782,3 +786,25 @@ def test_deepfbp_output_is_only_clamped_below(import_without_tomosipo, monkeypat
         assert torch.allclose(model(torch.rand(1, 1, 6, 5)), torch.tensor(3.0))
         last_conv.bias.fill_(-3.0)
         assert (model(torch.rand(1, 1, 6, 5)) == 0).all()
+
+
+def test_models_differentiating_through_an_operator_need_its_autograd(monkeypatch):
+    """An operator without autograd() can't be used by a model whose gradients
+    go through it (it says so when the model is made); a model that only uses
+    the operator otherwise (e.g. AR, for its shape) works with it."""
+    from LION.models.iterative_unrolled.LPD import LPD
+    from LION.models.learned_regularizer.AR import AR
+    from LION.operators import Operator
+    from pytests.helpers import ImageMatrixOp
+
+    class NoAutograd(ImageMatrixOp):
+        autograd = Operator.autograd
+
+    op = NoAutograd(torch.eye(64), (1, 8, 8), range_shape=(1, 8, 8))
+    with pytest.raises(NotImplementedError, match="has no autograd"):
+        op.autograd()
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: op)
+    with pytest.raises(NotImplementedError, match="LPD's gradients go through"):
+        LPD(Geometry.default_parameters())
+    model = AR(AR.default_parameters(), Geometry.default_parameters())
+    assert model.op is op and not hasattr(model, "A")

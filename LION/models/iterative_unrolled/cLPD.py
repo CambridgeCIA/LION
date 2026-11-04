@@ -360,7 +360,7 @@ class cLPD(LIONmodel):
         _check_channels(self.model_parameters)
 
         # Create pytorch compatible operators and send them to aiutograd
-        self._make_operator()
+        self._make_operator(autograd=True)
 
         # Define step size
         if self.model_parameters.step_size is None:

@@ -130,8 +130,14 @@ part.
   `OperatorParameters` (`LION/utils/parameter.py`) that makes it
   (`make_operator()`), and an operator deriving from `Operator` that gives its
   default reconstruction as a function a record can name
-  (`default_reconstruction_fn()`, e.g. `fdk` for CT) and its differentiable
-  form (`autograd()`).
+  (`default_reconstruction_fn()`, e.g. `fdk` for CT).
+- **`Operator.autograd()`**: the operator and its adjoint as torch autograd
+  functions (torch knows the gradient of A is A^T, and of A^T is A; CT's wraps
+  tomosipo's with `to_autograd`). Only an operator that defines it can be used
+  where gradients go through the operator: a model asks for it with
+  `self._make_operator(autograd=True)` (then `self.A`, `self.AT`), a solver
+  with `self.op.autograd()`; the base class raises. Don't wrap an operator
+  with tomosipo (or anything else) outside its own folder.
 - Methods that use parts of the measurements (Noise2Inverse, Sparse2Inverse)
   split through the operator's parameters: `split_count` (for CT, the number
   of angles), `split(indices)` (new parameters for those units only) and

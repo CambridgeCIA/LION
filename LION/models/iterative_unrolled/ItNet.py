@@ -37,7 +37,7 @@ class ItNet(LIONmodel):
             self.add_module(f"Unet_{i}", UNet(self.model_parameters.Unet_params))
 
         # Create pytorch compatible operators and send them to autograd
-        self._make_operator()
+        self._make_operator(autograd=True)
 
         # Define step size
         if self.model_parameters.step_size is None:

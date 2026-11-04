@@ -142,7 +142,7 @@ class DeepFBPNetwork(LIONmodel):
         self, operator_params: ct.Geometry, model_parameters: LIONParameter = None
     ):
         super().__init__(model_parameters, operator_params)
-        self._make_operator()
+        self._make_operator(autograd=True)
 
         self.num_detectors = operator_params.detector_shape[1]
         self.num_angles_ = len(operator_params.angles)

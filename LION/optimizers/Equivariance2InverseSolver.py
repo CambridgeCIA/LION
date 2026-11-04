@@ -1,5 +1,4 @@
 from typing import Callable, Optional
-import warnings
 import numpy as np
 from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel
@@ -8,14 +7,9 @@ import torch.nn.functional as F
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver, warn_if_not_mse
 from LION.utils.parameter import LIONParameter
-from LION.utils.tomosipo_import import import_tomosipo
 import random
 from LION.utils.image_transforms import rotate
 from LION.utils.citation import citation
-
-# Parameters of the noise model of LION's E2I until Oct 2026
-# (Poisson + Gaussian in raw counts, with ct_utils.sinogram_add_noise)
-_OLD_NOISE_PARAMETERS = ("I0", "sigma", "sigma_blur", "noise_model")
 
 
 def _robust_std(values: torch.Tensor) -> torch.Tensor:
@@ -110,25 +104,10 @@ class Equivariance2InverseSolver(LIONsolver):
             deterministic=deterministic,
         )
         warn_if_not_mse(loss_fn, "Equivariance2InverseSolver")
-        old = [k for k in _OLD_NOISE_PARAMETERS if hasattr(self.solver_params, k)]
-        if old:
-            warnings.warn(
-                f"Equivariance2InverseSolver no longer uses {old}: it adds Gaussian "
-                "noise to the post-log sinograms, as in the paper (noise_std, "
-                "noise_kernel)."
-            )
-        # parameters saved until Oct 2026 do not have these
-        for key, value in vars(self.default_parameters()).items():
-            if not hasattr(self.solver_params, key):
-                setattr(self.solver_params, key, value)
-        to_autograd = import_tomosipo(
-            "tomosipo.torch_support", "Equivariance2InverseSolver"
-        ).to_autograd
-
         self.operator = self.op  # the base solver already built it
         self.model.operator_params = self.operator_params
         self.model.operator = self.operator
-        self.projector = to_autograd(self.operator, num_extra_dims=1)
+        self.projector, _ = self.operator.autograd()
 
     @staticmethod
     def default_parameters() -> LIONParameter:

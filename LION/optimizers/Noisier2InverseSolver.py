@@ -10,7 +10,6 @@ from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver, warn_if_not_mse
 from LION.utils.parameter import LIONParameter
 import LION.operators.ct.ct_utils as ct_utils
-from LION.utils.tomosipo_import import import_tomosipo
 
 from LION.utils.image_transforms import gaussian_blur
 from LION.utils.citation import citation
@@ -53,10 +52,7 @@ class Noisier2InverseSolver(LIONsolver):
         self.operator = self.op  # the base solver already built it
         self.model.operator_params = self.operator_params
         self.model.operator = self.operator
-        to_autograd = import_tomosipo(
-            "tomosipo.torch_support", "Noisier2Inverse"
-        ).to_autograd
-        self.projector = to_autograd(self.operator, num_extra_dims=1)
+        self.projector, _ = self.operator.autograd()
 
     @staticmethod
     def default_parameters() -> LIONParameter:
