@@ -2,7 +2,6 @@ from typing import Callable, Optional
 import warnings
 import numpy as np
 from tqdm import tqdm
-from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
 import torch
 from torch.optim.optimizer import Optimizer
@@ -14,8 +13,9 @@ from LION.utils.citation import citation
 class Noise2InverseSolver(LIONsolver):
     """Noise2Inverse: the measurements are split into ``sino_split_count``
     interleaved parts (for CT, every k-th angle), each reconstructed with
-    ``recon_fn`` (FDK by default), and the model learns to map the mean of some
-    parts' reconstructions to the mean of the others'.
+    ``reconstruct_measurements`` (the operator's default reconstruction, FDK
+    for CT, unless ``recon_fn`` is set), and the model learns to map the mean
+    of some parts' reconstructions to the mean of the others'.
 
     Works with any operator whose parameters can be split
     (``OperatorParameters.split``); others raise when the solver is made.
@@ -46,7 +46,6 @@ class Noise2InverseSolver(LIONsolver):
         )
 
         self.sino_split_count = self.solver_params.sino_split_count
-        self.recon_fn = self.solver_params.recon_fn
         cali_J = getattr(self.solver_params, "cali_J", None)
         if cali_J is None:  # the X:1 strategy for the split count used
             cali_J = self.X_one_strategy(self.sino_split_count)
@@ -88,7 +87,7 @@ class Noise2InverseSolver(LIONsolver):
                 sinos, self.split_indices[j]
             )
             # expect recon_fn to be batched
-            sub_recon_j = self.recon_fn(sub_sino_j, self.sub_ops[j])
+            sub_recon_j = self.reconstruct_measurements(sub_sino_j, self.sub_ops[j])
             if bad_recons is None:
                 bad_recons = torch.zeros(
                     size=(
@@ -106,12 +105,13 @@ class Noise2InverseSolver(LIONsolver):
     def default_parameters() -> LIONParameter:
         params = LIONParameter()
         params.sino_split_count = 4
-        params.recon_fn = fdk
         # The J sets (1-indexed splits) used as targets. None: the X:1 strategy
         # for sino_split_count, i.e. [[1], [2], ..., [sino_split_count]],
         # computed when the solver is made, so changing sino_split_count after
         # default_parameters() changes the J sets too.
         params.cali_J = None
+        # Measurements are reconstructed with the operator's default
+        # reconstruction (FDK for CT); set params.recon_fn(y, op) for another.
         return params
 
     def mini_batch_step(self, sinos, targets):

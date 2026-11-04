@@ -144,7 +144,6 @@ def test_a_solvers_parameters_from_its_training_record():
     )
     again = LIONsolver.parameters_from_file(record)
     assert again.sigma == 7 and again.delta == parameters.delta
-    assert again.recon_fn is parameters.recon_fn
     assert Noisier2InverseSolver.parameters_from_file(record).sigma == 7
     # a solver that takes none: its defaults
     record = training_record({"_target_": spec.import_path(SupervisedSolver)})

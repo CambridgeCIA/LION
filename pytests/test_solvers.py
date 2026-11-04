@@ -627,15 +627,41 @@ def test_splitting_needs_operator_params_that_can_be_split(
 
 
 def test_sparse2inverse_reconstructs_each_split_with_its_operator(fake_ct):
+    """Without recon_fn, each split is reconstructed with its operator's
+    default reconstruction."""
     operator_params = Geometry.default_parameters()
     operator_params.image_shape = [1, 8, 8]
-    solver = make_s2i_solver(
-        4, operator_params, 2, recon_fn=lambda y, op: op.default_reconstruction(y)
-    )
+    solver = make_s2i_solver(4, operator_params, 2)
     out = solver.reconstruct(torch.rand(2, 1, 360, 8))
     assert out.shape == (2, 1, 8, 8)
     # each split is in 3 of the 6 pairs
     assert [op.reconstructed for op in solver.sub_ops] == [3, 3, 3, 3]
+
+
+@pytest.mark.parametrize(
+    "solver_name",
+    [
+        "Noise2Inverse",
+        "Sparse2Inverse",
+        "Proj2Proj",
+        "Noisier2Inverse",
+        "Equivariance2Inverse",
+    ],
+)
+def test_solvers_reconstruct_with_the_operators_default(solver_name):
+    """Solvers that start from reconstructions don't set recon_fn by default:
+    they use the operator's default reconstruction. A recon_fn in the
+    parameters (e.g. FDK, in files from before) is used instead."""
+    module = importlib.import_module(f"LION.optimizers.{solver_name}Solver")
+    solver_class = getattr(module, f"{solver_name}Solver")
+    assert not hasattr(solver_class.default_parameters(), "recon_fn")
+
+    solver = types.SimpleNamespace(solver_params=solver_class.default_parameters())
+    op = types.SimpleNamespace(default_reconstruction=lambda y: ("default", y))
+    reconstruct = lion_solver.LIONsolver.reconstruct_measurements
+    assert reconstruct(solver, 1, op) == ("default", 1)
+    solver.solver_params.recon_fn = lambda y, op: ("given", y)
+    assert reconstruct(solver, 1, op) == ("given", 1)
 
 
 def test_warn_if_not_mse():
@@ -671,14 +697,14 @@ def make_n2i_solver(monkeypatch, params, operator_params=None):
 
 def test_noise2inverse_splits_through_the_operator_params(monkeypatch):
     """Noise2Inverse splits the geometry and the sinograms through the
-    operator parameters, and reconstructs each split with its own operator."""
+    operator parameters, and reconstructs each split with its own operator's
+    default reconstruction."""
     from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
 
     operator_params = Geometry.default_parameters()  # 360 angles
     operator_params.image_shape = [1, 8, 8]
     angles = np.asarray(operator_params.angles)
-    params = Noise2InverseSolver.default_parameters()
-    params.recon_fn = lambda y, op: op.default_reconstruction(y)
+    params = Noise2InverseSolver.default_parameters()  # no recon_fn
     solver = make_n2i_solver(monkeypatch, params, operator_params)
     for j, sub_op in enumerate(solver.sub_ops):
         np.testing.assert_array_equal(sub_op.angles, angles[j::4])

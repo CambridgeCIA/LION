@@ -220,6 +220,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         ``model_forward``)."""
         return model_forward(self.model, data, self.op)
 
+    def reconstruct_measurements(self, y: torch.Tensor, op) -> torch.Tensor:
+        """Reconstruct the measurements ``y`` of the operator ``op``, for
+        solvers whose method starts from reconstructions (Noise2Inverse,
+        Proj2Proj, ...): the solver parameters' ``recon_fn(y, op)`` if they set
+        one, else ``op``'s default reconstruction (FDK for CT)."""
+        recon_fn = getattr(self.solver_params, "recon_fn", None)
+        if recon_fn is None:
+            return op.default_reconstruction(y)
+        return recon_fn(y, op)
+
     # ------------------------------------------------------------------
     # The training record (LION.optimizers.training_record)
 

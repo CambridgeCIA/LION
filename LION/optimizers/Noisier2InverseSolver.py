@@ -3,7 +3,6 @@ import warnings
 import numpy as np
 from tqdm import tqdm
 from LION.CTtools.ct_geometry import Geometry
-from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
 import torch
 import torch.nn.functional as F
@@ -58,14 +57,14 @@ class Noisier2InverseSolver(LIONsolver):
             "tomosipo.torch_support", "Noisier2Inverse"
         ).to_autograd
         self.projector = to_autograd(self.operator, num_extra_dims=1)
-        self.recon_fn = self.solver_params.recon_fn
 
     @staticmethod
     def default_parameters() -> LIONParameter:
         params = LIONParameter()
         params.sigma = 3
         params.delta = 1
-        params.recon_fn = fdk
+        # Measurements are reconstructed with the operator's default
+        # reconstruction (FDK for CT); set params.recon_fn(y, op) for another.
         return params
 
     def mini_batch_step(self, sinos, targets):
@@ -77,7 +76,7 @@ class Noisier2InverseSolver(LIONsolver):
         N = gaussian_blur(N, ks, sigma)
         z = sinos + N
 
-        input_recon = self.recon_fn(z, self.model.operator)
+        input_recon = self.reconstruct_measurements(z, self.model.operator)
         output_recon = self.model(input_recon)
         output_sino = self.projector(output_recon)
         target_sino = sinos - N
@@ -96,7 +95,7 @@ class Noisier2InverseSolver(LIONsolver):
         return self.reconstruct(data)
 
     def reconstruct(self, sinos):
-        input_recon = self.recon_fn(sinos, self.operator)
+        input_recon = self.reconstruct_measurements(sinos, self.operator)
         output_recon = self.model(input_recon)
         return output_recon
 
