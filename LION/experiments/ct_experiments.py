@@ -30,11 +30,10 @@ noise in the FDK images as before (checked by eye by Ander).
 Before, the experiments used the relative model: each sinogram divided by its
 maximum, so every patient's thickest ray kept I0/e photons (I0 = 10000, 3500
 and 1000). That is not how a scanner works; the noise did not depend on the
-size of the patient. Parameter files saved before ``noise_model`` existed
-still use the relative model (``noise_model = "relative"``), with the errors
-LION's noise had before October 2026 fixed (cross-talk across angles, batch
-maximum, 1e-6 rule for starved rays), so their results are close to, but not
-bit-identical with, the old ones. New results are not comparable with old
+size of the patient. ``noise_model = "relative"`` gives the relative model,
+with the errors LION's noise had before October 2026 fixed (cross-talk across
+angles, batch maximum, 1e-6 rule for starved rays), so its results are close
+to, but not bit-identical with, the old ones. New results are not comparable with old
 results of the same experiment name.
 
 Each slice has one noisy measurement (``noise_params.seed``): its noise is
@@ -57,7 +56,7 @@ loader) and a 1024-pixel detector that covers it. The angles are as before:
 (``LIMITED_ANGLES``), 50 over 360 degrees for sparse view (``SPARSE_ANGLES``).
 Before, the experiments used ``Geometry.default_parameters()`` and its
 sparse presets (300 mm, 900-pixel detector) on slices of each scan's own
-pixel spacing. Parameter files saved before keep their geometry.
+pixel spacing.
 """
 
 import functools
@@ -123,13 +122,10 @@ class Experiment(ABC):
         if hasattr(self.param, "noise_params"):
             noise = self.param.noise_params
             kwargs = dict(
-                # saved before noise_model existed (25 Oct 2026): the relative model
-                model=getattr(noise, "noise_model", "relative"),
-                detector=getattr(noise, "detector", "energy_integrating"),
-                mass_attenuation=getattr(
-                    noise, "mass_attenuation", ct.DEFAULT_MASS_ATTENUATION
-                ),
-                min_counts=getattr(noise, "min_counts", 1.0),
+                model=noise.noise_model,
+                detector=noise.detector,
+                mass_attenuation=noise.mass_attenuation,
+                min_counts=noise.min_counts,
             )
             # a partial (not a lambda), so the dataset's record can hold it
             self.sino_fun = functools.partial(

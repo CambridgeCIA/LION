@@ -18,7 +18,8 @@ comparison is fair:
 Methods without a record (a model or reconstructor made in the script) can't
 be checked, which is said; classical methods (functions) need no check. The
 baseline is the experiment's (``Experiment.baseline()``) or the modality's
-(``LION.evaluation.baseline``: FDK for CT).
+(``LION.evaluation.baseline``: the operator's default reconstruction, FDK for
+CT).
 """
 
 from __future__ import annotations

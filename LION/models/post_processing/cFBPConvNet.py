@@ -209,13 +209,6 @@ class Up(nn.Module):
         return self.block(x)
 
 
-def _scalar(value):
-    """Parameter files written before the fix stored these as 1-tuples/lists."""
-    if isinstance(value, (tuple, list)) and len(value) == 1:
-        return value[0]
-    return value
-
-
 class cFBPConvNet(LIONmodel):
     """Continuous FBPConvNet: FBPConvNet with every convolution block replaced
     by a neural ODE block. Takes the FDK reconstruction as input (IMAGE) and
@@ -231,12 +224,6 @@ class cFBPConvNet(LIONmodel):
             "cFBPConvNet has not been trained and validated in LION yet, use with caution. \n If you manage to get it working, contact the authors."
         )
         super().__init__(model_parameters, operator_params)
-        for name in ("tol", "ode_adjoint", "do_second_order", "solver"):
-            setattr(
-                self.model_parameters,
-                name,
-                _scalar(getattr(self.model_parameters, name)),
-            )
 
         self.second_order = self.model_parameters.do_second_order
         self.solver = self.model_parameters.solver

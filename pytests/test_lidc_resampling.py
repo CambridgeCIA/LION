@@ -319,16 +319,15 @@ def test_lidc_patient_list(tmp_path):
     assert total == 7
 
 
-@pytest.mark.parametrize("saved_before", [False, True])
-def test_lidc_loader_uses_the_legacy_list_for_old_parameters(tmp_path, saved_before):
+@pytest.mark.parametrize("legacy", [False, True])
+def test_lidc_loader_legacy_patient_list(tmp_path, legacy):
     fake_lidc(tmp_path, range(1, 11), extra=["LIDC-IDRI-0010.old"])
     params = lidc.LIDC_IDRI.default_parameters(task="segmentation")
     params.folder = tmp_path
     assert params.legacy_patient_list is False
-    if saved_before:  # parameter files from before October 2026
-        del params.legacy_patient_list
+    params.legacy_patient_list = legacy  # True: the list before October 2026
     data = lidc.LIDC_IDRI("test", parameters=params)
-    if saved_before:  # 11 entries: patients 1-11, proportions of 12
+    if legacy:  # 11 entries: patients 1-11, proportions of 12
         assert data.patient_ids[-1] == "LIDC-IDRI-0011"
         assert data.testing_patients_list == ["LIDC-IDRI-0011"]
     else:  # the 10 patient folders

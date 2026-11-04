@@ -294,12 +294,6 @@ class ContinuousRegProximal(nn.Module):
         return self.last_layer(x)
 
 
-def _drop_lambda_primal(module, state_dict, prefix, *args):
-    """Ignore the (unused) lambda_primal steps of old checkpoints."""
-    for key in [k for k in state_dict if k.startswith(prefix + "lambda_primal")]:
-        del state_dict[key]
-
-
 def _check_channels(params):
     """Number of primal/dual channels, from the output of the blocks.
 
@@ -314,9 +308,8 @@ def _check_channels(params):
             f"data_channels={params.data_channels}, reg_channels={params.reg_channels}"
         )
     # channel of the primal variable projected in the dual step: 1 as in Adler &
-    # Oktem (the second primal channel); parameter files from before this option
-    # existed used channel 0
-    channel = getattr(params, "dual_step_primal_channel", 0)
+    # Oktem (the second primal channel)
+    channel = params.dual_step_primal_channel
     if not 0 <= channel < n_primal:
         raise ValueError(
             f"dual_step_primal_channel={channel} needs at least {channel + 1} primal channels"
@@ -387,8 +380,6 @@ class cLPD(LIONmodel):
             self.register_buffer(
                 "lambda_dual", torch.ones(n_iters) * step_size, persistent=False
             )
-        # checkpoints saved before lambda_primal was removed still load
-        self.register_load_state_dict_pre_hook(_drop_lambda_primal)
 
     @staticmethod
     def default_parameters():

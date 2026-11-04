@@ -189,9 +189,8 @@ class LIONmodel(nn.Module, ABC):
                 type(self).__name__,
                 model_parameters,
                 self.default_parameters(),
-                # normalisator: an unused parameter files saved before 30 Oct
-                # 2026 have (the normalisation is "normalisation")
-                ignore=("normalisation", "normalisator", "initial_reconstruction"),
+                # set by set_normalisation(), not a default
+                ignore=("normalisation",),
             )
         model_parameters = as_model_parameter(model_parameters)
         # Pass all relevant parameters to internal storage.
@@ -295,12 +294,9 @@ class LIONmodel(nn.Module, ABC):
 
     def _resolve_initial_reconstruction(self, op):
         """Replace a ``"default"`` initial reconstruction by ``op``'s default
-        reconstruction function (files from before it was listed: the same).
-        An operator without one leaves it "default", until the model is used
-        with one that has one."""
-        value = getattr(
-            self.model_parameters, "initial_reconstruction", DEFAULT_RECONSTRUCTION
-        )
+        reconstruction function. An operator without one leaves it "default",
+        until the model is used with one that has one."""
+        value = self.model_parameters.initial_reconstruction
         if value != DEFAULT_RECONSTRUCTION:
             return
         try:

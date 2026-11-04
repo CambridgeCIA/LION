@@ -424,12 +424,12 @@ class DeepFusionBPNetwork(LIONmodel):  # (Module) -> (LIONmodel)
         """
         FFT length for the filter: the next power of two of at least twice the
         number of detectors, so that filtering is not circular (wrap-around).
-        Parameter files from before ``fft_padding_twice_detectors`` existed use
-        the old length, the next power of two of the number of detectors (no
-        padding at all when that is already a power of two).
+        ``fft_padding_twice_detectors = False`` gives the old length, the next
+        power of two of the number of detectors (no padding at all when that is
+        already a power of two).
         """
         n = self.num_detectors
-        if getattr(self.model_parameters, "fft_padding_twice_detectors", False):
+        if self.model_parameters.fft_padding_twice_detectors:
             n = 2 * n
         return 2 ** int(
             torch.ceil(torch.log2(torch.tensor(n, dtype=torch.float32))).item()

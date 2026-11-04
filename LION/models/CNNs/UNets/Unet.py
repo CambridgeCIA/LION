@@ -160,10 +160,9 @@ class UNet(LIONmodel):
             ),
         ]
         # Older versions named both norms "gn1", so the second one silently
-        # replaced the first and blocks had a single GroupNorm. Parameters saved
-        # before `norm_after_second_conv` existed keep that architecture, so
-        # their weights still load.
-        if getattr(self.model_parameters, "norm_after_second_conv", False):
+        # replaced the first and blocks had a single GroupNorm: False keeps
+        # that architecture.
+        if self.model_parameters.norm_after_second_conv:
             layers.append((name + "gn2", nn.GroupNorm(noGrp, outChan)))
         layers += [
             (name + "relu2", nn.ReLU(True)),

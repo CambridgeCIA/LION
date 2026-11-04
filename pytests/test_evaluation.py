@@ -23,7 +23,6 @@ from LION.operators.ct.ct_geometry import Geometry  # noqa: E402
 from LION.evaluation import (  # noqa: E402
     Evaluation,
     baseline,
-    inverse,
     method,
     read_test_record,
     scores,
@@ -201,10 +200,20 @@ def test_baseline():
     from LION.operators.ct.CTProjectionOp import CTProjectionOp
     from LION.operators.pcm.WalshHadamard2D import WalshHadamard2D
 
+    from LION.operators.Operator import Operator, inverse_reconstruction
+    from pytests.helpers import adjoint_reconstruction
+
+    # the operator's default reconstruction: FDK for CT, its inverse if it has
+    # one, else what it says (the stand-in's adjoint)
     assert baseline(object.__new__(CTProjectionOp)) is fdk
-    assert baseline(object.__new__(WalshHadamard2D)) is inverse
+    assert baseline(object.__new__(WalshHadamard2D)) is inverse_reconstruction
+    assert baseline(ImageMatrixOp(torch.eye(4), (1, 2, 2))) is adjoint_reconstruction
+
+    class NoDefault(ImageMatrixOp):  # neither an inverse nor a default
+        default_reconstruction_fn = Operator.default_reconstruction_fn
+
     with pytest.raises(ValueError, match="no standard baseline"):
-        baseline(ImageMatrixOp(torch.eye(4), (1, 2, 2)))
+        baseline(NoDefault(torch.eye(4), (1, 2, 2)))
 
 
 # --------------------------------------------------------------------------

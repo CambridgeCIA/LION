@@ -38,18 +38,16 @@ def test_noise_function_is_always_defined():
     assert cls(params).sino_fun is None
 
 
-@pytest.mark.parametrize("saved_before", [False, True])
-def test_experiments_choose_the_noise_model(monkeypatch, saved_before):
-    """New experiments use the physical noise model; parameters saved before
-    noise_model existed (25 Oct 2026) use the relative one."""
+@pytest.mark.parametrize("relative", [False, True])
+def test_experiments_choose_the_noise_model(monkeypatch, relative):
+    """Experiments use the physical noise model by default; noise_model =
+    "relative" gives the relative one."""
     params = ct_experiments.LowDoseCTRecon.default_parameters()
     assert params.noise_params.noise_model == "physical"
     assert params.noise_params.I0 == ct_experiments.LOW_DOSE_I0
-    if saved_before:  # what the parameter files of that time contain
-        for name in ("noise_model", "detector", "mass_attenuation", "min_counts"):
-            delattr(params.noise_params, name)
+    if relative:
+        params.noise_params.noise_model = "relative"
         params.noise_params.I0 = 3500
-        params.noise_params.legacy_noise_model = False  # ignored now
     calls = []
     monkeypatch.setattr(
         ct_experiments.ct, "sinogram_add_noise", lambda sino, **kw: calls.append(kw)
@@ -57,8 +55,7 @@ def test_experiments_choose_the_noise_model(monkeypatch, saved_before):
     ct_experiments.LowDoseCTRecon(params).sino_fun("sinogram")
     (kw,) = calls
     assert kw["I0"] == params.noise_params.I0
-    assert "legacy" not in kw
-    assert kw["model"] == ("relative" if saved_before else "physical")
+    assert kw["model"] == ("relative" if relative else "physical")
     assert (kw["detector"], kw["min_counts"]) == ("energy_integrating", 1.0)
     assert kw["mass_attenuation"] == ct_experiments.ct.WATER_MASS_ATTENUATION[80]
 
@@ -274,16 +271,15 @@ def test_lidc_legacy_selection_skipped_patients_without_nodules():
     )
 
 
-@pytest.mark.parametrize("saved_before", [False, True])
-def test_lidc_uses_legacy_selection_for_old_parameters(saved_before):
+@pytest.mark.parametrize("legacy", [False, True])
+def test_lidc_legacy_slice_selection(legacy):
     params = lidc.LIDC_IDRI.default_parameters(task="segmentation")
     assert params.legacy_slice_selection is False
-    if saved_before:
-        del params.legacy_slice_selection
+    params.legacy_slice_selection = legacy
     dataset = lidc.LIDC_IDRI.__new__(lidc.LIDC_IDRI)  # no data needed
     dataset.parameters = params
     selected = dataset.get_slices_to_load(["p"], {"p": NON_NODULE}, {"p": []}, 5, 0.5)
-    assert len(selected["p"]) == (0 if saved_before else 5)
+    assert len(selected["p"]) == (0 if legacy else 5)
 
 
 @pytest.mark.parametrize(

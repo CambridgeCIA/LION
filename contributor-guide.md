@@ -72,7 +72,9 @@ part.
   default reconstruction
   function, `fdk` for CT (`LION.utils.parameter.resolve_reconstruction`);
   E2I's `noise_std = None` becomes the estimated value.
-- **A parameter that is missing means the old behaviour.** When a change alters
+- **A parameter that is missing means the old behaviour** (from v1.0; until
+  then LION keeps no backwards compatibility, so parameters are read as
+  `params.name`). When a change alters
   results (a data split, a noise model, a model's architecture), add a
   parameter for it whose default in `default_parameters()` is the new
   behaviour, and read it with `getattr(params, "name", <old behaviour>)`. That
@@ -197,9 +199,10 @@ part.
   inside `forward()`: whoever calls them does.
 - Methods are evaluated with `LION.evaluation` (`Evaluation`, outside the
   solvers): every test sample, PSNR/SSIM/HaarPSI by default with one range for
-  the test set, records saved and reused. The classical baseline of each
-  modality is `LION.evaluation.baseline(operator)` (CT: FDK): add new
-  modalities there, not on the operator; an experiment whose standard is
+  the test set, records saved and reused. The baseline is
+  `LION.evaluation.baseline(operator)`, the operator's default reconstruction
+  (`default_reconstruction_fn()`: FDK for CT, the inverse for an operator with
+  one): a new kind of operator defines it; an experiment whose standard is
   another method overrides `Experiment.baseline()`. `Comparison` runs several
   methods against the baseline, after checking their records: a model trained
   or validated on test data (by patient) is an error, another problem or other
