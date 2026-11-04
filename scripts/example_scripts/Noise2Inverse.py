@@ -1,4 +1,4 @@
-from LION.classical_algorithms.fdk import fdk
+from LION.operators.ct.fdk import fdk
 from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
 from LION.models.CNNs.MSD_pytorch import MSD_pytorch
 import LION.experiments.ct_experiments as ct_experiments

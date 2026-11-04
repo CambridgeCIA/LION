@@ -19,11 +19,11 @@ import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-import LION.CTtools.ct_utils as ct_utils
+import LION.operators.ct.ct_utils as ct_utils
 import LION.optimizers.AdversarialRegularizerSolver as ar_module
 import LION.optimizers.LIONsolver as lion_solver
 import LION.optimizers.SupervisedSolver as supervised_solver
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.operators import Operator

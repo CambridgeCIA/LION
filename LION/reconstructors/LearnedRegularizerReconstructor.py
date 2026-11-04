@@ -5,9 +5,10 @@ from __future__ import annotations
 import torch
 from tqdm import tqdm
 
-from LION.classical_algorithms.fdk import fdk
+from LION.operators.ct.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
-from LION.operators import CTProjectionOp, Operator
+from LION.operators import Operator
+from LION.operators.ct import CTProjectionOp
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.parameter import LIONParameter
 from LION.models.learned_regularizer.AR import AR

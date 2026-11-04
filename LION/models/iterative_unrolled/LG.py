@@ -9,7 +9,6 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter, OperatorParameters
-import LION.CTtools.ct_utils as ct_utils
 import LION.utils.utils as ai_utils
 
 import numpy as np

@@ -19,7 +19,7 @@ import json
 
 
 from LION.utils import paths
-import LION.CTtools.ct_utils as ct
+import LION.operators.ct.ct_utils as ct
 from LION.utils.parameter import LIONParameter
 from LION.utils.device import default_device
 from LION.data_loaders.LIONDataset import LIONDataset

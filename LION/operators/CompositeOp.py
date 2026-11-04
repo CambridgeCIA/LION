@@ -5,7 +5,6 @@ from __future__ import annotations
 import torch
 
 from LION.operators.Operator import Operator
-from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp
 
 
 class CompositeOp(Operator):
@@ -15,8 +14,9 @@ class CompositeOp(Operator):
     ----------
     wavelet : Wavelet2D
         Wavelet transform object.
-    phi : PhotocurrentMapOp
-        Photocurrent mapping operator.
+    phi : Operator
+        The measurement operator, e.g. photocurrent mapping's
+        (``LION.operators.pcm.PhotocurrentMapOp``).
     device : str or torch.device, optional
         Device for computations. If None, uses wavelet.device.
 
@@ -31,7 +31,7 @@ class CompositeOp(Operator):
     def __init__(
         self,
         wavelet: Operator,
-        phi: PhotocurrentMapOp,
+        phi: Operator,
         device: str | torch.device | None = None,
     ):
         """Initialize the CompositeOp A = Phi Psi^{-1}."""
@@ -70,7 +70,7 @@ class CompositeOp(Operator):
         w = w.to(self.device)
         x = self.wavelet.inverse(w)  # (H, W) on self.device
 
-        # If PhotocurrentMapOp expects different shape, reshaping is applied here
+        # If phi expects a different shape, reshaping is applied here
         y = self.phi.forward(x)
         return y
 

@@ -55,7 +55,7 @@ from LION.operators import CompositeOp, Wavelet2D
 from LION.operators.DebiasOp import debias_ls
 
 # LION imports
-from LION.operators.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
+from LION.operators.pcm.PhotocurrentMapOp import PhotocurrentMapOp, Subsampler
 from LION.reconstructors.PnP import PnP
 
 GrayscaleImage2D = Float[torch.Tensor, "height width"]

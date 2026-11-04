@@ -13,8 +13,8 @@ import torch
 from torch.optim.optimizer import Optimizer
 from tqdm import tqdm
 
-from LION.classical_algorithms.fdk import fdk
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.fdk import fdk
+from LION.operators.ct.ct_geometry import Geometry
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams

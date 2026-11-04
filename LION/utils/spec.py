@@ -38,6 +38,7 @@ import importlib
 import os
 import inspect
 import json
+import pickle
 import pathlib
 import warnings
 
@@ -79,6 +80,40 @@ LION_FOLDERS = {
     "LION_DATA_PATH": "LION.utils.paths.data_path",
     "LION_RESULTS_PATH": "LION.utils.paths.results_path",
 }
+
+
+#: Modules that moved, old import path -> new: files written before name
+#: their classes and functions by the old path (``current_path``).
+MOVED_MODULES = {
+    # Nov 2026: each kind of operator in its own folder of LION.operators
+    "LION.CTtools.ct_geometry": "LION.operators.ct.ct_geometry",
+    "LION.CTtools.ct_utils": "LION.operators.ct.ct_utils",
+    "LION.CTtools.ct_transforms": "LION.operators.ct.ct_transforms",
+    "LION.operators.CTProjectionOp": "LION.operators.ct.CTProjectionOp",
+    "LION.classical_algorithms.fdk": "LION.operators.ct.fdk",
+    "LION.classical_algorithms.sirt": "LION.operators.ct.sirt",
+    "LION.classical_algorithms.tv_min": "LION.operators.ct.tv_min",
+    "LION.operators.PhotocurrentMapOp": "LION.operators.pcm.PhotocurrentMapOp",
+    "LION.operators.WalshHadamard2D": "LION.operators.pcm.WalshHadamard2D",
+}
+
+
+def current_path(path: str) -> str:
+    """``path`` where it is now, if its module moved (``MOVED_MODULES``)."""
+    if not isinstance(path, str):
+        return path
+    for old, new in MOVED_MODULES.items():
+        if path.startswith(old + "."):
+            return new + path[len(old) :]
+    return path
+
+
+class MovedModulesUnpickler(pickle.Unpickler):
+    """An unpickler that finds classes whose modules moved
+    (``MOVED_MODULES``), for pickles written before."""
+
+    def find_class(self, module, name):
+        return super().find_class(MOVED_MODULES.get(module, module), name)
 
 
 class SpecError(ValueError):
@@ -254,7 +289,9 @@ def is_allowed(path: str, allow=()) -> bool:
 
 
 def resolve(path: str, allow=()):
-    """The class or function at an import path, if it is allowed."""
+    """The class or function at an import path, if it is allowed (a path from
+    before its module moved: where it is now, ``current_path``)."""
+    path = current_path(path)
     if not isinstance(path, str) or not is_allowed(path, allow):
         raise SpecError(
             f"'{path}' is not in the modules a spec may use ({', '.join(ALLOWED_MODULES)} "
@@ -356,7 +393,7 @@ def target_class(path: str, cls, base, allow=()):
         if not (inspect.isclass(target) and issubclass(target, base)):
             raise SpecError(f"{path} is not a {base.__name__}")
         return target
-    if path != import_path(cls):
+    if current_path(path) != import_path(cls):
         warnings.warn(
             f"\nThe file holds a {path}; it is made as a {import_path(cls)}, "
             "which may fail.\n",

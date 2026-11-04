@@ -115,7 +115,7 @@ class LIONParameter:
 
 class OperatorParameters(LIONParameter):
     """The parameters of an operator, which make it again: one class per kind
-    of operator. For CT, it's the ``Geometry`` (``LION.CTtools.ct_geometry``):
+    of operator. For CT, it's the ``Geometry`` (``LION.operators.ct.ct_geometry``):
     wherever LION asks for ``operator_params``, a CT user gives their geometry.
 
     Components that need an operator take its parameters (``operator_params``)

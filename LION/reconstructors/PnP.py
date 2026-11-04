@@ -7,9 +7,10 @@ import torch
 from tqdm import tqdm
 
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
-from LION.classical_algorithms.fdk import fdk
+from LION.operators.ct.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
-from LION.operators import CTProjectionOp, Operator
+from LION.operators import Operator
+from LION.operators.ct import CTProjectionOp
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter

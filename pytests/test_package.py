@@ -19,9 +19,9 @@ import pytest  # noqa: E402
 import torch  # noqa: E402
 from torch.utils.data import DataLoader, Subset  # noqa: E402
 
-import LION.CTtools.ct_utils as ct_utils  # noqa: E402
+import LION.operators.ct.ct_utils as ct_utils  # noqa: E402
 import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION import package  # noqa: E402
 from LION.evaluation import Evaluation  # noqa: E402
 from LION.experiments import ct_experiments  # noqa: E402

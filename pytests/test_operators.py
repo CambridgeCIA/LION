@@ -5,16 +5,10 @@ import pytest
 import torch
 from spyrit.core.torch import fwht, ifwht
 
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import make_operator
-from LION.operators import (
-    CompositeOp,
-    Operator,
-    PhotocurrentMapOp,
-    Subsampler,
-    WalshHadamard2D,
-    Wavelet2D,
-)
+from LION.operators.ct.ct_geometry import Geometry
+from LION.operators.ct.ct_utils import make_operator
+from LION.operators import CompositeOp, Operator, Wavelet2D
+from LION.operators.pcm import PhotocurrentMapOp, Subsampler, WalshHadamard2D
 from LION.utils.math import power_method
 from LION.utils.tests_helper import dotproduct_adjointness_test
 

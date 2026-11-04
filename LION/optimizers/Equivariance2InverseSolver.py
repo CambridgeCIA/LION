@@ -1,7 +1,7 @@
 from typing import Callable, Optional
 import warnings
 import numpy as np
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel
 import torch
 import torch.nn.functional as F

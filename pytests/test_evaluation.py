@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader, TensorDataset  # noqa: E402
 
 import LION.evaluation.evaluation as evaluation_module  # noqa: E402
 import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
-from LION.CTtools.ct_geometry import Geometry  # noqa: E402
+from LION.operators.ct.ct_geometry import Geometry  # noqa: E402
 from LION.evaluation import (  # noqa: E402
     Evaluation,
     baseline,
@@ -197,9 +197,9 @@ def test_a_model_file_runs_as_its_solver(no_ct, tmp_path):
 
 
 def test_baseline():
-    from LION.classical_algorithms.fdk import fdk
-    from LION.operators.CTProjectionOp import CTProjectionOp
-    from LION.operators.WalshHadamard2D import WalshHadamard2D
+    from LION.operators.ct.fdk import fdk
+    from LION.operators.ct.CTProjectionOp import CTProjectionOp
+    from LION.operators.pcm.WalshHadamard2D import WalshHadamard2D
 
     assert baseline(object.__new__(CTProjectionOp)) is fdk
     assert baseline(object.__new__(WalshHadamard2D)) is inverse
@@ -400,7 +400,7 @@ def zeros(y, operator):
 
 
 def test_an_experiment(tmp_path, monkeypatch):
-    import LION.CTtools.ct_utils as ct_utils
+    import LION.operators.ct.ct_utils as ct_utils
     import LION.data_loaders.LIDC_IDRI as lidc
     import LION.experiments.ct_experiments as ct_experiments
     from pytests.test_data_record import stand_in_projection

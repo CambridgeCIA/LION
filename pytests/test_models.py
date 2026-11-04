@@ -10,7 +10,7 @@ import pytest
 import torch
 
 import LION.models.iterative_unrolled.ItNet as itnet_module
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.ct_geometry import Geometry
 from LION.models.CNNs.dncnn import DnCNN
 from LION.models.CNNs.drunet import DRUNet
 from LION.models.CNNs.MSDNet import MSDNet

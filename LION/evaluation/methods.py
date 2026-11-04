@@ -184,8 +184,8 @@ def baseline(operator):
     - an operator with its own ``inverse()``: that;
     - otherwise there is no standard one: give it yourself.
     """
-    from LION.classical_algorithms.fdk import fdk
-    from LION.operators.CTProjectionOp import CTProjectionOp
+    from LION.operators.ct.fdk import fdk
+    from LION.operators.ct.CTProjectionOp import CTProjectionOp
 
     if isinstance(operator, CTProjectionOp):
         return fdk

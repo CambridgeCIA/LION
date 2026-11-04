@@ -12,21 +12,25 @@ Specifically, LION can work with any unitary operator ``A`` (single input, singl
 
 The input and output should be torch tensors.
 Users can define their own operators by creating a class that subclasses
-`LION.utils.operators.Operator <Operator.py>`_ and implements the necessary methods.
-We also include some operators such as:
+`LION.operators.Operator <Operator.py>`_ and implements the necessary methods.
 
-- `CTProjectionOp <CTProjectionOp.py>`_:
+Generic operators are in this folder. Each kind of operator has its own folder,
+with its parameters (an ``OperatorParameters``, which makes the operator), the
+operator and its reconstructions: ``ct/`` (computed tomography) and ``pcm/``
+(photocurrent mapping). We include operators such as:
+
+- `CTProjectionOp <ct/CTProjectionOp.py>`_:
   Discrete tomographic projection operator for CT reconstruction tasks.
   It wraps a `tomosipo <https://github.com/ahendriksen/tomosipo>`_ Operator and
   uses its PyTorch backend for efficient GPU-accelerated projection and backprojection.
 
-- `PhotocurrentMapOp <PhotocurrentMapOp.py>`_:
+- `PhotocurrentMapOp <pcm/PhotocurrentMapOp.py>`_:
   Forward operator for photocurrent mapping (PCM), modelling single-pixel measurements
   obtained from spatially modulated illumination patterns.
   It uses subsampled Walsh-Hadamard patterns and dyadic permutations to map a
   2D current map to a compressed set of photocurrent measurements.
 
-- `WalshHadamard2D <WalshHadamard2D.py>`_:
+- `WalshHadamard2D <pcm/WalshHadamard2D.py>`_:
   Two-dimensional (unnormalized) Walsh-Hadamard transform operator acting on images.
   This operator is useful in single-pixel imaging.
 

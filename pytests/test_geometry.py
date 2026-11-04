@@ -13,10 +13,10 @@ os.environ.setdefault("LION_DATA_PATH", tempfile.gettempdir())
 import numpy as np
 import pytest
 
-from LION.CTtools.ct_geometry import Geometry, check_geometry
+from LION.operators.ct.ct_geometry import Geometry, check_geometry
 from LION.data_loaders.deteCT import deteCT
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
-from LION.operators.CTProjectionOp import CTProjectionOp
+from LION.operators.ct.CTProjectionOp import CTProjectionOp
 from LION.utils.parameter import LIONParameter
 
 SHAPE, SIZE, SPACING = [1, 10, 20], [2.0, 5.0, 40.0], [2.0, 0.5, 2.0]

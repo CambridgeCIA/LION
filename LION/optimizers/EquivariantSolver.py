@@ -7,8 +7,8 @@ from typing import Callable, Optional
 import torch
 from torch.optim.optimizer import Optimizer
 
-from LION.classical_algorithms.fdk import fdk
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct.fdk import fdk
+from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.utils.parameter import LIONParameter

@@ -20,8 +20,8 @@ import torch  # noqa: E402
 import LION.data_loaders.LIDC_IDRI as lidc  # noqa: E402
 import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
 import LION.utils.paths as paths  # noqa: E402
-from LION.CTtools.ct_geometry import Geometry
-from LION.CTtools.ct_utils import sinogram_add_noise  # noqa: E402
+from LION.operators.ct.ct_geometry import Geometry
+from LION.operators.ct.ct_utils import sinogram_add_noise  # noqa: E402
 from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
 from LION.data_loaders.data_record import (  # noqa: E402
     data_record,

@@ -6,7 +6,7 @@ from typing import Literal
 
 import torch
 
-from LION.CTtools.ct_geometry import Geometry, check_geometry
+from LION.operators.ct.ct_geometry import Geometry, check_geometry
 from LION.operators.Operator import Operator
 from LION.utils.common_primitives import DeviceLikeType
 from LION.utils.tomosipo_import import import_tomosipo
@@ -32,7 +32,7 @@ class CTProjectionOp(Operator):
         super().__init__(device=device)
         if not isinstance(geometry, Geometry):
             raise ValueError(
-                "Input geometry is not of class LION.CTtools.ct_geometry.Geometry"
+                "Input geometry is not of class LION.operators.ct.ct_geometry.Geometry"
             )
         check_geometry(geometry)
         self.geometry = geometry
@@ -119,7 +119,7 @@ class CTProjectionOp(Operator):
 
     def default_reconstruction_fn(self):
         """``fdk``: FDK (fan or cone beam) or FBP (parallel beam), clipped at 0."""
-        from LION.classical_algorithms.fdk import fdk
+        from LION.operators.ct.fdk import fdk
 
         return fdk
 

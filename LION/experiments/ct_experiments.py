@@ -68,8 +68,8 @@ import warnings
 from abc import ABC, abstractmethod, ABCMeta
 
 from LION.utils.parameter import LIONParameter
-import LION.CTtools.ct_geometry as ctgeo
-import LION.CTtools.ct_utils as ct
+import LION.operators.ct.ct_geometry as ctgeo
+import LION.operators.ct.ct_utils as ct
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
 from LION.data_loaders.deteCT import deteCT
 from LION.data_loaders.data_record import data_record, read_record, recorded_spec

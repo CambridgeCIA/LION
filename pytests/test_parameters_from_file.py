@@ -15,8 +15,8 @@ import pytest  # noqa: E402
 import torch  # noqa: E402
 from torch.utils.data import Subset  # noqa: E402
 
-import LION.CTtools.ct_utils as ct_utils  # noqa: E402
-from LION.CTtools.ct_geometry import Geometry  # noqa: E402
+import LION.operators.ct.ct_utils as ct_utils  # noqa: E402
+from LION.operators.ct.ct_geometry import Geometry  # noqa: E402
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI  # noqa: E402
 from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
 from LION.experiments import ct_experiments  # noqa: E402
@@ -158,7 +158,7 @@ def test_a_solver_made_with_changed_parameters(monkeypatch):
 
     import LION.optimizers.Equivariance2InverseSolver as e2i
     import LION.optimizers.LIONsolver as lion_solver
-    from LION.CTtools.ct_geometry import Geometry
+    from LION.operators.ct.ct_geometry import Geometry
 
     identity = types.SimpleNamespace(
         to_autograd=lambda op, num_extra_dims: (lambda x: x)

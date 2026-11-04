@@ -23,13 +23,13 @@ class Geometry:
 
 ct_geom = MagicMock()
 ct_geom.Geometry = Geometry
-sys.modules["LION.CTtools.ct_geometry"] = ct_geom
+sys.modules["LION.operators.ct.ct_geometry"] = ct_geom
 
-sys.modules["LION.CTtools.ct_utils"] = MagicMock()
-sys.modules["LION.CTtools.ct_utils"].make_operator = lambda op: op
+sys.modules["LION.operators.ct.ct_utils"] = MagicMock()
+sys.modules["LION.operators.ct.ct_utils"].make_operator = lambda op: op
 
 sys.modules["LION.operators"] = MagicMock()
-sys.modules["LION.operators.CTProjectionOp"] = MagicMock()
+sys.modules["LION.operators.ct.CTProjectionOp"] = MagicMock()
 
 
 class NoDataException(Exception):
@@ -45,11 +45,11 @@ import importlib.util
 import torch
 
 _spec = importlib.util.spec_from_file_location(
-    "LION.classical_algorithms.sirt",
-    "LION/classical_algorithms/sirt.py",
+    "LION.operators.ct.sirt",
+    "LION/operators/ct/sirt.py",
 )
 _sirt_mod = importlib.util.module_from_spec(_spec)
-sys.modules["LION.classical_algorithms.sirt"] = _sirt_mod
+sys.modules["LION.operators.ct.sirt"] = _sirt_mod
 _spec.loader.exec_module(_sirt_mod)
 
 sirt = _sirt_mod.sirt

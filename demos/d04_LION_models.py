@@ -10,8 +10,8 @@ import numpy as np
 import os
 
 # LION imports
-import LION.CTtools.ct_geometry as ctgeo
-import LION.CTtools.ct_geometry as ct
+import LION.operators.ct.ct_geometry as ctgeo
+import LION.operators.ct.ct_geometry as ct
 
 
 #%%

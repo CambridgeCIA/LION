@@ -4,8 +4,8 @@ from typing import Callable, Optional
 
 import torch
 
-from LION.classical_algorithms._batching import batched_reconstruction
-from LION.CTtools.ct_geometry import Geometry
+from LION.operators.ct._batching import batched_reconstruction
+from LION.operators.ct.ct_geometry import Geometry
 from LION.operators.Operator import Operator
 from LION.utils.tomosipo_import import import_tomosipo
 

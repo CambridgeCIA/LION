@@ -117,6 +117,15 @@ part.
   that need an operator (models, solvers, datasets, experiments) take its
   parameters as `operator_params` and make it with
   `operator_params.make_operator()`, so they work with any kind of operator.
+- **Each kind of operator has its own folder**, `LION/operators/<kind>/`
+  (`ct/`, `pcm/`): its parameters, operator, noise and the reconstructions
+  only it has (e.g. FDK in `ct/`). Generic operators stay in `LION/operators/`
+  and generic algorithms in `LION/classical_algorithms/`. Code that works with
+  any operator asks the operator (e.g. `op.default_reconstruction(y)`) rather
+  than importing a kind's folder.
+- **Moving a module:** add its old → new import path to
+  `LION.utils.spec.MOVED_MODULES`, so files that name it by its old path
+  still load. Leave no alias module behind.
 - Each kind of operator has a parameter class deriving from
   `OperatorParameters` (`LION/utils/parameter.py`) that makes it
   (`make_operator()`), and an operator deriving from `Operator` that gives its

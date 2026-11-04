@@ -26,7 +26,7 @@ from torch.utils.data import DataLoader, Subset, TensorDataset  # noqa: E402
 
 import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
 import LION.optimizers.SupervisedSolver as supervised_solver  # noqa: E402
-from LION.CTtools.ct_geometry import Geometry  # noqa: E402
+from LION.operators.ct.ct_geometry import Geometry  # noqa: E402
 from LION.models.LIONmodel import LIONmodel  # noqa: E402
 from LION.optimizers.EquivariantSolver import (  # noqa: E402
     EquivariantSolver,

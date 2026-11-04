@@ -10,8 +10,8 @@ from typing import Optional
 import torch
 import torch.nn as nn
 from LION.models.LIONmodel import LIONModelParameter, LIONmodel, ModelInputType
-import LION.CTtools.ct_geometry as ct
-from LION.classical_algorithms.fdk import fdk
+import LION.operators.ct.ct_geometry as ct
+from LION.operators.ct.fdk import fdk
 from LION.utils.citation import citation
 
 # Implementation of:

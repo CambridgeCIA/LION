@@ -13,13 +13,13 @@ import torch.nn as nn
 from collections import OrderedDict
 
 
-import LION.CTtools.ct_geometry as ct
+import LION.operators.ct.ct_geometry as ct
 
 from LION.utils.parameter import LIONParameter
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.models.CNNs.UNets.Unet import UNet
-from LION.classical_algorithms.fdk import fdk
+from LION.operators.ct.fdk import fdk
 from LION.utils.citation import citation
 
 

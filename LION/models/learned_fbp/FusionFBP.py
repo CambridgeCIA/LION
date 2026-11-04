@@ -2,8 +2,8 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
-import LION.CTtools.ct_geometry as ct
-import LION.CTtools.ct_utils as ct_utils
+import LION.operators.ct.ct_geometry as ct
+import LION.operators.ct.ct_utils as ct_utils
 import LION.utils.utils as ai_utils
 
 # new

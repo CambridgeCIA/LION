@@ -10,7 +10,6 @@ from LION.utils.parameter import OperatorParameters
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
-from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import ModelInputType
 
 # standard imports
