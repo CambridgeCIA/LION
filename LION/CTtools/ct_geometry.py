@@ -7,6 +7,7 @@
 # =============================================================================
 
 
+import copy
 import json
 import warnings
 
@@ -157,6 +158,22 @@ class Geometry(OperatorParameters):
         from LION.operators.CTProjectionOp import CTProjectionOp
 
         return CTProjectionOp(self)
+
+    @property
+    def split_count(self) -> int:
+        """CT splits along the angles: one unit per angle."""
+        return len(self.angles)
+
+    def split(self, indices) -> "Geometry":
+        """A copy of the geometry with only the angles ``indices``."""
+        geometry = copy.deepcopy(self)
+        geometry.angles = np.asarray(self.angles)[list(indices)]
+        return geometry
+
+    def split_measurements(self, y, indices):
+        """The projections at the angles ``indices`` of the sinogram(s) ``y``
+        (the angles are its second last dimension, batched or not)."""
+        return y[..., list(indices), :]
 
     def load(self, fname):
         """Load a geometry saved as JSON (see ``init_from_parameter``)."""

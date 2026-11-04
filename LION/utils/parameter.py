@@ -128,6 +128,32 @@ class OperatorParameters(LIONParameter):
             "define make_operator()"
         )
 
+    # Splitting into sub-operators, for methods that use parts of the
+    # measurements (Noise2Inverse, Sparse2Inverse). A kind of operator that
+    # can be split defines all three; the others raise.
+
+    @property
+    def split_count(self) -> int:
+        """How many measurement units the operator can be split along (for CT,
+        the angles)."""
+        raise NotImplementedError(self._cannot_split())
+
+    def split(self, indices) -> "OperatorParameters":
+        """New parameters for the measurement units ``indices`` only (for CT,
+        those angles). These parameters are not changed."""
+        raise NotImplementedError(self._cannot_split())
+
+    def split_measurements(self, y, indices):
+        """The measurement units ``indices`` of ``y`` (batched or not): the
+        measurements of the operator ``split(indices)`` makes."""
+        raise NotImplementedError(self._cannot_split())
+
+    def _cannot_split(self) -> str:
+        return (
+            f"{type(self).__name__} can't be split into sub-operators: "
+            "define split_count, split and split_measurements"
+        )
+
 
 #: Names files saved before November 2026 used for the operator's parameters.
 OLD_OPERATOR_NAMES = ("geometry", "geometry_params", "geometry_parameters")

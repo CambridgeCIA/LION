@@ -1,30 +1,35 @@
-import copy
 import itertools
 from typing import Callable, Optional
 import warnings
-import numpy as np
 from tqdm import tqdm
-from LION.CTtools.ct_geometry import Geometry
 from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
 import torch
 import torch.nn.functional as F
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver
-from LION.utils.parameter import LIONParameter
-import LION.CTtools.ct_utils as ct_utils
-from LION.utils.tomosipo_import import import_tomosipo
+from LION.utils.parameter import LIONParameter, OperatorParameters
 from LION.utils.citation import citation
 
 
 class Sparse2InverseSolver(LIONsolver):
+    """Sparse2Inverse: the measurements are split into ``sino_split_count``
+    interleaved parts (for CT, every k-th angle). The model's input is the mean
+    reconstruction of ``input_split_count`` parts (``recon_fn``, FDK by
+    default), and its output, projected by the operator of the other parts, is
+    compared to their measurements.
+
+    Works with any operator whose parameters can be split
+    (``OperatorParameters.split``); others raise when the solver is made.
+    """
+
     def __init__(
         self,
         model: LIONmodel,
         optimizer: Optimizer,
         loss_fn,
         solver_params: Optional[LIONParameter] = None,
-        operator_params: Geometry = None,
+        operator_params: OperatorParameters = None,
         verbose: bool = True,
         device: torch.device = None,
         seed: Optional[int] = 0,
@@ -44,9 +49,10 @@ class Sparse2InverseSolver(LIONsolver):
 
         self.model.operator_params = self.operator_params
         self.model._make_operator()
-        # The input sinogram's angles are split into k interleaved subsets. Each
-        # network input averages the FBPs of p of them (every p-subset is used);
-        # the target is the measured projections at the remaining angles.
+        # The input measurements are split into k interleaved subsets (for CT,
+        # of the angles). Each network input averages the reconstructions of p
+        # of them (every p-subset is used); the target is the measurements of
+        # the remaining ones.
         self.sino_split_count = self.solver_params.sino_split_count  # k
         # parameter files from before input_split_count existed used p = 2
         self.input_split_count = getattr(self.solver_params, "input_split_count", 2)
@@ -74,30 +80,23 @@ class Sparse2InverseSolver(LIONsolver):
         """All pairs of splits (input_split_count = 2). Kept for compatibility."""
         return cls.input_combinations(sino_split_count, 2)
 
-    def _geometry_with_angles(self, angle_indices) -> Geometry:
-        """Copy of self.geometry keeping only the given projection angles."""
-        operator_params = copy.deepcopy(self.operator_params)
-        operator_params.angles = np.asarray(self.operator_params.angles)[
-            list(angle_indices)
-        ]
-        return operator_params
-
     def _complement(self, combo) -> tuple[int, ...]:
         """Splits not in ``combo``: their projections are the training target."""
         return tuple(i for i in range(self.sino_split_count) if i not in combo)
 
     def _make_sub_operators(self):
-        to_autograd = import_tomosipo(
-            "tomosipo.torch_support", "Sparse2InverseSolver"
-        ).to_autograd
-
-        n = len(self.operator_params.angles)
+        n = self.operator_params.split_count
         k = self.sino_split_count
-        # split i contains every k-th angle, starting at angle i
+        if k > n:
+            raise ValueError(
+                f"Can't split {n} measurement units into sino_split_count={k} parts"
+            )
+        # split i contains every k-th measurement unit (for CT, angle),
+        # starting at unit i
         self.subgroup_indices = [list(range(i, n, k)) for i in range(k)]
 
         self.sub_ops = [
-            ct_utils.make_operator(self._geometry_with_angles(indices))
+            self.operator_params.split(indices).make_operator()
             for indices in self.subgroup_indices
         ]
 
@@ -106,18 +105,21 @@ class Sparse2InverseSolver(LIONsolver):
         self.combo_ops_autograd = {}
         for combo in self.split_combinations:
             target_splits = self._complement(combo)
-            angle_indices = sorted(
+            indices = sorted(
                 i for split in target_splits for i in self.subgroup_indices[split]
             )
-            op = ct_utils.make_operator(self._geometry_with_angles(angle_indices))
-            self.combo_ops_autograd[target_splits] = to_autograd(op, num_extra_dims=1)
+            op = self.operator_params.split(indices).make_operator()
+            forward, _ = op.autograd()
+            self.combo_ops_autograd[target_splits] = forward
 
     def _calculate_noisy_sub_recons(self, sinos):
         subgroup_recons = {}
         for combo in self.split_combinations:
             temp_recons = []
             for split_idx in combo:
-                sub_sino = sinos[:, :, self.subgroup_indices[split_idx], :]
+                sub_sino = self.operator_params.split_measurements(
+                    sinos, self.subgroup_indices[split_idx]
+                )
                 sub_recon = self.recon_fn(sub_sino, self.sub_ops[split_idx])
                 temp_recons.append(sub_recon)
             mean_subgroup_recon = torch.mean(torch.stack(temp_recons, dim=1), dim=1)
@@ -149,7 +151,9 @@ class Sparse2InverseSolver(LIONsolver):
             objective_idx.sort()
             for b in range(batch_size):
                 projected_sino = projector(output_recon[b : b + 1])
-                target_sino = sinos[b : b + 1, :, objective_idx, :]
+                target_sino = self.operator_params.split_measurements(
+                    sinos[b : b + 1], objective_idx
+                )
                 batch_loss += ((projected_sino - target_sino) ** 2).sum()
                 total_pixels += projected_sino.numel()
         batch_loss /= total_pixels
@@ -162,7 +166,7 @@ class Sparse2InverseSolver(LIONsolver):
     def reconstruct(self, sinos):
         subgroup_recons = self._calculate_noisy_sub_recons(sinos)
         outputs = torch.zeros(
-            (sinos.shape[0], *self.operator_params.image_shape), device=self.device
+            (sinos.shape[0], *self.op.domain_shape), device=self.device
         )
         for combo, mean_recon in subgroup_recons.items():
             outputs += self.model(mean_recon)
