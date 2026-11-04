@@ -156,6 +156,25 @@ class OperatorParameters(LIONParameter):
 
 
 #: Names files saved before November 2026 used for the operator's parameters.
+#: In a parameter that is a reconstruction (a model's
+#: ``initial_reconstruction``, a solver's ``recon_fn``): the operator's default
+#: reconstruction. It is replaced by that function once the operator is known
+#: (``resolve_reconstruction``), so records say which function was used.
+DEFAULT_RECONSTRUCTION = "default"
+
+
+def resolve_reconstruction(value, op, name: str = "reconstruction"):
+    """``value``, a reconstruction ``f(y, op)``; for ``"default"``, the
+    operator's (``op.default_reconstruction_fn()``, e.g. ``fdk`` for CT)."""
+    if isinstance(value, str):
+        if value != DEFAULT_RECONSTRUCTION:
+            raise ValueError(
+                f'{name} must be a function f(y, op) or "default", got {value!r}'
+            )
+        return op.default_reconstruction_fn()
+    return value
+
+
 OLD_OPERATOR_NAMES = ("geometry", "geometry_params", "geometry_parameters")
 
 

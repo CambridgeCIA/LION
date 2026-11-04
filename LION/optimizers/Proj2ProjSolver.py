@@ -89,8 +89,10 @@ class Proj2ProjSolver(LIONsolver):
     def default_parameters() -> LIONParameter:
         params = LIONParameter()
         params.grid_size = 4
-        # Measurements are reconstructed with the operator's default
-        # reconstruction (FDK for CT); set params.recon_fn(y, op) for another.
+        # How measurements are reconstructed, recon_fn(y, op). "default": the
+        # operator's default reconstruction (FDK for CT), replaced by that
+        # function when the solver is made.
+        params.recon_fn = "default"
         return params
 
     def mini_batch_step(self, sinos, targets):

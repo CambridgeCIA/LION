@@ -13,8 +13,8 @@ from LION.utils.citation import citation
 class Noise2InverseSolver(LIONsolver):
     """Noise2Inverse: the measurements are split into ``sino_split_count``
     interleaved parts (for CT, every k-th angle), each reconstructed with
-    ``reconstruct_measurements`` (the operator's default reconstruction, FDK
-    for CT, unless ``recon_fn`` is set), and the model learns to map the mean
+    ``recon_fn`` (by default the operator's default reconstruction, FDK for
+    CT), and the model learns to map the mean
     of some parts' reconstructions to the mean of the others'.
 
     Works with any operator whose parameters can be split
@@ -110,8 +110,10 @@ class Noise2InverseSolver(LIONsolver):
         # computed when the solver is made, so changing sino_split_count after
         # default_parameters() changes the J sets too.
         params.cali_J = None
-        # Measurements are reconstructed with the operator's default
-        # reconstruction (FDK for CT); set params.recon_fn(y, op) for another.
+        # How measurements are reconstructed, recon_fn(y, op). "default": the
+        # operator's default reconstruction (FDK for CT), replaced by that
+        # function when the solver is made.
+        params.recon_fn = "default"
         return params
 
     def mini_batch_step(self, sinos, targets):

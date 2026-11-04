@@ -62,6 +62,15 @@ part.
 
 - Models, solvers, experiments and data loaders take a `LIONParameter`, with a
   static `default_parameters()`.
+- **`default_parameters()` lists every parameter that can be set**, each with
+  a value: it is both the default and the documentation of what can be set.
+- **Records say what happened, not "the default".** A value that depends on
+  something only known later (e.g. the operator) is listed as a placeholder
+  and replaced by the real value when it is known, so it is saved as that.
+  E.g. `"default"` for a reconstruction (a model's `initial_reconstruction`,
+  a solver's `recon_fn`) becomes the operator's default reconstruction
+  function, `fdk` for CT (`LION.utils.parameter.resolve_reconstruction`);
+  E2I's `noise_std = None` becomes the estimated value.
 - **A parameter that is missing means the old behaviour.** When a change alters
   results (a data split, a noise model, a model's architecture), add a
   parameter for it whose default in `default_parameters()` is the new
@@ -111,8 +120,9 @@ part.
 - Each kind of operator has a parameter class deriving from
   `OperatorParameters` (`LION/utils/parameter.py`) that makes it
   (`make_operator()`), and an operator deriving from `Operator` that gives its
-  default reconstruction (`default_reconstruction()`, e.g. FDK for CT) and its
-  differentiable form (`autograd()`).
+  default reconstruction as a function a record can name
+  (`default_reconstruction_fn()`, e.g. `fdk` for CT) and its differentiable
+  form (`autograd()`).
 - Methods that use parts of the measurements (Noise2Inverse, Sparse2Inverse)
   split through the operator's parameters: `split_count` (for CT, the number
   of angles), `split(indices)` (new parameters for those units only) and

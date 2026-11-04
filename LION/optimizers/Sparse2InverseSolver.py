@@ -14,8 +14,8 @@ from LION.utils.citation import citation
 class Sparse2InverseSolver(LIONsolver):
     """Sparse2Inverse: the measurements are split into ``sino_split_count``
     interleaved parts (for CT, every k-th angle). The model's input is the mean
-    reconstruction of ``input_split_count`` parts (``reconstruct_measurements``),
-    and its output, projected by the operator of the other parts, is
+    reconstruction of ``input_split_count`` parts (``recon_fn``, by default the
+    operator's default reconstruction), and its output, projected by the operator of the other parts, is
     compared to their measurements.
 
     Works with any operator whose parameters can be split
@@ -133,8 +133,10 @@ class Sparse2InverseSolver(LIONsolver):
         params.sino_split_count = 4
         # number of splits whose reconstructions are averaged to form one network input (p)
         params.input_split_count = 2
-        # Measurements are reconstructed with the operator's default
-        # reconstruction (FDK for CT); set params.recon_fn(y, op) for another.
+        # How measurements are reconstructed, recon_fn(y, op). "default": the
+        # operator's default reconstruction (FDK for CT), replaced by that
+        # function when the solver is made.
+        params.recon_fn = "default"
         return params
 
     def mini_batch_step(self, sinos, targets):

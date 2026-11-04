@@ -63,8 +63,10 @@ class Noisier2InverseSolver(LIONsolver):
         params = LIONParameter()
         params.sigma = 3
         params.delta = 1
-        # Measurements are reconstructed with the operator's default
-        # reconstruction (FDK for CT); set params.recon_fn(y, op) for another.
+        # How measurements are reconstructed, recon_fn(y, op). "default": the
+        # operator's default reconstruction (FDK for CT), replaced by that
+        # function when the solver is made.
+        params.recon_fn = "default"
         return params
 
     def mini_batch_step(self, sinos, targets):

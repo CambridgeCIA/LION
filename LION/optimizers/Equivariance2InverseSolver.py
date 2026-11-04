@@ -13,7 +13,6 @@ import random
 from LION.utils.image_transforms import rotate
 from LION.utils.citation import citation
 
-
 # Parameters of the noise model of LION's E2I until Oct 2026
 # (Poisson + Gaussian in raw counts, with ct_utils.sinogram_add_noise)
 _OLD_NOISE_PARAMETERS = ("I0", "sigma", "sigma_blur", "noise_model")
@@ -143,8 +142,10 @@ class Equivariance2InverseSolver(LIONsolver):
         # 1D kernel (along the detector) that blurs that noise, e.g. a measured
         # point response function. None: iid noise (the paper's default).
         params.noise_kernel = None
-        # Measurements are reconstructed with the operator's default
-        # reconstruction (FDK for CT); set params.recon_fn(y, op) for another.
+        # How measurements are reconstructed, recon_fn(y, op). "default": the
+        # operator's default reconstruction (FDK for CT), replaced by that
+        # function when the solver is made.
+        params.recon_fn = "default"
         return params
 
     def _noise(self, sinos: torch.Tensor) -> torch.Tensor:

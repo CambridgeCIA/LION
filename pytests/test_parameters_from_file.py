@@ -164,7 +164,9 @@ def test_a_solver_made_with_changed_parameters(monkeypatch):
         to_autograd=lambda op, num_extra_dims: (lambda x: x)
     )
     monkeypatch.setattr(e2i, "import_tomosipo", lambda *args: identity)
-    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
+    from pytests.helpers import ScaleOp
+
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: ScaleOp(1, (1, 8, 8)))
     record = training_record(
         {
             "_target_": spec.import_path(e2i.Equivariance2InverseSolver),
