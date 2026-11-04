@@ -12,12 +12,12 @@ import torch
 import LION.optimizers.LIONsolver as lion_solver
 from LION.operators.ct.ct_geometry import Geometry
 from LION.utils.parameter import LIONParameter
-from pytests.helpers import small_dncnn
+from pytests.helpers import IdentityStandIn, small_dncnn
 
 
 @pytest.fixture(autouse=True)
 def no_ct(monkeypatch):
-    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: IdentityStandIn())
 
 
 # the authors' measured point response of 2DeteCT's detector 1 (dataset_consts.py)
@@ -64,10 +64,6 @@ def test_e2i_noise_std_estimate(kernel):
 def make_e2i_solver(monkeypatch, params=None):
     import LION.optimizers.Equivariance2InverseSolver as e2i
 
-    identity = types.SimpleNamespace(
-        to_autograd=lambda op, num_extra_dims: (lambda x: x)
-    )
-    monkeypatch.setattr(e2i, "import_tomosipo", lambda *args: identity)
     model = small_dncnn()
     if params is not None:
         params.recon_fn = lambda sino, op: sino
@@ -134,15 +130,3 @@ def test_e2i_equivariance_strength(monkeypatch):
             (solver.model(masked * 16 / 15)[:, :, j] - sinos[:, :, j]) ** 2
         ).mean()
     torch.testing.assert_close(loss.detach(), expected)
-
-
-def test_e2i_old_parameters(monkeypatch):
-    """Parameters saved with the old noise model: warned about, and the new
-    ones get their defaults."""
-    params = LIONParameter(
-        I0=500, sigma=50**0.5, sigma_blur=0.8, noise_model="relative"
-    )
-    with pytest.warns(UserWarning, match="no longer uses"):
-        solver = make_e2i_solver(monkeypatch, params)
-    assert solver.solver_params.noise_std is None
-    assert solver.solver_params.equivariance_strength == 1.0

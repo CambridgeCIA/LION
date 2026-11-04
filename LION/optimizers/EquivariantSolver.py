@@ -13,7 +13,6 @@ from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.utils.parameter import LIONParameter
 from LION.utils.image_transforms import rotate
-from LION.utils.tomosipo_import import import_tomosipo
 from LION.utils.citation import citation
 
 
@@ -70,12 +69,8 @@ class EquivariantSolver(LIONsolver):
         )
         self.transformation_group = self.solver_params.transformation_group
         self.alpha = self.solver_params.equivariance_strength
-        to_autograd = import_tomosipo(
-            "tomosipo.torch_support", "EquivariantSolver"
-        ).to_autograd
-
-        self.A = to_autograd(self.op, num_extra_dims=1)
-        self.AT = to_autograd(self.op.T, num_extra_dims=1)
+        # the operator and its adjoint as torch autograd functions
+        self.A, self.AT = self.op.autograd()
 
     @staticmethod
     def rotation_group(cardinality: int) -> RotationGroup:

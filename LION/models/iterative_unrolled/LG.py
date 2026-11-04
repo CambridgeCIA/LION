@@ -52,7 +52,7 @@ class LG(LIONmodel):
         self.M = self.channels[-1] - 1
         self.n_iters = self.model_parameters.n_iters
 
-        self._make_operator()
+        self._make_operator(autograd=True)
         gd_step = 1 / (power_method(self.op)) ** 2
 
         for i in range(self.n_iters):

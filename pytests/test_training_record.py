@@ -221,10 +221,9 @@ def test_resuming_continues_the_same_run(tmp_path):
 def test_e2i_noise_std_comes_back_on_resume(tmp_path, monkeypatch):
     import LION.optimizers.Equivariance2InverseSolver as e2i
 
-    identity = types.SimpleNamespace(
-        to_autograd=lambda op, num_extra_dims: (lambda x: x)
-    )
-    monkeypatch.setattr(e2i, "import_tomosipo", lambda *args: identity)
+    from pytests.helpers import IdentityStandIn
+
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: IdentityStandIn())
 
     def e2i_solver():
         params = e2i.Equivariance2InverseSolver.default_parameters()

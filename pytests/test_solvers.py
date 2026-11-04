@@ -369,6 +369,9 @@ class IdentityOp(Operator):
     def default_reconstruction_fn(self):
         return identity_reconstruction
 
+    def autograd(self):
+        return self, self.adjoint
+
     @property
     def domain_shape(self):
         return (1, 8, 8)
@@ -501,7 +504,7 @@ class AnglesOp:
 def fake_ct(monkeypatch):
     """CT operators are replaced by AnglesOp."""
     monkeypatch.setattr(Geometry, "make_operator", lambda self: AnglesOp(self))
-    monkeypatch.setattr(LIONmodel, "_make_operator", lambda self: None)
+    monkeypatch.setattr(LIONmodel, "_make_operator", lambda self, autograd=False: None)
 
 
 def make_s2i_solver(splits, operator_params, inputs=None, recon_fn=None):
@@ -776,14 +779,10 @@ def test_equivariant_solver_gradient_goes_through_the_second_fdk(monkeypatch):
         calls.append(differentiable)
         return sino if differentiable else sino.detach()
 
-    monkeypatch.setattr(
-        Geometry, "make_operator", lambda self: types.SimpleNamespace(T=None)
-    )
+    from pytests.helpers import IdentityStandIn
+
+    monkeypatch.setattr(Geometry, "make_operator", lambda self: IdentityStandIn())
     monkeypatch.setattr(ei, "fdk", fake_fdk)
-    identity = types.SimpleNamespace(
-        to_autograd=lambda op, num_extra_dims: (lambda x: x)
-    )
-    monkeypatch.setattr(ei, "import_tomosipo", lambda *args: identity)
 
     model = small_dncnn()
     solver = ei.EquivariantSolver(

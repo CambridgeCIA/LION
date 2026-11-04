@@ -109,12 +109,12 @@ class CTProjectionOp(Operator):
         return self._ts._bp(y)
 
     def autograd(self):
-        """tomosipo's autograd wrappers of the operator and its adjoint, on
-        batches."""
+        """tomosipo's autograd wrappers of the (tomosipo) operator and its
+        adjoint, on batches."""
         ts = import_tomosipo("tomosipo.torch_support", "CTProjectionOp.autograd")
         return (
-            ts.to_autograd(self, num_extra_dims=1),
-            ts.to_autograd(self.T, num_extra_dims=1),
+            ts.to_autograd(self._ts, num_extra_dims=1),
+            ts.to_autograd(self._ts.T, num_extra_dims=1),
         )
 
     def default_reconstruction_fn(self):
