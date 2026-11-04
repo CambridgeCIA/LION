@@ -3,17 +3,15 @@ from typing import Optional
 
 import torch
 from torch.optim.optimizer import Optimizer
-import numpy as np
 
 # Import base class
 from LION.utils.parameter import OperatorParameters
-from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel
-from LION.optimizers.LIONsolver import LIONsolver, SolverParams, initial_reconstruction
+from LION.optimizers.LIONsolver import LIONsolver
+from LION.utils.parameter import LIONParameter
 from LION.models.LIONmodel import ModelInputType
 
 # standard imports
-from tqdm import tqdm
 
 """ 
 This file contains the implementation of the SelfSupervisedSolver class, which is a subclass of the LIONsolver class.
@@ -43,7 +41,7 @@ class SelfSupervisedSolver(LIONsolver):
             operator_params=operator_params,
             verbose=verbose,
             device=device,
-            solver_params=SolverParams(),
+            solver_params=LIONParameter(),
             seed=seed,
             deterministic=deterministic,
         )
@@ -57,7 +55,7 @@ class SelfSupervisedSolver(LIONsolver):
         """
         # Forward pass
         if self.model.get_input_type() == ModelInputType.IMAGE:
-            data = initial_reconstruction(self.model, sino, self.op)
+            data = self.model.initial_reconstruction(sino, self.op)
             if self.do_normalise:
                 data = self.model.normalise(data)
         else:
@@ -66,5 +64,5 @@ class SelfSupervisedSolver(LIONsolver):
         return self.loss_fn(data, self.model)
 
     @staticmethod
-    def default_parameters() -> SolverParams:
-        return SolverParams()
+    def default_parameters() -> LIONParameter:
+        return LIONParameter()

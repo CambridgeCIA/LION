@@ -1,10 +1,7 @@
 import itertools
-from typing import Callable, Optional
-import warnings
-from tqdm import tqdm
+from typing import Optional
 from LION.models.LIONmodel import LIONmodel
 import torch
-import torch.nn.functional as F
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver
 from LION.utils.parameter import LIONParameter, OperatorParameters

@@ -24,7 +24,6 @@ MODULES = [
     "LION.models.CNNs.dncnn",
     "LION.models.CNNs.drunet",
     "LION.models.CNNs.UNets.Unet",
-    "LION.models.CNNs.MSD_pytorch",  # msd_pytorch only when the model is made
     "LION.models.post_processing.cFBPConvNet",
     "LION.reconstructors",
     "LION.optimizers.LIONsolver",

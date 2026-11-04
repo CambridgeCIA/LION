@@ -6,15 +6,7 @@
 # =============================================================================
 
 
-import numpy as np
-import torch
-import pathlib
-import warnings
-from abc import ABC, abstractmethod, ABCMeta
-
 from LION.utils.parameter import LIONParameter
-import LION.operators.ct.ct_geometry as ctgeo
-import LION.operators.ct.ct_utils as ct
 from LION.data_loaders.deteCT import deteCT
 
 from LION.experiments.ct_experiments import Experiment

@@ -5,7 +5,6 @@
 # Author  : Emilien Valat, Ander Biguri
 # =============================================================================
 
-from pathlib import Path
 
 import pandas as pd
 import torch
@@ -14,8 +13,7 @@ import warnings
 from LION.utils import paths
 from LION.utils.parameter import LIONParameter
 import LION.operators.ct.ct_geometry as ctgeo
-import LION.operators.ct.ct_utils as ct
-from LION.operators.ct.ct_utils import make_operator
+from LION.operators.ct.ct_geometry import Geometry
 from LION.utils.tomosipo_import import import_tomosipo
 from LION.utils.rng import seeded
 from LION.utils.device import default_device
@@ -67,7 +65,7 @@ class deteCT(LIONDataset):
     def __init__(
         self,
         mode,
-        operator_params: ct.Geometry = None,
+        operator_params: Geometry = None,
         parameters: LIONParameter = None,
     ):
         if parameters is None:
@@ -339,10 +337,10 @@ class deteCT(LIONDataset):
     @staticmethod
     def get_default_operator():
         geometry = deteCT.get_default_geometry()
-        return make_operator(geometry)
+        return geometry.make_operator()
 
     def get_operator(self):
-        return make_operator(self.geometry)
+        return self.geometry.make_operator()
 
     def sample_ids(self):
         """What each sample is, in order: its slice identifier."""

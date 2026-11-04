@@ -13,8 +13,6 @@ import numpy as np
 import torch
 
 # AItomotools imports
-from LION.operators.ct.ct_geometry import Geometry
-from LION.operators.ct.CTProjectionOp import CTProjectionOp
 from LION.utils.device import default_device
 from LION.utils.image_transforms import gaussian_blur
 
@@ -282,37 +280,3 @@ def from_HU_to_material_id(img):
         limits = torch.tensor(_MATERIAL_HU_LIMITS, dtype=img.dtype, device=img.device)
         return torch.bucketize(img, limits, right=True).to(torch.uint8)
     return np.digitize(np.asarray(img), _MATERIAL_HU_LIMITS).astype(np.uint8)
-
-
-def make_operator(geometry: Geometry) -> CTProjectionOp:
-    return geometry.make_operator()
-
-
-def forward_projection(
-    image: np.ndarray | torch.Tensor,
-    geometry: Geometry,
-    backend: str = "tomosipo",
-) -> torch.Tensor:
-    """
-    Produces a noise free forward projection of a 2D image with the given geometry
-    (fan or parallel beam, as set in geometry.mode).
-    May support other backends than tomosipo
-    """
-    if backend != "tomosipo":
-        raise ValueError("Only tomosipo backend for CT supported")
-
-    if isinstance(image, np.ndarray):
-        device = default_device()
-        image = torch.from_numpy(image).float().to(device)
-    if len(image.shape) == 3:
-        if image.shape[0] > 1:  # there is no reason to have this constraint
-            raise ValueError("Image must be 2D")
-    elif len(image.shape) == 2:
-        image = torch.unsqueeze(image, 0)
-    else:
-        raise ValueError("Image must be 2D")
-
-    # Same operator as everywhere else in LION (respects mode and image_pos)
-    A = CTProjectionOp(geometry, backend=backend)
-    sino = A(image)[0]
-    return sino

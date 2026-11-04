@@ -9,16 +9,10 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter, OperatorParameters
-import LION.utils.utils as ai_utils
-
-import numpy as np
-from pathlib import Path
-import warnings
 
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from LION.utils.citation import citation
 
 

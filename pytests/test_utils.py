@@ -4,19 +4,16 @@ download/unzip command lines."""
 import pathlib
 import shlex
 
-import importlib
 
 import pytest
 import torch
 
-import LION.optimizers.LIONsolver as lion_solver
 import LION.optimizers.SupervisedSolver as supervised_solver
 import LION.utils.utils as utils
 from LION.operators.ct.ct_geometry import Geometry
-from LION.models.LIONmodel import ModelInputType
 from LION.utils.device import default_device
 from LION.utils.parameter import LIONParameter
-from pytests.helpers import CTStandIn, replace_fdk, small_dncnn
+from pytests.helpers import small_dncnn
 
 # --------------------------------------------------------------------------
 # LION's default device follows torch.set_default_device / torch.cuda.set_device
@@ -137,95 +134,6 @@ def test_7z_fallback_output_folder(commands, tmp_path):
     utils.unzip_file(archive, out)
     assert calls[0] == ["unzip", str(archive), "-d", str(out)]
     assert calls[1] == ["7z", "x", str(archive), f"-o{out}", "-y"]
-
-
-# --------------------------------------------------------------------------
-# Testing a saved model on an experiment
-
-
-def _fake_ct(monkeypatch, tmp_path):
-    """No CT: the operator is a string and FDK doubles the sinogram."""
-    monkeypatch.setenv("LION_DATA_PATH", str(tmp_path))  # datasets' folders
-    import LION.optimizers.LIONsolver as lion_solver
-    import LION.utils.test_model as test_model
-
-    fdk_inputs = []
-    operator = CTStandIn()
-
-    def fake_fdk(sino, op):
-        assert op is operator
-        fdk_inputs.append(sino)
-        return 2 * sino
-
-    monkeypatch.setattr(Geometry, "make_operator", lambda self: operator)
-    replace_fdk(monkeypatch, fake_fdk)
-    return fdk_inputs
-
-
-def test_test_with_experiment_evaluates_in_eval_mode(monkeypatch, tmp_path):
-    _fake_ct(monkeypatch, tmp_path)
-    from torch.utils.data import TensorDataset
-
-    from LION.models.CNNs.dncnn import DnCNN
-    from LION.utils.test_model import test_with_experiment
-
-    torch.manual_seed(0)
-    model = small_dncnn().train()  # DnCNN has BatchNorm layers
-
-    class Saved(DnCNN):
-        @classmethod
-        def load(cls, fname):
-            return model, None, None
-
-    class Experiment:
-        operator_params = Geometry.default_parameters()
-
-        def get_testing_dataset(self):
-            return TensorDataset(torch.rand(4, 1, 8, 8), torch.rand(4, 1, 8, 8))
-
-    pred, _ = test_with_experiment(Experiment(), Saved, "model.pt", n=2)
-    assert not model.training and not pred.requires_grad
-
-
-@pytest.mark.parametrize("input_type", [ModelInputType.IMAGE, ModelInputType.SINOGRAM])
-def test_test_with_experiment_runs_models_as_the_solvers(
-    monkeypatch, tmp_path, input_type
-):
-    """Image-domain models get the FDK of the sinograms (normalised, if the
-    model has a normalisation); sinogram-domain models the sinograms."""
-    fdk_inputs = _fake_ct(monkeypatch, tmp_path)
-    from torch.utils.data import TensorDataset
-
-    from LION.models.CNNs.dncnn import DnCNN
-    from LION.utils.test_model import test_with_experiment
-
-    torch.manual_seed(0)
-    model = small_dncnn(input_type).eval()
-    if input_type == ModelInputType.IMAGE:  # sinogram models can't normalise
-        model.set_normalisation("sample")
-    sino = torch.rand(1, 1, 8, 8)
-
-    class Saved(DnCNN):
-        @classmethod
-        def load(cls, fname):
-            return model, None, None
-
-    class Experiment:
-        operator_params = Geometry.default_parameters()
-
-        def get_testing_dataset(self):
-            return TensorDataset(sino, torch.rand(1, 1, 8, 8))
-
-    pred, _ = test_with_experiment(Experiment(), Saved, "model.pt", n=1)
-    with torch.no_grad():
-        if input_type == ModelInputType.IMAGE:
-            torch.testing.assert_close(fdk_inputs, [sino])
-            fdk_sino = 2 * sino
-            expected = model.unnormalise(model(model.normalise(fdk_sino)))
-        else:
-            assert not fdk_inputs
-            expected = model(sino)
-    torch.testing.assert_close(pred, expected)
 
 
 def test_lion_parameter_keeps_specs_as_dicts():

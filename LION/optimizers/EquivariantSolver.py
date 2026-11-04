@@ -10,7 +10,7 @@ from torch.optim.optimizer import Optimizer
 from LION.operators.ct.fdk import fdk
 from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel, ModelInputType
-from LION.optimizers.LIONsolver import LIONsolver, SolverParams
+from LION.optimizers.LIONsolver import LIONsolver
 from LION.utils.parameter import LIONParameter
 from LION.utils.image_transforms import rotate
 from LION.utils.citation import citation
@@ -52,7 +52,7 @@ class EquivariantSolver(LIONsolver):
         operator_params: Geometry,
         verbose: bool = True,
         device: torch.device = None,
-        solver_params: SolverParams | None = None,
+        solver_params: LIONParameter | None = None,
         seed: Optional[int] = 0,
         deterministic: bool = False,
     ) -> None:
@@ -70,7 +70,7 @@ class EquivariantSolver(LIONsolver):
         self.transformation_group = self.solver_params.transformation_group
         self.alpha = self.solver_params.equivariance_strength
         # the operator and its adjoint as torch autograd functions
-        self.A, self.AT = self.op.autograd()
+        self.A, _ = self.op.autograd()
 
     @staticmethod
     def rotation_group(cardinality: int) -> RotationGroup:

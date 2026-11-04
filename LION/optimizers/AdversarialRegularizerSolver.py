@@ -11,16 +11,16 @@ from typing import Optional
 
 import torch
 from torch.optim.optimizer import Optimizer
-from tqdm import tqdm
 
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
-from LION.optimizers.LIONsolver import LIONsolver, SolverParams
+from LION.optimizers.LIONsolver import LIONsolver
+from LION.utils.parameter import LIONParameter
 from LION.utils.citation import citation
 from LION.utils.parameter import OperatorParameters
 
 
-class ARParams(SolverParams):
+class ARParams(LIONParameter):
     """Parameters of ARSolver.
 
     Args:

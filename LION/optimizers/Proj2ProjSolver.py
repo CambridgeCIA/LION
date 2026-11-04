@@ -1,7 +1,4 @@
-from typing import Callable, Optional
-import warnings
-import numpy as np
-from tqdm import tqdm
+from typing import Optional
 from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel
 import torch
@@ -9,7 +6,6 @@ import torch.nn.functional as F
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver, warn_if_not_mse
 from LION.utils.parameter import LIONParameter
-import LION.operators.ct.ct_utils as ct_utils
 from LION.utils.citation import citation
 
 
@@ -46,10 +42,8 @@ class Proj2ProjSolver(LIONsolver):
         )
         warn_if_not_mse(loss_fn, "Proj2ProjSolver")
 
-        self.operator = self.op  # the base solver already built it
-        self.model.operator_params = self.operator_params
-        self.model.operator = self.operator
-        self.projector, _ = self.operator.autograd()
+        self.op_params = self.operator_params
+        self.projector, _ = self.op.autograd()
         self.global_step = 0
 
     def get_mask(self, shape, step):
@@ -96,7 +90,7 @@ class Proj2ProjSolver(LIONsolver):
         self.global_step += sinos.shape[0]
         input_sino = self.fill_mean(sinos, mask)
 
-        input_recon = self.reconstruct_measurements(input_sino, self.model.operator)
+        input_recon = self.reconstruct_measurements(input_sino, self.op)
         output_recon = self.model(input_recon)
         output_sino = self.projector(output_recon)
 
@@ -111,7 +105,7 @@ class Proj2ProjSolver(LIONsolver):
         return self.reconstruct(data)
 
     def reconstruct(self, sinos):
-        input_recon = self.reconstruct_measurements(sinos, self.operator)
+        input_recon = self.reconstruct_measurements(sinos, self.op)
         output_recon = self.model(input_recon)
         return output_recon
 

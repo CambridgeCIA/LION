@@ -30,7 +30,6 @@ dependencies:
   - pillow
   - pyside6
   - pywavelets
-  - pyyaml
   - scikit-image
   - scipy
   - spgl1

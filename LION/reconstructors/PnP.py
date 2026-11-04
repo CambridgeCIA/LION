@@ -8,7 +8,6 @@ from tqdm import tqdm
 
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
 from LION.models.LIONmodel import LIONmodel
-from LION.operators import Operator
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter

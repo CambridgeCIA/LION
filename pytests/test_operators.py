@@ -6,11 +6,10 @@ import torch
 from spyrit.core.torch import fwht, ifwht
 
 from LION.operators.ct.ct_geometry import Geometry
-from LION.operators.ct.ct_utils import make_operator
 from LION.operators import CompositeOp, Operator, Wavelet2D
 from LION.operators.pcm import PhotocurrentMapOp, Subsampler, WalshHadamard2D
 from LION.utils.math import power_method
-from LION.utils.tests_helper import dotproduct_adjointness_test
+from pytests.helpers import dotproduct_adjointness_test
 
 J = 4  # 16x16 images
 N = 1 << J
@@ -168,7 +167,7 @@ def test_matrix_op_operator_norm_torch():
 @pytest.mark.tomosipo
 def test_ct_operator_norm_torch():
     """Test with CT operator using default geometry."""
-    ct_op = make_operator(Geometry.default_parameters())
+    ct_op = Geometry.default_parameters().make_operator()
     ct_op_norm = power_method(ct_op)
     # TODO: This is just the actual computed value, we need to verify it is correct.
     ct_op_norm_true = 285.5718078613281
