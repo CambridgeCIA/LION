@@ -6,6 +6,7 @@ image-domain models. Neither matters for these tests, so the ``no_ct`` fixture
 (autouse, this file only) replaces the operator by ``None`` and FDK by the identity.
 """
 
+import functools
 import itertools
 import pathlib
 import types
@@ -27,7 +28,9 @@ from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.operators import Operator
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver
+from LION.utils import spec
 from LION.utils.parameter import OperatorParameters
+from pytests.helpers import adjoint_reconstruction as helpers_adjoint
 from pytests.helpers import (
     CTStandIn,
     replace_fdk,
@@ -461,6 +464,12 @@ def test_any_solver_can_validate_through_a_reconstructor(tmp_path):
 # Sparse2Inverse sub-operators for any number of angular splits
 
 
+def mean_reconstruction(y, op):
+    """AnglesOp's default reconstruction: the sinogram's mean, counted."""
+    op.reconstructed += 1
+    return y.mean() * torch.ones(y.shape[0], *op.domain_shape)
+
+
 class AnglesOp:
     """A stand-in CT operator: the angles it was made with. It projects an
     image to a constant sinogram over its angles (the image's mean), and its
@@ -477,9 +486,8 @@ class AnglesOp:
     def autograd(self):
         return self, None
 
-    def default_reconstruction(self, y):
-        self.reconstructed += 1
-        return y.mean() * torch.ones(y.shape[0], *self.domain_shape)
+    def default_reconstruction_fn(self):
+        return mean_reconstruction
 
 
 @pytest.fixture
@@ -600,7 +608,10 @@ class UnsplittableParams(OperatorParameters):
     """Operator parameters without the splitting methods."""
 
     def make_operator(self):
-        return types.SimpleNamespace(domain_shape=(1, 8, 8))
+        return types.SimpleNamespace(
+            domain_shape=(1, 8, 8),
+            default_reconstruction_fn=lambda: mean_reconstruction,
+        )
 
 
 @pytest.mark.parametrize("splitting_solver", ["Noise2Inverse", "Sparse2Inverse"])
@@ -627,15 +638,65 @@ def test_splitting_needs_operator_params_that_can_be_split(
 
 
 def test_sparse2inverse_reconstructs_each_split_with_its_operator(fake_ct):
+    """Without recon_fn, each split is reconstructed with its operator's
+    default reconstruction."""
     operator_params = Geometry.default_parameters()
     operator_params.image_shape = [1, 8, 8]
-    solver = make_s2i_solver(
-        4, operator_params, 2, recon_fn=lambda y, op: op.default_reconstruction(y)
-    )
+    solver = make_s2i_solver(4, operator_params, 2)
     out = solver.reconstruct(torch.rand(2, 1, 360, 8))
     assert out.shape == (2, 1, 8, 8)
     # each split is in 3 of the 6 pairs
     assert [op.reconstructed for op in solver.sub_ops] == [3, 3, 3, 3]
+
+
+@pytest.mark.parametrize(
+    "solver_name",
+    [
+        "Noise2Inverse",
+        "Sparse2Inverse",
+        "Proj2Proj",
+        "Noisier2Inverse",
+        "Equivariance2Inverse",
+    ],
+)
+def test_solvers_list_recon_fn_as_default(solver_name):
+    """Solvers that start from reconstructions list recon_fn: "default", the
+    operator's default reconstruction."""
+    module = importlib.import_module(f"LION.optimizers.{solver_name}Solver")
+    solver_class = getattr(module, f"{solver_name}Solver")
+    assert solver_class.default_parameters().recon_fn == "default"
+
+
+def test_the_default_recon_fn_is_replaced_by_the_operators(fake_ct):
+    """When the solver is made, "default" becomes the operator's default
+    reconstruction function, so the record says which was used. A given
+    recon_fn is kept, one missing (files from before) is the default, and
+    another string is refused."""
+    solver = make_s2i_solver(4, Geometry.default_parameters(), 2)
+    assert solver.solver_params.recon_fn is mean_reconstruction
+    record = spec.encode(solver.solver_params)
+    assert record["recon_fn"]["_target_"].endswith("mean_reconstruction")
+
+    given = functools.partial(mean_reconstruction)
+    solver = make_s2i_solver(4, Geometry.default_parameters(), 2, recon_fn=given)
+    assert solver.solver_params.recon_fn is given
+
+    params = Sparse2InverseSolver.default_parameters()
+    del params.recon_fn
+    model = small_dncnn()
+    solver = Sparse2InverseSolver(
+        model,
+        torch.optim.SGD(model.parameters(), lr=0.1),
+        torch.nn.MSELoss(),
+        solver_params=params,
+        operator_params=Geometry.default_parameters(),
+        device=torch.device("cpu"),
+        verbose=False,
+    )
+    assert solver.solver_params.recon_fn is mean_reconstruction
+
+    with pytest.raises(ValueError, match='"default"'):
+        make_s2i_solver(4, Geometry.default_parameters(), 2, recon_fn="fdk")
 
 
 def test_warn_if_not_mse():
@@ -671,14 +732,14 @@ def make_n2i_solver(monkeypatch, params, operator_params=None):
 
 def test_noise2inverse_splits_through_the_operator_params(monkeypatch):
     """Noise2Inverse splits the geometry and the sinograms through the
-    operator parameters, and reconstructs each split with its own operator."""
+    operator parameters, and reconstructs each split with its own operator's
+    default reconstruction."""
     from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
 
     operator_params = Geometry.default_parameters()  # 360 angles
     operator_params.image_shape = [1, 8, 8]
     angles = np.asarray(operator_params.angles)
-    params = Noise2InverseSolver.default_parameters()
-    params.recon_fn = lambda y, op: op.default_reconstruction(y)
+    params = Noise2InverseSolver.default_parameters()  # no recon_fn
     solver = make_n2i_solver(monkeypatch, params, operator_params)
     for j, sub_op in enumerate(solver.sub_ops):
         np.testing.assert_array_equal(sub_op.angles, angles[j::4])
@@ -810,14 +871,17 @@ def test_without_an_initial_reconstruction_a_model_starts_from_the_operators():
     op = ImageMatrixOp(torch.randn(30, 64), (1, 8, 8))
     y = torch.randn(2, 30)
     model = small_dncnn().eval()
-    assert not hasattr(model.model_parameters, "initial_reconstruction")
+    assert model.model_parameters.initial_reconstruction == "default"
     expected = model(op.default_reconstruction(y))
     torch.testing.assert_close(model_forward(model, y, op), expected)
+    # replaced by the operator's, so the model is saved with the function used
+    assert model.model_parameters.initial_reconstruction is helpers_adjoint
 
     model.set_initial_reconstruction(functools.partial(adjoint_reconstruction, scale=2))
     assert not torch.allclose(model_forward(model, y, op), expected)
     model.set_initial_reconstruction(None)  # back to the operator's
+    assert model.model_parameters.initial_reconstruction == "default"
     torch.testing.assert_close(model_forward(model, y, op), expected)
 
     with pytest.raises(NotImplementedError, match="no default reconstruction"):
-        Operator.default_reconstruction(op, y)  # an operator without one
+        Operator.default_reconstruction_fn(op)  # an operator without one

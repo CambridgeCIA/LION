@@ -2,7 +2,6 @@ from typing import Callable, Optional
 import warnings
 import numpy as np
 from LION.CTtools.ct_geometry import Geometry
-from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
 import torch
 import torch.nn.functional as F
@@ -13,7 +12,6 @@ from LION.utils.tomosipo_import import import_tomosipo
 import random
 from LION.utils.image_transforms import rotate
 from LION.utils.citation import citation
-
 
 # Parameters of the noise model of LION's E2I until Oct 2026
 # (Poisson + Gaussian in raw counts, with ct_utils.sinogram_add_noise)
@@ -131,12 +129,10 @@ class Equivariance2InverseSolver(LIONsolver):
         self.model.operator_params = self.operator_params
         self.model.operator = self.operator
         self.projector = to_autograd(self.operator, num_extra_dims=1)
-        self.recon_fn = self.solver_params.recon_fn
 
     @staticmethod
     def default_parameters() -> LIONParameter:
         params = LIONParameter()
-        params.recon_fn = fdk
         # lambda in the paper, chosen per dataset there
         params.equivariance_strength = 1.0
         # Standard deviation of the Gaussian noise added to the rotated
@@ -146,6 +142,10 @@ class Equivariance2InverseSolver(LIONsolver):
         # 1D kernel (along the detector) that blurs that noise, e.g. a measured
         # point response function. None: iid noise (the paper's default).
         params.noise_kernel = None
+        # How measurements are reconstructed, recon_fn(y, op). "default": the
+        # operator's default reconstruction (FDK for CT), replaced by that
+        # function when the solver is made.
+        params.recon_fn = "default"
         return params
 
     def _noise(self, sinos: torch.Tensor) -> torch.Tensor:
@@ -181,7 +181,7 @@ class Equivariance2InverseSolver(LIONsolver):
         YJc[:, :, YJ_num, :] = 0
 
         weight = NP / (NP - 1)
-        RJc = self.recon_fn(YJc * weight, self.model.operator)
+        RJc = self.reconstruct_measurements(YJc * weight, self.model.operator)
         output_recon_1 = self.model(RJc)
 
         output_sino_1 = self.projector(output_recon_1)
@@ -195,7 +195,9 @@ class Equivariance2InverseSolver(LIONsolver):
             noise = self._noise(rotated_sinogram)
         rotated_sinogram_noisy = rotated_sinogram + noise
 
-        rotated_noisy_image = self.recon_fn(rotated_sinogram_noisy, self.model.operator)
+        rotated_noisy_image = self.reconstruct_measurements(
+            rotated_sinogram_noisy, self.model.operator
+        )
         output_recon_2 = self.model(rotated_noisy_image)
         equivariance = ((output_recon_2 - rotated_output_recon_1) ** 2).mean()
         batch_loss += self.solver_params.equivariance_strength * equivariance
@@ -206,7 +208,7 @@ class Equivariance2InverseSolver(LIONsolver):
         return self.reconstruct(data)
 
     def reconstruct(self, sinos):
-        input_recon = self.recon_fn(sinos, self.operator)
+        input_recon = self.reconstruct_measurements(sinos, self.operator)
         output_recon = self.model(input_recon)
         return output_recon
 

@@ -9,6 +9,14 @@ from LION.models.torch_model import TorchModel
 from LION.operators import Operator
 
 
+def adjoint_reconstruction(y, op):
+    """The adjoint of the measurements, per sample if batched: the default
+    reconstruction of the stand-in operators here."""
+    if y.dim() == len(op.range_shape) + 1:
+        return torch.stack([op.adjoint(s) for s in y])
+    return op.adjoint(y)
+
+
 class ImageMatrixOp(Operator):
     """y = A vec(x): a dense matrix as a LION operator, for tests without CT.
 
@@ -31,10 +39,8 @@ class ImageMatrixOp(Operator):
     def adjoint(self, y):
         return (self.A.T @ y.reshape(-1)).reshape(self._domain_shape)
 
-    def default_reconstruction(self, y):  # the adjoint, per sample
-        if y.dim() == len(self._range_shape) + 1:
-            return torch.stack([self.adjoint(s) for s in y])
-        return self.adjoint(y)
+    def default_reconstruction_fn(self):  # the adjoint, per sample
+        return adjoint_reconstruction
 
     @property
     def domain_shape(self):
@@ -63,8 +69,8 @@ class ScaleOp(Operator):
     def adjoint(self, y):
         return self.factor * y
 
-    def default_reconstruction(self, y):
-        return self.adjoint(y)
+    def default_reconstruction_fn(self):
+        return adjoint_reconstruction
 
     @property
     def domain_shape(self):
@@ -133,7 +139,10 @@ class CTStandIn:
         self.domain_shape = domain_shape
         self.range_shape = range_shape
 
-    def default_reconstruction(self, y):
+    def default_reconstruction_fn(self):
         from LION.classical_algorithms.fdk import fdk
 
-        return fdk(y, self)
+        return fdk
+
+    def default_reconstruction(self, y):
+        return self.default_reconstruction_fn()(y, self)

@@ -2,7 +2,6 @@ import itertools
 from typing import Callable, Optional
 import warnings
 from tqdm import tqdm
-from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
 import torch
 import torch.nn.functional as F
@@ -15,8 +14,8 @@ from LION.utils.citation import citation
 class Sparse2InverseSolver(LIONsolver):
     """Sparse2Inverse: the measurements are split into ``sino_split_count``
     interleaved parts (for CT, every k-th angle). The model's input is the mean
-    reconstruction of ``input_split_count`` parts (``recon_fn``, FDK by
-    default), and its output, projected by the operator of the other parts, is
+    reconstruction of ``input_split_count`` parts (``recon_fn``, by default the
+    operator's default reconstruction), and its output, projected by the operator of the other parts, is
     compared to their measurements.
 
     Works with any operator whose parameters can be split
@@ -63,7 +62,6 @@ class Sparse2InverseSolver(LIONsolver):
                 "Sparse2Inverse needs 1 <= input_split_count < sino_split_count, "
                 f"got input_split_count={p}, sino_split_count={k}"
             )
-        self.recon_fn = self.solver_params.recon_fn
         self.split_combinations = self.input_combinations(k, p)
         self._make_sub_operators()
 
@@ -120,7 +118,9 @@ class Sparse2InverseSolver(LIONsolver):
                 sub_sino = self.operator_params.split_measurements(
                     sinos, self.subgroup_indices[split_idx]
                 )
-                sub_recon = self.recon_fn(sub_sino, self.sub_ops[split_idx])
+                sub_recon = self.reconstruct_measurements(
+                    sub_sino, self.sub_ops[split_idx]
+                )
                 temp_recons.append(sub_recon)
             mean_subgroup_recon = torch.mean(torch.stack(temp_recons, dim=1), dim=1)
             subgroup_recons[combo] = mean_subgroup_recon
@@ -131,9 +131,12 @@ class Sparse2InverseSolver(LIONsolver):
         params = LIONParameter()
         # number of interleaved angular splits of each input sinogram (k)
         params.sino_split_count = 4
-        # number of splits whose FBPs are averaged to form one network input (p)
+        # number of splits whose reconstructions are averaged to form one network input (p)
         params.input_split_count = 2
-        params.recon_fn = fdk
+        # How measurements are reconstructed, recon_fn(y, op). "default": the
+        # operator's default reconstruction (FDK for CT), replaced by that
+        # function when the solver is made.
+        params.recon_fn = "default"
         return params
 
     def mini_batch_step(self, sinos, targets):

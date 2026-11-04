@@ -18,7 +18,12 @@ from typing import Callable, Optional
 
 from tqdm import tqdm
 from LION.exceptions.exceptions import LIONSolverException, NoDataException
-from LION.utils.parameter import LIONParameter, OperatorParameters
+from LION.utils.parameter import (
+    DEFAULT_RECONSTRUCTION,
+    LIONParameter,
+    OperatorParameters,
+    resolve_reconstruction,
+)
 from LION.utils.device import default_device
 from LION.utils import rng, spec
 from LION.data_loaders.data_record import data_record
@@ -161,6 +166,15 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.operator_params = operator_params
 
         self.op = self.operator_params.make_operator()
+        # "default" (the operator's default reconstruction) is replaced by the
+        # function, so the training record says which was used. Files from
+        # before recon_fn was listed used FDK, CT's default.
+        if hasattr(self.solver_params, "recon_fn") or self._reconstructs():
+            self.solver_params.recon_fn = resolve_reconstruction(
+                getattr(self.solver_params, "recon_fn", DEFAULT_RECONSTRUCTION),
+                self.op,
+                "recon_fn",
+            )
 
         self.train_loader: Optional[DataLoader] = None
         self.train_loss: np.ndarray = np.zeros(0)
@@ -219,6 +233,19 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """Run the model on a batch of measurements, as in training (see
         ``model_forward``)."""
         return model_forward(self.model, data, self.op)
+
+    def _reconstructs(self) -> bool:
+        """Whether the solver's method reconstructs measurements: its default
+        parameters list ``recon_fn``."""
+        return hasattr(self.default_parameters(), "recon_fn")
+
+    def reconstruct_measurements(self, y: torch.Tensor, op) -> torch.Tensor:
+        """Reconstruct the measurements ``y`` of the operator ``op`` with the
+        solver parameters' ``recon_fn(y, op)``, for solvers whose method starts
+        from reconstructions (Noise2Inverse, Proj2Proj, ...). Its default,
+        ``"default"``, is the operator's default reconstruction (FDK for CT),
+        replaced by that function when the solver is made."""
+        return self.solver_params.recon_fn(y, op)
 
     # ------------------------------------------------------------------
     # The training record (LION.optimizers.training_record)

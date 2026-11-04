@@ -82,15 +82,22 @@ class Operator(torch.nn.Module, ABC):
         Operators that torch can't differentiate (e.g. CT's) wrap them."""
         return self, self.adjoint
 
-    def default_reconstruction(self, y: torch.Tensor) -> torch.Tensor:
-        """The operator's usual reconstruction of measurements ``y`` (e.g. FDK
-        for CT): where a model starts when its parameters don't set an initial
-        reconstruction (``LIONmodel.initial_reconstruction``). Operators that
-        have one define it."""
+    def default_reconstruction_fn(self):
+        """The operator's usual reconstruction, as a function ``f(y, op)`` of
+        measurements and operator that a record can name (e.g. ``fdk`` for
+        CT). It is what ``"default"`` stands for in a model's
+        ``initial_reconstruction`` and a solver's ``recon_fn``, and they record
+        it in its place. Operators that have one define it."""
         raise NotImplementedError(
             f"{type(self).__name__} has no default reconstruction: set the "
-            "model's initial reconstruction (model.set_initial_reconstruction)"
+            "model's initial reconstruction (model.set_initial_reconstruction) "
+            "or the solver's recon_fn"
         )
+
+    def default_reconstruction(self, y: torch.Tensor) -> torch.Tensor:
+        """The operator's usual reconstruction of measurements ``y``
+        (``default_reconstruction_fn``, e.g. FDK for CT)."""
+        return self.default_reconstruction_fn()(y, self)
 
     def gram(self, x: torch.Tensor) -> torch.Tensor:
         """Apply the Gram operator.

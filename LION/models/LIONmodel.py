@@ -17,7 +17,12 @@
 # You will want to import LIONParameter, as all models must save and use Parameters.
 from enum import Enum
 from typing import Optional
-from LION.utils.parameter import LIONParameter, OperatorParameters
+from LION.utils.parameter import (
+    DEFAULT_RECONSTRUCTION,
+    LIONParameter,
+    OperatorParameters,
+    resolve_reconstruction,
+)
 import LION.utils.spec as spec
 from LION.data_loaders.data_record import is_data_record
 from LION.optimizers.training_record import is_training_record, weights_sha256
@@ -58,6 +63,11 @@ class LIONModelParameter(LIONParameter):
         # Set defaults before applying kwargs, so values passed in (e.g. when
         # loading from file) are not overwritten.
         self.model_input_type = None
+        # How the model's initial reconstruction is made from measurements,
+        # f(sinogram, operator) (set_initial_reconstruction). "default": the
+        # operator's default reconstruction (FDK for CT), replaced by that
+        # function once the model has its operator.
+        self.initial_reconstruction = "default"
         super().__init__(**kwargs)
 
 
@@ -213,6 +223,7 @@ class LIONmodel(nn.Module, ABC):
             self.op = self.operator_params.make_operator()
             # the operator and its adjoint, differentiable (Operator.autograd)
             self.A, self.AT = self.op.autograd()
+            self._resolve_initial_reconstruction(self.op)
         else:
             raise AttributeError("Can't make operator without operator parameters.")
 
@@ -274,24 +285,43 @@ class LIONmodel(nn.Module, ABC):
         It is one of the model's parameters
         (``model_parameters.initial_reconstruction``), so it is saved and made
         again with the model: a LION function or a ``functools.partial`` of
-        one, e.g. ``functools.partial(sirt, num_iterations=50)``. None removes
-        it: the operator's default reconstruction is used
-        (``Operator.default_reconstruction``, e.g. FDK for CT)."""
-        if reconstruction is None:
-            if hasattr(self.model_parameters, "initial_reconstruction"):
-                del self.model_parameters.initial_reconstruction
+        one, e.g. ``functools.partial(sirt, num_iterations=50)``.
+        ``"default"`` (or None) is the operator's default reconstruction
+        (``Operator.default_reconstruction_fn``, e.g. ``fdk`` for CT), replaced
+        by that function once the model has its operator, so it is saved as
+        the function that was used."""
+        if reconstruction is None or reconstruction == DEFAULT_RECONSTRUCTION:
+            self.model_parameters.initial_reconstruction = DEFAULT_RECONSTRUCTION
+            if getattr(self, "op", None) is not None:
+                self._resolve_initial_reconstruction(self.op)
             return
         spec.encode(reconstruction)  # raises if it can't be saved
         self.model_parameters.initial_reconstruction = reconstruction
 
+    def _resolve_initial_reconstruction(self, op):
+        """Replace a ``"default"`` initial reconstruction by ``op``'s default
+        reconstruction function (files from before it was listed: the same).
+        An operator without one leaves it "default", until the model is used
+        with one that has one."""
+        value = getattr(
+            self.model_parameters, "initial_reconstruction", DEFAULT_RECONSTRUCTION
+        )
+        if value != DEFAULT_RECONSTRUCTION:
+            return
+        try:
+            value = resolve_reconstruction(value, op, "initial_reconstruction")
+        except NotImplementedError:
+            return
+        self.model_parameters.initial_reconstruction = value
+
     def initial_reconstruction(self, sino, op):
-        """The model's initial reconstruction of the measurements ``sino``:
-        ``model_parameters.initial_reconstruction`` if set, else the operator's
-        default reconstruction (``op.default_reconstruction``, e.g. FDK for
-        CT)."""
-        if hasattr(self.model_parameters, "initial_reconstruction"):
-            return self.model_parameters.initial_reconstruction(sino, op)
-        return op.default_reconstruction(sino)
+        """The model's initial reconstruction of the measurements ``sino``
+        (``model_parameters.initial_reconstruction``; "default": ``op``'s
+        default reconstruction, e.g. FDK for CT)."""
+        self._resolve_initial_reconstruction(op)
+        return resolve_reconstruction(
+            self.model_parameters.initial_reconstruction, op, "initial_reconstruction"
+        )(sino, op)
 
     def normalise(self, x):
         """Normalise ``x`` as set by ``set_normalisation()`` (identity if unset)."""

@@ -3,7 +3,6 @@ import warnings
 import numpy as np
 from tqdm import tqdm
 from LION.CTtools.ct_geometry import Geometry
-from LION.classical_algorithms.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
 import torch
 import torch.nn.functional as F
@@ -55,7 +54,6 @@ class Proj2ProjSolver(LIONsolver):
             "tomosipo.torch_support", "Proj2ProjSolver"
         ).to_autograd
         self.projector = to_autograd(self.operator, num_extra_dims=1)
-        self.recon_fn = self.solver_params.recon_fn
         self.global_step = 0
 
     def get_mask(self, shape, step):
@@ -91,7 +89,10 @@ class Proj2ProjSolver(LIONsolver):
     def default_parameters() -> LIONParameter:
         params = LIONParameter()
         params.grid_size = 4
-        params.recon_fn = fdk
+        # How measurements are reconstructed, recon_fn(y, op). "default": the
+        # operator's default reconstruction (FDK for CT), replaced by that
+        # function when the solver is made.
+        params.recon_fn = "default"
         return params
 
     def mini_batch_step(self, sinos, targets):
@@ -99,7 +100,7 @@ class Proj2ProjSolver(LIONsolver):
         self.global_step += sinos.shape[0]
         input_sino = self.fill_mean(sinos, mask)
 
-        input_recon = self.recon_fn(input_sino, self.model.operator)
+        input_recon = self.reconstruct_measurements(input_sino, self.model.operator)
         output_recon = self.model(input_recon)
         output_sino = self.projector(output_recon)
 
@@ -114,7 +115,7 @@ class Proj2ProjSolver(LIONsolver):
         return self.reconstruct(data)
 
     def reconstruct(self, sinos):
-        input_recon = self.recon_fn(sinos, self.operator)
+        input_recon = self.reconstruct_measurements(sinos, self.operator)
         output_recon = self.model(input_recon)
         return output_recon
 
