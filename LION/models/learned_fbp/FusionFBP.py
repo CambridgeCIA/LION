@@ -1,10 +1,7 @@
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
-from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
 import LION.operators.ct.ct_geometry as ct
-import LION.operators.ct.ct_utils as ct_utils
-import LION.utils.utils as ai_utils
 
 # new
 
@@ -20,11 +17,9 @@ from torch.nn import (
     PReLU,
     ReLU,
     Parameter,
-    Hardtanh,
     BatchNorm2d,
 )
 from torch.nn.functional import pad
-import json
 from LION.utils.citation import citation
 
 # from .model import ModelBase

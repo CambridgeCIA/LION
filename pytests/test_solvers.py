@@ -19,17 +19,16 @@ import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-import LION.operators.ct.ct_utils as ct_utils
 import LION.optimizers.AdversarialRegularizerSolver as ar_module
 import LION.optimizers.LIONsolver as lion_solver
 import LION.optimizers.SupervisedSolver as supervised_solver
 from LION.operators.ct.ct_geometry import Geometry
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
-from LION.operators import Operator
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver
 from LION.utils import spec
 from LION.utils.parameter import OperatorParameters
+from pytests.helpers import IdentityStandIn, identity_reconstruction
 from pytests.helpers import adjoint_reconstruction as helpers_adjoint
 from pytests.helpers import (
     CTStandIn,
@@ -351,39 +350,11 @@ def test_gaussian_denoiser_gives_gsd_the_noise_level_channel():
 # operator)
 
 
-def identity_reconstruction(y, op):
-    """IdentityOp's default reconstruction: the measurements as they are."""
-    return y
-
-
-class IdentityOp(Operator):
-    def __call__(self, x, out=None):
-        return x
-
-    def forward(self, x):
-        return x
-
-    def adjoint(self, y):
-        return y
-
-    def default_reconstruction_fn(self):
-        return identity_reconstruction
-
-    def autograd(self):
-        return self, self.adjoint
-
-    @property
-    def domain_shape(self):
-        return (1, 8, 8)
-
-    @property
-    def range_shape(self):
-        return (1, 8, 8)
-
-
 @pytest.fixture
 def identity_ct(monkeypatch):
-    monkeypatch.setattr(Geometry, "make_operator", lambda self: IdentityOp())
+    monkeypatch.setattr(
+        Geometry, "make_operator", lambda self: IdentityStandIn((1, 8, 8))
+    )
 
 
 def make_ar_solver(**params):
@@ -406,7 +377,9 @@ def learned_reconstructor(**settings):
     parameters.n_steps, parameters.step_size = 2, 1e-2
     for name, value in settings.items():
         setattr(parameters, name, value)
-    return LearnedRegularizerReconstructor(IdentityOp(), parameters=parameters)
+    return LearnedRegularizerReconstructor(
+        IdentityStandIn((1, 8, 8)), parameters=parameters
+    )
 
 
 def test_training_step(identity_ct):
@@ -778,8 +751,6 @@ def test_equivariant_solver_gradient_goes_through_the_second_fdk(monkeypatch):
     def fake_fdk(sino, op, differentiable=False):
         calls.append(differentiable)
         return sino if differentiable else sino.detach()
-
-    from pytests.helpers import IdentityStandIn
 
     monkeypatch.setattr(Geometry, "make_operator", lambda self: IdentityStandIn())
     monkeypatch.setattr(ei, "fdk", fake_fdk)

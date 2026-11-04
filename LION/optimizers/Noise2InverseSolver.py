@@ -1,7 +1,5 @@
-from typing import Callable, Optional
-import warnings
+from typing import Optional
 import numpy as np
-from tqdm import tqdm
 from LION.models.LIONmodel import LIONmodel
 import torch
 from torch.optim.optimizer import Optimizer

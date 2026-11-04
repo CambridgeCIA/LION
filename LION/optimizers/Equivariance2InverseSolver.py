@@ -1,5 +1,4 @@
-from typing import Callable, Optional
-import numpy as np
+from typing import Optional
 from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel
 import torch
@@ -104,10 +103,8 @@ class Equivariance2InverseSolver(LIONsolver):
             deterministic=deterministic,
         )
         warn_if_not_mse(loss_fn, "Equivariance2InverseSolver")
-        self.operator = self.op  # the base solver already built it
-        self.model.operator_params = self.operator_params
-        self.model.operator = self.operator
-        self.projector, _ = self.operator.autograd()
+        self.op_params = self.operator_params
+        self.projector, _ = self.op.autograd()
 
     @staticmethod
     def default_parameters() -> LIONParameter:
@@ -160,7 +157,7 @@ class Equivariance2InverseSolver(LIONsolver):
         YJc[:, :, YJ_num, :] = 0
 
         weight = NP / (NP - 1)
-        RJc = self.reconstruct_measurements(YJc * weight, self.model.operator)
+        RJc = self.reconstruct_measurements(YJc * weight, self.op)
         output_recon_1 = self.model(RJc)
 
         output_sino_1 = self.projector(output_recon_1)
@@ -175,7 +172,7 @@ class Equivariance2InverseSolver(LIONsolver):
         rotated_sinogram_noisy = rotated_sinogram + noise
 
         rotated_noisy_image = self.reconstruct_measurements(
-            rotated_sinogram_noisy, self.model.operator
+            rotated_sinogram_noisy, self.op
         )
         output_recon_2 = self.model(rotated_noisy_image)
         equivariance = ((output_recon_2 - rotated_output_recon_1) ** 2).mean()
@@ -187,7 +184,7 @@ class Equivariance2InverseSolver(LIONsolver):
         return self.reconstruct(data)
 
     def reconstruct(self, sinos):
-        input_recon = self.reconstruct_measurements(sinos, self.operator)
+        input_recon = self.reconstruct_measurements(sinos, self.op)
         output_recon = self.model(input_recon)
         return output_recon
 

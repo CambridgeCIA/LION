@@ -3,8 +3,6 @@ from typing import Tuple
 import pathlib
 import torch
 from torch.utils.data import DataLoader, Subset
-from LION.operators.ct.ct_utils import make_operator
-from LION.operators.ct.fdk import fdk
 from LION.models.CNNs.UNets.Unet import UNet
 from LION.optimizers.EquivariantSolver import EquivariantSolver
 from LION.utils.parameter import LIONParameter

@@ -51,11 +51,6 @@ class SolverState(Enum):
     COMPLETE = 0
 
 
-class SolverParams(LIONParameter):
-    def __init__(self):
-        super().__init__()
-
-
 def warn_if_not_mse(loss_fn, solver_name: str):
     """Warn that ``loss_fn`` is not used by a solver whose loss must be the MSE.
 
@@ -72,21 +67,13 @@ def warn_if_not_mse(loss_fn, solver_name: str):
         )
 
 
-def initial_reconstruction(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:
-    """The input of an image-domain ``model`` made from measurements ``data``:
-    its ``model_parameters.initial_reconstruction`` (set with
-    ``model.set_initial_reconstruction``), else the operator's default
-    reconstruction (FDK for CT)."""
-    return model.initial_reconstruction(data, op)
-
-
 def model_forward(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:
     """Run ``model`` on a batch of measurements, as the solvers do (and
     ``LION.reconstructors.ForwardReconstructor``).
 
     Image-domain models get a reconstruction (with operator ``op``) as input:
     the operator's default (FDK for CT), or the model's own
-    (``initial_reconstruction``). Sinogram-domain models
+    (``model.initial_reconstruction``). Sinogram-domain models
     get the measurements. With a normalisation
     set (``model.set_normalisation()``), the input is normalised (for
     measurements: as the images are, by linearity) and the output mapped
@@ -94,7 +81,7 @@ def model_forward(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:
     """
     normalisation = getattr(model, "normalisator", None)
     if model.get_input_type() == ModelInputType.IMAGE:
-        data = initial_reconstruction(model, data, op)
+        data = model.initial_reconstruction(data, op)
         if normalisation is not None:
             return model.unnormalise(model(model.normalise(data)), data)
         return model(data)
@@ -119,7 +106,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         operator_params: OperatorParameters = None,
         verbose: bool = True,
         device: torch.device = None,
-        solver_params: Optional[SolverParams] = None,
+        solver_params: Optional[LIONParameter] = None,
         save_folder: Optional[pathlib.Path] = None,
         seed: Optional[int] = 0,
         deterministic: bool = False,
@@ -373,7 +360,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     # This should return the default parameters of the solver
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
-    def default_parameters() -> SolverParams:
+    def default_parameters() -> LIONParameter:
         pass
 
     def set_training(
@@ -1266,7 +1253,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         This function should perform a single step of the optimization and return the loss
         """
-        pass
 
     @staticmethod
     def cite(cite_format="bib"):

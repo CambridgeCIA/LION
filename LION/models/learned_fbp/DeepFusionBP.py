@@ -2,12 +2,9 @@ import numpy as np
 import copy
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
-from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
 import LION.operators.ct.ct_geometry as ct
-import LION.operators.ct.ct_utils as ct_utils
 from LION.utils.tomosipo_import import import_tomosipo
-import LION.utils.utils as ai_utils
 
 # new
 
@@ -25,7 +22,6 @@ from torch.nn import (
     BatchNorm2d,
 )
 from torch.nn.functional import pad
-import json
 from LION.utils.citation import citation
 
 # from .model import ModelBase
@@ -139,7 +135,7 @@ class single_back_projections(Module):
             single_angle.angles = angles[i : i + 1]
             # (B, 1, 1, detectors) -> (B, 1, H, W), differentiable
             self.tomosipo_geometries.append(
-                to_autograd(ct_utils.make_operator(single_angle).T, num_extra_dims=1)
+                to_autograd(single_angle.make_operator().T, num_extra_dims=1)
             )
 
     def forward(self, sinogram):

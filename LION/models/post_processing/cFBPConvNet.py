@@ -9,7 +9,6 @@ from typing import Optional
 from warnings import warn
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torchdiffeq import odeint, odeint_adjoint
 
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType

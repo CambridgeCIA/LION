@@ -1,6 +1,6 @@
 from LION.operators.ct.fdk import fdk
 from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
-from LION.models.CNNs.MSD_pytorch import MSD_pytorch
+from LION.models.CNNs.MSDNet import MSDNet
 import LION.experiments.ct_experiments as ct_experiments
 from torch.utils.data import DataLoader
 from torch.optim.adam import Adam
@@ -30,7 +30,7 @@ batch_size = 1
 dataloader = DataLoader(experiment.get_training_dataset(), batch_size, True)
 
 # Define model. Any model should work but the original paper used MSDNet
-model = MSD_pytorch()
+model = MSDNet()
 
 # Create optimizer and loss function
 optimizer = Adam(model.parameters())

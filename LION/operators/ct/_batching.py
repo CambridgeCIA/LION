@@ -7,7 +7,6 @@ from typing import Callable
 import torch
 
 from LION.operators.ct.ct_geometry import Geometry
-from LION.operators.ct.ct_utils import make_operator
 from LION.exceptions.exceptions import NoDataException
 from LION.operators.Operator import Operator
 
@@ -36,7 +35,7 @@ def batched_reconstruction(
     if sino.shape[0] == 0:
         raise NoDataException("Given 0 batches, no data to operate on!")
     if isinstance(op, Geometry):
-        op = make_operator(op)
+        op = op.make_operator()
 
     # stacked rather than written into a preallocated tensor, so results that
     # carry an autograd graph (e.g. fdk(..., differentiable=True)) stay clean

@@ -20,6 +20,7 @@ import json
 
 from LION.utils import paths
 import LION.operators.ct.ct_utils as ct
+from LION.operators.ct.ct_geometry import Geometry
 from LION.utils.parameter import LIONParameter
 from LION.utils.device import default_device
 from LION.data_loaders.LIONDataset import LIONDataset
@@ -147,7 +148,7 @@ class LIDC_IDRI(LIONDataset):
     def __init__(
         self,
         mode,
-        operator_params: ct.Geometry = None,
+        operator_params: Geometry = None,
         parameters: LIONParameter = None,
     ):
         """
@@ -248,16 +249,16 @@ class LIDC_IDRI(LIONDataset):
 
         # parameters loaded from JSON have the geometry as a plain LIONParameter
         if self.parameters.operator_params is not None and not isinstance(
-            self.parameters.operator_params, ct.Geometry
+            self.parameters.operator_params, Geometry
         ):
-            self.parameters.operator_params = ct.Geometry.init_from_parameter(
+            self.parameters.operator_params = Geometry.init_from_parameter(
                 self.parameters.operator_params
             )
         if operator_params is not None:
             self.parameters.operator_params = operator_params
-            self.operator = ct.make_operator(operator_params)
+            self.operator = operator_params.make_operator()
         elif self.parameters.operator_params is not None:
-            self.operator = ct.make_operator(self.parameters.operator_params)
+            self.operator = self.parameters.operator_params.make_operator()
         # Start of Patient pre-processing
 
         self.path_to_processed_dataset = pathlib.Path(self.parameters.folder)
@@ -537,7 +538,7 @@ class LIDC_IDRI(LIONDataset):
         """
         if angles is None:
             angles = np.linspace(0, 2 * np.pi, 360, endpoint=False)
-        return ct.Geometry(
+        return Geometry(
             image_shape=[1, 512, 512],
             image_size=[PIXEL_SPACING_MM, 500.0, 500.0],
             detector_shape=[1, 1024],

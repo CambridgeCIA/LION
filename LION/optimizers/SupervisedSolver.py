@@ -3,17 +3,14 @@ from typing import Optional
 
 import torch
 from torch.optim.optimizer import Optimizer
-import numpy as np
 
 # Import base class
 from LION.utils.parameter import OperatorParameters
-from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel
-from LION.optimizers.LIONsolver import LIONsolver, SolverParams
-from LION.models.LIONmodel import ModelInputType
+from LION.optimizers.LIONsolver import LIONsolver
+from LION.utils.parameter import LIONParameter
 
 # standard imports
-from tqdm import tqdm
 
 
 class SupervisedSolver(LIONsolver):
@@ -38,7 +35,7 @@ class SupervisedSolver(LIONsolver):
             operator_params=operator_params,
             verbose=verbose,
             device=device,
-            solver_params=SolverParams(),
+            solver_params=LIONParameter(),
             save_folder=save_folder,
             seed=seed,
             deterministic=deterministic,
@@ -55,5 +52,5 @@ class SupervisedSolver(LIONsolver):
         return self.loss_fn(output, target)
 
     @staticmethod
-    def default_parameters() -> SolverParams:
-        return SolverParams()
+    def default_parameters() -> LIONParameter:
+        return LIONParameter()

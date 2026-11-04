@@ -9,11 +9,7 @@ This is a list of papers implemented in the LION toolbox adn where to find the c
 Pelt, Daniël M., and James A. Sethian. "A mixed-scale dense convolutional neural network for image analysis." Proceedings of the National Academy of Sciences 115.2 (2018): 254-259.
 [https://doi.org/10.1073/pnas.1715832114](https://doi.org/10.1073/pnas.1715832114)
 
-`LION/models/CNNs/MS-D/`               Submodule with the original repo
-
-`LION/models/CNNs/MSD_pytorch.py`      the LIONmodel to load the original code
-
-`LION/models/CNNs/MSDNet.py`           Our version of the MSD_pytorch model. Uses more memory
+`LION/models/CNNs/MSDNet.py`           LION's MS-D network
 
 #### Learned Primal Dual (LPD)
 

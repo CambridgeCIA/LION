@@ -38,17 +38,15 @@ from LION.exceptions.exceptions import NoDataException
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 # imports related to class
-from abc import ABC, abstractmethod, ABCMeta
+from abc import ABC, abstractmethod
 
 # Some other imports
 import json
 import pickle
 import warnings
 from pathlib import Path
-import inspect
 
 
 class ModelInputType(int, Enum):
@@ -156,7 +154,6 @@ class LIONmodel(nn.Module, ABC):
         operator_params: Optional[OperatorParameters] = None,
     ):
         super().__init__()  # Initialize parent classes.
-        __metaclass__ = ABCMeta  # make class abstract.
         # torch's random state before the model's layers draw their initial
         # weights: made again from it, the model has the same initial weights
         # (instantiate(..., initial_weights=True)); saved with the model

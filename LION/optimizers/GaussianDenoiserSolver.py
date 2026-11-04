@@ -10,7 +10,7 @@ import numpy as np
 # Import base class
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel
-from LION.optimizers.LIONsolver import LIONsolver, SolverParams
+from LION.optimizers.LIONsolver import LIONsolver
 from LION.utils.parameter import LIONParameter, OperatorParameters
 from LION.utils.rng import seeded
 
@@ -43,7 +43,7 @@ class GaussianDenoiserSolver(LIONsolver):
             operator_params=operator_params,
             verbose=verbose,
             device=device,
-            solver_params=SolverParams(),
+            solver_params=LIONParameter(),
             save_folder=save_folder,
             seed=seed,
             deterministic=deterministic,
@@ -98,8 +98,8 @@ class GaussianDenoiserSolver(LIONsolver):
         return low + (high - low) * torch.rand(1).item()
 
     @staticmethod
-    def default_parameters() -> SolverParams:
-        return SolverParams()
+    def default_parameters() -> LIONParameter:
+        return LIONParameter()
 
     def set_patch_strategy(self, n_patches, patch_size):
         """

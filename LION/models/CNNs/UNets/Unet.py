@@ -10,7 +10,6 @@ import torch.nn as nn
 
 from collections import OrderedDict
 
-from LION.utils.parameter import LIONParameter
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.citation import citation
 

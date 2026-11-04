@@ -18,7 +18,6 @@ Install:
 ```bash
 git clone https://github.com/CambridgeCIA/LION.git
 cd LION
-git submodule update --init --recursive            # Legacy: for MSD_pytorch_
 conda env create --file=env_base.yml --name=lion   # You can change 'lion' to a different env name
 conda activate lion
 pip install .

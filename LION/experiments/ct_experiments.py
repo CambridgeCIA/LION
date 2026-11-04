@@ -61,10 +61,9 @@ pixel spacing.
 
 import functools
 import numpy as np
-import torch
 import pathlib
 import warnings
-from abc import ABC, abstractmethod, ABCMeta
+from abc import ABC, abstractmethod
 
 from LION.utils.parameter import LIONParameter
 import LION.operators.ct.ct_geometry as ctgeo
@@ -94,7 +93,6 @@ class Experiment(ABC):
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
 
         super().__init__()  # Initialize parent classes.
-        __metaclass__ = ABCMeta  # make class abstract.
         self.experiment_params = experiment_params
         if experiment_params is None:
             self.experiment_params = self.default_parameters(dataset=dataset)

@@ -15,12 +15,10 @@ from LION.operators.ct.ct_utils import (
     WATER_MASS_ATTENUATION,
     from_HU_to_density,
     from_HU_to_mu,
-    forward_projection,
     from_HU_to_material_id,
-    make_operator,
     sinogram_add_noise,
 )
-from LION.utils.tests_helper import dotproduct_adjointness_test
+from pytests.helpers import dotproduct_adjointness_test
 
 try:
     from tomosipo.torch_support import to_autograd
@@ -203,23 +201,10 @@ def test_material_id_torch(dtype):
 
 
 @pytest.mark.tomosipo
-@pytest.mark.parametrize(
-    "geometry",
-    [Geometry.default_parameters(), Geometry.parallel_default_parameters([1, 64, 64])],
-)
-def test_forward_projection_matches_operator(geometry):
-    image = torch.rand(*geometry.image_shape[1:])
-    if torch.cuda.is_available():
-        image = image.cuda()
-    expected = make_operator(geometry)(image.unsqueeze(0))[0]
-    torch.testing.assert_close(forward_projection(image, geometry), expected)
-
-
-@pytest.mark.tomosipo
 def test_ct_autograd_op_forward_and_backward():
     """Check that to_autograd wraps the CT operator correctly and supports backprop."""
     geometry = Geometry.default_parameters()
-    operator = make_operator(geometry=geometry)
+    operator = geometry.make_operator()
     autograd_operator = to_autograd(operator)
 
     torch.manual_seed(0)
@@ -243,7 +228,7 @@ def test_ct_autograd_op_forward_and_backward():
 def test_ct_op_adjointness():
     """Test CT operator adjoint property."""
     geometry = Geometry.default_parameters()
-    operator = make_operator(geometry=geometry)
+    operator = geometry.make_operator()
 
     # Check the default operator shapes
     assert operator.domain_shape == (1, 512, 512)
@@ -265,7 +250,7 @@ def test_ct_op_adjointness():
 @pytest.mark.tomosipo
 def test_ct_op_backward_compatibility_with_tomosipo():
     geometry = Geometry.default_parameters()
-    operator = make_operator(geometry=geometry)
+    operator = geometry.make_operator()
 
     assert operator.domain_shape == (1, 512, 512)
     assert operator.range_shape == (1, 360, 900)
@@ -323,7 +308,7 @@ def phantom(geometry):
 @pytest.mark.parametrize("geometry", GEOMETRIES, ids=GEOMETRY_IDS)
 def test_reconstructs_both_geometries(geometry):
     x = phantom(geometry)
-    op = make_operator(geometry)
+    op = geometry.make_operator()
     sino = op(x[0]).unsqueeze(0)
     recon = fdk(sino, op)
     assert recon.shape == x.shape
@@ -334,7 +319,7 @@ def test_reconstructs_both_geometries(geometry):
 @pytest.mark.parametrize("geometry", GEOMETRIES, ids=GEOMETRY_IDS)
 @pytest.mark.parametrize("clip", [False, True])
 def test_differentiable_matches_default(geometry, clip):
-    op = make_operator(geometry)
+    op = geometry.make_operator()
     sino = op(phantom(geometry)[0]).unsqueeze(0)
     sino = sino + 0.1 * torch.randn_like(sino)
     torch.testing.assert_close(
@@ -362,7 +347,7 @@ def test_backward_goes_through_the_forward_projector(geometry):
     from LION.operators.ct.fdk import _is_cone_beam
 
     torch.manual_seed(0)
-    op = make_operator(geometry)
+    op = geometry.make_operator()
     y = torch.randn(1, *op.range_shape, device="cuda", requires_grad=True)
     x = torch.randn(1, *op.domain_shape, device="cuda")
     Ly = fdk(y, op, clip=False, differentiable=True)
@@ -399,7 +384,7 @@ def test_itnet_gradient_reaches_the_sinogram():
     params.n_iters, params.step_size = 2, [0.5, 0.5]
     params.Unet_params.baseDim, params.Unet_params.noGrp = 4, 2
     model = ItNet(geometry, params).cuda()
-    op = make_operator(geometry)
+    op = geometry.make_operator()
     sino = op(phantom(geometry)[0]).unsqueeze(0).requires_grad_(True)
     (grad,) = torch.autograd.grad(model(sino).sum(), sino)
     assert torch.isfinite(grad).all() and grad.abs().sum() > 0
@@ -413,7 +398,7 @@ def test_deepfusionbp_single_view_backprojections_match_the_operator():
 
     geometry = fan_geometry()
     geometry.angles = geometry.angles[::10]  # sparse view: 9 angles
-    op = make_operator(geometry)
+    op = geometry.make_operator()
     sino = torch.rand(2, 1, len(geometry.angles), geometry.detector_shape[1]).cuda()
     views = single_back_projections(geometry)(sino)  # (B, angles, H, W)
     assert views.shape == (2, len(geometry.angles), *geometry.image_shape[1:])
@@ -426,7 +411,7 @@ def test_deepfusionbp_single_view_backprojections_match_the_operator():
 @pytest.mark.tomosipo
 def test_the_ct_operators_default_reconstruction_is_fdk():
     geometry = Geometry.default_parameters()
-    operator = make_operator(geometry)
+    operator = geometry.make_operator()
     image = torch.rand(1, *geometry.image_shape[1:], device="cuda")
     sino = operator(image).unsqueeze(0)
     torch.testing.assert_close(

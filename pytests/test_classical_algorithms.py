@@ -71,6 +71,33 @@ def test_sirt_shares_unbatched_initial_guess(fake_ts_sirt):
     assert all(given is x_init for given in fake_ts_sirt)
 
 
+@pytest.mark.parametrize("name", ["sirt", "tv_min"])
+def test_ct_reconstructions_run_once_per_sample(monkeypatch, name):
+    """SIRT and TV-min call ts_algorithms once per sample, with that sample,
+    and refuse an empty batch."""
+    from LION.exceptions.exceptions import NoDataException
+    from LION.operators import ct
+
+    given = []
+
+    def one_sample(op, sino, *rest, **kwargs):
+        given.append(sino)
+        return torch.zeros(op.domain_shape)
+
+    module = types.ModuleType("ts_algorithms")
+    module.sirt = module.tv_min2d = one_sample
+    monkeypatch.setitem(sys.modules, "ts_algorithms", module)
+    recon = getattr(ct, name)
+    arguments = {"num_iterations": 2} if name == "sirt" else {"lam": 0.1}
+
+    sino = torch.rand(2, 1, 5, 6)
+    assert recon(sino, FakeCTOp(), **arguments).shape == (2, 1, 4, 4)
+    assert [g.shape for g in given] == [(1, 5, 6), (1, 5, 6)]
+    torch.testing.assert_close(given[1], sino[1])
+    with pytest.raises(NoDataException):
+        recon(torch.rand(0, 1, 5, 6), FakeCTOp(), **arguments)
+
+
 # --------------------------------------------------------------------------
 # Conjugate gradient
 

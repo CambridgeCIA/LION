@@ -1,6 +1,5 @@
 from typing import Optional
 import torch.nn as nn
-import torch.nn.functional as F
 import torch
 import warnings
 from LION.models.LIONmodel import ModelInputType
