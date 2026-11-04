@@ -33,7 +33,6 @@ from LION.utils.device import default_device
 from LION.exceptions.exceptions import NoDataException
 
 # (optional) Given this is a tomography library, it is likely that you will want to load geometries of the tomogprahic problem you are solving, e.g. a ct_geometry
-import LION.operators.ct.ct_geometry as ct
 
 # some numerical standard imports, e.g.
 import numpy as np
@@ -102,8 +101,8 @@ def _plain_numbers(value):
 
 def _safe_globals():
     """What torch's safe loader may rebuild from a model's ``.pt``, besides
-    tensors and Python values: LION's parameter objects, paths and numpy
-    arrays, which some files hold. Rebuilding these runs no code from the file.
+    tensors and Python values: paths and numpy arrays (e.g. the random state
+    a checkpoint holds). Rebuilding these runs no code from the file.
     """
     from numpy import dtypes
 
@@ -114,10 +113,6 @@ def _safe_globals():
     import pathlib
 
     allowed = [
-        LIONParameter,
-        LIONModelParameter,
-        ModelInputType,
-        ct.Geometry,
         pathlib.Path,
         pathlib.PosixPath,
         pathlib.WindowsPath,
@@ -460,7 +455,7 @@ class LIONmodel(nn.Module, ABC):
 
         ``weights_only=True`` (default) reads it with torch's safe loader, which
         runs no code from the file: tensors, numbers, strings and containers,
-        plus the LION parameter objects and numpy arrays some files hold (see
+        plus paths and numpy arrays (see
         ``_safe_globals``). ``weights_only=False`` reads any pickle: only for
         files you trust.
         """
@@ -520,7 +515,10 @@ class LIONmodel(nn.Module, ABC):
             where = fname.with_suffix(".json")
             saved = spec.read(fname)
             if "lion_format" not in saved:
-                return cls._read_unversioned_model_file(fname)
+                raise ValueError(
+                    f"{where} has no 'lion_format': it was saved before LION's "
+                    "metadata (specs), which LION doesn't read"
+                )
         if saved["lion_format"] > spec.FORMAT_VERSION:
             raise ValueError(
                 f"{where} has metadata format {saved['lion_format']}; "
@@ -556,36 +554,6 @@ class LIONmodel(nn.Module, ABC):
             elif key in saved:
                 setattr(options, key, spec.build(saved[key], allow))
         return target, kwargs, options
-
-    @classmethod
-    def _read_unversioned_model_file(cls, fname):
-        """``_read_model_file`` for a ``.json`` without ``lion_format``: the model
-        parameters and geometry as LIONParameters, and the class only by name."""
-        if cls is LIONmodel:
-            raise ValueError(
-                f"{fname.with_suffix('.json')} names its model class only by name: load "
-                "it with that class, e.g. FBPConvNet.load(...)"
-            )
-        options = LIONParameter()
-        options.load(fname.with_suffix(".json"))
-        # JSON loads nested parameters back as plain LIONParameter
-        if isinstance(getattr(options, "model_parameters", None), LIONParameter):
-            options.model_parameters = as_model_parameter(options.model_parameters)
-        if hasattr(options, "operator_params"):  # files from before: CT geometries
-            options.operator_params = ct.Geometry.init_from_parameter(
-                options.operator_params
-            )
-        # Check if model name matches the one that is loading it
-        if options.model_name != cls.__name__:
-            warnings.warn(
-                f"\nSaved model is from a class with a different name than current, likely load will fail. \nCurrent class name: {cls.__name__}, Saved model class name: {options.model_name}\n"
-            )
-        # Some models need operator parameters, some others not.
-        kwargs = {"model_parameters": options.model_parameters}
-        sig = inspect.signature(cls.__init__)
-        if hasattr(options, "operator_params") and "operator_params" in sig.parameters:
-            kwargs["operator_params"] = options.operator_params
-        return cls, kwargs, options
 
     @classmethod
     def instantiate(cls, source, *, allow=(), initial_weights=False, **arguments):

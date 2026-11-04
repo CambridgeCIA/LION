@@ -351,6 +351,11 @@ def test_gaussian_denoiser_gives_gsd_the_noise_level_channel():
 # operator)
 
 
+def identity_reconstruction(y, op):
+    """IdentityOp's default reconstruction: the measurements as they are."""
+    return y
+
+
 class IdentityOp(Operator):
     def __call__(self, x, out=None):
         return x
@@ -360,6 +365,9 @@ class IdentityOp(Operator):
 
     def adjoint(self, y):
         return y
+
+    def default_reconstruction_fn(self):
+        return identity_reconstruction
 
     @property
     def domain_shape(self):
@@ -373,7 +381,6 @@ class IdentityOp(Operator):
 @pytest.fixture
 def identity_ct(monkeypatch):
     monkeypatch.setattr(Geometry, "make_operator", lambda self: IdentityOp())
-    monkeypatch.setattr(ar_module, "fdk", lambda sino, op: sino)
 
 
 def make_ar_solver(**params):
@@ -665,6 +672,14 @@ def test_solvers_list_recon_fn_as_default(solver_name):
     module = importlib.import_module(f"LION.optimizers.{solver_name}Solver")
     solver_class = getattr(module, f"{solver_name}Solver")
     assert solver_class.default_parameters().recon_fn == "default"
+
+
+def test_the_ar_solver_reconstructs_with_the_operators_default(identity_ct):
+    """The AR solver's "bad" reconstructions are recon_fn's: "default", the
+    operator's default reconstruction (here the identity's)."""
+    assert ar_module.ARSolver.default_parameters().recon_fn == "default"
+    solver = make_ar_solver()
+    assert solver.solver_params.recon_fn is identity_reconstruction
 
 
 def test_the_default_recon_fn_is_replaced_by_the_operators(fake_ct):

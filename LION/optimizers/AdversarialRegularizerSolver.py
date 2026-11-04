@@ -13,12 +13,11 @@ import torch
 from torch.optim.optimizer import Optimizer
 from tqdm import tqdm
 
-from LION.operators.ct.fdk import fdk
-from LION.operators.ct.ct_geometry import Geometry
 from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver, SolverParams
 from LION.utils.citation import citation
+from LION.utils.parameter import OperatorParameters
 
 
 class ARParams(SolverParams):
@@ -26,17 +25,24 @@ class ARParams(SolverParams):
 
     Args:
         lambd_gp: Weight of the gradient penalty in the WGAN training loss.
+        recon_fn: How measurements are reconstructed into the "bad"
+            reconstructions the regulariser learns to tell from clean images,
+            ``recon_fn(y, op)``. "default": the operator's default
+            reconstruction (FDK for CT), replaced by that function when the
+            solver is made.
     """
 
-    def __init__(self, lambd_gp: float = 1e-1):
+    def __init__(self, lambd_gp: float = 1e-1, recon_fn="default"):
         super().__init__()
         self.lambd_gp = lambd_gp
+        self.recon_fn = recon_fn
 
 
 class ARSolver(LIONsolver):
     """Trains an adversarial regulariser (Lunz et al., 2018).
 
-    Training compares clean images with FDK reconstructions (WGAN loss with
+    Training compares clean images with reconstructions of the measurements
+    (``recon_fn``, by default the operator's: FDK for CT) (WGAN loss with
     gradient penalty). The WGAN loss doesn't measure reconstructions, so
     validation and testing reconstruct with a ``LearnedRegularizerReconstructor``
     you make and give (``set_validation(..., reconstructor=...)``): the
@@ -50,7 +56,7 @@ class ARSolver(LIONsolver):
         self,
         model: LIONmodel,
         optimizer: Optimizer,
-        operator_params: Geometry = None,
+        operator_params: OperatorParameters = None,
         verbose: bool = True,
         device: torch.device = None,
         solver_params: ARParams | None = None,
@@ -107,7 +113,7 @@ class ARSolver(LIONsolver):
         super().set_testing(test_loader, testing_fn, reconstructor)
 
     def wgan_loss(self, sino_batch, target_batch):
-        bad_recon = fdk(sino_batch, self.op)
+        bad_recon = self.reconstruct_measurements(sino_batch, self.op)
         if self.do_normalise and self.model.get_input_type() == ModelInputType.IMAGE:
             bad_recon = self.model.normalise(bad_recon)
             target_batch = self.model.normalise(target_batch)

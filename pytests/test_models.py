@@ -371,25 +371,6 @@ def test_files_with_the_old_name_of_the_operator_params_load(monkeypatch, tmp_pa
     assert list(options.operator_params.image_shape) == [1, 16, 16]
 
 
-@ignore_warnings
-def test_unversioned_files_with_a_geometry_load(monkeypatch, tmp_path):
-    """Files from before lion_format kept the geometry as `geometry`."""
-    op = ImageMatrixOp(torch.eye(16 * 16), (1, 16, 16))
-    monkeypatch.setattr(
-        LIONmodel, "_make_operator", lambda self: setattr(self, "op", op)
-    )
-    model = AR(AR.default_parameters(), small_geometry())
-    options = LIONParameter()
-    options.commit_hash = "0" * 40
-    options.model_name = "AR"
-    options.model_parameters = model.model_parameters
-    options.geometry = small_geometry()
-    options.save(tmp_path / "model.json")
-    torch.save({"model_state_dict": model.state_dict()}, tmp_path / "model.pt")
-    loaded, _, _ = AR.load(tmp_path / "model", supress_warnings=True)
-    assert list(loaded.operator_params.image_shape) == [1, 16, 16]
-
-
 def test_old_names_of_the_operator_params_are_renamed_at_any_depth():
     from LION.utils.parameter import with_current_names
 

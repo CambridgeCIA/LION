@@ -7,10 +7,8 @@ import torch
 from tqdm import tqdm
 
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
-from LION.operators.ct.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
 from LION.operators import Operator
-from LION.operators.ct import CTProjectionOp
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.math import power_method
 from LION.utils.parameter import LIONParameter
@@ -65,7 +63,14 @@ class PnP(LIONReconstructor):
             raise ValueError(
                 f"Unknown algorithm: {algorithm!r} (one of {', '.join(ALGORITHMS)})"
             )
-        return LIONParameter(algorithm=algorithm, **ALGORITHMS[algorithm])
+        return LIONParameter(
+            algorithm=algorithm,
+            # where the algorithm starts, f(y, op), when not given x0.
+            # "default": the operator's default reconstruction (FDK for CT),
+            # replaced by that function when the reconstructor is made.
+            initial_reconstruction="default",
+            **ALGORITHMS[algorithm],
+        )
 
     def setting(self, name):
         """A setting of the algorithm: from the parameters, or its default."""
@@ -105,12 +110,6 @@ class PnP(LIONReconstructor):
             out = self.model(x_in)
         return self.model.unnormalise(out, x.unsqueeze(0)).squeeze(0)
 
-    def initial_guess(self, sino: torch.Tensor) -> torch.Tensor:
-        """FDK for CT operators, zeros otherwise (the default start of HQS/FBS)."""
-        if isinstance(self.op, CTProjectionOp):
-            return fdk(sino, self.op)
-        return torch.zeros(self.op.domain_shape, device=sino.device, dtype=sino.dtype)
-
     def _solve_data_step(self, sino, z, weight, x0, cg_max_iter, cg_tol):
         """argmin_x ||A x - y||^2 / 2 + weight ||x - z||^2 / 2, by conjugate gradient."""
 
@@ -149,7 +148,8 @@ class PnP(LIONReconstructor):
         :param max_iter: Number of HQS iterations.
         :param noise_level: If given, mu = lambda_ / noise_level**2; otherwise the
             noise level passed to the prior is sqrt(lambda_ / mu).
-        :param x0: Starting image; ``initial_guess(sino)`` (FDK for CT) if None.
+        :param x0: Starting image; ``initial_guess(sino)`` (the operator's
+            default reconstruction, FDK for CT) if None.
         :return: Reconstructed image tensor.
         """
         if noise_level is not None:
@@ -181,7 +181,8 @@ class PnP(LIONReconstructor):
 
         :param step_size: Gradient step; 1 / ||A||^2 if None (||A|| is computed
             once per reconstructor, on the first call).
-        :param x0: Starting image; ``initial_guess(sino)`` (FDK for CT) if None.
+        :param x0: Starting image; ``initial_guess(sino)`` (the operator's
+            default reconstruction, FDK for CT) if None.
         """
         if step_size is None:
             if self._op_norm is None:
@@ -216,13 +217,10 @@ class PnP(LIONReconstructor):
             v = prior(x + u)
             u = u + x - v
 
-        :param x0: Starting image for x and v; zeros if None. For example
-            ``x0=pnp.initial_guess(measurement)`` starts from FDK (CT).
+        :param x0: Starting image for x and v; ``initial_guess(measurement)``
+            (the operator's default reconstruction, FDK for CT) if None.
         """
-        if x0 is None:
-            x = torch.zeros(self.op.domain_shape, device=measurement.device)
-        else:
-            x = x0
+        x = self.initial_guess(measurement) if x0 is None else x0
         v = x.clone()
         u = torch.zeros(self.op.domain_shape, device=measurement.device)
 

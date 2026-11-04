@@ -67,8 +67,9 @@ part.
 - **Records say what happened, not "the default".** A value that depends on
   something only known later (e.g. the operator) is listed as a placeholder
   and replaced by the real value when it is known, so it is saved as that.
-  E.g. `"default"` for a reconstruction (a model's `initial_reconstruction`,
-  a solver's `recon_fn`) becomes the operator's default reconstruction
+  E.g. `"default"` for a reconstruction (a model's or a reconstructor's
+  `initial_reconstruction`, a solver's `recon_fn`) becomes the operator's
+  default reconstruction
   function, `fdk` for CT (`LION.utils.parameter.resolve_reconstruction`);
   E2I's `noise_std = None` becomes the estimated value.
 - **A parameter that is missing means the old behaviour.** When a change alters
@@ -161,7 +162,8 @@ part.
   score per sample. Scores set `higher_is_better = True`, and the solvers keep
   the model with the best validation value accordingly.
 - Validation and testing go through `solver._forward()`, which for most
-  solvers is `LIONsolver.model_forward()`: FDK for image-domain models, plus
+  solvers is `LIONsolver.model_forward()`: the model's initial reconstruction
+  for image-domain models (the operator's default, FDK for CT), plus
   the model's normalisation; a solver whose method defines its own
   reconstruction (e.g. Noise2Inverse's splits) overrides it. Solvers don't
   hold reconstructors: where validation needs one (e.g. a learned

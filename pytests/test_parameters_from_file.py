@@ -196,10 +196,14 @@ def test_a_reconstructors_parameters_from_its_spec():
     parameters = PnP.default_parameters("HQS")
     parameters.max_iter = 3
     written = spec.to_spec(PnP(ScaleOp(2.0, (1, 4, 4)), None, parameters))
-    again = PnP.parameters_from_file(written)
+    # the initial reconstruction recorded is the test operator's, in pytests
+    again = PnP.parameters_from_file(written, allow=["pytests."])
     assert same(again, parameters)
     again.max_iter = 7
-    assert LIONReconstructor.parameters_from_file(written).max_iter == 3
+    assert (
+        LIONReconstructor.parameters_from_file(written, allow=["pytests."]).max_iter
+        == 3
+    )
     changed = LIONReconstructor.instantiate(
         written, allow=["pytests."], parameters=again
     )

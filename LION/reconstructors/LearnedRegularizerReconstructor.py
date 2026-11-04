@@ -5,10 +5,8 @@ from __future__ import annotations
 import torch
 from tqdm import tqdm
 
-from LION.operators.ct.fdk import fdk
 from LION.models.LIONmodel import LIONmodel
 from LION.operators import Operator
-from LION.operators.ct import CTProjectionOp
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 from LION.utils.parameter import LIONParameter
 from LION.models.learned_regularizer.AR import AR
@@ -21,8 +19,9 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
 
         E(x) = \tfrac12 \lVert A x - y \rVert_2^2 + \alpha R(x),
 
-    by gradient descent with a backtracking (Armijo) step size, starting from FDK
-    for CT operators and from zeros otherwise. Each measurement is reconstructed
+    by gradient descent with a backtracking (Armijo) step size, starting from
+    the parameters' ``initial_reconstruction`` (by default the operator's
+    default reconstruction, FDK for CT). Each measurement is reconstructed
     on its own (a batch is reconstructed sample by sample).
 
     Works with any regulariser R (``model``), however it was trained:
@@ -50,7 +49,16 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
 
     @staticmethod
     def default_parameters() -> LIONParameter:
-        return LIONParameter(alpha=1.0, n_steps=150, step_size=1e-6, backtracking=0.95)
+        return LIONParameter(
+            alpha=1.0,
+            n_steps=150,
+            step_size=1e-6,
+            backtracking=0.95,
+            # where the descent starts, f(y, op), when not given x0. "default":
+            # the operator's default reconstruction (FDK for CT), replaced by
+            # that function when the reconstructor is made.
+            initial_reconstruction="default",
+        )
 
     def regularizer_value(self, x: torch.Tensor) -> torch.Tensor:
         """R(x) as a scalar, for one image ``x`` in the operator's domain shape."""
@@ -82,12 +90,6 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
             # gradient for the image only: nothing accumulates in R's weights
             (reg_grad,) = torch.autograd.grad(self.regularizer_value(x), x)
         return data_grad + self.parameters.alpha * reg_grad
-
-    def initial_guess(self, y: torch.Tensor) -> torch.Tensor:
-        """FDK for CT operators, zeros otherwise."""
-        if isinstance(self.op, CTProjectionOp):
-            return fdk(y, self.op)
-        return torch.zeros(self.op.domain_shape, device=y.device, dtype=y.dtype)
 
     def reconstruct_sample(
         self,
