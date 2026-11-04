@@ -136,8 +136,12 @@ part.
   tomosipo's with `to_autograd`). Only an operator that defines it can be used
   where gradients go through the operator: a model asks for it with
   `self._make_operator(autograd=True)` (then `self.A`, `self.AT`), a solver
-  with `self.op.autograd()`; the base class raises. Don't wrap an operator
-  with tomosipo (or anything else) outside its own folder.
+  with `self.op.autograd()`. The base class raises, so it is the operator's
+  author who says it can be differentiated: an operator made only of torch
+  operations returns `(self, self.adjoint)`, as torch differentiates it as it
+  is; one torch can't see into (numpy, an external library) wraps itself in
+  torch autograd functions. Don't wrap an operator with tomosipo (or anything
+  else) outside its own folder.
 - Methods that use parts of the measurements (Noise2Inverse, Sparse2Inverse)
   split through the operator's parameters: `split_count` (for CT, the number
   of angles), `split(indices)` (new parameters for those units only) and
