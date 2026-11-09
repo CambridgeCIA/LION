@@ -42,15 +42,6 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_cuda)
 
 
-# Known to fail: they replace LION modules in sys.modules with mocks, which breaks
-# other tests in the same process. Their batching checks are covered in
-# test_classical_algorithms.py.
-collect_ignore = [
-    "test_sirt.py",
-    "test_tv_min.py",
-]
-
-
 @pytest.fixture(autouse=True)
 def no_results_folder(monkeypatch):
     monkeypatch.delenv("LION_RESULTS_PATH", raising=False)

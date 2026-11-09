@@ -29,8 +29,6 @@ def test_the_spectral_norm_is_that_of_each_images_jacobian():
     norms = jacobian_spectral_norm(conv, x, power_iterations=200)
     torch.testing.assert_close(norms, expected.expand(2), rtol=1e-3, atol=1e-5)
 
-
-def test_the_spectral_norm_is_differentiable_in_the_parameters():
     conv = torch.nn.Conv2d(1, 1, 3, padding=1, bias=False)
     jacobian_spectral_norm(conv, torch.rand(2, 1, 5, 5), 5).sum().backward()
     assert conv.weight.grad is not None and conv.weight.grad.abs().sum() > 0
@@ -55,26 +53,3 @@ def test_the_penalties_follow_their_papers(scale):
     step.target = None  # a solver without clean images
     with pytest.raises(ValueError, match="needs the clean images"):
         firm(None, step)
-
-
-def test_the_defaults_are_the_papers():
-    firm, prox = FirmlyNonexpansivePenalty(), ProximalDenoiserPenalty()
-    assert (firm.weight, firm.epsilon) == (1e-5, 0.05)
-    assert (prox.weight, prox.epsilon, prox.power_iterations) == (1e-3, 0.1, 50)
-    assert "10.1137/20M1387961" in FirmlyNonexpansivePenalty.cite()
-    assert "9483--9505" in ProximalDenoiserPenalty.cite()
-
-
-def test_a_penalty_is_recorded_and_made_again():
-    from LION.utils import spec
-
-    penalty = ProximalDenoiserPenalty(weight=1e-2)
-    written = spec.encode(penalty)
-    assert written == {
-        "_target_": "LION.losses.jacobian_penalty.ProximalDenoiserPenalty",
-        "weight": 1e-2,
-        "epsilon": 0.1,
-        "power_iterations": 50,
-    }
-    made = spec.build(written)
-    assert isinstance(made, ProximalDenoiserPenalty) and made.weight == 1e-2

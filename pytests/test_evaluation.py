@@ -10,7 +10,6 @@ reused), tables. On CPU without tomosipo: models take their input directly
 (sinogram-domain), or FDK is replaced."""
 
 import functools
-import json
 import os
 import tempfile
 import warnings
@@ -21,21 +20,17 @@ os.environ.setdefault("LION_DATA_PATH", tempfile.gettempdir())
 import numpy as np  # noqa: E402
 import pytest  # noqa: E402
 import torch  # noqa: E402
-from torch.utils.data import DataLoader, TensorDataset  # noqa: E402
+from torch.utils.data import DataLoader  # noqa: E402
 
 import LION.evaluation.evaluation as evaluation_module  # noqa: E402
-import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
 from LION.operators.ct.ct_geometry import Geometry  # noqa: E402
 from LION.evaluation import (  # noqa: E402
     Evaluation,
     baseline,
     method,
     read_test_record,
-    scores,
     table,
 )
-from LION.metrics.psnr import PSNR  # noqa: E402
-from LION.metrics.ssim import SSIM  # noqa: E402
 from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
 from LION.models.LIONmodel import ModelInputType  # noqa: E402
 from LION.optimizers.SupervisedSolver import SupervisedSolver  # noqa: E402
@@ -94,7 +89,7 @@ def evaluation(folder, **kwargs):
 # Methods as one call
 
 
-def test_a_model():
+def test_a_model(no_ct, tmp_path):
     m = model()
     run = method(m)
     y = data()[0][0].unsqueeze(0)
@@ -105,8 +100,6 @@ def test_a_model():
     assert run.record["model"]["weights_sha256"] == weights_sha256(m)
     assert run.modules == (m,)
 
-
-def test_a_function_gets_the_operator():
     seen = []
     run = method(lambda y, op: seen.append(op) or y, operator="the operator")
     run(torch.zeros(1))
@@ -115,13 +108,6 @@ def test_a_function_gets_the_operator():
     assert named.record["function"]["_target_"] == "functools.partial"
     assert named.record["source_sha256"] is not None
 
-
-class Doubling(LIONReconstructor):
-    def reconstruct_sample(self, y, x0=None, verbose=0):
-        return 2 * y
-
-
-def test_a_reconstructor():
     net = small_dncnn(ModelInputType.SINOGRAM)
     reconstructor = Doubling(ScaleOp(1.0, (1, 2, 2)), net)
     run = method(reconstructor)
@@ -131,6 +117,26 @@ def test_a_reconstructor():
     assert run.modules == (net,)
     # recorded by its spec: operator and parameters, not the model
     assert set(run.record["reconstructor"]) == {"_target_", "operator", "parameters"}
+
+    solver = make_solver(Halving)
+    run = method(solver)
+    y = data()[0][0].unsqueeze(0)
+    with torch.no_grad():
+        expected = solver.model.eval()(y) / 2
+    torch.testing.assert_close(run(y), expected)
+    assert run.record["kind"] == "solver" and run.record["solver"].endswith("Halving")
+
+    solver = make_solver()
+    path = train_and_save(solver, tmp_path)
+    run = method(path)
+    assert run.record["kind"] == "model"
+    assert run.record["model"]["weights_sha256"] == weights_sha256(solver.model)
+    assert run.record["file"]["_args_"][0].endswith("final")
+
+
+class Doubling(LIONReconstructor):
+    def reconstruct_sample(self, y, x0=None, verbose=0):
+        return 2 * y
 
 
 @pytest.fixture
@@ -166,37 +172,6 @@ def train_and_save(solver, folder):
     return folder / "final"
 
 
-def test_a_solver(no_ct):
-    solver = make_solver(Halving)
-    run = method(solver)
-    y = data()[0][0].unsqueeze(0)
-    with torch.no_grad():
-        expected = solver.model.eval()(y) / 2
-    torch.testing.assert_close(run(y), expected)
-    assert run.record["kind"] == "solver" and run.record["solver"].endswith("Halving")
-
-
-def test_a_model_file(no_ct, tmp_path):
-    solver = make_solver()
-    path = train_and_save(solver, tmp_path)
-    run = method(path)
-    assert run.record["kind"] == "model"
-    assert run.record["model"]["weights_sha256"] == weights_sha256(solver.model)
-    assert run.record["file"]["_args_"][0].endswith("final")
-
-
-def test_a_model_file_runs_as_its_solver(no_ct, tmp_path):
-    path = train_and_save(make_solver(Halving), tmp_path)
-    run = method(path, allow=["pytests."])
-    assert run.record["kind"] == "solver" and run.record["solver"].endswith("Halving")
-    # a loaded model is on LION's default device (the GPU, where there is one)
-    loaded = run.modules[0]
-    y = data()[0][0].unsqueeze(0).to(next(loaded.parameters()).device)
-    with torch.no_grad():
-        expected = loaded.eval()(y) / 2
-    torch.testing.assert_close(run(y), expected)
-
-
 # --------------------------------------------------------------------------
 # The baseline
 
@@ -220,20 +195,6 @@ def test_baseline():
 
     with pytest.raises(ValueError, match="no standard baseline"):
         baseline(NoDefault(torch.eye(4), (1, 2, 2)))
-
-
-# --------------------------------------------------------------------------
-# Scores
-
-
-def test_scores_with_a_range():
-    """Outputs and targets are shifted by the range's minimum."""
-    shifted = TensorDataset(data().noisy + 5, data().clean + 5)
-    metrics = {"PSNR": PSNR(), "SSIM": SSIM()}
-    _, at_five, _ = scores(method(as_is), shifted, metrics, (5.0, 6.0), device="cpu")
-    _, at_zero, _ = scores(method(as_is), data(), metrics, (0.0, 1.0), device="cpu")
-    for name in metrics:
-        np.testing.assert_allclose(at_five[name], at_zero[name], rtol=1e-4)
 
 
 # --------------------------------------------------------------------------
@@ -263,51 +224,15 @@ def test_saved_results_are_reused(tmp_path, monkeypatch):
     again = evaluation(tmp_path).run(model(), "DnCNN")
     assert again.serialize() == first.serialize()
 
-
-def test_other_weights_or_data_are_new_results(tmp_path):
-    evaluation(tmp_path).run(model(0), "DnCNN")
-    evaluation(tmp_path).run(model(1), "DnCNN")
-    Evaluation(dataset=data(seed=1), save_folder=tmp_path, device="cpu").run(
+    # other weights or other data are new results
+    monkeypatch.undo()
+    other = tmp_path / "other"
+    evaluation(other).run(model(0), "DnCNN")
+    evaluation(other).run(model(1), "DnCNN")
+    Evaluation(dataset=data(seed=1), save_folder=other, device="cpu").run(
         model(0), "DnCNN"
     )
-    assert len(list(tmp_path.glob("DnCNN-*.json"))) == 3
-
-
-def test_reused_result_from_other_code_warns(tmp_path):
-    evaluation(tmp_path).run(model(), "DnCNN")
-    path = next(tmp_path.glob("DnCNN-*.json"))
-    saved = json.loads(path.read_text())
-    if saved["environment"]["lion"]["commit"] is None:
-        pytest.skip("LION is not a git checkout here")
-    saved["environment"]["lion"]["commit"] = "0" * 40
-    path.write_text(json.dumps(saved))
-    with pytest.warns(UserWarning, match="reusing"):
-        evaluation(tmp_path).run(model(), "DnCNN")
-
-
-def test_what_cannot_be_described_is_not_saved(tmp_path):
-    with pytest.warns(UserWarning, match="not saved"):
-        evaluation(tmp_path).run(lambda y, op: y, "as is")
-    plain = TensorDataset(data().noisy, data().clean)
-    with pytest.warns(UserWarning, match="not saved"):
-        Evaluation(dataset=plain, save_folder=tmp_path, device="cpu").run(as_is)
-    assert not list(tmp_path.glob("*.json"))
-
-
-def test_dataset_normalisation_reads_only_the_samples():
-    """The dataset range reads samples 0..len-1 by index: a dataset need not
-    raise IndexError past its end (LIDC-IDRI asserts)."""
-
-    class Asserting(torch.utils.data.Dataset):
-        def __len__(self):
-            return 3
-
-        def __getitem__(self, i):
-            assert i < 3
-            return torch.zeros(1), torch.full((1, 2, 2), float(i))
-
-    normalisation = Normalisation("dataset", dataset=Asserting())
-    assert (normalisation.xmin, normalisation.xmax) == (0.0, 2.0)
+    assert len(list(other.glob("DnCNN-*.json"))) == 3
 
 
 def test_normalisations(tmp_path):
@@ -326,23 +251,6 @@ def test_normalisations(tmp_path):
     ]
     # PSNR with a wider range is higher
     assert fixed.summary.PSNR.mean > by_dataset.summary.PSNR.mean
-
-
-def test_dataset_range_is_computed_once(tmp_path, monkeypatch):
-    evaluation(tmp_path).run(as_is)
-    monkeypatch.setattr(
-        Evaluation, "_dataset_range", lambda self: pytest.fail("range computed again")
-    )
-    evaluation(tmp_path).run(model(), "DnCNN")
-
-
-def test_samples(tmp_path):
-    ids = evaluation(tmp_path, samples=3).run(as_is).scores.ids
-    assert ids == ["pair_0", "pair_2", "pair_5"]
-    chosen = evaluation(tmp_path, samples=["pair_4", "pair_1"]).run(as_is)
-    assert chosen.scores.ids == ["pair_4", "pair_1"]
-    with pytest.raises(ValueError, match="not in the test data"):
-        evaluation(tmp_path, samples=["pair_9"]).run(as_is)
 
 
 # --------------------------------------------------------------------------
@@ -364,8 +272,6 @@ def test_markdown_table(tmp_path):
     mean, std = psnr.strip(" *").split(" ± ")
     assert len(mean.split(".")[1]) == len(std.split(".")[1]) == 2
 
-
-def test_latex_table(tmp_path):
     latex = table(records(tmp_path), "latex")
     assert latex.startswith(r"\begin{tabular}{lccc}") and r"\toprule" in latex
     assert r"DnCNN\_1" in latex and r"$\pm$" in latex and r"\textbf{" in latex

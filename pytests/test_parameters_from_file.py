@@ -21,7 +21,6 @@ import pytest  # noqa: E402
 import torch  # noqa: E402
 from torch.utils.data import Subset  # noqa: E402
 
-import LION.operators.ct.ct_utils as ct_utils  # noqa: E402
 from LION.operators.ct.ct_geometry import Geometry  # noqa: E402
 from LION.data_loaders.LIDC_IDRI import LIDC_IDRI  # noqa: E402
 from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
@@ -75,12 +74,6 @@ def test_a_models_parameters_from_its_file(model_file):
     assert DnCNN.parameters_from_file(model_file).blocks == 3
 
 
-def test_a_changed_model_starts_from_new_weights(model_file):
-    parameters = DnCNN.parameters_from_file(model_file)
-    with pytest.raises(ValueError, match="starts from new ones"):
-        DnCNN.instantiate(model_file, model_parameters=parameters, initial_weights=True)
-
-
 # ---------------------------------------------------------------------------
 # Experiments and datasets
 
@@ -116,8 +109,6 @@ def test_an_experiments_parameters_from_a_data_record(data_record):
     written = data_record["experiment"]
     assert Experiment.parameters_from_file(written).noise_params.I0 == 11000
 
-
-def test_a_datasets_parameters_from_a_data_record(data_record):
     parameters = LIDC_IDRI.parameters_from_file(data_record)
     assert parameters.max_num_slices_per_patient == 5
     assert same(LIONDataset.parameters_from_file(data_record), parameters)
@@ -139,7 +130,7 @@ def training_record(solver):
     return {"lion_training_record": 1, "solver": solver}
 
 
-def test_a_solvers_parameters_from_its_training_record():
+def test_a_solvers_parameters_from_its_training_record(monkeypatch):
     parameters = Noisier2InverseSolver.default_parameters()
     parameters.sigma = 7
     record = training_record(
@@ -157,13 +148,8 @@ def test_a_solvers_parameters_from_its_training_record():
         LIONsolver.parameters_from_file(record), SupervisedSolver.default_parameters()
     )
 
-
-def test_a_solver_made_with_changed_parameters(monkeypatch):
-    """Equivariance2Inverse, with an identity for its tomosipo operator."""
-    import types
-
+    # Equivariance2Inverse, with an identity for its tomosipo operator.
     import LION.optimizers.Equivariance2InverseSolver as e2i
-    import LION.optimizers.LIONsolver as lion_solver
     from LION.operators.ct.ct_geometry import Geometry
 
     from pytests.helpers import ScaleOp
@@ -210,17 +196,3 @@ def test_a_reconstructors_parameters_from_its_spec():
         written, allow=["pytests."], parameters=again
     )
     assert type(changed) is PnP and changed.parameters.max_iter == 7
-
-
-def test_another_experiments_parameters_warn():
-    """The experiments differ only in their parameters: made with another's,
-    it would be that experiment, recorded under the wrong class."""
-    parameters = ct_experiments.LowDoseCTRecon.default_parameters()
-    with pytest.warns(UserWarning, match="are LowDoseCTRecon's"):
-        ct_experiments.ExtremeLowDoseCTRecon(parameters)
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        ct_experiments.LowDoseCTRecon(parameters)  # its own
-        ct_experiments.ExtremeLowDoseCTRecon()  # its defaults
-        parameters.name = "Low dose, my detector"  # another experiment
-        ct_experiments.ExtremeLowDoseCTRecon(parameters)

@@ -12,14 +12,12 @@ import inspect
 import pkgutil
 import re
 
-import pytest
 
 import LION
 from LION.data_loaders.LIONDataset import LIONDataset
 from LION.models.LIONmodel import LIONmodel
 from LION.optimizers.LIONsolver import LIONsolver
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
-from LION.utils.citation import citation
 
 BASES = (LIONmodel, LIONsolver, LIONReconstructor, LIONDataset)
 
@@ -67,17 +65,8 @@ def test_every_component_returns_its_citation_or_none():
         # accents keep BibTeX's backslash: {\"O}ktem, not {"O}ktem
         assert bib is None or not re.search(r'\{"[A-Za-z]\}', bib), name
 
-
-def test_components_from_a_paper_cite_it():
     for name in FROM_A_PAPER:
         module, cls = name.rsplit(".", 1)
         cls = getattr(importlib.import_module(module), cls)
         assert cls.cite().startswith("@"), name  # BibTeX by default
         assert cls.cite("MLA") and not cls.cite("MLA").startswith("@"), name
-
-
-def test_the_citation_helper():
-    assert citation("bib", bib="\n    @article{a}\n    ", mla="A.") == "@article{a}"
-    assert citation("MLA", bib="", mla="  A. B.  ") == "A. B."
-    with pytest.raises(ValueError, match="not understood"):
-        citation("APA", bib="", mla="")

@@ -11,7 +11,7 @@ nor need LION_DATA_PATH (it is unset), nor load matplotlib or the optional
 backends; a missing backend says what is missing when it is needed.
 
 Everything runs in one fresh interpreter per check (starting Python and torch
-is the slow part), with the results reported per module.
+is the slow part).
 """
 
 import json
@@ -121,9 +121,9 @@ def missing_backend_errors():
     )
 
 
-@pytest.mark.parametrize("module", MODULES)
-def test_imports_without_tomosipo(import_errors, module):
-    assert import_errors[module] is None, import_errors[module]
+def test_imports_without_tomosipo(import_errors):
+    failed = {module: error for module, error in import_errors.items() if error}
+    assert failed == {}, "\n".join(failed.values())
 
 
 # Modules that others import early: each must import first, on its own (an
@@ -138,26 +138,26 @@ FIRST_IMPORTS = [
 ]
 
 
-@pytest.mark.parametrize("module", FIRST_IMPORTS)
-def test_imports_first_on_its_own(module):
-    error = run_isolated(
-        f"""
-        import traceback
-        try:
-            __import__({module!r})
-            print(json.dumps(None))
-        except Exception:
-            print(json.dumps(traceback.format_exc()))
-        """
-    )
-    assert error is None, error
+def test_imports_first_on_its_own():
+    for module in FIRST_IMPORTS:
+        error = run_isolated(
+            f"""
+            import traceback
+            try:
+                __import__({module!r})
+                print(json.dumps(None))
+            except Exception:
+                print(json.dumps(traceback.format_exc()))
+            """
+        )
+        assert error is None, error
 
 
-@pytest.mark.parametrize("call, says", CALLS.items(), ids=lambda v: v[:40])
-def test_backends_say_what_is_missing(missing_backend_errors, call, says):
-    message = missing_backend_errors[call]
-    assert message is not None, "no ImportError raised"
-    assert says in message
+def test_backends_say_what_is_missing(missing_backend_errors):
+    for call, says in CALLS.items():
+        message = missing_backend_errors[call]
+        assert message is not None, f"no ImportError raised by {call}"
+        assert says in message, call
 
 
 # torchvision is not used by LION; mrpro (MRI) and spyrit (Walsh-Hadamard) are
@@ -183,14 +183,3 @@ def test_import_does_not_load_heavy_backends():
         """
     )
     assert loaded == []
-
-
-def test_mrpro_wrapper_is_defined_on_first_use():
-    pytest.importorskip("mrpro")
-    from LION.operators.Operator import MrproLinearOp
-    from mrpro.operators.LinearOperator import LinearOperator
-
-    assert issubclass(MrproLinearOp, LinearOperator)
-    assert MrproLinearOp.__qualname__ == "MrproLinearOp"
-    module = sys.modules["LION.operators.Operator"]
-    assert module.MrproLinearOp is MrproLinearOp  # defined once

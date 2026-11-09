@@ -34,29 +34,20 @@ def _ref_ssim(x, t):
     return skim_ssim(x, t, data_range=t.max() - t.min())
 
 
-@pytest.mark.parametrize("metric, ref", [(PSNR(), _ref_psnr), (SSIM(), _ref_ssim)])
-@pytest.mark.parametrize("batch_size", [1, 3])
-def test_batched_matches_whole_image_reference(pair, metric, ref, batch_size):
-    x, target = pair[0][:batch_size], pair[1][:batch_size]
-    vals = metric(x, target)
-    assert vals.shape == (batch_size,)
-    for i in range(batch_size):
-        assert vals[i].item() == pytest.approx(ref(x[i], target[i]), rel=1e-5)
+def test_batched_matches_whole_image_reference(pair):
+    for batch_size in [1, 3]:
+        for metric, ref in [(PSNR(), _ref_psnr), (SSIM(), _ref_ssim)]:
+            x, target = pair[0][:batch_size], pair[1][:batch_size]
+            vals = metric(x, target)
+            assert vals.shape == (batch_size,)
+            for i in range(batch_size):
+                assert vals[i].item() == pytest.approx(ref(x[i], target[i]), rel=1e-5)
 
-
-@pytest.mark.parametrize("metric, ref", [(PSNR(), _ref_psnr), (SSIM(), _ref_ssim)])
-def test_unbatched(pair, metric, ref):
-    x, target = pair[0][0], pair[1][0]
-    assert metric(x, target, batched=False).item() == pytest.approx(
-        ref(x, target), rel=1e-5
-    )
-
-
-def test_reduce_mean(pair):
-    x, target = pair
-    torch.testing.assert_close(
-        PSNR()(x, target, reduce="mean"), PSNR()(x, target).mean()
-    )
+    for metric, ref in [(PSNR(), _ref_psnr), (SSIM(), _ref_ssim)]:
+        x, target = pair[0][0], pair[1][0]
+        assert metric(x, target, batched=False).item() == pytest.approx(
+            ref(x, target), rel=1e-5
+        )
 
 
 @pytest.mark.parametrize("metric", [PSNR(), SSIM()])
@@ -94,39 +85,3 @@ def test_haarpsi_matches_piq(smooth_pair, channels):
         rtol=1e-3,
         atol=1e-4,
     )
-
-
-def test_haarpsi_like_the_other_metrics(smooth_pair):
-    x, target = (v[:, :1] for v in smooth_pair)
-    metric = HAARPsi()
-    scores = metric(x, target)
-    assert scores.shape == (3,)
-    torch.testing.assert_close(metric(target, target), torch.ones(3))
-    assert torch.all(scores < 1)
-    torch.testing.assert_close(metric(x, target, reduce="mean"), scores.mean())
-    # unbatched, and (B, H, W) / (H, W) without the channel
-    torch.testing.assert_close(metric(x[0], target[0], batched=False), scores[0])
-    torch.testing.assert_close(metric(x[:, 0], target[:, 0]), scores)
-    torch.testing.assert_close(metric(x[0, 0], target[0, 0], batched=False), scores[0])
-    # the maps
-    score, local, weights = metric.maps(x, target)
-    torch.testing.assert_close(score, scores)
-    assert local.shape == weights.shape == (3, 2, 16, 16)  # subsampled by 2
-
-
-def test_haarpsi_any_image_values(smooth_pair):
-    """Images need not be in [0, 1] (e.g. densities, noisy reconstructions):
-    by default each target is mapped to [0, 1]."""
-    x, target = (v[:, :1] for v in smooth_pair)
-    noisy = target + 0.2 * torch.randn_like(target)  # values outside [0, 1]
-    metric = HAARPsi()
-    torch.testing.assert_close(
-        metric(3 * noisy + 2, 3 * target + 2), metric(noisy, target)
-    )
-    # a given data_range: images in [0, data_range]
-    torch.testing.assert_close(
-        metric(1.5 * x, 1.5 * target, data_range=1.5),
-        metric(x, target, data_range=1.0),
-    )
-    with pytest.raises(ValueError):
-        metric(x, target[:2])

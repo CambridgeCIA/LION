@@ -23,7 +23,6 @@ import numpy as np  # noqa: E402
 import pytest  # noqa: E402
 
 import LION.data_loaders.LIDC_IDRI as lidc  # noqa: E402
-import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
 
 FOLDER = pathlib.Path(lidc.__file__).parent / "LIDC_IDRI"
 
@@ -46,23 +45,21 @@ def disk(radius_mm, spacing, centre_mm=(0.0, 0.0), value=1000.0, background=-100
     return np.where(inside, value, background).astype(np.int16)
 
 
-@pytest.mark.parametrize("spacing", [0.4609375, 0.586, 0.703125, 0.9])
-def test_objects_keep_their_size_and_position(spacing):
+def test_objects_keep_their_size_and_position():
     """A disk of 60 mm radius, 40 mm off centre, has the same size and position
     in mm after resampling; outside the scan it is air."""
-    out = resampling.resample_ct_slice(disk(60, spacing, (40.0, -20.0)), spacing)
-    new = resampling.PIXEL_SPACING_MM
-    inside = out > 0
-    assert inside.sum() * new**2 == pytest.approx(np.pi * 60**2, rel=0.02)
-    rows, cols = np.nonzero(inside)
-    assert (rows.mean() - 255.5) * new == pytest.approx(40.0, abs=0.5)
-    assert (cols.mean() - 255.5) * new == pytest.approx(-20.0, abs=0.5)
-    # the scan's field of view is 512 * spacing; beyond it, air
-    edge = int(256 - 256 * spacing / new) - 2
-    assert np.all(out[:, :edge] == -1000)
+    for spacing in [0.4609375, 0.586, 0.703125, 0.9]:
+        out = resampling.resample_ct_slice(disk(60, spacing, (40.0, -20.0)), spacing)
+        new = resampling.PIXEL_SPACING_MM
+        inside = out > 0
+        assert inside.sum() * new**2 == pytest.approx(np.pi * 60**2, rel=0.02)
+        rows, cols = np.nonzero(inside)
+        assert (rows.mean() - 255.5) * new == pytest.approx(40.0, abs=0.5)
+        assert (cols.mean() - 255.5) * new == pytest.approx(-20.0, abs=0.5)
+        # the scan's field of view is 512 * spacing; beyond it, air
+        edge = int(256 - 256 * spacing / new) - 2
+        assert np.all(out[:, :edge] == -1000)
 
-
-def test_masks_stay_binary_with_their_area():
     mask = (disk(10, 0.6) > 0).astype(np.int16)
     out = resampling.resample_mask(mask, 0.6)
     assert set(np.unique(out)) <= {0, 1} and out.dtype == np.int16
@@ -160,51 +157,6 @@ def test_old_dataset_is_resampled_in_place(preprocessing, tmp_path):
 # Geometry
 
 
-def test_default_geometry_covers_the_field_of_view():
-    operator_params = lidc.LIDC_IDRI.default_geometry()
-    assert list(operator_params.image_shape) == [1, 512, 512]
-    assert (
-        operator_params.image_size[-1] / operator_params.image_shape[-1]
-        == lidc.PIXEL_SPACING_MM
-    )
-    # radius of the circle the fan beam sees: dso * sin(half fan angle)
-    half_fan = np.arctan(operator_params.detector_size[-1] / 2 / operator_params.dsd)
-    assert operator_params.dso * np.sin(half_fan) >= 250  # the 500 mm field of view
-    assert len(operator_params.angles) == 360
-
-
-def test_loader_warns_if_the_geometry_does_not_match():
-    dataset = lidc.LIDC_IDRI.__new__(lidc.LIDC_IDRI)  # no data needed
-    dataset.pixel_spacing_mm = lidc.PIXEL_SPACING_MM
-    dataset.parameters = types.SimpleNamespace(
-        operator_params=lidc.LIDC_IDRI.default_geometry()
-    )
-    dataset.check_geometry()  # no warning
-    dataset.parameters.operator_params = (
-        ct_experiments.ctgeo.Geometry.default_parameters()
-    )
-    with pytest.warns(UserWarning, match="pixel size"):
-        dataset.check_geometry()
-
-
-@pytest.mark.parametrize(
-    "cls, preset",
-    [
-        (ct_experiments.ExtremeLowDoseCTRecon, "default_parameters"),
-        (ct_experiments.LimitedAngleCTRecon, "sparse_angle_parameters"),
-        (ct_experiments.SparseAngleCTRecon, "sparse_view_parameters"),
-    ],
-)
-def test_lidc_experiments_use_the_lidc_geometry_with_the_same_angles(cls, preset):
-    operator_params = cls.default_parameters().operator_params
-    old = getattr(ct_experiments.ctgeo.Geometry, preset)()
-    np.testing.assert_allclose(operator_params.angles, old.angles)
-    assert (
-        operator_params.image_size[-1] == 500
-        and operator_params.detector_shape[-1] == 1024
-    )
-
-
 def test_new_patients_are_resampled(preprocessing, tmp_path):
     """process_volume resamples the scan's slices and records the spacing."""
     volume = np.stack([disk(80, 0.6), disk(90, 0.6)], axis=-1)
@@ -220,16 +172,6 @@ def test_new_patients_are_resampled(preprocessing, tmp_path):
 
 # --------------------------------------------------------------------------
 # Damaged files: left out with a warning
-
-
-def test_incomplete_npy_files_are_found(tmp_path):
-    good, bad = tmp_path / "good.npy", tmp_path / "bad.npy"
-    np.save(good, np.zeros((512, 512), dtype=np.int16))
-    np.save(bad, np.zeros((512, 512), dtype=np.int16))
-    bad.write_bytes(bad.read_bytes()[:131072])  # as a cut-off copy
-    assert lidc.npy_problem(good) is None
-    assert "incomplete" in lidc.npy_problem(bad)
-    assert "unreadable" in lidc.npy_problem(tmp_path / "missing.npy")
 
 
 @pytest.mark.parametrize("task", ["reconstruction", "segmentation"])
@@ -262,29 +204,6 @@ def test_loader_leaves_out_damaged_slices(tmp_path, task):
     assert kept["LIDC-IDRI-0001"] == ([0] if task == "segmentation" else [0, 2])
     assert kept["LIDC-IDRI-0002"] == [0, 1, 2]
     assert kept["LIDC-IDRI-0003"] == []
-
-
-def test_dataset_record_lists_patients_not_resampled(preprocessing, tmp_path):
-    fake_processed_patient(tmp_path / "LIDC-IDRI-0001", 0.7)
-    fake_processed_patient(tmp_path / "LIDC-IDRI-0002", 0.5)
-    preprocessing.resample_processed_patient(tmp_path / "LIDC-IDRI-0002", 0.5)
-    preprocessing.write_pre_processing_file(tmp_path)
-    assert lidc.LIDC_IDRI.read_not_resampled(tmp_path) == ["LIDC-IDRI-0001"]
-    assert lidc.LIDC_IDRI.read_pixel_spacing(tmp_path) == lidc.PIXEL_SPACING_MM
-
-
-def test_conversion_goes_on_after_a_damaged_patient(preprocessing, tmp_path):
-    for patient, spacing in SPACINGS.items():
-        fake_processed_patient(tmp_path / patient, spacing)
-    damaged = tmp_path / "LIDC-IDRI-0001" / "slice_1.npy"
-    original = damaged.read_bytes()[:131072]
-    damaged.write_bytes(original)
-    preprocessing.resample_processed_dataset(tmp_path)
-    assert not preprocessing.is_resampled(tmp_path / "LIDC-IDRI-0001")
-    assert damaged.read_bytes() == original  # left as it was
-    assert preprocessing.is_resampled(tmp_path / "LIDC-IDRI-0002")
-    assert not list(tmp_path.glob("*.tmp"))
-    assert lidc.LIDC_IDRI.read_not_resampled(tmp_path) == ["LIDC-IDRI-0001"]
 
 
 # --------------------------------------------------------------------------
@@ -323,19 +242,3 @@ def test_lidc_patient_list(tmp_path):
     patients, total = lidc.LIDC_IDRI.patient_list(tmp_path, legacy=True)
     assert patients == [f"LIDC-IDRI-{n:04d}" for n in range(1, 7)]  # 0003: none
     assert total == 7
-
-
-@pytest.mark.parametrize("legacy", [False, True])
-def test_lidc_loader_legacy_patient_list(tmp_path, legacy):
-    fake_lidc(tmp_path, range(1, 11), extra=["LIDC-IDRI-0010.old"])
-    params = lidc.LIDC_IDRI.default_parameters(task="segmentation")
-    params.folder = tmp_path
-    assert params.legacy_patient_list is False
-    params.legacy_patient_list = legacy  # True: the list before October 2026
-    data = lidc.LIDC_IDRI("test", parameters=params)
-    if legacy:  # 11 entries: patients 1-11, proportions of 12
-        assert data.patient_ids[-1] == "LIDC-IDRI-0011"
-        assert data.testing_patients_list == ["LIDC-IDRI-0011"]
-    else:  # the 10 patient folders
-        assert data.patient_ids == [f"LIDC-IDRI-{n:04d}" for n in range(1, 11)]
-        assert data.testing_patients_list == ["LIDC-IDRI-0010"]

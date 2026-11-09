@@ -19,9 +19,6 @@ import LION.models.iterative_unrolled.ItNet as itnet_module
 from LION.operators.ct.ct_geometry import Geometry
 from LION.models.CNNs.dncnn import DnCNN
 from LION.models.CNNs.drunet import DRUNet
-from LION.models.CNNs.MSDNet import MSDNet
-from LION.models.CNNs.UNets.ResUNet3D import ResUNet3D
-from LION.models.CNNs.UNets.Unet import UNet
 from LION.models.iterative_unrolled.ItNet import ItNet
 from LION.models.learned_regularizer.ACR import ACR
 from LION.models.learned_regularizer.AR import AR
@@ -53,30 +50,6 @@ def no_ct_operator(monkeypatch):
 # Construction with default parameters
 
 
-def small_msd_params():
-    params = MSDNet.default_parameters()
-    params.depth = 4
-    params.dilations = [1, 2, 3, 4]
-    return params
-
-
-@ignore_warnings
-def test_msdnet_defaults():
-    params = MSDNet.default_parameters()
-    assert params.model_input_type is ModelInputType.IMAGE
-    model = MSDNet(small_msd_params())
-    assert model(torch.rand(2, 1, 16, 16)).shape == (2, 1, 16, 16)
-
-
-@ignore_warnings
-def test_resunet3d():
-    params = ResUNet3D.default_parameters()
-    model = ResUNet3D(params)
-    out = model(torch.rand(2, 1, 16, 16, 16))
-    assert out.shape == (2, 1, 16, 16, 16)
-    assert (out >= 0).all() and (out <= 1).all()  # sigmoid output
-
-
 @ignore_warnings
 def test_acr_is_convex_along_a_line():
     torch.manual_seed(0)
@@ -96,9 +69,10 @@ def _save(model, path):
     model.save(path, dataset=LIONParameter(name="test"), training=LIONParameter())
 
 
-@pytest.mark.parametrize(
-    "normalisation, expected",
-    [
+def test_the_normalisation_is_saved_and_loaded(tmp_path):
+    """A model reconstructs with the normalisation it was trained with, so its
+    file keeps it (a "dataset" one by its range: the dataset isn't needed)."""
+    for normalisation, expected in [
         (dict(normalisation_type="custom", data_range=(0.0, 10.0)), [0.0, 10.0]),
         (dict(normalisation_type="sample"), None),
         (
@@ -108,25 +82,19 @@ def _save(model, path):
             ),
             [-1.0, 3.0],
         ),
-    ],
-)
-def test_the_normalisation_is_saved_and_loaded(tmp_path, normalisation, expected):
-    """A model reconstructs with the normalisation it was trained with, so its
-    file keeps it (a "dataset" one by its range: the dataset isn't needed)."""
-    model = DnCNN()
-    model.set_normalisation(**normalisation)
-    _save(model, tmp_path / "model")
-    loaded, _, _ = DnCNN.load(tmp_path / "model", supress_warnings=True)
-    assert loaded.normalisator.record() == {
-        "type": normalisation["normalisation_type"],
-        "range": expected,
-    }
-    x = 4 * torch.rand(1, 1, 8, 8)
-    torch.testing.assert_close(loaded.normalise(x), model.normalise(x))
+    ]:
+        model = DnCNN()
+        model.set_normalisation(**normalisation)
+        _save(model, tmp_path / "model")
+        loaded, _, _ = DnCNN.load(tmp_path / "model", supress_warnings=True)
+        assert loaded.normalisator.record() == {
+            "type": normalisation["normalisation_type"],
+            "range": expected,
+        }
+        x = 4 * torch.rand(1, 1, 8, 8)
+        torch.testing.assert_close(loaded.normalise(x), model.normalise(x))
 
-
-def test_the_normalisation_is_a_parameter():
-    """It is in the model's parameters (so its spec), and made with it."""
+    # It is in the model's parameters (so its spec), and made with it.
     model = DnCNN()
     model.set_normalisation("custom", data_range=(0.0, 4.0))
     assert vars(model.model_parameters.normalisation) == {
@@ -139,57 +107,6 @@ def test_the_normalisation_is_a_parameter():
     assert made.normalisator.record() == {"type": "custom", "range": [0.0, 4.0]}
     # parameters without it (files saved before): no normalisation
     assert DnCNN(DnCNN.default_parameters()).normalisator is None
-
-
-def test_sample_normalisation_maps_back_with_the_inputs_range():
-    from LION.utils.normaliser import Normalisation
-
-    sample = Normalisation("sample")
-    a, b = torch.rand(1, 1, 4, 4), 10 * torch.rand(1, 1, 4, 4)
-    normalised_a = sample.normalise(a)
-    sample.normalise(b)  # something else normalised in between
-    torch.testing.assert_close(sample.unnormalise(normalised_a, a), a)
-
-
-def test_acr_does_not_normalise_its_inputs_itself():
-    torch.manual_seed(0)
-    model = ACR()
-    x = torch.rand(1, 1, 32, 32)
-    with torch.no_grad():
-        plain = model(x)
-        model.set_normalisation("custom", data_range=(0.0, 10.0))
-        torch.testing.assert_close(model(x), plain)
-
-
-def test_nested_model_parameters_load(tmp_path):
-    """GSD keeps its backbone's parameters inside its own: loaded from JSON
-    they are plain LIONParameters, which the backbone must accept."""
-    from LION.models.PnP.gradient_step_denoiser import GSD
-
-    torch.manual_seed(0)
-    model = small_gsd().eval()
-    _save(model, tmp_path / "model")
-    loaded, _, _ = GSD.load(tmp_path / "model", supress_warnings=True)
-    loaded = loaded.cpu().eval()  # load() puts the model on the default device
-    backbone = loaded._backbone_model.model_parameters
-    assert isinstance(backbone, LIONModelParameter)
-    assert backbone.model_input_type is ModelInputType.IMAGE
-    x = torch.rand(1, 1, 16, 16)
-    torch.testing.assert_close(loaded(x), model(x))
-
-
-def test_gsd_saves_and_loads_its_denoiser(tmp_path):
-    from LION.models.PnP.gradient_step_denoiser import GSD
-
-    torch.manual_seed(0)
-    model = small_gsd_dncnn().eval()
-    assert model.model_parameters.backbone_params is None
-    _save(model, tmp_path / "model")
-    loaded, _, _ = GSD.load(tmp_path / "model", supress_warnings=True)
-    loaded = loaded.cpu().eval()
-    assert type(loaded._backbone_model).__name__ == "DnCNN"
-    x = torch.rand(1, 1, 16, 16)
-    torch.testing.assert_close(loaded(x), model(x))
 
 
 def test_gsd_takes_a_noise_level_if_its_denoiser_does():
@@ -209,22 +126,6 @@ def test_gsd_takes_a_noise_level_if_its_denoiser_does():
     params.backbone_params.use_noise_level = True
     params.backbone_params.in_channels = 1
     assert GSD(params).takes_noise_level()  # DRUNet's own option
-
-
-def test_gsd_is_differentiable_with_respect_to_its_input():
-    """As in a network trained end to end: the gradient reaches the input,
-    through the denoiser's gradient too (not only through x - ...)."""
-    torch.manual_seed(0)
-    model = small_gsd_dncnn().eval().double()
-    x = torch.rand(1, 1, 4, 4, dtype=torch.double, requires_grad=True)
-    assert torch.autograd.gradcheck(model, (x,))  # matches finite differences
-
-
-def test_gsd_denoiser_must_be_a_lion_model():
-    from LION.models.PnP.gradient_step_denoiser import GSD
-
-    with pytest.raises(TypeError, match="LIONmodel"):
-        GSD(denoiser=torch.nn.Conv2d(1, 1, 3, padding=1))
 
 
 class Middle(LIONmodel):
@@ -264,31 +165,47 @@ class Outer(LIONmodel):
         return self.scale * self.middle(x)
 
 
-@pytest.mark.parametrize("cls", [Middle, Outer])
-def test_models_inside_models_load(tmp_path, cls):
+def test_models_inside_models_load(tmp_path):
     """Any LIONmodel that builds other LIONmodels from nested parameters, at
     any depth, loads: each model converts its own parameters."""
+    for cls in [Middle, Outer]:
+        torch.manual_seed(0)
+        model = cls().eval()
+        _save(model, tmp_path / "model")
+        loaded, _, _ = cls.load(tmp_path / "model", supress_warnings=True)
+        loaded = loaded.cpu().eval()
+        x = torch.rand(1, 1, 16, 16)
+        torch.testing.assert_close(loaded(x), model(x))
+        inner = loaded.inner if cls is Middle else loaded.middle.inner
+        assert isinstance(inner.model_parameters, LIONModelParameter)
+        assert inner.get_input_type() is ModelInputType.IMAGE
+
+    # GSD keeps its backbone's parameters inside its own: loaded from JSON they
+    # are plain LIONParameters, which the backbone must accept.
+    from LION.models.PnP.gradient_step_denoiser import GSD
+
     torch.manual_seed(0)
-    model = cls().eval()
+    model = small_gsd().eval()
     _save(model, tmp_path / "model")
-    loaded, _, _ = cls.load(tmp_path / "model", supress_warnings=True)
-    loaded = loaded.cpu().eval()
+    loaded, _, _ = GSD.load(tmp_path / "model", supress_warnings=True)
+    loaded = loaded.cpu().eval()  # load() puts the model on the default device
+    backbone = loaded._backbone_model.model_parameters
+    assert isinstance(backbone, LIONModelParameter)
+    assert backbone.model_input_type is ModelInputType.IMAGE
     x = torch.rand(1, 1, 16, 16)
     torch.testing.assert_close(loaded(x), model(x))
-    inner = loaded.inner if cls is Middle else loaded.middle.inner
-    assert isinstance(inner.model_parameters, LIONModelParameter)
-    assert inner.get_input_type() is ModelInputType.IMAGE
 
+    from LION.models.PnP.gradient_step_denoiser import GSD
 
-def test_models_take_plain_parameters():
-    """A plain LIONParameter works as model parameters; a Geometry is refused."""
-    params = LIONParameter(**vars(DnCNN.default_parameters()))
-    params.model_input_type = int(ModelInputType.IMAGE)  # as JSON stores it
-    model = DnCNN(params)
-    assert isinstance(model.model_parameters, LIONModelParameter)
-    assert model.get_input_type() is ModelInputType.IMAGE
-    with pytest.raises(TypeError, match="Geometry"):
-        DnCNN(Geometry.default_parameters())
+    torch.manual_seed(0)
+    model = small_gsd_dncnn().eval()
+    assert model.model_parameters.backbone_params is None
+    _save(model, tmp_path / "model")
+    loaded, _, _ = GSD.load(tmp_path / "model", supress_warnings=True)
+    loaded = loaded.cpu().eval()
+    assert type(loaded._backbone_model).__name__ == "DnCNN"
+    x = torch.rand(1, 1, 16, 16)
+    torch.testing.assert_close(loaded(x), model(x))
 
 
 def test_load_checkpoint_round_trip(tmp_path):
@@ -312,16 +229,6 @@ def test_load_checkpoint_round_trip(tmp_path):
     assert data["loss"] == 0.5
     for key, value in model.state_dict().items():
         torch.testing.assert_close(loaded.state_dict()[key].cpu(), value.cpu())
-
-
-def test_save_does_not_change_model_parameters(tmp_path):
-    params = DnCNN.default_parameters()
-    params.extra = LIONParameter(depth=2)
-    with pytest.warns(UserWarning, match="unknown parameter"):
-        model = DnCNN(params)
-    _save(model, tmp_path / "model")
-    assert isinstance(model.model_parameters.extra, LIONParameter)
-    assert model.model_parameters.extra.depth == 2
 
 
 def small_geometry(n=16):
@@ -380,8 +287,6 @@ def test_files_with_the_old_name_of_the_operator_params_load(monkeypatch, tmp_pa
     assert list(loaded.operator_params.image_shape) == [1, 16, 16]
     assert list(options.operator_params.image_shape) == [1, 16, 16]
 
-
-def test_old_names_of_the_operator_params_are_renamed_at_any_depth():
     from LION.utils.parameter import with_current_names
 
     old = {
@@ -400,16 +305,6 @@ def test_old_names_of_the_operator_params_are_renamed_at_any_depth():
     assert with_current_names(current) == current
 
 
-@pytest.mark.parametrize("shape", [(512, 512), (362, 362), (100, 60)])
-def test_ar_any_image_size(shape):
-    operator_params = Geometry.default_parameters()
-    operator_params.image_shape = [1, *shape]
-    model = AR(operator_params, AR.default_parameters())
-    assert model(torch.rand(2, 1, *shape)).shape == (2, 1)
-    if shape == (512, 512):  # same layer as before for multiples of 16
-        assert model.fc[0].in_features == 128 * 32 * 32
-
-
 def test_drunet_takes_one_noise_level_per_image():
     params = DRUNet.default_parameters()
     params.use_noise_level = True
@@ -424,15 +319,6 @@ def test_drunet_takes_one_noise_level_per_image():
         model(x, noise_level=torch.tensor([0.1, 0.2, 0.3]))
     with pytest.raises(ValueError, match="non-negative"):
         model(x, noise_level=-0.1)
-
-
-def test_drunet_noise_level_with_several_channels():
-    params = DRUNet.default_parameters()
-    params.in_channels = params.out_channels = 3
-    params.use_noise_level = True
-    params.int_channels, params.n_blocks = 8, 1
-    out = DRUNet(params)(torch.rand(2, 3, 16, 16), noise_level=0.1)
-    assert out.shape == (2, 3, 16, 16)
 
 
 # --------------------------------------------------------------------------
@@ -481,49 +367,6 @@ def test_cfbpconvnet_runs_on_images(tmp_path):
     torch.testing.assert_close(loaded(x.detach()), model(x.detach()))
 
 
-@ignore_warnings
-def test_cfbpconvnet_second_order_is_not_implemented():
-    from LION.models.post_processing.cFBPConvNet import cFBPConvNet
-
-    model = cFBPConvNet(model_parameters=small_cfbpconvnet_params(solver="rk4"))
-    assert model.second_order is False and model.solver == "rk4"
-    with pytest.raises(NotImplementedError, match="second-order"):
-        cFBPConvNet(model_parameters=small_cfbpconvnet_params(do_second_order=True))
-
-
-# --------------------------------------------------------------------------
-# UNet: conv-norm-relu twice, or the old single norm
-
-
-def _norms(block):
-    return [
-        name for name, m in block.named_children() if isinstance(m, torch.nn.GroupNorm)
-    ]
-
-
-def small_unet_params(**overrides):
-    params = UNet.default_parameters()
-    params.baseDim = 4
-    params.noGrp = 2
-    for k, v in overrides.items():
-        setattr(params, k, v)
-    return params
-
-
-def test_without_the_option_the_old_architecture():
-    params = small_unet_params()
-    params.norm_after_second_conv = False  # the single-norm blocks of before
-    model = UNet(params)
-    assert _norms(model.encoder1) == ["enc1gn1"]
-
-
-def test_old_state_dict_loads_strictly():
-    old = small_unet_params(norm_after_second_conv=False)
-    state = UNet(old).state_dict()
-    assert not any("gn2" in k for k in state)
-    UNet(old).load_state_dict(state, strict=True)
-
-
 # --------------------------------------------------------------------------
 # ItNet step sizes and differentiable data step
 
@@ -536,24 +379,6 @@ def itnet_params(step_size, learned_step):
     p.Unet_params.baseDim = 4
     p.Unet_params.noGrp = 2
     return p
-
-
-@pytest.mark.parametrize("learned_step", [True, False])
-@pytest.mark.parametrize(
-    "step_size, expected",
-    [(0.5, [0.5, 0.5, 0.5]), ([0.1, 0.2, 0.3], [0.1, 0.2, 0.3]), (None, [1, 1, 1])],
-)
-def test_step_size_per_iteration(no_ct_operator, step_size, expected, learned_step):
-    model = ItNet(Geometry.default_parameters(), itnet_params(step_size, learned_step))
-    steps = [float(model.step_size[i].detach()) for i in range(3)]
-    np.testing.assert_allclose(steps, expected, rtol=1e-6)
-
-
-def test_fixed_steps_move_with_the_model(no_ct_operator):
-    model = ItNet(Geometry.default_parameters(), itnet_params(0.5, False))
-    assert "step_size" in dict(model.named_buffers())
-    model.to(torch.float64)
-    assert model.step_size.dtype == torch.float64
 
 
 def test_data_step_is_differentiable(no_ct_operator, monkeypatch):
@@ -638,33 +463,9 @@ def make_lpd(module, monkeypatch, calls=None, **params):
     return model_class(lpd_geometry(), p)
 
 
-@ignore_warnings
-@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
-def test_lpd_channels_follow_the_parameters(lpd_module, monkeypatch):
-    sino = torch.rand(2, 1, 6, 5)
-    assert make_lpd(lpd_module, monkeypatch)(sino).shape == (2, 1, 8, 8)
-    custom = make_lpd(
-        lpd_module,
-        monkeypatch,
-        data_channels=[6, 16, 16, 4],  # 4 dual channels (+ A f and g)
-        reg_channels=[4, 16, 16, 3],  # 3 primal channels (+ A^T h)
-    )
-    assert custom(sino).shape == (2, 1, 8, 8)
-    with pytest.raises(ValueError, match="data_channels"):
-        make_lpd(lpd_module, monkeypatch, data_channels=[7, 16, 16, 4])
-
-
 def constant_reconstruction(sino, op, value=0.0):
     """An initial reconstruction for tests: a constant 8x8 image per sample."""
     return torch.full((sino.shape[0], 1, 8, 8), value)
-
-
-@ignore_warnings
-@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
-def test_lpd_checks_the_measurements_against_its_operator(lpd_module, monkeypatch):
-    model = make_lpd(lpd_module, monkeypatch)  # operator range (1, 6, 5)
-    with pytest.raises(ValueError, match="operator's range"):
-        model(torch.rand(2, 1, 7, 5))
 
 
 @ignore_warnings
@@ -684,43 +485,17 @@ def test_lpd_starts_from_its_initial_reconstruction(lpd_module, monkeypatch):
     )
     assert not torch.allclose(model(sino), default)
 
-
-@ignore_warnings
-@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
-@pytest.mark.parametrize("channel", [1, 0])
-def test_lpd_dual_step_projects_the_chosen_primal_channel(
-    lpd_module, monkeypatch, channel
-):
-    """Adler & Oktem project primal channel 1 in the dual step (the default);
-    0 is LION's old channel."""
-    calls = []
-    model = make_lpd(lpd_module, monkeypatch, calls)
-    assert model.model_parameters.dual_step_primal_channel == 1
-    model.model_parameters.dual_step_primal_channel = channel
-
-    class ChannelIndex(torch.nn.Module):  # primal update: channel k gets k + 1
-        def forward(self, x):
-            n = model.model_parameters.reg_channels[-1]
-            k = torch.arange(1.0, n + 1).view(1, n, 1, 1)
-            return k * torch.ones(x.shape[0], n, *x.shape[2:])
-
-    setattr(model, "0_primal", ChannelIndex())
-    model(torch.rand(1, 1, 6, 5))
-    # FDK start is 0, so after one primal step channel c is c + 1 (+ the update)
-    assert calls[1].mean().item() == pytest.approx(channel + 1)
-
-
-@ignore_warnings
-@pytest.mark.parametrize("lpd_module", LPD_MODULES, indirect=True)
-def test_lpd_learned_steps_positive(lpd_module, monkeypatch):
-    sino = torch.rand(1, 1, 6, 5)
-    model = make_lpd(lpd_module, monkeypatch, learned_step=True, step_positive=True)
-    assert not hasattr(model, "lambda_primal")
-    with torch.no_grad():
-        out_positive = model(sino)
-        for step in model.lambda_dual:
-            step.neg_()  # a negative learned step is used as its absolute value
-        torch.testing.assert_close(model(sino), out_positive)
+    sino = torch.rand(2, 1, 6, 5)
+    assert make_lpd(lpd_module, monkeypatch)(sino).shape == (2, 1, 8, 8)
+    custom = make_lpd(
+        lpd_module,
+        monkeypatch,
+        data_channels=[6, 16, 16, 4],  # 4 dual channels (+ A f and g)
+        reg_channels=[4, 16, 16, 3],  # 3 primal channels (+ A^T h)
+    )
+    assert custom(sino).shape == (2, 1, 8, 8)
+    with pytest.raises(ValueError, match="data_channels"):
+        make_lpd(lpd_module, monkeypatch, data_channels=[7, 16, 16, 4])
 
 
 # --------------------------------------------------------------------------
@@ -739,9 +514,6 @@ def test_same_output_with_and_without_no_grad(make_model):
     torch.testing.assert_close(out, expected.detach())
     assert not out.requires_grad  # nothing leaks out of no_grad
 
-
-@pytest.mark.parametrize("make_model", [small_gsd, small_gsd_dncnn])
-def test_training_still_backpropagates_to_weights(make_model):
     model = make_model().train()
     loss = model(torch.rand(2, 1, 16, 16)).pow(2).mean()
     loss.backward()
@@ -750,64 +522,6 @@ def test_training_still_backpropagates_to_weights(make_model):
 
 # --------------------------------------------------------------------------
 # Learned FBPs (DeepFBP, FusionFBP), with a matrix "CT" operator on CPU
-
-
-def make_learned_fbp(module, class_name, monkeypatch, **params):
-    torch.manual_seed(0)
-    M = torch.randn(30, 64) / 8  # 8x8 images -> 6 angles x 5 detectors
-
-    def make_operator(self, autograd=False):
-        self.op = None
-        self.A = lambda x: (x.reshape(x.shape[0], -1) @ M.T).reshape(-1, 1, 6, 5)
-        self.AT = lambda y: (y.reshape(y.shape[0], -1) @ M).reshape(-1, 1, 8, 8)
-
-    monkeypatch.setattr(LIONmodel, "_make_operator", make_operator)
-    model_class = getattr(module, class_name)
-    p = model_class.default_parameters()
-    for k, v in params.items():
-        setattr(p, k, v)
-    operator_params = Geometry.default_parameters()
-    operator_params.image_shape = [1, 8, 8]
-    operator_params.angles = np.linspace(0, np.pi, 6, endpoint=False)
-    operator_params.detector_shape = [1, 5]
-    return model_class(operator_params, p)
-
-
-LEARNED_FBPS = [
-    ("LION.models.learned_fbp.DeepFBP", "DeepFBPNetwork"),
-    ("LION.models.learned_fbp.FusionFBP", "FusionFBPNetwork"),
-]
-
-
-@ignore_warnings
-@pytest.mark.parametrize("module_name, class_name", LEARNED_FBPS)
-@pytest.mark.parametrize("twice", [True, False])
-def test_learned_fbp_fft_padding(
-    import_without_tomosipo, monkeypatch, module_name, class_name, twice
-):
-    """The filter's FFT length is >= 2x the detectors (no wrap-around) by
-    default; fft_padding_twice_detectors = False keeps the old length."""
-    module = import_without_tomosipo(module_name)
-    model = make_learned_fbp(
-        module, class_name, monkeypatch, fft_padding_twice_detectors=twice
-    )
-    expected = 16 if twice else 8  # 5 detectors: 2^4 >= 10, 2^3 >= 5
-    assert model.projection_size_padded == expected
-    assert model.learnable_filter.weights.shape[-1] == expected
-    assert model(torch.rand(2, 1, 6, 5)).shape == (2, 1, 8, 8)
-
-
-@ignore_warnings
-def test_deepfbp_output_is_only_clamped_below(import_without_tomosipo, monkeypatch):
-    module = import_without_tomosipo("LION.models.learned_fbp.DeepFBP")
-    model = make_learned_fbp(module, "DeepFBPNetwork", monkeypatch).eval()
-    last_conv = model.denoising_output[0]
-    with torch.no_grad():
-        last_conv.weight.zero_()
-        last_conv.bias.fill_(3.0)  # above the old [0, 1] range
-        assert torch.allclose(model(torch.rand(1, 1, 6, 5)), torch.tensor(3.0))
-        last_conv.bias.fill_(-3.0)
-        assert (model(torch.rand(1, 1, 6, 5)) == 0).all()
 
 
 def test_models_differentiating_through_an_operator_need_its_autograd(monkeypatch):

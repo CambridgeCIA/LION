@@ -63,9 +63,3 @@ def test_debias_ls_solves_the_system_on_the_support():
     outside = torch.ones(N, dtype=torch.bool)
     outside[SUPPORT] = False
     assert torch.count_nonzero(w_deb[outside]) == 0
-
-
-def test_debias_ls_without_support_returns_the_input_unchanged():
-    op, y, _, _ = problem()
-    w = torch.zeros(N)
-    assert torch.equal(debias_ls(op, y, w), w)

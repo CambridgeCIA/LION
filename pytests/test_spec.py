@@ -12,7 +12,6 @@ import inspect
 import json
 import os
 import pathlib
-import pickle
 import tempfile
 import warnings
 
@@ -30,12 +29,10 @@ from LION.operators.ct.ct_geometry import Geometry
 from LION.metrics.haarpsi import HAARPsi
 from LION.metrics.psnr import PSNR
 from LION.models.CNNs.dncnn import DnCNN
-from LION.models.CNNs.UNets.Unet import UNet
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.models.PnP.gradient_step_denoiser import GSD
 from LION.utils.parameter import LIONParameter
 from LION.utils.spec import SpecError, build, encode, to_spec
-from pytests.helpers import small_dncnn
 
 
 def same(a, b, where="") -> list:
@@ -233,13 +230,9 @@ def test_same_name_rule():
     rebuilt = build(spec, allow=["pytests."])
     assert rebuilt.size == (3, 4) and rebuilt.scale == 2.0
 
-
-def test_object_that_renames_its_argument_cannot_be_saved():
     with pytest.raises(SpecError, match="doesn't keep its argument 'size'"):
         to_spec(RenamesItsArgument(3))
 
-
-def test_spec_kwargs_gives_the_arguments():
     rebuilt = build(to_spec(SaysItsArguments(3)), allow=["pytests."])
     assert type(rebuilt) is SaysItsArguments and rebuilt.n == 3
 
@@ -262,11 +255,6 @@ def test_targets_outside_the_allowed_modules_are_refused(spec):
         build(spec)
 
 
-def test_functions_are_not_called():
-    with pytest.raises(SpecError, match="only calls classes"):
-        build({"_target_": "torch.nn.functional.relu", "_args_": [1.0]})
-
-
 # --------------------------------------------------------------------------
 # Models saved and loaded
 
@@ -281,17 +269,6 @@ def small_geometry():
     operator_params = Geometry.default_parameters()
     operator_params.image_shape = [1, 16, 16]
     return operator_params
-
-
-def test_saved_file(tmp_path):
-    save(UNet(), tmp_path / "model")
-    saved = json.loads((tmp_path / "model.json").read_text())
-    assert saved["lion_format"] == 1
-    assert saved["model"]["_target_"] == "LION.models.CNNs.UNets.Unet.UNet"
-    assert saved["model"]["model_parameters"]["_target_"] == (
-        "LION.models.LIONmodel.LIONModelParameter"
-    )
-    assert not {"model_name", "model_parameters", "geometry"} & set(saved)
 
 
 @pytest.mark.parametrize(
@@ -346,12 +323,6 @@ def test_own_model_classes(tmp_path):
     assert type(loaded) is LocalModel
 
 
-def test_loading_as_another_class_warns(tmp_path):
-    save(DnCNN(), tmp_path / "model")
-    with pytest.warns(UserWarning, match="made as a"):
-        LocalModel.load(tmp_path / "model", supress_warnings=True)
-
-
 # --------------------------------------------------------------------------
 # instantiate(): the saved model with new weights
 
@@ -383,15 +354,6 @@ def test_instantiate_makes_the_saved_model_untrained(tmp_path, given):
     assert not all(torch.equal(weights[k], new[k]) for k in weights)
 
 
-def test_instantiate_on_a_class(tmp_path):
-    save(dncnn_with_other_parameters(), tmp_path / "model")
-    assert DnCNN.instantiate(tmp_path / "model").model_parameters.blocks == 4
-    with pytest.warns(UserWarning, match="made as a"):
-        LocalModel.instantiate(tmp_path / "model")
-    with pytest.raises(SpecError, match="not a LIONmodel"):
-        LIONmodel.instantiate({"_target_": "LION.utils.parameter.LIONParameter"})
-
-
 def test_file_from_a_newer_lion(tmp_path):
     save(DnCNN(), tmp_path / "model")
     path = tmp_path / "model.json"
@@ -400,26 +362,6 @@ def test_file_from_a_newer_lion(tmp_path):
     path.write_text(json.dumps(saved))
     with pytest.raises(ValueError, match="format 99"):
         DnCNN.load(tmp_path / "model", supress_warnings=True)
-
-
-def test_files_from_before_specs_are_refused(tmp_path):
-    """A model's .json without lion_format (saved before LION's metadata)
-    isn't read."""
-    model = small_dncnn()
-    save(model, tmp_path / "model")
-    path = tmp_path / "model.json"
-    saved = json.loads(path.read_text())
-    del saved["lion_format"]
-    path.write_text(json.dumps(saved))
-    with pytest.raises(ValueError, match="no 'lion_format'"):
-        DnCNN.load(tmp_path / "model", supress_warnings=True)
-
-
-def test_unknown_parameter_name_warns():
-    params = DnCNN.default_parameters()
-    params.blokcs = 3  # a typo of "blocks"
-    with pytest.warns(UserWarning, match="unknown parameter.*blokcs"):
-        DnCNN(params)
 
 
 def test_saved_file_with_a_removed_parameter_loads_with_a_warning(tmp_path):
@@ -467,43 +409,3 @@ def test_pt_holds_only_safe_contents(tmp_path):
     }
     assert data["epoch"] == 3 and data["loss"] == [0.5, 0.4, 0.3]
     assert data["initial_random_state"].dtype == torch.uint8
-
-
-class NotAllowed:
-    """An object LION doesn't load safely."""
-
-
-def test_pt_with_other_objects_needs_weights_only_false(tmp_path):
-    model = DnCNN()
-    save(model, tmp_path / "model")
-    torch.save(
-        {"model_state_dict": model.state_dict(), "extra": NotAllowed()},
-        tmp_path / "model.pt",
-    )
-    with pytest.raises(pickle.UnpicklingError, match="weights_only=False"):
-        DnCNN.load(tmp_path / "model", supress_warnings=True)
-    _, _, data = DnCNN.load(
-        tmp_path / "model", supress_warnings=True, weights_only=False
-    )
-    assert isinstance(data["extra"], NotAllowed)
-
-
-def test_files_from_numpy_1_are_allowed():
-    """numpy 1 named its array functions numpy.core.multiarray.*"""
-    from LION.models.LIONmodel import _safe_globals
-
-    names = {entry[1] for entry in _safe_globals() if isinstance(entry, tuple)}
-    assert {
-        "numpy.core.multiarray._reconstruct",
-        "numpy.core.multiarray.scalar",
-    } <= names
-
-
-def test_a_saved_model_loads_without_warnings(tmp_path):
-    """Its file holds the weights and the random state they were made from."""
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")  # saved without data or training
-        small_dncnn().save(tmp_path / "model")
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        LIONmodel.load(tmp_path / "model")

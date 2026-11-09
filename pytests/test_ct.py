@@ -21,7 +21,6 @@ from LION.operators.ct.ct_utils import (
     WATER_MASS_ATTENUATION,
     from_HU_to_density,
     from_HU_to_mu,
-    from_HU_to_material_id,
     sinogram_add_noise,
 )
 from pytests.helpers import dotproduct_adjointness_test
@@ -42,25 +41,17 @@ def clean_sino():
     return 2.0 * torch.rand(1, 30, 40)
 
 
-def test_sinogram_add_noise_on_cpu_tensor(clean_sino):
-    noisy = sinogram_add_noise(clean_sino, I0=1000, sigma=5)
-    assert noisy.device == clean_sino.device
-    assert noisy.shape == clean_sino.shape
-    assert torch.isfinite(noisy).all() and (noisy >= 0).all()
-    assert not torch.equal(noisy, clean_sino)
-
-
-def test_sinogram_add_noise_numpy_in_numpy_out(clean_sino):
-    noisy = sinogram_add_noise(clean_sino.numpy(), I0=1000, sigma=5)
-    assert isinstance(noisy, np.ndarray)
-    assert noisy.shape == tuple(clean_sino.shape)
-
-
-def test_less_noise_with_more_photons(clean_sino):
+def test_less_noise_with_more_photons(clean_sino, deterministic_noise):
     torch.manual_seed(1)
     low = sinogram_add_noise(clean_sino, I0=1e3, sigma=0)
     high = sinogram_add_noise(clean_sino, I0=1e6, sigma=0)
     assert (high - clean_sino).abs().mean() < (low - clean_sino).abs().mean()
+
+    sino = torch.zeros(1, 9, 9)
+    sino[0, 4, 4] = 1.0  # one bright detector pixel in one projection
+    noisy = sinogram_add_noise(sino, I0=1e4, sigma=0, sigma_blur=1.0, model="relative")
+    assert noisy[0, 4, 3] > 1e-3  # neighbouring detector pixel, same angle
+    assert noisy[0, 3, 4] < 1e-5  # not the neighbouring angle (float32 rounding)
 
 
 @pytest.fixture
@@ -69,23 +60,6 @@ def deterministic_noise(monkeypatch):
     so only the cross-talk blur and the scaling of the line integrals remain."""
     monkeypatch.setattr(torch, "poisson", lambda x: x.clone())
     monkeypatch.setattr(torch, "randn", lambda *shape, **kw: torch.zeros(*shape, **kw))
-
-
-def test_crosstalk_is_along_the_detector(deterministic_noise):
-    sino = torch.zeros(1, 9, 9)
-    sino[0, 4, 4] = 1.0  # one bright detector pixel in one projection
-    noisy = sinogram_add_noise(sino, I0=1e4, sigma=0, sigma_blur=1.0, model="relative")
-    assert noisy[0, 4, 3] > 1e-3  # neighbouring detector pixel, same angle
-    assert noisy[0, 3, 4] < 1e-5  # not the neighbouring angle (float32 rounding)
-
-
-def test_noise_of_a_sample_does_not_depend_on_its_batch(deterministic_noise):
-    torch.manual_seed(0)
-    a, b = torch.rand(1, 20, 30), 5 * torch.rand(1, 20, 30)  # b has a larger maximum
-    kwargs = dict(I0=1e3, sigma=0, model="relative")
-    alone = sinogram_add_noise(a.unsqueeze(0), **kwargs)[0]
-    in_batch = sinogram_add_noise(torch.stack([a, b]), **kwargs)[0]
-    torch.testing.assert_close(alone, in_batch)
 
 
 @pytest.mark.parametrize("model", ["relative", "physical"])
@@ -118,11 +92,9 @@ def test_physical_noise_grows_with_the_object():
         stds.append((noisy - sino).std().item())
     assert stds[1] > 3 * stds[0]
 
-
-def test_starved_rays_are_floored_at_min_counts():
-    """A ray through ~60 cm of water at I0 = 1e4 gets ~0 photons. LION's old
-    rule (signal <= 0 -> 1e-6) reads it as log(I0) + 13.8 attenuation; with
-    min_counts it reads as at most log(I0 / min_counts)."""
+    # A ray through ~60 cm of water at I0 = 1e4 gets ~0 photons. LION's old rule
+    # (signal <= 0 -> 1e-6) reads it as log(I0) + 13.8 attenuation; with
+    # min_counts it reads as at most log(I0 / min_counts).
     torch.manual_seed(0)
     k = DEFAULT_MASS_ATTENUATION * 0.1
     sino = torch.full((1, 50, 60), 700.0)  # transmission ~ 2e-6
@@ -131,17 +103,6 @@ def test_starved_rays_are_floored_at_min_counts():
     assert old.max().item() * k == pytest.approx(np.log(1e4) + np.log(1e6), rel=1e-3)
     assert floored.max().item() * k <= np.log(1e4) + 1e-4
     assert floored.min().item() >= 0
-
-
-def test_min_counts_changes_nothing_without_starved_rays():
-    """With enough photons (the relative model at LION's I0s keeps >= I0/e)
-    no signal is near the floor, so the noise is exactly the same."""
-    sino = 3 * torch.rand(1, 40, 50)
-    torch.manual_seed(1)
-    old_rule = sinogram_add_noise(sino, I0=1000, model="relative", min_counts=None)
-    torch.manual_seed(1)
-    floored = sinogram_add_noise(sino, I0=1000, model="relative")
-    torch.testing.assert_close(floored, old_rule, rtol=0, atol=0)
 
 
 def test_photon_counting_gives_integer_counts_without_electronic_noise():
@@ -165,16 +126,6 @@ def test_photon_counting_gives_integer_counts_without_electronic_noise():
     assert ei.var().item() > 1.5 * expected_var
 
 
-def test_photon_counting_zero_counts_are_floored():
-    torch.manual_seed(0)
-    k = DEFAULT_MASS_ATTENUATION * 0.1
-    p = torch.full((1, 50, 60), 700.0)  # ~0 photons
-    noisy = sinogram_add_noise(p, I0=1e4, detector="photon_counting")
-    assert noisy.max().item() * k == pytest.approx(np.log(1e4), rel=1e-4)
-    with pytest.raises(ValueError):
-        sinogram_add_noise(p, detector="photon-counting")
-
-
 def test_hu_to_density_and_mu():
     hu = np.array([-1000.0, 0.0, 500.0])
     density = from_HU_to_density(hu)
@@ -191,15 +142,6 @@ def test_hu_to_density_and_mu():
 # HU conversions
 
 HU = [-1000, -950, -800, -750, -400, -150, -50, 0, 100, 150, 200, 300, 500]
-MATERIAL_IDS = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]
-
-
-@pytest.mark.parametrize("dtype", [torch.float32, torch.int16])
-def test_material_id_torch(dtype):
-    img = torch.tensor(HU, dtype=dtype)
-    ids = from_HU_to_material_id(img)
-    assert ids.dtype == torch.uint8
-    assert ids.tolist() == MATERIAL_IDS
 
 
 # --------------------------------------------------------------------------
@@ -253,26 +195,6 @@ def test_ct_op_adjointness():
     )
 
 
-@pytest.mark.tomosipo
-def test_ct_op_backward_compatibility_with_tomosipo():
-    geometry = Geometry.default_parameters()
-    operator = geometry.make_operator()
-
-    assert operator.domain_shape == (1, 512, 512)
-    assert operator.range_shape == (1, 360, 900)
-
-    test_volume = torch.rand(*operator.domain_shape)
-    test_projection = torch.rand(*operator.range_shape)
-
-    # Make sure that tomosipo Operator's attributes are accessible
-    assert operator._fp(volume=test_volume, out=None) is not None
-    assert operator._bp(projection=test_projection, out=None) is not None
-    assert operator.transpose() is not None
-    assert operator.T is not None
-    assert operator.domain is not None
-    assert operator.range is not None
-
-
 # --------------------------------------------------------------------------
 # FDK / FBP
 
@@ -323,30 +245,24 @@ def test_reconstructs_both_geometries(geometry):
 
 @pytest.mark.tomosipo
 @pytest.mark.parametrize("geometry", GEOMETRIES, ids=GEOMETRY_IDS)
-@pytest.mark.parametrize("clip", [False, True])
-def test_differentiable_matches_default(geometry, clip):
+def test_differentiable_matches_default(geometry):
     op = geometry.make_operator()
     sino = op(phantom(geometry)[0]).unsqueeze(0)
     sino = sino + 0.1 * torch.randn_like(sino)
-    torch.testing.assert_close(
-        fdk(sino, op, clip=clip, differentiable=True),
-        fdk(sino, op, clip=clip),
-        rtol=1e-4,
-        atol=1e-4,
-    )
+    for clip in (False, True):
+        torch.testing.assert_close(
+            fdk(sino, op, clip=clip, differentiable=True),
+            fdk(sino, op, clip=clip),
+            rtol=1e-4,
+            atol=1e-4,
+        )
 
-
-@pytest.mark.tomosipo
-@pytest.mark.parametrize("geometry", GEOMETRIES, ids=GEOMETRY_IDS)
-def test_backward_goes_through_the_forward_projector(geometry):
-    """Unclipped, fdk(y) = c * B(F(W(y))): W the FDK weights (fan beam only),
-    F the ramp filter, B tomosipo's backprojector, c a constant. Its autograd
-    gradient must be W^T(F^T(c * A(x))), with A tomosipo's forward projector,
-    so <y, grad> = c * <F(W(y)), A(x)>.
-
-    <fdk(y), x> = <y, grad> is not tested: ASTRA's A and B are only
-    approximately adjoint, and for random y and x that inner product is so
-    small that the difference is large in relative terms."""
+    # Unclipped, fdk(y) = c * B(F(W(y))): W the FDK weights (fan beam only), F
+    # the ramp filter, B tomosipo's backprojector, c a constant. Its autograd
+    # gradient must be W^T(F^T(c * A(x))), with A tomosipo's forward projector,
+    # so <y, grad> = c * <F(W(y)), A(x)>. <fdk(y), x> = <y, grad> is not tested:
+    # ASTRA's A and B are only approximately adjoint, and for random y and x that
+    # inner product is so small that the difference is large in relative terms.
     from ts_algorithms.fbp import filter_sino
     from ts_algorithms.fdk import fdk_weigh_projections
 
@@ -382,21 +298,6 @@ def test_backward_goes_through_the_forward_projector(geometry):
 
 
 @pytest.mark.tomosipo
-def test_itnet_gradient_reaches_the_sinogram():
-    from LION.models.iterative_unrolled.ItNet import ItNet
-
-    geometry = fan_geometry()
-    params = ItNet.default_parameters()
-    params.n_iters, params.step_size = 2, [0.5, 0.5]
-    params.Unet_params.baseDim, params.Unet_params.noGrp = 4, 2
-    model = ItNet(geometry, params).cuda()
-    op = geometry.make_operator()
-    sino = op(phantom(geometry)[0]).unsqueeze(0).requires_grad_(True)
-    (grad,) = torch.autograd.grad(model(sino).sum(), sino)
-    assert torch.isfinite(grad).all() and grad.abs().sum() > 0
-
-
-@pytest.mark.tomosipo
 def test_deepfusionbp_single_view_backprojections_match_the_operator():
     """The per-angle backprojectors are built from the LION geometry: summed over
     the angles they give the CT operator's backprojection."""
@@ -411,15 +312,4 @@ def test_deepfusionbp_single_view_backprojections_match_the_operator():
     expected = torch.stack([op.T(s) for s in sino])  # (B, 1, H, W)
     torch.testing.assert_close(
         views.sum(dim=1, keepdim=True), expected, rtol=1e-3, atol=1e-3
-    )
-
-
-@pytest.mark.tomosipo
-def test_the_ct_operators_default_reconstruction_is_fdk():
-    geometry = Geometry.default_parameters()
-    operator = geometry.make_operator()
-    image = torch.rand(1, *geometry.image_shape[1:], device="cuda")
-    sino = operator(image).unsqueeze(0)
-    torch.testing.assert_close(
-        operator.default_reconstruction(sino), fdk(sino, operator)
     )

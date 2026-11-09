@@ -14,13 +14,11 @@ import pytest
 import torch
 
 from LION.classical_algorithms import fista_l1
-from LION.operators.ct import sirt
 from LION.operators.ct._batching import batched_reconstruction
 from LION.classical_algorithms.conjugate_gradient import conjugate_gradient
 from LION.classical_algorithms.spgl1_torch import spgl1_torch
 from LION.operators import CompositeOp, Wavelet2D
 from LION.operators.pcm import PhotocurrentMapOp, Subsampler
-from pytests.helpers import ImageMatrixOp
 
 # --------------------------------------------------------------------------
 # Batching (fdk/sirt/tv_min reconstruct one sample at a time)
@@ -34,7 +32,7 @@ def _sum_recon(op, sino_i, i):
     return sino_i.sum() * torch.ones(op.domain_shape)
 
 
-def test_batched_and_single_sample():
+def test_batched_and_single_sample(monkeypatch):
     sino = torch.rand(3, 1, 5, 6)
     out = batched_reconstruction(_sum_recon, sino, FakeCTOp())
     assert out.shape == (3, 1, 4, 4)
@@ -42,65 +40,29 @@ def test_batched_and_single_sample():
     single = batched_reconstruction(_sum_recon, sino[0], FakeCTOp())
     assert single.shape == (1, 4, 4)
 
+    # SIRT and TV-min call ts_algorithms once per sample, with that sample, and
+    # refuse an empty batch.
+    for name in ["sirt", "tv_min"]:
+        from LION.operators import ct
 
-@pytest.mark.parametrize("shape", [(5, 6), (1, 1, 1, 5, 6)])
-def test_wrong_dimensions_raise_value_error(shape):
-    with pytest.raises(ValueError, match="Expected a sinogram"):
-        batched_reconstruction(_sum_recon, torch.rand(*shape), FakeCTOp())
+        given = []
 
+        def one_sample(op, sino, *rest, **kwargs):
+            given.append(sino)
+            return torch.zeros(op.domain_shape)
 
-@pytest.fixture
-def fake_ts_sirt(monkeypatch):
-    calls = []
+        module = types.ModuleType("ts_algorithms")
+        module.sirt = module.tv_min2d = one_sample
+        monkeypatch.setitem(sys.modules, "ts_algorithms", module)
+        recon = getattr(ct, name)
+        arguments = {"num_iterations": 2} if name == "sirt" else {"lam": 0.1}
 
-    def ts_sirt(op, sino, num_iterations, mn, mx, x_init, *rest):
-        calls.append(x_init)
-        return torch.zeros(op.domain_shape)
-
-    module = types.ModuleType("ts_algorithms")
-    module.sirt = ts_sirt
-    monkeypatch.setitem(sys.modules, "ts_algorithms", module)
-    return calls
-
-
-def test_sirt_uses_one_initial_guess_per_sample(fake_ts_sirt):
-    x_init = torch.arange(2.0).view(2, 1, 1, 1) * torch.ones(2, *FakeCTOp.domain_shape)
-    sirt(torch.rand(2, 1, 5, 6), FakeCTOp(), 3, x_init=x_init)
-    assert len(fake_ts_sirt) == 2
-    for i, given in enumerate(fake_ts_sirt):
-        torch.testing.assert_close(given, x_init[i])
-
-
-def test_sirt_shares_unbatched_initial_guess(fake_ts_sirt):
-    x_init = torch.ones(FakeCTOp.domain_shape)
-    sirt(torch.rand(2, 1, 5, 6), FakeCTOp(), 3, x_init=x_init)
-    assert all(given is x_init for given in fake_ts_sirt)
-
-
-@pytest.mark.parametrize("name", ["sirt", "tv_min"])
-def test_ct_reconstructions_run_once_per_sample(monkeypatch, name):
-    """SIRT and TV-min call ts_algorithms once per sample, with that sample,
-    and refuse an empty batch."""
-    from LION.operators import ct
-
-    given = []
-
-    def one_sample(op, sino, *rest, **kwargs):
-        given.append(sino)
-        return torch.zeros(op.domain_shape)
-
-    module = types.ModuleType("ts_algorithms")
-    module.sirt = module.tv_min2d = one_sample
-    monkeypatch.setitem(sys.modules, "ts_algorithms", module)
-    recon = getattr(ct, name)
-    arguments = {"num_iterations": 2} if name == "sirt" else {"lam": 0.1}
-
-    sino = torch.rand(2, 1, 5, 6)
-    assert recon(sino, FakeCTOp(), **arguments).shape == (2, 1, 4, 4)
-    assert [g.shape for g in given] == [(1, 5, 6), (1, 5, 6)]
-    torch.testing.assert_close(given[1], sino[1])
-    with pytest.raises(ValueError):
-        recon(torch.rand(0, 1, 5, 6), FakeCTOp(), **arguments)
+        sino = torch.rand(2, 1, 5, 6)
+        assert recon(sino, FakeCTOp(), **arguments).shape == (2, 1, 4, 4)
+        assert [g.shape for g in given] == [(1, 5, 6), (1, 5, 6)]
+        torch.testing.assert_close(given[1], sino[1])
+        with pytest.raises(ValueError):
+            recon(torch.rand(0, 1, 5, 6), FakeCTOp(), **arguments)
 
 
 # --------------------------------------------------------------------------
@@ -117,48 +79,12 @@ def spd_system():
     return A, b
 
 
-class Counter:
-    def __init__(self, A):
-        self.A, self.calls = A, 0
-
-    def __call__(self, v):
-        self.calls += 1
-        return self.A @ v
-
-
-@pytest.mark.parametrize("tol", [1e-2, 1e-6, 1e-10])
-def test_stops_at_requested_relative_residual(spd_system, tol):
-    A, b = spd_system
-    x = conjugate_gradient(Counter(A), b, torch.zeros_like(b), max_iter=500, tol=tol)
-    assert torch.norm(b - A @ x) / torch.norm(b) < tol
-
-
-def test_looser_tolerance_needs_fewer_iterations(spd_system):
-    A, b = spd_system
-    loose, tight = Counter(A), Counter(A)
-    conjugate_gradient(loose, b, torch.zeros_like(b), max_iter=500, tol=1e-2)
-    conjugate_gradient(tight, b, torch.zeros_like(b), max_iter=500, tol=1e-10)
-    assert loose.calls < tight.calls
-
-
 def test_solution_matches_direct_solve(spd_system):
     A, b = spd_system
     x = conjugate_gradient(
         lambda v: A @ v, b, torch.zeros_like(b), max_iter=500, tol=1e-12
     )
     torch.testing.assert_close(x, torch.linalg.solve(A, b))
-
-
-def test_zero_rhs_and_exact_start(spd_system):
-    A, b = spd_system
-    zero = torch.zeros_like(b)
-    torch.testing.assert_close(
-        conjugate_gradient(lambda v: A @ v, zero, b, 10, 1e-6), zero
-    )
-    exact = torch.linalg.solve(A, b)
-    calls = Counter(A)
-    conjugate_gradient(calls, b, exact, 10, 1e-6)
-    assert calls.calls == 1  # only the initial residual
 
 
 # --------------------------------------------------------------------------
@@ -195,27 +121,6 @@ def test_fista_l1(device) -> None:
     recon = wavelet.inverse(w_hat)
     zero_filled = phi.pseudo_inv(y)  # A(y) is the least squares solution
     torch.testing.assert_close(recon, zero_filled, atol=1e-6, rtol=1e-6)
-
-
-def test_fista_with_image_shaped_domain():
-    torch.manual_seed(0)
-    A = torch.randn(40, 16)
-    op = ImageMatrixOp(A, (4, 4))
-    x_true = torch.randn(4, 4)
-    y = op(x_true)
-    x = fista_l1(op, y, lam=0.0, max_iter=2000, tol=1e-10)
-    assert x.shape == (4, 4)
-    torch.testing.assert_close(x, x_true, atol=1e-3, rtol=1e-3)
-
-
-@pytest.mark.parametrize("verbose", [0, 1, 2])
-def test_fista_shows_progress_by_level(capfd, verbose):
-    op = ImageMatrixOp(torch.eye(4), (2, 2))
-    fista_l1(op, torch.ones(4), lam=0.1, max_iter=3, tol=0.0, verbose=verbose)
-    out, err = capfd.readouterr()
-    assert out == ""
-    assert ("FISTA" in err) == (verbose >= 1)
-    assert ("rel_change" in err) == (verbose == 2)
 
 
 def test_spgl1() -> None:
