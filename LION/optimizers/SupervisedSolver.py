@@ -28,6 +28,7 @@ class SupervisedSolver(LIONsolver):
         loss_fn,
         operator_params: OperatorParameters = None,
         solver_params: Optional[LIONParameter] = None,
+        model_regularization=None,
         scheduler=None,
         scheduler_step: str = "epoch",
         verbose: int = 1,
@@ -42,6 +43,7 @@ class SupervisedSolver(LIONsolver):
             loss_fn,
             operator_params=operator_params,
             solver_params=solver_params,
+            model_regularization=model_regularization,
             scheduler=scheduler,
             scheduler_step=scheduler_step,
             verbose=verbose,
@@ -58,7 +60,8 @@ class SupervisedSolver(LIONsolver):
         returns the loss of the mini-batch
         """
         output = self._forward(y)
-        return self.loss_fn(output, target)
+        loss = self.loss_fn(output, target)
+        return self._regularized(loss, y, output, target, self._forward)
 
     @staticmethod
     def default_parameters() -> LIONParameter:

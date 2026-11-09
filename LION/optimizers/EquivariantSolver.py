@@ -56,6 +56,7 @@ class EquivariantSolver(LIONsolver):
         loss_fn,
         operator_params: OperatorParameters = None,
         solver_params: Optional[LIONParameter] = None,
+        model_regularization=None,
         scheduler=None,
         scheduler_step: str = "epoch",
         verbose: int = 1,
@@ -69,6 +70,7 @@ class EquivariantSolver(LIONsolver):
             loss_fn,
             operator_params=operator_params,
             solver_params=solver_params,
+            model_regularization=model_regularization,
             scheduler=scheduler,
             scheduler_step=scheduler_step,
             verbose=verbose,
@@ -98,9 +100,10 @@ class EquivariantSolver(LIONsolver):
         if needs_image := (
             self.model.model_parameters.model_input_type == ModelInputType.IMAGE
         ):
-            recon1 = self.model(fdk(y, self.op))
+            first_input = fdk(y, self.op)
         else:
-            recon1 = self.model(y)
+            first_input = y
+        recon1 = self.model(first_input)
 
         transformed_recon1 = random_transform(recon1)
 
@@ -113,10 +116,11 @@ class EquivariantSolver(LIONsolver):
         else:
             recon2 = self.model(self.A(transformed_recon1))
 
-        return self.loss_fn(self.A(recon1), y) + self.alpha * self.loss_fn(
+        # data consistency + equivariance
+        loss = self.loss_fn(self.A(recon1), y) + self.alpha * self.loss_fn(
             recon2, transformed_recon1
         )
-        # data consistency + equivariance
+        return self._regularized(loss, first_input, recon1)
 
     @staticmethod
     def cite(cite_format="bib"):

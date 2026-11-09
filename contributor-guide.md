@@ -236,9 +236,12 @@ part.
   figure), on `Figure`s (no pyplot state), imported only in
   `LION/evaluation/figures.py`.
 - Solvers take `(model, optimizer, loss_fn, operator_params, solver_params,
-  scheduler, scheduler_step, verbose, device, seed, deterministic)`, in that
-  order (`ARSolver` has no `loss_fn`); where results go is set with
-  `set_saving()`. `scheduler`: a torch learning-rate scheduler made on the
+  model_regularization, scheduler, scheduler_step, verbose, device, seed,
+  deterministic)`, in that order (`ARSolver` has no `loss_fn`); where results
+  go is set with `set_saving()`. `model_regularization`: a term added to the
+  loss, `model_regularization(model, step)`, on the weights or on what the
+  model does with the mini-batch (`step`: its `input`, `output`, `target`,
+  `forward`); every solver passes its own mini-batch. `scheduler`: a torch learning-rate scheduler made on the
   optimizer, stepped every epoch (or every mini-batch,
   `scheduler_step="batch"`); `ReduceLROnPlateau` steps with the validation
   value. The training record has the optimizer (and its parameter groups),

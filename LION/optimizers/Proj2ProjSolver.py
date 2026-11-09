@@ -29,6 +29,7 @@ class Proj2ProjSolver(LIONsolver):
         loss_fn,
         operator_params: OperatorParameters = None,
         solver_params: Optional[LIONParameter] = None,
+        model_regularization=None,
         scheduler=None,
         scheduler_step: str = "epoch",
         verbose: int = 1,
@@ -42,6 +43,7 @@ class Proj2ProjSolver(LIONsolver):
             loss_fn,
             operator_params=operator_params,
             solver_params=solver_params,
+            model_regularization=model_regularization,
             scheduler=scheduler,
             scheduler_step=scheduler_step,
             verbose=verbose,
@@ -107,7 +109,7 @@ class Proj2ProjSolver(LIONsolver):
         target_sino = y * (1 - mask)
 
         batch_loss = ((output_sino_mask - target_sino) ** 2).mean()
-        return batch_loss
+        return self._regularized(batch_loss, input_recon, output_recon)
 
     def _forward(self, data):
         # validation and testing evaluate the reconstruction

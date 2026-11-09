@@ -98,6 +98,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         loss_fn: Callable,
         operator_params: OperatorParameters = None,
         solver_params: Optional[LIONParameter] = None,
+        model_regularization=None,
         scheduler=None,
         scheduler_step: str = "epoch",
         verbose: int = 1,
@@ -107,14 +108,24 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     ) -> None:
         """
         Every solver takes ``(model, optimizer, loss_fn, operator_params,
-        solver_params, scheduler, scheduler_step, verbose, device, seed,
-        deterministic)``, in that order (``ARSolver`` has no ``loss_fn``).
+        solver_params, model_regularization, scheduler, scheduler_step,
+        verbose, device, seed, deterministic)``, in that order (``ARSolver``
+        has no ``loss_fn``).
 
         ``operator_params``: the parameters of the operator (for CT, the
         geometry); the model's, if it has them.
 
         ``solver_params``: the solver's settings, from
         ``default_parameters()``.
+
+        ``model_regularization``: None, or a term added to the training loss
+        of every mini-batch, ``model_regularization(model, step)``: a penalty
+        on the model's weights (``step`` unused) or on what it does with the
+        mini-batch (e.g. ``LION.losses.jacobian_penalty``). ``step`` has
+        ``input`` (what the model was given), ``output``, ``target`` (what
+        the output is compared with; None for solvers without one) and
+        ``forward`` (the model as the solver calls it, e.g. with the noise
+        level). Recorded as ``loss_fn`` is.
 
         ``scheduler``: a torch learning-rate scheduler made on ``optimizer``
         (e.g. ``torch.optim.lr_scheduler.StepLR(optimizer, 30)``), or None. It
@@ -188,6 +199,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             )
         if scheduler is not None and scheduler.optimizer is not optimizer:
             raise ValueError("the scheduler must be made on the solver's optimizer")
+        self.model_regularization = model_regularization
         self.scheduler = scheduler
         self.scheduler_step = scheduler_step
         # the learning rate of each epoch (of each parameter group), recorded
@@ -254,6 +266,18 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     def do_normalise(self) -> bool:
         """True if the model has a normalisation set (``model.set_normalisation()``)."""
         return getattr(self.model, "normalisator", None) is not None
+
+    def _regularized(self, loss, input=None, output=None, target=None, forward=None):
+        """``loss`` plus ``model_regularization(model, step)``, if the solver
+        has one (see ``__init__``): ``step`` is this mini-batch's ``input``,
+        ``output``, ``target`` and ``forward`` (the model as called here;
+        the model itself if None)."""
+        if self.model_regularization is None:
+            return loss
+        step = LIONParameter()
+        step.input, step.output, step.target = input, output, target
+        step.forward = self.model if forward is None else forward
+        return loss + self.model_regularization(self.model, step)
 
     def _forward(self, data: torch.Tensor) -> torch.Tensor:
         """Run the model on a batch of measurements, as in training (see

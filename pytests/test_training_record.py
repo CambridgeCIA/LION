@@ -588,6 +588,7 @@ def test_solvers_take_their_arguments_in_one_order(cls):
         "loss_fn",
         "operator_params",
         "solver_params",
+        "model_regularization",
         "scheduler",
         "scheduler_step",
         "verbose",
@@ -742,3 +743,31 @@ def test_parameter_groups_are_recorded_and_made_again(tmp_path):
     assert [g["lr"] for g in made.optimizer.param_groups] == [0.01, 0.1]
     assert made.optimizer.param_groups[0]["params"] == [named[names[0]]]
     assert made.optimizer.param_groups[1]["momentum"] == 0.9
+
+
+def test_the_model_regularization_is_recorded_and_made_again(tmp_path):
+    from LION.losses.jacobian_penalty import ProximalDenoiserPenalty
+
+    model = model_from()
+    solver = supervised_solver.SupervisedSolver(
+        model,
+        torch.optim.SGD(model.parameters(), lr=0.1),
+        torch.nn.MSELoss(),
+        Geometry.default_parameters(),
+        model_regularization=ProximalDenoiserPenalty(1e-2, power_iterations=2),
+        device=torch.device("cpu"),
+    )
+    solver.set_training(DataLoader(data(), batch_size=4))
+    solver.set_saving(tmp_path, "final")
+    solver.train(1)
+    solver.save_final_results()
+    record = saved(tmp_path, "final")["training"]
+    assert record["solver"]["model_regularization"] == {
+        "_target_": "LION.losses.jacobian_penalty.ProximalDenoiserPenalty",
+        "weight": 1e-2,
+        "epsilon": 0.1,
+        "power_iterations": 2,
+    }
+    made = LIONsolver.instantiate(tmp_path / "final", model_from(1))
+    assert isinstance(made.model_regularization, ProximalDenoiserPenalty)
+    assert made.model_regularization.power_iterations == 2
