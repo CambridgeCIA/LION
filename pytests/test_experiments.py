@@ -328,3 +328,23 @@ def test_detect_returns_samples_on_the_selected_device(tmp_path, monkeypatch):
     data.operator_params = data.get_default_geometry()
     for tensor in data[0]:
         assert tensor.device.type == "meta"
+
+
+def test_the_2detect_benchmark_experiments():
+    """The 2DeteCT benchmark (deteCT_benchmark): each experiment keeps the
+    projections and modes of the paper, cites it, and refuses another dataset
+    (the check used to overwrite its argument first)."""
+    import LION.experiments.deteCT_benchmark as benchmark
+
+    def angles(cls):
+        return len(cls.default_parameters().operator_params.angles)
+
+    assert angles(benchmark.FullDataCTRecon) == 3600
+    assert angles(benchmark.LimitedAngle90CTRecon) == 900
+    assert angles(benchmark.SparseAngle360CTRecon) == 360
+    low_dose = benchmark.LowDoseCTRecon.default_parameters().data_loader_params
+    assert (low_dose.input_mode, low_dose.target_mode) == ("mode1", "mode2")
+    assert benchmark.GroundTruthCT.default_parameters().do_recon is False
+    assert "Benchmarking learned algorithms" in benchmark.SparseAngle60CTRecon.cite()
+    with pytest.raises(ValueError, match="2DeteCT"):
+        benchmark.SparseAngle60CTRecon(dataset="LIDC-IDRI")
