@@ -1412,7 +1412,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return self.model
 
     @abstractmethod
-    def mini_batch_step(self, sino_batch, target_batch) -> torch.Tensor:
+    def mini_batch_step(self, y, target_batch) -> torch.Tensor:
         """
         This function should perform a single step of the optimization and return the loss
         """

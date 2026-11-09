@@ -67,19 +67,19 @@ class Noisier2InverseSolver(LIONsolver):
         params.recon_fn = "default"
         return params
 
-    def mini_batch_step(self, sinos, targets):
+    def mini_batch_step(self, y, targets):
         sigma = self.solver_params.sigma
         delta = self.solver_params.delta
         ks = int(sigma * 3) * 2 + 1
 
-        N = torch.randn_like(sinos) * delta
+        N = torch.randn_like(y) * delta
         N = gaussian_blur(N, ks, sigma)
-        z = sinos + N
+        z = y + N
 
         input_recon = self.reconstruct_measurements(z, self.op)
         output_recon = self.model(input_recon)
         output_sino = self.projector(output_recon)
-        target_sino = sinos - N
+        target_sino = y - N
 
         # Sobolev Loss
         # res = output_sino - target_sino
@@ -94,8 +94,8 @@ class Noisier2InverseSolver(LIONsolver):
         # validation and testing evaluate the reconstruction
         return self.reconstruct(data)
 
-    def reconstruct(self, sinos):
-        input_recon = self.reconstruct_measurements(sinos, self.op)
+    def reconstruct(self, y):
+        input_recon = self.reconstruct_measurements(y, self.op)
         output_recon = self.model(input_recon)
         return output_recon
 

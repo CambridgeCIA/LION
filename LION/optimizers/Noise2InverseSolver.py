@@ -87,19 +87,19 @@ class Noise2InverseSolver(LIONsolver):
             for indices in self.split_indices
         ]
 
-    def _calculate_noisy_sub_recons(self, sinos):
-        # sinos is batched
+    def _calculate_noisy_sub_recons(self, y):
+        # y: a batch of measurements
         bad_recons = None
         for j in range(self.sino_split_count):
             sub_sino_j = self.operator_params.split_measurements(
-                sinos, self.split_indices[j]
+                y, self.split_indices[j]
             )
             # expect recon_fn to be batched
             sub_recon_j = self.reconstruct_measurements(sub_sino_j, self.sub_ops[j])
             if bad_recons is None:
                 bad_recons = torch.zeros(
                     size=(
-                        sinos.shape[0],
+                        y.shape[0],
                         self.sino_split_count,
                         *sub_recon_j.shape[1:],
                     ),
@@ -124,9 +124,9 @@ class Noise2InverseSolver(LIONsolver):
         params.recon_fn = "default"
         return params
 
-    def mini_batch_step(self, sinos, targets):
-        # sinos batch of sinos
-        noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)
+    def mini_batch_step(self, y, targets):
+        # y: a batch of measurements
+        noisy_sub_recons = self._calculate_noisy_sub_recons(y)
         # b, split, c, w, h
 
         # almost certain this can be made more efficient
@@ -155,12 +155,10 @@ class Noise2InverseSolver(LIONsolver):
         # validation and testing evaluate the reconstruction
         return self.reconstruct(data)
 
-    def reconstruct(self, sinos):
-        noisy_sub_recons = self._calculate_noisy_sub_recons(sinos)  # b, split, c, w, h
+    def reconstruct(self, y):
+        noisy_sub_recons = self._calculate_noisy_sub_recons(y)  # b, split, c, w, h
 
-        outputs = torch.zeros(
-            (sinos.shape[0], *self.op.domain_shape), device=self.device
-        )
+        outputs = torch.zeros((y.shape[0], *self.op.domain_shape), device=self.device)
 
         for _, J in enumerate(self.cali_J):
             # fix indexing; J's are 1 indexed for user convenience

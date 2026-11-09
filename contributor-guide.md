@@ -152,7 +152,8 @@ part.
   doesn't define them, and the base class raises saying so.
 - **Words: general in general code, the operator's own in its code.** Code
   that works with any operator says `operator_params`, domain (the image) and
-  range (the measurements), and types them `OperatorParameters`/`Operator`.
+  range (the measurements, `y`), and types them `OperatorParameters`/`Operator`
+  (e.g. a solver's `mini_batch_step(y, target)`).
   CT-only code says `Geometry`, `image_shape`, angles and sinogram, and types
   them `Geometry`. Don't add aliases (a `measurement_shape` next to
   `range_shape`): one name per thing. Where a general argument meets users,

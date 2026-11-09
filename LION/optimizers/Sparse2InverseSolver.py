@@ -111,13 +111,13 @@ class Sparse2InverseSolver(LIONsolver):
             forward, _ = op.autograd()
             self.combo_ops_autograd[target_splits] = forward
 
-    def _calculate_noisy_sub_recons(self, sinos):
+    def _calculate_noisy_sub_recons(self, y):
         subgroup_recons = {}
         for combo in self.split_combinations:
             temp_recons = []
             for split_idx in combo:
                 sub_sino = self.operator_params.split_measurements(
-                    sinos, self.subgroup_indices[split_idx]
+                    y, self.subgroup_indices[split_idx]
                 )
                 sub_recon = self.reconstruct_measurements(
                     sub_sino, self.sub_ops[split_idx]
@@ -140,9 +140,9 @@ class Sparse2InverseSolver(LIONsolver):
         params.recon_fn = "default"
         return params
 
-    def mini_batch_step(self, sinos, targets):
-        batch_size = sinos.shape[0]
-        subgroup_recons = self._calculate_noisy_sub_recons(sinos)
+    def mini_batch_step(self, y, targets):
+        batch_size = y.shape[0]
+        subgroup_recons = self._calculate_noisy_sub_recons(y)
         batch_loss = 0.0
         total_pixels = 0
         for combo, mean_recon in subgroup_recons.items():
@@ -156,7 +156,7 @@ class Sparse2InverseSolver(LIONsolver):
             for b in range(batch_size):
                 projected_sino = projector(output_recon[b : b + 1])
                 target_sino = self.operator_params.split_measurements(
-                    sinos[b : b + 1], objective_idx
+                    y[b : b + 1], objective_idx
                 )
                 batch_loss += ((projected_sino - target_sino) ** 2).sum()
                 total_pixels += projected_sino.numel()
@@ -167,11 +167,9 @@ class Sparse2InverseSolver(LIONsolver):
         # validation and testing evaluate the reconstruction
         return self.reconstruct(data)
 
-    def reconstruct(self, sinos):
-        subgroup_recons = self._calculate_noisy_sub_recons(sinos)
-        outputs = torch.zeros(
-            (sinos.shape[0], *self.op.domain_shape), device=self.device
-        )
+    def reconstruct(self, y):
+        subgroup_recons = self._calculate_noisy_sub_recons(y)
+        outputs = torch.zeros((y.shape[0], *self.op.domain_shape), device=self.device)
         for combo, mean_recon in subgroup_recons.items():
             outputs += self.model(mean_recon)
         outputs /= len(subgroup_recons)
