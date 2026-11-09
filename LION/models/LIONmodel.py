@@ -61,7 +61,7 @@ class LIONModelParameter(LIONParameter):
         # loading from file) are not overwritten.
         self.model_input_type = None
         # How the model's initial reconstruction is made from measurements,
-        # f(sinogram, operator) (set_initial_reconstruction). "default": the
+        # f(y, operator) (set_initial_reconstruction). "default": the
         # operator's default reconstruction (FDK for CT), replaced by that
         # function once the model has its operator.
         self.initial_reconstruction = "default"
@@ -277,7 +277,7 @@ class LIONmodel(nn.Module, ABC):
 
     def set_initial_reconstruction(self, reconstruction):
         """How the model's initial reconstruction is made from the
-        measurements, ``reconstruction(sinogram, operator)``: the input of a
+        measurements, ``reconstruction(y, operator)``: the input of a
         model that takes images (``LION.optimizers.LIONsolver.model_forward``),
         or where a model that takes measurements and starts from a
         reconstruction (e.g. LPD) starts, in training and whenever it is used.
@@ -310,14 +310,14 @@ class LIONmodel(nn.Module, ABC):
             return
         self.model_parameters.initial_reconstruction = value
 
-    def initial_reconstruction(self, sino, op):
-        """The model's initial reconstruction of the measurements ``sino``
+    def initial_reconstruction(self, y, op):
+        """The model's initial reconstruction of the measurements ``y``
         (``model_parameters.initial_reconstruction``; "default": ``op``'s
         default reconstruction, e.g. FDK for CT)."""
         self._resolve_initial_reconstruction(op)
         return resolve_reconstruction(
             self.model_parameters.initial_reconstruction, op, "initial_reconstruction"
-        )(sino, op)
+        )(y, op)
 
     def normalise(self, x):
         """Normalise ``x`` as set by ``set_normalisation()`` (identity if unset)."""

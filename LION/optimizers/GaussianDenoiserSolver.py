@@ -70,7 +70,7 @@ class GaussianDenoiserSolver(LIONsolver):
             )
         self.noise_level = noise_level
 
-    def mini_batch_step(self, sino, target):
+    def mini_batch_step(self, y, target):
         """
         This function isresponsible for performing a single mini-batch step of the optimization.
         returns the loss of the mini-batch
@@ -91,13 +91,13 @@ class GaussianDenoiserSolver(LIONsolver):
             )
 
         noise_level = self._noise_level()
-        y = target + noise_level * torch.randn_like(target)
+        noisy = target + noise_level * torch.randn_like(target)
 
         # if the model accepts noise level as input
         if self.model.takes_noise_level():
-            output = self.model(y, noise_level=noise_level)
+            output = self.model(noisy, noise_level=noise_level)
         else:
-            output = self.model(y)
+            output = self.model(noisy)
         return self.loss_fn(output, target)
 
     def _noise_level(self) -> float:
@@ -162,13 +162,13 @@ class GaussianDenoiserSolver(LIONsolver):
                     else:
                         data = targets
                     noise_level = self._noise_level()
-                    y = data + noise_level * torch.randn_like(data)
+                    noisy = data + noise_level * torch.randn_like(data)
 
                 # if the model accepts noise level as input
                 if self.model.takes_noise_level():
-                    outputs = self.model(y, noise_level=noise_level)
+                    outputs = self.model(noisy, noise_level=noise_level)
                 else:
-                    outputs = self.model(y)
+                    outputs = self.model(noisy)
                 validation_loss = np.append(
                     validation_loss,
                     self.validation_fn(outputs.to(self.device), data.to(self.device))

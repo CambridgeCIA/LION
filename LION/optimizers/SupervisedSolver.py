@@ -52,12 +52,12 @@ class SupervisedSolver(LIONsolver):
         if verbose >= 2:
             tqdm.write(f"Supervised solver training on device: {self.device}")
 
-    def mini_batch_step(self, sino, target):
+    def mini_batch_step(self, y, target):
         """
         This function isresponsible for performing a single mini-batch step of the optimization.
         returns the loss of the mini-batch
         """
-        output = self._forward(sino)
+        output = self._forward(y)
         return self.loss_fn(output, target)
 
     @staticmethod

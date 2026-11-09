@@ -134,12 +134,12 @@ class Equivariance2InverseSolver(LIONsolver):
         params.recon_fn = "default"
         return params
 
-    def _noise(self, sinos: torch.Tensor) -> torch.Tensor:
+    def _noise(self, y: torch.Tensor) -> torch.Tensor:
         """New Gaussian noise for the sinograms (N_BG in the paper)."""
-        noise = torch.randn_like(sinos) * self.solver_params.noise_std
+        noise = torch.randn_like(y) * self.solver_params.noise_std
         kernel = self.solver_params.noise_kernel
         if kernel is not None:
-            kernel = torch.as_tensor(kernel, dtype=sinos.dtype, device=sinos.device)
+            kernel = torch.as_tensor(kernel, dtype=y.dtype, device=y.device)
             kernel = kernel.flatten()
             # as the authors' Conv2d(padding="same", padding_mode="reflect")
             left = (kernel.numel() - 1) // 2
@@ -148,10 +148,10 @@ class Equivariance2InverseSolver(LIONsolver):
             noise = F.conv1d(lines, kernel.view(1, 1, -1)).reshape(noise.shape)
         return noise
 
-    def mini_batch_step(self, sinos, targets):
+    def mini_batch_step(self, y, targets):
         if self.solver_params.noise_std is None:
             self.solver_params.noise_std = estimate_noise_std(
-                sinos, self.solver_params.noise_kernel
+                y, self.solver_params.noise_kernel
             )
             if self.verbose >= 2:
                 tqdm.write(
@@ -159,11 +159,11 @@ class Equivariance2InverseSolver(LIONsolver):
                     f"data: {self.solver_params.noise_std:.4g}"
                 )
         # masking
-        NP = sinos.shape[2]
+        NP = y.shape[2]
         YJ_num = torch.randint(0, NP, (1,)).item()
-        YJ = sinos[:, :, YJ_num, :]
+        YJ = y[:, :, YJ_num, :]
 
-        YJc = sinos.clone()
+        YJc = y.clone()
         YJc[:, :, YJ_num, :] = 0
 
         weight = NP / (NP - 1)
@@ -193,8 +193,8 @@ class Equivariance2InverseSolver(LIONsolver):
         # validation and testing evaluate the reconstruction
         return self.reconstruct(data)
 
-    def reconstruct(self, sinos):
-        input_recon = self.reconstruct_measurements(sinos, self.op)
+    def reconstruct(self, y):
+        input_recon = self.reconstruct_measurements(y, self.op)
         output_recon = self.model(input_recon)
         return output_recon
 
