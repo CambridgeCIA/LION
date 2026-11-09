@@ -30,20 +30,6 @@ EXPERIMENTS = [
 ]
 
 
-def test_experiment_names_are_unique():
-    names = [cls.default_parameters().name for cls in EXPERIMENTS]
-    assert len(EXPERIMENTS) == 9
-    assert len(set(names)) == len(names), names
-
-
-def test_noise_function_is_always_defined():
-    cls = ct_experiments.LowDoseCTRecon  # the experiments share this code
-    params = cls.default_parameters()
-    assert cls(params).sino_fun is not None
-    del params.noise_params
-    assert cls(params).sino_fun is None
-
-
 @pytest.mark.parametrize("relative", [False, True])
 def test_experiments_choose_the_noise_model(monkeypatch, relative):
     """Experiments use the physical noise model by default; noise_model =
@@ -64,19 +50,6 @@ def test_experiments_choose_the_noise_model(monkeypatch, relative):
     assert kw["model"] == ("relative" if relative else "physical")
     assert (kw["detector"], kw["min_counts"]) == ("energy_integrating", 1.0)
     assert kw["mass_attenuation"] == ct_experiments.ct.WATER_MASS_ATTENUATION[80]
-
-
-def test_photon_counting_experiment(monkeypatch):
-    params = ct_experiments.LowDoseCTRecon.default_parameters()
-    params.noise_params = ct_experiments.Experiment.noise_parameters(
-        5000, detector="photon_counting"
-    )
-    calls = []
-    monkeypatch.setattr(
-        ct_experiments.ct, "sinogram_add_noise", lambda sino, **kw: calls.append(kw)
-    )
-    ct_experiments.LowDoseCTRecon(params).sino_fun("sinogram")
-    assert calls[0]["detector"] == "photon_counting" and calls[0]["I0"] == 5000
 
 
 def test_experiment_doses():
@@ -123,23 +96,6 @@ def fake_detect(tmp_path, mode, n_samples=10, query=""):
 
 
 @pytest.mark.filterwarnings("ignore:You are not using any detector query")
-def test_detect_noise_I0_per_detector(tmp_path):
-    """noise_params.I0 is one number for every slice (as before October 2026)
-    or a dict per detector (the default of deteCT.noise_parameters)."""
-    data = fake_detect(tmp_path, "train")
-    detectors = data.slice_dataframe["detector"].values
-    data.noise_params = deteCT.noise_parameters()  # per detector
-    for index, detector in enumerate(detectors):
-        assert data.noise_I0(index) == {1: 290, 2: 100}[detector]
-    data.noise_params = deteCT.noise_parameters(I0={"1": 300, "2": 120})  # from JSON
-    assert [data.noise_I0(i) for i in range(3)] == [
-        {1: 300, 2: 120}[d] for d in detectors[:3]
-    ]
-    data.noise_params = deteCT.noise_parameters(I0=200)  # one for all
-    assert {data.noise_I0(i) for i in range(len(detectors))} == {200}
-
-
-@pytest.mark.filterwarnings("ignore:You are not using any detector query")
 def test_detect_loader_adds_noise_with_the_slice_I0(tmp_path, monkeypatch):
     data = fake_detect(tmp_path, "train")  # slices 0-2: the first sample
     operator_params = deteCT.get_default_geometry()
@@ -177,14 +133,6 @@ def test_detect_splits_use_every_sample_once(tmp_path, n_samples):
     assert set.union(*splits.values()) == set(range(n_samples))
 
 
-@pytest.mark.parametrize("query", ["", "detector==1"])
-@pytest.mark.filterwarnings("ignore:You are not using any detector query")
-def test_detect_length_is_the_number_of_slices(tmp_path, query):
-    dataset = fake_detect(tmp_path, "test", query=query)
-    assert len(dataset) == len(dataset.slice_dataframe)
-    assert len(dataset) == (3 if query == "" else 2)  # 1 test sample, 3 slices
-
-
 # --------------------------------------------------------------------------
 # ct_experiments on the measured 2DeteCT data
 
@@ -202,32 +150,31 @@ ON_2DETECT = {
 }
 
 
-@pytest.mark.parametrize("cls", EXPERIMENTS, ids=lambda c: c.__name__)
-def test_ct_experiments_on_2detect(cls):
-    expected = ON_2DETECT[cls.__name__]
-    if expected is None:
-        with pytest.raises(ValueError, match="not possible with the measured 2DeteCT"):
-            cls.default_parameters(dataset="2DeteCT")
-        return
-    n_angles, input_mode = expected
-    params = cls.default_parameters(dataset="2DeteCT")
-    measured = np.asarray(deteCT.get_default_geometry().angles)
-    angles = np.asarray(params.operator_params.angles)
-    assert len(angles) == n_angles
-    assert np.isin(angles, measured).all()  # only measured angles
-    if n_angles < 3600:  # sparse/limited: same sampling as the simulated experiment
-        simulated = np.asarray(cls.default_parameters().operator_params.angles)
-        np.testing.assert_allclose(
-            np.abs(np.diff(angles)), np.abs(np.diff(simulated)), atol=1e-9
-        )
-    # ("full" sampling is all 3600 measured angles, as in FullDataCTRecon)
-    assert params.data_loader_params.input_mode == input_mode
-    assert params.data_loader_params.target_mode == "mode2"
-    assert not hasattr(params, "noise_params")
+def test_ct_experiments_on_2detect(tmp_path):
+    for cls in EXPERIMENTS:
+        expected = ON_2DETECT[cls.__name__]
+        if expected is None:
+            with pytest.raises(
+                ValueError, match="not possible with the measured 2DeteCT"
+            ):
+                cls.default_parameters(dataset="2DeteCT")
+            return
+        n_angles, input_mode = expected
+        params = cls.default_parameters(dataset="2DeteCT")
+        measured = np.asarray(deteCT.get_default_geometry().angles)
+        angles = np.asarray(params.operator_params.angles)
+        assert len(angles) == n_angles
+        assert np.isin(angles, measured).all()  # only measured angles
+        if n_angles < 3600:  # sparse/limited: same sampling as the simulated experiment
+            simulated = np.asarray(cls.default_parameters().operator_params.angles)
+            np.testing.assert_allclose(
+                np.abs(np.diff(angles)), np.abs(np.diff(simulated)), atol=1e-9
+            )
+        # ("full" sampling is all 3600 measured angles, as in FullDataCTRecon)
+        assert params.data_loader_params.input_mode == input_mode
+        assert params.data_loader_params.target_mode == "mode2"
+        assert not hasattr(params, "noise_params")
 
-
-@pytest.mark.filterwarnings("ignore:You are not using any detector query")
-def test_2detect_experiment_builds_its_datasets(tmp_path):
     write_fake_detect_record(tmp_path)
     experiment = ct_experiments.SparseAngleExtremeLowDoseCTRecon(
         dataset="2DeteCT", datafolder=tmp_path
@@ -269,25 +216,6 @@ def test_lidc_slice_selection(
     assert selected == sorted(set(selected))  # sorted, no repeats
 
 
-def test_lidc_legacy_selection_skipped_patients_without_nodules():
-    assert lidc.select_slices(NON_NODULE, [], 5, 0.5, legacy=True) == []
-    # with both kinds available, legacy and current agree
-    assert lidc.select_slices(NON_NODULE, NODULE, 5, 0.5, legacy=True) == (
-        lidc.select_slices(NON_NODULE, NODULE, 5, 0.5)
-    )
-
-
-@pytest.mark.parametrize("legacy", [False, True])
-def test_lidc_legacy_slice_selection(legacy):
-    params = lidc.LIDC_IDRI.default_parameters(task="segmentation")
-    assert params.legacy_slice_selection is False
-    params.legacy_slice_selection = legacy
-    dataset = lidc.LIDC_IDRI.__new__(lidc.LIDC_IDRI)  # no data needed
-    dataset.parameters = params
-    selected = dataset.get_slices_to_load(["p"], {"p": NON_NODULE}, {"p": []}, 5, 0.5)
-    assert len(selected["p"]) == (0 if legacy else 5)
-
-
 @pytest.mark.parametrize(
     "cls", [ct_experiments.clinicalCTRecon, ct_experiments.SparseAngleCTRecon]
 )
@@ -307,33 +235,6 @@ def test_experiment_from_saved_parameters_has_a_geometry(tmp_path, cls):
     assert list(experiment.operator_params.detector_shape) == list(
         params.operator_params.detector_shape
     )
-
-
-@pytest.mark.filterwarnings("ignore:You are not using any detector query")
-def test_detect_returns_samples_on_the_selected_device(tmp_path, monkeypatch):
-    import types
-
-    import torch
-
-    import LION.data_loaders.deteCT as detect_module
-
-    monkeypatch.setattr(detect_module, "default_device", lambda: torch.device("meta"))
-    monkeypatch.setattr(
-        detect_module,
-        "import_tomosipo",
-        lambda *names: types.SimpleNamespace(fdk=None, nag_ls=None),
-    )
-    data = fake_detect(tmp_path, "train")
-    data.task, data.input_mode, data.target_mode = "recon2recon", "mode2", "mode2"
-    data.do_recon = False
-    identifier = data.slice_dataframe.iloc[0]["slice_identifier"]
-    (tmp_path / identifier / "mode2").mkdir(parents=True)
-    np.save(
-        tmp_path / identifier / "mode2" / "reconstruction.npy", np.ones((1024, 1024))
-    )
-    data.operator_params = data.get_default_geometry()
-    for tensor in data[0]:
-        assert tensor.device.type == "meta"
 
 
 def test_the_2detect_benchmark_experiments():

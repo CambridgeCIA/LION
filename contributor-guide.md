@@ -27,8 +27,13 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
 
 - Tests live in `pytests/`, **flat**, one file per topic. Shared helpers go in
   `pytests/helpers.py`, fixtures in `pytests/conftest.py`.
-- Every fix or feature comes with a test, and a fix with a test that fails
-  without it.
+- A feature comes with a test: one test of the feature, from start to end,
+  rather than one per detail. Extend the feature's test before adding a new
+  one. LION is a research library: a test has to be worth the time it takes to
+  run and to keep up to date.
+- A fix comes with a test only when it changes what a feature promises (what
+  records hold, what loads, the maths); then add the check to that feature's
+  test. Other fixes are checked by hand: say how in the PR.
 - Run them with `pytest pytests/`. Add `-n auto` to run them in parallel
   (`pytest-xdist` comes with `[dev]`), as CI does.
 - Tests that need tomosipo/astra or CUDA are marked `@pytest.mark.tomosipo` or

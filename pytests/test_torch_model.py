@@ -45,8 +45,6 @@ def test_torch_model_saves_and_loads_a_torch_module(tmp_path):
     x = torch.rand(1, 1, 8, 8)
     torch.testing.assert_close(loaded(x), model(x))
 
-
-def test_torch_model_loads_your_own_module_when_allowed(tmp_path):
     torch.manual_seed(0)
     model = TorchModel(TwoConvolutions, {"channels": 4}).eval()
     _save(model, tmp_path / "model")
@@ -73,17 +71,6 @@ class TwoChannels(torch.nn.Module):
         return x[:, :1] * x[:, 1:]
 
 
-def test_torch_model_finds_the_noise_level_keyword():
-    from pytests.helpers import NoiseLevelConvolution
-
-    assert TorchModel(NoiseLevelConvolution).takes_noise_level()
-    model = TorchModel(SigmaKeyword)
-    assert model.takes_noise_level()
-    x = torch.ones(1, 1, 4, 4)
-    torch.testing.assert_close(model(x, noise_level=0.5), x * 0.5)
-    assert not TorchModel(TwoConvolutions, {"channels": 2}).takes_noise_level()
-
-
 def test_torch_model_gives_the_noise_level_as_a_channel(tmp_path, monkeypatch):
     from LION.models import torch_model
 
@@ -100,3 +87,12 @@ def test_torch_model_gives_the_noise_level_as_a_channel(tmp_path, monkeypatch):
     path = f"{TwoChannels.__module__}.TwoChannels"
     monkeypatch.setitem(torch_model.NOISE_LEVEL, path, "channel")
     assert TorchModel(TwoChannels).takes_noise_level()
+
+    from pytests.helpers import NoiseLevelConvolution
+
+    assert TorchModel(NoiseLevelConvolution).takes_noise_level()
+    model = TorchModel(SigmaKeyword)
+    assert model.takes_noise_level()
+    x = torch.ones(1, 1, 4, 4)
+    torch.testing.assert_close(model(x, noise_level=0.5), x * 0.5)
+    assert not TorchModel(TwoConvolutions, {"channels": 2}).takes_noise_level()

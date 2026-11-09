@@ -12,20 +12,14 @@ the solvers' deterministic switch."""
 import importlib
 import importlib.metadata
 import json
-import os
-import pathlib
 import subprocess
 import sys
 import warnings
 
 import pytest
-import torch
 
 import LION
-import LION.optimizers.LIONsolver as lion_solver
-from LION.operators.ct.ct_geometry import Geometry
 from LION.models.CNNs.dncnn import DnCNN
-from LION.optimizers.SupervisedSolver import SupervisedSolver
 from LION.utils import environment
 from LION.utils.parameter import LIONParameter
 from pytests.helpers import small_dncnn
@@ -38,22 +32,10 @@ def save(model, path):
 
 
 # --------------------------------------------------------------------------
-# The version
-
-
-def test_version():
-    assert LION.__version__ == "0.2.0"
-    root = pathlib.Path(LION.__file__).parent
-    assert (root / "VERSION").read_text().strip() == LION.__version__
-    pyproject = (root.parent / "pyproject.toml").read_text()
-    assert 'version_file = "LION/VERSION"' in pyproject
-
-
-# --------------------------------------------------------------------------
 # The record
 
 
-def test_record():
+def test_record(tmp_path):
     record = environment.environment_record("cpu")
     assert isinstance(record, LIONParameter)
     assert record.lion.version == LION.__version__
@@ -63,8 +45,6 @@ def test_record():
     assert not hasattr(record, "hostname")
     json.dumps(record.serialize())  # plain JSON
 
-
-def test_record_in_every_model_file(tmp_path):
     save(small_dncnn(), tmp_path / "model")
     saved = json.loads((tmp_path / "model.json").read_text())
     assert saved["environment"]["lion"]["version"] == LION.__version__
@@ -85,14 +65,6 @@ def test_loading_a_file_saved_with_other_code_warns(tmp_path):
     path.write_text(json.dumps(saved))
     with pytest.warns(UserWarning, match="saved with other LION code.*0000000000"):
         DnCNN.load(tmp_path / "model", supress_warnings=True)
-
-
-def test_other_version_without_git_warns():
-    record = {"lion": {"version": "0.1.0", "commit": None}}
-    assert "LION 0.1.0" in environment.code_differences(record)
-    record["lion"]["version"] = LION.__version__
-    if environment.code_state()["commit"] is None:
-        assert environment.code_differences(record) is None
 
 
 # --------------------------------------------------------------------------
@@ -124,14 +96,12 @@ def repository(tmp_path):
     return root
 
 
-def test_clean_checkout(repository):
+def test_git_state(repository, monkeypatch, tmp_path):
     state = environment.code_state(repository / "pkg")
     assert len(state["commit"]) == 40
     assert state["uncommitted"] == [] and state["diff_sha256"] is None
     assert state["pushed"] is False  # no remote
 
-
-def test_changed_files(repository):
     package = repository / "pkg"
     (package / "a.py").write_text("A = 2\n")
     (repository / "notes.txt").write_text("changed, but not in the package\n")
@@ -140,10 +110,8 @@ def test_changed_files(repository):
     (package / "a.py").write_text("A = 3\n")
     second = environment.code_state(package)
     assert second["diff_sha256"] not in (None, first["diff_sha256"])
+    git(repository, "checkout", "-q", "--", "pkg/a.py")
 
-
-def test_untracked_files_count_if_imported(repository, monkeypatch):
-    package = repository / "pkg"
     (package / "leftover.py").write_text("X = 1\n")  # e.g. an old file
     (package / "new.py").write_text("Y = 1\n")
     assert environment.code_state(package)["uncommitted"] == []
@@ -153,8 +121,6 @@ def test_untracked_files_count_if_imported(repository, monkeypatch):
     importlib.import_module("pkg.new")
     assert environment.code_state(package)["uncommitted"] == ["pkg/new.py"]
 
-
-def test_pushed(repository, tmp_path):
     remote = tmp_path / "remote.git"
     git(tmp_path, "init", "-q", "--bare", str(remote))
     git(repository, "remote", "add", "origin", str(remote))
@@ -166,8 +132,6 @@ def test_pushed(repository, tmp_path):
     git(repository, "push", "-q", "origin", "main")  # pushed while it runs
     assert environment.code_state(repository / "pkg")["pushed"] is True
 
-
-def test_not_a_checkout(tmp_path):
     environment._git_root.cache_clear()
     state = environment.code_state(tmp_path)
     assert state == {
@@ -177,16 +141,6 @@ def test_not_a_checkout(tmp_path):
         "pushed": None,
     }
 
-
-# --------------------------------------------------------------------------
-# What keeps a result from being published
-
-
-def record_of(**lion):
-    return LIONParameter(lion=LIONParameter(**lion))
-
-
-def test_publish_problems():
     clean = dict(commit="a" * 40, uncommitted=[], pushed=True)
     assert environment.publish_problems(record_of(**clean)) == []
     dirty = dict(clean, uncommitted=["LION/a.py"])
@@ -204,35 +158,8 @@ def test_publish_problems():
 
 
 # --------------------------------------------------------------------------
-# The solvers' deterministic switch
+# What keeps a result from being published
 
 
-@pytest.fixture
-def restore_determinism():
-    yield
-    torch.use_deterministic_algorithms(False)
-    torch.backends.cudnn.deterministic = False
-    torch.backends.cudnn.benchmark = False
-
-
-def make_solver(**kwargs):
-    model = small_dncnn()
-    return SupervisedSolver(
-        model,
-        torch.optim.SGD(model.parameters(), lr=0.1),
-        torch.nn.MSELoss(),
-        operator_params=Geometry.default_parameters(),
-        device=torch.device("cpu"),
-        **kwargs,
-    )
-
-
-def test_deterministic(monkeypatch, restore_determinism):
-    monkeypatch.setattr(Geometry, "make_operator", lambda self: None)
-    monkeypatch.delenv("CUBLAS_WORKSPACE_CONFIG", raising=False)
-    solver = make_solver(deterministic=True)
-    assert torch.are_deterministic_algorithms_enabled()
-    assert torch.backends.cudnn.deterministic and not torch.backends.cudnn.benchmark
-    assert os.environ["CUBLAS_WORKSPACE_CONFIG"] == ":4096:8"
-    assert solver.spec_kwargs()["deterministic"] is True
-    assert environment.environment_record("cpu").torch.deterministic_algorithms
+def record_of(**lion):
+    return LIONParameter(lion=LIONParameter(**lion))

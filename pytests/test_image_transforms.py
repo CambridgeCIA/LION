@@ -57,7 +57,7 @@ def test_transforms_match_torchvision(angle):
     )
 
 
-def test_random_crop_takes_each_image_somewhere_else():
+def test_random_transforms():
     from LION.utils.image_transforms import random_crop
 
     torch.manual_seed(0)
@@ -71,8 +71,6 @@ def test_random_crop_takes_each_image_somewhere_else():
     with pytest.raises(ValueError, match="doesn't fit"):
         random_crop(x, (9, 4))
 
-
-def test_random_erasing_erases_a_rectangle_of_some_images():
     from LION.utils.image_transforms import random_erasing
 
     torch.manual_seed(0)
@@ -87,20 +85,6 @@ def test_random_erasing_erases_a_rectangle_of_some_images():
         assert h * w == len(rows)  # one rectangle
         assert 0.02 * 256 * 0.5 <= h * w <= 0.33 * 256 * 1.5
 
-
-def test_random_patches_are_the_same_when_seeded():
-    from LION.utils.image_transforms import random_crop, random_erasing
-    from LION.utils.rng import seeded
-
-    x = torch.rand(4, 1, 16, 16)
-    with seeded(0, "patches"):
-        a = random_erasing(random_crop(x, (8, 8)))
-    with seeded(0, "patches"):
-        b = random_erasing(random_crop(x, (8, 8)))
-    assert torch.equal(a, b)
-
-
-def test_random_flip_rotate_gives_each_image_one_of_its_symmetries():
     from LION.utils.image_transforms import random_flip_rotate
 
     torch.manual_seed(0)

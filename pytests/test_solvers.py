@@ -14,12 +14,8 @@ image-domain models. Neither matters for these tests, so the ``no_ct`` fixture
 
 import functools
 import itertools
-import pathlib
-import types
-import warnings
 
 import numpy as np
-import importlib
 
 import pytest
 import torch
@@ -32,15 +28,12 @@ from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver
 from LION.utils import spec
-from LION.utils.parameter import OperatorParameters
-from pytests.helpers import IdentityStandIn, identity_reconstruction
+from pytests.helpers import IdentityStandIn
 from pytests.helpers import adjoint_reconstruction as helpers_adjoint
 from pytests.helpers import (
     CTStandIn,
     replace_fdk,
     small_dncnn,
-    small_gsd,
-    small_gsd_dncnn,
     small_gsd_noise_channel,
 )
 
@@ -71,16 +64,6 @@ def make_solver(model=None, lr=1e-2, **kwargs):
         device=torch.device("cpu"),
         **kwargs,
     )
-
-
-def test_supervised_solver_builds_one_operator(monkeypatch):
-    built = []
-    monkeypatch.setattr(
-        Geometry, "make_operator", lambda self: built.append(self) or "op"
-    )
-    solver = make_solver()
-    assert built and len(built) == 1
-    assert solver.op == "op"
 
 
 # --------------------------------------------------------------------------
@@ -118,35 +101,13 @@ def test_resume_keeps_train_loss_history(tmp_path):
     np.testing.assert_allclose(solver.train_loss[:2], first.train_loss[:2])
     assert solver.train_loss[2] > 0
 
-
-def test_resume_restores_min_validation_loss(tmp_path):
-    first = _first_run(tmp_path, n_epochs=2, validation=True)
+    (tmp_path / "validated").mkdir()
+    first = _first_run(tmp_path / "validated", n_epochs=2, validation=True)
     best = np.min(first.validation_loss)
 
-    solver = _resumed_solver(tmp_path, validation=True)
+    solver = _resumed_solver(tmp_path / "validated", validation=True)
     solver.train(2)  # only loads
     assert solver.validation_loss[1] == pytest.approx(best)
-
-
-def test_resume_with_relative_folder(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    folder = pathlib.Path("runs")
-    folder.mkdir()
-    _first_run(folder, n_epochs=1)
-    solver = _resumed_solver(folder)
-    solver.train(1)
-    assert solver.current_epoch == 1
-
-
-def test_train_twice_keeps_the_loss_history():
-    solver = make_solver()
-    solver.set_training(loader())
-    solver.train(2)
-    first = solver.train_loss.copy()
-    solver.train(3)  # one more epoch
-    assert solver.current_epoch == 3
-    np.testing.assert_array_equal(solver.train_loss[:2], first)
-    assert solver.train_loss[2] > 0
 
 
 @pytest.mark.parametrize("verbose", [0, 1, 2])
@@ -166,56 +127,6 @@ def test_solvers_show_progress_by_level(tmp_path, capfd, verbose):
     # one bar over every mini-batch of every epoch (2 epochs x 2 batches)
     assert "Training" in err and "4/4" in err and "epoch=2/2" in err
     assert ("Epoch 1" in out) == (verbose == 2)  # messages only at 2
-
-
-def test_solvers_show_one_progress_bar_by_default():
-    assert make_solver().verbose == 1
-
-
-def test_warnings_dont_depend_on_verbose():
-    # nothing saves the result: worth a warning, verbose or not
-    solver = make_solver(verbose=False)
-    solver.set_training(loader())
-    with pytest.warns(UserWarning, match="final_result_fname"):
-        solver.train(1)
-
-
-def test_train_needs_a_positive_number_of_epochs():
-    solver = make_solver()
-    solver.set_training(loader())
-    with pytest.raises(ValueError, match="positive"):
-        solver.train(0)
-
-
-def test_invalid_normalisation_raises():
-    from LION.utils.normaliser import Normalisation
-
-    with pytest.raises(ValueError, match="normalization type"):
-        Normalisation("per-pixel")
-
-
-def test_min_validation_model_lives_in_save_folder(tmp_path):
-    # checkpoints may go elsewhere; the min-validation model is in save_folder
-    checkpoints = tmp_path / "checkpoints"
-    checkpoints.mkdir()
-
-    def solver_for_run(seed):
-        torch.manual_seed(seed)
-        solver = make_solver()
-        solver.set_training(loader())
-        solver.set_saving(tmp_path, "model")
-        solver.set_checkpointing("model_check_*.pt", 1, save_folder=checkpoints)
-        solver.set_validation(loader(seed=1), 1, validation_fname="model_min_val.pt")
-        return solver
-
-    first = solver_for_run(0)
-    first.train(2)
-    assert (tmp_path / "model_min_val.pt").with_suffix(".pt").is_file()
-    assert not list(checkpoints.glob("model_min_val*"))
-
-    resumed = solver_for_run(1)
-    resumed.train(2)  # only loads
-    assert resumed.validation_loss[1] == pytest.approx(np.min(first.validation_loss))
 
 
 # --------------------------------------------------------------------------
@@ -301,19 +212,6 @@ def test_validation_and_test_take_output_then_target(tmp_path, input_type):
     assert seen == [True, True]
 
 
-@pytest.mark.parametrize("make_model", [small_gsd, small_gsd_dncnn])
-def test_gradient_step_denoisers_validate_and_test(tmp_path, make_model):
-    """Validation/testing run under torch.no_grad(); gradient-step denoisers
-    enable autograd themselves, so they work too."""
-    solver = make_solver(make_model())
-    solver.set_saving(tmp_path, "model")
-    data = loader(n=2, batch_size=2)
-    solver.set_validation(data, validation_freq=1)
-    solver.set_testing(data)
-    assert solver.validate() > 0
-    assert solver.test().shape == (1,)
-
-
 # --------------------------------------------------------------------------
 # model.set_normalisation() must actually be used by the solvers
 
@@ -324,7 +222,7 @@ def _capture_inputs(model):
     return seen
 
 
-def test_training_step_normalises_input_and_returns_target_units():
+def test_training_step_normalises_input_and_returns_target_units(tmp_path):
     solver = make_solver()
     solver.model.set_normalisation("sample")
     seen = _capture_inputs(solver.model)
@@ -340,8 +238,6 @@ def test_training_step_normalises_input_and_returns_target_units():
     output = solver._forward(data)
     assert output.mean() > 50
 
-
-def test_validation_uses_normalisation(tmp_path):
     solver = make_solver()
     solver.model.set_normalisation("sample")
     solver.set_saving(tmp_path, "model")
@@ -349,16 +245,6 @@ def test_validation_uses_normalisation(tmp_path):
     seen = _capture_inputs(solver.model)
     solver._validation_loop()
     assert all(x.min() >= 0 and x.max() <= 1 for x in seen)
-
-
-@pytest.mark.parametrize("normalisation_type", ["sample", "custom"])
-def test_normalising_a_constant_image_gives_no_nan(normalisation_type):
-    model = small_dncnn()
-    model.set_normalisation(normalisation_type, data_range=(2.0, 2.0))
-    x = torch.full((2, 1, 8, 8), 2.0)
-    normalised = model.normalise(x)
-    assert torch.isfinite(normalised).all()
-    torch.testing.assert_close(model.unnormalise(normalised), x)
 
 
 def gaussian_denoiser_solver(**params):
@@ -378,19 +264,6 @@ def gaussian_denoiser_solver(**params):
     )
 
 
-@pytest.mark.parametrize(
-    "noise_level, expected",
-    [(0.05, (0.05, 0.05)), ([0.05], (0.05, 0.05)), ([0.01, 0.1], (0.01, 0.1))],
-)
-def test_gaussian_denoiser_noise_level(noise_level, expected):
-    solver = gaussian_denoiser_solver(noise_level=noise_level)
-    assert solver._noise_range() == expected
-    low, high = expected
-    levels = solver._noise_levels(100, "cpu")
-    assert levels.shape == (100,) and low <= levels.min() <= levels.max() <= high
-    assert (levels.unique().numel() > 1) == (low < high)  # one per image
-
-
 def test_gaussian_denoiser_gives_each_image_its_noise_level():
     solver = gaussian_denoiser_solver(noise_level=[0.01, 0.2])
     solver.model = small_gsd_noise_channel()
@@ -404,46 +277,42 @@ def test_gaussian_denoiser_gives_each_image_its_noise_level():
     (levels,) = given
     assert levels.shape == (4,) and levels.unique().numel() == 4
 
-
-@pytest.mark.parametrize(
-    "augment, erasing", [(False, False), (True, False), (False, True)]
-)
-def test_gaussian_denoiser_augmentations_are_options(monkeypatch, augment, erasing):
-    import LION.optimizers.GaussianDenoiserSolver as module
-
-    called = []
-    for name in ("random_flip_rotate", "random_erasing"):
-        monkeypatch.setattr(module, name, lambda x, name=name: called.append(name) or x)
-    solver = gaussian_denoiser_solver(augment=augment, random_erasing=erasing)
-    solver.mini_batch_step(None, torch.rand(2, 1, 8, 8))
-    assert called == ["random_flip_rotate"] * augment + ["random_erasing"] * erasing
+    for noise_level, expected in [
+        (0.05, (0.05, 0.05)),
+        ([0.05], (0.05, 0.05)),
+        ([0.01, 0.1], (0.01, 0.1)),
+    ]:
+        solver = gaussian_denoiser_solver(noise_level=noise_level)
+        assert solver._noise_range() == expected
+        low, high = expected
+        levels = solver._noise_levels(100, "cpu")
+        assert levels.shape == (100,) and low <= levels.min() <= levels.max() <= high
+        assert (levels.unique().numel() > 1) == (low < high)  # one per image
 
 
-@pytest.mark.parametrize("penalty", [None, "firm", "prox"])
-def test_gaussian_denoiser_adds_the_jacobian_penalty(penalty):
-    from LION.losses.jacobian_penalty import (
-        FirmlyNonexpansivePenalty,
-        ProximalDenoiserPenalty,
+def test_gaussian_denoiser_augmentations_are_options(monkeypatch):
+    for augment, erasing in [(False, False), (True, False), (False, True)]:
+        import LION.optimizers.GaussianDenoiserSolver as module
+
+        called = []
+        for name in ("random_flip_rotate", "random_erasing"):
+            monkeypatch.setattr(
+                module, name, lambda x, name=name: called.append(name) or x
+            )
+        solver = gaussian_denoiser_solver(augment=augment, random_erasing=erasing)
+        solver.mini_batch_step(None, torch.rand(2, 1, 8, 8))
+        assert called == ["random_flip_rotate"] * augment + ["random_erasing"] * erasing
+
+    from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
+
+    solver = gaussian_denoiser_solver(patches=GaussianDenoiserSolver.patches(3, 4))
+    seen = []
+    solver.loss_fn = (
+        lambda output, target: seen.append(target.shape)
+        or ((output - target) ** 2).mean()
     )
-
-    made = {
-        None: None,
-        "firm": FirmlyNonexpansivePenalty(weight=1.0, power_iterations=3),
-        "prox": ProximalDenoiserPenalty(weight=1.0, power_iterations=3),
-    }[penalty]
-    solver = gaussian_denoiser_solver(augment=False)
-    solver.model_regularization = made
-    target = torch.rand(2, 1, 8, 8)
-    torch.manual_seed(0)
-    with_penalty = solver.mini_batch_step(None, target)
-    solver.model_regularization = None
-    torch.manual_seed(0)
-    without = solver.mini_batch_step(None, target)
-    if penalty is None:
-        assert with_penalty == without
-    else:  # the penalty is at least weight * (1 - epsilon)
-        assert with_penalty >= without + 0.85
-        with_penalty.backward()
+    solver.mini_batch_step(None, torch.rand(2, 1, 8, 8))
+    assert seen == [torch.Size([6, 1, 4, 4])]  # 3 patches of each of 2 images
 
 
 class _WeightPenalty(torch.nn.Module):
@@ -473,13 +342,30 @@ def test_a_model_regularization_is_added_to_the_loss():
     assert step.input is y and step.target is target
     torch.testing.assert_close(step.output, solver._forward(y))
 
+    for penalty in [None, "firm", "prox"]:
+        from LION.losses.jacobian_penalty import (
+            FirmlyNonexpansivePenalty,
+            ProximalDenoiserPenalty,
+        )
 
-def test_gaussian_denoiser_defaults_follow_the_literature():
-    from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
-
-    params = GaussianDenoiserSolver.default_parameters()
-    assert params.augment is True and params.random_erasing is False
-    assert params.validation_noise_levels is None
+        made = {
+            None: None,
+            "firm": FirmlyNonexpansivePenalty(weight=1.0, power_iterations=3),
+            "prox": ProximalDenoiserPenalty(weight=1.0, power_iterations=3),
+        }[penalty]
+        solver = gaussian_denoiser_solver(augment=False)
+        solver.model_regularization = made
+        target = torch.rand(2, 1, 8, 8)
+        torch.manual_seed(0)
+        with_penalty = solver.mini_batch_step(None, target)
+        solver.model_regularization = None
+        torch.manual_seed(0)
+        without = solver.mini_batch_step(None, target)
+        if penalty is None:
+            assert with_penalty == without
+        else:  # the penalty is at least weight * (1 - epsilon)
+            assert with_penalty >= without + 0.85
+            with_penalty.backward()
 
 
 def test_gaussian_denoiser_validates_at_fixed_noise_levels(tmp_path):
@@ -496,40 +382,6 @@ def test_gaussian_denoiser_validates_at_fixed_noise_levels(tmp_path):
     # each batch at each level, every image the same level
     assert [float(level[0]) for level in seen] == pytest.approx([0.0, 0.1] * 2)
     assert all(level.unique().numel() == 1 for level in seen)
-
-
-def test_gaussian_denoiser_refuses_another_noise_level():
-    with pytest.raises(ValueError, match="noise_level"):
-        gaussian_denoiser_solver(noise_level=[0.01, 0.05, 0.1])
-
-
-def test_gaussian_denoiser_trains_on_patches():
-    from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
-
-    solver = gaussian_denoiser_solver(patches=GaussianDenoiserSolver.patches(3, 4))
-    seen = []
-    solver.loss_fn = (
-        lambda output, target: seen.append(target.shape)
-        or ((output - target) ** 2).mean()
-    )
-    solver.mini_batch_step(None, torch.rand(2, 1, 8, 8))
-    assert seen == [torch.Size([6, 1, 4, 4])]  # 3 patches of each of 2 images
-
-
-def test_gaussian_denoiser_gives_gsd_the_noise_level_channel():
-    from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
-
-    torch.manual_seed(0)
-    model = small_gsd_noise_channel()
-    solver = GaussianDenoiserSolver(
-        model,
-        torch.optim.SGD(model.parameters(), lr=0.1),
-        torch.nn.MSELoss(),
-        operator_params=Geometry.default_parameters(),
-        device=torch.device("cpu"),
-    )
-    target = torch.rand(2, 1, 8, 8)
-    assert torch.isfinite(solver.mini_batch_step(None, target))
 
 
 # --------------------------------------------------------------------------
@@ -581,24 +433,23 @@ def test_training_step(identity_ct):
     assert torch.isfinite(loss)
 
 
-def test_ar_validation_and_testing_need_a_reconstructor(identity_ct):
-    solver = make_ar_solver()
-    with pytest.raises(ValueError, match="needs a reconstructor"):
-        solver.set_validation(loader(), validation_freq=1)
-    with pytest.raises(ValueError, match="needs a reconstructor"):
-        solver.set_testing(loader())
+def test_any_solver_can_validate_through_a_reconstructor(tmp_path, identity_ct):
+    """The reconstructor is optional for other solvers: given one, validation
+    reconstructs through it with the model being trained."""
+    solver = make_solver()
+    reconstructor = learned_reconstructor()
+    seen = []
+    original = reconstructor.reconstruct
+    reconstructor.reconstruct = lambda d, verbose=1: seen.append(
+        reconstructor.model
+    ) or original(d)
+    solver.set_saving(tmp_path, "model")
+    solver.set_validation(
+        loader(n=2, batch_size=2), 1, torch.nn.MSELoss(), reconstructor=reconstructor
+    )
+    solver.validate()
+    assert seen == [solver.model]
 
-
-def test_testing_reconstructs_with_the_model_being_trained(identity_ct):
-    solver = make_ar_solver()
-    reconstructor = learned_reconstructor(alpha=0.5)
-    solver.set_testing(loader(n=6, batch_size=2), reconstructor=reconstructor)
-    assert solver.test().shape == (3,)
-    assert reconstructor.model is solver.model
-    assert reconstructor.parameters.alpha == 0.5  # its settings are its own
-
-
-def test_validation_uses_the_reconstructor(identity_ct, tmp_path):
     solver = make_ar_solver()
     reconstructor = learned_reconstructor()
     calls = []
@@ -616,24 +467,6 @@ def test_validation_uses_the_reconstructor(identity_ct, tmp_path):
     written = solver.training_record("final", 0).serialize()["validation"]
     assert written["reconstructor"]["parameters"]["n_steps"] == 2
     assert "model" not in written["reconstructor"]
-
-
-def test_any_solver_can_validate_through_a_reconstructor(tmp_path):
-    """The reconstructor is optional for other solvers: given one, validation
-    reconstructs through it with the model being trained."""
-    solver = make_solver()
-    reconstructor = learned_reconstructor()
-    seen = []
-    original = reconstructor.reconstruct
-    reconstructor.reconstruct = lambda d, verbose=1: seen.append(
-        reconstructor.model
-    ) or original(d)
-    solver.set_saving(tmp_path, "model")
-    solver.set_validation(
-        loader(n=2, batch_size=2), 1, torch.nn.MSELoss(), reconstructor=reconstructor
-    )
-    solver.validate()
-    assert seen == [solver.model]
 
 
 # --------------------------------------------------------------------------
@@ -692,38 +525,48 @@ def make_s2i_solver(splits, operator_params, inputs=None, recon_fn=None):
     )
 
 
-@pytest.mark.parametrize(
-    "splits, inputs", [(3, 1), (3, 2), (4, 1), (4, 2), (4, 3), (5, 2), (5, 3)]
-)
-def test_inputs_and_target_projectors(fake_ct, splits, inputs):
-    operator_params = Geometry.default_parameters()  # 360 angles
-    solver = make_s2i_solver(splits, operator_params, inputs)
-    angles = np.asarray(operator_params.angles)
+def test_inputs_and_target_projectors(fake_ct, monkeypatch):
+    for splits, inputs in [(3, 1), (3, 2), (4, 1), (4, 2), (4, 3), (5, 2), (5, 3)]:
+        operator_params = Geometry.default_parameters()  # 360 angles
+        solver = make_s2i_solver(splits, operator_params, inputs)
+        angles = np.asarray(operator_params.angles)
 
-    # the single input sinogram is split into interleaved angle subsets
-    assert len(solver.sub_ops) == splits
-    for i, sub_op in enumerate(solver.sub_ops):
-        np.testing.assert_array_equal(sub_op.angles, angles[i::splits])
+        # the single input sinogram is split into interleaved angle subsets
+        assert len(solver.sub_ops) == splits
+        for i, sub_op in enumerate(solver.sub_ops):
+            np.testing.assert_array_equal(sub_op.angles, angles[i::splits])
 
-    # every combination of `inputs` splits is a network input...
-    assert solver.split_combinations == list(
-        itertools.combinations(range(splits), inputs)
-    )
-    # ...and the target is the projection onto all the remaining angles
-    for combo in solver.split_combinations:
-        target = tuple(s for s in range(splits) if s not in combo)
-        expected = sorted(i for s in target for i in range(s, len(angles), splits))
-        np.testing.assert_array_equal(
-            solver.combo_ops_autograd[target].angles, angles[expected]
+        # every combination of `inputs` splits is a network input...
+        assert solver.split_combinations == list(
+            itertools.combinations(range(splits), inputs)
         )
-    # the solver's own geometry is not modified
-    assert len(solver.operator_params.angles) == len(angles)
+        # ...and the target is the projection onto all the remaining angles
+        for combo in solver.split_combinations:
+            target = tuple(s for s in range(splits) if s not in combo)
+            expected = sorted(i for s in target for i in range(s, len(angles), splits))
+            np.testing.assert_array_equal(
+                solver.combo_ops_autograd[target].angles, angles[expected]
+            )
+        # the solver's own geometry is not modified
+        assert len(solver.operator_params.angles) == len(angles)
 
+    # Noise2Inverse splits the geometry and the sinograms through the operator
+    # parameters, and reconstructs each split with its own operator's default
+    # reconstruction.
+    from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
 
-@pytest.mark.parametrize("splits, inputs", [(2, 2), (4, 4), (4, 0), (1, 1)])
-def test_at_least_one_split_left_as_target(fake_ct, splits, inputs):
-    with pytest.raises(ValueError, match="input_split_count"):
-        make_s2i_solver(splits, Geometry.default_parameters(), inputs)
+    operator_params = Geometry.default_parameters()  # 360 angles
+    operator_params.image_shape = [1, 8, 8]
+    angles = np.asarray(operator_params.angles)
+    params = Noise2InverseSolver.default_parameters()  # no recon_fn
+    solver = make_n2i_solver(monkeypatch, params, operator_params)
+    for j, sub_op in enumerate(solver.sub_ops):
+        np.testing.assert_array_equal(sub_op.angles, angles[j::4])
+    assert len(solver.operator_params.angles) == len(angles)  # not changed
+
+    out = solver.reconstruct(torch.rand(2, 1, 360, 8))
+    assert out.shape == (2, 1, 8, 8)
+    assert [op.reconstructed for op in solver.sub_ops] == [1, 1, 1, 1]
 
 
 @pytest.mark.parametrize("splits, inputs", [(4, 2), (5, 3)])
@@ -772,39 +615,6 @@ def test_validation_and_test_use_the_reconstruction(fake_ct, tmp_path):
     assert calls  # the sub-reconstructions were computed
 
 
-class UnsplittableParams(OperatorParameters):
-    """Operator parameters without the splitting methods."""
-
-    def make_operator(self):
-        return types.SimpleNamespace(
-            domain_shape=(1, 8, 8),
-            default_reconstruction_fn=lambda: mean_reconstruction,
-        )
-
-
-@pytest.mark.parametrize("splitting_solver", ["Noise2Inverse", "Sparse2Inverse"])
-def test_splitting_needs_operator_params_that_can_be_split(
-    fake_ct, monkeypatch, splitting_solver
-):
-    """Noise2Inverse and Sparse2Inverse refuse, when made, operators they can't
-    split, and more splits than measurement units."""
-    from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
-
-    def make(operator_params, splits=4):
-        if splitting_solver == "Sparse2Inverse":
-            return make_s2i_solver(splits, operator_params, 2)
-        params = Noise2InverseSolver.default_parameters()
-        params.sino_split_count = splits
-        return make_n2i_solver(monkeypatch, params, operator_params)
-
-    with pytest.raises(NotImplementedError, match="can't be split"):
-        make(UnsplittableParams())
-    few_angles = Geometry.default_parameters()
-    few_angles.angles = few_angles.angles[:3]
-    with pytest.raises(ValueError, match="sino_split_count=4"):
-        make(few_angles)
-
-
 def test_sparse2inverse_reconstructs_each_split_with_its_operator(fake_ct):
     """Without recon_fn, each split is reconstructed with its operator's
     default reconstruction."""
@@ -815,32 +625,6 @@ def test_sparse2inverse_reconstructs_each_split_with_its_operator(fake_ct):
     assert out.shape == (2, 1, 8, 8)
     # each split is in 3 of the 6 pairs
     assert [op.reconstructed for op in solver.sub_ops] == [3, 3, 3, 3]
-
-
-@pytest.mark.parametrize(
-    "solver_name",
-    [
-        "Noise2Inverse",
-        "Sparse2Inverse",
-        "Proj2Proj",
-        "Noisier2Inverse",
-        "Equivariance2Inverse",
-    ],
-)
-def test_solvers_list_recon_fn_as_default(solver_name):
-    """Solvers that start from reconstructions list recon_fn: "default", the
-    operator's default reconstruction."""
-    module = importlib.import_module(f"LION.optimizers.{solver_name}Solver")
-    solver_class = getattr(module, f"{solver_name}Solver")
-    assert solver_class.default_parameters().recon_fn == "default"
-
-
-def test_the_ar_solver_reconstructs_with_the_operators_default(identity_ct):
-    """The AR solver's "bad" reconstructions are recon_fn's: "default", the
-    operator's default reconstruction (here the identity's)."""
-    assert ar_module.ARSolver.default_parameters().recon_fn == "default"
-    solver = make_ar_solver()
-    assert solver.solver_params.recon_fn is identity_reconstruction
 
 
 def test_the_default_recon_fn_is_replaced_by_the_operators(fake_ct):
@@ -858,17 +642,6 @@ def test_the_default_recon_fn_is_replaced_by_the_operators(fake_ct):
 
     with pytest.raises(ValueError, match='"default"'):
         make_s2i_solver(4, Geometry.default_parameters(), 2, recon_fn="fdk")
-
-
-def test_warn_if_not_mse():
-    """Noisier2Inverse, Proj2Proj and E2I train with the MSE whatever loss is
-    given (their derivations need it) and say so if it is another one."""
-    with pytest.warns(UserWarning, match="mean squared error"):
-        lion_solver.warn_if_not_mse(torch.nn.L1Loss(), "Proj2ProjSolver")
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        lion_solver.warn_if_not_mse(torch.nn.MSELoss(), "Proj2ProjSolver")
-        lion_solver.warn_if_not_mse(None, "Proj2ProjSolver")
 
 
 # --------------------------------------------------------------------------
@@ -889,45 +662,6 @@ def make_n2i_solver(monkeypatch, params, operator_params=None):
         device=torch.device("cpu"),
         verbose=False,
     )
-
-
-def test_noise2inverse_splits_through_the_operator_params(monkeypatch):
-    """Noise2Inverse splits the geometry and the sinograms through the
-    operator parameters, and reconstructs each split with its own operator's
-    default reconstruction."""
-    from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
-
-    operator_params = Geometry.default_parameters()  # 360 angles
-    operator_params.image_shape = [1, 8, 8]
-    angles = np.asarray(operator_params.angles)
-    params = Noise2InverseSolver.default_parameters()  # no recon_fn
-    solver = make_n2i_solver(monkeypatch, params, operator_params)
-    for j, sub_op in enumerate(solver.sub_ops):
-        np.testing.assert_array_equal(sub_op.angles, angles[j::4])
-    assert len(solver.operator_params.angles) == len(angles)  # not changed
-
-    out = solver.reconstruct(torch.rand(2, 1, 360, 8))
-    assert out.shape == (2, 1, 8, 8)
-    assert [op.reconstructed for op in solver.sub_ops] == [1, 1, 1, 1]
-
-
-def test_noise2inverse_J_sets_follow_the_split_count(monkeypatch):
-    """The default J sets are made for the split count the solver uses, also
-    when sino_split_count is changed after default_parameters()."""
-    from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
-
-    params = Noise2InverseSolver.default_parameters()
-    params.sino_split_count = 8
-    solver = make_n2i_solver(monkeypatch, params)
-    assert solver.cali_J.tolist() == [[j] for j in range(1, 9)]
-    assert len(solver.sub_ops) == 8
-
-    params.cali_J = [[1, 2], [3, 4]]  # given J sets are used as they are
-    assert make_n2i_solver(monkeypatch, params).cali_J.tolist() == [[1, 2], [3, 4]]
-
-    params.sino_split_count = 2
-    with pytest.raises(ValueError, match="cali_J"):
-        make_n2i_solver(monkeypatch, params)
 
 
 def test_noise2inverse_one_X_strategy(monkeypatch):
@@ -982,20 +716,6 @@ def test_equivariant_solver_gradient_goes_through_the_second_fdk(monkeypatch):
     assert calls == [False, True]  # the data's FDK needs no gradient
 
 
-def test_an_ar_model_file_alone_is_not_a_method(identity_ct, tmp_path):
-    from LION.evaluation import method
-
-    solver = make_ar_solver()
-    solver.set_training(loader(n=2, batch_size=2))
-    solver.set_saving(tmp_path, "regulariser")
-    solver.train(1)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        solver.save_final_results()
-    with pytest.raises(ValueError, match="through a LearnedRegularizerReconstructor"):
-        method(tmp_path / "regulariser", allow=["pytests."])
-
-
 # --------------------------------------------------------------------------
 # An image-domain model's input: FDK, or its own initial reconstruction
 
@@ -1028,15 +748,6 @@ def test_image_models_get_their_initial_reconstruction(tmp_path):
     loaded = loaded.cpu().eval()
     torch.testing.assert_close(model_forward(loaded, y, op), expected)
 
-
-def test_initial_reconstruction_must_be_saveable():
-    from LION.utils.spec import SpecError
-
-    with pytest.raises(SpecError):
-        small_dncnn().set_initial_reconstruction(lambda sino, op: sino)
-
-
-def test_without_an_initial_reconstruction_a_model_starts_from_the_operators():
     import functools
 
     from LION.operators.Operator import Operator

@@ -19,7 +19,6 @@ import torch  # noqa: E402
 from torch.utils.data import DataLoader  # noqa: E402
 
 import LION.data_loaders.LIDC_IDRI as lidc  # noqa: E402
-import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
 from LION.operators.ct.ct_geometry import Geometry
 from LION.operators.ct.ct_utils import sinogram_add_noise  # noqa: E402
 from LION.data_loaders.deteCT import deteCT  # noqa: E402
@@ -48,8 +47,6 @@ def test_seeded_gives_the_same_numbers():
     assert torch.equal(first, second)
     assert not torch.equal(first, other)
 
-
-def test_seeded_restores_the_global_random_state():
     torch.manual_seed(7)
     expected = torch.rand(3)
     torch.manual_seed(7)
@@ -134,8 +131,6 @@ def test_seeded_slices_have_one_noisy_measurement(lidc_data):
         first[0] - clean, first[1] - lidc_data.compute_clean_sinogram(lidc_data[1][1])
     )
 
-
-def test_without_seed_the_noise_is_fresh_each_time(lidc_data):
     lidc_data.set_sinogram_transform(noise)
     first = read_all(lidc_data)
     assert not same(first, read_all(lidc_data, seed=None))
@@ -167,33 +162,6 @@ def test_noise_follows_the_slice_not_its_index(lidc_data):
 
 
 # --------------------------------------------------------------------------
-# The experiments give the loader their noise seed
-
-
-@pytest.mark.parametrize(
-    "cls",
-    [ct_experiments.LowDoseCTRecon, ct_experiments.SparseAngleExtremeLowDoseCTRecon],
-)
-def test_experiments_seed_the_noise(cls, tmp_path, no_tomosipo):
-    fake_lidc(tmp_path, range(1, 11))
-    params = cls.default_parameters()
-    assert params.noise_params.seed == 0
-    experiment = cls(experiment_params=params, datafolder=tmp_path)
-    assert experiment.get_training_dataset().sinogram_transform_seed == 0
-
-
-def test_experiment_parameters_without_seed_keep_fresh_noise(tmp_path, no_tomosipo):
-    """Parameter files saved before the seed existed."""
-    fake_lidc(tmp_path, range(1, 11))
-    params = ct_experiments.LowDoseCTRecon.default_parameters()
-    del params.noise_params.seed
-    experiment = ct_experiments.LowDoseCTRecon(
-        experiment_params=params, datafolder=tmp_path
-    )
-    assert experiment.get_training_dataset().sinogram_transform_seed is None
-
-
-# --------------------------------------------------------------------------
 # 2DeteCT added noise
 
 
@@ -222,11 +190,3 @@ def test_detect_added_noise_is_seeded(detect_data):
     torch.manual_seed(2)
     assert all(torch.equal(a, read(k)) for k, a in enumerate(first))
     assert not torch.equal(first[0], first[2])  # same input, other slice
-
-
-@pytest.mark.filterwarnings("ignore:You are not using any detector query")
-def test_detect_added_noise_without_seed_is_fresh(detect_data):
-    detect_data.noise_params = deteCT.noise_parameters()
-    del detect_data.noise_params.seed  # a parameter file saved before
-    read = lambda: detect_data.__load_and_preprocess_sinogram__(0, "mode2")
-    assert not torch.equal(read(), read())

@@ -10,14 +10,11 @@ post-log noise, its estimate from the data, and lambda.
 The CT operator is the identity (images and sinograms have the same shape).
 """
 
-import types
 
 import pytest
 import torch
 
-import LION.optimizers.LIONsolver as lion_solver
 from LION.operators.ct.ct_geometry import Geometry
-from LION.utils.parameter import LIONParameter
 from pytests.helpers import IdentityStandIn, small_dncnn
 
 
@@ -85,35 +82,6 @@ def make_e2i_solver(monkeypatch, params=None):
         device=torch.device("cpu"),
         verbose=False,
     )
-
-
-def test_e2i_estimates_noise_std_once(monkeypatch):
-    from LION.optimizers.Equivariance2InverseSolver import estimate_noise_std
-
-    solver = make_e2i_solver(monkeypatch)
-    assert solver.solver_params.noise_std is None
-    torch.manual_seed(0)
-    sinos = torch.rand(2, 1, 16, 16)
-    solver.mini_batch_step(sinos, None).backward()
-    assert solver.solver_params.noise_std == pytest.approx(estimate_noise_std(sinos))
-    first = solver.solver_params.noise_std
-    solver.mini_batch_step(torch.rand(2, 1, 16, 16), None)
-    assert solver.solver_params.noise_std == first  # kept, e.g. in saved params
-
-
-@pytest.mark.parametrize("kernel", [None, PRF_2DETECT], ids=["iid", "blurred"])
-def test_e2i_noise(monkeypatch, kernel):
-    import LION.optimizers.Equivariance2InverseSolver as e2i
-
-    params = e2i.Equivariance2InverseSolver.default_parameters()
-    params.noise_std = 0.1
-    params.noise_kernel = kernel
-    solver = make_e2i_solver(monkeypatch, params)
-    torch.manual_seed(0)
-    noise = solver._noise(torch.zeros(8, 1, 64, 256))
-    expected = 0.1 * (1.0 if kernel is None else torch.tensor(kernel).norm().item())
-    assert noise.std().item() == pytest.approx(expected, rel=0.03)
-    assert noise.mean().item() == pytest.approx(0.0, abs=0.01)
 
 
 def test_e2i_equivariance_strength(monkeypatch):

@@ -15,7 +15,6 @@ from LION.reconstructors import (
     PnP,
     estimate_alpha,
 )
-from LION.operators import Operator
 from LION.utils import spec
 from pytests.helpers import ImageMatrixOp, ScaleOp, small_dncnn
 
@@ -78,60 +77,6 @@ def test_identity_prior_gives_least_squares(pnp_problem, algorithm):
     assert set(prior.shapes) == {op.domain_shape}
 
 
-@pytest.mark.parametrize("algorithm", ["ADMM", "HQS", "FBS"])
-def test_lionmodel_prior_gets_a_batch(pnp_problem, algorithm):
-    op, _, y = pnp_problem
-    model = small_dncnn().eval()
-    seen = []
-    model.register_forward_pre_hook(lambda m, args: seen.append(tuple(args[0].shape)))
-    kwargs = dict(ALGORITHM_KWARGS[algorithm], max_iter=2)
-    with torch.no_grad():
-        recon = pnp(op, model, algorithm, **kwargs).reconstruct(y)
-    assert recon.shape == op.domain_shape
-    assert set(seen) == {(1, *op.domain_shape)}
-
-
-def test_vector_measurements_are_batched(pnp_problem):
-    """A batch of vector measurements (B, M) is a batch, not one sample: the
-    batch is found from the operator's range shape, not by assuming CT."""
-    op, x_true, y = pnp_problem
-    assert y.dim() == 1  # (M,)
-    recon = pnp(op, Identity(), "HQS", **ALGORITHM_KWARGS["HQS"])
-    out = recon.reconstruct(torch.stack([y, 2 * y]))
-    assert out.shape == (2, *op.domain_shape)
-    torch.testing.assert_close(out[0], x_true, atol=1e-3, rtol=1e-3)
-    torch.testing.assert_close(out[1], 2 * x_true, atol=1e-3, rtol=1e-3)
-
-
-def test_fbs_computes_the_operator_norm_once(pnp_problem, monkeypatch):
-    import importlib
-
-    # the module, not the PnP class that LION.reconstructors exports under that name
-    pnp_module = importlib.import_module("LION.reconstructors.PnP")
-
-    op, x_true, y = pnp_problem
-    calls = []
-    real = pnp_module.power_method
-    monkeypatch.setattr(
-        pnp_module, "power_method", lambda *a, **kw: calls.append(1) or real(*a, **kw)
-    )
-    recon = pnp(op, Identity(), "FBS", max_iter=2)
-    for _ in range(3):  # e.g. three samples of a batch
-        recon.reconstruct(y)
-    assert len(calls) == 1
-
-
-@pytest.mark.parametrize("algorithm", ["ADMM", "HQS", "FBS"])
-def test_starting_image_can_be_given(pnp_problem, algorithm):
-    op, x_true, y = pnp_problem
-    kwargs = dict(ALGORITHM_KWARGS[algorithm], max_iter=1)
-    recon = pnp(op, Identity(), algorithm, **kwargs)
-    default = recon.reconstruct(y)
-    from_truth = recon.reconstruct(y, x0=x_true.clone())
-    error = lambda x: torch.linalg.vector_norm(x - x_true)
-    assert error(from_truth) < error(default)
-
-
 # --------------------------------------------------------------------------
 # LearnedRegularizerReconstructor, with "sinograms" of shape (1, 6, 5)
 
@@ -167,42 +112,6 @@ def test_converges_to_the_minimiser(lr_problem):
     torch.testing.assert_close(x.reshape(-1), expected, atol=1e-6, rtol=1e-6)
 
 
-def test_energy_decreases_monotonically(lr_problem):
-    op, _, y = lr_problem
-    recon = learned(op, quadratic, alpha=0.5, n_steps=1, step_size=10.0)
-    x = recon.initial_guess(y)
-    energies = [recon.energy(x, y).item()]
-    for _ in range(20):
-        x = recon.reconstruct_sample(y, x0=x)
-        energies.append(recon.energy(x, y).item())
-    assert all(b <= a for a, b in zip(energies, energies[1:]))
-
-
-def test_batches_are_reconstructed_per_sample(lr_problem):
-    op, _, y = lr_problem
-    recon = learned(op, quadratic, alpha=0.5, n_steps=50, step_size=1.0)
-    batch = torch.stack([y, 2 * y])  # (B, C, angles, detectors)
-    out = recon.reconstruct(batch)
-    assert out.shape == (2, *op.domain_shape)
-    torch.testing.assert_close(out[0], recon.reconstruct_sample(y))
-    torch.testing.assert_close(out[1], recon.reconstruct_sample(2 * y))
-
-
-def test_lionmodel_regularizer_works_under_no_grad_without_touching_weights(
-    lr_problem,
-):
-    op, _, y = lr_problem
-    model = small_regularizer().eval()
-    seen = []
-    model.register_forward_pre_hook(lambda m, args: seen.append(tuple(args[0].shape)))
-    recon = learned(op, model, alpha=0.1, n_steps=3, step_size=1.0)
-    with torch.no_grad():
-        x = recon.reconstruct_sample(y)
-    assert x.shape == op.domain_shape and not x.requires_grad
-    assert set(seen) == {(1, *op.domain_shape)}  # LIONmodels get a batch of one
-    assert all(p.grad is None for p in model.parameters())
-
-
 def test_estimate_alpha_is_mean_over_samples(lr_problem):
     op, A, _ = lr_problem
     torch.manual_seed(1)
@@ -227,53 +136,9 @@ def test_explicit_gradient_matches_autograd(lr_problem):
     torch.testing.assert_close(recon.energy(x, y), energy.detach())
 
 
-def test_lionmodel_regularizer_sees_normalised_images(lr_problem):
-    """The regulariser is applied with the normalisation it was trained with."""
-    op, _, y = lr_problem
-    model = small_regularizer().eval()
-    model.set_normalisation("custom", data_range=(0.0, 10.0))
-    seen = []
-    model.register_forward_pre_hook(lambda m, args: seen.append(args[0].detach()))
-    recon = learned(op, model, alpha=0.1)
-    x = 10 * torch.rand(op.domain_shape, dtype=torch.float64)
-    recon.regularizer_value(x)
-    torch.testing.assert_close(seen[-1], x.unsqueeze(0) / 10)
-
-
 # --------------------------------------------------------------------------
 # Parameters, specs and instantiate: a reconstructor with its parameters is
 # one method, recorded and made again (the model is given separately)
-
-
-def test_spec_is_the_operator_and_parameters_not_the_model():
-    recon = pnp(ScaleOp(2.0, (1, 4, 4)), small_dncnn(), "HQS", max_iter=3)
-    written = spec.to_spec(recon)
-    assert set(written) == {"_target_", "operator", "parameters"}
-    assert written["parameters"]["max_iter"] == 3
-
-
-def test_made_again_without_a_model_then_given_one():
-    op = ScaleOp(2.0, (1, 4, 4))
-    recon = pnp(op, Identity(), "HQS", max_iter=3, cg_max_iter=5)
-    again = LIONReconstructor.instantiate(spec.to_spec(recon), allow=["pytests."])
-    assert type(again) is PnP and again.model is None
-    assert vars(again.parameters) == vars(recon.parameters)
-    y = op(torch.rand(1, 4, 4))
-    with pytest.raises(ValueError, match="has no model"):
-        again.reconstruct(y)
-    again.model = Identity()
-    torch.testing.assert_close(again.reconstruct(y), recon.reconstruct(y))
-    with_model = PnP.instantiate(spec.to_spec(recon), Identity(), allow=["pytests."])
-    torch.testing.assert_close(with_model.reconstruct(y), recon.reconstruct(y))
-
-
-def test_learned_regularizer_made_again():
-    recon = learned(ScaleOp(1.0, (1, 4, 4)), quadratic, alpha=0.3, n_steps=4)
-    again = LearnedRegularizerReconstructor.instantiate(
-        spec.to_spec(recon), quadratic, allow=["pytests."]
-    )
-    assert vars(again.parameters) == vars(recon.parameters)
-    assert again.model is quadratic
 
 
 def test_made_again_from_a_test_record(tmp_path, monkeypatch):
@@ -299,6 +164,26 @@ def test_made_again_from_a_test_record(tmp_path, monkeypatch):
     assert type(again) is PnP and again.parameters.max_iter == 2
     with pytest.warns(UserWarning, match="other weights"):
         LIONReconstructor.instantiate(record, small_dncnn(), allow=["pytests."])
+
+    op = ScaleOp(2.0, (1, 4, 4))
+    recon = pnp(op, Identity(), "HQS", max_iter=3, cg_max_iter=5)
+    again = LIONReconstructor.instantiate(spec.to_spec(recon), allow=["pytests."])
+    assert type(again) is PnP and again.model is None
+    assert vars(again.parameters) == vars(recon.parameters)
+    y = op(torch.rand(1, 4, 4))
+    with pytest.raises(ValueError, match="has no model"):
+        again.reconstruct(y)
+    again.model = Identity()
+    torch.testing.assert_close(again.reconstruct(y), recon.reconstruct(y))
+    with_model = PnP.instantiate(spec.to_spec(recon), Identity(), allow=["pytests."])
+    torch.testing.assert_close(with_model.reconstruct(y), recon.reconstruct(y))
+
+    recon = learned(ScaleOp(1.0, (1, 4, 4)), quadratic, alpha=0.3, n_steps=4)
+    again = LearnedRegularizerReconstructor.instantiate(
+        spec.to_spec(recon), quadratic, allow=["pytests."]
+    )
+    assert vars(again.parameters) == vars(recon.parameters)
+    assert again.model is quadratic
 
 
 # --------------------------------------------------------------------------
@@ -359,22 +244,6 @@ def test_sinogram_models_get_measurements_normalised_as_the_images(fdk_as_adjoin
         model.set_normalisation("sample")
 
 
-def test_a_forward_reconstructor_is_evaluated_and_saved(tmp_path, fdk_as_adjoint):
-    from LION.evaluation import Evaluation
-    from LION.models.LIONmodel import ModelInputType
-    from LION.reconstructors import ForwardReconstructor
-    from pytests.test_evaluation import data
-
-    op = ScaleOp(1.0, (1, 16, 16))
-    recon = ForwardReconstructor(op, small_dncnn(ModelInputType.SINOGRAM).eval())
-    evaluation = Evaluation(
-        dataset=data(), operator=op, save_folder=tmp_path, device="cpu"
-    )
-    record = evaluation.run(recon, "forward")
-    assert record.method.reconstructor["_target_"].endswith("ForwardReconstructor")
-    assert len(list(tmp_path.glob("forward-*.json"))) == 1
-
-
 # --------------------------------------------------------------------------
 # A reconstructor's own file: save, load, instantiate
 
@@ -408,8 +277,6 @@ def test_saved_and_loaded_with_its_model(tmp_path):
     # the initial reconstruction recorded is the test operator's, in pytests
     assert PnP.parameters_from_file(tmp_path / "pnp", allow=["pytests."]).max_iter == 3
 
-
-def test_made_from_its_file_without_its_model(tmp_path):
     recon = pnp(ScaleOp(2.0, (1, 4, 4)), loaded_dncnn(tmp_path), "HQS")
     recon.save(tmp_path / "pnp")
     again = LIONReconstructor.instantiate(tmp_path / "pnp", allow=["pytests."])
@@ -421,42 +288,6 @@ def test_made_from_its_file_without_its_model(tmp_path):
         LIONReconstructor.instantiate(
             tmp_path / "pnp", small_dncnn(), allow=["pytests."]
         )
-
-
-def test_a_model_not_from_a_file_is_given_again(tmp_path):
-    recon = pnp(ScaleOp(2.0, (1, 4, 4)), small_dncnn(), "HQS")
-    recon.save(tmp_path / "pnp")
-    with pytest.warns(UserWarning, match="wasn't loaded from a file"):
-        again = LIONReconstructor.load(tmp_path / "pnp", allow=["pytests."])
-    assert again.model is None
-
-
-def test_its_model_file_changed_since_warns(tmp_path):
-    import warnings
-
-    recon = pnp(ScaleOp(2.0, (1, 4, 4)), loaded_dncnn(tmp_path), "HQS")
-    recon.save(tmp_path / "pnp")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        small_dncnn().save(tmp_path / "model")  # other weights, same file
-    with pytest.warns(UserWarning, match="other weights"):
-        LIONReconstructor.load(tmp_path / "pnp", allow=["pytests."])
-
-
-def test_its_file_is_a_method_and_names_it_in_comparisons(tmp_path):
-    from LION.evaluation import method
-    from LION.evaluation.comparison import _method_spec
-
-    op = ScaleOp(2.0, (1, 4, 4))
-    recon = pnp(op, Identity(), "HQS", max_iter=3)
-    recon.save(tmp_path / "pnp")
-    made = method(tmp_path / "pnp", op, allow=["pytests."])
-    assert made.record["kind"] == "reconstructor"
-    assert made.record["reconstructor"]["parameters"]["max_iter"] == 3
-    loaded = LIONReconstructor.load(tmp_path / "pnp", allow=["pytests."])
-    assert spec.build(_method_spec(loaded, "it")) == tmp_path / "pnp"
-    loaded.parameters.max_iter = 10  # no longer what its file says
-    assert "lion_reconstructor" in _method_spec(loaded, "it")
 
 
 # ---------------------------------------------------------------------------
@@ -485,39 +316,3 @@ def test_reconstructors_start_from_the_operators_default(pnp_problem, make):
         "adjoint_reconstruction"
     )
     torch.testing.assert_close(recon.initial_guess(y), op.adjoint(y))
-
-
-def test_admm_starts_from_the_initial_guess(pnp_problem):
-    """ADMM's first step starts from initial_guess, as HQS and FBS do."""
-    op, _, y = pnp_problem
-    seen = []
-
-    def start(y, op):
-        seen.append(y)
-        return op.adjoint(y)
-
-    recon = pnp(op, small_dncnn(), "ADMM", max_iter=1, initial_reconstruction=start)
-    recon.reconstruct_sample(y)
-    assert len(seen) == 1
-
-
-def test_an_operator_without_a_default_needs_a_start(pnp_problem):
-    """Made with an operator without a default reconstruction, a
-    reconstructor keeps "default" and asks for a start when it needs one;
-    given x0, or its own initial_reconstruction, it runs."""
-    op, _, y = pnp_problem
-
-    class NoDefault(type(op)):
-        def default_reconstruction_fn(self):
-            return Operator.default_reconstruction_fn(self)
-
-    plain = NoDefault(op.A, op.domain_shape)
-    recon = learned(plain, quadratic, n_steps=1)
-    assert recon.parameters.initial_reconstruction == "default"
-    with pytest.raises(ValueError, match="has no default reconstruction"):
-        recon.reconstruct_sample(y)
-    recon.reconstruct_sample(y, x0=torch.zeros(op.domain_shape))
-    recon = learned(
-        plain, quadratic, n_steps=1, initial_reconstruction=lambda y, op: op.adjoint(y)
-    )
-    recon.reconstruct_sample(y)

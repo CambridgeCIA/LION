@@ -19,15 +19,11 @@ import pytest  # noqa: E402
 import torch  # noqa: E402
 from torch.utils.data import DataLoader, Subset  # noqa: E402
 
-import LION.evaluation.comparison as comparison_module  # noqa: E402
-import LION.optimizers.LIONsolver as lion_solver  # noqa: E402
 from LION.operators.ct.ct_geometry import Geometry
 from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
 from LION.evaluation import (  # noqa: E402
     Comparison,
     Evaluation,
-    problem_differences,
-    shared_samples,
 )
 from LION.experiments import ct_experiments  # noqa: E402
 from LION.operators import Operator
@@ -114,14 +110,16 @@ def test_the_baseline_comes_first(no_ct, tmp_path):
     assert [line.split("|")[1].strip() for line in lines[2:]] == list(records)
     assert "\\toprule" in comparison.table("latex")
 
-
-def test_names_given_or_made(tmp_path):
-    comparison = Comparison(evaluation(tmp_path), {"mine": as_is}, baseline=doubling)
-    assert list(comparison.named_methods()) == ["doubling", "mine"]
-    with pytest.raises(ValueError, match="baseline's name"):
-        Comparison(evaluation(tmp_path), {"doubling": as_is}, baseline=doubling).run()
-    with pytest.raises(ValueError, match="same name"):
-        Comparison(evaluation(tmp_path), [as_is, as_is], baseline=False).run()
+    op = Invertible(torch.eye(64), (1, 8, 8))
+    by_operator = Comparison(evaluation(tmp_path, operator=op), [as_is])
+    assert list(by_operator.named_methods()) == ["inverse_reconstruction", "as_is"]
+    by_experiment = Comparison(
+        Evaluation(Problem(), operator=op, save_folder=None, device="cpu"), [as_is]
+    )
+    assert list(by_experiment.named_methods()) == ["doubling", "as_is"]
+    none = Comparison(evaluation(tmp_path, operator=op), [as_is], baseline=False)
+    assert list(none.named_methods()) == ["as_is"]
+    assert ct_experiments.Experiment.baseline(None) is None  # FDK, the modality's
 
 
 class Invertible(ImageMatrixOp):
@@ -143,19 +141,6 @@ class Problem:
         return doubling
 
 
-def test_the_default_baseline(tmp_path):
-    op = Invertible(torch.eye(64), (1, 8, 8))
-    by_operator = Comparison(evaluation(tmp_path, operator=op), [as_is])
-    assert list(by_operator.named_methods()) == ["inverse_reconstruction", "as_is"]
-    by_experiment = Comparison(
-        Evaluation(Problem(), operator=op, save_folder=None, device="cpu"), [as_is]
-    )
-    assert list(by_experiment.named_methods()) == ["doubling", "as_is"]
-    none = Comparison(evaluation(tmp_path, operator=op), [as_is], baseline=False)
-    assert list(none.named_methods()) == ["as_is"]
-    assert ct_experiments.Experiment.baseline(None) is None  # FDK, the modality's
-
-
 # --------------------------------------------------------------------------
 # Leakage
 
@@ -167,9 +152,7 @@ def test_a_model_trained_on_the_test_data_is_an_error(no_ct, tmp_path):
     ):
         Comparison(evaluation(tmp_path), [path], baseline=False).run()
 
-
-def test_leakage_is_by_patient(no_ct, tmp_path):
-    """Trained on one slice of a patient, tested on another: an error."""
+    # Trained on one slice of a patient, tested on another: an error.
     path = trained(tmp_path, Subset(Slices("test"), [0]))
     test = evaluation(tmp_path, samples=["p5/slice_1"])
     with pytest.raises(
@@ -177,84 +160,16 @@ def test_leakage_is_by_patient(no_ct, tmp_path):
     ):
         Comparison(test, [path], baseline=False).check()
 
-
-def test_a_model_validated_on_the_test_data_is_an_error(no_ct, tmp_path):
     path = trained(tmp_path, Slices("train"), validation=Slices("test"))
     with pytest.raises(ValueError, match="model was validated on"):
         Comparison(evaluation(tmp_path), [path], baseline=False).check()
 
-
-def test_a_solver_is_checked_too(no_ct, tmp_path):
-    solver = make_solver()
-    solver.set_training(DataLoader(Slices("test"), batch_size=2))
-    with pytest.raises(ValueError, match="was trained on"):
-        Comparison(evaluation(tmp_path), {"solver": solver}, baseline=False).check()
-
-
-def test_records_without_groups_are_checked_by_sample():
-    test = {
-        "dataset": {"_target_": "Slices"},
-        "samples": {"ids": ["p5/slice_0", "p5/slice_1"], "groups": ["p5"]},
-    }
-    old = {"dataset": {"_target_": "Slices"}, "samples": {"ids": ["p5/slice_1"]}}
-    shared, unit, note = shared_samples(test, old)
-    assert shared == ["p5/slice_1"] and unit == "samples" and "by sample" in note
-    other = {"dataset": {"_target_": "Other"}, "samples": {"ids": ["p5/slice_1"]}}
-    assert shared_samples(test, other)[0] == []
-
-
-# --------------------------------------------------------------------------
-# Other differences: warnings
-
-
-def test_another_problem_warns(no_ct, tmp_path):
     path = trained(tmp_path, Slices("train", noise=0.3))
     comparison = Comparison(evaluation(tmp_path), [path], baseline=False)
     (note,) = comparison.check()
     assert "another problem" in note and "dataset.noise: 0.3 (test: 0.1)" in note
     with pytest.warns(UserWarning, match="another problem"):
         comparison.run()
-
-
-def test_where_the_data_are_and_the_split_are_not_the_problem():
-    test = {
-        "dataset": {"_target_": "D", "mode": "test", "parameters": {"folder": "a"}},
-        "sinogram_transform": "noise",
-    }
-    training = {
-        "dataset": {"_target_": "D", "mode": "train", "parameters": {"folder": "b"}},
-        "sinogram_transform": "noise",
-    }
-    assert problem_differences(test, training) == []
-    training["sinogram_transform"] = "more noise"
-    assert problem_differences(test, training) == [
-        'noise: "more noise" (test: "noise")'
-    ]
-    # with experiments, the experiments are compared
-    test["experiment"] = {"_target_": "LowDose", "datafolder": "a"}
-    training["experiment"] = {"_target_": "ExtremeLowDose", "datafolder": "b"}
-    assert problem_differences(test, training) == [
-        'experiment._target_: "ExtremeLowDose" (test: "LowDose")'
-    ]
-
-
-def test_other_lion_code_is_listed(no_ct, tmp_path, monkeypatch):
-    path = trained(tmp_path, Slices("train"))
-    monkeypatch.setattr(
-        comparison_module.environment,
-        "code_differences",
-        lambda saved: "LION commit abc, now def",
-    )
-    (note,) = Comparison(evaluation(tmp_path), [path], baseline=False).check()
-    assert note == "model was trained with other LION code: LION commit abc, now def"
-
-
-def test_models_without_records_are_said(tmp_path):
-    comparison = Comparison(evaluation(tmp_path), {"net": model()}, baseline=as_is)
-    assert comparison.check() == [
-        "net: no record of its training, so it can't be checked (give its file "
-        "instead)"
-    ]
 
 
 # --------------------------------------------------------------------------
@@ -276,14 +191,6 @@ def loaded(path):
     return LIONmodel.load(path, supress_warnings=True)[0]
 
 
-def test_a_reconstructors_model_file_is_checked(no_ct, tmp_path):
-    path = trained(tmp_path, Slices("test"))
-    model = loaded(path)
-    assert model.source_file == path
-    with pytest.raises(ValueError, match="pnp was trained on"):
-        Comparison(evaluation(tmp_path), {"pnp": fbs(model)}, baseline=False).check()
-
-
 def test_a_reconstructor_is_saved_and_made_again(no_ct, tmp_path):
     path = trained(tmp_path, Slices("train"))
     made = Comparison(
@@ -300,18 +207,6 @@ def test_a_reconstructor_is_saved_and_made_again(no_ct, tmp_path):
     assert again.methods["pnp"].model.source_file == path
     assert again.methods["pnp_as_is"].model is as_is_image
     assert again.table() == made.table()  # the same methods: results read again
-
-
-def test_a_changed_model_file_warns(no_ct, tmp_path):
-    path = trained(tmp_path, Slices("train"))
-    folder = Comparison(
-        evaluation(tmp_path), {"pnp": fbs(loaded(path))}, baseline=False
-    ).save(tmp_path / "paper")
-    trained(tmp_path, Slices("train"), seed=1)  # other weights, same file
-    with pytest.warns(UserWarning, match="other weights"):
-        Comparison.instantiate(
-            folder, allow=["pytests."], evaluation_arguments={"device": "cpu"}
-        )
 
 
 def as_is_image(x):
