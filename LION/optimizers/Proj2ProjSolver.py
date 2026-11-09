@@ -68,7 +68,7 @@ class Proj2ProjSolver(LIONsolver):
             mask[b, :, r::grid, c::grid] = 0
         return mask
 
-    def fill_mean(self, sinos, mask):
+    def fill_mean(self, y, mask):
         kernel = (
             torch.tensor(
                 [[0, 1, 0], [1, 0, 1], [0, 1, 0]],
@@ -79,9 +79,9 @@ class Proj2ProjSolver(LIONsolver):
         )
 
         kernel = kernel.view(1, 1, 3, 3)
-        local_mean_sino = F.conv2d(sinos, kernel, padding=1)
+        local_mean_sino = F.conv2d(y, kernel, padding=1)
 
-        filled_sinos = (sinos * mask) + (local_mean_sino * (1 - mask))
+        filled_sinos = (y * mask) + (local_mean_sino * (1 - mask))
         return filled_sinos
 
     @staticmethod
@@ -94,17 +94,17 @@ class Proj2ProjSolver(LIONsolver):
         params.recon_fn = "default"
         return params
 
-    def mini_batch_step(self, sinos, targets):
-        mask = self.get_mask(sinos.shape, self.global_step)
-        self.global_step += sinos.shape[0]
-        input_sino = self.fill_mean(sinos, mask)
+    def mini_batch_step(self, y, targets):
+        mask = self.get_mask(y.shape, self.global_step)
+        self.global_step += y.shape[0]
+        input_sino = self.fill_mean(y, mask)
 
         input_recon = self.reconstruct_measurements(input_sino, self.op)
         output_recon = self.model(input_recon)
         output_sino = self.projector(output_recon)
 
         output_sino_mask = output_sino * (1 - mask)
-        target_sino = sinos * (1 - mask)
+        target_sino = y * (1 - mask)
 
         batch_loss = ((output_sino_mask - target_sino) ** 2).mean()
         return batch_loss
@@ -113,8 +113,8 @@ class Proj2ProjSolver(LIONsolver):
         # validation and testing evaluate the reconstruction
         return self.reconstruct(data)
 
-    def reconstruct(self, sinos):
-        input_recon = self.reconstruct_measurements(sinos, self.op)
+    def reconstruct(self, y):
+        input_recon = self.reconstruct_measurements(y, self.op)
         output_recon = self.model(input_recon)
         return output_recon
 

@@ -410,6 +410,22 @@ def test_ar_any_image_size(shape):
         assert model.fc[0].in_features == 128 * 32 * 32
 
 
+def test_drunet_takes_one_noise_level_per_image():
+    params = DRUNet.default_parameters()
+    params.use_noise_level = True
+    params.int_channels = 4
+    model = DRUNet(params)
+    x = torch.rand(2, 1, 16, 16)
+    torch.manual_seed(0)
+    both = model(x, noise_level=torch.tensor([0.01, 0.5]))
+    torch.testing.assert_close(both[:1], model(x[:1], noise_level=0.01))
+    torch.testing.assert_close(both[1:], model(x[1:], noise_level=0.5))
+    with pytest.raises(ValueError, match="one per image"):
+        model(x, noise_level=torch.tensor([0.1, 0.2, 0.3]))
+    with pytest.raises(ValueError, match="non-negative"):
+        model(x, noise_level=-0.1)
+
+
 def test_drunet_noise_level_with_several_channels():
     params = DRUNet.default_parameters()
     params.in_channels = params.out_channels = 3

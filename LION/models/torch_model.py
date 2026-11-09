@@ -10,7 +10,12 @@ from typing import Optional
 
 import torch
 
-from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
+from LION.models.LIONmodel import (
+    LIONmodel,
+    LIONModelParameter,
+    ModelInputType,
+    noise_level_map,
+)
 from LION.utils.parameter import LIONParameter
 from LION.utils.spec import import_path
 
@@ -97,6 +102,6 @@ class TorchModel(LIONmodel):
         if noise_level is None or how is None:
             return self.module(x, *args, **kwargs)
         if how == "channel":
-            level = torch.ones_like(x[:, :1]) * noise_level
+            level = noise_level_map(noise_level, x)
             return self.module(torch.cat((x, level), dim=1), *args, **kwargs)
         return self.module(x, *args, **{how: noise_level}, **kwargs)

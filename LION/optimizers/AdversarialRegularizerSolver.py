@@ -115,8 +115,8 @@ class ARSolver(LIONsolver):
             testing_fn = torch.nn.MSELoss()
         super().set_testing(test_loader, testing_fn, reconstructor)
 
-    def wgan_loss(self, sino_batch, target_batch):
-        bad_recon = self.reconstruct_measurements(sino_batch, self.op)
+    def wgan_loss(self, y, target_batch):
+        bad_recon = self.reconstruct_measurements(y, self.op)
         if self.do_normalise and self.model.get_input_type() == ModelInputType.IMAGE:
             bad_recon = self.model.normalise(bad_recon)
             target_batch = self.model.normalise(target_batch)
@@ -154,8 +154,8 @@ class ARSolver(LIONsolver):
         )
         return loss
 
-    def mini_batch_step(self, sino_batch, target_batch) -> float:
-        return self.wgan_loss(sino_batch, target_batch)
+    def mini_batch_step(self, y, target_batch) -> float:
+        return self.wgan_loss(y, target_batch)
 
     @staticmethod
     def cite(cite_format="bib"):

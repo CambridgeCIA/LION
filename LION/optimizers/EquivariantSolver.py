@@ -92,15 +92,15 @@ class EquivariantSolver(LIONsolver):
         param.equivariance_strength = 100
         return param
 
-    def mini_batch_step(self, sino_batch, target_batch) -> torch.Tensor:
+    def mini_batch_step(self, y, target_batch) -> torch.Tensor:
         random_transform = random.choice(self.transformation_group)
 
         if needs_image := (
             self.model.model_parameters.model_input_type == ModelInputType.IMAGE
         ):
-            recon1 = self.model(fdk(sino_batch, self.op))
+            recon1 = self.model(fdk(y, self.op))
         else:
-            recon1 = self.model(sino_batch)
+            recon1 = self.model(y)
 
         transformed_recon1 = random_transform(recon1)
 
@@ -113,7 +113,7 @@ class EquivariantSolver(LIONsolver):
         else:
             recon2 = self.model(self.A(transformed_recon1))
 
-        return self.loss_fn(self.A(recon1), sino_batch) + self.alpha * self.loss_fn(
+        return self.loss_fn(self.A(recon1), y) + self.alpha * self.loss_fn(
             recon2, transformed_recon1
         )
         # data consistency + equivariance

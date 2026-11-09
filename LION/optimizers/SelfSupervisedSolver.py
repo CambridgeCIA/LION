@@ -59,18 +59,18 @@ class SelfSupervisedSolver(LIONsolver):
         if verbose >= 2:
             tqdm.write(f"Self-supervised solver training on device: {self.device}")
 
-    def mini_batch_step(self, sino, target):
+    def mini_batch_step(self, y, target):
         """
         This function is responsible for performing a single mini-batch step of the optimization.
         returns the loss of the mini-batch
         """
         # Forward pass
         if self.model.get_input_type() == ModelInputType.IMAGE:
-            data = self.model.initial_reconstruction(sino, self.op)
+            data = self.model.initial_reconstruction(y, self.op)
             if self.do_normalise:
                 data = self.model.normalise(data)
         else:
-            data = sino
+            data = y
 
         return self.loss_fn(data, self.model)
 

@@ -38,6 +38,16 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   `pytests/helpers.py`, or the `import_without_tomosipo` fixture).
 - Format with Black (`pre-commit install`).
 
+## Docstrings
+
+- Public classes and functions have a docstring: what it is or does, in
+  prose, then its arguments as ```` ``name``: what it is ```` (as in
+  `LIONsolver.__init__`), with the CT meaning of general words (e.g. "for
+  CT, the geometry"). No `Args:`/`Parameters` sections or type lists: the
+  types are in the signature.
+- A component from a paper says so (and has `cite()`), and where it deviates
+  from the paper.
+
 ## Imports and dependencies
 
 - **LION imports without its backends.** Each backend is imported only where it
@@ -152,7 +162,8 @@ part.
   doesn't define them, and the base class raises saying so.
 - **Words: general in general code, the operator's own in its code.** Code
   that works with any operator says `operator_params`, domain (the image) and
-  range (the measurements), and types them `OperatorParameters`/`Operator`.
+  range (the measurements, `y`), and types them `OperatorParameters`/`Operator`
+  (e.g. a solver's `mini_batch_step(y, target)`).
   CT-only code says `Geometry`, `image_shape`, angles and sinogram, and types
   them `Geometry`. Don't add aliases (a `measurement_shape` next to
   `range_shape`): one name per thing. Where a general argument meets users,

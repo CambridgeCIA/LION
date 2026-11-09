@@ -550,14 +550,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return reconstructor.reconstruct(data, verbose=max(int(self.verbose) - 1, 0))
 
     def set_saving(self, save_folder: str | pathlib.Path, final_result_fname: str):
-        """Sets save_folder and filename for saving final result and min_val result
-
-        Args:
-            save_folder (str | pathlib.Path): _description_
-            final_result_fname (str): _description_
-
-        Raises:
-            ValueError: _description_
+        """Where results are saved: the final model as
+        ``save_folder/final_result_fname`` (``save_final_results()``), and the
+        best validation model next to it. ``save_folder`` must be a folder
+        that exists (ValueError otherwise).
         """
         if isinstance(save_folder, str):
             save_folder = pathlib.Path(save_folder)
@@ -1409,7 +1405,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return self.model
 
     @abstractmethod
-    def mini_batch_step(self, sino_batch, target_batch) -> torch.Tensor:
+    def mini_batch_step(self, y, target_batch) -> torch.Tensor:
         """
         This function should perform a single step of the optimization and return the loss
         """

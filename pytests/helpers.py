@@ -9,7 +9,7 @@
 import torch
 
 from LION.models.CNNs.dncnn import DnCNN
-from LION.models.LIONmodel import ModelInputType
+from LION.models.LIONmodel import ModelInputType, noise_level_map
 from LION.models.PnP.gradient_step_denoiser import GSD
 from LION.models.torch_model import TorchModel
 from LION.operators import Operator
@@ -122,7 +122,7 @@ class NoiseLevelConvolution(torch.nn.Module):
         self.conv = torch.nn.Conv2d(2, 1, 3, padding=1)
 
     def forward(self, x, noise_level):
-        return self.conv(torch.cat((x, noise_level * torch.ones_like(x)), dim=1))
+        return self.conv(torch.cat((x, noise_level_map(noise_level, x)), dim=1))
 
 
 def small_gsd_noise_channel():

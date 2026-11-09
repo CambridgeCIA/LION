@@ -361,21 +361,104 @@ def test_normalising_a_constant_image_gives_no_nan(normalisation_type):
     torch.testing.assert_close(model.unnormalise(normalised), x)
 
 
-@pytest.mark.parametrize("noise_level", [0.05, [0.05], [0.01, 0.1]])
-def test_gaussian_denoiser_noise_level(noise_level):
+def gaussian_denoiser_solver(**params):
     from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
 
     model = small_dncnn()
-    solver = GaussianDenoiserSolver(
+    solver_params = GaussianDenoiserSolver.default_parameters()
+    for name, value in params.items():
+        setattr(solver_params, name, value)
+    return GaussianDenoiserSolver(
         model,
         torch.optim.SGD(model.parameters(), lr=0.1),
         torch.nn.MSELoss(),
         operator_params=Geometry.default_parameters(),
+        solver_params=solver_params,
         device=torch.device("cpu"),
-        noise_level=noise_level,
     )
-    assert solver.noise_level.shape == (2,)
-    assert solver.noise_level[0] == np.atleast_1d(noise_level)[0]
+
+
+@pytest.mark.parametrize(
+    "noise_level, expected",
+    [(0.05, (0.05, 0.05)), ([0.05], (0.05, 0.05)), ([0.01, 0.1], (0.01, 0.1))],
+)
+def test_gaussian_denoiser_noise_level(noise_level, expected):
+    solver = gaussian_denoiser_solver(noise_level=noise_level)
+    assert solver._noise_range() == expected
+    low, high = expected
+    levels = solver._noise_levels(100, "cpu")
+    assert levels.shape == (100,) and low <= levels.min() <= levels.max() <= high
+    assert (levels.unique().numel() > 1) == (low < high)  # one per image
+
+
+def test_gaussian_denoiser_gives_each_image_its_noise_level():
+    solver = gaussian_denoiser_solver(noise_level=[0.01, 0.2])
+    solver.model = small_gsd_noise_channel()
+    given = []
+    convolution = solver.model._backbone_model.module
+    original = convolution.forward
+    convolution.forward = lambda x, noise_level: given.append(noise_level) or original(
+        x, noise_level
+    )
+    solver.mini_batch_step(None, torch.rand(4, 1, 8, 8))
+    (levels,) = given
+    assert levels.shape == (4,) and levels.unique().numel() == 4
+
+
+@pytest.mark.parametrize(
+    "augment, erasing", [(False, False), (True, False), (False, True)]
+)
+def test_gaussian_denoiser_augmentations_are_options(monkeypatch, augment, erasing):
+    import LION.optimizers.GaussianDenoiserSolver as module
+
+    called = []
+    for name in ("random_flip_rotate", "random_erasing"):
+        monkeypatch.setattr(module, name, lambda x, name=name: called.append(name) or x)
+    solver = gaussian_denoiser_solver(augment=augment, random_erasing=erasing)
+    solver.mini_batch_step(None, torch.rand(2, 1, 8, 8))
+    assert called == ["random_flip_rotate"] * augment + ["random_erasing"] * erasing
+
+
+def test_gaussian_denoiser_defaults_follow_the_literature():
+    from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
+
+    params = GaussianDenoiserSolver.default_parameters()
+    assert params.augment is True and params.random_erasing is False
+    assert params.validation_noise_levels is None
+
+
+def test_gaussian_denoiser_validates_at_fixed_noise_levels(tmp_path):
+    solver = gaussian_denoiser_solver(validation_noise_levels=[0.0, 0.1])
+    seen = []
+    original = solver._denoise
+    solver._denoise = lambda clean, level: seen.append(level.clone()) or original(
+        clean, level
+    )
+    solver.set_saving(tmp_path, "model")
+    solver.set_validation(loader(n=4, batch_size=2), 1, validation_fname="v.pt")
+    value = solver.validate()
+    assert np.isfinite(value)
+    # each batch at each level, every image the same level
+    assert [float(level[0]) for level in seen] == pytest.approx([0.0, 0.1] * 2)
+    assert all(level.unique().numel() == 1 for level in seen)
+
+
+def test_gaussian_denoiser_refuses_another_noise_level():
+    with pytest.raises(ValueError, match="noise_level"):
+        gaussian_denoiser_solver(noise_level=[0.01, 0.05, 0.1])
+
+
+def test_gaussian_denoiser_trains_on_patches():
+    from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
+
+    solver = gaussian_denoiser_solver(patches=GaussianDenoiserSolver.patches(3, 4))
+    seen = []
+    solver.loss_fn = (
+        lambda output, target: seen.append(target.shape)
+        or ((output - target) ** 2).mean()
+    )
+    solver.mini_batch_step(None, torch.rand(2, 1, 8, 8))
+    assert seen == [torch.Size([6, 1, 4, 4])]  # 3 patches of each of 2 images
 
 
 def test_gaussian_denoiser_gives_gsd_the_noise_level_channel():

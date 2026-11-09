@@ -99,31 +99,31 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
 
     def reconstruct_sample(
         self,
-        sino: torch.Tensor,
+        y: torch.Tensor,
         x0: torch.Tensor | None = None,
         verbose: int = 1,
     ) -> torch.Tensor:
-        """Reconstruct one measurement ``sino`` (e.g. (C, angles, detectors)).
+        """Reconstruct one measurement ``y`` (for CT, a sinogram (C, angles, detectors)).
 
-        :param x0: Initial image; ``initial_guess(sino)`` if None.
+        :param x0: Initial image; ``initial_guess(y)`` if None.
         :param verbose: Show a progress bar over the iterations (``>= 1``).
         :return: The reconstruction, in the operator's domain shape.
         """
-        x = (self.initial_guess(sino) if x0 is None else x0).detach().clone()
+        x = (self.initial_guess(y) if x0 is None else x0).detach().clone()
         step = self.parameters.step_size
         iterations = range(self.parameters.n_steps)
         if verbose >= 1:
             iterations = tqdm(iterations, desc="Learned regulariser reconstruction")
         for _ in iterations:
-            energy = self.energy(x, sino)
-            grad = self.gradient(x, sino)
+            energy = self.energy(x, y)
+            grad = self.gradient(x, y)
             grad_norm2 = torch.sum(grad**2)
             if grad_norm2 == 0:
                 break
             # Armijo backtracking for the gradient step x - step * grad
             while True:
                 candidate = x - step * grad
-                if self.energy(candidate, sino) <= energy - 0.5 * step * grad_norm2:
+                if self.energy(candidate, y) <= energy - 0.5 * step * grad_norm2:
                     break
                 step *= self.parameters.backtracking
                 if step < torch.finfo(x.dtype).tiny:
@@ -150,11 +150,11 @@ def estimate_alpha(
     """
     total, count = 0.0, 0
     with torch.no_grad():
-        for sinos, targets in loader:
+        for y, targets in loader:
             if device is not None:
-                sinos, targets = sinos.to(device), targets.to(device)
-            for sino, target in zip(sinos, targets):
-                total += torch.linalg.vector_norm(op.adjoint(op(target) - sino)).item()
+                y, targets = y.to(device), targets.to(device)
+            for y_i, target in zip(y, targets):
+                total += torch.linalg.vector_norm(op.adjoint(op(target) - y_i)).item()
                 count += 1
     if count == 0:
         raise ValueError("estimate_alpha needs at least one sample")

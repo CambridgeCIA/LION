@@ -60,11 +60,29 @@ class LIONModelParameter(LIONParameter):
         # loading from file) are not overwritten.
         self.model_input_type = None
         # How the model's initial reconstruction is made from measurements,
-        # f(sinogram, operator) (set_initial_reconstruction). "default": the
+        # f(y, operator) (set_initial_reconstruction). "default": the
         # operator's default reconstruction (FDK for CT), replaced by that
         # function once the model has its operator.
         self.initial_reconstruction = "default"
         super().__init__(**kwargs)
+
+
+def noise_level_map(noise_level, x: torch.Tensor) -> torch.Tensor:
+    """The noise level as one channel the size of the images ``x`` (B, C,
+    ...): (B, 1, ...). ``noise_level``: one number, or one per image (B
+    values), as a model that takes the noise level is given it
+    (``model(x, noise_level=...)``; ``GaussianDenoiserSolver`` gives one per
+    image, a PnP reconstruction one number)."""
+    level = torch.as_tensor(noise_level, dtype=x.dtype, device=x.device)
+    if level.numel() not in (1, x.shape[0]):
+        raise ValueError(
+            f"noise_level must be one number or one per image ({x.shape[0]}), "
+            f"not {tuple(level.shape)}"
+        )
+    if (level < 0).any():
+        raise ValueError("noise_level must be non-negative")
+    shape = (-1,) + (1,) * (x.dim() - 1)
+    return level.reshape(shape).expand(x.shape[0], 1, *x.shape[2:])
 
 
 def as_model_parameter(params: LIONParameter) -> LIONModelParameter:
@@ -276,7 +294,7 @@ class LIONmodel(nn.Module, ABC):
 
     def set_initial_reconstruction(self, reconstruction):
         """How the model's initial reconstruction is made from the
-        measurements, ``reconstruction(sinogram, operator)``: the input of a
+        measurements, ``reconstruction(y, operator)``: the input of a
         model that takes images (``LION.optimizers.LIONsolver.model_forward``),
         or where a model that takes measurements and starts from a
         reconstruction (e.g. LPD) starts, in training and whenever it is used.
@@ -309,14 +327,14 @@ class LIONmodel(nn.Module, ABC):
             return
         self.model_parameters.initial_reconstruction = value
 
-    def initial_reconstruction(self, sino, op):
-        """The model's initial reconstruction of the measurements ``sino``
+    def initial_reconstruction(self, y, op):
+        """The model's initial reconstruction of the measurements ``y``
         (``model_parameters.initial_reconstruction``; "default": ``op``'s
         default reconstruction, e.g. FDK for CT)."""
         self._resolve_initial_reconstruction(op)
         return resolve_reconstruction(
             self.model_parameters.initial_reconstruction, op, "initial_reconstruction"
-        )(sino, op)
+        )(y, op)
 
     def normalise(self, x):
         """Normalise ``x`` as set by ``set_normalisation()`` (identity if unset)."""
