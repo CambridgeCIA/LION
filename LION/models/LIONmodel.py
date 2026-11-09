@@ -134,18 +134,19 @@ class LIONmodel(nn.Module, ABC):
     """
     Base class for all models in the toolbox.
 
-    ``model_parameters``: the model's own parameters (``default_parameters()``).
+    A model that uses an operator takes ``(operator_params,
+    model_parameters=None)``; one that doesn't takes only
+    ``(model_parameters=None)``.
 
-    ``operator_params``: the parameters of the operator the model uses, for
-    models that use one (an ``OperatorParameters``). **For CT, it's the
-    geometry**: ``LPD(geometry)`` or ``LPD(operator_params=geometry)``. The
-    model makes its operator from them (``self.op``): its domain is the image,
-    its range the measurements (the sinogram, in CT).
+    ``operator_params``: the parameters of the operator the model uses (an
+    ``OperatorParameters``). **For CT, it's the geometry**: ``LPD(geometry)``.
+    The model makes its operator from them (``self.op``): its domain is the
+    image, its range the measurements (the sinogram, in CT).
+
+    ``model_parameters``: the model's own parameters; None gives
+    ``default_parameters()``.
     """
 
-    # Initialization of the models should have only "LIONParameter()" classes. These should be "topic-wise", with at minimum 1 parameter object being passed.
-    # e.g. a Unet will have only 1 parameter (model_parameters), but the Learned Primal Dual will have 2, one for the model parameters and another one
-    # for the operator parameters of the inverse problem.
     def __init__(
         self,
         model_parameters: Optional[LIONModelParameter],  # model parameters
