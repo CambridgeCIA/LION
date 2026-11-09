@@ -8,6 +8,15 @@ import torch
 
 
 class SUREpgLoss:
+    """PG-SURE: an unbiased estimate of a denoiser's mean squared error under
+    mixed Poisson-Gaussian noise (Le Montagner, Angelini and Olivo-Marin, "An
+    unbiased risk estimator for image denoising in the presence of mixed
+    Poisson-Gaussian noise", IEEE TIP 23(3), 2014), as a self-supervised loss.
+    ``zeta``: the Poisson gain; ``sigma2``: the Gaussian variance; ``eps1``,
+    ``eps2``: the Monte Carlo perturbations of the first and second
+    derivatives; ``kappa``: the asymmetry of the second's random perturbation.
+    """
+
     def __init__(
         self,
         zeta: float,
@@ -28,6 +37,8 @@ class SUREpgLoss:
         self.b = (self.p / self.q) ** 0.5
 
     def __call__(self, model, y):
+        """The loss of the denoiser ``model`` on the noisy images ``y`` (B, C,
+        H, W), per pixel."""
         B = y.shape[0]
         N_per_img = y.shape[1] * y.shape[2] * y.shape[3]
 

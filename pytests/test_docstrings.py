@@ -4,24 +4,13 @@
 #
 # Author  : Ander Biguri
 # =============================================================================
-"""Every public class and function has a docstring (``contributor-guide.md``,
-"Docstrings"), in the folders documented so far: one more with each
-documentation PR, until it is all of LION."""
+"""Every public class and function in LION has a docstring
+(``contributor-guide.md``, "Docstrings")."""
 
 import ast
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[1]
-DOCUMENTED = [
-    "LION/optimizers",
-    "LION/models",
-    "LION/data_loaders",
-    "LION/operators",
-    "LION/classical_algorithms",
-    "LION/utils",
-]
 
 
 def _undocumented(path: Path) -> list[str]:
@@ -39,13 +28,10 @@ def _undocumented(path: Path) -> list[str]:
     return missing
 
 
-FILES = sorted(
-    path.relative_to(ROOT)
-    for folder in DOCUMENTED
-    for path in (ROOT / folder).rglob("*.py")
-)
-
-
-@pytest.mark.parametrize("path", FILES, ids=str)
-def test_public_definitions_have_docstrings(path):
-    assert _undocumented(ROOT / path) == []
+def test_public_definitions_have_docstrings():
+    missing = {
+        str(path.relative_to(ROOT)): names
+        for path in sorted((ROOT / "LION").rglob("*.py"))
+        if (names := _undocumented(path))
+    }
+    assert missing == {}

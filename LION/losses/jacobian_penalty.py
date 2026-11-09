@@ -89,6 +89,7 @@ class FirmlyNonexpansivePenalty(nn.Module):
 
     @staticmethod
     def cite(cite_format="bib"):
+        """Where the penalty comes from: its citation, BibTeX ("bib") or "MLA"."""
         return citation(
             cite_format,
             bib="""
@@ -139,6 +140,7 @@ class ProximalDenoiserPenalty(nn.Module):
 
     @staticmethod
     def cite(cite_format="bib"):
+        """Where the penalty comes from: its citation, BibTeX ("bib") or "MLA"."""
         return citation(
             cite_format,
             bib="""

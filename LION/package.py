@@ -880,6 +880,8 @@ def environment_list() -> str:
 
 
 def file_sha256(path) -> str:
+    """The SHA-256 of the file at ``path``, as a hex string (read in 1 MB
+    blocks)."""
     digest = hashlib.sha256()
     with open(path, "rb") as f:
         for block in iter(lambda: f.read(1 << 20), b""):

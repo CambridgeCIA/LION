@@ -13,27 +13,14 @@ from LION.metrics.psnr import _range
 
 
 class SSIM(nn.Module):
-    """SSIM: A wrapper for skimage.metrics.structural_similarity that operates on (potentially) batched pytorch tensors"""
+    """SSIM, from ``skimage.metrics.structural_similarity``, for (potentially)
+    batched pytorch tensors. A score: higher is better."""
 
     # a score, not a loss: solvers keep the model with the highest validation value
     higher_is_better = True
 
     def __init__(self):
         super().__init__()
-
-    """
-        Args:
-            x: torch.Tensor: input image.
-            target: torch.Tensor: target image to compare x against.
-            batched: whether x and target are batched or not.
-            reduce: if batched=False has no effect. Otherwise specifies what operation should be done to aggregate SSIMs along the batch axis. 
-                Defaults to None, in which case a tensor of shape (batch size) is returned.
-            channel_axis: if working with color images, which axis of image tensor corresponds to channel dimension. 
-                Defaults to None, corresponding to a grayscale image.
-            data_range: the range of the image values (e.g. 1 for images in [0, 1]).
-                Defaults to None: the range (max - min) of each target.
-
-    """
 
     def forward(
         self,
@@ -44,6 +31,12 @@ class SSIM(nn.Module):
         channel_axis: int | None = None,
         data_range: float | None = None,
     ) -> torch.Tensor:
+        """The SSIM of ``x`` against ``target`` (the same shape): one per
+        sample if ``batched`` (the first axis), or their mean if ``reduce`` is
+        "mean". ``channel_axis``: the channel axis of colour images (None:
+        grayscale, or axis 0 of a 3D sample, LION being channels-first);
+        ``data_range``: the range of the image values (e.g. 1 for images in [0,
+        1]); None: each target's (max - min)."""
         if x.shape != target.shape:
             raise ValueError(
                 f"x (shape {x.shape}) and target (shape {target.shape}) tensors must match to compare with SSIM"

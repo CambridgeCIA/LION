@@ -55,6 +55,9 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
 
     @staticmethod
     def default_parameters() -> LIONParameter:
+        """``alpha`` 1, 150 steps of initial size 1e-6, ``backtracking`` 0.95,
+        and the operator's default reconstruction as the start
+        (``initial_reconstruction`` "default"; FDK for CT)."""
         return LIONParameter(
             alpha=1.0,
             n_steps=150,
@@ -141,13 +144,10 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
 def estimate_alpha(
     op: Operator, loader, device: torch.device | str | None = None
 ) -> float:
-    r"""Regularisation weight heuristic from the adversarial regulariser paper:
-    the mean, over all samples in ``loader``, of :math:`\lVert A^T (A x - y) \rVert`.
-
-    :param op: The forward operator A.
-    :param loader: Iterable of (measurement, image) batches.
-    :param device: Where to compute; the data's device if None.
-    """
+    """The regularisation weight heuristic of the adversarial regulariser paper
+    (Lunz, Öktem and Schönlieb, 2018): the mean of ||Aᵀ(A x - y)|| over the
+    samples (y, x) of ``loader`` (batches of measurements and images). ``op``:
+    the operator A; ``device``: where to compute (the data's if None)."""
     total, count = 0.0, 0
     with torch.no_grad():
         for y, targets in loader:

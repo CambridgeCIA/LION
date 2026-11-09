@@ -13,6 +13,12 @@ from LION.utils.citation import citation
 
 
 class SURE(nn.Module):
+    """Stein's unbiased risk estimate as a self-supervised loss for denoisers
+    of Gaussian noise of standard deviation ``noise_std`` (Metzler et al.,
+    2018), its divergence estimated by Monte Carlo with a perturbation
+    ``epsilon`` (``default_epsilon`` if None). Not usable yet: it raises, as CT
+    noise isn't Gaussian (issue #144)."""
+
     def __init__(self, noise_std: float, epsilon: Optional[float] = None) -> None:
         super().__init__()
         self.epsilon = epsilon
@@ -27,6 +33,7 @@ class SURE(nn.Module):
 
     def forward(self, noisy, model):
 
+        """The loss of the denoiser ``model`` on the ``noisy`` images."""
         if model.get_input_type() != ModelInputType.IMAGE:
             raise NotImplementedError(
                 "Generalized SURE loss is not implemented yet, this only works for denoising networks"
@@ -48,6 +55,7 @@ class SURE(nn.Module):
 
     @staticmethod
     def default_epsilon(y):
+        """The default perturbation: the maximum of ``y`` / 1000."""
         return torch.max(y) / 1000
 
     @staticmethod
