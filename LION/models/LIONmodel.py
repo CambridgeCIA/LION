@@ -393,6 +393,9 @@ class LIONmodel(nn.Module, ABC):
             dic["optimizer_state_dict"] = kwargs.pop("optimizer")
         if "random_state" in kwargs:  # LION.utils.rng.random_state(), for resuming
             dic["random_state"] = kwargs.pop("random_state")
+        if kwargs.get("scheduler") is not None:  # its state_dict(), for resuming
+            dic["scheduler_state_dict"] = kwargs.pop("scheduler")
+        kwargs.pop("scheduler", None)
 
         # (optional) the operator's parameters of the data, for a model
         # without them (the data record has them too)

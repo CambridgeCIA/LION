@@ -12,6 +12,7 @@ Solvers run on CPU without tomosipo: the ``no_ct`` fixture (autouse) replaces
 the CT operator by ``None`` and FDK by the identity, as in test_solvers.py.
 """
 
+import functools
 import importlib
 import io
 import json
@@ -41,7 +42,9 @@ from LION.optimizers.EquivariantSolver import (  # noqa: E402
 from LION.optimizers.GaussianDenoiserSolver import (  # noqa: E402
     GaussianDenoiserSolver,
 )
+from LION.optimizers.AdversarialRegularizerSolver import ARSolver  # noqa: E402
 from LION.optimizers.LIONsolver import LIONsolver  # noqa: E402
+from LION.metrics.psnr import PSNR  # noqa: E402
 from LION.optimizers.training_record import (  # noqa: E402
     is_training_record,
     read_training_record,
@@ -553,3 +556,187 @@ def test_a_fine_tuned_model_records_its_original(tmp_path):
     with pytest.warns(UserWarning, match="where they come from isn't recorded"):
         changed.train(1)
     assert changed.initial_weights["origin"] is None
+
+
+# --------------------------------------------------------------------------
+# Solver arguments, learning-rate schedulers and the optimizer's groups
+
+
+def _solver_classes():
+    import inspect
+    import pkgutil
+
+    import LION.optimizers
+
+    for info in pkgutil.walk_packages(LION.optimizers.__path__, "LION.optimizers."):
+        module = importlib.import_module(info.name)
+        for _, cls in inspect.getmembers(module, inspect.isclass):
+            if issubclass(cls, LIONsolver) and cls.__module__ == info.name:
+                yield cls
+
+
+@pytest.mark.parametrize("cls", sorted(set(_solver_classes()), key=str), ids=str)
+def test_solvers_take_their_arguments_in_one_order(cls):
+    import inspect
+
+    order = [
+        "model",
+        "optimizer",
+        "loss_fn",
+        "operator_params",
+        "solver_params",
+        "scheduler",
+        "scheduler_step",
+        "verbose",
+        "device",
+        "seed",
+        "deterministic",
+    ]
+    names = list(inspect.signature(cls.__init__).parameters)[1:]
+    expected = [n for n in order if not (n == "loss_fn" and cls is ARSolver)]
+    # (GaussianDenoiserSolver's noise_level, until it is a solver parameter)
+    assert [n for n in names if n in order] == expected
+    assert "save_folder" not in names  # set_saving()
+
+
+def test_solver_parameters_in_the_operators_place_are_refused():
+    model = model_from()
+    with pytest.raises(TypeError, match="operator_params must be"):
+        supervised_solver.SupervisedSolver(
+            model,
+            torch.optim.SGD(model.parameters(), lr=0.1),
+            torch.nn.MSELoss(),
+            supervised_solver.SupervisedSolver.default_parameters(),
+        )
+
+
+def scheduled_solver(folder=None, scheduler=None, step="epoch", init_seed=0, **sgd):
+    model = model_from(init_seed)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1, **sgd)
+    if scheduler is None:
+        scheduler = functools.partial(
+            torch.optim.lr_scheduler.StepLR, step_size=1, gamma=0.5
+        )
+    solver = supervised_solver.SupervisedSolver(
+        model,
+        optimizer,
+        torch.nn.MSELoss(),
+        operator_params=Geometry.default_parameters(),
+        scheduler=scheduler(optimizer),
+        scheduler_step=step,
+        device=torch.device("cpu"),
+    )
+    solver.set_training(DataLoader(data(), batch_size=4))  # 2 batches per epoch
+    if folder is not None:
+        solver.set_saving(folder, "final")
+        solver.set_checkpointing("check_*.pt", 1, save_folder=folder)
+    return solver
+
+
+def test_the_scheduler_steps_every_epoch_and_is_recorded(tmp_path):
+    solver = scheduled_solver(tmp_path)
+    solver.train(3)
+    solver.save_final_results()
+    record = saved(tmp_path, "final")["training"]
+    assert record["history"]["learning_rate"] == [0.1, 0.05, 0.025]
+    assert record["scheduler"] == {
+        "_target_": "torch.optim.lr_scheduler.StepLR",
+        "step_size": 1,
+        "gamma": 0.5,
+    }
+    assert record["parameter_groups"] is None  # one group, the defaults
+    assert "scheduler" not in record["solver"]
+    assert record["solver"]["scheduler_step"] == "epoch"
+
+    made = LIONsolver.instantiate(tmp_path / "final", model_from(1))
+    assert type(made.scheduler) is torch.optim.lr_scheduler.StepLR
+    assert made.scheduler.optimizer is made.optimizer
+    assert (made.scheduler.step_size, made.scheduler.gamma) == (1, 0.5)
+    assert made.optimizer.param_groups[0]["lr"] == 0.1  # starts again
+
+
+def test_the_scheduler_can_step_every_batch():
+    solver = scheduled_solver(step="batch")
+    solver.train(2)
+    assert solver.learning_rates == [[0.1], [0.025]]  # two batches per epoch
+
+
+def test_resuming_continues_the_schedule(tmp_path):
+    whole = tmp_path / "whole"
+    whole.mkdir()
+    uninterrupted = scheduled_solver(whole)
+    uninterrupted.train(4)
+
+    stopped = tmp_path / "stopped"
+    stopped.mkdir()
+    scheduled_solver(stopped).train(2)
+    resumed = scheduled_solver(stopped, init_seed=7)
+    resumed.train(4)
+    assert resumed.learning_rates == uninterrupted.learning_rates
+    assert resumed.optimizer.param_groups[0]["lr"] == pytest.approx(0.1 / 16)
+    assert same_weights(uninterrupted.model, resumed.model)
+
+
+def test_reduce_on_plateau_steps_with_the_validation_value():
+    plateau = functools.partial(
+        torch.optim.lr_scheduler.ReduceLROnPlateau, mode="max", patience=0
+    )
+    solver = scheduled_solver(scheduler=plateau)
+    stepped = []
+    solver.scheduler.step = lambda value: stepped.append(value)
+    solver.set_validation(DataLoader(data(4, seed=1), batch_size=2), 2, PSNR())
+    solver.train(4)  # validates after epochs 2 and 4
+    np.testing.assert_array_equal(stepped, solver.validation_loss[[1, 3]])
+
+
+def test_reduce_on_plateau_in_the_wrong_mode_warns():
+    plateau = functools.partial(torch.optim.lr_scheduler.ReduceLROnPlateau)  # "min"
+    solver = scheduled_solver(scheduler=plateau)
+    solver.set_validation(DataLoader(data(4, seed=1), batch_size=2), 1, PSNR())
+    with pytest.warns(UserWarning, match="mode='min'"):
+        solver.train(1)
+
+
+def test_a_scheduler_on_another_optimizer_is_refused():
+    model = model_from()
+    other = torch.optim.SGD(model.parameters(), lr=0.1)
+    with pytest.raises(ValueError, match="solver's optimizer"):
+        supervised_solver.SupervisedSolver(
+            model,
+            torch.optim.SGD(model.parameters(), lr=0.1),
+            torch.nn.MSELoss(),
+            Geometry.default_parameters(),
+            scheduler=torch.optim.lr_scheduler.StepLR(other, 1),
+        )
+
+
+def test_parameter_groups_are_recorded_and_made_again(tmp_path):
+    model = model_from()
+    first, *rest = list(model.parameters())
+    optimizer = torch.optim.SGD(
+        [{"params": [first], "lr": 0.01}, {"params": rest}], lr=0.1, momentum=0.9
+    )
+    solver = supervised_solver.SupervisedSolver(
+        model,
+        optimizer,
+        torch.nn.MSELoss(),
+        Geometry.default_parameters(),
+        device=torch.device("cpu"),
+    )
+    solver.set_training(DataLoader(data(), batch_size=4))
+    solver.set_saving(tmp_path, "final")
+    solver.train(1)
+    solver.save_final_results()
+    record = saved(tmp_path, "final")["training"]
+    groups = record["parameter_groups"]
+    names = [n for n, _ in model.named_parameters()]
+    assert [g["parameters"] for g in groups] == [names[:1], names[1:]]
+    assert [g["lr"] for g in groups] == [0.01, 0.1]
+    assert record["history"]["learning_rate"] == [[0.01, 0.1]]
+
+    again = model_from(1)
+    made = LIONsolver.instantiate(tmp_path / "final", again)
+    named = dict(again.named_parameters())
+    assert [g["lr"] for g in made.optimizer.param_groups] == [0.01, 0.1]
+    assert made.optimizer.param_groups[0]["params"] == [named[names[0]]]
+    assert made.optimizer.param_groups[1]["momentum"] == 0.9

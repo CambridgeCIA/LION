@@ -98,14 +98,34 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         optimizer: Optimizer,
         loss_fn: Callable,
         operator_params: OperatorParameters = None,
+        solver_params: Optional[LIONParameter] = None,
+        scheduler=None,
+        scheduler_step: str = "epoch",
         verbose: int = 1,
         device: torch.device = None,
-        solver_params: Optional[LIONParameter] = None,
-        save_folder: Optional[pathlib.Path] = None,
         seed: Optional[int] = 0,
         deterministic: bool = False,
     ) -> None:
         """
+        Every solver takes ``(model, optimizer, loss_fn, operator_params,
+        solver_params, scheduler, scheduler_step, verbose, device, seed,
+        deterministic)``, in that order (``ARSolver`` has no ``loss_fn``).
+
+        ``operator_params``: the parameters of the operator (for CT, the
+        geometry); the model's, if it has them.
+
+        ``solver_params``: the solver's settings, from
+        ``default_parameters()``.
+
+        ``scheduler``: a torch learning-rate scheduler made on ``optimizer``
+        (e.g. ``torch.optim.lr_scheduler.StepLR(optimizer, 30)``), or None. It
+        steps after every epoch (``scheduler_step="epoch"``, torch's
+        convention) or every mini-batch (``"batch"``, e.g. for
+        ``OneCycleLR``). ``ReduceLROnPlateau`` steps with the validation value
+        of the epochs that validate, or with the training loss when there is
+        no validation. Its state is saved in checkpoints, and the training
+        record has it and the learning rate of every epoch.
+
         ``seed``: the training seed. When training starts, torch (CPU and
         CUDA), numpy and Python's ``random`` are seeded with it, so the same
         solver, model and data give the same training, and checkpoints keep the
@@ -123,9 +143,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         a few epochs). On a GPU it needs ``CUBLAS_WORKSPACE_CONFIG=:4096:8``
         before cuBLAS starts: it is set here if it isn't (exporting it before the
         script is surer).
-
-        ``save_folder``: where results are saved; by default the folder in the
-        ``LION_RESULTS_PATH`` environment variable, if set.
 
         ``verbose``: how much progress is shown. 0: nothing; 1 (default): one
         progress bar for training (every mini-batch of every epoch, with the
@@ -150,12 +167,32 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model = model
         self.optimizer = optimizer
 
+        if operator_params is not None and not isinstance(
+            operator_params, OperatorParameters
+        ):
+            raise TypeError(
+                "operator_params must be the operator's parameters (an "
+                f"OperatorParameters, e.g. a CT Geometry), not "
+                f"{type(operator_params).__name__}: solvers take (model, "
+                "optimizer, loss_fn, operator_params, solver_params, ...)"
+            )
         if getattr(model, "operator_params", None) is not None:
             self.operator_params = model.operator_params
         else:
             if operator_params is None:
                 raise ValueError("operator_params must be provided")
             self.operator_params = operator_params
+
+        if scheduler_step not in ("epoch", "batch"):
+            raise ValueError(
+                f'scheduler_step must be "epoch" or "batch", not {scheduler_step!r}'
+            )
+        if scheduler is not None and scheduler.optimizer is not optimizer:
+            raise ValueError("the scheduler must be made on the solver's optimizer")
+        self.scheduler = scheduler
+        self.scheduler_step = scheduler_step
+        # the learning rate of each epoch (of each parameter group), recorded
+        self.learning_rates: list = []
 
         self.op = self.operator_params.make_operator()
         # "default" (the operator's default reconstruction) is replaced by the
@@ -186,8 +223,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         self.current_epoch: int = 0
 
-        if save_folder is None:
-            save_folder = os.environ.get("LION_RESULTS_PATH")
+        # where results are saved (set_saving); by default the folder in the
+        # LION_RESULTS_PATH environment variable, if set
+        save_folder = os.environ.get("LION_RESULTS_PATH")
         self.save_folder: Optional[pathlib.Path] = (
             None if save_folder is None else pathlib.Path(save_folder).expanduser()
         )
@@ -240,6 +278,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         kwargs = spec._constructor_arguments(self)
         kwargs.pop("model", None)
         kwargs.pop("optimizer", None)
+        kwargs.pop("scheduler", None)  # recorded as the training's
         return kwargs
 
     def _data_record(self, loader) -> dict:
@@ -276,6 +315,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             records.RECORD_KEY: records.RECORD_VERSION,
             "solver": solver,
             "optimizer": spec.encode_or_name(self.optimizer, "the optimizer"),
+            "parameter_groups": self._parameter_groups_record(),
+            "scheduler": (
+                None
+                if self.scheduler is None
+                else spec.encode_or_name(self.scheduler, "the scheduler")
+            ),
             "seed": self.seed,
             "initial_weights_sha256": self.initial_weights_sha256,
             "initial_weights": self.initial_weights,
@@ -300,8 +345,52 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         record["history"] = {
             "train_loss": records.history(self.train_loss, epoch),
             "validation": records.history(self.validation_loss, epoch),
+            "learning_rate": [
+                lrs[0] if len(lrs) == 1 else lrs for lrs in self.learning_rates[:epoch]
+            ],
         }
         return LIONParameter(**record)
+
+    def _parameter_groups(self):
+        """The optimizer's parameter groups, if it has other than one group of
+        all the model's parameters with the optimizer's defaults: each group's
+        parameters (their names in the model) and settings, with the learning
+        rate it started with (a scheduler changes it). None otherwise."""
+        names = {id(p): n for n, p in self.model.named_parameters()}
+        groups = []
+        for group in self.optimizer.param_groups:
+            settings = {
+                k: v for k, v in group.items() if k not in ("params", "initial_lr")
+            }
+            settings["lr"] = group.get("initial_lr", group["lr"])
+            parameters = [names.get(id(p)) for p in group["params"]]
+            if None in parameters:
+                raise spec.SpecError(
+                    "the optimizer has parameters that aren't the model's"
+                )
+            groups.append({"parameters": parameters, **settings})
+        if (
+            len(groups) == 1
+            and sorted(groups[0]["parameters"]) == sorted(names.values())
+            and all(groups[0].get(k) == v for k, v in self.optimizer.defaults.items())
+        ):
+            return None
+        return groups
+
+    def _parameter_groups_record(self):
+        """``_parameter_groups()`` for the record, or what a record can only
+        name (with a warning)."""
+        try:
+            return spec.encode(self._parameter_groups())
+        except spec.SpecError as error:
+            warnings.warn(
+                f"the record only names the optimizer's parameter groups ({error})"
+            )
+            return {"unsaved": "the optimizer's parameter groups", "reason": str(error)}
+
+    def _learning_rates(self) -> list:
+        """The learning rate of each parameter group now."""
+        return [float(group["lr"]) for group in self.optimizer.param_groups]
 
     def _training_data_record(self):
         """The training data's record: the model file's ``dataset_params``."""
@@ -315,12 +404,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         ``source``: a model file a solver saved (or the dict read from it), or
         its training record. Made from the solver's own record only: its
-        class, ``solver_params``, loss and seed, and the optimizer (class and
-        hyperparameters) on ``model``'s parameters. The data, validation,
+        class, ``solver_params``, loss and seed, the optimizer (class,
+        hyperparameters and parameter groups) on ``model``'s parameters, and
+        the learning-rate scheduler on that optimizer. The data, validation,
         testing and saving are set as usual (``set_training``, ...).
         ``arguments`` replace recorded ones or give those that couldn't be
         recorded (e.g. ``loss_fn`` for a lambda loss) and where it runs
-        (``device``, ``verbose``, ``save_folder``). Called on ``LIONsolver``
+        (``device``, ``verbose``). Called on ``LIONsolver``
         it makes the class the record names; on a solver class, that class.
         """
         record = records.read_training_record(source)
@@ -350,7 +440,33 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             )
         path, kwargs = spec.build_arguments(solver_spec, allow)
         target = spec.target_class(path, cls, LIONsolver, allow)
-        optimizer = spec.build(record.optimizer, allow, params=model.parameters())
+        groups = getattr(record, "parameter_groups", None)
+        if spec.is_unsaved(groups):
+            raise ValueError(
+                "the record only names the optimizer's parameter groups: "
+                "they can't be made again"
+            )
+        params = model.parameters()
+        if groups:
+            named = dict(model.named_parameters())
+            params = [
+                {
+                    "params": [named[n] for n in group["parameters"]],
+                    **{k: v for k, v in group.items() if k != "parameters"},
+                }
+                for group in groups
+            ]
+        optimizer = spec.build(record.optimizer, allow, params=params)
+        if "scheduler" not in arguments and getattr(record, "scheduler", None):
+            if spec.is_unsaved(record.scheduler):
+                raise ValueError(
+                    f"the record only names its scheduler, "
+                    f"{vars(record.scheduler)['unsaved']}: give scheduler=... (made on "
+                    "solver.optimizer, so make the solver without it first)"
+                )
+            arguments["scheduler"] = spec.build(
+                record.scheduler, allow, optimizer=optimizer
+            )
         return target(model=model, optimizer=optimizer, **kwargs, **arguments)
 
     @classmethod
@@ -810,6 +926,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.training_record("checkpoint", epoch + 1),
             dataset=self._training_data_record(),
             random_state=rng.random_state(),
+            scheduler=None if self.scheduler is None else self.scheduler.state_dict(),
         )
 
     def save_validation(self, epoch):
@@ -1036,6 +1153,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         ``None`` here)."""
         if self.seed is not None and "random_state" in data:
             rng.set_random_state(data["random_state"])
+        if self.scheduler is not None and "scheduler_state_dict" in data:
+            self.scheduler.load_state_dict(data["scheduler_state_dict"])
         if data.get("initial_random_state") is not None:
             self.model.initial_random_state = data["initial_random_state"].cpu()
         try:
@@ -1043,6 +1162,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         except (ValueError, OSError):
             return  # a checkpoint saved without a training record
         self.initial_weights_sha256 = getattr(record, "initial_weights_sha256", None)
+        history = getattr(record, "history", None)
+        self.learning_rates = [
+            lrs if isinstance(lrs, list) else [lrs]
+            for lrs in getattr(history, "learning_rate", [])
+        ]
         initial = getattr(record, "initial_weights", None)
         self.initial_weights = (
             vars(initial) if isinstance(initial, LIONParameter) else initial
@@ -1077,6 +1201,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             batch_loss.backward()
             epoch_loss += batch_loss.item()
             self.optimizer.step()
+            if self.scheduler is not None and self.scheduler_step == "batch":
+                self.scheduler.step()
             if progress is not None:
                 shown = {
                     "epoch": f"{self.current_epoch + 1}/{self.n_epochs}",
@@ -1092,6 +1218,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         This function is responsible for performing a single epoch of the optimization.
         """
+        # the learning rates this epoch starts with
+        self.learning_rates = self.learning_rates[:epoch] + [self._learning_rates()]
         self.train_loss[epoch] = self.train_step()
         # actually make sure we're doing validation
         if self.validation_loss is not None and (epoch + 1) % self.validation_freq == 0:
@@ -1111,6 +1239,19 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 self.save_validation(epoch)
         elif self.verbose >= 2:
             tqdm.write(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
+        if self.scheduler is not None and self.scheduler_step == "epoch":
+            self._step_scheduler(epoch)
+
+    def _step_scheduler(self, epoch):
+        """Steps the scheduler after ``epoch``. ``ReduceLROnPlateau`` steps
+        with the validation value of the epochs that validate, or with the
+        training loss when there is no validation."""
+        if not isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+            self.scheduler.step()
+        elif self.validation_loss is None:
+            self.scheduler.step(self.train_loss[epoch])
+        elif not np.isnan(self.validation_loss[epoch]):
+            self.scheduler.step(self.validation_loss[epoch])
 
     def train(self, n_epochs):
         """
@@ -1140,6 +1281,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 )
         else:
             self.validation_loss = None
+        if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+            higher = self.validation_loss is not None and (
+                self._validation_higher_is_better()
+            )
+            if self.scheduler.mode != ("max" if higher else "min"):
+                warnings.warn(
+                    f"ReduceLROnPlateau has mode={self.scheduler.mode!r}, but it "
+                    f"steps with {'the validation value' if self.validation_loss is not None else 'the training loss'}, "
+                    f"which is better when {'higher' if higher else 'lower'}"
+                )
 
         # Fills in checkpointing defaults (frequency, file name) when possible.
         self.check_checkpointing_ready()

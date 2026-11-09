@@ -221,6 +221,15 @@ part.
   styling of LION's: the user's style sheet applies; `ax=` draws into their
   figure), on `Figure`s (no pyplot state), imported only in
   `LION/evaluation/figures.py`.
+- Solvers take `(model, optimizer, loss_fn, operator_params, solver_params,
+  scheduler, scheduler_step, verbose, device, seed, deterministic)`, in that
+  order (`ARSolver` has no `loss_fn`); where results go is set with
+  `set_saving()`. `scheduler`: a torch learning-rate scheduler made on the
+  optimizer, stepped every epoch (or every mini-batch,
+  `scheduler_step="batch"`); `ReduceLROnPlateau` steps with the validation
+  value. The training record has the optimizer (and its parameter groups),
+  the scheduler and the learning rate of every epoch; checkpoints keep the
+  scheduler's state.
 - Solvers take a training `seed` (default 0; `None`: unseeded) and pass it to
   `LIONsolver`, which seeds torch, numpy and Python's `random` when training
   starts (`LION.utils.rng.seed_all`); checkpoints keep the random state, so a

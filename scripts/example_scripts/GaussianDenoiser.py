@@ -115,8 +115,8 @@ solver = SupervisedSolver(
     loss_fcn,
     operator_params=experiment.operator_params,
     verbose=True,
-    save_folder=savefolder,
 )
+solver.set_saving(savefolder, final_result_fname)
 # set data
 solver.set_training(lidc_dataloader)
 solver.set_validation(lidc_validation, 10, validation_fname=validation_fname)

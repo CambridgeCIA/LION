@@ -14,6 +14,11 @@ best validation, checkpoints), next to the record of the training data
   optimizer (below) and where it ran (``device``, ``verbose``, ``save_folder``);
   its ``solver_params`` include values it computed (e.g. E2I's ``noise_std``);
 - ``optimizer``: the optimizer's class and hyperparameters;
+  ``parameter_groups``: its parameter groups (each one's parameters, by name
+  in the model, and settings, with the learning rate it started with), or
+  None for one group of all the parameters with those hyperparameters;
+  ``scheduler``: the learning-rate scheduler's class and arguments, or None
+  (when it steps, ``scheduler_step``, is the solver's);
 - ``seed``: the training seed (``None``: unseeded), and
   ``initial_weights_sha256``, a hash of the weights training started from;
 - ``initial_weights``: how those can be made again (``LIONmodel.instantiate(
@@ -32,8 +37,9 @@ best validation, checkpoints), next to the record of the training data
 - ``weights``: which weights the file holds: ``kind`` ("final",
   "best_validation", "checkpoint"), after which ``epoch`` (counted from 1), and
   for the best validation its ``value``;
-- ``history``: the training loss and validation value of each epoch done
-  (``null`` when not validated).
+- ``history``: the training loss, validation value (``null`` when not
+  validated) and learning rate (a list, one per parameter group, when there
+  are several) of each epoch done.
 
 What can't be written as a spec (a lambda loss) is named, with a warning.
 A record is a ``LIONParameter`` (``record.epochs.done``) whose specs

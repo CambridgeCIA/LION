@@ -5,13 +5,12 @@
 # Author  : Alvaro Exposito Martinez, Ander Biguri
 # =============================================================================
 from typing import Optional
-from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel
 import torch
 import torch.nn.functional as F
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver, warn_if_not_mse
-from LION.utils.parameter import LIONParameter
+from LION.utils.parameter import LIONParameter, OperatorParameters
 from LION.utils.citation import citation
 
 
@@ -28,8 +27,10 @@ class Proj2ProjSolver(LIONsolver):
         model: LIONmodel,
         optimizer: Optimizer,
         loss_fn,
+        operator_params: OperatorParameters = None,
         solver_params: Optional[LIONParameter] = None,
-        operator_params: Geometry = None,
+        scheduler=None,
+        scheduler_step: str = "epoch",
         verbose: int = 1,
         device: torch.device = None,
         seed: Optional[int] = 0,
@@ -39,10 +40,12 @@ class Proj2ProjSolver(LIONsolver):
             model,
             optimizer,
             loss_fn,
-            operator_params,
-            verbose,
-            device,
+            operator_params=operator_params,
             solver_params=solver_params,
+            scheduler=scheduler,
+            scheduler_step=scheduler_step,
+            verbose=verbose,
+            device=device,
             seed=seed,
             deterministic=deterministic,
         )
