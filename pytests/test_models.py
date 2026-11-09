@@ -334,7 +334,7 @@ def small_geometry(n=16):
 @pytest.mark.parametrize(
     "make_model",
     [
-        lambda: AR(AR.default_parameters(), small_geometry()),
+        lambda: AR(small_geometry(), AR.default_parameters()),
         lambda: ACR(small_geometry()),
     ],
     ids=["AR", "ACR"],
@@ -369,7 +369,7 @@ def test_files_with_the_old_name_of_the_operator_params_load(monkeypatch, tmp_pa
         "_make_operator",
         lambda self, autograd=False: setattr(self, "op", op),
     )
-    model = AR(AR.default_parameters(), small_geometry())
+    model = AR(small_geometry(), AR.default_parameters())
     _save(model, tmp_path / "model")
     path = tmp_path / "model.json"
     saved = json.loads(path.read_text())
@@ -404,7 +404,7 @@ def test_old_names_of_the_operator_params_are_renamed_at_any_depth():
 def test_ar_any_image_size(shape):
     operator_params = Geometry.default_parameters()
     operator_params.image_shape = [1, *shape]
-    model = AR(AR.default_parameters(), operator_params)
+    model = AR(operator_params, AR.default_parameters())
     assert model(torch.rand(2, 1, *shape)).shape == (2, 1)
     if shape == (512, 512):  # same layer as before for multiples of 16
         assert model.fc[0].in_features == 128 * 32 * 32
@@ -812,5 +812,35 @@ def test_models_differentiating_through_an_operator_need_its_autograd(monkeypatc
     monkeypatch.setattr(Geometry, "make_operator", lambda self: op)
     with pytest.raises(NotImplementedError, match="LPD's gradients go through"):
         LPD(Geometry.default_parameters())
-    model = AR(AR.default_parameters(), Geometry.default_parameters())
+    model = AR(Geometry.default_parameters(), AR.default_parameters())
     assert model.op is op and not hasattr(model, "A")
+
+
+def _model_classes():
+    import inspect
+    import pkgutil
+
+    import LION.models
+
+    for info in pkgutil.walk_packages(LION.models.__path__, "LION.models."):
+        module = importlib.import_module(info.name)
+        for _, cls in inspect.getmembers(module, inspect.isclass):
+            if (
+                issubclass(cls, LIONmodel)
+                and cls is not LIONmodel
+                and cls.__module__ == info.name
+            ):
+                yield cls
+
+
+@pytest.mark.parametrize("cls", sorted(set(_model_classes()), key=str), ids=str)
+def test_model_arguments_operator_first(cls):
+    """A model that uses an operator takes (operator_params, model_parameters
+    =None); in every model, model_parameters is optional."""
+    import inspect
+
+    arguments = list(inspect.signature(cls.__init__).parameters.values())[1:]
+    names = [a.name for a in arguments]
+    assert arguments[names.index("model_parameters")].default is None
+    if "operator_params" in names:
+        assert names[:2] == ["operator_params", "model_parameters"]

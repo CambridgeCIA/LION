@@ -12,7 +12,9 @@ from LION.utils.citation import citation
 
 class AR(LIONmodel):
     def __init__(
-        self, model_parameters: LIONModelParameter, operator_params: OperatorParameters
+        self,
+        operator_params: OperatorParameters,
+        model_parameters: LIONModelParameter = None,
     ):
         super().__init__(model_parameters, operator_params)
 

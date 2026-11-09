@@ -115,8 +115,11 @@ part.
 
 ## Models
 
-- Models derive from `LIONmodel` and take `(model_parameters, operator_params=None)`:
-  the parameters of the operator they use (e.g. a CT `Geometry`). Components
+- Models derive from `LIONmodel`. A model that uses an operator takes
+  `(operator_params, model_parameters=None)`: the parameters of the operator
+  first (e.g. a CT `Geometry`: `LPD(geometry)`), then its own, optional as
+  they have defaults. A model that doesn't use one takes only
+  `(model_parameters=None)`. Components
   that need an operator (models, solvers, datasets, experiments) take its
   parameters as `operator_params` and make it with
   `operator_params.make_operator()`, so they work with any kind of operator.
