@@ -259,9 +259,14 @@ part.
 
 ## Messages and errors
 
-- **`verbose`** (default False) is the one switch for progress: progress
-  bars and progress messages (epochs, losses, iterations). Solvers take it
-  when made; functions and `reconstruct` take it as an argument. Nothing
+- **`verbose`** is how much progress is shown, as in Keras: 0 nothing; 1
+  (the default) one progress bar for each long run, with its time left
+  (training: every mini-batch of every epoch; evaluation: the test samples;
+  a reconstruction: the samples of a batch, or the iterations of one
+  sample); 2 also the inner bars and messages (validation, each epoch's
+  losses, checkpoints). True is 1, False 0. Solvers take it when made;
+  functions, `reconstruct` and `Evaluation.run` take it as an argument. A
+  call made inside another's progress bar gets one level less. Nothing
   else prints: a component without `verbose` prints nothing (download and
   preprocessing scripts excepted).
 - Something the user should know (a setting that looks wrong, a result that

@@ -40,7 +40,7 @@ def fista_l1(
     max_iter: int = 200,
     tol: float = 1e-4,
     L: float | None = None,
-    verbose: bool = False,
+    verbose: int = 1,
 ) -> torch.Tensor:
     r"""Solve :math:`\min_w \tfrac12\lVert A w - y\rVert_2^2 + \lambda \lVert w\rVert_1`
     by FISTA.
@@ -71,10 +71,10 @@ def fista_l1(
         Lipschitz constant of :math:`A^\top A`. If ``None``, estimated by a
         power method on the normal operator :math:`A^\top A`, following the
         standard practice in FISTA-type schemes [BeckTeboulle2009]_.
-    verbose : bool
-        If True, shows a progress bar with the objective value and the
-        relative change (computing the objective costs one more ``op(w)`` per
-        iteration).
+    verbose : int
+        0: nothing shown; 1 (default): a progress bar; 2: with the objective
+        value and the relative change (computing the objective costs one more
+        ``op(w)`` per iteration).
 
     Returns
     -------
@@ -108,7 +108,7 @@ def fista_l1(
     z = w.clone()
     t = 1.0
 
-    iterator = tqdm(range(max_iter), desc="FISTA l1", disable=not verbose)
+    iterator = tqdm(range(max_iter), desc="FISTA l1", disable=verbose < 1)
     for _ in iterator:
         Az: torch.Tensor = op(z)
         grad = op.adjoint(Az - y)  # gradient of data term, same shape as w
@@ -121,7 +121,7 @@ def fista_l1(
         w = w_next
         t = t_next
 
-        if verbose:
+        if verbose >= 2:
             data_term = 0.5 * torch.norm((op(w)) - y).pow(2).item()
             l1_term = lam * torch.norm(w, p=1).item()
             iterator.set_postfix(

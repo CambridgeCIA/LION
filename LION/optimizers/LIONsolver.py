@@ -98,7 +98,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         optimizer: Optimizer,
         loss_fn: Callable,
         operator_params: OperatorParameters = None,
-        verbose: bool = False,
+        verbose: int = 1,
         device: torch.device = None,
         solver_params: Optional[LIONParameter] = None,
         save_folder: Optional[pathlib.Path] = None,
@@ -126,6 +126,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
 
         ``save_folder``: where results are saved; by default the folder in the
         ``LION_RESULTS_PATH`` environment variable, if set.
+
+        ``verbose``: how much progress is shown. 0: nothing; 1 (default): one
+        progress bar for training (every mini-batch of every epoch, with the
+        epoch, the loss, the last validation value and the time left) and one
+        for testing; 2: also the
+        validation bars and messages (each epoch's losses, checkpoints, the
+        seed). True is 1, False 0.
         """
 
         super().__init__()
@@ -423,7 +430,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if reconstructor is None:
             return self._forward(data)
         reconstructor.model = self.model
-        return reconstructor.reconstruct(data)
+        # inside the solver's own progress bar: the reconstructor's only at
+        # verbose >= 2
+        return reconstructor.reconstruct(data, verbose=max(int(self.verbose) - 1, 0))
 
     def set_saving(self, save_folder: str | pathlib.Path, final_result_fname: str):
         """Sets save_folder and filename for saving final result and min_val result
@@ -880,7 +889,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model.eval()
         with torch.no_grad():
             test_loss = np.array([])
-            for data, target in tqdm(self.test_loader, disable=not self.verbose):
+            for data, target in tqdm(
+                self.test_loader, desc="Testing", disable=self.verbose < 1
+            ):
                 output = self._reconstruct(
                     data.to(self.device), self.testing_reconstructor
                 )
@@ -891,8 +902,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if was_training:
             self.model.train()
 
-        if self.verbose:
-            print(
+        if self.verbose >= 2:
+            tqdm.write(
                 f"Testing loss: {test_loss.mean()} - Testing loss std: {test_loss.std()}"
             )
 
@@ -953,8 +964,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ] = self.model._read_min_validation(
                 self.save_folder.joinpath(self.validation_fname)
             )
-            if self.verbose:
-                print(
+            if self.verbose >= 2:
+                tqdm.write(
                     f"Loaded checkpoint at epoch {self.current_epoch}. Current best validation value is {self.validation_loss[self.current_epoch-1]}"
                 )
         return self.current_epoch
@@ -1057,9 +1068,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             )
         self.model.train()
         epoch_loss = 0.0
-        for _, (data, target) in enumerate(
-            tqdm(self.train_loader, disable=not self.verbose)
-        ):
+        progress = getattr(self, "_progress", None)  # train()'s progress bar
+        for batch, (data, target) in enumerate(self.train_loader):
             self.optimizer.zero_grad()
             batch_loss = self.mini_batch_step(
                 data.to(self.device), target.to(self.device)
@@ -1067,6 +1077,15 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             batch_loss.backward()
             epoch_loss += batch_loss.item()
             self.optimizer.step()
+            if progress is not None:
+                shown = {
+                    "epoch": f"{self.current_epoch + 1}/{self.n_epochs}",
+                    "loss": f"{epoch_loss / (batch + 1):.4g}",
+                }
+                if getattr(self, "_last_validation", None) is not None:
+                    shown["validation"] = f"{self._last_validation:.4g}"
+                progress.set_postfix(shown, refresh=False)
+                progress.update()
         return epoch_loss / len(self.train_loader)
 
     def epoch_step(self, epoch):
@@ -1082,15 +1101,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             cuda = [self.device] if torch.device(self.device).type == "cuda" else []
             with torch.random.fork_rng(devices=cuda):
                 self.validation_loss[epoch] = self.validate()
-            if self.verbose:
-                print(
+            self._last_validation = self.validation_loss[epoch]  # for the bar
+            if self.verbose >= 2:
+                tqdm.write(
                     f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]} - Validation loss: {self.validation_loss[epoch]}"
                 )
 
             if self._saves_min_validation() and self._is_best_validation(epoch):
                 self.save_validation(epoch)
-        elif self.verbose:
-            print(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
+        elif self.verbose >= 2:
+            tqdm.write(f"Epoch {epoch+1} - Training loss: {self.train_loss[epoch]}")
 
     def train(self, n_epochs):
         """
@@ -1130,15 +1150,15 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         )
 
         if self.do_load_checkpoint and do_checkpoint:
-            if self.verbose:
-                print("Loading checkpoint...")
+            if self.verbose >= 2:
+                tqdm.write("Loading checkpoint...")
             self.current_epoch = self.load_checkpoint()
 
         if self.current_epoch == 0:  # a new run
             if self.seed is not None:
                 rng.seed_all(self.seed)
-                if self.verbose:
-                    print(
+                if self.verbose >= 2:
+                    tqdm.write(
                         f"Training seed: {self.seed} (the solver's seed argument; "
                         "seed=None for an unseeded run)"
                     )
@@ -1146,16 +1166,29 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.initial_weights = self._initial_weights()
 
         self.model.train()
-        # train loop
-        while self.current_epoch < n_epochs:
-            if self.verbose:
-                print(f"Training epoch {self.current_epoch + 1}")
-            self.epoch_step(self.current_epoch)
+        # one progress bar over every mini-batch left, so its ETA is the
+        # training's (verbose >= 1)
+        self._progress = tqdm(
+            total=max(n_epochs - self.current_epoch, 0) * len(self.train_loader),
+            desc="Training",
+            unit="batch",
+            disable=self.verbose < 1,
+        )
+        try:
+            while self.current_epoch < n_epochs:
+                self.epoch_step(self.current_epoch)
 
-            if do_checkpoint and (self.current_epoch + 1) % self.checkpoint_freq == 0:
-                self.save_checkpoint(self.current_epoch)
+                if (
+                    do_checkpoint
+                    and (self.current_epoch + 1) % self.checkpoint_freq == 0
+                ):
+                    self.save_checkpoint(self.current_epoch)
 
-            self.current_epoch += 1
+                self.current_epoch += 1
+        finally:
+            self._progress.close()
+            self._progress = None
+            self._last_validation = None
 
     def _resized(
         self, losses: Optional[np.ndarray], n_epochs: int, fill: float = 0.0
@@ -1189,8 +1222,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         with torch.no_grad():
             validation_loss = self._validation_loop()
 
-        if self.verbose:
-            print(
+        if self.verbose >= 2:
+            tqdm.write(
                 f"Validation loss: {validation_loss.mean()} - Validation loss std: {validation_loss.std()}"
             )
 
@@ -1205,7 +1238,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function performs the validation loop.
         """
         validation_loss = np.array([])
-        for data, targets in tqdm(self.validation_loader, disable=not self.verbose):
+        for data, targets in tqdm(
+            self.validation_loader, disable=self.verbose < 2, leave=False
+        ):
             outputs = self._reconstruct(
                 data.to(self.device), self.validation_reconstructor
             )

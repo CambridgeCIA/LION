@@ -150,14 +150,17 @@ class Comparison:
             )
         return notes
 
-    def run(self, *, save: bool = True) -> dict:
+    def run(self, *, save: bool = True, verbose: int = 1) -> dict:
         """Checks the methods (warning what differs), then runs each on the
         evaluation (reusing saved results). Returns ``{name: test record}``,
-        the baseline first, also kept as ``self.records``."""
+        the baseline first, also kept as ``self.records``. ``verbose``: 1
+        (default) shows a progress bar per method; 0 nothing."""
         for note in self.check():
             warnings.warn(note, stacklevel=2)
         self.records = {
-            name: self.evaluation.run(m, name, save=save, allow=self.allow)
+            name: self.evaluation.run(
+                m, name, save=save, allow=self.allow, verbose=verbose
+            )
             for name, m in self.named_methods().items()
         }
         return self.records

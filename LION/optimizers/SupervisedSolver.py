@@ -2,6 +2,7 @@
 from typing import Optional
 
 import torch
+from tqdm import tqdm
 from torch.optim.optimizer import Optimizer
 
 # Import base class
@@ -20,7 +21,7 @@ class SupervisedSolver(LIONsolver):
         optimizer: Optimizer,
         loss_fn,
         operator_params: OperatorParameters = None,
-        verbose: bool = False,
+        verbose: int = 1,
         device: torch.device = None,
         save_folder: str = None,
         seed: Optional[int] = 0,
@@ -39,8 +40,8 @@ class SupervisedSolver(LIONsolver):
             seed=seed,
             deterministic=deterministic,
         )
-        if verbose:
-            print("Supervised solver training on device: ", self.device)
+        if verbose >= 2:
+            tqdm.write(f"Supervised solver training on device: {self.device}")
 
     def mini_batch_step(self, sino, target):
         """

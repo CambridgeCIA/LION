@@ -67,7 +67,8 @@ def method(x, operator=None, *, allow=()):
     if isinstance(x, LIONReconstructor):
         modules = [x.model] if isinstance(x.model, torch.nn.Module) else []
         return _make(
-            x.reconstruct,
+            # inside the evaluation's progress bar
+            lambda y: x.reconstruct(y, verbose=0),
             {
                 "kind": "reconstructor",
                 "reconstructor": spec.encode_or_name(x, "the reconstructor"),

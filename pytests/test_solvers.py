@@ -144,8 +144,8 @@ def test_train_twice_keeps_the_loss_history():
     assert solver.train_loss[2] > 0
 
 
-@pytest.mark.parametrize("verbose", [False, True])
-def test_solvers_show_progress_only_when_verbose(tmp_path, capfd, verbose):
+@pytest.mark.parametrize("verbose", [0, 1, 2])
+def test_solvers_show_progress_by_level(tmp_path, capfd, verbose):
     solver = make_solver(verbose=verbose)
     solver.set_training(loader())
     solver.set_saving(tmp_path, "model")
@@ -153,17 +153,18 @@ def test_solvers_show_progress_only_when_verbose(tmp_path, capfd, verbose):
         "model_check_*.pt", checkpoint_freq=1, save_folder=tmp_path
     )
     solver.set_validation(loader(seed=1), 1, validation_fname="model_min_val.pt")
-    solver.train(1)
+    solver.train(2)
     out, err = capfd.readouterr()
-    if verbose:
-        assert "Epoch 1" in out
-        assert "it/s" in err or "s/it" in err  # tqdm's progress bars
-    else:
+    if verbose == 0:
         assert out == "" and err == ""
+        return
+    # one bar over every mini-batch of every epoch (2 epochs x 2 batches)
+    assert "Training" in err and "4/4" in err and "epoch=2/2" in err
+    assert ("Epoch 1" in out) == (verbose == 2)  # messages only at 2
 
 
-def test_solvers_are_quiet_by_default():
-    assert make_solver().verbose is False
+def test_solvers_show_one_progress_bar_by_default():
+    assert make_solver().verbose == 1
 
 
 def test_warnings_dont_depend_on_verbose():
@@ -456,7 +457,9 @@ def test_validation_uses_the_reconstructor(identity_ct, tmp_path):
     reconstructor = learned_reconstructor()
     calls = []
     original = reconstructor.reconstruct
-    reconstructor.reconstruct = lambda d: calls.append(d.shape) or original(d)
+    reconstructor.reconstruct = lambda d, verbose=1: calls.append(d.shape) or original(
+        d, verbose=verbose
+    )
     solver.set_saving(tmp_path, "model")
     solver.set_validation(
         loader(n=4, batch_size=2), validation_freq=1, reconstructor=reconstructor
@@ -476,9 +479,9 @@ def test_any_solver_can_validate_through_a_reconstructor(tmp_path):
     reconstructor = learned_reconstructor()
     seen = []
     original = reconstructor.reconstruct
-    reconstructor.reconstruct = lambda d: seen.append(reconstructor.model) or original(
-        d
-    )
+    reconstructor.reconstruct = lambda d, verbose=1: seen.append(
+        reconstructor.model
+    ) or original(d)
     solver.set_saving(tmp_path, "model")
     solver.set_validation(
         loader(n=2, batch_size=2), 1, torch.nn.MSELoss(), reconstructor=reconstructor

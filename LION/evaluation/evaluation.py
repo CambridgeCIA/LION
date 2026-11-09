@@ -38,6 +38,7 @@ import warnings
 
 import numpy as np
 import torch
+from tqdm import tqdm
 from torch.utils.data import DataLoader, Subset
 
 from LION.data_loaders.data_record import data_record
@@ -142,14 +143,21 @@ class Evaluation:
     # -- running -----------------------------------------------------------
 
     def run(
-        self, x, name: str | None = None, *, save: bool = True, allow=()
+        self,
+        x,
+        name: str | None = None,
+        *,
+        save: bool = True,
+        allow=(),
+        verbose: int = 1,
     ) -> LIONParameter:
         """Score ``x`` (a model, a model's file, a solver, a reconstructor or a
         function ``f(y, operator)``; see ``LION.evaluation.method``) on every
         test sample. Returns its test record, saved in ``save_folder``; a
         record saved before for the same method and evaluation is read
         instead. ``allow``: modules outside LION a model file may name (e.g.
-        your own solver)."""
+        your own solver). ``verbose``: 1 (default) shows a progress bar over
+        the test samples; 0 nothing."""
         run = method(x, self.get_operator(), allow=allow)
         for module in run.modules:
             module.to(self.device)
@@ -176,7 +184,14 @@ class Evaluation:
         data = self.data()
         low_high = self.data_range(evaluation_key)
         ids, values, seconds = scores(
-            run, data, self.metrics, low_high, self.batch_size, self.device
+            run,
+            data,
+            self.metrics,
+            low_high,
+            self.batch_size,
+            self.device,
+            verbose=verbose,
+            desc=name,
         )
         record = {
             RECORD_KEY: RECORD_VERSION,
@@ -293,18 +308,29 @@ class Evaluation:
 # Functions
 
 
-def scores(run, data, metrics, data_range=None, batch_size=1, device=None):
+def scores(
+    run,
+    data,
+    metrics,
+    data_range=None,
+    batch_size=1,
+    device=None,
+    verbose: int = 0,
+    desc: str | None = None,
+):
     """Every sample of ``data`` (a dataset of ``(measurement, target)``)
     through ``run``, in order, scored by every metric. ``data_range``:
     ``(min, max)`` (outputs and targets are shifted by ``min`` and the metrics
     get ``max - min``), or None for each target's own range.
 
     Returns ``(ids, {name: numpy array of per-sample scores}, seconds per
-    sample)``."""
+    sample)``. ``verbose >= 1``: a progress bar over the samples (``desc``)."""
     device = default_device() if device is None else torch.device(device)
     values = {name: [] for name in metrics}
     seconds = 0.0
+    progress = tqdm(total=len(data), desc=desc, unit="sample", disable=verbose < 1)
     for y, target in DataLoader(data, batch_size=batch_size, shuffle=False):
+        progress.update(len(y))
         y, target = y.to(device), target.to(device)
         _synchronise(device)
         start = time.perf_counter()
@@ -321,6 +347,7 @@ def scores(run, data, metrics, data_range=None, batch_size=1, device=None):
             else:
                 score = metric(output, target, data_range=high - low)
             values[name].append(torch.as_tensor(score).detach().cpu().reshape(-1))
+    progress.close()
     values = {k: torch.cat(v).double().numpy() for k, v in values.items()}
     n = len(next(iter(values.values()))) if values else 0
     return sample_ids(data), values, seconds / max(n, 1)

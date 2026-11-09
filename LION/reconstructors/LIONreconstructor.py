@@ -17,8 +17,9 @@ A reconstructor is made with everything that decides its result, then run:
   (``reconstructor.model = model``); running it without one is an error;
 - ``parameters``: a ``LIONParameter`` with the algorithm's settings, from the
   class's ``default_parameters()``. ``reconstruct`` takes only the data, a
-  starting image ``x0`` and ``verbose``, so a reconstructor with its
-  parameters is one method, recorded as such (``LION.evaluation``).
+  starting image ``x0`` and ``verbose`` (how much progress is shown), so a
+  reconstructor with its parameters is one method, recorded as such
+  (``LION.evaluation``).
 
 Its spec (``LION.utils.spec``) holds the operator and the parameters, not the
 model: a model's spec would make it with new weights. Records of an evaluation
@@ -33,7 +34,8 @@ weights hash, and the environment. The weights stay in the model's file.
 
 A new reconstructor derives from this class, defines ``default_parameters()``
 and ``reconstruct_sample(y, x0, verbose)``, and reads its settings from
-``self.parameters``.
+``self.parameters``. ``reconstruct_sample`` shows a progress bar over its
+iterations when ``verbose >= 1``.
 """
 
 from __future__ import annotations
@@ -44,6 +46,7 @@ import warnings
 from abc import ABC, abstractmethod
 
 import torch
+from tqdm import tqdm
 
 from LION.operators import Operator
 from LION.utils import spec
@@ -121,11 +124,15 @@ class LIONReconstructor(ABC):
     # -- running -------------------------------------------------------------
 
     def reconstruct(
-        self, y: torch.Tensor, x0: torch.Tensor | None = None, verbose: bool = False
+        self, y: torch.Tensor, x0: torch.Tensor | None = None, verbose: int = 1
     ) -> torch.Tensor:
         """Reconstruct measurements ``y``: one sample (the operator's range
         shape) or a batch of them, each on its own. ``x0``: the starting
-        image(s), where the algorithm takes one."""
+        image(s), where the algorithm takes one.
+
+        ``verbose``: 0, nothing shown; 1 (default), one progress bar: over the
+        samples of a batch, or over the iterations of one sample; 2, also the
+        iterations of each sample of a batch."""
         if self.model is None:
             raise ValueError(
                 f"{type(self).__name__} has no model: set it first "
@@ -137,15 +144,18 @@ class LIONReconstructor(ABC):
             images = torch.zeros(
                 y.size(0), *self.op.domain_shape, dtype=y.dtype, device=y.device
             )
-            for i, sample in enumerate(y):
+            samples = tqdm(
+                y, desc=type(self).__name__, unit="sample", disable=verbose < 1
+            )
+            for i, sample in enumerate(samples):
                 start = None if x0 is None else x0[i]
-                images[i] = self.reconstruct_sample(sample, start, verbose)
+                images[i] = self.reconstruct_sample(sample, start, verbose - 1)
             return images
         return self.reconstruct_sample(y, x0, verbose)
 
     @abstractmethod
     def reconstruct_sample(
-        self, y: torch.Tensor, x0: torch.Tensor | None, verbose: bool
+        self, y: torch.Tensor, x0: torch.Tensor | None, verbose: int
     ) -> torch.Tensor:
         """Reconstruct one measurement, with the settings in
         ``self.parameters``."""

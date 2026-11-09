@@ -26,7 +26,7 @@ class Noise2InverseSolver(LIONsolver):
         loss_fn,
         solver_params: Optional[LIONParameter] = None,
         operator_params: OperatorParameters = None,
-        verbose: bool = False,
+        verbose: int = 1,
         device: torch.device = None,
         seed: Optional[int] = 0,
         deterministic: bool = False,

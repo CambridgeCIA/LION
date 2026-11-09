@@ -27,7 +27,7 @@ class GaussianDenoiserSolver(LIONsolver):
         optimizer: Optimizer,
         loss_fn,
         operator_params: OperatorParameters = None,
-        verbose: bool = False,
+        verbose: int = 1,
         device: torch.device = None,
         save_folder: str = None,
         noise_level: float | np.ndarray = 0.05,
@@ -47,8 +47,8 @@ class GaussianDenoiserSolver(LIONsolver):
             seed=seed,
             deterministic=deterministic,
         )
-        if verbose:
-            print("Gaussian Denoiser solver training on device: ", self.device)
+        if verbose >= 2:
+            tqdm.write(f"Gaussian Denoiser solver training on device: {self.device}")
         self.patch = None
 
         # Make range of noise levels if noise_level is a single value
@@ -131,7 +131,7 @@ class GaussianDenoiserSolver(LIONsolver):
         with torch.no_grad():
             validation_loss = np.array([])
             for batch, (_, targets) in enumerate(
-                tqdm(self.validation_loader, disable=not self.verbose)
+                tqdm(self.validation_loader, disable=self.verbose < 2, leave=False)
             ):
                 targets = targets.to(self.device)
                 if self.do_normalise:
@@ -167,8 +167,8 @@ class GaussianDenoiserSolver(LIONsolver):
                     .numpy(),
                 )
 
-        if self.verbose:
-            print(
+        if self.verbose >= 2:
+            tqdm.write(
                 f"Validation loss: {validation_loss.mean()} - Validation loss std: {validation_loss.std()}"
             )
 

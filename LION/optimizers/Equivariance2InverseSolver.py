@@ -2,6 +2,7 @@ from typing import Optional
 from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel
 import torch
+from tqdm import tqdm
 import torch.nn.functional as F
 from torch.optim.optimizer import Optimizer
 from LION.optimizers.LIONsolver import LIONsolver, warn_if_not_mse
@@ -86,7 +87,7 @@ class Equivariance2InverseSolver(LIONsolver):
         loss_fn,
         solver_params: Optional[LIONParameter] = None,
         operator_params: Geometry = None,
-        verbose: bool = False,
+        verbose: int = 1,
         device: torch.device = None,
         seed: Optional[int] = 0,
         deterministic: bool = False,
@@ -143,8 +144,8 @@ class Equivariance2InverseSolver(LIONsolver):
             self.solver_params.noise_std = estimate_noise_std(
                 sinos, self.solver_params.noise_kernel
             )
-            if self.verbose:
-                print(
+            if self.verbose >= 2:
+                tqdm.write(
                     "Equivariance2InverseSolver: noise_std estimated from the "
                     f"data: {self.solver_params.noise_std:.4g}"
                 )

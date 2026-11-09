@@ -203,15 +203,14 @@ def test_fista_with_image_shaped_domain():
     torch.testing.assert_close(x, x_true, atol=1e-3, rtol=1e-3)
 
 
-@pytest.mark.parametrize("verbose", [False, True])
-def test_fista_shows_progress_only_when_verbose(capfd, verbose):
+@pytest.mark.parametrize("verbose", [0, 1, 2])
+def test_fista_shows_progress_by_level(capfd, verbose):
     op = ImageMatrixOp(torch.eye(4), (2, 2))
     fista_l1(op, torch.ones(4), lam=0.1, max_iter=3, tol=0.0, verbose=verbose)
     out, err = capfd.readouterr()
     assert out == ""
-    assert ("FISTA" in err) == verbose
-    if verbose:
-        assert "rel_change" in err
+    assert ("FISTA" in err) == (verbose >= 1)
+    assert ("rel_change" in err) == (verbose == 2)
 
 
 def test_spgl1() -> None:

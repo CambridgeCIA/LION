@@ -683,7 +683,7 @@ class LIONmodel(nn.Module, ABC):
         # glob() already returns paths that include fname.parent
         checkpoints = sorted(fname.parent.glob(fname.name))
         if not checkpoints:
-            if verbose:
+            if verbose >= 2:
                 print(f"checkpoint {fname} not found, failed to load.")
             return model, optimiser, 0, total_loss, None
 
