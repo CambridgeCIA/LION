@@ -81,7 +81,6 @@ def test_sirt_shares_unbatched_initial_guess(fake_ts_sirt):
 def test_ct_reconstructions_run_once_per_sample(monkeypatch, name):
     """SIRT and TV-min call ts_algorithms once per sample, with that sample,
     and refuse an empty batch."""
-    from LION.exceptions.exceptions import NoDataException
     from LION.operators import ct
 
     given = []
@@ -100,7 +99,7 @@ def test_ct_reconstructions_run_once_per_sample(monkeypatch, name):
     assert recon(sino, FakeCTOp(), **arguments).shape == (2, 1, 4, 4)
     assert [g.shape for g in given] == [(1, 5, 6), (1, 5, 6)]
     torch.testing.assert_close(given[1], sino[1])
-    with pytest.raises(NoDataException):
+    with pytest.raises(ValueError):
         recon(torch.rand(0, 1, 5, 6), FakeCTOp(), **arguments)
 
 

@@ -12,7 +12,6 @@ from typing import Optional
 import torch
 from torch.optim.optimizer import Optimizer
 
-from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver
 from LION.utils.parameter import LIONParameter
@@ -185,7 +184,7 @@ class ARSolver(LIONsolver):
 
 def _needs(reconstructor, where):
     if reconstructor is None:
-        raise LIONSolverException(
+        raise ValueError(
             f"ARSolver.{where} needs a reconstructor: the regulariser alone "
             "doesn't reconstruct. Give e.g. "
             "reconstructor=LearnedRegularizerReconstructor(operator, "

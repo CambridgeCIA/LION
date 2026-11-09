@@ -297,8 +297,12 @@ part.
   preprocessing scripts excepted).
 - Something the user should know (a setting that looks wrong, a result that
   won't be saved) is a `warnings.warn`, whatever `verbose` is.
-- Wrong input raises an exception with a message (`ValueError`,
-  `TypeError`, ...), not `assert`: `python -O` removes asserts. `assert` is
+- Errors are Python's exceptions, with a message: wrong input raises
+  `ValueError` or `TypeError`, a call before what it needs (e.g. saving
+  before `set_saving()`) `RuntimeError`. A LION exception only for a case
+  callers catch on its own, deriving from the matching built-in
+  (`SpecError(ValueError)`, `PublishError(ValueError)`).
+- Wrong input raises, not `assert`: `python -O` removes asserts. `assert` is
   only for what can't happen whatever the input (e.g. telling a type checker
   something already checked).
 

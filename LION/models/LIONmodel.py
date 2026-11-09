@@ -30,7 +30,6 @@ from LION.utils import environment, rng
 
 from LION.utils.normaliser import Normalisation
 from LION.utils.device import default_device
-from LION.exceptions.exceptions import NoDataException
 
 # (optional) Given this is a tomography library, it is likely that you will want to load geometries of the tomogprahic problem you are solving, e.g. a ct_geometry
 
@@ -286,7 +285,7 @@ class LIONmodel(nn.Module, ABC):
                 "known before reconstructing); use 'dataset' or 'custom'"
             )
         if normalisation_type == "dataset" and dataset is None:
-            raise NoDataException("dataloader not set: Please call set_training")
+            raise ValueError('a dataset is needed for the "dataset" normalisation')
 
         self.normalisator = Normalisation(normalisation_type, dataset, data_range)
         self.model_parameters.normalisation = LIONParameter(

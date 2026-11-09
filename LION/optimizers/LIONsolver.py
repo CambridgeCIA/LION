@@ -16,7 +16,6 @@ from __future__ import annotations
 from typing import Callable, Optional
 
 from tqdm import tqdm
-from LION.exceptions.exceptions import LIONSolverException, NoDataException
 from LION.utils.parameter import (
     LIONParameter,
     OperatorParameters,
@@ -605,7 +604,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         elif save_folder is None:
             save_folder = self.save_folder
         if save_folder is None:
-            raise LIONSolverException(
+            raise RuntimeError(
                 "No folder for the checkpoints: pass save_folder, or call set_saving() first."
             )
 
@@ -935,7 +934,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function saves a checkpoint of the model and the optimizer
         """
         if self.checkpoint_save_folder is None:
-            raise LIONSolverException("Saving not set: please call set_saving")
+            raise RuntimeError("Saving not set: please call set_saving")
         self.model.save_checkpoint(
             self.checkpoint_save_folder.joinpath(
                 pathlib.Path(str(self.checkpoint_fname).replace("*", f"{epoch+1:04d}"))
@@ -954,15 +953,15 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function saves the validation results
         """
         if self.validation_fname is None or self.validation_fn is None:
-            raise LIONSolverException(
+            raise RuntimeError(
                 "No validation save filepath provided. Please call set_validation."
             )
 
         if self.validation_loss is None:
-            raise LIONSolverException("No validation losses found, failed to save.")
+            raise RuntimeError("No validation losses found, failed to save.")
 
         if self.save_folder is None:
-            raise LIONSolverException(
+            raise RuntimeError(
                 "Save folder not set up, can't save the min-validation model: please call set_saving()."
             )
 
@@ -985,7 +984,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if final_result_fname is not None:
             self.final_result_fname = final_result_fname
         if self.save_folder is None or self.final_result_fname is None:
-            raise LIONSolverException("Saving not setup: Please call set_saving.")
+            raise RuntimeError("Saving not setup: Please call set_saving.")
         if epoch is None:
             epoch = self.current_epoch
 
@@ -1002,11 +1001,11 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function cleans the checkpoints
         """
         if self.checkpoint_save_folder is None:
-            raise LIONSolverException(
+            raise RuntimeError(
                 "Saving not setup, unable to find save folder: Please call set_saving"
             )
         if self.checkpoint_fname is None:
-            raise LIONSolverException(
+            raise RuntimeError(
                 "Checkpointing not setup, can't clear checkpoints: Please call set_checkpointing"
             )
         # this ensures all files with the same extension are removed
@@ -1051,9 +1050,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function loads a checkpoint (if exists)
         """
         if self.checkpoint_save_folder is None:
-            raise LIONSolverException("Loading not set. Please call set_loading ")
+            raise RuntimeError("Loading not set. Please call set_loading ")
         if self.checkpoint_fname is None:
-            raise LIONSolverException(
+            raise RuntimeError(
                 "Checkpointing not set, failed to load checkpoint. Please call set_checkpointing"
             )
         (
@@ -1207,9 +1206,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         returns the average loss of the epoch
         """
         if self.train_loader is None:
-            raise NoDataException(
-                "Training dataloader not set: Please call set_training"
-            )
+            raise RuntimeError("Training dataloader not set: Please call set_training")
         self.model.train()
         epoch_loss = 0.0
         progress = getattr(self, "_progress", None)  # train()'s progress bar
@@ -1377,7 +1374,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         returns the average loss of the validation set this epoch.
         """
         if self.check_validation_ready() != 0:
-            raise LIONSolverException(
+            raise RuntimeError(
                 "Solver not ready for validation. Please call set_validation."
             )
 

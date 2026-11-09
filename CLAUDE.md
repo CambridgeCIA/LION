@@ -19,7 +19,6 @@ LION is a modular Python/PyTorch research library for learned tomographic recons
 - `LION/classical_algorithms/`: Classical reconstruction for any operator: FISTA, conjugate gradient, SPGL1.
 - `LION/data_loaders/`: Datasets (`LIONDataset` and the loaders derived from it), their data records, and per-dataset download and preprocessing scripts (`LIDC_IDRI/`, `2deteCT/`, `walnuts/`).
 - `LION/evaluation/`: Testing trained methods: `Evaluation`, `Comparison`, tables and figures.
-- `LION/exceptions/`: LION's exceptions.
 - `LION/experiments/`: Experiments: geometry, noise, doses and data for each benchmark problem (`ct_experiments.py`: LION's simulated LIDC-IDRI ones; `deteCT_benchmark.py`: the 2DeteCT benchmark paper's).
 - `LION/losses/`: Loss functions (SURE).
 - `LION/metrics/`: Image quality metrics (PSNR, SSIM, HaarPSI).

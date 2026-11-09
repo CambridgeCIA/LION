@@ -29,7 +29,6 @@ import LION.optimizers.AdversarialRegularizerSolver as ar_module
 import LION.optimizers.LIONsolver as lion_solver
 import LION.optimizers.SupervisedSolver as supervised_solver
 from LION.operators.ct.ct_geometry import Geometry
-from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver
 from LION.utils import spec
@@ -581,9 +580,9 @@ def test_training_step(identity_ct):
 
 def test_ar_validation_and_testing_need_a_reconstructor(identity_ct):
     solver = make_ar_solver()
-    with pytest.raises(LIONSolverException, match="needs a reconstructor"):
+    with pytest.raises(ValueError, match="needs a reconstructor"):
         solver.set_validation(loader(), validation_freq=1)
-    with pytest.raises(LIONSolverException, match="needs a reconstructor"):
+    with pytest.raises(ValueError, match="needs a reconstructor"):
         solver.set_testing(loader())
 
 
