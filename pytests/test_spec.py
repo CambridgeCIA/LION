@@ -17,7 +17,6 @@ import numpy as np
 import pytest
 import torch
 
-import LION.experiments.ct_2DeteCT_noise_experiments as noise_experiments
 import LION.experiments.deteCT_benchmark as benchmark_experiments
 import LION.experiments.ct_experiments as ct_experiments
 import LION.models
@@ -99,7 +98,7 @@ def experiment_parameters():
     """One experiment of each module and dataset: within a module, experiments
     differ only in their parameters' values."""
     found = {}
-    for module in (ct_experiments, benchmark_experiments, noise_experiments):
+    for module in (ct_experiments, benchmark_experiments):
         for dataset in ("LIDC-IDRI", "2DeteCT"):
             for name, cls in inspect.getmembers(module, inspect.isclass):
                 if cls.__module__ != module.__name__ or inspect.isabstract(cls):
