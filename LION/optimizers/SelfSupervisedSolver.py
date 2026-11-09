@@ -28,6 +28,11 @@ A self-supervised loss should take
 
 
 class SelfSupervisedSolver(LIONsolver):
+    """Training with a loss of the model and its input alone,
+    ``loss_fn(input, model)`` (e.g. SURE): the input is the initial
+    reconstruction for image-domain models, the measurements otherwise. The
+    targets aren't used. No settings of its own."""
+
     def __init__(
         self,
         model: LIONmodel,
@@ -62,10 +67,7 @@ class SelfSupervisedSolver(LIONsolver):
             tqdm.write(f"Self-supervised solver training on device: {self.device}")
 
     def mini_batch_step(self, y, target):
-        """
-        This function is responsible for performing a single mini-batch step of the optimization.
-        returns the loss of the mini-batch
-        """
+        """``loss_fn(input, model)`` (``target`` isn't used)."""
         # Forward pass
         if self.model.get_input_type() == ModelInputType.IMAGE:
             data = self.model.initial_reconstruction(y, self.op)
@@ -78,4 +80,5 @@ class SelfSupervisedSolver(LIONsolver):
 
     @staticmethod
     def default_parameters() -> LIONParameter:
+        """None: the solver has no settings."""
         return LIONParameter()

@@ -41,12 +41,9 @@ def estimate_noise_std(sinos: torch.Tensor, noise_kernel=None) -> float:
     paper measures it in a background region instead; give the solver's
     ``noise_std`` to use such a value.
 
-    Args:
-        sinos: Sinograms (..., angles, detectors).
-        noise_kernel: 1D blur of the noise along the detector, or None.
-
-    Returns:
-        The estimated standard deviation (before the blur).
+    ``sinos``: sinograms (..., angles, detectors); ``noise_kernel``: the 1D
+    blur of the noise along the detector, or None. Returns the standard
+    deviation before the blur.
     """
     left, centre, right = sinos[..., :-2], sinos[..., 1:-1], sinos[..., 2:]
     keep = (left != 0) & (centre != 0) & (right != 0)
@@ -120,6 +117,8 @@ class Equivariance2InverseSolver(LIONsolver):
 
     @staticmethod
     def default_parameters() -> LIONParameter:
+        """``equivariance_strength`` (lambda), ``noise_std``,
+        ``noise_kernel`` and ``recon_fn``, as below."""
         params = LIONParameter()
         # lambda in the paper, chosen per dataset there
         params.equivariance_strength = 1.0
@@ -151,6 +150,10 @@ class Equivariance2InverseSolver(LIONsolver):
         return noise
 
     def mini_batch_step(self, y, targets):
+        """The loss: projection-wise cross-validation (one angle left out,
+        the model's output projected onto it) plus ``equivariance_strength``
+        times the equivariance term (``targets`` aren't used:
+        self-supervised)."""
         if self.solver_params.noise_std is None:
             self.solver_params.noise_std = estimate_noise_std(
                 y, self.solver_params.noise_kernel
@@ -196,6 +199,8 @@ class Equivariance2InverseSolver(LIONsolver):
         return self.reconstruct(data)
 
     def reconstruct(self, y):
+        """The model's reconstructions of the measurements ``y``: of the
+        reconstructions ``recon_fn`` makes of them, as in training."""
         input_recon = self.reconstruct_measurements(y, self.op)
         output_recon = self.model(input_recon)
         return output_recon

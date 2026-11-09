@@ -174,6 +174,7 @@ class GaussianDenoiserSolver(LIONsolver):
 
     @staticmethod
     def default_parameters() -> LIONParameter:
+        """The settings in the class docstring, with their defaults."""
         params = LIONParameter()
         params.noise_level = 0.05
         params.patches = None

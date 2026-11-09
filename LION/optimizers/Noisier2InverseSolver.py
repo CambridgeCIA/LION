@@ -60,6 +60,11 @@ class Noisier2InverseSolver(LIONsolver):
 
     @staticmethod
     def default_parameters() -> LIONParameter:
+        """``sigma``: the standard deviation (in pixels) of the Gaussian blur
+        that correlates the extra noise (3); ``delta``: the extra noise's
+        standard deviation before the blur (1); ``recon_fn``: how
+        measurements are reconstructed ("default": the operator's default
+        reconstruction)."""
         params = LIONParameter()
         params.sigma = 3
         params.delta = 1
@@ -70,6 +75,9 @@ class Noisier2InverseSolver(LIONsolver):
         return params
 
     def mini_batch_step(self, y, targets):
+        """The loss: extra correlated noise N added to the measurements, the
+        model's output on their reconstruction projected, against ``y - N``
+        (mean squared error; ``targets`` aren't used: self-supervised)."""
         sigma = self.solver_params.sigma
         delta = self.solver_params.delta
         ks = int(sigma * 3) * 2 + 1
@@ -83,12 +91,6 @@ class Noisier2InverseSolver(LIONsolver):
         output_sino = self.projector(output_recon)
         target_sino = y - N
 
-        # Sobolev Loss
-        # res = output_sino - target_sino
-        # grad_x = res[:, :, :, 1:] - res[:, :, :, :-1]
-        # grad_y = res[:, :, 1:, :] - res[:, :, :-1, :]
-
-        # batch_loss = ((output_sino - target_sino)**2).mean() + (grad_x**2).mean() + (grad_y**2).mean()
         batch_loss = ((output_sino - target_sino) ** 2).mean()
         return self._regularized(batch_loss, input_recon, output_recon)
 
@@ -97,6 +99,8 @@ class Noisier2InverseSolver(LIONsolver):
         return self.reconstruct(data)
 
     def reconstruct(self, y):
+        """The model's reconstructions of the measurements ``y``: of the
+        reconstructions ``recon_fn`` makes of them, as in training."""
         input_recon = self.reconstruct_measurements(y, self.op)
         output_recon = self.model(input_recon)
         return output_recon

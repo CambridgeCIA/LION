@@ -21,13 +21,6 @@ from LION.utils.image_transforms import rotate
 from LION.utils.citation import citation
 
 
-def get_rotation_matrix(angle: float):
-    theta = torch.tensor(angle)
-    s = torch.sin(theta)
-    c = torch.cos(theta)
-    return torch.tensor([[c, -s], [s, c]])
-
-
 class RotationGroup:
     """The rotations of an image by the multiples of ``360 / cardinality``
     degrees, as a sequence of functions (``random.choice`` picks one). Kept as
@@ -49,6 +42,14 @@ class RotationGroup:
 
 
 class EquivariantSolver(LIONsolver):
+    """Equivariant imaging (Chen, Tachella and Davies, 2021): trains from
+    measurements alone. The loss is data consistency, ``loss_fn(A(f(y)), y)``,
+    plus ``equivariance_strength`` times the equivariance of the whole
+    reconstruction to a random transformation T of the group:
+    ``loss_fn(f(A(T f(y))), T f(y))``. For CT, f reconstructs (FDK, then the
+    model, for image-domain models).
+    """
+
     def __init__(
         self,
         model: LIONmodel,
@@ -85,16 +86,22 @@ class EquivariantSolver(LIONsolver):
 
     @staticmethod
     def rotation_group(cardinality: int) -> RotationGroup:
+        """The rotations by multiples of ``360 / cardinality`` degrees."""
         return RotationGroup(cardinality)
 
     @staticmethod
     def default_parameters() -> LIONParameter:
+        """``transformation_group``: the transformations (the 360 rotations
+        by whole degrees); ``equivariance_strength``: the weight of the
+        equivariance term (100)."""
         param = LIONParameter()
         param.transformation_group = EquivariantSolver.rotation_group(360)
         param.equivariance_strength = 100
         return param
 
     def mini_batch_step(self, y, target_batch) -> torch.Tensor:
+        """The loss: data consistency plus the weighted equivariance term
+        (see the class; ``target_batch`` isn't used: self-supervised)."""
         random_transform = random.choice(self.transformation_group)
 
         if needs_image := (

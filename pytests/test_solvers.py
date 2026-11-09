@@ -547,12 +547,15 @@ def identity_ct(monkeypatch):
 
 def make_ar_solver(**params):
     model = small_dncnn()
+    solver_params = ar_module.ARSolver.default_parameters()
+    for name, value in params.items():
+        setattr(solver_params, name, value)
     return ar_module.ARSolver(
         model,
         torch.optim.Adam(model.parameters()),
         operator_params=Geometry.default_parameters(),
         device=torch.device("cpu"),
-        solver_params=ar_module.ARParams(**params),
+        solver_params=solver_params,
         verbose=False,
     )
 
@@ -925,6 +928,27 @@ def test_noise2inverse_J_sets_follow_the_split_count(monkeypatch):
     params.sino_split_count = 2
     with pytest.raises(ValueError, match="cali_J"):
         make_n2i_solver(monkeypatch, params)
+
+
+def test_noise2inverse_one_X_strategy(monkeypatch):
+    """1:X: each split in turn is the input, the mean of the others the
+    target (the paper's other strategy)."""
+    from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
+
+    assert Noise2InverseSolver.one_X_strategy(4) == [
+        [2, 3, 4],
+        [1, 3, 4],
+        [1, 2, 4],
+        [1, 2, 3],
+    ]
+    operator_params = Geometry.default_parameters()  # 360 angles
+    operator_params.image_shape = [1, 8, 8]
+    params = Noise2InverseSolver.default_parameters()
+    params.cali_J = Noise2InverseSolver.one_X_strategy(params.sino_split_count)
+    solver = make_n2i_solver(monkeypatch, params, operator_params)
+    y = torch.rand(2, 1, 360, 8)
+    assert torch.isfinite(solver.mini_batch_step(y, None))
+    assert solver.reconstruct(y).shape == (2, 1, 8, 8)
 
 
 # --------------------------------------------------------------------------
