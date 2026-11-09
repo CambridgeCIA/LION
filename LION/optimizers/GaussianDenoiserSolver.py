@@ -62,6 +62,13 @@ class GaussianDenoiserSolver(LIONsolver):
       as training does (the same ones every time); or a list of them (e.g.
       ``[15 / 255, 25 / 255, 50 / 255]``), every validation image at each,
       the validation value being their mean.
+    - ``jacobian_penalty``: None, or a penalty on the denoiser's Jacobian
+      added to the loss, for PnP methods that converge
+      (``LION.losses.jacobian_penalty``): ``FirmlyNonexpansivePenalty()``
+      (Pesquet et al. 2021) or ``ProximalDenoiserPenalty()`` (Hurault et al.
+      2022, for a gradient-step denoiser). Both papers add it after training
+      without it (e.g. ``train_again``, or ``LIONmodel.load`` and another
+      solver). Cite the one used (its ``cite()``).
     """
 
     def __init__(
@@ -103,16 +110,32 @@ class GaussianDenoiserSolver(LIONsolver):
             target = self.model.normalise(target)
         target = self._training_images(target)
         noise_level = self._noise_levels(target.shape[0], target.device)
-        return self.loss_fn(self._denoise(target, noise_level), target)
+        noisy = self._noisy(target, noise_level)
+        output = self._model(noisy, noise_level)
+        loss = self.loss_fn(output, target)
+        penalty = self.solver_params.jacobian_penalty
+        if penalty is not None:
+            denoise = lambda x: self._model(x, noise_level)  # noqa: E731
+            loss = loss + penalty(denoise, target, noisy, output)
+        return loss
 
-    def _denoise(self, clean: torch.Tensor, noise_level: torch.Tensor):
-        """The model's output on ``clean`` with Gaussian noise of standard
-        deviation ``noise_level`` (one per image) added."""
+    @staticmethod
+    def _noisy(clean: torch.Tensor, noise_level: torch.Tensor) -> torch.Tensor:
+        """``clean`` with Gaussian noise of standard deviation ``noise_level``
+        (one per image) added."""
         shape = (-1,) + (1,) * (clean.dim() - 1)
-        noisy = clean + noise_level.reshape(shape) * torch.randn_like(clean)
+        return clean + noise_level.reshape(shape) * torch.randn_like(clean)
+
+    def _model(self, noisy: torch.Tensor, noise_level: torch.Tensor):
+        """The model's output on ``noisy``, given ``noise_level`` if it takes
+        one."""
         if self.model.takes_noise_level():
             return self.model(noisy, noise_level=noise_level)
         return self.model(noisy)
+
+    def _denoise(self, clean: torch.Tensor, noise_level: torch.Tensor):
+        """The model's output on ``clean`` with noise added."""
+        return self._model(self._noisy(clean, noise_level), noise_level)
 
     def _noise_range(self) -> tuple[float, float]:
         """``solver_params.noise_level`` as a range ``(low, high)``."""
@@ -158,6 +181,7 @@ class GaussianDenoiserSolver(LIONsolver):
         params.augment = True
         params.random_erasing = False
         params.validation_noise_levels = None
+        params.jacobian_penalty = None
         return params
 
     @staticmethod

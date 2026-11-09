@@ -420,12 +420,39 @@ def test_gaussian_denoiser_augmentations_are_options(monkeypatch, augment, erasi
     assert called == ["random_flip_rotate"] * augment + ["random_erasing"] * erasing
 
 
+@pytest.mark.parametrize("penalty", [None, "firm", "prox"])
+def test_gaussian_denoiser_adds_the_jacobian_penalty(penalty):
+    from LION.losses.jacobian_penalty import (
+        FirmlyNonexpansivePenalty,
+        ProximalDenoiserPenalty,
+    )
+
+    made = {
+        None: None,
+        "firm": FirmlyNonexpansivePenalty(weight=1.0, power_iterations=3),
+        "prox": ProximalDenoiserPenalty(weight=1.0, power_iterations=3),
+    }[penalty]
+    solver = gaussian_denoiser_solver(jacobian_penalty=made, augment=False)
+    target = torch.rand(2, 1, 8, 8)
+    torch.manual_seed(0)
+    with_penalty = solver.mini_batch_step(None, target)
+    solver.solver_params.jacobian_penalty = None
+    torch.manual_seed(0)
+    without = solver.mini_batch_step(None, target)
+    if penalty is None:
+        assert with_penalty == without
+    else:  # the penalty is at least weight * (1 - epsilon)
+        assert with_penalty >= without + 0.85
+        with_penalty.backward()
+
+
 def test_gaussian_denoiser_defaults_follow_the_literature():
     from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
 
     params = GaussianDenoiserSolver.default_parameters()
     assert params.augment is True and params.random_erasing is False
     assert params.validation_noise_levels is None
+    assert params.jacobian_penalty is None
 
 
 def test_gaussian_denoiser_validates_at_fixed_noise_levels(tmp_path):

@@ -85,4 +85,18 @@ Metzler, Christopher A., et al. "Unsupervised learning with Stein's unbiased ris
 
 `LION/losses/SURE.py`     The loss function itself. Use with `SelfSupervisedSolver`
 
+#### Firmly nonexpansive denoisers (Jacobian penalty)
+
+Pesquet, Jean-Christophe, Audrey Repetti, Matthieu Terris, and Yves Wiaux. "Learning maximally monotone operators for image recovery." SIAM Journal on Imaging Sciences 14.3 (2021): 1206-1237.
+[https://doi.org/10.1137/20M1387961](https://doi.org/10.1137/20M1387961)
+
+`LION/losses/jacobian_penalty.py` `FirmlyNonexpansivePenalty`, for `GaussianDenoiserSolver` (`solver_params.jacobian_penalty`)
+
+#### Proximal gradient-step denoisers (Jacobian penalty)
+
+Hurault, Samuel, Arthur Leclaire, and Nicolas Papadakis. "Proximal denoiser for convergent plug-and-play optimization with nonconvex regularization." Proceedings of the 39th International Conference on Machine Learning, PMLR 162 (2022): 9483-9505.
+[https://proceedings.mlr.press/v162/hurault22a.html](https://proceedings.mlr.press/v162/hurault22a.html)
+
+`LION/losses/jacobian_penalty.py` `ProximalDenoiserPenalty`, for `GaussianDenoiserSolver` (`solver_params.jacobian_penalty`)
+
 ## Misc
