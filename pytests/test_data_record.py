@@ -270,15 +270,25 @@ def test_random_annotation_is_seeded(annotated_folder):
 # 2DeteCT
 
 
+def same_geometry(a, b):
+    a, b = vars(a), vars(b)
+    return a.keys() == b.keys() and all(
+        np.array_equal(np.asarray(a[k]), np.asarray(b[k])) for k in a
+    )
+
+
 @pytest.mark.filterwarnings("ignore:You are not using any detector query")
 def test_detect_record(tmp_path):
     data = fake_detect(tmp_path, "train")
     assert data.parameters.path_to_dataset == tmp_path
-    assert data.operator_params is None
+    # no geometry given: 2DeteCT's, and the record says so
+    default = deteCT.get_default_geometry()
+    assert same_geometry(data.operator_params, default)
     record = through_json(data_record(data))
     assert record.samples.ids == list(data.slice_dataframe["slice_identifier"])
     rebuilt = deteCT.instantiate(record)
     assert type(rebuilt) is deteCT and rebuilt.mode == "train"
+    assert same_geometry(rebuilt.operator_params, default)
     assert rebuilt.sample_ids() == record.samples.ids
 
 

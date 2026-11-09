@@ -70,9 +70,10 @@ class deteCT(LIONDataset):
     ):
         """The ``mode`` split ("train", "validation" or "test") with
         ``parameters`` (``default_parameters()`` if None). ``operator_params``:
-        the geometry, the default one (``get_default_geometry``) or one with a
-        subset of its angles (the sinograms are subsampled to match; others are
-        refused, as the data are measured).
+        the geometry: None for 2DeteCT's (``get_default_geometry``), or one
+        with a subset of its angles (the sinograms are subsampled to match;
+        others are refused, as the data are measured). The dataset's
+        ``operator_params`` is the geometry used, and its record says it.
 
         ``parameters`` (``default_parameters()``):
 
@@ -96,17 +97,19 @@ class deteCT(LIONDataset):
         if parameters is None:
             parameters = self.default_parameters()
         self.parameters = parameters
-        self.operator_params = operator_params
         # where samples are returned: the device selected in LION
         self.device = default_device()
 
-        # Get geometry default, or validate if given geometry is valid for 2DeteCT, as its raw sinogram data, we can't allow any geometry
+        # The data are measured, so the geometry is 2DeteCT's: the default one
+        # (get_default_geometry) if none is given, or one with a subset of its
+        # angles. operator_params is the one used, so the record says it.
         if operator_params is None:
-            self.geometry = self.get_default_geometry()
-            self.angle_index = list(range(len(self.geometry.angles)))
+            operator_params = self.get_default_geometry()
+            self.angle_index = list(range(len(operator_params.angles)))
         else:
             self.angle_index = self.__is_valid_geo(operator_params)
-            self.geometry = operator_params
+        self.operator_params = operator_params
+        self.geometry = operator_params
 
         if parameters.query == "" and (
             not parameters.flat_field_correction or not parameters.dark_field_correction
