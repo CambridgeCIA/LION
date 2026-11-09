@@ -131,6 +131,10 @@ class Sparse2InverseSolver(LIONsolver):
 
     @staticmethod
     def default_parameters() -> LIONParameter:
+        """``sino_split_count`` (k): the number of interleaved splits (4);
+        ``input_split_count`` (p): how many splits' reconstructions are
+        averaged into one input (2); ``recon_fn``: how each split is
+        reconstructed ("default": the operator's default reconstruction)."""
         params = LIONParameter()
         # number of interleaved angular splits of each input sinogram (k)
         params.sino_split_count = 4
@@ -143,6 +147,10 @@ class Sparse2InverseSolver(LIONsolver):
         return params
 
     def mini_batch_step(self, y, targets):
+        """The loss: for each group of ``input_split_count`` splits, the
+        model's output on their mean reconstruction, projected onto the other
+        splits' measurements, against those measurements (mean squared
+        error; ``targets`` aren't used: self-supervised)."""
         batch_size = y.shape[0]
         subgroup_recons = self._calculate_noisy_sub_recons(y)
         batch_loss = 0.0
@@ -171,6 +179,8 @@ class Sparse2InverseSolver(LIONsolver):
         return self.reconstruct(data)
 
     def reconstruct(self, y):
+        """The model's reconstructions of the measurements ``y``: the mean
+        of its outputs on each group of splits."""
         subgroup_recons = self._calculate_noisy_sub_recons(y)
         outputs = torch.zeros((y.shape[0], *self.op.domain_shape), device=self.device)
         for combo, mean_recon in subgroup_recons.items():

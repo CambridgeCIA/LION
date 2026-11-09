@@ -22,13 +22,11 @@ from LION.utils.parameter import OperatorParameters
 class ARParams(LIONParameter):
     """Parameters of ARSolver.
 
-    Args:
-        lambd_gp: Weight of the gradient penalty in the WGAN training loss.
-        recon_fn: How measurements are reconstructed into the "bad"
-            reconstructions the regulariser learns to tell from clean images,
-            ``recon_fn(y, op)``. "default": the operator's default
-            reconstruction (FDK for CT), replaced by that function when the
-            solver is made.
+    ``lambd_gp``: the weight of the gradient penalty in the WGAN training
+    loss. ``recon_fn``: how measurements are reconstructed into the "bad"
+    reconstructions the regulariser learns to tell from clean images,
+    ``recon_fn(y, op)``; "default": the operator's default reconstruction
+    (FDK for CT), replaced by that function when the solver is made.
     """
 
     def __init__(self, lambd_gp: float = 1e-1, recon_fn="default"):
@@ -86,6 +84,7 @@ class ARSolver(LIONsolver):
 
     @staticmethod
     def default_parameters() -> ARParams:
+        """``ARParams()``: ``lambd_gp`` 0.1, ``recon_fn`` "default"."""
         return ARParams()
 
     def set_validation(
@@ -118,6 +117,10 @@ class ARSolver(LIONsolver):
         super().set_testing(test_loader, testing_fn, reconstructor)
 
     def wgan_loss(self, y, target_batch):
+        """The WGAN loss with gradient penalty: the regulariser's mean on
+        clean images (``target_batch``) minus its mean on reconstructions of
+        ``y``, plus ``lambd_gp`` times the gradient penalty at random points
+        between them."""
         bad_recon = self.reconstruct_measurements(y, self.op)
         if self.do_normalise and self.model.get_input_type() == ModelInputType.IMAGE:
             bad_recon = self.model.normalise(bad_recon)
@@ -157,6 +160,7 @@ class ARSolver(LIONsolver):
         return loss
 
     def mini_batch_step(self, y, target_batch) -> float:
+        """The WGAN loss of the batch (``wgan_loss``)."""
         return self._regularized(self.wgan_loss(y, target_batch))
 
     @staticmethod

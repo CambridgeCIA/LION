@@ -69,11 +69,9 @@ class Noise2InverseSolver(LIONsolver):
 
     @classmethod
     def X_one_strategy(cls, sino_split_count) -> list[list[int]]:
+        """The X:1 strategy of the paper: each split in turn is the target,
+        the mean of the others the input: ``[[1], [2], ...]`` (1-based)."""
         return [[i + 1] for i in range(sino_split_count)]
-
-    @classmethod
-    def one_X_strategy(cls, sino_split_count) -> frozenset[frozenset[int]]:
-        raise NotImplementedError("Sorry, not implemented this yet!")
 
     def _make_sub_operators(self) -> list:
         """One operator per split: split j has every k-th measurement unit
@@ -113,6 +111,10 @@ class Noise2InverseSolver(LIONsolver):
 
     @staticmethod
     def default_parameters() -> LIONParameter:
+        """``sino_split_count``: the number of splits (4); ``cali_J``: the
+        sets of splits used as targets (None: ``X_one_strategy``);
+        ``recon_fn``: how each split is reconstructed ("default": the
+        operator's default reconstruction)."""
         params = LIONParameter()
         params.sino_split_count = 4
         # The J sets (1-indexed splits) used as targets. None: the X:1 strategy
@@ -127,16 +129,16 @@ class Noise2InverseSolver(LIONsolver):
         return params
 
     def mini_batch_step(self, y, targets):
-        # y: a batch of measurements
+        """The loss of the model mapping the mean of some splits'
+        reconstructions to the mean of the others', averaged over the target
+        sets ``cali_J`` (``targets`` aren't used: self-supervised)."""
+        # each split's reconstruction: (batch, split, channels, height, width)
         noisy_sub_recons = self._calculate_noisy_sub_recons(y)
-        # b, split, c, w, h
 
-        # almost certain this can be made more efficient
-        # use all the Js, this is different from Ander's
+        # every target set J is used in every mini-batch
         loss = torch.zeros(len(self.cali_J), device=self.device)
         for i, J in enumerate(self.cali_J):
-            # fix indexing J's are 1 indexed for user convenience
-            # maybe something to change
+            # J is 1-based, as the paper writes it
             J_zero_indexing = list(map(lambda i: i - 1, J))
             J_c = [
                 i for i in np.arange(self.sino_split_count) if i not in J_zero_indexing
@@ -161,6 +163,8 @@ class Noise2InverseSolver(LIONsolver):
         return self.reconstruct(data)
 
     def reconstruct(self, y):
+        """The model's reconstructions of the measurements ``y``, as the
+        paper does: the mean of its outputs on each target set's input."""
         noisy_sub_recons = self._calculate_noisy_sub_recons(y)  # b, split, c, w, h
 
         outputs = torch.zeros((y.shape[0], *self.op.domain_shape), device=self.device)

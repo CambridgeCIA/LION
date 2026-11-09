@@ -58,6 +58,9 @@ class Proj2ProjSolver(LIONsolver):
         self.global_step = 0
 
     def get_mask(self, shape, step):
+        """The masks of a batch of measurements of ``shape`` (B, C, H, W): 0
+        on one cell of every ``grid_size`` x ``grid_size`` block, the cell
+        cycling with ``step`` (the samples seen so far), 1 elsewhere."""
         # shape: (B, C, H, W)
         mask = torch.ones(shape, device=self.device)
         grid = self.solver_params.grid_size
@@ -71,6 +74,8 @@ class Proj2ProjSolver(LIONsolver):
         return mask
 
     def fill_mean(self, y, mask):
+        """``y`` with its masked values (``mask`` 0) replaced by the mean of
+        their four neighbours."""
         kernel = (
             torch.tensor(
                 [[0, 1, 0], [1, 0, 1], [0, 1, 0]],
@@ -88,6 +93,9 @@ class Proj2ProjSolver(LIONsolver):
 
     @staticmethod
     def default_parameters() -> LIONParameter:
+        """``grid_size``: the masks' grid (4: one measurement in 16 masked);
+        ``recon_fn``: how measurements are reconstructed ("default": the
+        operator's default reconstruction)."""
         params = LIONParameter()
         params.grid_size = 4
         # How measurements are reconstructed, recon_fn(y, op). "default": the
@@ -97,6 +105,9 @@ class Proj2ProjSolver(LIONsolver):
         return params
 
     def mini_batch_step(self, y, targets):
+        """The loss: the masked measurements filled in, reconstructed, the
+        model's output projected back, against the measurements on the mask
+        (mean squared error; ``targets`` aren't used: self-supervised)."""
         mask = self.get_mask(y.shape, self.global_step)
         self.global_step += y.shape[0]
         input_sino = self.fill_mean(y, mask)
@@ -116,6 +127,8 @@ class Proj2ProjSolver(LIONsolver):
         return self.reconstruct(data)
 
     def reconstruct(self, y):
+        """The model's reconstructions of the measurements ``y``: of the
+        reconstructions ``recon_fn`` makes of them, as in training."""
         input_recon = self.reconstruct_measurements(y, self.op)
         output_recon = self.model(input_recon)
         return output_recon

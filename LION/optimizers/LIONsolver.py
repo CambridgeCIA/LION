@@ -86,6 +86,27 @@ def model_forward(model: LIONmodel, data: torch.Tensor, op) -> torch.Tensor:
 class LIONsolver(ABC, metaclass=ABCMeta):
     """Base class for the solvers, which train a ``model``.
 
+    A solver is made with the model, the optimizer, the loss and its settings
+    (``__init__``), then told about the data and what to do around training,
+    then trained:
+
+    - ``set_training(loader)``: the training data (required);
+    - ``set_validation(loader, freq, fn)``: validate every ``freq`` epochs,
+      keeping the best model;
+    - ``set_saving(folder, name)``: where the final and best models go;
+    - ``set_checkpointing(name, freq)``: checkpoints, to resume from;
+    - ``set_testing(loader, fn)``: data for ``test()``;
+    - ``train(n_epochs)``, then ``save_final_results()``.
+
+    Every saved file has the training record (``training_record``): enough
+    to train the same model again (``LIONsolver.instantiate``,
+    ``LION.package``).
+
+    A new solver derives from this class and defines
+    ``mini_batch_step(y, target)`` (the loss of one mini-batch) and
+    ``default_parameters()`` (its ``solver_params``); see
+    ``SupervisedSolver`` for the simplest.
+
     ``operator_params``: the parameters of the operator the measurements come
     from (an ``OperatorParameters``; **for CT, the geometry**). Not needed when
     the model has them: the solver takes the model's.
@@ -506,14 +527,14 @@ class LIONsolver(ABC, metaclass=ABCMeta):
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
     def default_parameters() -> LIONParameter:
-        pass
+        """The solver's settings (``solver_params``), each with its default:
+        every setting the solver has, so this is also their list."""
 
     def set_training(
         self, train_loader: DataLoader, loss_fn: Optional[Callable] = None
     ):
-        """
-        This function sets the training data
-        """
+        """The training data: a DataLoader of (measurements, target) batches.
+        ``loss_fn``: replaces the solver's loss, if given."""
         self.train_loader = train_loader
         if loss_fn is not None:
             self.loss_fn = loss_fn
@@ -526,8 +547,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         validation_fname: Optional[str] = None,
         reconstructor=None,
     ):
-        """
-        This function sets the validation data.
+        """Validate every ``validation_freq`` epochs on ``validation_loader``,
+        with ``validation_fn(output, target)`` (the training loss if None).
 
         The model with the best validation value is saved as ``validation_fname``
         in the solver's save folder (see ``set_saving()``). Best is the lowest
@@ -554,10 +575,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         testing_fn: Optional[Callable] = None,
         reconstructor=None,
     ):
-        """
-        This function sets the testing data. ``reconstructor``: as in
-        ``set_validation``.
-        """
+        """The data ``test()`` uses: ``test_loader``, scored with
+        ``testing_fn(output, target)`` (the training loss if None).
+        ``reconstructor``: as in ``set_validation``."""
         self.test_loader = test_loader
         self.testing_fn = testing_fn if testing_fn is not None else self.loss_fn
         self.testing_reconstructor = reconstructor
@@ -596,9 +616,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         load_checkpoint_if_exists: bool = True,
         save_folder: str | pathlib.Path = None,
     ):
-        """
-        This function sets the checkpointing
-        """
+        """Save a checkpoint every ``checkpoint_freq`` epochs, as
+        ``checkpoint_fname`` (its ``*`` replaced by the epoch) in
+        ``save_folder`` (the solver's, from ``set_saving()``, if None). A
+        checkpoint has the model, the optimizer's and scheduler's state, the
+        losses and the random state: with ``load_checkpoint_if_exists``,
+        ``train()`` resumes from the latest one, as if never stopped."""
         if isinstance(save_folder, str):
             save_folder = pathlib.Path(save_folder)
         elif save_folder is None:
@@ -628,7 +651,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         return_code = 0
 
-        # Test 1: is the device set? if not, set it if autofill is True
+        # is the device set? if not, set it if autofill is True
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -640,7 +663,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        # Test 2: is the model set? if not, raise error or warn
+        # is the model set? if not, raise error or warn
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -651,7 +674,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        # Test 3: is the optimizer set? if not, raise error or warn
+        # is the optimizer set? if not, raise error or warn
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -662,7 +685,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        # Test 4: is the loss_fn set? if not, raise error or warn
+        # is the loss_fn set? if not, raise error or warn
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -673,7 +696,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        # Test 7: is the training loader set? if not, raise error or warn
+        # is the training loader set? if not, raise error or warn
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -684,7 +707,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        # Test 12: is the final result filename set? if not, raise error or warn or autofill
+        # is the final result filename set? if not, raise error or warn or autofill
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -698,9 +721,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return return_code
 
     def check_validation_ready(self, autofill=True):
+        """Checks what validation needs (``set_validation()``), filling in the
+        validation function (the loss) and frequency (10) with ``autofill``,
+        and the best model's file name. Returns 0 when ready, 1 when
+        something is missing, 2 when something has the wrong type."""
         return_code = 0
 
-        # Test 8: is the validation loader set? if not, raise error or warn
+        # is the validation loader set? if not, raise error or warn
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -711,7 +738,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        # Test 9: is the validation function set? if not, raise error or warn or autofill
+        # is the validation function set? if not, raise error or warn or autofill
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -722,7 +749,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 default=self.loss_fn,
             ),
         )
-        # Test 10: is the validation frequency set? if not, raise error or warn or autofill
+        # is the validation frequency set? if not, raise error or warn or autofill
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -734,7 +761,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        # Test 14: file name of the min-validation model (saved in self.save_folder).
+        # file name of the min-validation model (saved in self.save_folder).
         # Not needed to validate: without it the model is just not saved.
         if (
             self.validation_fname is None
@@ -768,9 +795,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return self.validation_fname is not None and self.save_folder is not None
 
     def check_testing_ready(self, error=True):
+        """Checks what ``test()`` needs (``set_testing()``); ``error``: raise
+        when something is missing (otherwise warn). Returns as
+        ``check_validation_ready``."""
         return_code = 0
 
-        # Test 5: is the testing loader set? if not, raise error or warn
+        # is the testing loader set? if not, raise error or warn
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -780,7 +810,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 autofill=False,
             ),
         )
-        # Test 6: is the testing function set? if not, raise error or warn or autofill
+        # is the testing function set? if not, raise error or warn or autofill
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -810,7 +840,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        # Test 13: is the checkpoint filename filename set? if not, raise error or warn or autofill
+        # is the checkpoint filename filename set? if not, raise error or warn or autofill
         if (
             self.final_result_fname is not None
             and self.checkpoint_save_folder is not None
@@ -830,7 +860,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        # Test 15: is the checkpoint frequency set? if not, raise error or warn or autofill
+        # is the checkpoint frequency set? if not, raise error or warn or autofill
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -843,7 +873,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             ),
         )
 
-        # Test 16: is the load checkpoint set? if not, raise error or warn or autofill
+        # is the load checkpoint set? if not, raise error or warn or autofill
         return_code = max(
             return_code,
             self.__check_attribute(
@@ -859,7 +889,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return return_code
 
     def check_saving_ready(self):
-        # Test 11: is the save folder set? if not, raise error or warn or autofill
+        """Checks that there is a folder to save in (``set_saving()``):
+        0 if so, 1 if not set, 2 if not a folder."""
+        # is the save folder set? if not, raise error or warn or autofill
         return self.__check_attribute(
             "save_folder",
             expected_type=pathlib.Path,
@@ -868,9 +900,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         )
 
     def check_complete(self, error=True, autofill=True):
-        """
-        This function checks if the solver is complete, i.e. if all the necessary parameters are set to start traning.
-        """
+        """Every check (training, testing, saving, validation,
+        checkpointing): the worst of their return codes."""
 
         return_code = max(
             self.check_training_ready(error, autofill),
@@ -930,9 +961,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return 0
 
     def save_checkpoint(self, epoch):
-        """
-        This function saves a checkpoint of the model and the optimizer
-        """
+        """Saves a checkpoint after ``epoch`` (0-based), as
+        ``set_checkpointing()`` says: the model, the optimizer's and
+        scheduler's state, the losses, the random state and the training
+        record."""
         if self.checkpoint_save_folder is None:
             raise RuntimeError("Saving not set: please call set_saving")
         self.model.save_checkpoint(
@@ -949,9 +981,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         )
 
     def save_validation(self, epoch):
-        """
-        This function saves the validation results
-        """
+        """Saves the model as it is after ``epoch``, its best validation so
+        far, as ``validation_fname`` in the save folder, with the training
+        record and the validation value."""
         if self.validation_fname is None or self.validation_fn is None:
             raise RuntimeError(
                 "No validation save filepath provided. Please call set_validation."
@@ -976,9 +1008,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         )
 
     def save_final_results(self, final_result_fname=None, save_folder=None, epoch=None):
-        """
-        This function saves the final results of the optimization
-        """
+        """Saves the trained model as ``final_result_fname`` in
+        ``save_folder`` (those of ``set_saving()`` if None), with the training
+        record and the losses. ``epoch``: the epochs trained (the current
+        one if None)."""
         if save_folder is not None:
             self.save_folder = save_folder
         if final_result_fname is not None:
@@ -997,9 +1030,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         )
 
     def clean_checkpoints(self):
-        """
-        This function cleans the checkpoints
-        """
+        """Deletes the checkpoint files (``set_checkpointing()``), e.g. after
+        a run that finished."""
         if self.checkpoint_save_folder is None:
             raise RuntimeError(
                 "Saving not setup, unable to find save folder: Please call set_saving"
@@ -1015,6 +1047,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             f.unlink()
 
     def test(self):
+        """Scores the model on the test data (``set_testing()``): an array of
+        ``testing_fn`` values, one per batch (or per sample, if
+        ``testing_fn`` gives one per sample). Empty, with a warning, without
+        test data."""
         if self.check_testing_ready() != 0:
             warnings.warn("Solver not setup to test. Please call set_testing.")
             return np.array([])
@@ -1046,9 +1082,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return test_loss
 
     def load_checkpoint(self):
-        """
-        This function loads a checkpoint (if exists)
-        """
+        """Loads the latest checkpoint, if there is one, and resumes from it:
+        the model, the optimizer's and scheduler's state, the epoch, the
+        losses, the random state. ``train()`` calls it."""
         if self.checkpoint_save_folder is None:
             raise RuntimeError("Loading not set. Please call set_loading ")
         if self.checkpoint_fname is None:
@@ -1201,10 +1237,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 setattr(self.solver_params, name, spec.build(value))
 
     def train_step(self):
-        """
-        This function is responsible for performing a single tranining set epoch of the optimization.
-        returns the average loss of the epoch
-        """
+        """One pass over the training data: for each mini-batch, the loss
+        (``mini_batch_step``), a gradient step (and a scheduler step, with
+        ``scheduler_step="batch"``). Returns the mean loss of the epoch."""
         if self.train_loader is None:
             raise RuntimeError("Training dataloader not set: Please call set_training")
         self.model.train()
@@ -1232,9 +1267,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return epoch_loss / len(self.train_loader)
 
     def epoch_step(self, epoch):
-        """
-        This function is responsible for performing a single epoch of the optimization.
-        """
+        """Epoch ``epoch`` (0-based): training (``train_step``), validation
+        when due (saving the best model), and a scheduler step."""
         # the learning rates this epoch starts with
         self.learning_rates = self.learning_rates[:epoch] + [self._learning_rates()]
         self.train_loss[epoch] = self.train_step()
@@ -1271,9 +1305,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.scheduler.step(self.validation_loss[epoch])
 
     def train(self, n_epochs):
-        """
-        This function is responsible for performing the optimization.
-        """
+        """Trains until ``n_epochs`` epochs are done in all: resuming from a
+        checkpoint (``set_checkpointing()``) or an earlier ``train()``, with
+        one progress bar (``verbose``). The model is left in training mode;
+        ``save_final_results()`` saves it."""
         if n_epochs <= 0:
             raise ValueError(
                 f"Number of epochs must be a positive integer, not {n_epochs}"
@@ -1369,10 +1404,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return resized
 
     def validate(self):
-        """
-        This function is responsible for performing a single validation set of the optimization.
-        returns the average loss of the validation set this epoch.
-        """
+        """The validation value of the model now: the mean of
+        ``validation_fn`` over the validation data, with the model in
+        evaluation mode, the random state left as it was."""
         if self.check_validation_ready() != 0:
             raise RuntimeError(
                 "Solver not ready for validation. Please call set_validation."
@@ -1402,9 +1436,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return np.mean(validation_loss)
 
     def _validation_loop(self):
-        """
-        This function performs the validation loop.
-        """
+        """``validation_fn`` of the model's output on each validation batch
+        (through the validation reconstructor, if any): one value per batch,
+        or per sample."""
         validation_loss = np.array([])
         for data, targets in tqdm(
             self.validation_loader, disable=self.verbose < 2, leave=False
@@ -1423,16 +1457,14 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         return validation_loss
 
     def get_model(self) -> LIONmodel:
-        """
-        Returns the model used by the solver.
-        """
+        """The model being trained."""
         return self.model
 
     @abstractmethod
     def mini_batch_step(self, y, target_batch) -> torch.Tensor:
-        """
-        This function should perform a single step of the optimization and return the loss
-        """
+        """The loss of one mini-batch: measurements ``y`` and their targets
+        (the solver adds ``model_regularization`` with ``_regularized``).
+        What a new solver defines."""
 
     @staticmethod
     def cite(cite_format="bib"):

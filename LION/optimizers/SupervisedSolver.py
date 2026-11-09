@@ -21,6 +21,10 @@ from LION.utils.parameter import LIONParameter
 
 
 class SupervisedSolver(LIONsolver):
+    """Supervised training: the loss of the model's output on the
+    measurements (``model_forward``: through the initial reconstruction for
+    image-domain models) against the targets. No settings of its own."""
+
     def __init__(
         self,
         model: LIONmodel,
@@ -55,14 +59,12 @@ class SupervisedSolver(LIONsolver):
             tqdm.write(f"Supervised solver training on device: {self.device}")
 
     def mini_batch_step(self, y, target):
-        """
-        This function isresponsible for performing a single mini-batch step of the optimization.
-        returns the loss of the mini-batch
-        """
+        """``loss_fn(output, target)``, the output the model's on ``y``."""
         output = self._forward(y)
         loss = self.loss_fn(output, target)
         return self._regularized(loss, y, output, target, self._forward)
 
     @staticmethod
     def default_parameters() -> LIONParameter:
+        """None: the solver has no settings."""
         return LIONParameter()
