@@ -24,6 +24,8 @@ function without calling it. A dict without ``_target_`` (in older files) is a
   keep each argument under its own name; torch losses and metrics do too). A
   class can define ``spec_kwargs()`` to give them itself. A torch optimizer is
   written with its hyperparameters; its parameters are given when building.
+  A learning-rate scheduler is written with its arguments; its optimizer is
+  given when building.
 - ``build(spec)`` makes the object again. A spec names code to run, so only
   targets in allowed modules are imported, and only classes are called (plus
   ``numpy.array``); functions are only referred to. Add your own modules with
@@ -34,6 +36,7 @@ function without calling it. A dict without ``_target_`` (in older files) is a
   restores its state (a model's weights).
 """
 
+import collections
 import enum
 import functools
 import importlib
@@ -209,9 +212,37 @@ def to_spec(obj) -> dict:
         kwargs = obj.spec_kwargs()
     elif isinstance(obj, torch.optim.Optimizer):
         kwargs = dict(obj.defaults)
+    elif isinstance(obj, torch.optim.lr_scheduler.LRScheduler):
+        kwargs = _scheduler_arguments(obj)
     else:
         kwargs = _constructor_arguments(obj)
     return {TARGET: import_path(type(obj)), **{k: encode(v) for k, v in kwargs.items()}}
+
+
+def _scheduler_arguments(scheduler) -> dict:
+    """A torch learning-rate scheduler's arguments, from its attributes (not
+    its optimizer, given when building, nor its progress, ``last_epoch``).
+    Every argument must be kept: a default used instead would record another
+    schedule."""
+    cls = type(scheduler)
+    kwargs = {}
+    for p in list(inspect.signature(cls.__init__).parameters.values())[1:]:
+        if p.name in ("optimizer", "last_epoch", "verbose"):
+            continue
+        if hasattr(scheduler, p.name):
+            value = getattr(scheduler, p.name)
+        elif p.name == "min_lr" and hasattr(scheduler, "min_lrs"):  # ReduceLROnPlateau
+            value = list(scheduler.min_lrs)
+            value = value[0] if len(set(value)) == 1 else value
+        else:
+            raise SpecError(
+                f"{cls.__name__} can't be saved: it doesn't keep its argument "
+                f"'{p.name}' as an attribute"
+            )
+        if isinstance(value, collections.Counter):  # MultiStepLR's milestones
+            value = sorted(value.elements())
+        kwargs[p.name] = value
+    return kwargs
 
 
 def _constructor_arguments(obj) -> dict:

@@ -14,10 +14,9 @@ import torch
 from torch.optim.optimizer import Optimizer
 
 from LION.operators.ct.fdk import fdk
-from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.optimizers.LIONsolver import LIONsolver
-from LION.utils.parameter import LIONParameter
+from LION.utils.parameter import LIONParameter, OperatorParameters
 from LION.utils.image_transforms import rotate
 from LION.utils.citation import citation
 
@@ -54,11 +53,13 @@ class EquivariantSolver(LIONsolver):
         self,
         model: LIONmodel,
         optimizer: Optimizer,
-        loss_fn: Callable,
-        operator_params: Geometry,
+        loss_fn,
+        operator_params: OperatorParameters = None,
+        solver_params: Optional[LIONParameter] = None,
+        scheduler=None,
+        scheduler_step: str = "epoch",
         verbose: int = 1,
         device: torch.device = None,
-        solver_params: LIONParameter | None = None,
         seed: Optional[int] = 0,
         deterministic: bool = False,
     ) -> None:
@@ -66,10 +67,12 @@ class EquivariantSolver(LIONsolver):
             model,
             optimizer,
             loss_fn,
-            operator_params,
-            verbose,
-            device,
-            solver_params,
+            operator_params=operator_params,
+            solver_params=solver_params,
+            scheduler=scheduler,
+            scheduler_step=scheduler_step,
+            verbose=verbose,
+            device=device,
             seed=seed,
             deterministic=deterministic,
         )

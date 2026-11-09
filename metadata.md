@@ -39,8 +39,8 @@ training=...)`):
   - `model_state_dict`: the weights;
   - `initial_random_state`: torch's random state when the model was made (see
     [Repeating a training exactly](#repeating-a-training-exactly));
-  - for checkpoints, also the optimizer's state, the epoch, the losses and the
-    random state of the run.
+  - for checkpoints, also the optimizer's (and scheduler's) state, the epoch,
+    the losses and the random state of the run.
 
 A shortened `model.json` of a DnCNN trained on a LIDC-IDRI experiment:
 
@@ -65,12 +65,14 @@ A shortened `model.json` of a DnCNN trained on a LIDC-IDRI experiment:
  "training": {
   "solver": {"_target_": "LION.optimizers.SupervisedSolver.SupervisedSolver", "seed": 0, "...": "..."},
   "optimizer": {"_target_": "torch.optim.adam.Adam", "lr": 0.001, "...": "..."},
+  "parameter_groups": null,
+  "scheduler": {"_target_": "torch.optim.lr_scheduler.StepLR", "step_size": 30, "gamma": 0.1},
   "seed": 0,
   "initial_weights": {"from": "random_state"},
   "train": {"batch_size": 2, "shuffle": true, "drop_last": false},
   "epochs": {"asked": 2, "done": 2},
   "weights": {"kind": "final", "epoch": 2},
-  "history": {"train_loss": [0.35, 0.33], "validation": [0.22, 0.21]}
+  "history": {"train_loss": [0.35, 0.33], "validation": [0.22, 0.21], "learning_rate": [0.001, 0.001]}
  }
 }
 ```
@@ -117,7 +119,7 @@ inside them stay dicts, describing objects that are made only when asked.
 | Record | Written by | Holds | Read with |
 |---|---|---|---|
 | **Data record** (`LION/data_loaders/data_record.py`) | `data_record(dataset)`, `experiment.data_record(split)`; saved as a model file's `dataset_params` | the dataset's spec; the experiment and split, when made by one; the noise (`sinogram_transform`) and its seed; every sample's ID, their count and hash, and their groups (e.g. LIDC-IDRI's patients); a `Subset`'s indices; on request, a hash of the files' contents | `read_record(source)` |
-| **Training record** (`LION/optimizers/training_record.py`) | every solver, in every file it saves (final, best validation, checkpoint) | the solver's spec (its own arguments, `solver_params` with values it computed); the optimizer; the seed; how the initial weights are made again, and their hash; how data were fed (batch size, shuffle); validation (its data record, frequency, function, reconstructor); epochs asked and done; which weights the file holds; the loss history | `read_training_record(source)` |
+| **Training record** (`LION/optimizers/training_record.py`) | every solver, in every file it saves (final, best validation, checkpoint) | the solver's spec (its own arguments, `solver_params` with values it computed); the optimizer, its parameter groups and the learning-rate scheduler; the seed; how the initial weights are made again, and their hash; how data were fed (batch size, shuffle); validation (its data record, frequency, function, reconstructor); epochs asked and done; which weights the file holds; the history of the loss, validation and learning rate | `read_training_record(source)` |
 | **Environment record** (`LION/utils/environment.py`) | every model save, and every test | LION's version, commit, uncommitted files and whether the commit is pushed; the packages that change the numbers (torch, numpy, CT backends); CUDA, cuDNN and determinism settings; device, GPUs, driver; platform. Nothing personal (no host, user or paths) | `options.environment` |
 | **Reconstructor record** (`LION/reconstructors/LIONreconstructor.py`) | `reconstructor.save(file)` | the reconstructor's spec (operator and parameters); its model by the file it was loaded from and its weights hash (the weights stay in the model's file); the environment | `LIONReconstructor.load(file)` (with its model), `instantiate(file)` (without) |
 | **Test record** (`LION/evaluation/evaluation.py`) | `Evaluation.run(method)` | the method (e.g. a model's spec and weights hash); the evaluation's spec; the test data's record; the metrics; per-sample scores by sample ID; summary statistics; timing; the environment | `read_test_record(source)` |

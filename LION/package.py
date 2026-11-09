@@ -247,6 +247,9 @@ def load(folder) -> LIONParameter:
       validated;
     - ``solver``: the solver's arguments (``loss_fn``, ``seed``,
       ``solver_params``, ...), and ``optimizer``: its hyperparameters (``lr``);
+      ``parameter_groups``: its parameter groups (each one's parameters, by
+      name, and settings), or None for one group with those hyperparameters;
+      ``scheduler``: the learning-rate scheduler's arguments, or None;
     - ``training``: ``batch_size``, ``shuffle``, ``drop_last`` and ``epochs``
       (those done);
     - ``validation``: ``batch_size``, ``every``, ``function`` and
@@ -285,6 +288,10 @@ def load(folder) -> LIONParameter:
     package.training_data = _which(data, data)
     package.solver = _arguments(training["solver"])
     package.optimizer = _arguments(training["optimizer"])
+    package.parameter_groups = training.get("parameter_groups")
+    package.scheduler = None
+    if training.get("scheduler") is not None:
+        package.scheduler = _arguments(training["scheduler"])
     feed = training["train"]
     package.training = LIONParameter()
     package.training.batch_size = feed["batch_size"]
@@ -376,11 +383,30 @@ def build(package, *, device=None, initial_weights=False) -> LIONParameter:
     if package.validation_data is not None:
         validation_data = made(package.validation_data, training["validation"]["data"])
 
+    params = model.parameters()
+    if package.parameter_groups:
+        named = dict(model.named_parameters())
+        params = [
+            {
+                "params": [named[n] for n in group["parameters"]],
+                **{k: v for k, v in group.items() if k != "parameters"},
+            }
+            for group in package.parameter_groups
+        ]
     optimizer = spec.resolve(training["optimizer"][spec.TARGET])(
-        model.parameters(), **vars(package.optimizer)
+        params, **vars(package.optimizer)
     )
+    scheduler = None
+    if package.scheduler is not None:
+        scheduler = spec.resolve(training["scheduler"][spec.TARGET])(
+            optimizer, **vars(package.scheduler)
+        )
     solver = spec.resolve(training["solver"][spec.TARGET])(
-        model=model, optimizer=optimizer, device=device, **vars(package.solver)
+        model=model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        device=device,
+        **vars(package.solver),
     )
     t = package.training
     solver.set_training(

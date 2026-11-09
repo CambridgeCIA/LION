@@ -59,8 +59,8 @@ solver = Noise2InverseSolver(
     model,
     optimizer,
     loss_fn,
-    n2i_params,
     experiment.operator_params,
+    n2i_params,
     verbose=True,
     device=device,
 )

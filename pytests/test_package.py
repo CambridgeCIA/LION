@@ -59,21 +59,33 @@ def stand_ins(monkeypatch):
     patch(monkeypatch)
 
 
-def train(folder, data_folder, name="final", start=None, start_file=None):
+def train(
+    folder, data_folder, name="final", start=None, start_file=None, scheduled=False
+):
     """A small sinogram-domain DnCNN trained 2 epochs on 4 fake LIDC slices,
     validated every epoch, saved as ``folder/name``; ``start``: weights to
-    start from (else new ones), or ``start_file``: a model file to fine-tune."""
+    start from (else new ones), or ``start_file``: a model file to fine-tune.
+    ``scheduled``: with two parameter groups and a learning-rate scheduler."""
     experiment = ct_experiments.LowDoseCTRecon(datafolder=data_folder)
     model = small_dncnn(ModelInputType.SINOGRAM)
     if start is not None:
         model.load_state_dict(start)
     if start_file is not None:
         model = LIONmodel.load(start_file, supress_warnings=True)[0]
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    scheduler = None
+    if scheduled:
+        first, *rest = list(model.parameters())
+        optimizer = torch.optim.Adam(
+            [{"params": [first], "lr": 1e-4}, {"params": rest}], lr=1e-3
+        )
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.5)
     solver = SupervisedSolver(
         model,
-        torch.optim.Adam(model.parameters(), lr=1e-3),
+        optimizer,
         torch.nn.MSELoss(),
         operator_params=experiment.operator_params,
+        scheduler=scheduler,
         device=torch.device("cpu"),
         verbose=False,
     )
@@ -535,6 +547,20 @@ def test_train_again_gives_the_published_model(trained, tmp_path):
     assert weights_sha256(model) == written["weights_sha256"]
     saved = LIONmodel.load(tmp_path / "again" / "model", supress_warnings=True)[0]
     assert weights_sha256(saved) == written["weights_sha256"]
+
+
+def test_a_package_makes_the_scheduler_and_groups_again(trained, tmp_path):
+    file = train(tmp_path / "scheduled", trained[1], scheduled=True)
+    folder = published(file, tmp_path / "package")
+    p = package.load(folder)
+    assert [g["lr"] for g in p.parameter_groups] == [1e-4, 1e-3]
+    assert (p.scheduler.step_size, p.scheduler.gamma) == (1, 0.5)
+    p.scheduler.gamma = 0.1
+    solver = package.build(p).solver
+    assert [g["lr"] for g in solver.optimizer.param_groups] == [1e-4, 1e-3]
+    assert type(solver.scheduler) is torch.optim.lr_scheduler.StepLR
+    assert solver.scheduler.optimizer is solver.optimizer
+    assert solver.scheduler.gamma == 0.1
 
 
 def test_train_again_with_changes(trained, tmp_path):
