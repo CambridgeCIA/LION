@@ -19,14 +19,10 @@ from LION.utils.tomosipo_import import import_tomosipo
 
 
 class CTProjectionOp(Operator):
-    """Tomographic projection operator and its adjoint using tomosipo.
-
-    Args:
-        geometry: The geometry of the CT scan.
-        backend: The backend to use for the projection operator.
-            Currently only 'tomosipo' is supported.
-        device: Device for computations. If None, use default device.
-    """
+    """The CT projection operator of ``geometry`` (tomosipo) and its adjoint,
+    the backprojection, on ``device`` (LION's if None). ``backend``: "tomosipo"
+    (the only one). Its default reconstruction is FDK; ``autograd()`` gives
+    tomosipo's autograd versions of it and its adjoint."""
 
     def __init__(
         self,
@@ -34,7 +30,6 @@ class CTProjectionOp(Operator):
         backend: Literal["tomosipo"] = "tomosipo",
         device: DeviceLikeType | None = None,
     ):
-        """Initialize the CTProjectionOp."""
         super().__init__(device=device)
         if not isinstance(geometry, Geometry):
             raise ValueError(
@@ -83,35 +78,17 @@ class CTProjectionOp(Operator):
             )
 
     def __call__(self, x: torch.Tensor, out=None) -> torch.Tensor:
-        """Apply the forward projection.
-
-        Args:
-            x: The input volume dataset to which the forward projection is applied.
-            out: Optional output holder to store the output projections. Needed for ``to_autograd`` functionality.
-
-        Returns:
-            The projection dataset on which the volume has been forward projected.
-        """
+        """The projections (sinogram) of the image ``x``. ``out``: where to
+        write them (for tomosipo's ``to_autograd``)."""
         return self._ts._fp(x, out=out)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Apply the forward projection.
-
-        .. note::
-            Prefer calling the instance of the operator as ``operator(x)`` over directly calling this method.
-            See PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
-        """
+        """The projections (sinogram) of the image ``x``. Call the operator,
+        ``op(x)``, rather than this method (as for torch modules)."""
         return self._ts._fp(x)
 
     def adjoint(self, y: torch.Tensor) -> torch.Tensor:
-        """Apply the backprojection.
-
-        Args:
-            y: The input projection dataset to which the backprojection is applied.
-
-        Returns:
-            The volume dataset on which the projection dataset has been backprojected.
-        """
+        """The backprojection of the projections ``y``."""
         return self._ts._bp(y)
 
     def autograd(self):

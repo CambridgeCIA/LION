@@ -16,21 +16,11 @@ from LION.operators.Operator import Operator
 
 
 class Wavelet2D(Operator):
-    """2D orthogonal wavelet transform with periodised Daubechies wavelets.
-
-    Parameters
-    ----------
-    shape : tuple of int
-        Image shape (H, W).
-    wavelet_name : str
-        PyWavelets wavelet name, for example 'db4'.
-    level : int or None
-        Decomposition level. If None, uses the maximum valid level.
-    mode : str
-        Signal extension mode. 'periodization' gives an orthogonal transform.
-    device : str or torch.device
-        Device on which tensors are returned.
-    """
+    """The 2D orthogonal wavelet transform (PyWavelets) of images of ``shape``
+    (H, W), as an operator: images to a flat vector of coefficients.
+    ``wavelet_name``: e.g. "db4"; ``level``: the decomposition level (None: the
+    largest valid); ``mode``: the signal extension ("periodization" makes it
+    orthogonal); ``device``: where its tensors are returned."""
 
     def __init__(
         self,
@@ -40,7 +30,6 @@ class Wavelet2D(Operator):
         mode: str = "periodization",
         device: str | torch.device = "cpu",
     ):
-        """2D orthogonal wavelet transform with periodised Daubechies wavelets."""
         super().__init__(device=device)
         self.shape = shape
         self.wavelet = pywt.Wavelet(wavelet_name)
@@ -65,31 +54,13 @@ class Wavelet2D(Operator):
         self.size = arr.size
 
     def __call__(self, x: torch.Tensor, out=None) -> torch.Tensor:
-        """Apply the forward wavelet transform."
-
-        Wavelet analysis: image -> flat coefficient vector.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Input image of shape (H, W).
-        out : None
-            Legacy for tomosipo ``to_autograd``. Just ignore.
-
-        Returns
-        -------
-        torch.Tensor
-            Flat wavelet coefficient vector of shape (Nw,).
-        """
+        """The wavelet coefficients (Nw,) of the image ``x`` (H, W). ``out``:
+        unused, kept for the ``__call__(x, out)`` signature."""
         return self.forward(x)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Apply the wavelet analysis operator.
-
-        .. note::
-            Prefer calling the instance of the Wavelet2D operator as ``operator(x)`` over
-            directly calling this method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
-        """
+        """The wavelet coefficients (Nw,) of the image ``x`` (H, W). Call the
+        operator, ``op(x)``, rather than this method (as for torch modules)."""
         if x.dim() != 2:
             raise ValueError(
                 f"Expected x with 2 dims (H, W), got shape {tuple(x.shape)}"
@@ -109,36 +80,14 @@ class Wavelet2D(Operator):
         return w.reshape(-1)
 
     def adjoint(self, w: torch.Tensor) -> torch.Tensor:
-        """Adjoint of the wavelet analysis operator.
-
-        The adjoint is equivalent to the inverse wavelet transform.
-        TODO: Add reference.
-
-        Parameters
-        ----------
-        w : torch.Tensor
-            Flat wavelet coefficient vector of shape (Nw,).
-
-        Returns
-        -------
-        torch.Tensor
-            Reconstructed image of shape (H, W).
+        """The adjoint of the transform: its inverse, as it is orthogonal (with
+        ``mode="periodization"``). The image (H, W) of the coefficients ``w``.
         """
         return self.inverse(w)
 
     def inverse(self, w: torch.Tensor) -> torch.Tensor:
-        """Wavelet synthesis: flat coefficient vector -> image.
-
-        Parameters
-        ----------
-        w : torch.Tensor
-            Flat wavelet coefficient vector of shape (Nw,).
-
-        Returns
-        -------
-        torch.Tensor
-            Reconstructed image of shape (H, W).
-        """
+        """The image (H, W) of the coefficients ``w`` (Nw,): the inverse
+        transform."""
         w_np = w.detach().cpu().numpy().astype(np.float32)
         arr = w_np.reshape(self.arr_shape)
         coeffs = pywt.array_to_coeffs(arr, self.slices, output_format="wavedec2")

@@ -16,26 +16,8 @@ from LION.utils.math import power_method
 
 
 def soft_threshold(v: torch.Tensor, tau: float) -> torch.Tensor:
-    r"""Soft thresholding operator.
-
-    It is defined as:
-
-    .. math::
-
-        S_{\tau}(v) = \mathrm{sign}(v) \cdot \\max(|v| - \tau, 0)
-
-    Parameters
-    ----------
-    v : torch.Tensor
-        Input tensor.
-    tau : float
-        Threshold parameter.
-
-    Returns
-    -------
-    torch.Tensor
-        Result after applying soft thresholding.
-    """
+    """The soft thresholding of ``v`` by ``tau``: sign(v) max(|v| - tau, 0),
+    the proximal operator of tau ||.||_1."""
     return torch.sign(v) * torch.clamp(torch.abs(v) - tau, min=0.0)
 
 
@@ -48,57 +30,25 @@ def fista_l1(
     L: float | None = None,
     verbose: int = 1,
 ) -> torch.Tensor:
-    r"""Solve :math:`\min_w \tfrac12\lVert A w - y\rVert_2^2 + \lambda \lVert w\rVert_1`
-    by FISTA.
+    """Solves min_w ½||A w - y||² + lam ||w||_1 by FISTA (Beck and Teboulle,
+    2009), an accelerated proximal-gradient method; see Daubechies, Defrise and
+    De Mol (2004) for ISTA and Parikh and Boyd (2014) for proximal algorithms.
+    Returns w, with the shape of ``op.adjoint(y)``.
 
-    Implements the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) for
-    :math:`\ell_1`-regularised least squares [BeckTeboulle2009]_. FISTA is an
-    accelerated proximal-gradient method for composite objectives
-    :math:`f(w) + \lambda \lVert w\rVert_1` with smooth data-fidelity term
-    :math:`f(w) = \tfrac12\lVert A w - y\rVert_2^2`; see
-    [DaubechiesDefriseDeMol2004]_ for the original ISTA scheme and
-    [ParikhBoyd2014]_ for a general overview of proximal-gradient methods.
+    ``op``: the linear operator, called as ``op(w)`` and ``op.adjoint(r)``;
+    ``y``: the measurements (M,); ``lam``: the l1 weight; ``max_iter``;
+    ``tol``: stop when ||w_next - w|| / (||w|| + 1e-8) < tol; ``L``: the
+    Lipschitz constant of AᵀA (None: estimated by the power method);
+    ``verbose``: 0 nothing, 1 (default) a progress bar, 2 with the objective
+    and the relative change (one more ``op(w)`` per iteration).
 
-    Parameters
-    ----------
-    op : Operator
-        Linear operator implementing the forward map and its adjoint. It is
-        called as ``op(w)`` and ``op.adjoint(r)``.
-    y : torch.Tensor
-        Measurements, shape ``(M,)``.
-    lam : float
-        :math:`\ell_1` regularisation parameter.
-    max_iter : int
-        Maximum number of iterations.
-    tol : float
-        Relative stopping threshold on :math:`w`. The iteration stops once
-        ``norm(w_next - w) / (norm(w) + 1e-8) < tol``.
-    L : float or None
-        Lipschitz constant of :math:`A^\top A`. If ``None``, estimated by a
-        power method on the normal operator :math:`A^\top A`, following the
-        standard practice in FISTA-type schemes [BeckTeboulle2009]_.
-    verbose : int
-        0: nothing shown; 1 (default): a progress bar; 2: with the objective
-        value and the relative change (computing the objective costs one more
-        ``op(w)`` per iteration).
-
-    Returns
-    -------
-    w : torch.Tensor
-        Estimated coefficients, with the shape of ``op.adjoint(y)``.
-
-    References
-    ----------
-    .. [DaubechiesDefriseDeMol2004] I. Daubechies, M. Defrise, and C. De Mol,
-       "An iterative thresholding algorithm for linear inverse problems with a
-       sparsity constraint", Communications on Pure and Applied Mathematics,
-       57(11):1413-1457, 2004.
-    .. [BeckTeboulle2009] A. Beck and M. Teboulle, "A fast iterative
-       shrinkage-thresholding algorithm for linear inverse problems", SIAM
-       Journal on Imaging Sciences, 2(1):183-202, 2009.
-    .. [ParikhBoyd2014] N. Parikh and S. Boyd, "Proximal Algorithms",
-       Foundations and Trends in Optimization, 1(3):127-239, 2014.
-    """
+    References: Beck and Teboulle, "A fast iterative shrinkage-thresholding
+    algorithm for linear inverse problems", SIAM J. Imaging Sciences
+    2(1):183-202, 2009. Daubechies, Defrise and De Mol, "An iterative
+    thresholding algorithm for linear inverse problems with a sparsity
+    constraint", Comm. Pure Appl. Math. 57(11):1413-1457, 2004. Parikh and
+    Boyd, "Proximal Algorithms", Foundations and Trends in Optimization
+    1(3):127-239, 2014."""
     y = y.detach()
     device = y.device
 

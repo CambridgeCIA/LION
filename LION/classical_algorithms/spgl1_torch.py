@@ -15,44 +15,18 @@ from LION.operators.Operator import Operator
 
 
 def spgl1_torch(op: Operator, y: torch.Tensor, **spgl1_kwargs) -> torch.Tensor:
-    r"""Solve an l1 sparse reconstruction using SPGL1, wrapping torch operators.
+    """Solves an l1 sparse reconstruction by SPGL1 (van den Berg and
+    Friedlander, 2008), the spectral projected-gradient method of the ``spgl1``
+    package, with ``op`` (a linear operator, called as ``op(w)`` and
+    ``op.adjoint(r)``) for the products. ``y``: the measurements (M,); other
+    keyword arguments go to ``spgl1.spgl1`` as they are (its tolerances,
+    iterations, ...; https://spgl1.readthedocs.io). Returns the coefficients,
+    with the shape of ``op.adjoint(y)``.
 
-    This is a thin wrapper around the Python SPGL1 solver ``spgl1.spgl1`` that
-    uses torch operators for matrix-vector products. SPGL1 is a spectral
-    projected-gradient method for constrained l1 problems; see
-    [BergFriedlander2008]_ and [BergFriedlander2010]_.
-
-    This wrapper is built on top of the Python implementation ``spgl1.spgl1`` and
-    uses the same calling convention (argument names and behaviour); see
-    [SPGL1Python]_ for details.
-
-    Parameters
-    ----------
-    op : Operator
-        Linear operator implementing the forward map and its adjoint. It is
-        called as ``op(w)`` and ``op.adjoint(r)``.
-    y : torch.Tensor
-        Measurements, shape ``(M,)``.
-    spgl1_kwargs : dict
-        Extra keyword args forwarded to ``spgl1.spgl1`` (for example
-        tolerances or iteration limits; see [SPGL1Python]_).
-
-    Returns
-    -------
-    w_hat : torch.Tensor
-        Estimated coefficient vector in the same shape as ``op.adjoint(y*0)``.
-
-    References
-    ----------
-    .. [BergFriedlander2008] E. van den Berg and M. P. Friedlander, "Probing
-       the Pareto frontier for basis pursuit solutions", SIAM Journal on
-       Scientific Computing, 31(2):890-912, 2008.
-    .. [BergFriedlander2010] E. van den Berg and M. P. Friedlander, "Sparse
-       optimisation with least-squares constraints", TR-2010-02, Department of
-       Computer Science, University of British Columbia, 2010.
-    .. [SPGL1Python] SPGL1: Spectral Projected Gradient for L1 minimisation,
-       Python package documentation, https://spgl1.readthedocs.io/
-    """
+    References: van den Berg and Friedlander, "Probing the Pareto frontier for
+    basis pursuit solutions", SIAM J. Scientific Computing 31(2):890-912, 2008;
+    "Sparse optimisation with least-squares constraints", TR-2010-02,
+    University of British Columbia, 2010."""
     device = y.device
     y = y.detach()
 

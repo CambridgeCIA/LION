@@ -18,28 +18,10 @@ def conjugate_gradient(
     max_iter: int,
     tol: float,
 ) -> torch.Tensor:
-    """
-    Conjugate gradient solver.
-
-    Parameters
-    ----------
-    matmul_closure : Callable[[torch.Tensor], torch.Tensor]
-        A function that performs the matrix-vector multiplication.
-    d : torch.Tensor
-        The right-hand side vector.
-    x0 : torch.Tensor
-        The initial guess for the solution.
-    max_iter : int
-        Maximum number of iterations.
-    tol : float
-        Tolerance on the relative residual ``||d - A x|| / ||d||``.
-
-    Returns
-    -------
-    torch.Tensor
-        The approximate solution vector.
-
-    """
+    """Solves A x = ``d`` by the conjugate gradient method, A symmetric
+    positive definite, given as ``matmul_closure(x)`` = A x. Starts from
+    ``x0``; stops after ``max_iter`` iterations or when the relative residual
+    ||d - A x|| / ||d|| is below ``tol``. Returns x."""
     b_norm = torch.norm(d)
     x = x0.clone()
     if b_norm == 0:

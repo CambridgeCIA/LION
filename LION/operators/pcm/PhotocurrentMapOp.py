@@ -29,6 +29,10 @@ def ifwht(x, order=False, dim=-1):
 
 
 def normal_to_dyadic_permutation(J: int) -> np.ndarray:
+    """The dyadic-by-scales ordering of the 2^(2J) Walsh-Hadamard coefficients
+    of a 2^J x 2^J image: entry k is the standard (natural) index of the k-th
+    coefficient in the dyadic order (bits interleaved, coarse scales first;
+    from the MATLAB code of Koutsourakis et al. 2021)."""
     nbits = 2 * J
     n = 1 << nbits  # total length = 2^(2J)
     # ---- dyadic-by-scales permutation (dtype-safe bit ops) ----
@@ -48,6 +52,11 @@ def normal_to_dyadic_permutation(J: int) -> np.ndarray:
 
 
 class Subsampler:
+    """Which of ``n`` coefficients (in dyadic order) are measured: a fraction
+    ``delta`` of them, all of the coarsest ``coarseJ`` scales (the first
+    4^coarseJ) and the rest drawn uniformly at random by ``rng`` (a new numpy
+    generator if None)."""
+
     def __init__(
         self, n: int, delta: float, coarseJ: int, rng: np.random.Generator | None = None
     ) -> None:
@@ -67,6 +76,7 @@ class Subsampler:
 
     @property
     def subsampled_indices(self) -> np.ndarray:
+        """The measured coefficients' indices, the coarse ones first."""
         return self._subsampled_indices
 
 
