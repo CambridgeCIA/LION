@@ -55,9 +55,12 @@ class WalnutDataset(Dataset):
         middle_slices_only=True,
         transform=None,
     ) -> None:
-        assert 1 <= walnut_index <= 42
-        assert 1 <= tube_index <= 3
-        assert 2 <= dimension <= 3
+        if not 1 <= walnut_index <= 42:
+            raise ValueError(f"walnut_index must be from 1 to 42, not {walnut_index}")
+        if not 1 <= tube_index <= 3:
+            raise ValueError(f"tube_index must be from 1 to 3, not {tube_index}")
+        if not 2 <= dimension <= 3:
+            raise ValueError(f"dimension must be 2 or 3, not {dimension}")
 
         if tube_index != 2 and dimension == 2:
             raise ValueError(
@@ -96,7 +99,8 @@ class WalnutDataset(Dataset):
             raise NotImplementedError(f"Not implemented for dimension != 2")
 
     def get_distances(self):
-        assert self.dimension == 2
+        if self.dimension != 2:
+            raise NotImplementedError("get_distances is only implemented in 2D")
         source_origin_list = []
         origin_det_list = []
         for angle in np.loadtxt(self.corrected_geometry_path):
@@ -118,7 +122,10 @@ class WalnutDataset(Dataset):
         )
 
     def pre_process_middle_slices(self):
-        assert self.dimension == 2
+        if self.dimension != 2:
+            raise NotImplementedError(
+                "pre_process_middle_slices is only implemented in 2D"
+            )
         for i in tqdm(range(self.__len__())):
             parsed_index = parse_index(i)
             load_path = self.tube_path.joinpath(f"scan_{parsed_index}.tif")

@@ -54,9 +54,8 @@ class LearnableFilter(Module):
         self.per_angle = per_angle
 
         if per_angle:
-            assert (
-                num_angles is not None
-            ), "num_angles must be provided when per_angle=True"
+            if num_angles is None:
+                raise ValueError("num_angles must be provided when per_angle=True")
             filters = torch.stack(
                 [init_filter.clone().detach() for _ in range(num_angles)]
             )

@@ -439,7 +439,10 @@ class LIONmodel(nn.Module, ABC):
         Its essentailly a wrapper of save() with mandatory values
         """
 
-        assert isinstance(optimizer, torch.optim.Optimizer)
+        if not isinstance(optimizer, torch.optim.Optimizer):
+            raise TypeError(
+                f"optimizer must be a torch optimizer, not {type(optimizer)}"
+            )
         self.save(
             fname,
             epoch=epoch,
@@ -663,28 +666,8 @@ class LIONmodel(nn.Module, ABC):
         return model, options.unpack(), data
 
     @classmethod
-    def _current_file(cls):
-        import sys
-
-        module = sys.modules[cls.__module__]
-        fname = Path(module.__file__)
-        # This will be in the install path, so lets get a relative path. Assuming user here will be working on AItomotools folder, which they may not be.
-        parts = fname.resolve().parts[fname.resolve().parts.index("models") - 1 :]
-        return Path(*parts)
-
-    @staticmethod
-    def final_file_exists(fname, stop_code=False):
-        if isinstance(fname, str):
-            fname = Path(fname)
-        exists = fname.is_file()
-        if stop_code and exists:
-            print("Final version found, no need to loop further, exiting")
-            exit()
-        return exists
-
-    @classmethod
     def load_checkpoint_if_exists(
-        cls, fname, model, optimiser, total_loss, verbose=True
+        cls, fname, model, optimiser, total_loss, verbose=False
     ):
         """Load the latest checkpoint matching ``fname`` (a glob pattern) into
         ``model`` and ``optimiser``, in place.
@@ -700,7 +683,7 @@ class LIONmodel(nn.Module, ABC):
         # glob() already returns paths that include fname.parent
         checkpoints = sorted(fname.parent.glob(fname.name))
         if not checkpoints:
-            if verbose:
+            if verbose >= 2:
                 print(f"checkpoint {fname} not found, failed to load.")
             return model, optimiser, 0, total_loss, None
 

@@ -56,7 +56,7 @@ class EquivariantSolver(LIONsolver):
         optimizer: Optimizer,
         loss_fn: Callable,
         operator_params: Geometry,
-        verbose: bool = True,
+        verbose: int = 1,
         device: torch.device = None,
         solver_params: LIONParameter | None = None,
         seed: Optional[int] = 0,

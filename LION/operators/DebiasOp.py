@@ -120,8 +120,7 @@ def debias_ls(
     support_tol: float = 1e-3,
     max_iter: int = 200,
     tol: float = 1e-5,
-    progress_bar: bool = False,
-    verbose: bool = False,
+    verbose: int = 1,
 ) -> torch.Tensor:
     """Debiasing least squares on the support of w.
 
@@ -139,11 +138,9 @@ def debias_ls(
         Maximum number of gradient descent iterations.
     tol : float
         Relative stopping threshold.
-    progress_bar : bool
-        Whether to show a progress bar. Default is False.
-    verbose : bool
-        Whether to print the objective and the relative change at every
-        iteration. Default is False.
+    verbose : int
+        0: nothing shown; 1 (default): a progress bar; 2: with the objective
+        and the relative change.
 
     Returns
     -------
@@ -164,9 +161,7 @@ def debias_ls(
 
     v = w[support].clone()
 
-    iterator = range(max_iter)
-    if progress_bar:
-        iterator = tqdm(iterator, desc="Debiasing LS")
+    iterator = tqdm(range(max_iter), desc="Debiasing LS", disable=verbose < 1)
     for _ in iterator:
         r = op_s(v) - y
         grad = op_s.adjoint(r)
@@ -175,12 +170,10 @@ def debias_ls(
         rel_change = torch.norm(v_next - v) / (torch.norm(v) + 1e-8)
         v = v_next
 
-        if verbose:
+        if verbose >= 2:
             data_term = 0.5 * torch.norm(op_s(v) - y).pow(2).item()
-            print(
-                f"Debiasing LS  f = {data_term:.4e}  "
-                f"rel_change = {rel_change.item():.2e}  tol = {tol:.2e}  "
-                f"rel_change < tol: {rel_change.item() < tol}"
+            iterator.set_postfix(
+                f=f"{data_term:.4e}", rel_change=f"{rel_change.item():.2e}"
             )
 
         if rel_change.item() < tol:

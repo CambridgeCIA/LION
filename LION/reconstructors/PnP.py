@@ -83,7 +83,7 @@ class PnP(LIONReconstructor):
             self.parameters, name, ALGORITHMS[self.parameters.algorithm][name]
         )
 
-    def reconstruct_sample(self, sino, x0=None, prog_bar: bool = False):
+    def reconstruct_sample(self, sino, x0=None, verbose: int = 1):
         """Reconstruct one measurement (e.g. a (C, angles, detectors)
         sinogram) with the algorithm and settings in ``self.parameters``."""
         if not isinstance(sino, torch.Tensor):
@@ -91,12 +91,12 @@ class PnP(LIONReconstructor):
         algorithm = self.parameters.algorithm
         settings = {k: self.setting(k) for k in ALGORITHMS[algorithm]}
         if algorithm == "HQS":
-            return self.hqs_algorithm(sino, x0=x0, prog_bar=prog_bar, **settings)
+            return self.hqs_algorithm(sino, x0=x0, verbose=verbose, **settings)
         if algorithm == "FBS":
             return self.forward_backward_splitting(
-                sino, x0=x0, prog_bar=prog_bar, **settings
+                sino, x0=x0, verbose=verbose, **settings
             )
-        return self.admm_algorithm(sino, x0=x0, prog_bar=prog_bar, **settings)
+        return self.admm_algorithm(sino, x0=x0, verbose=verbose, **settings)
 
     # ------------------------------------------------------------------ helpers
     def _apply_prior(self, x: torch.Tensor, noise_level=None) -> torch.Tensor:
@@ -138,7 +138,7 @@ class PnP(LIONReconstructor):
         cg_max_iter=100,
         cg_tol=1e-7,
         x0=None,
-        prog_bar: bool = False,
+        verbose: int = 1,
     ):
         """
         Half Quadratic Splitting, as in "Plug-and-Play Image Restoration with Deep
@@ -165,7 +165,7 @@ class PnP(LIONReconstructor):
         x = self.initial_guess(sino) if x0 is None else x0
         z = x.clone()
         iterator = range(max_iter)
-        if prog_bar:
+        if verbose >= 1:
             iterator = tqdm(iterator, desc="HQS iterations")
         for _ in iterator:
             x = self._solve_data_step(sino, z, mu, x, cg_max_iter, cg_tol)
@@ -179,7 +179,7 @@ class PnP(LIONReconstructor):
         max_iter=10,
         noise_level=None,
         x0=None,
-        prog_bar: bool = False,
+        verbose: int = 1,
     ):
         """
         Forward-Backward Splitting: x = prior(x - step_size * A^T (A x - y)).
@@ -196,7 +196,7 @@ class PnP(LIONReconstructor):
 
         x = self.initial_guess(sino) if x0 is None else x0
         iterator = range(max_iter)
-        if prog_bar:
+        if verbose >= 1:
             iterator = tqdm(iterator, desc="FBS iterations")
         for _ in iterator:
             # TODO: would it not make sense to have an adaptive noise_level?
@@ -213,7 +213,7 @@ class PnP(LIONReconstructor):
         cg_tol: float = 1e-7,
         noise_level=None,
         x0=None,
-        prog_bar: bool = False,
+        verbose: int = 1,
     ) -> torch.Tensor:
         """
         ADMM with the prior as the proximal step:
@@ -230,7 +230,7 @@ class PnP(LIONReconstructor):
         u = torch.zeros(self.op.domain_shape, device=measurement.device)
 
         iterator = range(max_iter)
-        if prog_bar:
+        if verbose >= 1:
             iterator = tqdm(iterator, desc="ADMM iterations")
         for _ in iterator:
             x = self._solve_data_step(measurement, v - u, eta, x, cg_max_iter, cg_tol)

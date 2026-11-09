@@ -33,10 +33,11 @@ class ForwardReconstructor(LIONReconstructor):
         return LIONParameter()
 
     def reconstruct(
-        self, y: torch.Tensor, x0: torch.Tensor | None = None, prog_bar: bool = False
+        self, y: torch.Tensor, x0: torch.Tensor | None = None, verbose: int = 1
     ) -> torch.Tensor:
         """Reconstruct measurements ``y``: one sample (the operator's range
-        shape) or a batch of them, in one forward pass."""
+        shape) or a batch of them, in one forward pass (so nothing to show,
+        whatever ``verbose``)."""
         if self.model is None:
             raise ValueError(
                 "ForwardReconstructor has no model: set it first "
@@ -44,7 +45,7 @@ class ForwardReconstructor(LIONReconstructor):
             )
         if y.dim() == len(self.op.range_shape) + 1:
             return model_forward(self.model, y, self.op)
-        return self.reconstruct_sample(y, x0, prog_bar)
+        return self.reconstruct_sample(y, x0, verbose)
 
-    def reconstruct_sample(self, y, x0=None, prog_bar=False):
+    def reconstruct_sample(self, y, x0=None, verbose=0):
         return model_forward(self.model, y.unsqueeze(0), self.op).squeeze(0)

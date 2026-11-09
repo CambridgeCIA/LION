@@ -147,7 +147,6 @@ class LPD(LIONmodel):
 
         # Define step size
         if self.model_parameters.step_size is None:
-            print("Step size is None, computing it with power method")
             # compute step size
             self.model_parameters.step_size = float(1 / power_method(self.op))
         # Step size of each iteration: the primal update adds step * A^T(h).

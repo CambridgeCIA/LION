@@ -32,7 +32,7 @@ class Noisier2InverseSolver(LIONsolver):
         loss_fn,
         solver_params: Optional[LIONParameter] = None,
         operator_params: Geometry = None,
-        verbose: bool = True,
+        verbose: int = 1,
         device: torch.device = None,
         seed: Optional[int] = 0,
         deterministic: bool = False,

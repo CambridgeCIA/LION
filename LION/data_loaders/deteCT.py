@@ -140,7 +140,7 @@ class deteCT(LIONDataset):
             - task == 'groundtruth' -> there is no input, target is a reconstruction
         """
 
-        assert self.task in [
+        tasks = [
             "sino2sino",
             "sino2recon",
             "recon2recon",
@@ -148,13 +148,14 @@ class deteCT(LIONDataset):
             "sino2seg",
             "joint",
             "groundtruth",
-        ], f'Wrong task argument, must be in ["sino2sino", "sino2recon", "recon2recon", "recon2seg", "sino2seg", "joint"]'
+        ]
+        if self.task not in tasks:
+            raise ValueError(f"Wrong task argument {self.task!r}, must be in {tasks}")
 
-        assert mode in [
-            "train",
-            "validation",
-            "test",
-        ], f'Wrong mode argument, must be in ["train", "validation", "test"]'
+        if mode not in ["train", "validation", "test"]:
+            raise ValueError(
+                f'Wrong mode argument {mode!r}, must be in ["train", "validation", "test"]'
+            )
         # Defining the training mode
         self.mode = mode
         """

@@ -192,7 +192,6 @@ def test_fista_l1(device) -> None:
         tol=1e-4,
         L=None,
         verbose=False,
-        progress_bar=False,
     )
     recon = wavelet.inverse(w_hat)
     zero_filled = phi.pseudo_inv(y)  # A(y) is the least squares solution
@@ -208,6 +207,16 @@ def test_fista_with_image_shaped_domain():
     x = fista_l1(op, y, lam=0.0, max_iter=2000, tol=1e-10)
     assert x.shape == (4, 4)
     torch.testing.assert_close(x, x_true, atol=1e-3, rtol=1e-3)
+
+
+@pytest.mark.parametrize("verbose", [0, 1, 2])
+def test_fista_shows_progress_by_level(capfd, verbose):
+    op = ImageMatrixOp(torch.eye(4), (2, 2))
+    fista_l1(op, torch.ones(4), lam=0.1, max_iter=3, tol=0.0, verbose=verbose)
+    out, err = capfd.readouterr()
+    assert out == ""
+    assert ("FISTA" in err) == (verbose >= 1)
+    assert ("rel_change" in err) == (verbose == 2)
 
 
 def test_spgl1() -> None:

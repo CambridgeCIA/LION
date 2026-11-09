@@ -57,7 +57,7 @@ class ARSolver(LIONsolver):
         model: LIONmodel,
         optimizer: Optimizer,
         operator_params: OperatorParameters = None,
-        verbose: bool = True,
+        verbose: int = 1,
         device: torch.device = None,
         solver_params: ARParams | None = None,
         seed: Optional[int] = 0,

@@ -10,7 +10,11 @@ from typing import Callable, Optional
 
 import torch
 
-from LION.operators.ct._batching import batched_reconstruction, per_sample
+from LION.operators.ct._batching import (
+    batched_reconstruction,
+    sample_verbose,
+    per_sample,
+)
 from LION.operators.ct.ct_geometry import Geometry
 from LION.operators.Operator import Operator
 from LION.utils.tomosipo_import import import_tomosipo
@@ -25,13 +29,17 @@ def sirt(
     x_init: Optional[torch.Tensor] = None,
     volume_mask: Optional[torch.Tensor] = None,
     projection_mask: Optional[torch.Tensor] = None,
-    progress_bar: bool = False,
+    verbose: int = 1,
     callbacks: Optional[list[Callable]] = None,
 ) -> torch.Tensor:
     """Compute SIRT reconstructions on a batched input.
 
     ``x_init`` may be a single initial guess, shared by all samples, or a batch
     of them (one per sample). See ts_algorithms.sirt for more details.
+
+    ``verbose``: 0, nothing shown; 1 (default), one progress bar (over the
+    samples of a batch, or the iterations of one sample); 2, also the
+    iterations of each sample of a batch.
     """
     ts_sirt = import_tomosipo("ts_algorithms", "sirt").sirt
 
@@ -47,8 +55,8 @@ def sirt(
             per_sample(x_init, op, i),
             volume_mask,
             projection_mask,
-            progress_bar,
+            sample_verbose(sino, verbose) >= 1,
             callbacks,
         )
 
-    return batched_reconstruction(recon_fn, sino, op)
+    return batched_reconstruction(recon_fn, sino, op, verbose, "SIRT")

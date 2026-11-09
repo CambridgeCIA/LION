@@ -16,13 +16,5 @@ class LIONSolverException(Exception):
     pass
 
 
-class WrongInputTypeException(Exception):
-    pass
-
-
-class LossSchemaException(Exception):
-    pass
-
-
 class ShapeMismatchException(Exception):
     pass
