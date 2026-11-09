@@ -295,7 +295,9 @@ part.
   and geometries, and how they changed.
 - Data loaders expect damaged files (interrupted downloads or copies) and leave
   them out with a warning rather than failing.
-- `ct_benchmarking_experiments` reproduces a paper and is not changed.
+- `LION/experiments/deteCT_benchmark.py` reproduces a paper (the 2DeteCT
+  benchmark, `CTBenchmarkingExperiment.cite()`): its experiments' parameters
+  are not changed.
 
 ## Pull requests
 

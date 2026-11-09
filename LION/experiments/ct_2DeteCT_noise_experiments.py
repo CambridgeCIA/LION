@@ -11,7 +11,6 @@ from LION.experiments.ct_experiments import Experiment
 
 class CTNoiseExperiment(Experiment):
     def __init__(self, experiment_params=None, dataset="2DeteCT", datafolder=None):
-        dataset = "2DeteCT"
         if dataset != "2DeteCT":
             raise ValueError(
                 "CTNoiseExperiment experiments only supports 2DeteCT dataset, currently"

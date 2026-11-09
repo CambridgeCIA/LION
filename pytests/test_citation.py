@@ -21,6 +21,7 @@ BASES = (LIONmodel, LIONsolver, LIONReconstructor, LIONDataset)
 FROM_A_PAPER = [
     "LION.data_loaders.LIDC_IDRI.LIDC_IDRI",
     "LION.data_loaders.deteCT.deteCT",
+    "LION.experiments.deteCT_benchmark.CTBenchmarkingExperiment",
     "LION.models.CNNs.UNets.Unet.UNet",
     "LION.models.CNNs.dncnn.DnCNN",
     "LION.models.iterative_unrolled.LPD.LPD",
