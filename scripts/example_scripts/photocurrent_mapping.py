@@ -347,8 +347,7 @@ def run_fista_l1(
         max_iter=max_iter,
         tol=tol,
         L=None,
-        verbose=False,
-        progress_bar=True,
+        verbose=True,
     )
 
     # Optional debiasing
@@ -360,7 +359,7 @@ def run_fista_l1(
         support_tol=debias_support_tol,
         max_iter=debias_max_iter,
         tol=debias_tol,
-        progress_bar=True,
+        verbose=True,
     )
 
     # Current map reconstruction
@@ -431,7 +430,7 @@ def run_spgl1(
         support_tol=debias_support_tol,
         max_iter=debias_max_iter,
         tol=debias_tol,
-        progress_bar=True,
+        verbose=True,
     )
 
     # Current map reconstruction

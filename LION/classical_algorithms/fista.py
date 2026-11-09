@@ -41,7 +41,6 @@ def fista_l1(
     tol: float = 1e-4,
     L: float | None = None,
     verbose: bool = False,
-    progress_bar: bool = False,
 ) -> torch.Tensor:
     r"""Solve :math:`\min_w \tfrac12\lVert A w - y\rVert_2^2 + \lambda \lVert w\rVert_1`
     by FISTA.
@@ -73,10 +72,9 @@ def fista_l1(
         power method on the normal operator :math:`A^\top A`, following the
         standard practice in FISTA-type schemes [BeckTeboulle2009]_.
     verbose : bool
-        If True, prints basic progress such as objective value and relative
-        change.
-    progress_bar : bool
-        If True, wraps the iteration in a ``tqdm`` progress bar.
+        If True, shows a progress bar with the objective value and the
+        relative change (computing the objective costs one more ``op(w)`` per
+        iteration).
 
     Returns
     -------
@@ -110,10 +108,8 @@ def fista_l1(
     z = w.clone()
     t = 1.0
 
-    iterator = range(max_iter)
-    if progress_bar:
-        iterator = tqdm(iterator, desc="FISTA l1")
-    for k in iterator:
+    iterator = tqdm(range(max_iter), desc="FISTA l1", disable=not verbose)
+    for _ in iterator:
         Az: torch.Tensor = op(z)
         grad = op.adjoint(Az - y)  # gradient of data term, same shape as w
 
@@ -128,10 +124,8 @@ def fista_l1(
         if verbose:
             data_term = 0.5 * torch.norm((op(w)) - y).pow(2).item()
             l1_term = lam * torch.norm(w, p=1).item()
-            print(
-                f"Iter {k:4d}  f = {data_term + l1_term:.4e}  "
-                f"rel_change = {rel_change.item():.2e}  tol = {tol:.2e}  "
-                f"rel_change < tol: {rel_change.item() < tol}"
+            iterator.set_postfix(
+                f=f"{data_term + l1_term:.4e}", rel_change=f"{rel_change.item():.2e}"
             )
 
         if rel_change.item() < tol:

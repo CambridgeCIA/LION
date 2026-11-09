@@ -13,7 +13,6 @@
 
 # You will want to import LIONParameter, as all models must save and use Parameters.
 from __future__ import annotations
-from enum import Enum
 from typing import Callable, Optional
 
 from tqdm import tqdm
@@ -44,11 +43,6 @@ from abc import ABC, abstractmethod, ABCMeta
 import os
 import warnings
 import pathlib
-
-
-# TODO: finish this
-class SolverState(Enum):
-    COMPLETE = 0
 
 
 def warn_if_not_mse(loss_fn, solver_name: str):
@@ -104,7 +98,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         optimizer: Optimizer,
         loss_fn: Callable,
         operator_params: OperatorParameters = None,
-        verbose: bool = True,
+        verbose: bool = False,
         device: torch.device = None,
         solver_params: Optional[LIONParameter] = None,
         save_folder: Optional[pathlib.Path] = None,
@@ -139,8 +133,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.solver_params = self.default_parameters()
         else:
             self.solver_params = solver_params
-        assert isinstance(model, LIONmodel), "model must be a LIONmodel"
-        assert isinstance(optimizer, Optimizer), "optimizer must be a torch optimizer"
+        if not isinstance(model, LIONmodel):
+            raise TypeError(f"model must be a LIONmodel, not {type(model)}")
+        if not isinstance(optimizer, Optimizer):
+            raise TypeError(
+                f"optimizer must be a torch optimizer, not {type(optimizer)}"
+            )
 
         self.model = model
         self.optimizer = optimizer
@@ -148,7 +146,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         if getattr(model, "operator_params", None) is not None:
             self.operator_params = model.operator_params
         else:
-            assert operator_params is not None, "operator_params must be provided"
+            if operator_params is None:
+                raise ValueError("operator_params must be provided")
             self.operator_params = operator_params
 
         self.op = self.operator_params.make_operator()
@@ -475,15 +474,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.do_load_checkpoint = load_checkpoint_if_exists
         self.checkpoint_save_folder = save_folder
 
-    def check_training_ready(self, error=True, autofill=True, verbose=True):
-        """This should always pass, all of these things are required to initialize a LIONsolver object
+    def check_training_ready(self, error=True, autofill=True):
+        """Checks what training needs (all set when the solver is made).
 
-        Args:
-            error (bool, optional): _description_. Defaults to True.
-            autofill (bool, optional): _description_. Defaults to True.
-
-        Returns:
-            _type_: _description_
+        ``error``: raise when something required is missing (otherwise warn);
+        ``autofill``: fill in what has a default (the device). Returns 0 when
+        ready, 1 when something is missing, 2 when something has the wrong
+        type.
         """
         return_code = 0
 
@@ -495,7 +492,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=torch.device,
                 error=False,
                 autofill=autofill,
-                verbose=verbose,
                 default=default_device(),
             ),
         )
@@ -508,7 +504,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=LIONmodel,
                 error=error,
                 autofill=False,
-                verbose=verbose,
             ),
         )
 
@@ -520,7 +515,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=Optimizer,
                 error=error,
                 autofill=False,
-                verbose=verbose,
             ),
         )
 
@@ -532,7 +526,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=callable,
                 error=error,
                 autofill=False,
-                verbose=verbose,
             ),
         )
 
@@ -544,7 +537,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=DataLoader,
                 error=error,
                 autofill=False,
-                verbose=verbose,
             ),
         )
 
@@ -556,13 +548,12 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=str,
                 error=False,
                 autofill=False,
-                verbose=True,
             ),
         )
 
         return return_code
 
-    def check_validation_ready(self, autofill=True, verbose=True):
+    def check_validation_ready(self, autofill=True):
         return_code = 0
 
         # Test 8: is the validation loader set? if not, raise error or warn
@@ -573,7 +564,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=DataLoader,
                 error=False,
                 autofill=False,
-                verbose=True,
             ),
         )
 
@@ -585,7 +575,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=callable,
                 error=False,
                 autofill=self.validation_loader is not None,
-                verbose=verbose,
                 default=self.loss_fn,
             ),
         )
@@ -597,7 +586,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=int,
                 error=False,
                 autofill=self.validation_loader is not None,
-                verbose=verbose,
                 default=10,
             ),
         )
@@ -635,7 +623,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """True if the model with the lowest validation loss can be saved."""
         return self.validation_fname is not None and self.save_folder is not None
 
-    def check_testing_ready(self, error=True, verbose=True):
+    def check_testing_ready(self, error=True):
         return_code = 0
 
         # Test 5: is the testing loader set? if not, raise error or warn
@@ -646,7 +634,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=DataLoader,
                 error=error,
                 autofill=False,
-                verbose=verbose,
             ),
         )
         # Test 6: is the testing function set? if not, raise error or warn or autofill
@@ -657,13 +644,14 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=callable,
                 error=error,
                 autofill=False,
-                verbose=verbose,
             ),
         )
 
         return return_code
 
-    def check_checkpointing_ready(self, autofill=True, verbose=True):
+    def check_checkpointing_ready(self, autofill=True):
+        """Fills in what checkpointing needs; checkpointing is optional, so
+        nothing missing here is warned about."""
         return_code = 0
 
         return_code = max(
@@ -673,7 +661,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=pathlib.Path,
                 error=False,
                 autofill=True,
-                verbose=verbose,
+                warn=False,
                 default=self.save_folder,
             ),
         )
@@ -693,7 +681,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=str,
                 error=False,
                 autofill=True,
-                verbose=False,
+                warn=False,
                 default=default_checkpoint_fname,
             ),
         )
@@ -706,7 +694,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=int,
                 error=False,
                 autofill=autofill,
-                verbose=verbose,
+                warn=False,
                 default=10,
             ),
         )
@@ -719,7 +707,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 expected_type=bool,
                 error=False,
                 autofill=True,
-                verbose=verbose,
+                warn=False,
                 default=True,
             ),
         )
@@ -733,7 +721,6 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             expected_type=pathlib.Path,
             error=False,
             autofill=False,
-            verbose=True,
         )
 
     def check_complete(self, error=True, autofill=True):
@@ -741,32 +728,13 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function checks if the solver is complete, i.e. if all the necessary parameters are set to start traning.
         """
 
-        return_code = 0
-
-        # Set if we need to complain
-        # should never have to go into the else, it's always set, but leave this here as legacy just in case...
-        if hasattr(self, "verbose"):
-            verbose = self.verbose
-        else:
-            verbose = True
-            self.verbose = verbose
-
         return_code = max(
-            return_code, self.check_training_ready(error, autofill, verbose)
+            self.check_training_ready(error, autofill),
+            self.check_testing_ready(error),
+            self.check_saving_ready(),
+            self.check_validation_ready(autofill),
+            self.check_checkpointing_ready(autofill),
         )
-
-        return_code = max(return_code, self.check_testing_ready(error, verbose))
-
-        return_code = max(return_code, self.check_saving_ready())
-
-        return_code = max(return_code, self.check_validation_ready(autofill, verbose))
-
-        return_code = max(
-            return_code, self.check_checkpointing_ready(autofill, verbose)
-        )
-
-        self.verbose = verbose
-
         return return_code
 
     def __check_attribute(
@@ -775,13 +743,16 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         expected_type=None,
         error=True,
         autofill=True,
-        verbose=True,
+        warn=True,
         default=None,
     ):
+        """Checks that the attribute ``attr`` is set, with ``expected_type``.
+
+        When it isn't: fill it with ``default`` (``autofill``), or raise
+        (``error``), or warn (``warn``: whether a missing or wrong ``attr`` is
+        worth a warning; it doesn't depend on ``verbose``). Returns 0 when it
+        is set, 1 when it is missing, 2 when it has the wrong type.
         """
-        This function checks if an attribute exists, and sets it if needed
-        """
-        assert isinstance(attr, str), "attr must be a string"
 
         if not hasattr(self, attr) or getattr(self, attr) is None:
             if autofill:
@@ -789,9 +760,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             else:
                 if error:
                     raise ValueError(f"Attribute {attr} not set")
-                if verbose:
+                if warn:
                     warnings.warn(f"Attribute {attr} not set")
-                # the return code must not depend on verbosity
                 return 1
 
         # if the type we want to check against is a function, we need to treat it differently
@@ -799,7 +769,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             if not callable(getattr(self, attr)):
                 if error:
                     raise ValueError(f"Attribute {attr} is not callable")
-                if verbose:
+                if warn:
                     warnings.warn(f"Attribute {attr} is not callable")
                 return 2
         # just standrad type chekcking, error or warn, depends of settings
@@ -808,7 +778,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
                 raise ValueError(
                     f"Attribute {attr} is not of type {expected_type}, its {type(getattr(self, attr))}"
                 )
-            if verbose:
+            if warn:
                 warnings.warn(
                     f"Attribute {attr} is not of type {expected_type}, its {type(getattr(self, attr))}"
                 )
@@ -910,7 +880,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model.eval()
         with torch.no_grad():
             test_loss = np.array([])
-            for data, target in tqdm(self.test_loader):
+            for data, target in tqdm(self.test_loader, disable=not self.verbose):
                 output = self._reconstruct(
                     data.to(self.device), self.testing_reconstructor
                 )
@@ -1087,7 +1057,9 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             )
         self.model.train()
         epoch_loss = 0.0
-        for _, (data, target) in enumerate(tqdm(self.train_loader)):
+        for _, (data, target) in enumerate(
+            tqdm(self.train_loader, disable=not self.verbose)
+        ):
             self.optimizer.zero_grad()
             batch_loss = self.mini_batch_step(
                 data.to(self.device), target.to(self.device)
@@ -1124,7 +1096,10 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         """
         This function is responsible for performing the optimization.
         """
-        assert n_epochs > 0, "Number of epochs must be a positive integer"
+        if n_epochs <= 0:
+            raise ValueError(
+                f"Number of epochs must be a positive integer, not {n_epochs}"
+            )
         # Make sure all parameters are set
         self.check_training_ready()
         self.n_epochs = n_epochs
@@ -1147,7 +1122,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
             self.validation_loss = None
 
         # Fills in checkpointing defaults (frequency, file name) when possible.
-        self.check_checkpointing_ready(verbose=False)
+        self.check_checkpointing_ready()
         do_checkpoint = (
             self.checkpoint_freq is not None
             and self.checkpoint_save_folder is not None
@@ -1155,7 +1130,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         )
 
         if self.do_load_checkpoint and do_checkpoint:
-            print("Loading checkpoint...")
+            if self.verbose:
+                print("Loading checkpoint...")
             self.current_epoch = self.load_checkpoint()
 
         if self.current_epoch == 0:  # a new run
@@ -1172,7 +1148,8 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         self.model.train()
         # train loop
         while self.current_epoch < n_epochs:
-            print(f"Training epoch {self.current_epoch + 1}")
+            if self.verbose:
+                print(f"Training epoch {self.current_epoch + 1}")
             self.epoch_step(self.current_epoch)
 
             if do_checkpoint and (self.current_epoch + 1) % self.checkpoint_freq == 0:
@@ -1228,7 +1205,7 @@ class LIONsolver(ABC, metaclass=ABCMeta):
         This function performs the validation loop.
         """
         validation_loss = np.array([])
-        for data, targets in tqdm(self.validation_loader):
+        for data, targets in tqdm(self.validation_loader, disable=not self.verbose):
             outputs = self._reconstruct(
                 data.to(self.device), self.validation_reconstructor
             )

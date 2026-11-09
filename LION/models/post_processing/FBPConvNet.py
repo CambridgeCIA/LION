@@ -99,9 +99,8 @@ class FBPConvNet(LIONmodel):
         model_parameters: Optional[LIONModelParameter] = None,
     ):
 
-        assert (
-            operator_params is not None
-        ), "Geometry parameters required for FBPConvNet."
+        if operator_params is None:
+            raise ValueError("Geometry parameters required for FBPConvNet.")
 
         super().__init__(model_parameters, operator_params)
         self._make_operator()

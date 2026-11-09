@@ -193,9 +193,9 @@ part.
   later with `.model = ...`; running without one is an error); `parameters`
   holds every setting of the algorithm, from the class's
   `default_parameters()`. `reconstruct` takes only the data, a starting image
-  `x0` and `prog_bar`, so a reconstructor with its parameters is one recorded
+  `x0` and `verbose`, so a reconstructor with its parameters is one recorded
   method. A new reconstructor derives from `LIONReconstructor`, defines
-  `default_parameters()` and `reconstruct_sample(y, x0, prog_bar)`, and reads
+  `default_parameters()` and `reconstruct_sample(y, x0, verbose)`, and reads
   its settings from `self.parameters`. Its spec holds the operator and the
   parameters, not the model; `instantiate(source, model)` makes it again.
   `ForwardReconstructor(operator, model)` is a model's own forward pass
@@ -256,6 +256,20 @@ part.
   records do (`spec_kwargs()`, `cite()`). `load(folder)` gives a package's
   recorded arguments to change, `build` makes them, and `train_again`
   trains the model again from them.
+
+## Messages and errors
+
+- **`verbose`** (default False) is the one switch for progress: progress
+  bars and progress messages (epochs, losses, iterations). Solvers take it
+  when made; functions and `reconstruct` take it as an argument. Nothing
+  else prints: a component without `verbose` prints nothing (download and
+  preprocessing scripts excepted).
+- Something the user should know (a setting that looks wrong, a result that
+  won't be saved) is a `warnings.warn`, whatever `verbose` is.
+- Wrong input raises an exception with a message (`ValueError`,
+  `TypeError`, ...), not `assert`: `python -O` removes asserts. `assert` is
+  only for what can't happen whatever the input (e.g. telling a type checker
+  something already checked).
 
 ## Devices
 

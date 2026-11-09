@@ -95,18 +95,18 @@ class LearnedRegularizerReconstructor(LIONReconstructor):
         self,
         sino: torch.Tensor,
         x0: torch.Tensor | None = None,
-        prog_bar: bool = False,
+        verbose: bool = False,
     ) -> torch.Tensor:
         """Reconstruct one measurement ``sino`` (e.g. (C, angles, detectors)).
 
         :param x0: Initial image; ``initial_guess(sino)`` if None.
-        :param prog_bar: Show a progress bar over the iterations.
+        :param verbose: Show a progress bar over the iterations.
         :return: The reconstruction, in the operator's domain shape.
         """
         x = (self.initial_guess(sino) if x0 is None else x0).detach().clone()
         step = self.parameters.step_size
         iterations = range(self.parameters.n_steps)
-        if prog_bar:
+        if verbose:
             iterations = tqdm(iterations, desc="Learned regulariser reconstruction")
         for _ in iterations:
             energy = self.energy(x, sino)

@@ -21,7 +21,6 @@ class SupervisedSolver(LIONsolver):
         loss_fn,
         operator_params: OperatorParameters = None,
         verbose: bool = False,
-        model_regularization=None,
         device: torch.device = None,
         save_folder: str = None,
         seed: Optional[int] = 0,

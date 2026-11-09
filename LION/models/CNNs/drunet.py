@@ -263,11 +263,10 @@ class DRUNet(LIONmodel):
 
     def forward(self, x0, noise_level: Optional[float] = None):
         if self.model_parameters.use_noise_level:
-            assert (
-                isinstance(noise_level, float) and noise_level >= 0.0
-            ), "`noise_level` must be a non-negative float, instead got: " + str(
-                type(noise_level)
-            )
+            if not (isinstance(noise_level, float) and noise_level >= 0.0):
+                raise ValueError(
+                    f"`noise_level` must be a non-negative float, not {noise_level!r}"
+                )
             # one extra input channel holding the noise level
             x0 = torch.cat((x0, noise_level * torch.ones_like(x0[:, :1])), dim=1)
         x1 = self.lift(x0)

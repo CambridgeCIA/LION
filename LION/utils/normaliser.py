@@ -26,21 +26,19 @@ class Normalisation:
         """
         # There are several ways to normalize CT data.
 
-        assert normalisation_type in [
-            "none",
-            "sample",
-            "dataset",
-            "custom",
-        ], "Invalid normalization type"
+        types = ["none", "sample", "dataset", "custom"]
+        if normalisation_type not in types:
+            raise ValueError(
+                f"Invalid normalization type {normalisation_type!r}, must be in {types}"
+            )
         self.type = normalisation_type
 
         if self.type == "dataset" and dataset is None and data_range is not None:
             # the dataset's range, computed before (e.g. read from a model file)
             self.xmin, self.xmax = float(data_range[0]), float(data_range[1])
         elif self.type == "dataset":
-            assert (
-                dataset is not None
-            ), "Dataset must be provided for dataset normalization"
+            if dataset is None:
+                raise ValueError("Dataset must be provided for dataset normalization")
             xmax = -np.inf
             xmin = np.inf
             # by index: iterating a Dataset relies on __getitem__ raising
@@ -52,10 +50,10 @@ class Normalisation:
             self.xmin = xmin
             self.xmax = xmax
         if self.type == "custom":
-            assert (
-                data_range is not None
-            ), "Range must be provided for custom normalization"
-            assert len(data_range) == 2, "Range must be a tuple of (min, max)"
+            if data_range is None:
+                raise ValueError("Range must be provided for custom normalization")
+            if len(data_range) != 2:
+                raise ValueError("Range must be a tuple of (min, max)")
             self.xmin = data_range[0]
             self.xmax = data_range[1]
 

@@ -125,7 +125,7 @@ for i, (sino, target) in tqdm(
     denoised = denoiser_fn(recon.clone()).unsqueeze(0)
 
     # PnP reconstruction
-    pnp_admm_result = reconstructor.reconstruct(sino, prog_bar=True)
+    pnp_admm_result = reconstructor.reconstruct(sino, verbose=True)
 
     n_subplots = 4
     plt.figure(figsize=(n_subplots * 4, 4))

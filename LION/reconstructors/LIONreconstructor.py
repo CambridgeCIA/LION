@@ -17,7 +17,7 @@ A reconstructor is made with everything that decides its result, then run:
   (``reconstructor.model = model``); running it without one is an error;
 - ``parameters``: a ``LIONParameter`` with the algorithm's settings, from the
   class's ``default_parameters()``. ``reconstruct`` takes only the data, a
-  starting image ``x0`` and ``prog_bar``, so a reconstructor with its
+  starting image ``x0`` and ``verbose``, so a reconstructor with its
   parameters is one method, recorded as such (``LION.evaluation``).
 
 Its spec (``LION.utils.spec``) holds the operator and the parameters, not the
@@ -32,7 +32,7 @@ weights hash, and the environment. The weights stay in the model's file.
 ``instantiate(file)`` makes it without one (give it another model).
 
 A new reconstructor derives from this class, defines ``default_parameters()``
-and ``reconstruct_sample(y, x0, prog_bar)``, and reads its settings from
+and ``reconstruct_sample(y, x0, verbose)``, and reads its settings from
 ``self.parameters``.
 """
 
@@ -121,7 +121,7 @@ class LIONReconstructor(ABC):
     # -- running -------------------------------------------------------------
 
     def reconstruct(
-        self, y: torch.Tensor, x0: torch.Tensor | None = None, prog_bar: bool = False
+        self, y: torch.Tensor, x0: torch.Tensor | None = None, verbose: bool = False
     ) -> torch.Tensor:
         """Reconstruct measurements ``y``: one sample (the operator's range
         shape) or a batch of them, each on its own. ``x0``: the starting
@@ -139,13 +139,13 @@ class LIONReconstructor(ABC):
             )
             for i, sample in enumerate(y):
                 start = None if x0 is None else x0[i]
-                images[i] = self.reconstruct_sample(sample, start, prog_bar)
+                images[i] = self.reconstruct_sample(sample, start, verbose)
             return images
-        return self.reconstruct_sample(y, x0, prog_bar)
+        return self.reconstruct_sample(y, x0, verbose)
 
     @abstractmethod
     def reconstruct_sample(
-        self, y: torch.Tensor, x0: torch.Tensor | None, prog_bar: bool
+        self, y: torch.Tensor, x0: torch.Tensor | None, verbose: bool
     ) -> torch.Tensor:
         """Reconstruct one measurement, with the settings in
         ``self.parameters``."""

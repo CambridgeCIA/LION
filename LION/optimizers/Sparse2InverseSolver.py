@@ -26,7 +26,7 @@ class Sparse2InverseSolver(LIONsolver):
         loss_fn,
         solver_params: Optional[LIONParameter] = None,
         operator_params: OperatorParameters = None,
-        verbose: bool = True,
+        verbose: bool = False,
         device: torch.device = None,
         seed: Optional[int] = 0,
         deterministic: bool = False,

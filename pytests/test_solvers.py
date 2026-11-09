@@ -144,6 +144,50 @@ def test_train_twice_keeps_the_loss_history():
     assert solver.train_loss[2] > 0
 
 
+@pytest.mark.parametrize("verbose", [False, True])
+def test_solvers_show_progress_only_when_verbose(tmp_path, capfd, verbose):
+    solver = make_solver(verbose=verbose)
+    solver.set_training(loader())
+    solver.set_saving(tmp_path, "model")
+    solver.set_checkpointing(
+        "model_check_*.pt", checkpoint_freq=1, save_folder=tmp_path
+    )
+    solver.set_validation(loader(seed=1), 1, validation_fname="model_min_val.pt")
+    solver.train(1)
+    out, err = capfd.readouterr()
+    if verbose:
+        assert "Epoch 1" in out
+        assert "it/s" in err or "s/it" in err  # tqdm's progress bars
+    else:
+        assert out == "" and err == ""
+
+
+def test_solvers_are_quiet_by_default():
+    assert make_solver().verbose is False
+
+
+def test_warnings_dont_depend_on_verbose():
+    # nothing saves the result: worth a warning, verbose or not
+    solver = make_solver(verbose=False)
+    solver.set_training(loader())
+    with pytest.warns(UserWarning, match="final_result_fname"):
+        solver.train(1)
+
+
+def test_train_needs_a_positive_number_of_epochs():
+    solver = make_solver()
+    solver.set_training(loader())
+    with pytest.raises(ValueError, match="positive"):
+        solver.train(0)
+
+
+def test_invalid_normalisation_raises():
+    from LION.utils.normaliser import Normalisation
+
+    with pytest.raises(ValueError, match="normalization type"):
+        Normalisation("per-pixel")
+
+
 def test_min_validation_model_lives_in_save_folder(tmp_path):
     # checkpoints may go elsewhere; the min-validation model is in save_folder
     checkpoints = tmp_path / "checkpoints"

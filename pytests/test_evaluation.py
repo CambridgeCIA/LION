@@ -111,7 +111,7 @@ def test_a_function_gets_the_operator():
 
 
 class Doubling(LIONReconstructor):
-    def reconstruct_sample(self, y, x0=None, prog_bar=False):
+    def reconstruct_sample(self, y, x0=None, verbose=False):
         return 2 * y
 
 

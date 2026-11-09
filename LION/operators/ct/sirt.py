@@ -19,7 +19,7 @@ def sirt(
     x_init: Optional[torch.Tensor] = None,
     volume_mask: Optional[torch.Tensor] = None,
     projection_mask: Optional[torch.Tensor] = None,
-    progress_bar: bool = False,
+    verbose: bool = False,
     callbacks: Optional[list[Callable]] = None,
 ) -> torch.Tensor:
     """Compute SIRT reconstructions on a batched input.
@@ -41,7 +41,7 @@ def sirt(
             per_sample(x_init, op, i),
             volume_mask,
             projection_mask,
-            progress_bar,
+            verbose,
             callbacks,
         )
 

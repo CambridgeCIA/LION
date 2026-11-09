@@ -28,7 +28,6 @@ class GaussianDenoiserSolver(LIONsolver):
         loss_fn,
         operator_params: OperatorParameters = None,
         verbose: bool = False,
-        model_regularization=None,
         device: torch.device = None,
         save_folder: str = None,
         noise_level: float | np.ndarray = 0.05,
@@ -131,7 +130,9 @@ class GaussianDenoiserSolver(LIONsolver):
 
         with torch.no_grad():
             validation_loss = np.array([])
-            for batch, (_, targets) in enumerate(tqdm(self.validation_loader)):
+            for batch, (_, targets) in enumerate(
+                tqdm(self.validation_loader, disable=not self.verbose)
+            ):
                 targets = targets.to(self.device)
                 if self.do_normalise:
                     targets = self.model.normalise(targets)

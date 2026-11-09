@@ -17,7 +17,7 @@ def tv_min(
     num_iterations: int = 500,
     L: Optional[float] = None,
     non_negativity: bool = False,
-    progress_bar: bool = False,
+    verbose: bool = False,
     callbacks: Optional[list[Callable]] = None,
 ) -> torch.Tensor:
     """Compute TV-minimization reconstructions on a batched input.
@@ -30,7 +30,7 @@ def tv_min(
 
     def recon_fn(op, sino_i, i):
         return ts_tv_min(
-            op, sino_i, lam, num_iterations, L, non_negativity, progress_bar, callbacks
+            op, sino_i, lam, num_iterations, L, non_negativity, verbose, callbacks
         )
 
     return batched_reconstruction(recon_fn, sino, op)

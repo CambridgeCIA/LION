@@ -28,7 +28,6 @@ class SelfSupervisedSolver(LIONsolver):
         loss_fn,
         operator_params: OperatorParameters = None,
         verbose: bool = False,
-        model_regularization=None,
         device: torch.device = None,
         seed: Optional[int] = 0,
         deterministic: bool = False,

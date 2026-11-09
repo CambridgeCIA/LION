@@ -55,10 +55,9 @@ def npy_problem(path: pathlib.Path):
 
 
 def format_index(index: int) -> str:
-    str_index = str(index)
-    while len(str_index) < 4:
-        str_index = "0" + str_index
-    assert len(str_index) == 4
+    str_index = f"{index:04d}"
+    if len(str_index) != 4:
+        raise ValueError(f"index must have at most 4 digits, not {index}")
     return str_index
 
 
@@ -202,11 +201,10 @@ class LIDC_IDRI(LIONDataset):
         """
 
         # Input parsing
-        assert mode in [
-            "train",
-            "validation",
-            "test",
-        ], f'Wrong mode argument, must be in ["train", "validation", "test"]'
+        if mode not in ["train", "validation", "test"]:
+            raise ValueError(
+                f'Wrong mode argument {mode!r}, must be in ["train", "validation", "test"]'
+            )
 
         if parameters is None:
             parameters = LIDC_IDRI.default_parameters(operator_params=operator_params)
@@ -215,13 +213,9 @@ class LIDC_IDRI(LIONDataset):
         self.operator_params = operator_params
 
         task = self.parameters.task
-        assert task in [
-            "joint",
-            "end_to_end",
-            "segmentation",
-            "reconstruction",
-            "diagnostic",
-        ], f'task argument {task} not in ["joint", "end_to_end", "segmentation", "reconstruction", "diagnostic"]'
+        tasks = ["joint", "end_to_end", "segmentation", "reconstruction", "diagnostic"]
+        if task not in tasks:
+            raise ValueError(f"task argument {task!r} not in {tasks}")
 
         if task not in ["segmentation", "reconstruction", "end_to_end"]:
             raise NotImplementedError(f"task {task} not implemented yet")
@@ -371,14 +365,6 @@ class LIDC_IDRI(LIONDataset):
             self.total_patients - self.n_patients_training - self.n_patients_validation
         )
 
-        assert self.total_patients == (
-            self.n_patients_training
-            + self.n_patients_testing
-            + self.n_patients_validation
-        ), print(
-            f"Total patients: {self.total_patients}, \n training patients {self.n_patients_training}, \n validation patients {self.n_patients_validation}, \n testing patients {self.n_patients_testing}"
-        )
-
         # Get patient IDs for each
         self.patient_ids = list(self.patient_index_to_n_slices_dict.keys())
         self.training_patients_list = self.patient_ids[: self.n_patients_training]
@@ -389,13 +375,6 @@ class LIDC_IDRI(LIONDataset):
         self.testing_patients_list = self.patient_ids[
             self.n_patients_training + self.n_patients_validation :
         ]
-        assert len(self.patient_ids) == len(self.training_patients_list) + len(
-            self.testing_patients_list
-        ) + len(self.validation_patients_list), print(
-            f"Len patients ids: {len(self.patient_ids)}, \n len training patients {len(self.training_patients_list)},\n len validation patients {len(self.validation_patients_list)}, \n len testing patients {len(self.testing_patients_list)}"
-        )
-
-        print("Preparing patient list, this may take time....")
         if self.mode == "train":
             patient_list_to_load = self.training_patients_list
         elif self.mode == "validation":
@@ -421,8 +400,6 @@ class LIDC_IDRI(LIONDataset):
         self.patient_id_to_first_index_dict = self.get_patient_id_to_first_index_dict(
             self.slices_to_load
         )
-
-        print(f"Patient lists ready for {self.mode} dataset")
 
     @staticmethod
     def patient_list(path_to_processed_dataset, legacy=False):
@@ -795,9 +772,10 @@ class LIDC_IDRI(LIONDataset):
         )
 
     def __getitem__(self, index):
-        assert index < len(self.slice_index_to_patient_id_list), print(
-            f"Index {index} out of range, max index is {len(self.slice_index_to_patient_id_list)-1}"
-        )
+        if index >= len(self.slice_index_to_patient_id_list):
+            raise IndexError(
+                f"Index {index} out of range, max index is {len(self.slice_index_to_patient_id_list)-1}"
+            )
         patient_id = self.slice_index_to_patient_id_list[index]
         first_slice_index = self.patient_id_to_first_index_dict[patient_id]
         dict_slice_index = index - first_slice_index
