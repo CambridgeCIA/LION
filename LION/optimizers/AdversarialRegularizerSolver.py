@@ -58,6 +58,7 @@ class ARSolver(LIONsolver):
         optimizer: Optimizer,
         operator_params: OperatorParameters = None,
         solver_params: ARParams | None = None,
+        model_regularization=None,
         scheduler=None,
         scheduler_step: str = "epoch",
         verbose: int = 1,
@@ -71,6 +72,7 @@ class ARSolver(LIONsolver):
             self.wgan_loss,
             operator_params=operator_params,
             solver_params=solver_params,
+            model_regularization=model_regularization,
             scheduler=scheduler,
             scheduler_step=scheduler_step,
             verbose=verbose,
@@ -156,7 +158,7 @@ class ARSolver(LIONsolver):
         return loss
 
     def mini_batch_step(self, y, target_batch) -> float:
-        return self.wgan_loss(y, target_batch)
+        return self._regularized(self.wgan_loss(y, target_batch))
 
     @staticmethod
     def cite(cite_format="bib"):

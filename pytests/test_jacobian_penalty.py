@@ -9,6 +9,8 @@
 import pytest
 import torch
 
+from LION.utils.parameter import LIONParameter
+
 from LION.losses.jacobian_penalty import (
     FirmlyNonexpansivePenalty,
     ProximalDenoiserPenalty,
@@ -40,16 +42,19 @@ def test_the_penalties_follow_their_papers(scale):
     denoise = lambda x: scale * x  # noqa: E731
     clean = torch.rand(3, 1, 4, 4)
     noisy = clean + 0.1 * torch.randn_like(clean)
+    step = LIONParameter()
+    step.input, step.output, step.target = noisy, denoise(noisy), clean
+    step.forward = denoise
     firm = FirmlyNonexpansivePenalty(weight=2.0, epsilon=0.05)
     expected = 2.0 * max((2 * scale - 1) ** 2, 1 - 0.05)
-    torch.testing.assert_close(
-        firm(denoise, clean, noisy, denoise(noisy)), torch.tensor(expected)
-    )
+    torch.testing.assert_close(firm(None, step), torch.tensor(expected))
     prox = ProximalDenoiserPenalty(weight=3.0, epsilon=0.1)
     expected = 3.0 * max(1 - scale, 1 - 0.1)
-    torch.testing.assert_close(
-        prox(denoise, clean, noisy, denoise(noisy)), torch.tensor(expected)
-    )
+    torch.testing.assert_close(prox(None, step), torch.tensor(expected))
+
+    step.target = None  # a solver without clean images
+    with pytest.raises(ValueError, match="needs the clean images"):
+        firm(None, step)
 
 
 def test_the_defaults_are_the_papers():

@@ -32,6 +32,7 @@ class Sparse2InverseSolver(LIONsolver):
         loss_fn,
         operator_params: OperatorParameters = None,
         solver_params: Optional[LIONParameter] = None,
+        model_regularization=None,
         scheduler=None,
         scheduler_step: str = "epoch",
         verbose: int = 1,
@@ -45,6 +46,7 @@ class Sparse2InverseSolver(LIONsolver):
             loss_fn,
             operator_params=operator_params,
             solver_params=solver_params,
+            model_regularization=model_regularization,
             scheduler=scheduler,
             scheduler_step=scheduler_step,
             verbose=verbose,
@@ -161,7 +163,8 @@ class Sparse2InverseSolver(LIONsolver):
                 batch_loss += ((projected_sino - target_sino) ** 2).sum()
                 total_pixels += projected_sino.numel()
         batch_loss /= total_pixels
-        return batch_loss
+        # (the regularisation on the last subgroup's mini-batch)
+        return self._regularized(batch_loss, mean_recon, output_recon)
 
     def _forward(self, data):
         # validation and testing evaluate the reconstruction

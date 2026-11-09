@@ -11,9 +11,10 @@ nonexpansive (2D - I nonexpansive; Pesquet et al. 2021), or that its residual
 I - D, the gradient of the potential of a gradient-step denoiser, be
 L-Lipschitz with L < 1 (Hurault et al. 2022). A network isn't, so it is
 trained with a penalty on the spectral norm of the Jacobian of that map,
-estimated by power iterations. ``GaussianDenoiserSolver`` adds one to its
-loss when ``solver_params.jacobian_penalty`` is one of these (off by
-default).
+estimated by power iterations. They are model regularisations: a solver
+adds one to its loss when it is its ``model_regularization`` (off by
+default), called as ``penalty(model, step)`` with the mini-batch's ``step``
+(``LIONsolver``).
 """
 
 import torch
@@ -68,10 +69,16 @@ class FirmlyNonexpansivePenalty(nn.Module):
         self.epsilon = epsilon
         self.power_iterations = power_iterations
 
-    def forward(self, denoise, clean, noisy, denoised) -> torch.Tensor:
-        """The penalty for the denoiser ``denoise`` (an image batch to its
-        denoised batch), on a batch: ``clean`` images, ``noisy`` inputs and
-        ``denoised`` outputs."""
+    def forward(self, model, step) -> torch.Tensor:
+        """The penalty for a mini-batch ``step``: the denoiser
+        ``step.forward``, its clean images ``step.target``, its outputs
+        ``step.output``."""
+        if step.target is None:
+            raise ValueError(
+                "FirmlyNonexpansivePenalty needs the clean images: a solver "
+                "with targets (e.g. GaussianDenoiserSolver, SupervisedSolver)"
+            )
+        denoise, clean, denoised = step.forward, step.target, step.output
         r = torch.rand(clean.shape[0], device=clean.device)
         r = r.reshape((-1,) + (1,) * (clean.dim() - 1))
         point = r * clean + (1 - r) * denoised.detach()
@@ -121,12 +128,12 @@ class ProximalDenoiserPenalty(nn.Module):
         self.epsilon = epsilon
         self.power_iterations = power_iterations
 
-    def forward(self, denoise, clean, noisy, denoised) -> torch.Tensor:
-        """The penalty for the denoiser ``denoise`` (an image batch to its
-        denoised batch), on a batch: ``clean`` images, ``noisy`` inputs and
-        ``denoised`` outputs."""
+    def forward(self, model, step) -> torch.Tensor:
+        """The penalty for a mini-batch ``step``: the denoiser
+        ``step.forward`` at its inputs ``step.input``."""
+        denoise = step.forward
         norm = jacobian_spectral_norm(
-            lambda x: x - denoise(x), noisy, self.power_iterations
+            lambda x: x - denoise(x), step.input, self.power_iterations
         )
         return self.weight * torch.clamp(norm, min=1 - self.epsilon).mean()
 

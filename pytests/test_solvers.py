@@ -432,11 +432,12 @@ def test_gaussian_denoiser_adds_the_jacobian_penalty(penalty):
         "firm": FirmlyNonexpansivePenalty(weight=1.0, power_iterations=3),
         "prox": ProximalDenoiserPenalty(weight=1.0, power_iterations=3),
     }[penalty]
-    solver = gaussian_denoiser_solver(jacobian_penalty=made, augment=False)
+    solver = gaussian_denoiser_solver(augment=False)
+    solver.model_regularization = made
     target = torch.rand(2, 1, 8, 8)
     torch.manual_seed(0)
     with_penalty = solver.mini_batch_step(None, target)
-    solver.solver_params.jacobian_penalty = None
+    solver.model_regularization = None
     torch.manual_seed(0)
     without = solver.mini_batch_step(None, target)
     if penalty is None:
@@ -446,13 +447,40 @@ def test_gaussian_denoiser_adds_the_jacobian_penalty(penalty):
         with_penalty.backward()
 
 
+class _WeightPenalty(torch.nn.Module):
+    def __init__(self, weight=1.0):
+        super().__init__()
+        self.weight = weight
+
+    def forward(self, model, step):
+        return self.weight * sum(p.pow(2).sum() for p in model.parameters())
+
+
+def test_a_model_regularization_is_added_to_the_loss():
+    solver = make_solver()
+    y, target = torch.rand(2, 1, 8, 8), torch.rand(2, 1, 8, 8)
+    plain = solver.mini_batch_step(y, target)
+    seen = []
+
+    def regularization(model, step):
+        seen.append(step)
+        return _WeightPenalty()(model, step)
+
+    solver.model_regularization = regularization
+    regularized = solver.mini_batch_step(y, target)
+    weights = sum(p.pow(2).sum() for p in solver.model.parameters())
+    torch.testing.assert_close(regularized, plain + weights)
+    (step,) = seen
+    assert step.input is y and step.target is target
+    torch.testing.assert_close(step.output, solver._forward(y))
+
+
 def test_gaussian_denoiser_defaults_follow_the_literature():
     from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
 
     params = GaussianDenoiserSolver.default_parameters()
     assert params.augment is True and params.random_erasing is False
     assert params.validation_noise_levels is None
-    assert params.jacobian_penalty is None
 
 
 def test_gaussian_denoiser_validates_at_fixed_noise_levels(tmp_path):

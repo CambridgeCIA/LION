@@ -35,6 +35,7 @@ class SelfSupervisedSolver(LIONsolver):
         loss_fn,
         operator_params: OperatorParameters = None,
         solver_params: Optional[LIONParameter] = None,
+        model_regularization=None,
         scheduler=None,
         scheduler_step: str = "epoch",
         verbose: int = 1,
@@ -49,6 +50,7 @@ class SelfSupervisedSolver(LIONsolver):
             loss_fn,
             operator_params=operator_params,
             solver_params=solver_params,
+            model_regularization=model_regularization,
             scheduler=scheduler,
             scheduler_step=scheduler_step,
             verbose=verbose,
@@ -72,7 +74,7 @@ class SelfSupervisedSolver(LIONsolver):
         else:
             data = y
 
-        return self.loss_fn(data, self.model)
+        return self._regularized(self.loss_fn(data, self.model), data)
 
     @staticmethod
     def default_parameters() -> LIONParameter:

@@ -62,13 +62,14 @@ class GaussianDenoiserSolver(LIONsolver):
       as training does (the same ones every time); or a list of them (e.g.
       ``[15 / 255, 25 / 255, 50 / 255]``), every validation image at each,
       the validation value being their mean.
-    - ``jacobian_penalty``: None, or a penalty on the denoiser's Jacobian
-      added to the loss, for PnP methods that converge
-      (``LION.losses.jacobian_penalty``): ``FirmlyNonexpansivePenalty()``
-      (Pesquet et al. 2021) or ``ProximalDenoiserPenalty()`` (Hurault et al.
-      2022, for a gradient-step denoiser). Both papers add it after training
-      without it (e.g. ``train_again``, or ``LIONmodel.load`` and another
-      solver). Cite the one used (its ``cite()``).
+
+    For PnP methods that converge, a penalty on the denoiser's Jacobian
+    (``LION.losses.jacobian_penalty``) is the solver's
+    ``model_regularization``: ``FirmlyNonexpansivePenalty()`` (Pesquet et al.
+    2021) or ``ProximalDenoiserPenalty()`` (Hurault et al. 2022, for a
+    gradient-step denoiser). Both papers add it after training without it
+    (e.g. fine-tuning with ``LIONmodel.load`` and another solver). Cite the
+    one used (its ``cite()``).
     """
 
     def __init__(
@@ -78,6 +79,7 @@ class GaussianDenoiserSolver(LIONsolver):
         loss_fn,
         operator_params: OperatorParameters = None,
         solver_params: Optional[LIONParameter] = None,
+        model_regularization=None,
         scheduler=None,
         scheduler_step: str = "epoch",
         verbose: int = 1,
@@ -92,6 +94,7 @@ class GaussianDenoiserSolver(LIONsolver):
             loss_fn,
             operator_params=operator_params,
             solver_params=solver_params,
+            model_regularization=model_regularization,
             scheduler=scheduler,
             scheduler_step=scheduler_step,
             verbose=verbose,
@@ -113,11 +116,8 @@ class GaussianDenoiserSolver(LIONsolver):
         noisy = self._noisy(target, noise_level)
         output = self._model(noisy, noise_level)
         loss = self.loss_fn(output, target)
-        penalty = self.solver_params.jacobian_penalty
-        if penalty is not None:
-            denoise = lambda x: self._model(x, noise_level)  # noqa: E731
-            loss = loss + penalty(denoise, target, noisy, output)
-        return loss
+        denoise = lambda x: self._model(x, noise_level)  # noqa: E731
+        return self._regularized(loss, noisy, output, target, denoise)
 
     @staticmethod
     def _noisy(clean: torch.Tensor, noise_level: torch.Tensor) -> torch.Tensor:
@@ -181,7 +181,6 @@ class GaussianDenoiserSolver(LIONsolver):
         params.augment = True
         params.random_erasing = False
         params.validation_noise_levels = None
-        params.jacobian_penalty = None
         return params
 
     @staticmethod

@@ -32,6 +32,7 @@ class Noise2InverseSolver(LIONsolver):
         loss_fn,
         operator_params: OperatorParameters = None,
         solver_params: Optional[LIONParameter] = None,
+        model_regularization=None,
         scheduler=None,
         scheduler_step: str = "epoch",
         verbose: int = 1,
@@ -45,6 +46,7 @@ class Noise2InverseSolver(LIONsolver):
             loss_fn,
             operator_params=operator_params,
             solver_params=solver_params,
+            model_regularization=model_regularization,
             scheduler=scheduler,
             scheduler_step=scheduler_step,
             verbose=verbose,
@@ -149,7 +151,10 @@ class Noise2InverseSolver(LIONsolver):
             output = self.model(mean_input_recons)
             loss[i] = self.loss_fn(output, mean_target_recons)
 
-        return loss.sum() / len(self.cali_J)
+        # (the regularisation on the last split's mini-batch)
+        return self._regularized(
+            loss.sum() / len(self.cali_J), mean_input_recons, output, mean_target_recons
+        )
 
     def _forward(self, data):
         # validation and testing evaluate the reconstruction

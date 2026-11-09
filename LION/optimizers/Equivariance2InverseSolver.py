@@ -92,6 +92,7 @@ class Equivariance2InverseSolver(LIONsolver):
         loss_fn,
         operator_params: OperatorParameters = None,
         solver_params: Optional[LIONParameter] = None,
+        model_regularization=None,
         scheduler=None,
         scheduler_step: str = "epoch",
         verbose: int = 1,
@@ -105,6 +106,7 @@ class Equivariance2InverseSolver(LIONsolver):
             loss_fn,
             operator_params=operator_params,
             solver_params=solver_params,
+            model_regularization=model_regularization,
             scheduler=scheduler,
             scheduler_step=scheduler_step,
             verbose=verbose,
@@ -187,7 +189,7 @@ class Equivariance2InverseSolver(LIONsolver):
         output_recon_2 = self.model(rotated_noisy_image)
         equivariance = ((output_recon_2 - rotated_output_recon_1) ** 2).mean()
         batch_loss += self.solver_params.equivariance_strength * equivariance
-        return batch_loss
+        return self._regularized(batch_loss, RJc, output_recon_1)
 
     def _forward(self, data):
         # validation and testing evaluate the reconstruction
