@@ -1,4 +1,4 @@
-# This file is part of AItomotools library
+# This file is part of LION library
 # License : GPL-3
 #
 # Author  : Ander Biguri & Christina Runkel
@@ -6,13 +6,8 @@
 # =============================================================================
 
 
-from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
-
-from LION.utils.math import power_method
-from LION.utils.parameter import LIONParameter, OperatorParameters
-
-# import LION.utils.utils as ai_utils
-
+from LION.models.iterative_unrolled.LPD import LPD
+from LION.models.LIONmodel import LIONModelParameter, ModelInputType
 
 import torch
 import torch.nn as nn
@@ -288,92 +283,27 @@ class ContinuousRegProximal(nn.Module):
         return self.last_layer(x)
 
 
-def _check_channels(params):
-    """Number of primal/dual channels, from the output of the blocks.
+class cLPD(LPD):
+    """Learned Primal Dual with continuous blocks (Runkel et al.): LPD whose
+    primal and dual blocks are neural ODEs."""
 
-    The dual block sees [h, A f, g] (n_dual + 2 channels) and the primal block
-    [f, A^T h] (n_primal + 1 channels); both output an update of their variable.
-    """
-    n_dual, n_primal = params.data_channels[-1], params.reg_channels[-1]
-    if params.data_channels[0] != n_dual + 2 or params.reg_channels[0] != n_primal + 1:
-        raise ValueError(
-            "data_channels must start with data_channels[-1] + 2 channels and "
-            "reg_channels with reg_channels[-1] + 1, got "
-            f"data_channels={params.data_channels}, reg_channels={params.reg_channels}"
+    def _iteration_blocks(self):
+        """The primal and dual blocks of one iteration: continuous (ODE)
+        blocks, first or second order (``do_secon_order``)."""
+        params = self.model_parameters
+        primal = ContinuousRegProximal(
+            layers=len(params.reg_channels) - 1,
+            channels=params.reg_channels,
+            do_secon_order=params.do_secon_order,
+            instance_norm=params.instance_norm,
         )
-    # channel of the primal variable projected in the dual step: 1 as in Adler &
-    # Oktem (the second primal channel)
-    channel = params.dual_step_primal_channel
-    if not 0 <= channel < n_primal:
-        raise ValueError(
-            f"dual_step_primal_channel={channel} needs at least {channel + 1} primal channels"
+        dual = ContinuousDataProximal(
+            layers=len(params.data_channels) - 1,
+            channels=params.data_channels,
+            do_secon_order=params.do_secon_order,
+            instance_norm=params.instance_norm,
         )
-    return n_primal, n_dual, channel
-
-
-class cLPD(LIONmodel):
-    """Learn Primal Dual network with continuous blocks"""
-
-    def __init__(
-        self,
-        operator_params: OperatorParameters,
-        model_parameters: LIONParameter = None,
-    ):
-        if operator_params is None:
-            raise ValueError(
-                "operator_params required: the parameters of the operator (for CT, the geometry)"
-            )
-
-        super().__init__(model_parameters, operator_params)
-        # Pass all relevant parameters to internal storage.
-        # LIONmodel does this:
-        # self.geometry = geometry
-        # self.model_parameters = model_parameters
-
-        # Create layers per iteration
-        for i in range(self.model_parameters.n_iters):
-            self.add_module(
-                f"{i}_primal",
-                ContinuousRegProximal(
-                    layers=len(self.model_parameters.reg_channels) - 1,
-                    channels=self.model_parameters.reg_channels,
-                    do_secon_order=self.model_parameters.do_secon_order,
-                    instance_norm=self.model_parameters.instance_norm,
-                ),
-            )
-            self.add_module(
-                f"{i}_dual",
-                ContinuousDataProximal(
-                    layers=len(self.model_parameters.data_channels) - 1,
-                    channels=self.model_parameters.data_channels,
-                    do_secon_order=self.model_parameters.do_secon_order,
-                    instance_norm=self.model_parameters.instance_norm,
-                ),
-            )
-
-        _check_channels(self.model_parameters)
-
-        # Create pytorch compatible operators and send them to aiutograd
-        self._make_operator(autograd=True)
-
-        # Define step size
-        if self.model_parameters.step_size is None:
-            print("Step size is None, computing it with power method")
-            # compute step size
-            self.model_parameters.step_size = float(1 / power_method(self.op))
-
-        # Step size of each iteration: the primal update adds step * A^T(h).
-        # (A lambda_primal used to be created too, but was never used.)
-        n_iters = self.model_parameters.n_iters
-        step_size = self.model_parameters.step_size
-        if self.model_parameters.learned_step:
-            self.lambda_dual = nn.ParameterList(
-                [nn.Parameter(torch.ones(1) * step_size) for _ in range(n_iters)]
-            )
-        else:
-            self.register_buffer(
-                "lambda_dual", torch.ones(n_iters) * step_size, persistent=False
-            )
+        return primal, dual
 
     @staticmethod
     def default_parameters():
@@ -410,18 +340,6 @@ class cLPD(LIONmodel):
         return params
 
     @staticmethod
-    def __dual_step(g, h, f, module):
-        x = torch.cat((h, f, g), dim=1)
-        out = module(x)
-        return h + out
-
-    @staticmethod
-    def __primal_step(f, update, module):
-        x = torch.cat((f, update), dim=1)
-        out = module(x)
-        return f + out
-
-    @staticmethod
     def cite(cite_format="bib"):
         """Where cLPD comes from: its citation, BibTeX ("bib") or "MLA"."""
         return citation(
@@ -441,41 +359,3 @@ class cLPD(LIONmodel):
             (2024): 2405.02478.
             """,
         )
-
-    def forward(self, g):
-        """
-        g: sinogram input
-        """
-
-        B, C, W, H = g.shape
-
-        if C != 1:
-            raise NotImplementedError("Only 2D CT images supported")
-
-        if tuple(g.shape[1:]) != tuple(self.op.range_shape):
-            raise ValueError(
-                f"measurements of shape {tuple(g.shape[1:])} don't match the "
-                f"operator's range {tuple(self.op.range_shape)}"
-            )
-
-        n_primal, n_dual, c = _check_channels(self.model_parameters)
-
-        # initialize parameters
-        h = g.new_zeros(B, n_dual, W, H)
-        f_primal = g.new_zeros(B, n_primal, *self.op.domain_shape[1:])
-        # every primal channel starts from the initial reconstruction (the operator's default, FDK for CT, unless set)
-        f_primal[:] = self.initial_reconstruction(g[:, :1], self.op)
-
-        for i in range(self.model_parameters.n_iters):
-            primal_module = getattr(self, f"{i}_primal")
-            dual_module = getattr(self, f"{i}_dual")
-            f_dual = self.A(f_primal[:, c : c + 1])
-            h = self.__dual_step(g, h, f_dual, dual_module)
-
-            step = self.lambda_dual[i]
-            if self.model_parameters.step_positive:
-                step = step.abs()  # learned steps stay positive
-            update = step * self.AT(h[:, :1])
-            f_primal = self.__primal_step(f_primal, update, primal_module)
-
-        return f_primal[:, 0:1]
