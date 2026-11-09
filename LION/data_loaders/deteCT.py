@@ -68,20 +68,55 @@ class deteCT(LIONDataset):
         operator_params: Geometry = None,
         parameters: LIONParameter = None,
     ):
+        """The ``mode`` split ("train", "validation" or "test") with
+        ``parameters`` (``default_parameters()`` if None). ``operator_params``:
+        the geometry, replacing ``parameters.operator_params`` if given.
+
+        ``parameters`` (``default_parameters()``):
+
+        - ``path_to_dataset``: the pre-processed dataset
+          (``2deteCT/pre_process_2deteCT.py``);
+        - ``input_mode``, ``target_mode``: "mode1", "mode2" or "mode3"
+          ("mode2", "mode2");
+        - ``task``: what a sample is: "sino2recon" (default), "sino2sino",
+          "recon2recon", "recon2sino", "recon2seg", "sino2seg", "joint" or
+          "groundtruth";
+        - ``training_proportion``, ``validation_proportion``,
+          ``test_proportion``: of the samples, split in order (0.8, 0.1, 0.1);
+        - ``do_recon``: reconstruct the images here, with ``recon_algo``
+          ("nag_ls" or "fdk"), instead of loading the dataset's (False);
+        - ``flat_field_correction``, ``dark_field_correction``,
+          ``log_transform``: of the raw projections (True);
+        - ``query``: a pandas query of the data record, to select slices (e.g.
+          "detector==1"; "": all);
+        - ``add_noise``: add noise to the sinograms (False), with
+          ``noise_params`` (``noise_parameters()``);
+        - ``operator_params``: the geometry: 2DeteCT's
+          (``get_default_geometry()``), or one with a subset of its angles (the
+          sinograms are subsampled to match; others are refused, as the data
+          are measured)."""
         if parameters is None:
             parameters = self.default_parameters()
         self.parameters = parameters
-        self.operator_params = operator_params
         # where samples are returned: the device selected in LION
         self.device = default_device()
 
-        # Get geometry default, or validate if given geometry is valid for 2DeteCT, as its raw sinogram data, we can't allow any geometry
-        if operator_params is None:
-            self.geometry = self.get_default_geometry()
-            self.angle_index = list(range(len(self.geometry.angles)))
-        else:
-            self.angle_index = self.__is_valid_geo(operator_params)
-            self.geometry = operator_params
+        # The data are measured, so the geometry is 2DeteCT's
+        # (parameters.operator_params, its default one unless changed) or one
+        # with a subset of its angles. A geometry given here replaces the
+        # parameters', so the parameters (and the record) say the one used.
+        if operator_params is not None:
+            self.parameters.operator_params = operator_params
+        elif getattr(self.parameters, "operator_params", None) is None:
+            self.parameters.operator_params = self.get_default_geometry()
+        elif not isinstance(self.parameters.operator_params, Geometry):
+            # parameters read from JSON have it as a plain LIONParameter
+            self.parameters.operator_params = Geometry.init_from_parameter(
+                self.parameters.operator_params
+            )
+        self.angle_index = self.__is_valid_geo(self.parameters.operator_params)
+        self.operator_params = self.parameters.operator_params
+        self.geometry = self.operator_params
 
         if parameters.query == "" and (
             not parameters.flat_field_correction or not parameters.dark_field_correction
@@ -236,6 +271,8 @@ class deteCT(LIONDataset):
 
     @staticmethod
     def default_parameters():
+        """The parameters (see ``__init__``): mode 2 sinograms to mode 2
+        reconstructions, corrected and log-transformed, no added noise."""
         param = LIONParameter()
         param.path_to_dataset = paths.DETECT_PROCESSED_DATASET_PATH
         param.input_mode = "mode2"
@@ -253,13 +290,17 @@ class deteCT(LIONDataset):
         param.query = ""
 
         param.add_noise = False
+        # 2DeteCT's geometry; one with a subset of its angles also works
+        param.operator_params = deteCT.get_default_geometry()
 
-        param.geometry = deteCT.get_default_geometry()
         return param
 
     @staticmethod
     def get_default_geometry():
         # From Max Kiss code
+        """The 2DeteCT geometry (from Max Kiss's code): fan beam, 3600 angles
+        over 360 degrees, a 956-pixel detector (2x subsampled), 1024x1024
+        images, lengths in voxels."""
         SOD = 431.019989
         SDD = 529.000488
         detPix = 0.0748
@@ -337,10 +378,12 @@ class deteCT(LIONDataset):
 
     @staticmethod
     def get_default_operator():
+        """The CT operator of the default geometry."""
         geometry = deteCT.get_default_geometry()
         return geometry.make_operator()
 
     def get_operator(self):
+        """The CT operator of the dataset's geometry."""
         return self.geometry.make_operator()
 
     def sample_ids(self):
@@ -365,6 +408,8 @@ class deteCT(LIONDataset):
         return files
 
     def compute_sample_dataframe(self):
+        """``self.sample_dataframe``: the first and last slice of each physical
+        sample (mix), from the slice table."""
         unique_identifiers = self.slice_dataframe["sample_index"].unique()
         record = {"sample_index": [], "first_slice": [], "last_slice": []}
         for identifier in unique_identifiers:

@@ -18,6 +18,7 @@ from LION.utils.paths import DETECT_PATH, DETECT_PROCESSED_DATASET_PATH
 
 
 def format_slice_index(index: int) -> str:
+    """A slice number as 2DeteCT writes it: 7 -> "slice00007"."""
     str_index = str(index)
     while len(str_index) < 5:
         str_index = "0" + str_index
@@ -25,6 +26,7 @@ def format_slice_index(index: int) -> str:
 
 
 def format_mode_index(index: int) -> str:
+    """A mode number as 2DeteCT writes it: 1 -> "mode1"."""
     return f"mode{index}"
 
 
@@ -95,6 +97,9 @@ def write_settings(settings_out_file_path: Path):
 
 
 def correct_detector_shift(sinogram, slice_index, settings: Dict):
+    """``sinogram`` shifted along the detector by the correction of the
+    detector it was measured with (from ``slice_index``), as the 2DeteCT
+    paper's reconstruction scripts do."""
     detector_correction = settings["detector"]["correction"]
     detector_pixel_physical_size = settings["detector"]["pixel_physical_size_reference"]
 

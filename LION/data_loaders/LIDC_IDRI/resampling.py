@@ -36,20 +36,14 @@ def resample_slice(
     """Resample a 2D slice to another pixel spacing, keeping its centre.
 
     Linear interpolation; when shrinking, the slice is first smoothed with a
-    Gaussian of std (new_spacing / pixel_spacing - 1) / 2 input pixels, to avoid
-    aliasing (as skimage.transform.rescale's anti_aliasing). Points outside the
-    slice get ``fill``.
+    Gaussian of std (new_spacing / pixel_spacing - 1) / 2 input pixels, to
+    avoid aliasing (as skimage.transform.rescale's anti_aliasing). Points
+    outside the slice get ``fill``.
 
-    Args:
-        image: 2D array, square pixels of ``pixel_spacing`` mm.
-        pixel_spacing: pixel spacing of ``image`` in mm.
-        new_spacing: pixel spacing of the output in mm.
-        shape: shape of the output.
-        fill: value outside the slice (air, in HU).
-
-    Returns:
-        A float32 array of ``shape`` with pixels of ``new_spacing`` mm.
-    """
+    ``image``: a 2D array of square pixels of ``pixel_spacing`` mm;
+    ``new_spacing``, ``shape``: the output's pixel spacing (mm) and shape;
+    ``fill``: the value outside the slice (air, in HU). Returns a float32
+    array."""
     image = np.asarray(image, dtype=np.float32)
     if image.ndim != 2:
         raise ValueError("expected a 2D slice, got shape {}".format(image.shape))

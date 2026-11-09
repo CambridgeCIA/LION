@@ -270,15 +270,54 @@ def test_random_annotation_is_seeded(annotated_folder):
 # 2DeteCT
 
 
+def same_geometry(a, b):
+    a, b = vars(a), vars(b)
+    return a.keys() == b.keys() and all(
+        np.array_equal(np.asarray(a[k]), np.asarray(b[k])) for k in a
+    )
+
+
+def test_datasets_list_their_default_geometry():
+    """default_parameters() has the geometry a dataset uses by default."""
+    assert same_geometry(
+        deteCT.default_parameters().operator_params, deteCT.get_default_geometry()
+    )
+    assert same_geometry(
+        lidc.LIDC_IDRI.default_parameters().operator_params,
+        lidc.LIDC_IDRI.default_geometry(),
+    )
+    # no sinograms, no geometry
+    assert (
+        lidc.LIDC_IDRI.default_parameters(task="segmentation").operator_params is None
+    )
+
+
+@pytest.mark.filterwarnings("ignore:You are not using any detector query")
+def test_detect_geometry_given_replaces_the_parameters(tmp_path):
+    """A geometry with a subset of the angles, given to the dataset, is the one
+    its parameters (and record) say."""
+    data = fake_detect(tmp_path, "train")
+    sparse = deteCT.get_default_geometry()
+    sparse.angles = sparse.angles[::10]
+    params = deteCT.default_parameters()
+    params.path_to_dataset = tmp_path
+    data = deteCT("train", sparse, params)
+    assert data.parameters.operator_params is sparse and data.operator_params is sparse
+    assert data.angle_index == list(range(0, 3600, 10))
+
+
 @pytest.mark.filterwarnings("ignore:You are not using any detector query")
 def test_detect_record(tmp_path):
     data = fake_detect(tmp_path, "train")
     assert data.parameters.path_to_dataset == tmp_path
-    assert data.operator_params is None
+    # no geometry given: 2DeteCT's, and the record says so
+    default = deteCT.get_default_geometry()
+    assert same_geometry(data.operator_params, default)
     record = through_json(data_record(data))
     assert record.samples.ids == list(data.slice_dataframe["slice_identifier"])
     rebuilt = deteCT.instantiate(record)
     assert type(rebuilt) is deteCT and rebuilt.mode == "train"
+    assert same_geometry(rebuilt.operator_params, default)
     assert rebuilt.sample_ids() == record.samples.ids
 
 

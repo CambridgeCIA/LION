@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-DOCUMENTED = ["LION/optimizers", "LION/models"]
+DOCUMENTED = ["LION/optimizers", "LION/models", "LION/data_loaders"]
 
 
 def _undocumented(path: Path) -> list[str]:
