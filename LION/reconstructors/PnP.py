@@ -50,6 +50,10 @@ class PnP(LIONReconstructor):
     image (with its normalisation, and the noise level if it uses one). Any
     other callable is called on the image as it is (the operator's domain
     shape) and must return the same shape.
+
+    ``noise_level``: in the units of the data the denoiser sees, after its
+    normalisation, as in training (``GaussianDenoiserSolver``): for images in
+    [0, 1], the literature's k/255.
     """
 
     def __init__(self, operator, model=None, parameters=None):

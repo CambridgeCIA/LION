@@ -36,9 +36,13 @@ class GaussianDenoiserSolver(LIONsolver):
     gradient-step denoiser, Hurault et al.), each image gets its own noise
     level, drawn from a range, and is randomly flipped and rotated.
 
-    The noise is added to the images as the model sees them: after the
-    model's normalisation (``model.set_normalisation()``), so noise levels are
-    in its units (with images in [0, 1], the literature's 50/255 is 0.196).
+    **Noise levels are in the units of the data the model sees**: the noise
+    is added after the model's normalisation (``model.set_normalisation()``),
+    if any. The literature, and LION, assume images in [0, 1] (e.g. a
+    "dataset" or "custom" normalisation to [0, 1]), where its noise levels
+    are given as k/255: 25/255 = 0.098, 50/255 = 0.196. With another range
+    (e.g. no normalisation), scale the noise levels with it. The same holds
+    for the noise level a PnP reconstruction gives the denoiser.
 
     ``solver_params`` (``default_parameters()``):
 
