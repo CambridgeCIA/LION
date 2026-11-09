@@ -90,6 +90,20 @@ SPARSE_ANGLES = np.linspace(0, 2 * np.pi, 50, endpoint=False)  # 50 over 360 deg
 
 
 class Experiment(ABC):
+    """A CT experiment: a geometry, a dataset and, for simulated data, the
+    noise added to the sinograms; the base class of LION's experiments, which
+    differ only in their parameters (see the module docstring for the noise and
+    geometry).
+
+    ``experiment_params``: its parameters (``default_parameters(dataset)`` if
+    None); ``dataset``: "LIDC-IDRI" (simulated sinograms) or "2DeteCT"
+    (measured ones); ``datafolder``: where the dataset is (the data loader's
+    default if None).
+
+    ``get_dataset(split)`` gives the data of a split, ``data_record(split)``
+    its record; ``instantiate`` and ``parameters_from_file`` make an experiment
+    again from a saved file."""
+
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
 
         super().__init__()  # Initialize parent classes.
@@ -136,19 +150,16 @@ class Experiment(ABC):
 
     @staticmethod
     def noise_parameters(I0, detector="energy_integrating"):
-        """
-        Noise of LION's simulated experiments: the physical model of
-        ct_utils.sinogram_add_noise, with I0 photons per detector pixel in
-        vacuum, water at 80 keV, and starved rays floored at 1 photon. The
-        default energy-integrating detector has electronic noise (sigma = 5
-        photons) and cross-talk; detector="photon_counting" has neither (see
-        ct_utils.sinogram_add_noise).
+        """The noise of LION's simulated experiments: the physical model of
+        ``ct_utils.sinogram_add_noise``, with ``I0`` photons per detector pixel
+        in vacuum, water at 80 keV, and starved rays floored at 1 photon. The
+        default energy-integrating ``detector`` has electronic noise (sigma = 5
+        photons) and cross-talk; "photon_counting" has neither.
 
-        ``seed``: each slice's noise is drawn from a generator seeded by the
-        seed and the slice, so a slice has one noisy measurement, the same in
-        every epoch and run, as a scan is measured once (training, validation
-        and test). None: fresh noise each time the slice is read.
-        """
+        ``seed`` (0): each slice's noise is drawn from a generator seeded by
+        the seed and the slice, so a slice has one noisy measurement, the same
+        in every epoch and run, as a scan is measured once (training,
+        validation and test). None: fresh noise each time the slice is read."""
         noise = LIONParameter()
         noise.noise_model = "physical"
         noise.I0 = I0
@@ -163,6 +174,9 @@ class Experiment(ABC):
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
     def default_parameters():
+        """The experiment's parameters for ``dataset``: its ``name``,
+        ``operator_params`` (the geometry), ``noise_params`` (simulated data
+        only) and ``data_loader_params``. Each experiment defines it."""
         pass
 
     def __get_dataset(self, mode):
@@ -225,6 +239,8 @@ class Experiment(ABC):
 
     @staticmethod
     def not_possible_with_2detect(name: str, reason: str):
+        """Raises the ValueError of an experiment, ``name``, that the measured
+        2DeteCT data can't give, saying why (``reason``)."""
         raise ValueError(
             f"{name} is not possible with the measured 2DeteCT data: {reason}"
         )
@@ -250,12 +266,15 @@ class Experiment(ABC):
         return dataset
 
     def get_training_dataset(self):
+        """The training data (``get_dataset("train")``)."""
         return self.get_dataset("train")
 
     def get_validation_dataset(self):
+        """The validation data (``get_dataset("validation")``)."""
         return self.get_dataset("validation")
 
     def get_testing_dataset(self):
+        """The test data (``get_dataset("test")``)."""
         return self.get_dataset("test")
 
     def data_record(self, split, hash_files=False):
@@ -319,6 +338,8 @@ class Experiment(ABC):
 
     @staticmethod
     def get_dataset_parameters(dataset, operator_params=None):
+        """The default parameters of ``dataset``'s data loader ("LIDC-IDRI",
+        with ``operator_params`` as its geometry, or "2DeteCT")."""
         if dataset == "LIDC-IDRI":
             return LIDC_IDRI.default_parameters(operator_params=operator_params)
         if dataset == "2DeteCT":
@@ -362,11 +383,21 @@ def _subclasses(cls):
 
 
 class ExtremeLowDoseCTRecon(Experiment):
+    """Extremely low dose, full angular sampling. LIDC-IDRI: simulated
+    sinograms with extremely low dose noise (I0 = ``EXTREMELY_LOW_DOSE_I0``,
+    ``Experiment.noise_parameters``), 360 angles over 360 degrees. 2DeteCT: the
+    measured mode 1 sinograms (3 W instead of 90 W tube power), all 3600
+    angles; mode 2 reconstructions as targets."""
+
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
         if dataset == "2DeteCT":
             return Experiment.measured_2detect_parameters(
                 "Extremely low dose full angular sampling experiment",
@@ -386,12 +417,22 @@ class ExtremeLowDoseCTRecon(Experiment):
 
 
 class LowDoseCTRecon(Experiment):
+    """Low dose, full angular sampling. LIDC-IDRI: simulated sinograms with low
+    dose noise (I0 = ``LOW_DOSE_I0``, ``Experiment.noise_parameters``), 360
+    angles over 360 degrees. Not possible with 2DeteCT (its measured low dose,
+    mode 1, is the extremely low dose experiments')."""
+
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
 
         super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI"; see the
+        class): its name, geometry (``operator_params``), noise
+        (``noise_params``) and data loader's parameters. A ValueError for
+        "2DeteCT": its measured low dose is the extremely low dose
+        experiments'."""
         if dataset == "2DeteCT":
             Experiment.not_possible_with_2detect(
                 "Low dose full angular sampling experiment",
@@ -412,11 +453,21 @@ class LowDoseCTRecon(Experiment):
 
 
 class LimitedAngleCTRecon(Experiment):
+    """Clinical dose, limited angle. LIDC-IDRI: simulated sinograms with
+    clinical noise (I0 = ``CLINICAL_I0``, ``Experiment.noise_parameters``), 60
+    angles over 60 degrees (limited angle). 2DeteCT: the measured mode 2
+    sinograms (clinical dose), every 10th of the first 600 angles (60 over 60
+    degrees); mode 2 reconstructions as targets."""
+
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
         if dataset == "2DeteCT":
             return Experiment.measured_2detect_parameters(
                 "Clinical dose limited angular sampling experiment",
@@ -437,11 +488,21 @@ class LimitedAngleCTRecon(Experiment):
 
 
 class LimitedAngleLowDoseCTRecon(Experiment):
+    """Low dose, limited angle. LIDC-IDRI: simulated sinograms with low dose
+    noise (I0 = ``LOW_DOSE_I0``, ``Experiment.noise_parameters``), 60 angles
+    over 60 degrees (limited angle). Not possible with 2DeteCT (its measured
+    low dose, mode 1, is the extremely low dose experiments')."""
+
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI"; see the
+        class): its name, geometry (``operator_params``), noise
+        (``noise_params``) and data loader's parameters. A ValueError for
+        "2DeteCT": its measured low dose is the extremely low dose
+        experiments'."""
         if dataset == "2DeteCT":
             Experiment.not_possible_with_2detect(
                 "Low dose limited angular sampling experiment",
@@ -467,11 +528,22 @@ class LimitedAngleLowDoseCTRecon(Experiment):
 
 
 class LimitedAngleExtremeLowDoseCTRecon(Experiment):
+    """Extremely low dose, limited angle. LIDC-IDRI: simulated sinograms with
+    extremely low dose noise (I0 = ``EXTREMELY_LOW_DOSE_I0``,
+    ``Experiment.noise_parameters``), 60 angles over 60 degrees (limited
+    angle). 2DeteCT: the measured mode 1 sinograms (low dose), every 10th of
+    the first 600 angles (60 over 60 degrees); mode 2 reconstructions as
+    targets."""
+
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
         if dataset == "2DeteCT":
             return Experiment.measured_2detect_parameters(
                 "Extremely low dose limited angular sampling experiment",
@@ -497,11 +569,21 @@ class LimitedAngleExtremeLowDoseCTRecon(Experiment):
 
 
 class SparseAngleCTRecon(Experiment):
+    """Clinical dose, sparse view. LIDC-IDRI: simulated sinograms with clinical
+    noise (I0 = ``CLINICAL_I0``, ``Experiment.noise_parameters``), 50 angles
+    over 360 degrees (sparse view). 2DeteCT: the measured mode 2 sinograms
+    (clinical dose), every 72nd angle (50 over 360 degrees); mode 2
+    reconstructions as targets."""
+
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
         if dataset == "2DeteCT":
             return Experiment.measured_2detect_parameters(
                 "Clinical dose sparse angular sampling experiment",
@@ -523,11 +605,21 @@ class SparseAngleCTRecon(Experiment):
 
 
 class SparseAngleLowDoseCTRecon(Experiment):
+    """Low dose, sparse view. LIDC-IDRI: simulated sinograms with low dose
+    noise (I0 = ``LOW_DOSE_I0``, ``Experiment.noise_parameters``), 50 angles
+    over 360 degrees (sparse view). Not possible with 2DeteCT (its measured low
+    dose, mode 1, is the extremely low dose experiments')."""
+
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI"; see the
+        class): its name, geometry (``operator_params``), noise
+        (``noise_params``) and data loader's parameters. A ValueError for
+        "2DeteCT": its measured low dose is the extremely low dose
+        experiments'."""
         if dataset == "2DeteCT":
             Experiment.not_possible_with_2detect(
                 "Low dose sparse angular sampling experiment",
@@ -553,11 +645,21 @@ class SparseAngleLowDoseCTRecon(Experiment):
 
 
 class SparseAngleExtremeLowDoseCTRecon(Experiment):
+    """Extremely low dose, sparse view. LIDC-IDRI: simulated sinograms with
+    extremely low dose noise (I0 = ``EXTREMELY_LOW_DOSE_I0``,
+    ``Experiment.noise_parameters``), 50 angles over 360 degrees (sparse view).
+    2DeteCT: the measured mode 1 sinograms (low dose), every 72nd angle (50
+    over 360 degrees); mode 2 reconstructions as targets."""
+
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
         if dataset == "2DeteCT":
             return Experiment.measured_2detect_parameters(
                 "Extremely low dose sparse angular sampling experiment",
@@ -583,11 +685,21 @@ class SparseAngleExtremeLowDoseCTRecon(Experiment):
 
 
 class clinicalCTRecon(Experiment):
+    """Clinical dose, full angular sampling. LIDC-IDRI: simulated sinograms
+    with clinical noise (I0 = ``CLINICAL_I0``,
+    ``Experiment.noise_parameters``), 360 angles over 360 degrees. 2DeteCT: the
+    measured mode 2 sinograms (clinical dose), all 3600 angles; mode 2
+    reconstructions as targets."""
+
     def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
         super().__init__(experiment_params, dataset, datafolder)
 
     @staticmethod
     def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
         if dataset == "2DeteCT":
             return Experiment.measured_2detect_parameters(
                 "Clinical dose full angular sampling experiment",

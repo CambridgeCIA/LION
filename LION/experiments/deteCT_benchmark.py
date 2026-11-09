@@ -89,11 +89,17 @@ class CTBenchmarkingExperiment(Experiment):
 
 
 class GroundTruthCT(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring): the mode 2
+    reconstructions only, no sinograms (task "groundtruth"; ``do_recon``
+    False)."""
+
     def __init__(self, datafolder=None):
         super().__init__(experiment_params=None, datafolder=datafolder)
 
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         param = benchmark_parameters(
             "Ground truths only, from Full Data CT reconstruction using the full angular sampling experiment from mode 2",
             task="groundtruth",
@@ -103,19 +109,31 @@ class GroundTruthCT(CTBenchmarkingExperiment):
 
 
 class FullDataCTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring):
+    reconstruction from all 3600 angles of mode 2 (full data). Mode 2
+    reconstructions are the targets."""
+
     def __init__(self, datafolder=None):
         super().__init__(experiment_params=None, datafolder=datafolder)
 
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "Full Data CT reconstruction using the full angular sampling experiment from mode 2"
         )
 
 
 class LimitedAngle150CTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring), limited
+    angle: reconstruction from the first 1500 angles of mode 2 (150 degrees).
+    Mode 2 reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "150 degrees Limited Angle CT reconstruction experiment from mode 2",
             angles=slice(None, 1500),
@@ -123,8 +141,14 @@ class LimitedAngle150CTRecon(CTBenchmarkingExperiment):
 
 
 class LimitedAngle120CTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring), limited
+    angle: reconstruction from the first 1200 angles of mode 2 (120 degrees).
+    Mode 2 reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "120 degrees Limited Angle CT reconstruction experiment from mode 2",
             angles=slice(None, 1200),
@@ -132,8 +156,14 @@ class LimitedAngle120CTRecon(CTBenchmarkingExperiment):
 
 
 class LimitedAngle90CTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring), limited
+    angle: reconstruction from the first 900 angles of mode 2 (90 degrees).
+    Mode 2 reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "90 degrees Limited Angle CT reconstruction experiment from mode 2",
             angles=slice(None, 900),
@@ -141,8 +171,14 @@ class LimitedAngle90CTRecon(CTBenchmarkingExperiment):
 
 
 class LimitedAngle60CTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring), limited
+    angle: reconstruction from the first 600 angles of mode 2 (60 degrees).
+    Mode 2 reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "60 degrees Limited Angle CT reconstruction experiment from mode 2",
             angles=slice(None, 600),
@@ -150,8 +186,14 @@ class LimitedAngle60CTRecon(CTBenchmarkingExperiment):
 
 
 class SparseAngle720CTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring), sparse view:
+    reconstruction from every 5th angle of mode 2 (720 angles over 360
+    degrees). Mode 2 reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "720 angles Sparse Angle CT reconstruction experiment from mode 2",
             angles=slice(None, None, 5),
@@ -159,8 +201,14 @@ class SparseAngle720CTRecon(CTBenchmarkingExperiment):
 
 
 class SparseAngle360CTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring), sparse view:
+    reconstruction from every 10th angle of mode 2 (360 angles over 360
+    degrees). Mode 2 reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "360 angles Sparse Angle CT reconstruction experiment from mode 2",
             angles=slice(None, None, 10),
@@ -168,8 +216,14 @@ class SparseAngle360CTRecon(CTBenchmarkingExperiment):
 
 
 class SparseAngle180CTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring), sparse view:
+    reconstruction from every 20th angle of mode 2 (180 angles over 360
+    degrees). Mode 2 reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "180 angles Sparse Angle CT reconstruction experiment from mode 2",
             angles=slice(None, None, 20),
@@ -177,8 +231,14 @@ class SparseAngle180CTRecon(CTBenchmarkingExperiment):
 
 
 class SparseAngle120CTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring), sparse view:
+    reconstruction from every 30th angle of mode 2 (120 angles over 360
+    degrees). Mode 2 reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "120 angles Sparse Angle CT reconstruction experiment from mode 2",
             angles=slice(None, None, 30),
@@ -186,8 +246,14 @@ class SparseAngle120CTRecon(CTBenchmarkingExperiment):
 
 
 class SparseAngle90CTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring), sparse view:
+    reconstruction from every 40th angle of mode 2 (90 angles over 360
+    degrees). Mode 2 reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "90 angles Sparse Angle CT reconstruction experiment from mode 2",
             angles=slice(None, None, 40),
@@ -195,8 +261,14 @@ class SparseAngle90CTRecon(CTBenchmarkingExperiment):
 
 
 class SparseAngle60CTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring), sparse view:
+    reconstruction from every 60th angle of mode 2 (60 angles over 360
+    degrees). Mode 2 reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "60 angles Sparse Angle CT reconstruction experiment from mode2",
             angles=slice(None, None, 60),
@@ -204,8 +276,14 @@ class SparseAngle60CTRecon(CTBenchmarkingExperiment):
 
 
 class LowDoseCTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring):
+    reconstruction from the mode 1 sinograms (low dose), all angles. Mode 2
+    reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "Denoising experiment with sinograms from mode1 and reconstructions from mode2",
             input_mode="mode1",
@@ -213,8 +291,14 @@ class LowDoseCTRecon(CTBenchmarkingExperiment):
 
 
 class BeamHardeningCTRecon(CTBenchmarkingExperiment):
+    """A 2DeteCT benchmark experiment (see the module docstring):
+    reconstruction from the mode 3 sinograms (beam hardening), all angles. Mode
+    2 reconstructions are the targets."""
+
     @staticmethod
     def default_parameters(dataset="2DeteCT"):
+        """The experiment's parameters (``benchmark_parameters``), as in the
+        paper. ``dataset``: only "2DeteCT"."""
         return benchmark_parameters(
             "Beam Hardening Reduction experiment with sinograms from mode3 and reconstructions from mode2",
             input_mode="mode3",

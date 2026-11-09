@@ -16,17 +16,14 @@ class HAARPsi(nn.Module):
 
     Reisenhofer, Bosse, Kutyniok and Wiegand, "A Haar wavelet-based perceptual
     similarity index for image quality assessment", Signal Processing: Image
-    Communication 61 (2018). PyTorch implementation by Sören Dittmer and Clemens
-    Karner (through project FWF T1307-N/Anna Breger), from the TensorFlow
-    implementation by David Neumann and the MATLAB one by Rafael Reisenhofer.
-    It matches ``piq.haarpsi`` for images in [0, data_range].
+    Communication 61 (2018). PyTorch implementation by Sören Dittmer and
+    Clemens Karner (through project FWF T1307-N/Anna Breger), from the
+    TensorFlow implementation by David Neumann and the MATLAB one by Rafael
+    Reisenhofer. It matches ``piq.haarpsi`` for images in [0, data_range].
 
-    Args (constructor):
-        preprocess_with_subsampling: subsample the images by 2 first (as in
-            the paper). Default True.
-        C, a: the algorithm's constants, determined experimentally by the
-            authors of HaarPSI (defaults 30 and 4.2, for images in [0, 255]).
-    """
+    ``preprocess_with_subsampling``: subsample the images by 2 first, as in the
+    paper (True); ``C``, ``a``: the algorithm's constants, found experimentally
+    by HaarPSI's authors (30 and 4.2, for images in [0, 255])."""
 
     # a similarity score: higher is better
     higher_is_better = True
@@ -45,26 +42,16 @@ class HAARPsi(nn.Module):
         batched=True,
         data_range: float | None = None,
     ) -> torch.Tensor:
-        """
-        Args:
-            x: input image(s), (B, C, H, W) or (B, H, W) if batched, else
-                (C, H, W) or (H, W). C is 1 (grayscale) or 3 (RGB).
-            target: target image(s) to compare x against, same shape as x.
-            reduce: if batched=False has no effect. Otherwise specifies what
-                operation should be done to aggregate the scores along the batch
-                axis. Defaults to None, in which case a tensor of shape
-                (batch size) is returned.
-            batched: whether x and target are batched or not.
-            data_range: the range of the image values, for images in
-                [0, data_range] (e.g. 1 for images in [0, 1]), as in
-                ``piq.haarpsi``. Defaults to None: each pair is mapped with its
-                target's minimum and range (max - min) to a target in [0, 1],
-                like the range PSNR and SSIM use. Images may have values outside
-                the range (e.g. noisy reconstructions).
+        """The HaarPSI of ``x`` against ``target`` (the same shape), in [0, 1],
+        1 for identical images: one per sample, or their mean if ``reduce`` is
+        "mean".
 
-        Returns:
-            The HaarPSI of each sample, in [0, 1], 1 for identical images.
-        """
+        ``batched``: ``x`` is (B, C, H, W) or (B, H, W), else (C, H, W) or (H,
+        W); C is 1 (grayscale) or 3 (RGB). ``data_range``: images are in [0,
+        data_range] (e.g. 1), as in ``piq.haarpsi``; None: each pair is mapped
+        by its target's minimum and range to a target in [0, 1], like the range
+        PSNR and SSIM use. Images may have values outside the range (e.g. noisy
+        reconstructions)."""
         score = self.maps(x, target, batched=batched, data_range=data_range)[0]
         if not batched:
             return score[0]
@@ -249,6 +236,8 @@ class HAARPsi(nn.Module):
         return similarity, local_similarities, weights
 
     def logit(self, value):
+        """The inverse of the logistic function that HaarPSI's similarities go
+        through, scaled by 1 / ``a``."""
         return torch.log(value / (1 - value)) / self.a
 
     def _get_local_similarity_for_orientation(

@@ -144,23 +144,20 @@ class PnP(LIONReconstructor):
         x0=None,
         verbose: int = 1,
     ):
-        """
-        Half Quadratic Splitting, as in "Plug-and-Play Image Restoration with Deep
-        Denoiser Prior" (Zhang et al.). Alternates
+        """Half Quadratic Splitting (Zhang, Li, Zuo, Zhang, Van Gool and
+        Timofte, "Plug-and-Play Image Restoration with Deep Denoiser Prior",
+        IEEE TPAMI 44(10), 2022): alternates
 
-            x = argmin ||A x - y||^2 / 2 + mu ||x - z||^2 / 2   (conjugate gradient)
+            x = argmin ||A x - y||² / 2 + mu ||x - z||² / 2   (conjugate gradient)
             z = prior(x)
 
-        :param y: Measurement tensor.
-        :param lambda_: Regularisation parameter.
-        :param mu: Weight of the quadratic coupling term.
-        :param max_iter: Number of HQS iterations.
-        :param noise_level: If given, mu = lambda_ / noise_level**2; otherwise the
-            noise level passed to the prior is sqrt(lambda_ / mu).
-        :param x0: Starting image; ``initial_guess(y)`` (the operator's
-            default reconstruction, FDK for CT) if None.
-        :return: Reconstructed image tensor.
-        """
+        and returns z. ``lambda_``: the regularisation weight; ``mu``: the
+        weight of the coupling term; ``noise_level``: if given, mu = lambda_ /
+        noise_level², else the prior's noise level is sqrt(lambda_ / mu);
+        ``max_iter``: the iterations; ``cg_max_iter``, ``cg_tol``: the
+        conjugate gradient's; ``x0``: the start (``initial_guess(y)``, the
+        operator's default reconstruction, FDK for CT, if None); ``verbose``: 0
+        nothing, 1 a progress bar."""
         if noise_level is not None:
             mu = lambda_ / noise_level**2
         else:
@@ -185,14 +182,12 @@ class PnP(LIONReconstructor):
         x0=None,
         verbose: int = 1,
     ):
-        """
-        Forward-Backward Splitting: x = prior(x - step_size * A^T (A x - y)).
-
-        :param step_size: Gradient step; 1 / ||A||^2 if None (||A|| is computed
-            once per reconstructor, on the first call).
-        :param x0: Starting image; ``initial_guess(y)`` (the operator's
-            default reconstruction, FDK for CT) if None.
-        """
+        """Forward-backward splitting: x = prior(x - step_size Aᵀ(A x - y)),
+        ``max_iter`` times. ``step_size``: 1 / ||A||² if None (||A|| computed
+        once per reconstructor, on the first call); ``noise_level``: the
+        prior's; ``x0``: the start (``initial_guess(y)``, the operator's
+        default reconstruction, FDK for CT, if None); ``verbose``: 0 nothing, 1
+        a progress bar."""
         if step_size is None:
             if self._op_norm is None:
                 self._op_norm = power_method(self.op, device=y.device)
@@ -219,16 +214,17 @@ class PnP(LIONReconstructor):
         x0=None,
         verbose: int = 1,
     ) -> torch.Tensor:
-        """
-        ADMM with the prior as the proximal step:
+        """ADMM with the prior as the proximal step:
 
-            x = argmin ||A x - y||^2 / 2 + eta ||x - (v - u)||^2 / 2   (CG)
+            x = argmin ||A x - y||² / 2 + eta ||x - (v - u)||² / 2   (conjugate gradient)
             v = prior(x + u)
             u = u + x - v
 
-        :param x0: Starting image for x and v; ``initial_guess(measurement)``
-            (the operator's default reconstruction, FDK for CT) if None.
-        """
+        ``max_iter`` times, returning x. ``measurement``: y; ``eta``: the
+        coupling weight; ``cg_max_iter``, ``cg_tol``: the conjugate gradient's;
+        ``noise_level``: the prior's; ``x0``: the start of x and v
+        (``initial_guess(measurement)``, the operator's default reconstruction,
+        FDK for CT, if None); ``verbose``: 0 nothing, 1 a progress bar."""
         x = self.initial_guess(measurement) if x0 is None else x0
         v = x.clone()
         u = torch.zeros(self.op.domain_shape, device=measurement.device)

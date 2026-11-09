@@ -30,6 +30,7 @@ class ForwardReconstructor(LIONReconstructor):
 
     @staticmethod
     def default_parameters() -> LIONParameter:
+        """None to set: an empty ``LIONParameter``."""
         return LIONParameter()
 
     def reconstruct(
@@ -48,4 +49,7 @@ class ForwardReconstructor(LIONReconstructor):
         return self.reconstruct_sample(y, x0, verbose)
 
     def reconstruct_sample(self, y, x0=None, verbose=0):
+        """The reconstruction of one sample ``y`` (the operator's range shape):
+        the batch of one through ``reconstruct``. ``x0``, ``verbose``: unused.
+        """
         return model_forward(self.model, y.unsqueeze(0), self.op).squeeze(0)

@@ -17,25 +17,14 @@ def _range(target, data_range):
 
 
 class PSNR(nn.Module):
-    """PSNR: A wrapper for skimage.metrics.peak_signal_noise_ratio that operates on (potentially) batched pytorch tensors"""
+    """PSNR, from ``skimage.metrics.peak_signal_noise_ratio``, for
+    (potentially) batched pytorch tensors. A score: higher is better."""
 
     # a score, not a loss: solvers keep the model with the highest validation value
     higher_is_better = True
 
     def __init__(self):
         super().__init__()
-
-    """
-        Args:
-            x: torch.Tensor: input image
-            target: torch.Tensor: target image to compare x against
-            batched: whether x and target are batched or not
-            reduce: if batched=False has no effect. Otherwise specifies what operation should be done to aggregate PSNRs along the batch axis.
-                Defaults to None, in which case a tensor of shape (batch size) is returned
-            data_range: the range of the image values (e.g. 1 for images in [0, 1]).
-                Defaults to None: the range (max - min) of each target.
-
-    """
 
     def forward(
         self,
@@ -45,6 +34,10 @@ class PSNR(nn.Module):
         batched=True,
         data_range: float | None = None,
     ) -> torch.Tensor:
+        """The PSNR of ``x`` against ``target`` (the same shape): one per
+        sample if ``batched`` (the first axis), or their mean if ``reduce`` is
+        "mean". ``data_range``: the range of the image values (e.g. 1 for
+        images in [0, 1]); None: each target's (max - min)."""
         if x.shape != target.shape:
             raise ValueError(
                 f"x (shape {x.shape}) and target (shape {target.shape}) tensors must match to compare with PSNR"
