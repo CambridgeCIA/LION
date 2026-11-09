@@ -11,9 +11,10 @@
 which LION used before, without the torchvision dependency. Both work on any
 number of leading dimensions, on any device, and are differentiable.
 
-``random_crop`` and ``random_erasing`` are the random patches of
-``GaussianDenoiserSolver`` (kornia's ``RandomCrop`` and ``RandomErasing``
-before, with the same defaults), on batches (B, C, H, W). They draw from
+``random_crop``, ``random_flip_rotate`` and ``random_erasing`` are
+``GaussianDenoiserSolver``'s augmentations (crop and erasing: kornia's
+``RandomCrop`` and ``RandomErasing`` before, with the same defaults), on
+batches (B, C, H, W). They draw from
 torch's random number generator on the CPU, so ``LION.utils.rng.seeded``
 makes them the same every time.
 """
@@ -176,3 +177,22 @@ def random_erasing(
                 out[i, ..., top : top + h, left : left + w] = value
                 break
     return out
+
+
+def random_flip_rotate(x: torch.Tensor) -> torch.Tensor:
+    """Each image of the batch ``x`` (B, C, H, W) flipped and rotated by a
+    random one of the 8 symmetries of the square (rotations by multiples of
+    90 degrees, with or without a flip), as denoisers are trained (e.g.
+    KAIR's ``augment_img``). Images that aren't square get one of the 4
+    symmetries that keep their shape."""
+    square = x.shape[-1] == x.shape[-2]
+    modes = torch.randint(0, 8 if square else 4, (x.shape[0],)).tolist()
+    out = []
+    for image, mode in zip(x, modes):
+        if not square:  # 0, 180 degrees, each with or without a flip
+            mode = (mode % 2) * 2 + (mode // 2) * 4
+        image = torch.rot90(image, mode % 4, dims=(-2, -1))
+        if mode >= 4:
+            image = torch.flip(image, dims=(-1,))
+        out.append(image)
+    return torch.stack(out)

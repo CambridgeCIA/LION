@@ -208,7 +208,7 @@ def test_training_randomness_changes_within_the_run():
     solver = denoiser_solver(validation=False)
     solver.train(1)
     rng.seed_all(0)
-    a, b = solver._noise_level(), solver._noise_level()
+    a, b = solver._noise_levels(1, "cpu"), solver._noise_levels(1, "cpu")
     assert a != b
 
 

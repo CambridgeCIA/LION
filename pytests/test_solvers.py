@@ -387,7 +387,61 @@ def test_gaussian_denoiser_noise_level(noise_level, expected):
     solver = gaussian_denoiser_solver(noise_level=noise_level)
     assert solver._noise_range() == expected
     low, high = expected
-    assert low <= solver._noise_level() <= high
+    levels = solver._noise_levels(100, "cpu")
+    assert levels.shape == (100,) and low <= levels.min() <= levels.max() <= high
+    assert (levels.unique().numel() > 1) == (low < high)  # one per image
+
+
+def test_gaussian_denoiser_gives_each_image_its_noise_level():
+    solver = gaussian_denoiser_solver(noise_level=[0.01, 0.2])
+    solver.model = small_gsd_noise_channel()
+    given = []
+    convolution = solver.model._backbone_model.module
+    original = convolution.forward
+    convolution.forward = lambda x, noise_level: given.append(noise_level) or original(
+        x, noise_level
+    )
+    solver.mini_batch_step(None, torch.rand(4, 1, 8, 8))
+    (levels,) = given
+    assert levels.shape == (4,) and levels.unique().numel() == 4
+
+
+@pytest.mark.parametrize(
+    "augment, erasing", [(False, False), (True, False), (False, True)]
+)
+def test_gaussian_denoiser_augmentations_are_options(monkeypatch, augment, erasing):
+    import LION.optimizers.GaussianDenoiserSolver as module
+
+    called = []
+    for name in ("random_flip_rotate", "random_erasing"):
+        monkeypatch.setattr(module, name, lambda x, name=name: called.append(name) or x)
+    solver = gaussian_denoiser_solver(augment=augment, random_erasing=erasing)
+    solver.mini_batch_step(None, torch.rand(2, 1, 8, 8))
+    assert called == ["random_flip_rotate"] * augment + ["random_erasing"] * erasing
+
+
+def test_gaussian_denoiser_defaults_follow_the_literature():
+    from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
+
+    params = GaussianDenoiserSolver.default_parameters()
+    assert params.augment is True and params.random_erasing is False
+    assert params.validation_noise_levels is None
+
+
+def test_gaussian_denoiser_validates_at_fixed_noise_levels(tmp_path):
+    solver = gaussian_denoiser_solver(validation_noise_levels=[0.0, 0.1])
+    seen = []
+    original = solver._denoise
+    solver._denoise = lambda clean, level: seen.append(level.clone()) or original(
+        clean, level
+    )
+    solver.set_saving(tmp_path, "model")
+    solver.set_validation(loader(n=4, batch_size=2), 1, validation_fname="v.pt")
+    value = solver.validate()
+    assert np.isfinite(value)
+    # each batch at each level, every image the same level
+    assert [float(level[0]) for level in seen] == pytest.approx([0.0, 0.1] * 2)
+    assert all(level.unique().numel() == 1 for level in seen)
 
 
 def test_gaussian_denoiser_refuses_another_noise_level():

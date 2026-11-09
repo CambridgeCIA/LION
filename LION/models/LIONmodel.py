@@ -68,6 +68,24 @@ class LIONModelParameter(LIONParameter):
         super().__init__(**kwargs)
 
 
+def noise_level_map(noise_level, x: torch.Tensor) -> torch.Tensor:
+    """The noise level as one channel the size of the images ``x`` (B, C,
+    ...): (B, 1, ...). ``noise_level``: one number, or one per image (B
+    values), as a model that takes the noise level is given it
+    (``model(x, noise_level=...)``; ``GaussianDenoiserSolver`` gives one per
+    image, a PnP reconstruction one number)."""
+    level = torch.as_tensor(noise_level, dtype=x.dtype, device=x.device)
+    if level.numel() not in (1, x.shape[0]):
+        raise ValueError(
+            f"noise_level must be one number or one per image ({x.shape[0]}), "
+            f"not {tuple(level.shape)}"
+        )
+    if (level < 0).any():
+        raise ValueError("noise_level must be non-negative")
+    shape = (-1,) + (1,) * (x.dim() - 1)
+    return level.reshape(shape).expand(x.shape[0], 1, *x.shape[2:])
+
+
 def as_model_parameter(params: LIONParameter) -> LIONModelParameter:
     """The LIONModelParameter for ``params``, with ``model_input_type`` as a
     ModelInputType.

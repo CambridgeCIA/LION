@@ -98,3 +98,28 @@ def test_random_patches_are_the_same_when_seeded():
     with seeded(0, "patches"):
         b = random_erasing(random_crop(x, (8, 8)))
     assert torch.equal(a, b)
+
+
+def test_random_flip_rotate_gives_each_image_one_of_its_symmetries():
+    from LION.utils.image_transforms import random_flip_rotate
+
+    torch.manual_seed(0)
+    image = torch.arange(16.0).reshape(1, 4, 4)
+    symmetries = [torch.rot90(image, k, dims=(-2, -1)) for k in range(4)]
+    symmetries += [torch.flip(s, dims=(-1,)) for s in symmetries]
+    out = random_flip_rotate(image.expand(64, 1, 4, 4))
+    found = {
+        next(i for i, s in enumerate(symmetries) if torch.equal(o, s)) for o in out
+    }
+    assert found == set(range(8))
+
+    rectangle = torch.arange(12.0).reshape(1, 1, 3, 4).expand(32, 1, 3, 4)
+    out = random_flip_rotate(rectangle)
+    assert out.shape == rectangle.shape
+    kept = {
+        "same": rectangle[0],
+        "180": torch.rot90(rectangle[0], 2, dims=(-2, -1)),
+        "flip": torch.flip(rectangle[0], dims=(-1,)),
+        "180+flip": torch.flip(torch.rot90(rectangle[0], 2, dims=(-2, -1)), dims=(-1,)),
+    }
+    assert {k for o in out for k, v in kept.items() if torch.equal(o, v)} == set(kept)
