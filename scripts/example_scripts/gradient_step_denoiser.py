@@ -95,16 +95,17 @@ diff = recon - target
 max_noise_std = diff.std().item()
 
 # create solver
+# solver_params = GaussianDenoiserSolver.default_parameters()
+# solver_params.noise_level = [0.0, max_noise_std * 0.5]  # a range: one drawn per batch
+# solver_params.patches = GaussianDenoiserSolver.patches(5, recon.shape[2] // 4)
 # solver = GaussianDenoiserSolver(
 #     model,
 #     optimiser,
 #     loss_fcn,
-#     geometry=experiment.geometry,
+#     operator_params=experiment.operator_params,
+#     solver_params=solver_params,
 #     verbose=True,
-#     save_folder=savefolder,
-#     noise_level=torch.tensor([0.000, max_noise_std*0.5]),  # Set noise level for denoising
 # )
-# solver.set_patch_strategy(n_patches=5, patch_size=recon.shape[2]//4)
 solver = SupervisedSolver(
     model,
     optimiser,

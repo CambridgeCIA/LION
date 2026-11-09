@@ -362,21 +362,50 @@ def test_normalising_a_constant_image_gives_no_nan(normalisation_type):
     torch.testing.assert_close(model.unnormalise(normalised), x)
 
 
-@pytest.mark.parametrize("noise_level", [0.05, [0.05], [0.01, 0.1]])
-def test_gaussian_denoiser_noise_level(noise_level):
+def gaussian_denoiser_solver(**params):
     from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
 
     model = small_dncnn()
-    solver = GaussianDenoiserSolver(
+    solver_params = GaussianDenoiserSolver.default_parameters()
+    for name, value in params.items():
+        setattr(solver_params, name, value)
+    return GaussianDenoiserSolver(
         model,
         torch.optim.SGD(model.parameters(), lr=0.1),
         torch.nn.MSELoss(),
         operator_params=Geometry.default_parameters(),
+        solver_params=solver_params,
         device=torch.device("cpu"),
-        noise_level=noise_level,
     )
-    assert solver.noise_level.shape == (2,)
-    assert solver.noise_level[0] == np.atleast_1d(noise_level)[0]
+
+
+@pytest.mark.parametrize(
+    "noise_level, expected",
+    [(0.05, (0.05, 0.05)), ([0.05], (0.05, 0.05)), ([0.01, 0.1], (0.01, 0.1))],
+)
+def test_gaussian_denoiser_noise_level(noise_level, expected):
+    solver = gaussian_denoiser_solver(noise_level=noise_level)
+    assert solver._noise_range() == expected
+    low, high = expected
+    assert low <= solver._noise_level() <= high
+
+
+def test_gaussian_denoiser_refuses_another_noise_level():
+    with pytest.raises(ValueError, match="noise_level"):
+        gaussian_denoiser_solver(noise_level=[0.01, 0.05, 0.1])
+
+
+def test_gaussian_denoiser_trains_on_patches():
+    from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
+
+    solver = gaussian_denoiser_solver(patches=GaussianDenoiserSolver.patches(3, 4))
+    seen = []
+    solver.loss_fn = (
+        lambda output, target: seen.append(target.shape)
+        or ((output - target) ** 2).mean()
+    )
+    solver.mini_batch_step(None, torch.rand(2, 1, 8, 8))
+    assert seen == [torch.Size([6, 1, 4, 4])]  # 3 patches of each of 2 images
 
 
 def test_gaussian_denoiser_gives_gsd_the_noise_level_channel():

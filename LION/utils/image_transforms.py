@@ -4,12 +4,18 @@
 #
 # Author  : Ander Biguri
 # =============================================================================
-"""Gaussian blur and rotation of images in plain torch.
+"""Image transforms in plain torch.
 
-They give the same results as ``torchvision.transforms.functional``'s
-``gaussian_blur`` and ``rotate`` (checked in pytests/test_utils.py), which LION
-used before, without the torchvision dependency. Both work on any number of
-leading dimensions, on any device, and are differentiable.
+``gaussian_blur`` and ``rotate`` give the same results as
+``torchvision.transforms.functional``'s (checked in pytests/test_utils.py),
+which LION used before, without the torchvision dependency. Both work on any
+number of leading dimensions, on any device, and are differentiable.
+
+``random_crop`` and ``random_erasing`` are the random patches of
+``GaussianDenoiserSolver`` (kornia's ``RandomCrop`` and ``RandomErasing``
+before, with the same defaults), on batches (B, C, H, W). They draw from
+torch's random number generator on the CPU, so ``LION.utils.rng.seeded``
+makes them the same every time.
 """
 
 from __future__ import annotations
@@ -125,3 +131,48 @@ def rotate(
         align_corners=False,
     )
     return out.to(x.dtype).reshape(shape)
+
+
+def random_crop(x: torch.Tensor, size: Sequence[int]) -> torch.Tensor:
+    """A ``size`` (h, w) crop of each image of the batch ``x`` (B, C, H, W),
+    at a random place in each image."""
+    h, w = size
+    height, width = x.shape[-2:]
+    if h > height or w > width:
+        raise ValueError(f"a {h}x{w} crop doesn't fit in {height}x{width} images")
+    tops = torch.randint(0, height - h + 1, (x.shape[0],)).tolist()
+    lefts = torch.randint(0, width - w + 1, (x.shape[0],)).tolist()
+    return torch.stack(
+        [x[i, ..., t : t + h, l : l + w] for i, (t, l) in enumerate(zip(tops, lefts))]
+    )
+
+
+def random_erasing(
+    x: torch.Tensor,
+    p: float = 0.5,
+    scale: Sequence[float] = (0.02, 0.33),
+    ratio: Sequence[float] = (0.3, 3.3),
+    value: float = 0.0,
+) -> torch.Tensor:
+    """Each image of the batch ``x`` (B, C, H, W), with probability ``p``, with
+    a random rectangle set to ``value``: its area a fraction of the image's
+    drawn uniformly from ``scale``, its aspect ratio (height / width) drawn
+    log-uniformly from ``ratio`` (up to 10 draws for one that fits, as in
+    torchvision's ``RandomErasing``). Returns a new tensor."""
+    out = x.clone()
+    height, width = x.shape[-2:]
+    log_ratio = torch.log(torch.tensor(ratio, dtype=torch.float64))
+    for i in range(x.shape[0]):
+        if torch.rand(1).item() >= p:
+            continue
+        for _ in range(10):
+            area = height * width * torch.empty(1).uniform_(*scale).item()
+            aspect = math.exp(torch.empty(1).uniform_(*log_ratio.tolist()).item())
+            h = int(round(math.sqrt(area * aspect)))
+            w = int(round(math.sqrt(area / aspect)))
+            if 0 < h < height and 0 < w < width:
+                top = torch.randint(0, height - h + 1, (1,)).item()
+                left = torch.randint(0, width - w + 1, (1,)).item()
+                out[i, ..., top : top + h, left : left + w] = value
+                break
+    return out
