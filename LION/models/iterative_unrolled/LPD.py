@@ -140,24 +140,9 @@ class LPD(LIONmodel):
 
         # Create layers per iteration
         for i in range(self.model_parameters.n_iters):
-            self.add_module(
-                f"{i}_primal",
-                RegProximal(
-                    layers=len(self.model_parameters.reg_channels) - 1,
-                    channels=self.model_parameters.reg_channels,
-                    conv_bias=self.model_parameters.conv_bias,
-                    instance_norm=self.model_parameters.instance_norm,
-                ),
-            )
-            self.add_module(
-                f"{i}_dual",
-                dataProximal(
-                    layers=len(self.model_parameters.data_channels) - 1,
-                    channels=self.model_parameters.data_channels,
-                    conv_bias=self.model_parameters.conv_bias,
-                    instance_norm=self.model_parameters.instance_norm,
-                ),
-            )
+            primal, dual = self._iteration_blocks()
+            self.add_module(f"{i}_primal", primal)
+            self.add_module(f"{i}_dual", dual)
 
         _check_channels(self.model_parameters)
 
@@ -181,6 +166,24 @@ class LPD(LIONmodel):
             self.register_buffer(
                 "lambda_dual", torch.ones(n_iters) * step_size, persistent=False
             )
+
+    def _iteration_blocks(self):
+        """The primal and dual blocks of one iteration: CNNs for LPD (cLPD's
+        are continuous)."""
+        params = self.model_parameters
+        primal = RegProximal(
+            layers=len(params.reg_channels) - 1,
+            channels=params.reg_channels,
+            conv_bias=params.conv_bias,
+            instance_norm=params.instance_norm,
+        )
+        dual = dataProximal(
+            layers=len(params.data_channels) - 1,
+            channels=params.data_channels,
+            conv_bias=params.conv_bias,
+            instance_norm=params.instance_norm,
+        )
+        return primal, dual
 
     @staticmethod
     def default_parameters():
