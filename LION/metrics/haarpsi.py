@@ -9,8 +9,6 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
-from LION.exceptions.exceptions import ShapeMismatchException
-
 
 class HAARPsi(nn.Module):
     """HaarPSI: the Haar wavelet-based perceptual similarity index, for
@@ -87,7 +85,7 @@ class HAARPsi(nn.Module):
         colour images (always batched).
         """
         if x.shape != target.shape:
-            raise ShapeMismatchException(
+            raise ValueError(
                 f"x (shape {x.shape}) and target (shape {target.shape}) tensors must match to compare with HAARPsi"
             )
         if not batched:

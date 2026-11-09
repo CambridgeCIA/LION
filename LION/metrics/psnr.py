@@ -10,8 +10,6 @@ import torch
 import torch.nn as nn
 from skimage.metrics import peak_signal_noise_ratio as skim_psnr
 
-from LION.exceptions.exceptions import ShapeMismatchException
-
 
 def _range(target, data_range):
     """data_range if given, else the range of the target."""
@@ -48,7 +46,7 @@ class PSNR(nn.Module):
         data_range: float | None = None,
     ) -> torch.Tensor:
         if x.shape != target.shape:
-            raise ShapeMismatchException(
+            raise ValueError(
                 f"x (shape {x.shape}) and target (shape {target.shape}) tensors must match to compare with PSNR"
             )
         # Squeeze per sample, not the whole array: squeezing a batch of size 1
