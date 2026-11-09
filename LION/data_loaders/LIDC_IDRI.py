@@ -55,6 +55,7 @@ def npy_problem(path: pathlib.Path):
 
 
 def format_index(index: int) -> str:
+    """A patient number as LIDC-IDRI writes it, 4 digits: 7 -> "0007"."""
     str_index = f"{index:04d}"
     if len(str_index) != 4:
         raise ValueError(f"index must have at most 4 digits, not {index}")
@@ -62,6 +63,8 @@ def format_index(index: int) -> str:
 
 
 def load_json(file_path: pathlib.Path):
+    """The contents of the JSON file ``file_path`` (FileNotFoundError if there
+    is none)."""
     if not file_path.is_file():
         raise FileNotFoundError(f"No file found at {file_path}")
     with open(file_path) as file:
@@ -83,6 +86,9 @@ def create_consensus_annotation(
     nodule_annotations_list: List,
     clevel: float,
 ) -> torch.int16:
+    """The consensus mask of one nodule on one slice: the pixels that at least
+    a fraction ``clevel`` of its annotations (``nodule_annotations_list``)
+    mark."""
     masks = []
     if isinstance(path_to_patient_folder, str):
         path_to_patient_folder = pathlib.Path(path_to_patient_folder)
@@ -144,14 +150,46 @@ def select_slices(
 
 
 class LIDC_IDRI(LIONDataset):
+    """The LIDC-IDRI dataset: lung CT scans of 1010 patients with nodules
+    annotated by up to four radiologists, pre-processed into 512x512 slices
+    (``LIDC_IDRI/pre_process_lidc_idri.py``). Patients are split into training,
+    validation and test (``mode``); each patient's slices stay in one split.
+
+    What a sample is depends on ``parameters.task``:
+
+    - "reconstruction": (sinogram, image): the image in mass density, and its
+      sinogram with the operator of ``operator_params`` (the geometry), with
+      ``sinogram_transform`` (e.g. an experiment's noise) applied;
+    - "segmentation", "joint", "end_to_end": (image, mask): the mask is
+      (background, nodule) channels, from the annotations (``annotation``);
+    - "diagnostic": the patient's diagnosis.
+
+    ``parameters`` (``default_parameters()``):
+
+    - ``training_proportion``, ``validation_proportion``: of the patients (0.8,
+      0.1; ``testing_proportion`` is the rest, recorded only);
+    - ``max_num_slices_per_patient``: slices taken per patient (5; -1: all);
+    - ``pcg_slices_nodule``: the fraction of them with a nodule (0.5; more of
+      the other kind when a patient has too few);
+    - ``legacy_slice_selection``, ``legacy_patient_list``: reproduce the
+      selection of LION before October 2026 (False);
+    - ``task``, ``folder`` (the pre-processed dataset), ``operator_params``;
+    - ``annotation``: "consensus" (the pixels at least ``clevel`` of the
+      annotations mark; 0.5) or "random" (one annotation per nodule, chosen
+      with ``annotation_seed``; 0).
+
+    Samples are on LION's device (``default_device()``). Cite it with
+    ``cite()``."""
+
     def __init__(
         self,
         mode,
         operator_params: Geometry = None,
         parameters: LIONParameter = None,
     ):
-        """
-        Initializes LIDC-IDRI dataset.
+        """The ``mode`` split ("train", "validation" or "test") with
+        ``parameters`` (``default_parameters(operator_params)`` if None);
+        ``operator_params``: the CT geometry, for sinograms.
 
         Pixel spacing: the pre-processing resamples every slice to
         ``PIXEL_SPACING_MM`` (500 mm over 512x512 pixels, the largest field of
@@ -159,46 +197,21 @@ class LIDC_IDRI(LIONDataset):
         by air), so all images have the same physical size.
         ``LIDC_IDRI.default_geometry()`` is the matching CT geometry. Datasets
         processed before October 2026 have each scan's own spacing (0.46 to
-        0.98 mm) and no ``pre_processing.json``: the loader warns, and
-        ``python LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py
-        --resample-only`` resamples them in place (no DICOM files needed).
+        0.98 mm) and no ``pre_processing.json``: the loader warns, and ``python
+        LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py --resample-only``
+        resamples them in place (no DICOM files needed).
 
-        Damaged data: the LIDC-IDRI download and pre-processing can leave
-        incomplete files. The loader leaves out, with a warning, selected slices
-        whose files are incomplete or unreadable, and the patients
+        Damaged data: the download and pre-processing can leave incomplete
+        files. The loader leaves out, with a warning, selected slices whose
+        files are incomplete or unreadable, and the patients
         ``pre_processing.json`` lists as not resampled.
 
         Images: for reconstruction, the CT images (Hounsfield units) are turned
-        into mass density in g/cm^3 (``ct_utils.from_HU_to_density``: air 0.0012,
-        water 1.0137, 500 HU 1.52). Before October 2026 the same values came from
-        ``from_HU_to_mu``, which called them attenuation. With LION's geometries
-        in mm, the sinograms are then density line integrals in g/cm^3 * mm,
-        which is what the physical noise model of
-        ``ct_utils.sinogram_add_noise`` expects: the experiments
-        (``ct_experiments``) add the noise.
-
-        Parameters:
-            - task (str): Defines pipeline on how to use data. Distinguish between "joint", "end_to_end", "segmentation", "reconstruction" and "diagnostic".
-                          Dataset will return, for each task:
-                          "segmentation"    -> (image, segmentation_label)
-                          "reconstruction"  -> (sinogram, image_label)
-                          "diagnostic"      -> (segmented_nodule, diagnostic_label)
-                          "joint"           -> ?????
-                          "end_to_end"      -> ?????
-            - training_proportion (float): Defines training % of total data.
-            - mode (str): Defines "train", "validation" or "test" mode.
-            - Task (str): Defines what task is the Dataset being used for. "segmentation" (default) returns (gt_image,segmentation) pairs while "reconstruction" returns (sinogram, gt_image) pairs
-            - annotation (str): Defines what annotation mode to use. Distinguish between "random" and "consensus". Default "consensus"
-            - max_num_slices_per_patient (int): Defines the maximum number of slices to take per patient. -1 takes all slices we have of each patient and pcg_slices_nodule gets ignored. Default is 5.
-            - pcg_slices_nodule (float): Defines percentage of slices with nodule in dataset. 0 meaning "no nodules at all" and 1 meaning "just take slices that contain annotated nodules". Only used if max_num_slices_per_patient != -1. If a patient has too few slices of one kind, more of the other kind are taken. Default is 0.5.
-            - legacy_slice_selection (bool): True reproduces the selection of LION before October 2026, which left out patients without nodule slices. Default False.
-            - legacy_patient_list (bool): True reproduces the patient list of LION before October 2026 (patients 1 to N for N folders), which left out patients 1011 and 1012 and was moved by leftover folders. Default False: the LIDC-IDRI-NNNN folders. See ``patient_list``.
-            - clevel (float): Defines consensus level if annotation=consensus. Value between 0-1. Default is 0.5.
-            - annotation_seed (int or None): with annotation="random", each nodule of each slice gets one annotation, the same every time it is read (see LION.utils.rng.seeded). None: a new one each time. Default 0.
-        The data are on LION's selected device, ``default_device()``.
-            - geometry: Geometry() type, if sinograms are requied (e.g. fo "reconstruction")
-
-        """
+        into mass density in g/cm^3 (``ct_utils.from_HU_to_density``: air
+        0.0012, water 1.0137, 500 HU 1.52). With LION's geometries in mm, the
+        sinograms are density line integrals in g/cm^3 * mm, which is what the
+        noise model of ``ct_utils.sinogram_add_noise`` expects: the experiments
+        (``ct_experiments``) add the noise."""
 
         # Input parsing
         if mode not in ["train", "validation", "test"]:
@@ -503,15 +516,11 @@ class LIDC_IDRI(LIONDataset):
 
     @staticmethod
     def default_geometry(angles=None):
-        """The fan-beam geometry for the pre-processed slices.
-
-        512x512 pixels of ``PIXEL_SPACING_MM`` (500 mm). Source to centre 575
-        mm, source to detector 1050 mm, as LION's default geometry, with a
-        1024 x 1 mm detector: it covers a 504 mm circle, like the ~50 degree fan
-        of a clinical scanner (LION's 900 mm detector covers 453 mm).
-
-        Args:
-            angles: projection angles in radians. Default: 360 over 360 degrees.
+        """The fan-beam geometry of the pre-processed slices: 512x512 pixels of
+        ``PIXEL_SPACING_MM`` (500 mm), source to centre 575 mm, source to
+        detector 1050 mm, as LION's default geometry, with a 1024 x 1 mm
+        detector: it covers a 504 mm circle, like the ~50 degree fan of a
+        clinical scanner. ``angles``: in radians (None: 360 over 360 degrees).
         """
         if angles is None:
             angles = np.linspace(0, 2 * np.pi, 360, endpoint=False)
@@ -528,6 +537,8 @@ class LIDC_IDRI(LIONDataset):
 
     @staticmethod
     def default_parameters(operator_params=None, task="reconstruction"):
+        """The parameters (see the class), for ``task`` ("reconstruction" needs
+        ``operator_params``, the geometry)."""
         param = LIONParameter()
         param.name = "LIDC-IDRI Data Loader"
         param.training_proportion = 0.8
@@ -566,18 +577,11 @@ class LIDC_IDRI(LIONDataset):
         num_slices_per_patient: int,
         pcg_slices_nodule: float,
     ):
-        """
-        Returns a dictionary that contains patient_id's as keys and list of slices to load as values for each patient.
-
-        Parameters:
-            - patient_list (List): List that contains patient_id of all patients.
-            - non_nodule_slices_dict (Dict): Dict that contains all slices without nodule of each patient_id.
-            - nodule_slices_dict (Dict): Dict that contains all slices with nodule of each patient_id.
-            - num_slices_per_patient (int): Defines maximum number of slices we want per patient. If num_slices_per_patient=-1 take all slices we have of each patient.
-            - pcg_slices_nodule (float): Defines amount of slices that should contain a nodule. Value between 0-1.
-        Returns:
-            - patient_id_to_slices_to_load_dict which contains patient_id as key and list of slices to load as values
-        """
+        """The slices to load of each patient of ``patient_list``: ``{patient:
+        [slice, ...]}``, ``num_slices_per_patient`` of them (-1: all), a
+        fraction ``pcg_slices_nodule`` with a nodule (``select_slices``), from
+        each patient's slices without (``non_nodule_slices_dict``) and with
+        (``nodule_slices_dict``) a nodule."""
 
         patient_id_to_slices_to_load_dict = (
             {}
@@ -596,14 +600,8 @@ class LIDC_IDRI(LIONDataset):
         return patient_id_to_slices_to_load_dict
 
     def get_patient_id_to_first_index_dict(self, patient_with_slices_to_load: Dict):
-        """
-        Returns a dictionary that contains patient_id's as keys and start index of each patient in self.slice_index_to_patient_id_list as value.
-
-        Parameters:
-            - patient_with_slices_to_load (Dict): Dict that defines which slices to load per patient.
-        Returns:
-            - patient_id_to_first_index_dict (Dict): Defines start index of each patient in self.slice_index_to_patient_id_list. Needed for mapping of global index to slice index.
-        """
+        """The index of each patient's first sample: ``{patient: index}``, from
+        the slices to load (``patient_with_slices_to_load``)."""
         patient_id_to_first_index_dict = {}
         global_index = 0
         for patient_id in patient_with_slices_to_load:
@@ -619,14 +617,8 @@ class LIDC_IDRI(LIONDataset):
         return patient_id_to_first_index_dict
 
     def get_slice_index_to_patient_id_list(self, patient_with_slices_to_load: Dict):
-        """
-        Returns a list that contains "number of slices" times each patient id.
-
-        Parameters:
-            - patient_with_slices_to_load (Dict): Dict that defines which slices to load per patient.
-        Returns:
-            - slice_index_to_patient_id_list (List): Contains number of slices times each patient id. Needed for mapping of global index to slice index.
-        """
+        """The patient of each sample, in order: each patient once per slice it
+        has to load."""
         slice_index_to_patient_id_list = []
         for patient_id in patient_with_slices_to_load:
             path_to_folder = self.path_to_processed_dataset.joinpath(patient_id)
@@ -643,6 +635,8 @@ class LIDC_IDRI(LIONDataset):
         return slice_index_to_patient_id_list
 
     def get_reconstruction_tensor(self, file_path: pathlib.Path) -> torch.Tensor:
+        """The slice saved at ``file_path``, (1, 512, 512), on the dataset's
+        device."""
         tensor = torch.from_numpy(np.load(file_path)).unsqueeze(0).to(self.device)
         return tensor
 
@@ -659,10 +653,13 @@ class LIDC_IDRI(LIONDataset):
         self.sinogram_transform_seed = seed
 
     def set_image_transform(self, image_transform):
+        """A function applied to each image, after loading it."""
         self.image_transform = image_transform
 
     def compute_clean_sinogram(self, image=None) -> torch.Tensor:
 
+        """The sinogram of ``image`` with the dataset's operator (from
+        ``operator_params``), without noise."""
         if self.operator is None:
             raise AttributeError("CT operator not know. Have you given a ct geometry?")
         sinogram = self.operator(image)
@@ -670,6 +667,9 @@ class LIDC_IDRI(LIONDataset):
 
     def get_mask_tensor(self, patient_id: str, slice_index: int) -> torch.Tensor:
         ## First, assess if the slice has a nodule
+        """The nodule mask of one slice (``slice_index`` of ``patient_id``):
+        (2, 512, 512), background and nodule channels, from the annotations as
+        ``annotation`` says; empty if the slice has no nodule."""
         try:
             mask = torch.zeros((512, 512), dtype=torch.bool)
             all_nodules_dict: Dict = self.patients_masks_dictionary[patient_id][
@@ -700,7 +700,6 @@ class LIDC_IDRI(LIONDataset):
                         path_to_mask = self.path_to_processed_dataset.joinpath(
                             f"{patient_id}/mask_{slice_index}_nodule_{nodule_index}_annotation_{annotation}.npy"
                         )
-                        # print(path_to_mask)
                         nodule_mask = torch.from_numpy(np.load(path_to_mask))
 
                 elif self.annotation == "consensus":
@@ -764,6 +763,8 @@ class LIDC_IDRI(LIONDataset):
 
     def get_specific_slice(self, patient_index, slice_index):
         ## Assumes slice and mask exist
+        """The image and mask of one slice (``slice_index`` of
+        ``patient_index``), whether or not it is in the dataset's selection."""
         file_path = self.path_to_processed_dataset.joinpath(
             f"{patient_index}/slice_{slice_index}.npy"
         )
@@ -780,7 +781,6 @@ class LIDC_IDRI(LIONDataset):
         first_slice_index = self.patient_id_to_first_index_dict[patient_id]
         dict_slice_index = index - first_slice_index
         slice_index_to_load = self.slices_to_load[patient_id][dict_slice_index]
-        # print(f'Index, {index}, Patient Id : {patient_id}, first_slice_index : {first_slice_index}, slice_index : {dict_slice_index} ', slice_to_load : {slice_index_to_load})
         file_path = self.path_to_processed_dataset.joinpath(
             f"{patient_id}/slice_{slice_index_to_load}.npy"
         )

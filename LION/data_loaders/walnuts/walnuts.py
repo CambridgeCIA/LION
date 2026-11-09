@@ -18,6 +18,7 @@ from LION.utils import paths
 
 
 def parse_index(index: int) -> str:
+    """A projection number as the walnut dataset writes it, 6 digits."""
     index_str = str(index)
 
     while len(index_str) != 6:
@@ -26,26 +27,39 @@ def parse_index(index: int) -> str:
 
 
 def load_tif(tif_path: pathlib.Path) -> np.ndarray:
+    """The image in the TIFF file ``tif_path``."""
     return imageio.v2.imread(tif_path)
 
 
 def standard_transform(np_array: np.ndarray) -> np.ndarray:
+    """A projection image flipped and transposed, as the walnut dataset's
+    scripts read them."""
     return np.transpose(np.flipud(np_array))
 
 
 def load_and_transform(tif_path: pathlib.Path) -> np.ndarray:
+    """A projection read from ``tif_path`` (``load_tif``,
+    ``standard_transform``)."""
     return standard_transform(load_tif(tif_path))
 
 
 def negative_log(linearised_measurement: np.ndarray) -> np.ndarray:
+    """-log of a linearised (flat- and dark-field corrected) measurement."""
     return np.negative(np.log(linearised_measurement))
 
 
 def to_tensor(np_array: np.ndarray) -> torch.Tensor:
+    """A numpy array as a torch tensor with a channel axis."""
     return torch.from_numpy(np_array).unsqueeze(0)
 
 
 class WalnutDataset(Dataset):
+    """The walnut dataset (Der Sarkissian et al., 2019): cone-beam scans of 42
+    walnuts with three source positions. A plain torch Dataset of one walnut's
+    projections (``walnut_index``, ``tube_index``), with flat- and dark-field
+    correction; 2D (the middle slice) only. Not yet a LIONDataset (no
+    parameters, geometry or records): to be reworked before v1.0."""
+
     def __init__(
         self,
         dimension: int,
@@ -99,6 +113,8 @@ class WalnutDataset(Dataset):
             raise NotImplementedError(f"Not implemented for dimension != 2")
 
     def get_distances(self):
+        """The mean source-to-origin and origin-to-detector distances, from the
+        corrected scan geometry."""
         if self.dimension != 2:
             raise NotImplementedError("get_distances is only implemented in 2D")
         source_origin_list = []
@@ -114,14 +130,19 @@ class WalnutDataset(Dataset):
         self.origin_det = mean(origin_det_list)
 
     def linearise(self, measurement: np.ndarray) -> np.ndarray:
+        """A measurement corrected with the flat and dark fields."""
         return (measurement - self.dark_field) / (self.flat_field - self.dark_field)
 
     def measurement_transform(self, measurement_path: pathlib.Path):
+        """The projection at ``measurement_path`` corrected and -log
+        transformed, as a tensor."""
         return to_tensor(
             negative_log(self.linearise(load_and_transform(measurement_path)))
         )
 
     def pre_process_middle_slices(self):
+        """Saves the middle detector row of every projection
+        (``middle_slice_N.pt``), for 2D sinograms."""
         if self.dimension != 2:
             raise NotImplementedError(
                 "pre_process_middle_slices is only implemented in 2D"
@@ -135,6 +156,8 @@ class WalnutDataset(Dataset):
                 torch.save(middle_slice, save_path)
 
     def make_sinogram(self) -> torch.Tensor:
+        """The sinogram of the middle slice (2D), or of the whole detector
+        (3D), from the projections."""
         if self.dimension == 2:
             sinogram = torch.zeros((1, self.__len__(), 768))
             for i in tqdm(range(self.__len__())):

@@ -52,6 +52,8 @@ PRE_PROCESSING_FILE = "pre_processing.json"
 
 
 def configure_pylidc(path_to_raw_dataset: pathlib.Path) -> None:
+    """Points pylidc to the DICOM files of the raw dataset (its
+    ``~/.pylidcrc``)."""
     config_path = pathlib.Path.home().joinpath(".pylidcrc")
     dicom_path = path_to_raw_dataset.joinpath("LIDC-IDRI").resolve()
     with open(config_path, "w") as config_file:
@@ -60,6 +62,7 @@ def configure_pylidc(path_to_raw_dataset: pathlib.Path) -> None:
 
 
 def format_index(index: int) -> str:
+    """A patient number as LIDC-IDRI writes it, 4 digits."""
     str_index = str(index)
     while len(str_index) < 4:
         str_index = "0" + str_index
@@ -70,6 +73,8 @@ def format_index(index: int) -> str:
 def get_nodule_boundaries(
     annotation: pl.Annotation,
 ) -> Tuple[int, int, int, int, int, int]:
+    """The bounding box of an annotation: (start, stop) along each of its three
+    axes."""
     return (
         annotation.bbox()[0].start,
         annotation.bbox()[0].stop,
@@ -81,6 +86,9 @@ def get_nodule_boundaries(
 
 
 def process_patient_mask(scan, path_to_processed_volume_folder: pathlib.Path) -> Dict:
+    """Saves the mask of each annotation of each nodule of a scan, slice by
+    slice, and returns which slices have which nodules: ``{slice: {nodule:
+    [annotation, ...]}}``."""
     patient_nodules_dict = {}
 
     ## Fetching n_slices for the volume
@@ -126,6 +134,7 @@ def process_patient_mask(scan, path_to_processed_volume_folder: pathlib.Path) ->
 
 
 def process_volume(scan: pl.Scan, path_to_processed_volume_folder: pathlib.Path):
+    """Saves each slice of a scan (in HU) as ``slice_K.npy`` in its folder."""
     volume = scan.to_volume()
     n_slices = volume.shape[-1]
     for slice_index in range(n_slices):
@@ -144,6 +153,8 @@ def process_volume(scan: pl.Scan, path_to_processed_volume_folder: pathlib.Path)
 
 
 def write_patient_spacing(path_to_processed_volume_folder, original_spacing):
+    """Records a patient's original and new pixel spacing in its folder
+    (``PATIENT_SPACING_FILE``): it marks the patient as resampled."""
     write_json(
         path_to_processed_volume_folder.joinpath(PATIENT_SPACING_FILE),
         {
@@ -186,6 +197,8 @@ def resample_processed_patient(
 
 
 def is_resampled(path_to_processed_volume_folder: pathlib.Path) -> bool:
+    """Whether a patient's folder has been resampled (it has
+    ``PATIENT_SPACING_FILE``)."""
     return path_to_processed_volume_folder.joinpath(PATIENT_SPACING_FILE).is_file()
 
 
@@ -244,6 +257,7 @@ def write_pre_processing_file(path_to_processed_dataset: pathlib.Path) -> None:
 
 
 def load_json(path: pathlib.Path, default):
+    """The contents of the JSON file ``path``, or ``default`` if there is none."""
     if path.is_file():
         with open(path, "r") as in_file:
             return json.load(in_file)
@@ -251,11 +265,13 @@ def load_json(path: pathlib.Path, default):
 
 
 def write_json(path: pathlib.Path, data) -> None:
+    """Writes ``data`` to the JSON file ``path``."""
     with open(path, "w") as out_file:
         json.dump(data, out_file, indent=4)
 
 
 def remove_error_for_patient(error_list: List, patient_id: str) -> List:
+    """``error_list`` without the errors of ``patient_id``."""
     return [error for error in error_list if error[0] != patient_id]
 
 
@@ -274,6 +290,8 @@ def compute_pixel_spacing(path_to_processed_dataset: pathlib.Path):
 
 
 def compute_slice_thickness(path_to_processed_dataset: pathlib.Path):
+    """Writes each scan's slice thickness (pylidc) to
+    ``patient_id_to_slice_thickness.json``."""
     file_name = "patient_id_to_slice_thickness.json"
     patient_dict_to_slice_thickness = {}
 
@@ -294,6 +312,9 @@ def compute_slice_thickness(path_to_processed_dataset: pathlib.Path):
 
 
 def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
+    """Processes every patient: slices, masks, resampling; records which slices
+    have nodules (``patients_masks.json``) and the errors
+    (``error_list.json``). Can be run again after an interruption."""
     path_to_processed_dataset.mkdir(exist_ok=True, parents=True)
 
     path_to_patients_masks_dict = path_to_processed_dataset.joinpath(
@@ -373,6 +394,9 @@ def pre_process_dataset(path_to_processed_dataset: pathlib.Path):
 def compute_diagnosis_file(
     diagnosis_file_path: pathlib.Path, diagnosis_dict_save_path: pathlib.Path
 ):
+    """Writes the patients' diagnoses from the LIDC-IDRI diagnosis spreadsheet
+    (``diagnosis_file_path``) as a JSON dictionary
+    (``diagnosis_dict_save_path``), if not done."""
     if not diagnosis_file_path.is_file():
         raise FileNotFoundError(f"No file found at {diagnosis_file_path}")
 
@@ -409,6 +433,9 @@ def compute_diagnosis_file(
 def compute_patient_with_nodule_subtetly(
     path_to_processed_dataset: pathlib.Path, nodule_subtelty: int, operator: str
 ) -> None:
+    """Writes the patients with a nodule whose subtlety (1 to 5, pylidc)
+    compares with ``nodule_subtelty`` as ``operator`` says ("inferior",
+    "superior", "inferior_or_equal", "superior_or_equal")."""
     accepter_operator_argument = [
         "inferior",
         "superior",
