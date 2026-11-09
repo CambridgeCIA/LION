@@ -1,83 +1,31 @@
-# EXAMPLE SCRIPTS
+# Example scripts
 
-This folder contains a series of full example scripts. Tutorial-like demos will instead be in /demos folder.
-These scripts are full examples of using various algorithms. They are full programs, not modules:
-run them from the repository root, e.g. `python scripts/example_scripts/LPD.py`.
+Short, complete programs, one feature of LION each. For a step-by-step
+introduction to the library, see the demos (`demos/`).
 
-All of them need a CUDA-capable machine, because LION's CT operators use tomosipo, which projects with
-ASTRA's CUDA algorithms. Most of them also need a dataset (LIDC-IDRI or 2DeteCT, see the data loaders),
-and all of them write their models and figures to a `savefolder` defined at the top of the file, which
-points at the machine where they were written: change it before running them.
+Run them from the repository root, in order (some use the models of earlier
+ones), e.g. `python scripts/example_scripts/01_supervised_training.py`. Each
+one has a `# %%` cell per step, so an editor that knows cells (VS Code,
+Spyder, Jupyter) runs them a step at a time.
 
-## Supervised training
+They need:
 
-### LPD.py
+- a GPU: LION's CT operators project with tomosipo and ASTRA's CUDA code;
+- the processed LIDC-IDRI data in `LION_DATA_PATH` (see
+  `LION/data_loaders/LIDC_IDRI/`);
+- `LION_RESULTS_PATH`: they write to `$LION_RESULTS_PATH/examples/`.
 
-This file showcases how to train the Learned Primal Dual algorithm using LION.
-You can however slightly modify this script (essentially just change the model) to use any supervised training model.
+By default they train a few epochs on a few hundred slices, to show they work.
+Change the settings at the top for real training (more epochs, all the data).
 
-### Learned_FBP.py
-
-Learned filtered back-projection: the same supervised training loop with the learned FBP networks
-(`DeepFBPNetwork`, `DeepFusionBPNetwork` and `FusionFBPNetwork`), which learn the filter of an FBP instead
-of an iterative solver.
-
-## Self-supervised training
-
-These methods train from the measurements alone, so they need no ground-truth images.
-
-### Noise2Inverse.py
-
-This implements the Noise2Inverse self-supervised solver. It uses the MSD-net as in its original paper,
-but any other model should also work.
-
-### SURE.py
-
-Another self-supervised method: it trains with Stein's Unbiased Risk Estimate (`LION.losses.SURE`) as the
-loss, which estimates the risk without clean data. It uses a UNet, but any other model should also work.
-
-### Sparse2Inverse.py
-
-Sparse2Inverse, which splits the measured angles into groups and reconstructs each group from the others.
-It uses a UNet, and its solver accepts any number of splits of 3 or more.
-
-### equivariant_imaging.py
-
-Another self-supervised method. It uses the concept of equivariance to train a model: the reconstruction
-must be the same if the image, or the measurements, are transformed in a way the physics commutes with.
-
-## Denoisers, for plug-and-play
-
-Denoisers trained on simulated Gaussian noise can be used as priors in iterative reconstruction, as in
-`LION.reconstructors.PnP`.
-
-### GaussianDenoiser.py
-
-This example shows how to train a denoising network with Gaussian noise.
-It will train a Gaussian denoiser on simulated Gaussian noise on the ground truth, rather than using the
-noisy data from the data loader.
-This exploits the idea that a simple Gaussian denoiser can be extrapolated to other applications, such as
-CT reconstruction.
-Ideally you want to use this denoiser as a prox operator or a regularizer in an iterative reconstruction
-algorithm. It uses a DRUNet, and shows the trained denoiser inside a PnP reconstruction at the end.
-
-### gradient_step_denoiser.py
-
-The same, with a gradient-step denoiser (GSD) instead of a DRUNet: the network parameterises the gradient
-of a regulariser, which makes the denoiser a proximal operator by construction. Also shown inside PnP at
-the end.
-
-## Plug-and-play reconstruction
-
-### PnP_ADMM.py
-
-Plug-and-play reconstruction with a pretrained denoising network: it takes a DRUNet pretrained on natural
-images (downloaded by deepinv, so no CT dataset is needed for the prior) and uses it as the prior of an
-ADMM reconstruction.
-
-### photocurrent_mapping.py
-
-Plug-and-play ADMM for Photocurrent Mapping (PCM) data, a different imaging modality that LION also
-supports. It simulates subsampled PCM measurements from a high-resolution current map of a CIGS solar
-cell, and compares a zero-filled pseudo-inverse, two compressed-sensing baselines (FISTA and SPGL1) and
-PnP-ADMM with a pretrained DRUNet. It needs the PCM data in `data_dir`, at the top of the file.
+| Script | What it shows |
+|---|---|
+| `01_supervised_training.py` | Supervised training of FBPConvNet: an experiment, a model, an optimizer and a learning-rate scheduler, validation (keeping the best model), checkpoints, saving. Any supervised model is one line away. |
+| `02_learned_primal_dual.py` | An unrolled method, LPD: a model that takes the measurements and trains through the CT operator; changing a model's parameters. |
+| `03_self_supervised_noise2inverse.py` | Self-supervised training with Noise2Inverse (an MSD-Net), without clean images; the other self-supervised solvers are used the same way. |
+| `04_pnp_denoiser.py` | Plug-and-Play: a DRUNet trained as a Gaussian denoiser, then the prior of a PnP-ADMM reconstruction, compared with FDK. |
+| `05_evaluate_and_compare.py` | Evaluating methods on an experiment's test data, and a comparison (tables, scores, figures) of the models of 01, 02 and 04 with SIRT, against FDK. |
+| `06_resume_and_fine_tune.py` | A stopped training resumed from its checkpoint; a trained model fine-tuned on another problem, its record naming its original. |
+| `07_publish_and_reproduce.py` | Publishing a trained model with its records, then making it again, and training it again with a change, from the package alone. |
+| `08_your_own_pieces.py` | Your own torch model (`TorchModel`), forward operator (a blur) and dataset, trained with LION's solver. |
+| `photocurrent_mapping.py` | Photocurrent mapping, a modality other than CT: compressed-sensing baselines (FISTA, SPGL1) and PnP-ADMM on subsampled measurements. Needs the PCM data in `data_dir`, at the top of the file. |

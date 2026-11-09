@@ -1,7 +1,7 @@
 # Whats in this folder?
 
 Script contains full scripts that reproduce code that can be useful for others. In particular
-- example_scriots: example full scripts showcasing full experiment, model, training and evaluating. 
+- `example_scripts/`: short, complete scripts, one feature of LION each (see its README).
 - paper_scripts: Contains scripts that reproduce papers, in LION format. 
 
 
