@@ -23,6 +23,9 @@ from LION.utils.citation import citation
 
 
 class ConvBlock(nn.Module):
+    """Convolutions through the ``channels`` listed, each with batch
+    normalisation and ``relu_type`` (the last one's activation optional)."""
+
     def __init__(self, channels, relu_type="ReLU", relu_last=True, kernel_size=3):
         super().__init__()
         # input parsing:
@@ -49,6 +52,7 @@ class ConvBlock(nn.Module):
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, x):
+        """The block's output for ``x``."""
         return self.block(x)
 
 
@@ -60,6 +64,7 @@ class Down(nn.Module):
         self.pool = nn.Sequential(nn.MaxPool2d(2))
 
     def forward(self, x):
+        """``x`` halved in size (max pooling)."""
         return self.pool(x)
 
 
@@ -89,10 +94,23 @@ class Up(nn.Module):
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, x):
+        """``x`` doubled in size (transposed convolution)."""
         return self.block(x)
 
 
 class FBPConvNet(LIONmodel):
+    """FBPConvNet (Jin et al., 2017): a U-Net that removes the artefacts of an
+    FBP reconstruction, learning the residual. This class reconstructs with FDK
+    itself, so it takes the measurements (CT only); ``FBPConvNetImage`` takes
+    the reconstruction.
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``down_1_channels`` to ``down_4_channels``, ``latent_channels``,
+      ``up_1_channels`` to ``up_4_channels``, ``last_block``: each block's
+      channels, a list (its input, then each convolution's output);
+    - ``activation``: "ReLU", "LeakyReLU" or "None"."""
+
     def __init__(
         self,
         operator_params: ct.Geometry,
@@ -191,6 +209,8 @@ class FBPConvNet(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """The paper's U-Net: 64 to 1024 channels over five scales (see the
+        class)."""
         params = LIONModelParameter()
         params.down_1_channels = [1, 64, 64, 64]
         params.down_2_channels = [64, 128, 128]
@@ -232,6 +252,8 @@ class FBPConvNet(LIONmodel):
         )
 
     def forward(self, x):
+        """The reconstructions of the sinograms ``x``: FDK plus the network's
+        residual."""
         B, C, W, H = x.shape
 
         image = fdk(x, self.op)

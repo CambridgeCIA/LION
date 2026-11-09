@@ -58,6 +58,10 @@ class GSD(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """``backbone_model`` (the denoiser N's class, DRUNet) and
+        ``backbone_params`` (its parameters: a small DRUNet of 32 channels and
+        2 blocks per scale, without the noise level). Ignored when GSD is given
+        a ``denoiser``."""
         backbone_params = LIONModelParameter()
         backbone_params.model_input_type = ModelInputType.IMAGE
         backbone_params.in_channels = 1
@@ -128,5 +132,7 @@ class GSD(LIONmodel):
         return self._backbone_model.takes_noise_level()
 
     def forward(self, x, noise_level: float = None):
+        """The denoised images: ``x - grad g(x)`` (``grad``), given
+        ``noise_level`` if the denoiser takes one."""
         _, grad = self.grad(x, noise_level)
         return x - grad

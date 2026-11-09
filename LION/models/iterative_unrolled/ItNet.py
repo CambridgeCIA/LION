@@ -22,6 +22,19 @@ from LION.utils.citation import citation
 
 
 class ItNet(LIONmodel):
+    """ItNet (Genzel, Macdonald and März, 2022): ``n_iters`` iterations of a
+    U-Net followed by a data-consistency step, ``x - step * FDK(A x - y)``,
+    starting from FDK. CT only (it uses FDK). Takes the measurements.
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``n_iters``: the iterations (4);
+    - ``Unet_params``: each iteration's U-Net (``UNet.default_parameters()``);
+    - ``step_size``: each iteration's step (one value, a list of ``n_iters``,
+      or None: 1);
+    - ``learned_step``: learn the steps (True);
+    - ``step_positive``: learn them as powers of 10, so positive (False)."""
+
     def __init__(
         self, operator_params: ct.Geometry, model_parameters: LIONParameter = None
     ):
@@ -85,13 +98,13 @@ class ItNet(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """4 iterations with the paper's step sizes, learned (see the class)."""
         param = LIONModelParameter()
         param.learned_step = True
         param.step_positive = False
         param.step_size = [1.1183, 1.3568, 1.4271, 0.0808]
         param.n_iters = 4
         param.Unet_params = UNet.default_parameters()
-        param.mode = "ct"
         param.model_input_type = ModelInputType.SINOGRAM
 
         return param
@@ -121,6 +134,8 @@ class ItNet(LIONmodel):
 
     def forward(self, sino):
         # Start from FDK (the input data needs no gradient)
+        """The reconstructions of the sinograms ``sino`` (B, 1, angles,
+        detectors)."""
         img = fdk(sino, self.op, clip=False)
 
         for i in range(self.model_parameters.n_iters):

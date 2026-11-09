@@ -11,6 +11,13 @@ from LION.utils.citation import citation
 
 
 class AR(LIONmodel):
+    """Adversarial regulariser (Lunz, Öktem and Schönlieb, 2018): a CNN mapping
+    an image to a number, low for clean images and high for bad
+    reconstructions, trained by ``ARSolver`` and used by
+    ``LearnedRegularizerReconstructor``. Six 5x5 convolutions (four strided)
+    and two fully connected layers, as in the paper. Takes images of the
+    operator's domain shape (its size sets the fully connected layer)."""
+
     def __init__(
         self,
         operator_params: OperatorParameters,
@@ -48,6 +55,8 @@ class AR(LIONmodel):
         )
 
     def forward(self, image):
+        """The regulariser's value for each image of ``image`` (B, 1, H, W):
+        (B, 1)."""
         output = self.convnet(image)
         output = output.view(image.size(0), -1)
         output = self.fc(output)
@@ -55,6 +64,7 @@ class AR(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """None of its own: the architecture is the paper's."""
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
         return params

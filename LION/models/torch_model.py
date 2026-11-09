@@ -90,14 +90,20 @@ class TorchModel(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """LION's own parameters: ``model_input_type`` IMAGE. The module's are
+        its ``arguments``."""
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
         return params
 
     def takes_noise_level(self) -> bool:
+        """Whether the module takes the noise level (``noise_level``, or as
+        found by ``noise_level_input``)."""
         return self._noise_level_input is not None
 
     def forward(self, x, *args, noise_level=None, **kwargs):
+        """The module on ``x``, given ``noise_level`` the way it takes it (as a
+        channel or a keyword), if it takes one; other arguments as they are."""
         how = self._noise_level_input
         if noise_level is None or how is None:
             return self.module(x, *args, **kwargs)

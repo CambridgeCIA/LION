@@ -16,9 +16,9 @@ from LION.utils.citation import citation
 
 
 class ConvODEFunc(nn.Module):
-    """
-    First order ODE block
-    """
+    """The right-hand side of a first-order neural ODE: 3x3 convolutions
+    through the ``channels`` listed (with PReLUs, optional instance
+    normalisation)."""
 
     def __init__(self, layers: int, channels: list, instance_norm: bool = False):
         super(ConvODEFunc, self).__init__()
@@ -46,14 +46,15 @@ class ConvODEFunc(nn.Module):
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, t, x):
+        """dx/dt at ``x`` (``t`` unused: autonomous); counts the evaluations
+        (``nfe``)."""
         self.nfe += 1
         return self.block(x)
 
 
 class InitialVelocity(nn.Module):
-    """
-    Initial velocity for second order ODE
-    """
+    """The initial velocity of a second-order neural ODE, from the initial
+    position: convolutions of ``channels`` channels."""
 
     def __init__(self, channels: int, instance_norm: bool = False):
         super(InitialVelocity, self).__init__()
@@ -75,13 +76,15 @@ class InitialVelocity(nn.Module):
             )
 
     def forward(self, x0):
+        """The ODE's state at time 0: the position ``x0`` and its velocity,
+        along the channels."""
         out = self.initial_velocity(x0)
         return torch.cat((x0, out), dim=1)
 
 
 class ConvSODEFunc(nn.Module):
-    """
-    Second order ODE block
+    """The right-hand side of a second-order neural ODE: the state is
+    (position, velocity) along the channels; the acceleration is a CNN of both.
     """
 
     def __init__(self, layers: int, channels: list, instance_norm: bool = False):
@@ -114,6 +117,7 @@ class ConvSODEFunc(nn.Module):
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, t, x):
+        """The state's derivative at ``x``: (velocity, acceleration)."""
         cutoff = int(x.shape[1] / 2)
         z = x[:, :cutoff]
         v = x[:, cutoff:]
@@ -123,19 +127,17 @@ class ConvSODEFunc(nn.Module):
 
 
 class ODEBlock(nn.Module):
+    """Solves the neural ODE ``odefunc`` from time 0 to 1 (torchdiffeq)."""
+
     def __init__(
         self,
         odefunc: nn.Module,
         tol: float = 1e-3,
         adjoint: bool = False,
     ):
-        """
-        Args:
-            odefunc (nn.Module): the module to be evaluated
-            tol (float): tolerance for the ODE solver
-            adjoint (bool): whether to use the adjoint method for gradient calculation
-            max_num_steps (int): maximum number of steps for ODE solver
-        """
+        """``odefunc``: the ODE's right-hand side; ``tol``: the solver's
+        relative and absolute tolerance; ``adjoint``: gradients by the adjoint
+        method (less memory) instead of through the solver."""
         super(ODEBlock, self).__init__()
         self.adjoint = adjoint
         self.odefunc = odefunc
@@ -144,6 +146,9 @@ class ODEBlock(nn.Module):
     def forward(self, x, eval_times=None, solver="rk4"):
         # Forward pass corresponds to solving ODE, so reset number of function
         # evaluations counter
+        """The ODE's solution at time 1 from ``x`` (or at each of
+        ``eval_times``), with ``solver`` (a torchdiffeq method; rk4 by
+        default)."""
         self.odefunc.nfe = 0
 
         if eval_times is None:
@@ -177,6 +182,9 @@ class ODEBlock(nn.Module):
 
 
 class ContinuousDataProximal(nn.Module):
+    """cLPD's dual block: a 1x1 convolution in, a neural ODE (first or second
+    order), a 1x1 convolution out."""
+
     def __init__(
         self,
         layers: int,
@@ -187,15 +195,10 @@ class ContinuousDataProximal(nn.Module):
         solver: str = "rk4",
         instance_norm: bool = False,
     ):
-        """
-        Args:
-            layers(int): number of layers
-            channels (list): list of number of channels per layer
-            tol (float): tolerance to be used for ODE solver
-            adjoint (bool): whether to use the adjoint method to calculate the gradients
-            do_secon_order (bool): use second order ODE instead of first order if 'True'
-            solver (str): ODE solver to use
-        """
+        """``layers`` and ``channels``: as ``dataProximal``'s; ``tol``,
+        ``adjoint`` and ``solver``: the ODE's (``ODEBlock``);
+        ``do_secon_order``: a second-order ODE; ``instance_norm``: in the ODE's
+        convolutions."""
         super(ContinuousDataProximal, self).__init__()
         self.do_secon_order = do_secon_order
         self.solver = solver
@@ -223,6 +226,7 @@ class ContinuousDataProximal(nn.Module):
         )
 
     def forward(self, x):
+        """The block's update of the dual variables, from ``x``."""
         x = self.first_layer(x)
         if self.do_secon_order:
             x = self.initial_velocity(x)
@@ -231,6 +235,8 @@ class ContinuousDataProximal(nn.Module):
 
 
 class ContinuousRegProximal(nn.Module):
+    """cLPD's primal block: as ``ContinuousDataProximal``, on the primal side."""
+
     def __init__(
         self,
         layers: int,
@@ -241,14 +247,7 @@ class ContinuousRegProximal(nn.Module):
         solver: str = "rk4",
         instance_norm: bool = False,
     ):
-        """
-        layers(int): number of layers
-            channels (list): list of number of channels per layer
-            tol (float): tolerance to be used for ODE solver
-            adjoint (bool): whether to use the adjoint method to calculate the gradients
-            do_secon_order (bool): use second order ODE instead of first order if 'True'
-            solver (str): ODE solver to use
-        """
+        """As ``ContinuousDataProximal``'s."""
         super(ContinuousRegProximal, self).__init__()
         self.do_secon_order = do_secon_order
         self.solver = solver
@@ -276,6 +275,7 @@ class ContinuousRegProximal(nn.Module):
         )
 
     def forward(self, x):
+        """The block's update of the primal variables, from ``x``."""
         x = self.first_layer(x)
         if self.do_secon_order:
             x = self.initial_velocity(x)
@@ -307,6 +307,8 @@ class cLPD(LPD):
 
     @staticmethod
     def default_parameters():
+        """LPD's parameters with 4-layer blocks, plus ``do_secon_order``
+        (second-order ODE blocks; False)."""
         params = LIONModelParameter()
         params.n_iters = 10
         params.data_channels = [7, 32, 32, 32, 5]
@@ -314,7 +316,6 @@ class cLPD(LPD):
         params.learned_step = False
         params.step_size = None
         params.step_positive = False
-        params.mode = "ct"
         params.do_secon_order = False
         params.instance_norm = False
         # project the second primal channel in the dual step, as in Adler & Oktem
@@ -324,6 +325,8 @@ class cLPD(LPD):
 
     @staticmethod
     def continous_LPD_paper():
+        """The paper's cLPD (Runkel et al., 2024): 10 iterations, learned
+        steps, first-order blocks."""
         params = LIONModelParameter()
         params.n_iters = 10
         params.data_channels = [7, 32, 32, 32, 5]
@@ -331,7 +334,6 @@ class cLPD(LPD):
         params.learned_step = True
         params.step_size = None
         params.step_positive = False
-        params.mode = "ct"
         params.do_secon_order = False
         params.instance_norm = False
         # project the second primal channel in the dual step, as in Adler & Oktem

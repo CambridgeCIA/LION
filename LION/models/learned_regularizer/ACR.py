@@ -17,11 +17,19 @@ from LION.utils.citation import citation
 
 
 class Positive(nn.Module):
+    """A parametrisation keeping a weight non-negative (clipped at 0), for the
+    convex layers."""
+
     def forward(self, X):
+        """``X`` clipped at 0."""
         return torch.clip(X, min=0.0)
 
 
 class ICNN_layer(nn.Module):
+    """A layer of an input-convex network: a non-negative convolution of the
+    previous layer's output plus a convolution of the input, then a convex,
+    non-decreasing activation (leaky ReLU)."""
+
     def __init__(self, channels, kernel_size=5, stride=1, relu_type="LeakyReLU"):
         super().__init__()
 
@@ -53,6 +61,8 @@ class ICNN_layer(nn.Module):
 
     def forward(self, z, x0):
 
+        """The layer's output from the previous one, ``z``, and the network's
+        input ``x0``."""
         res = self.blue(z) + self.orange(x0)
         res = self.activation(res)
         return res
@@ -69,6 +79,7 @@ class L2net(nn.Module):
         self.l2_penalty = nn.Parameter((l2_penalty) * torch.ones(1))
 
     def forward(self, x):
+        """``softplus(w) * ||x||^2`` for each image of ``x``: (B, 1)."""
         l2_term = torch.sum(x.view(x.size(0), -1) ** 2, dim=1)
         out = ((torch.nn.functional.softplus(self.l2_penalty)) * l2_term).view(
             x.size(0), -1
@@ -77,6 +88,21 @@ class L2net(nn.Module):
 
 
 class ACR(LIONmodel):
+    """Adversarial convex regulariser (Mukherjee et al., 2021): as the
+    adversarial regulariser (``AR``), but convex in the image: an input-convex
+    network plus a small learnable ``||x||^2`` term. Trained by ``ARSolver``,
+    used by ``LearnedRegularizerReconstructor``. Takes images.
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``channels``: the channels of each layer (16);
+    - ``kernel_size``, ``stride``: the convolutions' (5, 1);
+    - ``relu_type``: the activation, "LeakyReLU" (the only convex,
+      non-decreasing one supported);
+    - ``layers``: the convex layers (5);
+    - ``l2_penalty``: the initial w of the ``softplus(w) ||x||^2`` term (-9).
+    """
+
     def __init__(
         self,
         operator_params: Optional[OperatorParameters] = None,
@@ -138,8 +164,9 @@ class ACR(LIONmodel):
         # underlying tensor, assigning to conv.weight.data has no effect.
         conv.parametrizations.weight.original.data = value
 
-    # a weight initialization routine for the ICNN
     def initialize_weights(self, min_val=0.0, max_val=1e-3):
+        """Draws the non-negative weights uniformly in [``min_val``,
+        ``max_val``], as the paper does. Returns the model."""
         for i in range(self.model_parameters.layers):
             block = getattr(self, f"ICNN_layer_{i}")
             weight = block.blue.parametrizations.weight.original
@@ -152,19 +179,10 @@ class ACR(LIONmodel):
         )
         return self
 
-    def improved_initialize_weights(self, min_val=0.0, max_val=0.001):
-        ###
-        ### This is based on a recent paper https://openreview.net/pdf?id=pWZ97hUQtQ
-        ###
-        # convex_init = ConvexInitialiser()
-        # w1, b1 = icnn[1].parameters()
-        # convex_init(w1, b1)
-        # assert torch.all(w1 >= 0) and b1.var() > 0
-        return self.initialize_weights(min_val, max_val)
-
     def forward(self, x):
         # its inputs are normalised by whoever calls it (the solver, the
         # reconstructor), as for every model
+        """The regulariser's value for each image of ``x``: (B, 1)."""
         z = self.first_layer(x)
         z = self.first_activation(z)
         for i in range(self.model_parameters.layers):
@@ -177,6 +195,8 @@ class ACR(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """The paper's ACR: 5 convex layers of 16 channels, 5x5 kernels (see
+        the class)."""
         params = LIONModelParameter()
         params.channels = 16
         params.kernel_size = 5

@@ -21,6 +21,10 @@ from LION.utils.citation import citation
 
 
 class ResidualUnit(nn.Module):
+    """Convolutions (3D, with batch normalisation and ``relu_type``) through
+    the ``channels`` listed, plus a 1x1x1 convolution of the input (the
+    residual)."""
+
     def __init__(self, channels, relu_type="ReLU", kernel_size=3, relu_last=True):
         super().__init__()
         # input parsing:
@@ -51,6 +55,7 @@ class ResidualUnit(nn.Module):
         self.res_block = nn.Conv3d(channels[0], channels[-1], kernel_size=1, padding=0)
 
     def forward(self, x):
+        """The unit's convolutions of ``x`` plus its residual."""
         return self.block(x) + self.res_block(x)
 
 
@@ -62,6 +67,7 @@ class Down(nn.Module):
         self.pool = nn.Sequential(nn.MaxPool3d(2))
 
     def forward(self, x):
+        """``x`` halved in size (max pooling)."""
         return self.pool(x)
 
 
@@ -91,10 +97,22 @@ class Up(nn.Module):
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, x):
+        """``x`` doubled in size (transposed convolution)."""
         return self.block(x)
 
 
 class ResUNet3D(LIONmodel.LIONmodel):
+    """A 3D residual U-Net (Yu et al., 2021): four scales of residual units,
+    max pooling down and transposed convolutions up, with skip connections and
+    a sigmoid output (e.g. for segmentation). Takes 3D images (B, C, D, H, W).
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``down_1_channels`` to ``down_4_channels``, ``latent_channels``,
+      ``up_1_channels`` to ``up_4_channels``, ``last_block``: each unit's
+      channels, a list (its input, then each convolution's output);
+    - ``activation``: "ReLU", "LeakyReLU" or "None"."""
+
     def __init__(self, model_parameters: LIONParameter = None):
         super().__init__(model_parameters)
         model_parameters = self.model_parameters
@@ -142,6 +160,8 @@ class ResUNet3D(LIONmodel.LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """8 to 128 channels over four scales, one input and one output channel
+        (see the class)."""
         ResUNet3D = LIONModelParameter()
         ResUNet3D.model_input_type = ModelInputType.IMAGE
         ResUNet3D.down_1_channels = [1, 8, 8]
@@ -163,6 +183,8 @@ class ResUNet3D(LIONmodel.LIONmodel):
         return ResUNet3D
 
     def forward(self, x):
+        """The network's output (in [0, 1]) for the volumes ``x`` (B, C, D, H,
+        W); D, H and W must be multiples of 16."""
         block_1_res = self.block_1_down(x)
         block_2_res = self.block_2_down(self.down_1(block_1_res))
         block_3_res = self.block_3_down(self.down_2(block_2_res))

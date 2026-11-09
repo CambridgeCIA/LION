@@ -11,18 +11,20 @@ from LION.models.post_processing.FBPConvNet import FBPConvNet
 
 
 class FBPConvNetImage(FBPConvNet):
-    """
-    FBPConvNet that takes a pre-computed FBP image as input instead of calling FDK inside the forward pass.
-    """
+    """FBPConvNet that takes a reconstruction (e.g. FDK, by the solver: the
+    model's initial reconstruction) instead of reconstructing with FDK itself,
+    so it works with any operator. Its parameters are FBPConvNet's."""
 
     @staticmethod
     def default_parameters():
+        """FBPConvNet's, taking images."""
         params = FBPConvNet.default_parameters()
         params.model_input_type = ModelInputType.IMAGE  # it takes images, not sinograms
         return params
 
     def forward(self, image):
 
+        """``image`` plus the network's residual."""
         block_1_res = self.block_1_down(image)
         block_2_res = self.block_2_down(self.down_1(block_1_res))
         block_3_res = self.block_3_down(self.down_2(block_2_res))

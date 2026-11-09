@@ -21,6 +21,9 @@ from LION.utils.citation import citation
 
 
 class ResBlock(torch.nn.Module):
+    """A residual block of DRUNet: two convolutions with ``act`` between them,
+    added to the input."""
+
     def __init__(
         self,
         n_channels=64,
@@ -47,6 +50,7 @@ class ResBlock(torch.nn.Module):
         )
 
     def forward(self, x):
+        """``x`` plus the block's two convolutions of it."""
         res = self.conv2(self.act(self.conv1(x)))
         return x + res
 
@@ -58,6 +62,8 @@ def downsample_strideconv(
     stride=2,
     bias_free=True,
 ):
+    """A strided convolution that halves the image size (DRUNet's
+    downsampling)."""
     return torch.nn.Conv2d(
         in_channels,
         out_channels,
@@ -74,6 +80,8 @@ def upsample_convtranspose(
     stride=2,
     bias_free=True,
 ):
+    """A transposed convolution that doubles the image size (DRUNet's
+    upsampling)."""
     return torch.nn.ConvTranspose2d(
         in_channels,
         out_channels,
@@ -84,6 +92,23 @@ def upsample_convtranspose(
 
 
 class DRUNet(LIONmodel):
+    """DRUNet (Zhang et al., 2021): the denoiser of Deep Plug-and-Play Image
+    Restoration, a U-Net of residual blocks over four scales, without biases by
+    default, optionally taking the noise level as an extra input channel. Takes
+    images.
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``in_channels``, ``out_channels``: 1, 1;
+    - ``int_channels``: the first scale's channels, doubled at each scale (64);
+    - ``kernel_size``: 3x3;
+    - ``n_blocks``: residual blocks per scale (4);
+    - ``use_noise_level``: the noise level as an input channel, as in the paper
+      (False);
+    - ``bias_free``: no biases (True);
+    - ``act``: a ``torch.nn.functional`` activation ("leaky_relu");
+    - ``enforce_positivity``: a ReLU on the output (False)."""
+
     def __init__(self, model_parameters: LIONParameter = None):
         super().__init__(model_parameters)
 
@@ -228,6 +253,9 @@ class DRUNet(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """The paper's architecture (64 channels, 4 residual blocks per scale,
+        no biases), without the noise level input by default (see the class).
+        """
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
         params.in_channels = 1

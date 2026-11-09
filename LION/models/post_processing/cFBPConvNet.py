@@ -19,9 +19,8 @@ from LION.utils.citation import citation
 
 
 class InitialVelocity(nn.Module):
-    """
-    Initial velocity for second order ODE
-    """
+    """The initial velocity of a second-order neural ODE, from the initial
+    position."""
 
     def __init__(self, channels: int):
         super(InitialVelocity, self).__init__()
@@ -36,14 +35,15 @@ class InitialVelocity(nn.Module):
         )
 
     def forward(self, x0):
+        """The ODE's state at time 0: the position ``x0`` and its velocity,
+        along the channels."""
         out = self.initial_velocity(x0)
         return torch.cat((x0, out), dim=1)
 
 
 class ConvSODEFunc(nn.Module):
-    """
-    Second order ODE block
-    """
+    """The right-hand side of a second-order neural ODE: the state is
+    (position, velocity) along the channels."""
 
     def __init__(self, channels, relu_type="ReLU", relu_last=True, kernel_size=3):
         super(ConvSODEFunc, self).__init__()
@@ -71,6 +71,7 @@ class ConvSODEFunc(nn.Module):
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, t, x):
+        """The state's derivative at ``x``: (velocity, acceleration)."""
         cutoff = int(x.shape[1] / 2)
         z = x[:, :cutoff]
         v = x[:, cutoff:]
@@ -80,6 +81,8 @@ class ConvSODEFunc(nn.Module):
 
 
 class ODEBlock(nn.Module):
+    """Solves the neural ODE ``odefunc`` from time 0 to 1 (torchdiffeq)."""
+
     def __init__(
         self,
         odefunc: nn.Module,
@@ -87,13 +90,9 @@ class ODEBlock(nn.Module):
         adjoint: bool = False,
         solver: str = "rk4",
     ):
-        """
-        Args:
-            odefunc (nn.Module): the module to be evaluated
-            tol (float): tolerance for the ODE solver
-            adjoint (bool): whether to use the adjoint method for gradient calculation
-            max_num_steps (int): maximum number of steps for ODE solver
-        """
+        """``odefunc``: the ODE's right-hand side; ``tol``: the solver's
+        relative and absolute tolerance; ``adjoint``: gradients by the adjoint
+        method (less memory); ``solver``: a torchdiffeq method."""
         super(ODEBlock, self).__init__()
         self.adjoint = adjoint
         self.odefunc = odefunc
@@ -101,6 +100,8 @@ class ODEBlock(nn.Module):
         self.solver = solver
 
     def forward(self, x, eval_times=None, solver=None):
+        """The ODE's solution at time 1 from ``x`` (or at each of
+        ``eval_times``), with ``solver`` (the block's if None)."""
         solver = self.solver if solver is None else solver
         # Forward pass corresponds to solving ODE, so reset number of function
         # evaluations counter
@@ -137,6 +138,9 @@ class ODEBlock(nn.Module):
 
 
 class ConvODEFunc(nn.Module):
+    """The right-hand side of a first-order neural ODE: convolutions through
+    the ``channels`` listed, with batch normalisation and ``relu_type``."""
+
     def __init__(self, channels, relu_type="ReLU", relu_last=True, kernel_size=3):
         super(ConvODEFunc, self).__init__()
         # input parsing:
@@ -164,6 +168,7 @@ class ConvODEFunc(nn.Module):
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, t, x):
+        """dx/dt at ``x`` (``t`` unused: autonomous)."""
         self.nfe += 1
         return self.block(x)
 
@@ -176,6 +181,7 @@ class Down(nn.Module):
         self.pool = nn.Sequential(nn.MaxPool2d(2))
 
     def forward(self, x):
+        """``x`` halved in size (max pooling)."""
         return self.pool(x)
 
 
@@ -205,6 +211,7 @@ class Up(nn.Module):
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, x):
+        """``x`` doubled in size (transposed convolution)."""
         return self.block(x)
 
 
@@ -417,6 +424,13 @@ class cFBPConvNet(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """FBPConvNet's channels, each block a neural ODE (its input lifted by
+        a 1x1 convolution), and the ODEs' settings:
+
+        - ``tol``: the solver's tolerance (1e-3);
+        - ``ode_adjoint``: gradients by the adjoint method (False);
+        - ``do_second_order``: second-order ODEs (False; not implemented yet);
+        - ``solver``: a torchdiffeq method ("rk4")."""
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
         params.down_1_channels = [64, 64, 64, 64]

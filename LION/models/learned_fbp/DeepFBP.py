@@ -9,8 +9,6 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 import LION.operators.ct.ct_geometry as ct
 
-# new
-
 
 import torch
 from torch.nn import (
@@ -30,18 +28,10 @@ from LION.utils.citation import citation
 
 
 class LearnableFilter(Module):
-    """
-    Learnable frequency-domain filter module for CT sinograms.
-    This module replaces traditional filters like Ram-Lak with trainable parameters
-    in the frequency domain. It supports shared or per-angle filters.
-    Args:
-        init_filter (torch.Tensor):
-            Initial 1D filter in the frequency domain.
-        per_angle (bool):
-            If True, uses one filter per angle.
-        num_angles (int, optional):
-            Required if per_angle=True.
-    """
+    """A learnable filter of the projections, applied in the frequency domain
+    (it replaces FBP's ramp filter): ``init_filter`` (its initial frequency
+    response), one shared by every angle, or one per angle (``per_angle``, with
+    ``num_angles``)."""
 
     def __init__(self, init_filter, per_angle=False, num_angles=None):
         super().__init__()
@@ -59,14 +49,8 @@ class LearnableFilter(Module):
             self.register_parameter("weights", Parameter(filters))
 
     def forward(self, x):
-        """
-        Applies the learnable frequency filter to each projection.
-        Args:
-            x (Tensor):
-                Input sinogram of shape [B, A, D], where B = batch size, A = number of angles, D = number of detectors.
-        Returns:
-            Tensor: Filtered sinogram of the same shape.
-        """
+        """The projections ``x`` (B, angles, detectors) filtered, each along
+        the detector."""
 
         ftt1d = torch.fft.fft(x, dim=-1)
         if self.per_angle:
@@ -78,13 +62,9 @@ class LearnableFilter(Module):
 
 
 class IntermediateResidualBlock(Module):
-    """
-    Depthwise 1D residual block of the interpolation network. Each projection
-    is processed on its own, along the detector (as in the DeepFBP paper).
-    Args:
-        channels (int):
-            Number of input/output channels (must match).
-    """
+    """A residual block of the interpolation network: a depthwise 1D
+    convolution along the detector, batch normalisation and PReLU, each
+    projection on its own (as in DeepFBP)."""
 
     def __init__(self, channels):
         super().__init__()
@@ -97,13 +77,13 @@ class IntermediateResidualBlock(Module):
         )
 
     def forward(self, x):
+        """``x`` plus the block of it."""
         return x + self.block(x)
 
 
 class DenoisingResidualBlock(Module):
-    """
-    2D residual block for image denoising.
-    """
+    """A 2D residual block of the denoiser: two 3x3 convolutions with a ReLU
+    between them, added to the input."""
 
     def __init__(self, channels):
         super().__init__()
@@ -114,29 +94,26 @@ class DenoisingResidualBlock(Module):
         )
 
     def forward(self, x):
+        """``x`` plus the block of it."""
         return x + self.block(x)
 
 
 class DeepFBPNetwork(LIONmodel):
-    """
-    Deep Filtered Backprojection Network for CT reconstruction.
-    Pipeline:
-        - Learnable frequency filter (Ram-Lak based init)
-        - Interpolation network, as in DeepFBP (Tan et al. 2024): 1D convolutions along the detector, applied to each projection separately (no mixing across angles)
-        - Differentiable backprojection (Tomosipo)
-        - Residual CNN-based denoiser
-    Args:
-        num_detectors (int):
-            Number of detector bins.
-        num_angles (int):
-            Number of projection angles.
-        A (ts.Operator):
-            Tomosipo projection operator.
-        filter_type (str):
-            Either 'Filter I' (shared) or per-angle.
-        device (torch.device):
-            Computation device.
-    """
+    """DeepFBP (Tan et al., 2024): FBP with learned parts. A learnable filter
+    (initially Ram-Lak), an interpolation network (1D convolutions along the
+    detector, each projection on its own), a differentiable backprojection
+    (normalised by the backprojection of ones), and a residual CNN denoiser
+    with a ReLU output. CT only. Takes the measurements (B, 1, angles,
+    detectors).
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``filter_type``: "Filter I" (one filter for every angle) or anything else
+      (one filter per angle);
+    - ``fft_padding_twice_detectors``: the projections zero-padded to at least
+      twice the detectors before filtering (True);
+    - ``normalizer``: divide the backprojection by the backprojection of ones
+      (True)."""
 
     def __init__(
         self, operator_params: ct.Geometry, model_parameters: LIONParameter = None
@@ -184,13 +161,10 @@ class DeepFBPNetwork(LIONmodel):
         )
 
     def compute_projection_size_padded(self):
-        """
-        FFT length for the filter: the next power of two of at least twice the
-        number of detectors, so that filtering is not circular (wrap-around).
-        ``fft_padding_twice_detectors = False`` gives the old length, the next
-        power of two of the number of detectors (no padding at all when that is
-        already a power of two).
-        """
+        """The FFT length of the filter: the next power of two of at least
+        twice the number of detectors, so filtering isn't circular
+        (``fft_padding_twice_detectors``; False: of the number of detectors, as
+        older versions did)."""
         n = self.num_detectors
         if self.model_parameters.fft_padding_twice_detectors:
             n = 2 * n
@@ -199,9 +173,8 @@ class DeepFBPNetwork(LIONmodel):
         )
 
     def ram_lak_filter(self, size):
-        """
-        Generates Ram-Lak filter directly in frequency domain.
-        """
+        """The Ram-Lak (ramp) filter of FFT length ``size``, in the frequency
+        domain: the learnable filter's initial value."""
 
         steps = int(size / 2 + 1)
         ramp = torch.linspace(0, 1, steps, dtype=torch.float32)
@@ -209,36 +182,22 @@ class DeepFBPNetwork(LIONmodel):
         f = torch.cat([ramp, down[:-2]])
         return f
 
-    # new
     @staticmethod
     def default_parameters():
+        """One shared filter, padded FFT, normalised backprojection (see the
+        class)."""
         DFBP_params = LIONModelParameter()
         DFBP_params.filter_type = "Filter I"
-        DFBP_params.mode = "ct"
         DFBP_params.model_input_type = ModelInputType.SINOGRAM
         # zero-pad the projections to >= 2x the detectors before the FFT filter
         DFBP_params.fft_padding_twice_detectors = True
         DFBP_params.normalizer = True
         return DFBP_params
 
-    # new
-
     def forward(self, x):
-        """
-        Runs a forward pass through the DeepFBP pipeline.
-        Steps:
-            1. Apply learnable frequency-domain filter.
-            2. Interpolation network: 1D convolutions along the detector, per projection.
-            3. Apply differentiable backprojection using Tomosipo.
-            4. Normalize projection output.
-            5. Apply residual 2D CNN denoising network.
-        Args:
-            x (Tensor):
-                Input sinogram of shape [B, 1, A, D].
-        Returns:
-            Tensor:
-                Reconstructed image tensor of shape [B, 1, H, W], with non-negative values.
-        """
+        """The reconstructions (B, 1, H, W), non-negative, of the sinograms
+        ``x`` (B, 1, angles, detectors): filter, interpolation, backprojection,
+        denoising."""
 
         # Initial shape: [B, 1, A, D]
         x = x.squeeze(1)  # [B, A, D]

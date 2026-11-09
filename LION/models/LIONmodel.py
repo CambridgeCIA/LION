@@ -49,12 +49,21 @@ from pathlib import Path
 
 
 class ModelInputType(int, Enum):
+    """What a model takes as input: the measurements (``SINOGRAM``; e.g.
+    LPD) or an image, a reconstruction of them (``IMAGE``; e.g. FBPConvNet,
+    the denoisers). Its ``model_parameters.model_input_type``."""
+
     SINOGRAM = 0
     IMAGE = 1
 
 
-# Class for Model parameters that should be true for all models
 class LIONModelParameter(LIONParameter):
+    """A model's parameters (``default_parameters()``), with what every model
+    has: ``model_input_type`` (``ModelInputType``) and
+    ``initial_reconstruction`` ("default", or how the model's initial
+    reconstruction is made; ``set_initial_reconstruction``), plus
+    ``normalisation`` once set (``set_normalisation``)."""
+
     def __init__(self, **kwargs):
         # Set defaults before applying kwargs, so values passed in (e.g. when
         # loading from file) are not overwritten.
@@ -221,8 +230,10 @@ class LIONmodel(nn.Module, ABC):
     # This should return the parameters from the paper the model is from
     @staticmethod
     @abstractmethod  # crash if not defined in derived class
-    def default_parameters(mode="ct") -> LIONModelParameter:
-        pass
+    def default_parameters() -> LIONModelParameter:
+        """The model's parameters, each with its default: every parameter
+        the model has, so this is also their list. A model from a paper
+        defaults to the paper's."""
 
     # makes operator and make it pytorch compatible.
     def _make_operator(self, autograd: bool = False):
@@ -245,12 +256,16 @@ class LIONmodel(nn.Module, ABC):
 
     # All classes should have this method, just change the amount of Parameters it returns of you have more/less
     def get_parameters(self):
+        """``(model_parameters, operator_params)``, or ``model_parameters``
+        for a model without an operator."""
         if self.operator_params is not None:
             return self.model_parameters, self.operator_params
         else:
             return self.model_parameters
 
     def get_input_type(self) -> ModelInputType:
+        """What the model takes: measurements or an image
+        (``ModelInputType``)."""
         return self.model_parameters.model_input_type
 
     def takes_noise_level(self) -> bool:
@@ -669,6 +684,11 @@ class LIONmodel(nn.Module, ABC):
 
     @classmethod
     def load_checkpoint(cls, fname, *, weights_only=True, allow=()):
+        """Loads a checkpoint file (``LIONsolver.set_checkpointing``) as
+        ``load`` loads a model file. Returns ``(model, options, data)``: the
+        model, made again from the file (``allow``: modules outside LION it
+        may name) with its weights; its options; the file's other contents
+        (the optimizer's state, the epoch, the losses, ...)."""
         # Make it a Path if needed
         if isinstance(fname, str):
             fname = Path(fname)

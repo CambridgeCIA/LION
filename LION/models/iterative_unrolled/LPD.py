@@ -18,9 +18,9 @@ from LION.utils.citation import citation
 
 
 class dataProximal(nn.Module):
-    """
-    CNN block of the dual variable
-    """
+    """The dual (data) block of LPD: 3x3 convolutions with PReLUs through the
+    ``channels`` listed, the last a 1x1 convolution; optional instance
+    normalisation."""
 
     def __init__(self, layers, channels, conv_bias, instance_norm=False):
 
@@ -54,13 +54,14 @@ class dataProximal(nn.Module):
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, x):
+        """The block's update of the dual variables, from ``x`` (the dual, the
+        projected primal and the measurements)."""
         return self.block(x)
 
 
 class RegProximal(nn.Module):
-    """
-    CNN block of the primal variable
-    """
+    """The primal (regularisation) block of LPD: as ``dataProximal``, on the
+    primal side."""
 
     def __init__(self, layers, channels, conv_bias, instance_norm=False):
         super().__init__()
@@ -92,6 +93,8 @@ class RegProximal(nn.Module):
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, x):
+        """The block's update of the primal variables, from ``x`` (the primal
+        and the backprojected dual)."""
         return self.block(x)
 
 
@@ -119,7 +122,27 @@ def _check_channels(params):
 
 
 class LPD(LIONmodel):
-    """Learned Primal Dual network"""
+    """Learned Primal-Dual (Adler and Öktem, 2018): ``n_iters`` iterations,
+    each a dual step (a CNN of the dual, the projection of the primal and the
+    measurements) and a primal step (a CNN of the primal and the backprojection
+    of the dual). The primal starts from the initial reconstruction (the
+    operator's default, FDK for CT, unless set). Works with any operator with
+    ``autograd()``. Takes the measurements.
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``n_iters``: the iterations (10);
+    - ``data_channels``: the dual block's channels, a list: from ``n_dual + 2``
+      to ``n_dual`` ([7, 32, 32, 5]);
+    - ``reg_channels``: the primal block's channels: from ``n_primal + 1`` to
+      ``n_primal`` ([6, 32, 32, 5]);
+    - ``learned_step``: learn each iteration's step size (False);
+    - ``step_size``: its initial value (None: 1 / ||A||, by the power method);
+    - ``step_positive``: keep the learned step positive (False);
+    - ``instance_norm``: instance normalisation in the blocks (False);
+    - ``conv_bias``: biases in the convolutions (True);
+    - ``dual_step_primal_channel``: the primal channel projected in the dual
+      step (1, as in the paper)."""
 
     def __init__(
         self,
@@ -182,6 +205,8 @@ class LPD(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """The paper's LPD: 10 iterations of 3-layer blocks of 32 channels, 5
+        primal and 5 dual channels (see the class)."""
         LPD_params = LIONModelParameter()
         LPD_params.n_iters = 10
         LPD_params.data_channels = [7, 32, 32, 5]
@@ -189,7 +214,6 @@ class LPD(LIONmodel):
         LPD_params.learned_step = False
         LPD_params.step_size = None
         LPD_params.step_positive = False
-        LPD_params.mode = "ct"
         LPD_params.instance_norm = False
         LPD_params.conv_bias = True
         # project the second primal channel in the dual step, as in Adler & Oktem
@@ -199,6 +223,9 @@ class LPD(LIONmodel):
 
     @staticmethod
     def continous_LPD_paper():
+        """The LPD that cLPD's paper (Runkel et al., 2024) compares with: 5
+        iterations of 4-layer blocks, learned positive steps, instance
+        normalisation, no biases."""
         LPD_params = LIONModelParameter()
         LPD_params.n_iters = 5
         LPD_params.data_channels = [7, 32, 32, 32, 5]
@@ -206,7 +233,6 @@ class LPD(LIONmodel):
         LPD_params.learned_step = True
         LPD_params.step_size = None
         LPD_params.step_positive = True
-        LPD_params.mode = "ct"
         LPD_params.instance_norm = True
         LPD_params.conv_bias = False
         # project the second primal channel in the dual step, as in Adler & Oktem
@@ -252,9 +278,8 @@ class LPD(LIONmodel):
         )
 
     def forward(self, g):
-        """
-        g: sinogram input
-        """
+        """The reconstructions of the measurements ``g`` (B, 1, ...), of the
+        operator's range shape."""
         B, C, W, H = g.shape
 
         if C != 1:
