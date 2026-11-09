@@ -14,24 +14,14 @@ from LION.operators.Operator import Operator
 
 
 class CompositeOp(Operator):
-    r"""Composite linear operator :math:`A = \Phi \Psi^{-1}` and its adjoint.
-
-    Parameters
-    ----------
-    wavelet : Wavelet2D
-        Wavelet transform object.
-    phi : Operator
-        The measurement operator, e.g. photocurrent mapping's
-        (``LION.operators.pcm.PhotocurrentMapOp``).
-    device : str or torch.device, optional
-        Device for computations. If None, uses wavelet.device.
-
-    References
-    ----------
-    .. [Koutsourakis2021] G. Koutsourakis, A. Thompson, and J. C. Blakesley,
-        "Toward Megapixel Resolution Compressed Sensing Current Mapping of
-        Photovoltaic Devices Using Digital Light Processing", Solar RRL,
-        5(11):2100467, 2021. doi:10.1002/solr.202100467
+    """The composite operator A = Phi Psi^-1 and its adjoint: the measurement
+    operator ``phi`` (e.g. photocurrent mapping's,
+    ``LION.operators.pcm.PhotocurrentMapOp``) applied to the image of wavelet
+    coefficients (``wavelet``, a ``Wavelet2D``), for sparse recovery in the
+    wavelet domain (Koutsourakis, Thompson and Blakesley, "Toward Megapixel
+    Resolution Compressed Sensing Current Mapping of Photovoltaic Devices Using
+    Digital Light Processing", Solar RRL 5(11):2100467, 2021,
+    doi:10.1002/solr.202100467). ``device``: where it computes (None: unset).
     """
 
     def __init__(
@@ -40,36 +30,21 @@ class CompositeOp(Operator):
         phi: Operator,
         device: str | torch.device | None = None,
     ):
-        """Initialize the CompositeOp A = Phi Psi^{-1}."""
         super().__init__(device=device)
         self.wavelet = wavelet
         self.phi = phi
         self.device = device
 
     def __call__(self, w: torch.Tensor, out=None) -> torch.Tensor:
-        """Apply the forward projection A = Phi Psi^{-1}.
-
-        Parameters
-        ----------
-        w : torch.Tensor
-            Wavelet coefficients, shape (Nw,).
-        out : None
-            Legacy for tomosipo ``to_autograd``. Just ignore.
-
-        Returns
-        -------
-        torch.Tensor
-            Predicted measurements, shape (M,).
+        """The measurements (M,) of the wavelet coefficients ``w`` (Nw,): Phi
+        Psi^-1 w. ``out``: unused, kept for the ``__call__(x, out)`` signature.
         """
         return self.forward(w)
 
     def forward(self, w: torch.Tensor) -> torch.Tensor:
-        """Apply the forward projection A = Phi Psi^{-1}.
-
-        .. note::
-            Prefer calling the instance of the CompositeOp operator as ``operator(w)`` over
-            directly calling this method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
-        """
+        """The measurements (M,) of the wavelet coefficients ``w`` (Nw,): Phi
+        Psi^-1 w. Call the operator, ``op(w)``, rather than this method (as for
+        torch modules)."""
         if not isinstance(w, torch.Tensor):
             raise TypeError(f"Input w must be a torch.Tensor, got {type(w)}")
 
@@ -81,18 +56,8 @@ class CompositeOp(Operator):
         return y
 
     def adjoint(self, r: torch.Tensor) -> torch.Tensor:
-        """Apply A^T = Psi Phi^T.
-
-        Parameters
-        ----------
-        r : torch.Tensor
-            Residual in measurement space, shape (M,).
-
-        Returns
-        -------
-        g : torch.Tensor
-            Gradient in wavelet coefficient space, shape (Nw,).
-        """
+        """Psi Phiᵀ r: the gradient, in wavelet coefficients (Nw,), of a
+        residual ``r`` (M,) in the measurements."""
         r = r.to(self.device)
         x_back = self.phi.adjoint(r)  # expected shape (H, W)
         g = self.wavelet.forward(x_back)

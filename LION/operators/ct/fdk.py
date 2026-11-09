@@ -21,21 +21,15 @@ def fdk(
     clip: bool = True,
     differentiable: bool = False,
 ) -> torch.Tensor:
-    """FDK (cone beam) or FBP (parallel beam) reconstruction.
+    """FDK (fan or cone beam) or FBP (parallel beam) reconstruction of
+    ``sino``: batched (B, C, angles, detectors) or one (C, angles, detectors)
+    sample, the result laid out the same way.
 
-    Args:
-        sino: Sinograms, batched (B, C, angles, detectors) or a single
-            (C, angles, detectors) sample.
-        op: The CT operator, or a Geometry to build it from.
-        clip: Set negative values of the reconstruction to zero.
-        differentiable: If True, the reconstruction supports autograd with
-            respect to ``sino`` (the backprojection goes through tomosipo's
-            autograd wrapper), e.g. for FDK inside a network trained end to end.
-            Slightly slower and uses more memory than the default.
-
-    Returns:
-        The reconstructions, with the same batch layout as ``sino``.
-    """
+    ``op``: the CT operator, or a Geometry to build it from. ``clip``: set
+    negative values to zero. ``differentiable``: the reconstruction supports
+    autograd with respect to ``sino`` (the backprojection goes through
+    tomosipo's autograd wrapper), e.g. for FDK inside a network trained end to
+    end; slightly slower and uses more memory."""
 
     def recon_fn(op, sino_i, i):
         sub_recon = _fdk_sample(op, sino_i, differentiable)

@@ -24,12 +24,8 @@ def inverse_reconstruction(y: torch.Tensor, op: "Operator") -> torch.Tensor:
 
 
 class Operator(torch.nn.Module, ABC):
-    """Base class for operators in LION.
-
-    Operators represent forward and backward projections, mapping one tensor to another tensor.
-
-    This class defines a common interface for all operators in LION. The most important API includes
-    ``forward``, ``adjoint``, and ``domain_shape`` / ``range_shape``.
+    """The base class of LION's operators: a linear map, as a torch module,
+    with its adjoint and the shapes it maps between.
 
     LION uses the general words, as an operator can be anything:
 
@@ -40,53 +36,33 @@ class Operator(torch.nn.Module, ABC):
     geometry's ``image_shape``) and its range the sinogram. Some operators'
     domains are not images, e.g. a wavelet synthesis's is its coefficients.
 
-    This class should be subclassed to implement specific operators.
-
-    Attributes:
-        device : Device for computations. If None, computations are done on the default device.
-    """
+    A subclass defines ``forward``, ``__call__`` (``return self.forward(x)``),
+    ``adjoint``, ``domain_shape`` and ``range_shape``; ``autograd()`` if it can
+    be differentiated through; ``inverse`` if it has one;
+    ``default_reconstruction_fn`` if it has a usual reconstruction. ``device``:
+    where it computes (None: unset; ``to_device`` moves it)."""
 
     def __init__(self, device: DeviceLikeType | None = None):
-        """Initialize the Operator."""
         super().__init__()
         self.device = device
 
     @abstractmethod
     def __call__(self, x: torch.Tensor, out=None) -> torch.Tensor:
-        """Apply the forward operation of the operator.
+        """The operator applied to ``x`` (``A x``): ``forward``.
 
-        .. note::
-            Usually this is just a wrapper for the ``forward`` method: ``return self.forward(x)``.
-            Users should write this explicitly in their subclasses so that they can add the docstring
-            in the ``__call__`` method instead of the ``forward`` method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
-
-        Args:
-            x: Input to which the operator is applied.
-            out: Optional output tensor to store the result. Most subclasses may ignore this parameter,
-                except for tomosipo-based operators which need it for the ``to_autograd`` functionality.
-
-        Returns:
-            Result of applying the forward operation.
-        """
+        Abstract so that a subclass defines it with this signature, ``(x,
+        out=None)``: tomosipo's ``to_autograd`` calls it with ``out``, where to
+        write the result; other operators ignore it."""
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Apply the forward operation of Operator.
-
-        .. note::
-            Prefer calling the instance of the Operator operator as ``operator(x)`` over
-            directly calling this method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
-        """
+        """The operator applied to ``x`` (``A x``), defined by a subclass. Call
+        the operator, ``op(x)``, rather than this method (as for torch
+        modules)."""
         raise NotImplementedError("Forward method must be implemented by subclasses.")
 
     def adjoint(self, y: torch.Tensor) -> torch.Tensor:
-        """Apply the adjoint (backward) operation of the operator.
-
-        Args:
-            y: Input to which the adjoint operator is applied.
-
-        Returns:
-            Result of applying the adjoint operation.
-        """
+        """The adjoint applied to ``y`` (``Aᵀ y``): from the range (the
+        measurements) to the domain (the images)."""
         raise NotImplementedError("Adjoint method must be implemented by subclasses.")
 
     def autograd(self):
@@ -139,26 +115,13 @@ class Operator(torch.nn.Module, ABC):
         return self.default_reconstruction_fn()(y, self)
 
     def gram(self, x: torch.Tensor) -> torch.Tensor:
-        """Apply the Gram operator.
-
-        For a LinearOperator :math:`A`, the self-adjoint Gram operator is defined as :math:`A^H A`.
-
-        .. note::
-           This is the inherited default implementation.
-        """
+        """The Gram operator, AᵀA, applied to ``x``."""
         return self.adjoint(self.forward(x))
 
     def inverse(self, y: torch.Tensor) -> torch.Tensor:
-        """Computes the inverse of the operator applied to input x if exists.
-
-        This method should only be implemented by subclasses that have a well-defined inverse.
-
-        Args:
-            y: The input data to which the inverse operator is applied.
-
-        Returns:
-            The result of applying the inverse operator to x.
-        """
+        """The inverse applied to ``y``, for operators that have one (e.g. an
+        orthogonal transform): a subclass defines it only then, and its default
+        reconstruction is then the inverse."""
         raise NotImplementedError(
             "The inverse method is not implemented, possibly because "
             "the operator does not have a well-defined inverse."
@@ -181,17 +144,9 @@ class Operator(torch.nn.Module, ABC):
         )
 
     def to_device(self, device: DeviceLikeType) -> Operator:
-        """Move the operator and its suboperators to the specified device and update their ``device`` attributes.
-
-        Note: Calling ``nn.Module.to(device)`` does not automatically update the ``device`` attribute.
-        This method ensures that the ``device`` attribute is updated for all suboperators as well.
-
-        Args:
-            device: Target device.
-
-        Returns:
-            The operator moved to the specified device.
-        """
+        """Moves the operator and its sub-operators to ``device``, updating
+        their ``device`` attributes (which ``nn.Module.to`` doesn't). Returns
+        the operator."""
         super().to(device=device)
 
         for module in self.modules():  # Note: ``nn.Module.modules()`` is recursive

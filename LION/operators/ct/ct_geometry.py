@@ -83,7 +83,7 @@ class Geometry(OperatorParameters):
     """
 
     def __init__(self, **kwargs):
-        # __init__ also runs again on an existing geometry (default_geo(), load()):
+        # __init__ also runs again on an existing geometry (load()):
         # forget values set before.
         for name in _TRIPLE_NAMES:
             self.__dict__.pop(name, None)
@@ -199,6 +199,9 @@ class Geometry(OperatorParameters):
 
     @staticmethod
     def default_parameters():
+        """LION's default CT geometry: fan beam: source to centre 575 mm,
+        source to detector 1050 mm, a 900 x 1 mm detector, 512x512 images of
+        300 mm, 360 angles over 360 degrees."""
         return Geometry(
             image_shape=[1, 512, 512],
             image_size=[300.0 / 512.0, 300, 300],
@@ -212,6 +215,7 @@ class Geometry(OperatorParameters):
 
     @staticmethod
     def sparse_view_parameters():
+        """The default geometry with 50 angles over 360 degrees (sparse view)."""
         return Geometry(
             image_shape=[1, 512, 512],
             image_size=[300 / 512, 300, 300],
@@ -225,6 +229,7 @@ class Geometry(OperatorParameters):
 
     @staticmethod
     def sparse_angle_parameters():
+        """The default geometry with 60 angles over 60 degrees (limited angle)."""
         return Geometry(
             image_shape=[1, 512, 512],
             image_size=[300 / 512, 300, 300],
@@ -238,6 +243,9 @@ class Geometry(OperatorParameters):
 
     @staticmethod
     def parallel_default_parameters(image_shape=None):
+        """A parallel beam with ``image_shape`` (1 x 512 x 512 by default)
+        images of 1 mm pixels and a matching detector, 360 angles over 360
+        degrees."""
         if image_shape is None:
             image_shape = [1, 512, 512]
         return Geometry(
@@ -253,6 +261,9 @@ class Geometry(OperatorParameters):
 
     @staticmethod
     def parallel_sparse_view_parameters(image_shape=None):
+        """A parallel beam with ``image_shape`` (1 x 512 x 512 by default)
+        images of 1 mm pixels and a matching detector, 50 angles over 360
+        degrees (sparse view)."""
         if image_shape is None:
             image_shape = [1, 512, 512]
         return Geometry(
@@ -268,6 +279,9 @@ class Geometry(OperatorParameters):
 
     @staticmethod
     def parallel_sparse_angle_parameters(image_shape=None):
+        """A parallel beam with ``image_shape`` (1 x 512 x 512 by default)
+        images of 1 mm pixels and a matching detector, 60 angles over 60
+        degrees (limited angle)."""
         if image_shape is None:
             image_shape = [1, 512, 512]
         return Geometry(
@@ -279,18 +293,6 @@ class Geometry(OperatorParameters):
             dsd=image_shape[1] * 4,
             mode="parallel",
             angles=np.linspace(0, 2 * np.pi / 6, 60, endpoint=False),
-        )
-
-    def default_geo(self):
-        self.__init__(
-            image_shape=[1, 512, 512],
-            image_size=[300 / 512, 300, 300],
-            detector_shape=[1, 900],
-            detector_size=[1, 900],
-            dso=575,
-            dsd=1050,
-            mode="fan",
-            angles=np.linspace(0, 2 * np.pi, 360, endpoint=False),
         )
 
     def __str__(self):

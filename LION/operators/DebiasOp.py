@@ -16,26 +16,12 @@ from LION.utils.math import power_method
 
 
 class DebiasOp(Operator):
-    """Debiasing least squares operator on the support of w.
-
-    Parameters
-    ----------
-    operator : Operator
-        Forward operator A.
-    y : torch.Tensor
-        Measurements, shape (M,).
-    w : torch.Tensor
-        l1 minimiser, shape (Nw,).
-    support_tol : float
-        Threshold defining nonzero support.
-
-    References
-    ----------
-    .. [Koutsourakis2021] G. Koutsourakis, A. Thompson, and J. C. Blakesley,
-        "Toward Megapixel Resolution Compressed Sensing Current Mapping of
-        Photovoltaic Devices Using Digital Light Processing", Solar RRL,
-        5(11):2100467, 2021. doi:10.1002/solr.202100467
-    """
+    """The forward operator ``operator`` restricted to the support of ``w`` (an
+    l1 minimiser; its entries above ``support_tol``), for debiasing it by least
+    squares on that support (Koutsourakis, Thompson and Blakesley, "Toward
+    Megapixel Resolution Compressed Sensing Current Mapping of Photovoltaic
+    Devices Using Digital Light Processing", Solar RRL 5(11):2100467, 2021,
+    doi:10.1002/solr.202100467.) ``y``: the measurements (M,)."""
 
     def __init__(
         self,
@@ -59,46 +45,21 @@ class DebiasOp(Operator):
         self.device = op.device
 
     def __call__(self, v: torch.Tensor, out=None) -> torch.Tensor:
-        """Apply the forward projection on the support.
-
-        Parameters
-        ----------
-        v : torch.Tensor
-            Input vector on the support, shape (Ns,).
-        out : None
-            Legacy for tomosipo ``to_autograd``. Just ignore.
-
-        Returns
-        -------
-        torch.Tensor
-            Output measurements, shape (M,).
-        """
+        """The measurements (M,) of ``v``, a vector on the support (Ns,).
+        ``out``: unused, kept for the ``__call__(x, out)`` signature."""
         return self.forward(v)
 
     def forward(self, v: torch.Tensor) -> torch.Tensor:
-        """Apply the forward projection on the support.
-
-        .. note::
-            Prefer calling the instance of the DebiasOp operator as ``operator(v)`` over
-            directly calling this method. See this PyTorch `discussion <https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460/3>`_.
-        """
+        """The measurements (M,) of ``v``, a vector on the support (Ns,). Call
+        the operator, ``op(v)``, rather than this method (as for torch
+        modules)."""
         w_full = torch.zeros_like(self.w)
         w_full[self.support] = v
         return self.op.forward(w_full)
 
     def adjoint(self, r: torch.Tensor) -> torch.Tensor:
-        """Apply the adjoint projection on the support.
-
-        Parameters
-        ----------
-        r : torch.Tensor
-            Input measurements, shape (M,).
-
-        Returns
-        -------
-        torch.Tensor
-            Output vector on the support, shape (Ns,).
-        """
+        """The adjoint: the vector on the support (Ns,) of the measurements
+        ``r`` (M,)."""
         g_full = self.op.adjoint(r)
         return g_full[self.support]
 
@@ -122,31 +83,13 @@ def debias_ls(
     tol: float = 1e-5,
     verbose: int = 1,
 ) -> torch.Tensor:
-    """Debiasing least squares on the support of w.
+    """``w`` (an l1 minimiser, (Nw,)) debiased: least squares fitted to the
+    measurements ``y`` (M,) on its support (the entries above ``support_tol``),
+    by gradient descent. Returns the debiased coefficients (Nw,).
 
-    Parameters
-    ----------
-    op : Operator
-        Forward operator A.
-    y : torch.Tensor
-        Measurements, shape (M,).
-    w : torch.Tensor
-        l1 minimiser, shape (Nw,).
-    support_tol : float
-        Threshold defining nonzero support.
-    max_iter : int
-        Maximum number of gradient descent iterations.
-    tol : float
-        Relative stopping threshold.
-    verbose : int
-        0: nothing shown; 1 (default): a progress bar; 2: with the objective
-        and the relative change.
-
-    Returns
-    -------
-    w_deb : torch.Tensor
-        Debiased coefficient vector, shape (Nw,).
-    """
+    ``op``: the forward operator; ``max_iter``, ``tol``: the iterations and the
+    relative stopping threshold; ``verbose``: 0 nothing, 1 (default) a progress
+    bar, 2 with the objective and the relative change."""
     device = w.device
 
     support = torch.nonzero(torch.abs(w) > support_tol, as_tuple=False).squeeze(1)
