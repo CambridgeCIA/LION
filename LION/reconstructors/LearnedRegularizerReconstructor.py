@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """Variational reconstruction with a learned regulariser (e.g. AR, ACR)."""
 

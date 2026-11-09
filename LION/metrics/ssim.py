@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Charlie Shoebridge, Ander Biguri, Shanglei Chai
 # =============================================================================
 from __future__ import annotations
 from skimage.metrics import structural_similarity as skim_ssim

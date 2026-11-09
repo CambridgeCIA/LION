@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri, Thanh Trung (Troy) Vu
 # =============================================================================
 """Random numbers that can be reproduced.
 

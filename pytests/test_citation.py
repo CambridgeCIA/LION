@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """Citations (LION.utils.citation): every LION component's cite() returns its
 citation as text (BibTeX or MLA), or None if it has none."""

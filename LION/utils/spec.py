@@ -1,6 +1,8 @@
 # =============================================================================
 # This file is part of LION library
 # License : GPL-3
+#
+# Author  : Ander Biguri
 # =============================================================================
 """Specs: a LION component written as the call that builds it, in JSON.
 

@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """Reconstructors (PnP, learned regulariser) with a matrix operator, no CT needed."""
 

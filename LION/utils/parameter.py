@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri, Thanh Trung (Troy) Vu
 # =============================================================================
 ## This file contains a general class to store LIONParameter files.
 ## You should inherit from this class for any LIONParameter setting.

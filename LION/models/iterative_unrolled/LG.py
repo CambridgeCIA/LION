@@ -1,7 +1,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Authors: Zak Shumaylov, Max Kiss, Ander Biguri
+# Author  : Zakhar Shumaylov, Max Kiss, Ander Biguri
 # Based on: https://arxiv.org/pdf/1704.04058.pdf
 # =============================================================================
 

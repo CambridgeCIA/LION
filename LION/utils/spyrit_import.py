@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """Import spyrit only where its operators are needed.
 

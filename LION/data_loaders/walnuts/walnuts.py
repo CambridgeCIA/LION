@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Emilien Valat, Ferdia Sherry
 # =============================================================================
 from typing import Union
 import pathlib

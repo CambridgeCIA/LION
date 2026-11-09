@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri, Charlie Shoebridge
 # =============================================================================
 from LION.operators.ct.fdk import fdk
 from LION.optimizers.SelfSupervisedSolver import SelfSupervisedSolver

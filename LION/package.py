@@ -1,6 +1,8 @@
 # =============================================================================
 # This file is part of LION library
 # License : GPL-3
+#
+# Author  : Ander Biguri
 # =============================================================================
 """Publishing a trained model: everything needed to make it, train it again
 and test it, in one folder (a package), from the records LION saved.

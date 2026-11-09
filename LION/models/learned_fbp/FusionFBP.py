@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Andrea Sainz Bear, Thanh Trung (Troy) Vu, Ander Biguri
 # =============================================================================
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 

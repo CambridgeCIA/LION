@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """Import tomosipo / ts_algorithms only where CT functionality needs them.
 

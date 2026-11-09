@@ -1,7 +1,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  : Zakhar Shumaylow, Charlie Shoebridge
+# Author  : Zakhar Shumaylov, Charlie Shoebridge
 # Modifications: Ander Biguri
 # =============================================================================
 from __future__ import annotations

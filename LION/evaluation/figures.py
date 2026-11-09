@@ -1,6 +1,8 @@
 # =============================================================================
 # This file is part of LION library
 # License : GPL-3
+#
+# Author  : Ander Biguri
 # =============================================================================
 """Figures of test records: score plots and example images, in plain
 matplotlib (your style sheet and rcParams apply).

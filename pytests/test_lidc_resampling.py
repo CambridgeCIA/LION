@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """LIDC-IDRI resampling to one pixel spacing (pre-processing), its record in
 the processed folder, and the matching geometry of the data loader and the

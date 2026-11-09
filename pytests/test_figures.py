@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """Figures of comparisons (LION.evaluation.figures, Comparison.figures/images/
 save/instantiate): score plots, the chosen samples, example images with zoom

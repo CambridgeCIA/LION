@@ -2,10 +2,10 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """Every Python file of LION, its tests and its scripts starts with the
-licence header (GPL-3, as ASTRA and tomosipo require)."""
+licence header (GPL-3, as ASTRA and tomosipo require), naming its authors."""
 
 from pathlib import Path
 
@@ -24,3 +24,5 @@ def test_licence_header(path):
     head = (ROOT / path).read_text(encoding="utf-8").splitlines()[:6]
     assert "# This file is part of LION library" in head
     assert "# License : GPL-3" in head
+    authors = [line for line in head if line.startswith("# Author")]
+    assert authors and authors[0].split(":", 1)[1].strip(), "no authors named"

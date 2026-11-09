@@ -1,6 +1,8 @@
 # =============================================================================
 # This file is part of LION library
 # License : GPL-3
+#
+# Author  : Ander Biguri
 # =============================================================================
 """Comparing reconstruction methods on one evaluation.
 

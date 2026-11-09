@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri, Charlie Shoebridge
 # =============================================================================
 from typing import Optional
 import torch.nn as nn

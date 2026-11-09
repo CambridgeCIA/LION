@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """CT geometry: any two of shape, size and spacing, the value computed from them,
 check_geometry, saving and loading (including files whose stored spacing

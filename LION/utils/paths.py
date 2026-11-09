@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """Where LION's data and results are: the ``LION_DATA_PATH`` and
 ``LION_RESULTS_PATH`` environment variables, read when a path is used.

@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """LION's core (operators, classical algorithms, models, solvers base) must import
 without tomosipo/astra, so the pure-torch parts can be used on any machine.

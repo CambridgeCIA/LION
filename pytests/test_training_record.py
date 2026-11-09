@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """The record of a training (LION.optimizers.training_record): what the solvers
 write in every model file, the training seed, resuming the same run,

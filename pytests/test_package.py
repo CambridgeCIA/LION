@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """Publishing a trained model (LION.package.publish): what a package holds,
 that its files alone train the model again (the model card's code), what

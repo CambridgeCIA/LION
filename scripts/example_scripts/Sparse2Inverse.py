@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Alvaro Exposito
 # =============================================================================
 from LION.operators.ct.fdk import fdk
 from LION.optimizers.Sparse2InverseSolver import Sparse2InverseSolver

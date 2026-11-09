@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Christina Runkel, Ander Biguri
 # =============================================================================
 #%%
 # Basic science imports

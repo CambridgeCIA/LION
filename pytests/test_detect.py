@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Shanglei Chai
 # =============================================================================
 """Regression tests for deteCT geometry-to-sinogram angle mapping."""
 

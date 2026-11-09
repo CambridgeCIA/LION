@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Alvaro Exposito, Ander Biguri
 # =============================================================================
 from typing import Optional
 from LION.operators.ct.ct_geometry import Geometry

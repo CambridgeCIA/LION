@@ -1,6 +1,8 @@
 # =============================================================================
 # This file is part of LION library
 # License : GPL-3
+#
+# Author  : Ander Biguri
 # =============================================================================
 """Resampling of LIDC-IDRI slices to one pixel spacing, for the pre-processing.
 

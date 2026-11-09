@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """Reproducible random numbers (LION.utils.rng) and the simulated noise of the
 data loaders: one noisy measurement per slice when a seed is given."""

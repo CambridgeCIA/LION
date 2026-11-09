@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 # %% This example shows how to train a denoising network with Gaussian noise.
 # It will train a Gaussian denoiser on simulated Gaussian noise on the ground truth, rather than usin the noisy data from the data loader.

@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri, Alvaro Exposito
 # =============================================================================
 import itertools
 from typing import Optional

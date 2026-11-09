@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Thanh Trung (Troy) Vu
 # =============================================================================
 """SPGL1 sparse reconstruction with torch operators."""
 

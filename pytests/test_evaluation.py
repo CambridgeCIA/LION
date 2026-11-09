@@ -2,7 +2,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  :
+# Author  : Ander Biguri
 # =============================================================================
 """Evaluating reconstruction methods (LION.evaluation): methods as one call,
 the baseline, scores, the Evaluation component and its test records (saved,
