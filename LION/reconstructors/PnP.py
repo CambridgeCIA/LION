@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri, Thanh Trung (Troy) Vu
+# =============================================================================
 """Plug-and-Play (PnP) Reconstructor using a prior function."""
 
 from __future__ import annotations

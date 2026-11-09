@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """TorchModel: a plain torch module as a LIONmodel."""
 
 import pytest

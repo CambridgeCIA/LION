@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Andrea Sainz Bear
+# =============================================================================
 import numpy as np
 import copy
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType

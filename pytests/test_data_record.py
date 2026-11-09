@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """The record of a model's data (LION.data_loaders.data_record): datasets and
 experiments described so they can be made again and checked
 (LIONDataset.instantiate, Experiment.instantiate), paths inside

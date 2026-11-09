@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """Variational reconstruction with a learned regulariser (e.g. AR, ACR)."""
 
 from __future__ import annotations

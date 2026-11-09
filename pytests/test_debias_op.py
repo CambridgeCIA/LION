@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Shanglei Chai
+# =============================================================================
 """The debiasing least squares step used by the photocurrent mapping example.
 
 ``debias_ls`` is called by ``scripts/example_scripts/photocurrent_mapping.py``.

@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Thanh Trung (Troy) Vu, Ander Biguri
+# =============================================================================
 """Base class for operators in LION."""
 
 from __future__ import annotations

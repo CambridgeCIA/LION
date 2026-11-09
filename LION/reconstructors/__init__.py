@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri, Thanh Trung (Troy) Vu
+# =============================================================================
 """LION image reconstructors."""
 
 from LION.reconstructors.ForwardReconstructor import ForwardReconstructor

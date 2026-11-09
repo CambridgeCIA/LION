@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Thanh Trung (Troy) Vu, Ander Biguri
+# =============================================================================
 """Conjugate gradient solver"""
 
 from typing import Callable

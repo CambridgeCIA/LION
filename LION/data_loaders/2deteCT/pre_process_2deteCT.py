@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri, Emilien Valat
+# =============================================================================
 from typing import Dict
 from pathlib import Path
 import shutil

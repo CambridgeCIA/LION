@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """Computed tomography: the geometry (the CT operator's parameters), the
 projection operator, noise and HU conversions, and CT reconstructions."""
 

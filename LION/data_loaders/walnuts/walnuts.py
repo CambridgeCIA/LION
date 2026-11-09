@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Emilien Valat, Ferdia Sherry
+# =============================================================================
 from typing import Union
 import pathlib
 from statistics import mean

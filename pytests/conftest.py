@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """Shared pytest configuration.
 
 - Tests that need tomosipo (and therefore astra with CUDA) are marked with

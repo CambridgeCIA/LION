@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """Gaussian blur and rotation of images in plain torch.
 
 They give the same results as ``torchvision.transforms.functional``'s

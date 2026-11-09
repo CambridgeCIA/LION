@@ -1,7 +1,7 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  : Ander Biguri & Christina Runkel
+# Author  : Ander Biguri, Christina Runkel
 # Modifications: -
 # =============================================================================
 

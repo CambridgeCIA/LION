@@ -1,6 +1,8 @@
 # =============================================================================
 # This file is part of LION library
 # License : GPL-3
+#
+# Author  : Ander Biguri
 # =============================================================================
 """The base class of reconstructors: methods that reconstruct with a trained
 model (e.g. a denoiser as a prior, a learned regulariser) inside an algorithm.

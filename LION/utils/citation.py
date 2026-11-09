@@ -1,6 +1,8 @@
 # =============================================================================
 # This file is part of LION library
 # License : GPL-3
+#
+# Author  : Ander Biguri
 # =============================================================================
 """Citations of where LION's components come from (a model's paper, a
 solver's, a dataset's): each component's ``cite(cite_format="bib")`` returns

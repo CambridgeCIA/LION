@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Andrea Sainz Bear
+# =============================================================================
 # %% This example shows how to train a learned FBP network for full angle, noisy measurements.
 
 # %% Imports

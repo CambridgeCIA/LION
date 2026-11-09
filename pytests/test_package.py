@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """Publishing a trained model (LION.package.publish): what a package holds,
 that its files alone train the model again (the model card's code), what
 publish refuses, and the notes. On CPU, on fake LIDC-IDRI slices, with a

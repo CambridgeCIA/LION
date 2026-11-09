@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """The record of the environment a model was saved in (LION.utils.environment):
 LION's version and code state, packages, determinism settings; the warning on
 loading a file saved with other code; what keeps a result from being published;

@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """Plain-torch Gaussian blur and rotation (LION.utils.image_transforms),
 replacing torchvision's."""
 

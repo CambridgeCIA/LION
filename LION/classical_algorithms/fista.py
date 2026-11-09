@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Thanh Trung (Troy) Vu
+# =============================================================================
 """FISTA algorithm for l1-regularized problems."""
 
 import math

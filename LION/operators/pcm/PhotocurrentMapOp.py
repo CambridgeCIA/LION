@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Thanh Trung (Troy) Vu
+# =============================================================================
 """Photocurrent mapping operator using subsampled WHT and dyadic permutation."""
 
 from __future__ import annotations

@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri, Charlie Shoebridge
+# =============================================================================
 from __future__ import annotations
 
 import functools

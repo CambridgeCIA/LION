@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Shanglei Chai
+# =============================================================================
 """Regression tests for deteCT geometry-to-sinogram angle mapping."""
 
 import os

@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """Comparing reconstruction methods (LION.evaluation.Comparison): the baseline
 row, names, the checks from the models' records (leakage by patient, another
 problem, other code, methods that can't be checked), tables. On CPU: models

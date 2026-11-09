@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """Photocurrent mapping: the photocurrent mapping operator, its subsampling,
 and the Walsh-Hadamard transform it uses."""
 

@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """Classical algorithms without CT: batching of per-sample reconstructions,
 conjugate gradient, FISTA and SPGL1. FDK/FBP with tomosipo is in test_ct.py."""
 

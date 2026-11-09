@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri, Charlie Shoebridge
+# =============================================================================
 # numerical imports
 from typing import Optional
 

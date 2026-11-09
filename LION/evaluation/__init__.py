@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """Evaluating and comparing reconstruction methods.
 
 - ``Evaluation``: the standard evaluation of one problem (test data, operator,

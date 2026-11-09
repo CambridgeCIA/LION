@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Thanh Trung (Troy) Vu
+# =============================================================================
 """Composite linear operator A = Phi Psi^{-1} and its adjoint for compressed sensing."""
 
 from __future__ import annotations

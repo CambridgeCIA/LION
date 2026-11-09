@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Thanh Trung (Troy) Vu
+# =============================================================================
 """2D orthogonal wavelet transform with periodised Daubechies wavelets."""
 
 from __future__ import annotations

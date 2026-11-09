@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri, Alvaro Exposito Martinez
+# =============================================================================
 import itertools
 from typing import Optional
 from LION.models.LIONmodel import LIONmodel

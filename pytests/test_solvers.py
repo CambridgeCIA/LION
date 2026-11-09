@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
 """Solvers on CPU without tomosipo: checkpointing and resuming, validation and
 testing, normalisation, the adversarial regulariser and Sparse2Inverse.
 
