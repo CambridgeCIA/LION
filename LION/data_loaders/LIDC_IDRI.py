@@ -173,7 +173,9 @@ class LIDC_IDRI(LIONDataset):
       the other kind when a patient has too few);
     - ``legacy_slice_selection``, ``legacy_patient_list``: reproduce the
       selection of LION before October 2026 (False);
-    - ``task``, ``folder`` (the pre-processed dataset), ``operator_params``;
+    - ``task``, ``folder`` (the pre-processed dataset);
+    - ``operator_params``: the geometry of the sinograms, for "reconstruction"
+      (``default_geometry()``, for which the slices are made);
     - ``annotation``: "consensus" (the pixels at least ``clevel`` of the
       annotations mark; 0.5) or "random" (one annotation per nodule, chosen
       with ``annotation_seed``; 0).
@@ -189,7 +191,8 @@ class LIDC_IDRI(LIONDataset):
     ):
         """The ``mode`` split ("train", "validation" or "test") with
         ``parameters`` (``default_parameters(operator_params)`` if None);
-        ``operator_params``: the CT geometry, for sinograms.
+        ``operator_params``: the CT geometry, replacing
+        ``parameters.operator_params`` if given.
 
         Pixel spacing: the pre-processing resamples every slice to
         ``PIXEL_SPACING_MM`` (500 mm over 512x512 pixels, the largest field of
@@ -261,11 +264,14 @@ class LIDC_IDRI(LIONDataset):
             self.parameters.operator_params = Geometry.init_from_parameter(
                 self.parameters.operator_params
             )
+        # A geometry given here replaces the parameters', so the parameters
+        # (and the record) say the one used.
         if operator_params is not None:
             self.parameters.operator_params = operator_params
-            self.operator = operator_params.make_operator()
-        elif self.parameters.operator_params is not None:
-            self.operator = self.parameters.operator_params.make_operator()
+        self.operator_params = self.parameters.operator_params
+        self.operator = None
+        if self.operator_params is not None:
+            self.operator = self.operator_params.make_operator()
         # Start of Patient pre-processing
 
         self.path_to_processed_dataset = pathlib.Path(self.parameters.folder)
@@ -537,8 +543,9 @@ class LIDC_IDRI(LIONDataset):
 
     @staticmethod
     def default_parameters(operator_params=None, task="reconstruction"):
-        """The parameters (see the class), for ``task`` ("reconstruction" needs
-        ``operator_params``, the geometry)."""
+        """The parameters (see the class), for ``task``, with the geometry
+        ``operator_params``: for "reconstruction", ``default_geometry()`` if
+        None."""
         param = LIONParameter()
         param.name = "LIDC-IDRI Data Loader"
         param.training_proportion = 0.8
@@ -557,9 +564,8 @@ class LIDC_IDRI(LIONDataset):
         param.task = task
         param.folder = paths.LIDC_IDRI_PROCESSED_DATASET_PATH
         if task == "reconstruction" and operator_params is None:
-            raise ValueError(
-                "For reconstruction task geometry needs to be input to default_parameters(geometry=geometry_param)"
-            )
+            # the geometry the pre-processed slices are made for
+            operator_params = LIDC_IDRI.default_geometry()
 
         # segmentation specific
         param.clevel = 0.5

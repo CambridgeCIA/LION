@@ -277,6 +277,35 @@ def same_geometry(a, b):
     )
 
 
+def test_datasets_list_their_default_geometry():
+    """default_parameters() has the geometry a dataset uses by default."""
+    assert same_geometry(
+        deteCT.default_parameters().operator_params, deteCT.get_default_geometry()
+    )
+    assert same_geometry(
+        lidc.LIDC_IDRI.default_parameters().operator_params,
+        lidc.LIDC_IDRI.default_geometry(),
+    )
+    # no sinograms, no geometry
+    assert (
+        lidc.LIDC_IDRI.default_parameters(task="segmentation").operator_params is None
+    )
+
+
+@pytest.mark.filterwarnings("ignore:You are not using any detector query")
+def test_detect_geometry_given_replaces_the_parameters(tmp_path):
+    """A geometry with a subset of the angles, given to the dataset, is the one
+    its parameters (and record) say."""
+    data = fake_detect(tmp_path, "train")
+    sparse = deteCT.get_default_geometry()
+    sparse.angles = sparse.angles[::10]
+    params = deteCT.default_parameters()
+    params.path_to_dataset = tmp_path
+    data = deteCT("train", sparse, params)
+    assert data.parameters.operator_params is sparse and data.operator_params is sparse
+    assert data.angle_index == list(range(0, 3600, 10))
+
+
 @pytest.mark.filterwarnings("ignore:You are not using any detector query")
 def test_detect_record(tmp_path):
     data = fake_detect(tmp_path, "train")

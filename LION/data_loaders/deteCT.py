@@ -70,10 +70,7 @@ class deteCT(LIONDataset):
     ):
         """The ``mode`` split ("train", "validation" or "test") with
         ``parameters`` (``default_parameters()`` if None). ``operator_params``:
-        the geometry: None for 2DeteCT's (``get_default_geometry``), or one
-        with a subset of its angles (the sinograms are subsampled to match;
-        others are refused, as the data are measured). The dataset's
-        ``operator_params`` is the geometry used, and its record says it.
+        the geometry, replacing ``parameters.operator_params`` if given.
 
         ``parameters`` (``default_parameters()``):
 
@@ -93,23 +90,33 @@ class deteCT(LIONDataset):
         - ``query``: a pandas query of the data record, to select slices (e.g.
           "detector==1"; "": all);
         - ``add_noise``: add noise to the sinograms (False), with
-          ``noise_params`` (``noise_parameters()``)."""
+          ``noise_params`` (``noise_parameters()``);
+        - ``operator_params``: the geometry: 2DeteCT's
+          (``get_default_geometry()``), or one with a subset of its angles (the
+          sinograms are subsampled to match; others are refused, as the data
+          are measured)."""
         if parameters is None:
             parameters = self.default_parameters()
         self.parameters = parameters
         # where samples are returned: the device selected in LION
         self.device = default_device()
 
-        # The data are measured, so the geometry is 2DeteCT's: the default one
-        # (get_default_geometry) if none is given, or one with a subset of its
-        # angles. operator_params is the one used, so the record says it.
-        if operator_params is None:
-            operator_params = self.get_default_geometry()
-            self.angle_index = list(range(len(operator_params.angles)))
-        else:
-            self.angle_index = self.__is_valid_geo(operator_params)
-        self.operator_params = operator_params
-        self.geometry = operator_params
+        # The data are measured, so the geometry is 2DeteCT's
+        # (parameters.operator_params, its default one unless changed) or one
+        # with a subset of its angles. A geometry given here replaces the
+        # parameters', so the parameters (and the record) say the one used.
+        if operator_params is not None:
+            self.parameters.operator_params = operator_params
+        elif getattr(self.parameters, "operator_params", None) is None:
+            self.parameters.operator_params = self.get_default_geometry()
+        elif not isinstance(self.parameters.operator_params, Geometry):
+            # parameters read from JSON have it as a plain LIONParameter
+            self.parameters.operator_params = Geometry.init_from_parameter(
+                self.parameters.operator_params
+            )
+        self.angle_index = self.__is_valid_geo(self.parameters.operator_params)
+        self.operator_params = self.parameters.operator_params
+        self.geometry = self.operator_params
 
         if parameters.query == "" and (
             not parameters.flat_field_correction or not parameters.dark_field_correction
@@ -283,6 +290,8 @@ class deteCT(LIONDataset):
         param.query = ""
 
         param.add_noise = False
+        # 2DeteCT's geometry; one with a subset of its angles also works
+        param.operator_params = deteCT.get_default_geometry()
 
         return param
 
