@@ -18,15 +18,52 @@ from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel
 from LION.optimizers.LIONsolver import LIONsolver
 from LION.utils.parameter import LIONParameter, OperatorParameters
+from LION.utils.image_transforms import (
+    random_crop,
+    random_erasing,
+    random_flip_rotate,
+)
 from LION.utils.rng import seeded
 
 # standard imports
 from tqdm import tqdm
 
-from kornia.augmentation import RandomCrop, RandomErasing
-
 
 class GaussianDenoiserSolver(LIONsolver):
+    """Trains a Gaussian denoiser (e.g. for Plug-and-Play): clean images (the
+    targets), with Gaussian noise added, are its inputs. As in the
+    literature (DnCNN, FFDNet and DRUNet in KAIR, Zhang et al.; the
+    gradient-step denoiser, Hurault et al.), each image gets its own noise
+    level, drawn from a range, and is randomly flipped and rotated.
+
+    **Noise levels are in the units of the data the model sees**: the noise
+    is added after the model's normalisation (``model.set_normalisation()``),
+    if any. The literature, and LION, assume images in [0, 1] (e.g. a
+    "dataset" or "custom" normalisation to [0, 1]), where its noise levels
+    are given as k/255: 25/255 = 0.098, 50/255 = 0.196. With another range
+    (e.g. no normalisation), scale the noise levels with it. The same holds
+    for the noise level a PnP reconstruction gives the denoiser.
+
+    ``solver_params`` (``default_parameters()``):
+
+    - ``noise_level``: the noise's standard deviation: one value, or a range
+      ``[low, high]``, drawn uniformly for each image (or patch). A model
+      that takes the noise level (``model.takes_noise_level()``) is given
+      one per image.
+    - ``patches``: None (whole images), or ``n_patches`` random crops of
+      ``patch_size`` x ``patch_size`` of each image
+      (``GaussianDenoiserSolver.patches(n_patches, patch_size)``).
+    - ``augment``: each training image (or patch) flipped and rotated by a
+      random one of the 8 symmetries of the square (of the rectangle's 4, for
+      images that aren't square).
+    - ``random_erasing``: each training image (or patch), half of the time,
+      with a random rectangle set to 0 (``image_transforms.random_erasing``).
+    - ``validation_noise_levels``: None, validation draws the noise levels
+      as training does (the same ones every time); or a list of them (e.g.
+      ``[15 / 255, 25 / 255, 50 / 255]``), every validation image at each,
+      the validation value being their mean.
+    """
+
     def __init__(
         self,
         model: LIONmodel,
@@ -38,7 +75,6 @@ class GaussianDenoiserSolver(LIONsolver):
         scheduler_step: str = "epoch",
         verbose: int = 1,
         device: torch.device = None,
-        noise_level: float | np.ndarray = 0.05,
         seed: Optional[int] = 0,
         deterministic: bool = False,
     ):
@@ -58,73 +94,83 @@ class GaussianDenoiserSolver(LIONsolver):
         )
         if verbose >= 2:
             tqdm.write(f"Gaussian Denoiser solver training on device: {self.device}")
-        self.patch = None
-
-        # Make range of noise levels if noise_level is a single value
-        noise_level = np.atleast_1d(np.asarray(noise_level, dtype=float))
-        if noise_level.ndim == 1 and noise_level.shape[0] == 1:
-            noise_level = np.array([noise_level[0], noise_level[0]])
-        elif noise_level.ndim != 1 or noise_level.shape[0] != 2:
-            raise LIONSolverException(
-                "noise_level must be a numpy array of length 2, or a single value."
-            )
-        self.noise_level = noise_level
+        self._noise_range()  # checks it
 
     def mini_batch_step(self, y, target):
-        """
-        This function isresponsible for performing a single mini-batch step of the optimization.
-        returns the loss of the mini-batch
-        """
-        # Forward pass
+        """The loss of the model on ``target`` (clean images) with noise
+        added (``y`` isn't used: the inputs are made from the targets)."""
         if self.do_normalise:
             target = self.model.normalise(target)
+        target = self._training_images(target)
+        noise_level = self._noise_levels(target.shape[0], target.device)
+        return self.loss_fn(self._denoise(target, noise_level), target)
 
-        if self.patch is not None:
-            target = self.patch.random_erasing(
-                torch.cat(
-                    [
-                        self.patch.random_crop(target)
-                        for _ in range(self.patch.n_patches)
-                    ],
-                    dim=0,
-                )
-            )
-
-        noise_level = self._noise_level()
-        noisy = target + noise_level * torch.randn_like(target)
-
-        # if the model accepts noise level as input
+    def _denoise(self, clean: torch.Tensor, noise_level: torch.Tensor):
+        """The model's output on ``clean`` with Gaussian noise of standard
+        deviation ``noise_level`` (one per image) added."""
+        shape = (-1,) + (1,) * (clean.dim() - 1)
+        noisy = clean + noise_level.reshape(shape) * torch.randn_like(clean)
         if self.model.takes_noise_level():
-            output = self.model(noisy, noise_level=noise_level)
-        else:
-            output = self.model(noisy)
-        return self.loss_fn(output, target)
+            return self.model(noisy, noise_level=noise_level)
+        return self.model(noisy)
 
-    def _noise_level(self) -> float:
-        """A noise level drawn uniformly from ``self.noise_level``'s range."""
-        low, high = (float(v) for v in self.noise_level)
-        return low + (high - low) * torch.rand(1).item()
+    def _noise_range(self) -> tuple[float, float]:
+        """``solver_params.noise_level`` as a range ``(low, high)``."""
+        level = np.atleast_1d(np.asarray(self.solver_params.noise_level, dtype=float))
+        if level.ndim != 1 or level.shape[0] not in (1, 2):
+            raise ValueError(
+                "noise_level must be one value or a range [low, high], not "
+                f"{self.solver_params.noise_level!r}"
+            )
+        return float(level[0]), float(level[-1])
+
+    def _noise_levels(self, n: int, device) -> torch.Tensor:
+        """``n`` noise levels drawn uniformly from the range, one per image."""
+        low, high = self._noise_range()
+        return (low + (high - low) * torch.rand(n)).to(device)
+
+    def _patches(self, images: torch.Tensor) -> torch.Tensor:
+        """``images`` as ``solver_params.patches`` says: themselves (None),
+        or ``n_patches`` random crops of each."""
+        patches = self.solver_params.patches
+        if patches is None:
+            return images
+        size = (patches.patch_size, patches.patch_size)
+        return torch.cat(
+            [random_crop(images, size) for _ in range(patches.n_patches)], dim=0
+        )
+
+    def _training_images(self, images: torch.Tensor) -> torch.Tensor:
+        """The images trained on: patches, flipped and rotated, erased, as
+        ``solver_params`` says."""
+        images = self._patches(images)
+        if self.solver_params.augment:
+            images = random_flip_rotate(images)
+        if self.solver_params.random_erasing:
+            images = random_erasing(images)
+        return images
 
     @staticmethod
     def default_parameters() -> LIONParameter:
-        return LIONParameter()
+        params = LIONParameter()
+        params.noise_level = 0.05
+        params.patches = None
+        params.augment = True
+        params.random_erasing = False
+        params.validation_noise_levels = None
+        return params
 
-    def set_patch_strategy(self, n_patches, patch_size):
-        """
-        Set the patch strategy for the solver.
-        :param n_patches: Number of patches to extract.
-        :param patch_size: Size of each patch.
-        """
-        self.patch = LIONParameter()
-        self.patch.n_patches = n_patches
-        self.patch.random_crop = RandomCrop((patch_size, patch_size))
-        self.patch.random_erasing = RandomErasing()
+    @staticmethod
+    def patches(n_patches: int, patch_size: int) -> LIONParameter:
+        """``solver_params.patches``: ``n_patches`` random crops of
+        ``patch_size`` x ``patch_size`` of each image."""
+        return LIONParameter(n_patches=n_patches, patch_size=patch_size)
 
     def validate(self):
-        """
-        This function is responsible for performing a single validation set of the optimization.
-        returns the average loss of the validation set this epoch.
-        """
+        """The validation value: ``validation_fn`` of the model's outputs on
+        the validation images with noise added, against the images (on
+        patches, if training is; not flipped, rotated or erased). The noise is
+        the same in every validation."""
         if self.check_validation_ready() != 0:
             raise LIONSolverException(
                 "Solver not ready for validation. Please call set_validation."
@@ -137,6 +183,7 @@ class GaussianDenoiserSolver(LIONsolver):
         status = self.model.training
         self.model.eval()
 
+        fixed = self.solver_params.validation_noise_levels
         with torch.no_grad():
             validation_loss = np.array([])
             for batch, (_, targets) in enumerate(
@@ -149,32 +196,24 @@ class GaussianDenoiserSolver(LIONsolver):
                 # the same patches and noise in every validation (per batch, in
                 # the loader's order), so values compare across epochs and runs
                 with seeded(self.seed, "validation", batch, device=targets.device):
-                    if self.patch is not None:
-                        data = self.patch.random_erasing(
-                            torch.cat(
-                                [
-                                    self.patch.random_crop(targets)
-                                    for _ in range(self.patch.n_patches)
-                                ],
-                                dim=0,
-                            )
-                        )
+                    data = self._patches(targets)
+                    n = data.shape[0]
+                    if fixed is None:
+                        levels = [self._noise_levels(n, data.device)]
                     else:
-                        data = targets
-                    noise_level = self._noise_level()
-                    noisy = data + noise_level * torch.randn_like(data)
-
-                # if the model accepts noise level as input
-                if self.model.takes_noise_level():
-                    outputs = self.model(noisy, noise_level=noise_level)
-                else:
-                    outputs = self.model(noisy)
-                validation_loss = np.append(
-                    validation_loss,
-                    self.validation_fn(outputs.to(self.device), data.to(self.device))
+                        levels = [
+                            torch.full((n,), float(level), device=data.device)
+                            for level in fixed
+                        ]
+                    outputs = [self._denoise(data, level) for level in levels]
+                values = [
+                    self.validation_fn(output.to(self.device), data.to(self.device))
+                    .reshape(-1)
                     .cpu()
-                    .numpy(),
-                )
+                    .numpy()
+                    for output in outputs
+                ]
+                validation_loss = np.append(validation_loss, np.mean(values, axis=0))
 
         if self.verbose >= 2:
             tqdm.write(

@@ -5,7 +5,12 @@
 # Modifications: -
 # =============================================================================
 
-from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
+from LION.models.LIONmodel import (
+    LIONmodel,
+    LIONModelParameter,
+    ModelInputType,
+    noise_level_map,
+)
 from LION.utils.parameter import LIONParameter
 
 from inspect import getmembers, isfunction
@@ -261,14 +266,14 @@ class DRUNet(LIONmodel):
             """,
         )
 
-    def forward(self, x0, noise_level: Optional[float] = None):
+    def forward(self, x0, noise_level=None):
+        """``noise_level`` (with ``use_noise_level``): one number, or one per
+        image of the batch."""
         if self.model_parameters.use_noise_level:
-            if not (isinstance(noise_level, float) and noise_level >= 0.0):
-                raise ValueError(
-                    f"`noise_level` must be a non-negative float, not {noise_level!r}"
-                )
+            if noise_level is None:
+                raise ValueError("DRUNet with use_noise_level needs noise_level")
             # one extra input channel holding the noise level
-            x0 = torch.cat((x0, noise_level * torch.ones_like(x0[:, :1])), dim=1)
+            x0 = torch.cat((x0, noise_level_map(noise_level, x0)), dim=1)
         x1 = self.lift(x0)
         x2 = self.down1(x1)
         x3 = self.down2(x2)

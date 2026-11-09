@@ -45,7 +45,6 @@ dependencies = [
     # install use the `standalone` extra below: pip install ".[standalone]"
     # Libraries that depend on torch are installed here, by pip, after torch (README):
     # from conda they would bring a second, CPU-only pytorch (and MKL) into the env.
-    "kornia",  # LION/optimizers/GaussianDenoiserSolver.py
     "mrpro",  # MRI backend, imported on use (LION/utils/mrpro_import.py)
     "pylidc",  # LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py
     "spyrit",  # Fast Walsh-Hadamard Transform, imported on use (LION/utils/spyrit_import.py)

@@ -18,7 +18,6 @@ dependencies:
   # require it: from conda here, or pip would install it with a pip torch
   - torchvision
   - deepinv  # example scripts
-  - kornia
   - torchdiffeq
   - torchmetrics  # example scripts
   - imageio

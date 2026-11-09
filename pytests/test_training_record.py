@@ -84,13 +84,15 @@ def denoiser_solver(
     checkpointing every epoch: its training uses torch's random numbers.
     ``model``: the model to train (default: a new one)."""
     model = model_from(init_seed) if model is None else model
+    solver_params = GaussianDenoiserSolver.default_parameters()
+    solver_params.noise_level = [0.05, 0.2]
     solver = GaussianDenoiserSolver(
         model,
         torch.optim.Adam(model.parameters(), lr=lr),
         torch.nn.MSELoss(),
         operator_params=Geometry.default_parameters(),
+        solver_params=solver_params,
         device=torch.device("cpu"),
-        noise_level=[0.05, 0.2],
         seed=seed,
     )
     solver.set_training(DataLoader(data(), batch_size=2, shuffle=True))
@@ -206,7 +208,7 @@ def test_training_randomness_changes_within_the_run():
     solver = denoiser_solver(validation=False)
     solver.train(1)
     rng.seed_all(0)
-    a, b = solver._noise_level(), solver._noise_level()
+    a, b = solver._noise_levels(1, "cpu"), solver._noise_levels(1, "cpu")
     assert a != b
 
 
@@ -304,7 +306,8 @@ def test_instantiate_makes_the_recorded_solver(tmp_path):
             id(p) for p in model.parameters()
         }
         assert isinstance(made.loss_fn, torch.nn.MSELoss)
-        np.testing.assert_array_equal(made.noise_level, [0.05, 0.2])
+        assert made.solver_params.noise_level == [0.05, 0.2]
+        assert made.solver_params.patches is None
         assert made.train_loader is None  # the data are set by the user
 
 
@@ -594,8 +597,7 @@ def test_solvers_take_their_arguments_in_one_order(cls):
     ]
     names = list(inspect.signature(cls.__init__).parameters)[1:]
     expected = [n for n in order if not (n == "loss_fn" and cls is ARSolver)]
-    # (GaussianDenoiserSolver's noise_level, until it is a solver parameter)
-    assert [n for n in names if n in order] == expected
+    assert names == expected
     assert "save_folder" not in names  # set_saving()
 
 
