@@ -23,29 +23,14 @@ def power_method(
     device: torch.device | str | None = None,
     seed: int | None = 0,
 ) -> torch.Tensor:
-    """Estimate operator norm by power iteration using torch.
+    """The norm of the operator ``op`` (its largest singular value), estimated
+    by power iterations on AᵀA, as a tensor.
 
-    Parameters
-    ----------
-    op : Operator
-        The operator for which to estimate the norm.
-    maxiter : int
-        Number of power iterations.
-    tol : float
-        Relative tolerance: stops once ||A v - sigma u|| <= tol * sigma, i.e.
-        independently of the scale of the operator.
-    device : torch.device | str | None
-        Device for computations. If None, use operator's device.
-    seed : int | None
-        Seed of the random starting vector, so the estimate is the same on
-        every call (e.g. step sizes computed from it). None uses torch's
-        global random state.
-
-    Returns
-    -------
-    sigma : torch.Tensor
-        Estimated operator norm.
-    """
+    ``maxiter``: the most iterations; ``tol``: stop once ||A v - sigma u|| <=
+    tol * sigma (relative, so independent of the operator's scale); ``device``:
+    where to compute (the operator's if None); ``seed``: of the random starting
+    vector, so that the estimate is the same on every call (e.g. step sizes
+    computed from it; None: torch's global random state)."""
     if device is None:
         device = getattr(op, "device", None)
     generator = None if seed is None else torch.Generator().manual_seed(seed)

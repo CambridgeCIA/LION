@@ -62,6 +62,8 @@ PACKAGES = {
 
 
 def is_environment_record(value) -> bool:
+    """Whether ``value`` (a dict or a ``LIONParameter``) is an environment
+    record: it has the record's key."""
     if isinstance(value, LIONParameter):
         return hasattr(value, RECORD_KEY)
     return isinstance(value, dict) and RECORD_KEY in value

@@ -19,19 +19,20 @@ def _nonzero(data_range):
 
 
 class Normalisation:
+    """How images are scaled to [0, 1], for models that need their inputs
+    normalised and say how (``LIONmodel.set_normalisation``). Normalisation in
+    CT isn't trivial; ``normalisation_type`` is one of:
+
+    - "none": nothing;
+    - "sample": each image by its own range;
+    - "dataset": by the range of the dataset's ground truths (read once from
+      ``dataset``, or given as ``data_range`` when known, e.g. from a model
+      file);
+    - "custom": by ``data_range``, (min, max).
+
+    ``record()`` and ``from_record`` save and make it again."""
+
     def __init__(self, normalisation_type="none", dataset=None, data_range=None):
-        """
-        Normalization in CT is non trivial. This class contains info about the type of normalization applied,
-        and is useful inside models, so they can communicate how they need their inputs normalized.
-
-        normalisation_type: The type of normalization to apply (e.g. "sample", "dataset").
-            "none": skip
-            "sample": will normalize inputs one by one
-            "dataset": will normalize inputs across the entire dataset.
-            "custom": will normalize inputs using a custom data_range. Requires data_range input.
-        """
-        # There are several ways to normalize CT data.
-
         types = ["none", "sample", "dataset", "custom"]
         if normalisation_type not in types:
             raise ValueError(
@@ -83,6 +84,9 @@ class Normalisation:
 
     def normalise(self, x):
         # assume x is a torch tensor
+        """The images ``x`` (B, C, H, W) scaled to [0, 1] by the
+        normalisation's range ("sample": each image's, kept for
+        ``unnormalise``)."""
         if self.type == "sample":
             # normalize each sample in batch separately
             self.last_max = x.amax(dim=(2, 3), keepdim=True)

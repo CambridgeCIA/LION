@@ -31,14 +31,8 @@ import torch
 
 
 def seed_from_parts(*parts) -> int:
-    """Generate a reproducible seed from a list of string parts.
-
-    Args:
-        *parts: List of strings to generate the seed from.
-
-    Returns:
-        A reproducible seed.
-    """
+    """A 32-bit seed from ``parts`` (anything, as strings), the same on every
+    machine and run: a stable hash (BLAKE2b), not Python's ``hash``."""
     payload = "|".join(str(part) for part in parts).encode("utf-8")
     digest = hashlib.blake2b(payload, digest_size=8).digest()
     seed_u64 = int.from_bytes(digest, byteorder="little", signed=False)

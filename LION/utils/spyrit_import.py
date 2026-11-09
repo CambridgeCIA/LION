@@ -18,16 +18,10 @@ from types import ModuleType
 
 
 def import_spyrit(module: str = "spyrit", feature: str = "This operator") -> ModuleType:
-    """Import ``module`` (``spyrit`` or one of its submodules), raising an
-    ImportError that says what is missing.
-
-    Args:
-        module: Name of the module to import, e.g. ``spyrit.core.torch``.
-        feature: What needs it, for the error message (e.g. "WalshHadamard2D").
-
-    Returns:
-        The imported module.
-    """
+    """The module ``module`` (``spyrit`` or one of its submodules, e.g.
+    ``spyrit.core.torch``), imported, or an ImportError that says what is
+    missing and how to install it. ``feature``: what needs it, for the message
+    (e.g. "WalshHadamard2D")."""
     try:
         return importlib.import_module(module)
     except (ImportError, OSError) as error:

@@ -49,19 +49,14 @@ def gaussian_blur(
     sigma: float | Sequence[float],
     dims: Sequence[int] = (-2, -1),
 ) -> torch.Tensor:
-    """Gaussian blur of ``x`` along ``dims``, with reflected borders.
+    """Gaussian blur of ``x`` along ``dims``, with reflected borders: a tensor
+    of any shape, e.g. images (B, C, H, W) or sinograms (B, C, angles,
+    detectors). Returns the blurred tensor, with the shape and dtype of ``x``.
 
-    Args:
-        x: Tensor of any shape, e.g. images (B, C, H, W) or sinograms
-            (B, C, angles, detectors).
-        kernel_size: Odd kernel size, one for all dims or one per dim.
-        sigma: Standard deviation in pixels, one for all dims or one per dim.
-        dims: The dimensions to blur along. Default: the last two (an image).
-            ``dims=(-1,)`` blurs along the last dimension only.
-
-    Returns:
-        The blurred tensor, with the shape and dtype of ``x``.
-    """
+    ``kernel_size``: the odd kernel size, one for all ``dims`` or one each;
+    ``sigma``: the standard deviation in pixels, likewise; ``dims``: the
+    dimensions to blur along (the last two, an image's, by default; ``(-1,)``
+    blurs along the last only)."""
     dims = list(dims)
     sizes = [kernel_size] * len(dims) if isinstance(kernel_size, int) else kernel_size
     sigmas = [sigma] * len(dims) if isinstance(sigma, (int, float)) else sigma
@@ -89,18 +84,9 @@ def _convolve_along(x: torch.Tensor, kernel: torch.Tensor, dim: int) -> torch.Te
 def rotate(
     x: torch.Tensor, angle: float, interpolation: str = "nearest"
 ) -> torch.Tensor:
-    """Rotate images counter-clockwise by ``angle`` degrees about their centre.
-
-    The output has the size of the input; points that come from outside the
-    image are 0.
-
-    Args:
-        x: Images (..., H, W), e.g. (B, C, H, W).
-        angle: Rotation angle in degrees, counter-clockwise.
-        interpolation: "nearest" or "bilinear".
-
-    Returns:
-        The rotated images, with the shape and dtype of ``x``.
+    """Images ``x`` (..., H, W) rotated counter-clockwise by ``angle`` degrees
+    about their centre, with the shape and dtype of ``x``: points that come
+    from outside the image are 0. ``interpolation``: "nearest" or "bilinear".
     """
     if interpolation not in ("nearest", "bilinear"):
         raise ValueError(
