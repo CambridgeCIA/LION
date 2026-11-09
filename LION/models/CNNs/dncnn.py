@@ -15,6 +15,22 @@ from LION.utils.citation import citation
 
 
 class DnCNN(LIONmodel):
+    """DnCNN (Zhang et al., 2017): a denoiser of ``blocks`` convolutional
+    layers that learns the noise (``residual``: the output is the input minus
+    it). Takes images.
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``in_channels``: the images' channels (1);
+    - ``int_channels``: the hidden layers' channels (64);
+    - ``kernel_size``: 3x3;
+    - ``blocks``: the number of layers (20);
+    - ``residual``: learn the noise (True);
+    - ``bias_free``: no biases, as bias-free denoisers (False);
+    - ``act``: a ``torch.nn.functional`` activation ("leaky_relu");
+    - ``enforce_positivity``: a ReLU on the output (False);
+    - ``batch_normalisation``: as in the paper (True)."""
+
     def __init__(self, model_parameters: LIONParameter = None):
         super().__init__(model_parameters)
 
@@ -66,6 +82,8 @@ class DnCNN(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """The paper's DnCNN: 20 layers of 64 channels with batch
+        normalisation, learning the noise (see the class)."""
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
         params.in_channels = 1
@@ -106,6 +124,7 @@ class DnCNN(LIONmodel):
         )
 
     def forward(self, x):
+        """The denoised images ``x`` (B, in_channels, H, W)."""
         z = self._act(self.lift(x))
         if self.model_parameters.batch_normalisation:
             for conv, bn in zip(self.convs, self.bns):

@@ -21,6 +21,11 @@ from LION.utils.citation import citation
 
 
 class MSD_Layer(nn.Module):
+    """One layer of MSDNet: ``width`` 3x3 convolutions with their own
+    dilations, each on all of the layer's input channels, each followed by
+    batch normalisation and ``activation``. Its output is its input with the
+    new channels appended."""
+
     def __init__(
         self,
         in_channels: int,
@@ -57,6 +62,7 @@ class MSD_Layer(nn.Module):
         torch.nn.init.normal_(layer.weight, 0, np.sqrt(2 / n_c))
 
     def forward(self, x: torch.Tensor):  # x will be all of the previous channels to use
+        """``x`` with the ``width`` new channels appended."""
         new_channels = [x]
         for i in range(self.width):
             new_channels.append(self.activation(self.convs[i](x)))
@@ -67,25 +73,29 @@ class MSD_Layer(nn.Module):
 
 
 class MSDNet(LIONmodel):
+    """Mixed-Scale Dense network (Pelt and Sethian, 2018): a deep, narrow
+    network of dilated convolutions, every layer seeing the channels of all the
+    layers before it, ending in a 1x1 convolution. Takes images (e.g. a
+    reconstruction).
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``in_channels``: the input image's channels (1);
+    - ``width``: the channels each layer adds (1);
+    - ``depth``: the number of layers (100);
+    - ``dilations``: one per convolution, ``width * depth`` of them, layer by
+      layer (1 to 10, repeated);
+    - ``look_back_depth``: how many earlier layers each layer sees (-1: all);
+    - ``final_look_back_depth``: how many layers the final 1x1 convolution sees
+      (-1: all, and the input);
+    - ``activation``: a ``torch.nn`` class name ("ReLU") or module."""
+
     def __init__(
         self,
         model_parameters: Optional[LIONModelParameter] = None,
     ) -> None:
-        """Mixed-Scale Dense Neural Network based on:
-        A mixed-scale dense convolutional neural network for image analysis, Daniël M. Pelt and James A. Sethian
-
-        Args:
-            model_parameters (Optional[LIONModelParameter]):
-                includes:
-                    in_channels (int): number of channels in input image
-                    width: number of channels in each hidden layer
-                    depth: desired depth of network (not including input and output layers, i.e number of hidden layers)
-                    dilations: vectorized matrix of dilations s_ij. i from 0 to width, j from 0 to depth,
-                        e.g first (width) entries correspond to dilations for first layer.
-                    look_back_depth: how many layers back to use when computing channels in a given layer. -1 = use all layers
-                    final_look_back: how many layers to use to construct output image
-                    activation: the activation function to be used between layers.
-        """
+        """The network for ``model_parameters`` (``default_parameters()`` if
+        None)."""
         super().__init__(model_parameters)
 
         # total there should be width * depth distinct convolutions
@@ -195,6 +205,8 @@ class MSDNet(LIONmodel):
         )
 
     def forward(self, x):
+        """The network's output image for the images ``x`` (B, in_channels, H,
+        W)."""
         if (C := x.shape[1]) != self.model_parameters.in_channels:
             raise ValueError(
                 f"Expected {self.model_parameters.in_channels} input channels, instead got {C}"
@@ -231,6 +243,8 @@ class MSDNet(LIONmodel):
     @staticmethod
     def default_parameters() -> LIONModelParameter:
 
+        """The paper's network: 100 layers of width 1, dilations 1 to 10, every
+        layer seeing all earlier ones (see the class)."""
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
         params.in_channels = 1

@@ -9,8 +9,6 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.parameter import LIONParameter
 import LION.operators.ct.ct_geometry as ct
 
-# new
-
 
 import torch
 from torch.nn import (
@@ -32,18 +30,10 @@ from LION.utils.citation import citation
 
 
 class LearnableFilter(Module):
-    """
-    Learnable frequency-domain filter module for CT sinograms in FusionFBP.
-    This module replaces traditional filters like Ram-Lak with trainable parameters
-    in the frequency domain. It supports shared or per-angle filters.
-    Args:
-        init_filter (torch.Tensor):
-            Initial 1D filter in the frequency domain.
-        per_angle (bool):
-            If True, uses one filter per angle.
-        num_angles (int, optional):
-            Required if per_angle=True.
-    """
+    """A learnable filter of the projections, applied in the frequency domain
+    (it replaces FBP's ramp filter): ``init_filter`` (its initial frequency
+    response), one shared by every angle, or one per angle (``per_angle``, with
+    ``num_angles``)."""
 
     def __init__(self, init_filter, per_angle=False, num_angles=None):
         super().__init__()
@@ -61,6 +51,8 @@ class LearnableFilter(Module):
             self.register_parameter("weights", Parameter(filters))
 
     def forward(self, x):
+        """The projections ``x`` (B, angles, detectors) filtered, each along
+        the detector."""
         ftt1d = torch.fft.fft(x, dim=-1)
         if self.per_angle:
             filtered = ftt1d * self.weights[None, :, :]
@@ -71,10 +63,9 @@ class LearnableFilter(Module):
 
 
 class IntermediateResidualBlock(Module):
-    """
-    Depthwise 1D residual block of the interpolation network (along the
-    detector, each projection on its own, as in the DeepFBP paper).
-    """
+    """A residual block of the interpolation network: a depthwise 1D
+    convolution along the detector, batch normalisation and PReLU, each
+    projection on its own (as in DeepFBP)."""
 
     def __init__(self, channels):
         super().__init__()
@@ -87,19 +78,14 @@ class IntermediateResidualBlock(Module):
         )
 
     def forward(self, x):
+        """``x`` plus the block of it."""
         return x + self.block(x)
 
 
 class DenoisingBlock(Module):
-    """
-    Deep CNN block for denoising reconstructed CT images.
-    Architecture:
-        - One initial convolutional layer with ReLU
-        - Fifteen residual Conv2d + BatchNorm2d + ReLU blocks
-        - One final convolutional layer without activation
-    This is adapted from the DBP model, but designed to process a single fused image
-    rather than a stack of backprojections.
-    """
+    """The image denoiser of FusionFBP, adapted from DBP: a convolution and
+    ReLU, fifteen convolution, batch normalisation and ReLU layers, and a last
+    convolution, on one image."""
 
     def __init__(self):
 
@@ -130,25 +116,7 @@ class DenoisingBlock(Module):
         self.model = Sequential(self.conv1, *self.middle_blocks, self.final)
 
     def initial_layer(self, in_channels, out_channels, kernel_size, stride, padding):
-        """
-        Builds the initial convolutional block of the network.
-        This block consists of:
-            - Conv2d
-            - ReLU activation
-        Args:
-            in_channels (int):
-                Number of input channels.
-            out_channels (int):
-                Number of output channels.
-            kernel_size (int):
-                Size of the convolutional kernel.
-            stride (int):
-                Convolution stride.
-            padding (int):
-                Zero-padding to add to each side.
-        Returns:
-            nn.Sequential: A sequential block with Conv2d and ReLU.
-        """
+        """The first layer: a convolution and ReLU."""
 
         initial = Sequential(
             Conv2d(
@@ -163,26 +131,7 @@ class DenoisingBlock(Module):
         return initial
 
     def conv_block(self, in_channels, out_channels, kernel_size, stride, padding):
-        """
-        Builds an intermediate convolutional block for the DBP architecture.
-        This block includes:
-            - Conv2d
-            - BatchNorm2d
-            - ReLU activation
-        Args:
-            in_channels (int):
-                Number of input feature channels.
-            out_channels (int):
-                Number of output feature channels.
-            kernel_size (int):
-                Size of the convolutional kernel.
-            stride (int):
-                Convolution stride.
-            padding (int):
-                Zero-padding to apply.
-        Returns:
-            nn.Sequential: A sequential block with Conv2d, BatchNorm2d, and ReLU.
-        """
+        """An intermediate layer: a convolution, batch normalisation and ReLU."""
 
         convolution = Sequential(
             Conv2d(
@@ -198,23 +147,7 @@ class DenoisingBlock(Module):
         return convolution
 
     def final_layer(self, in_channels, out_channels, kernel_size, stride, padding):
-        """
-        Builds the final convolutional layer that produces the output image.
-        This layer does not include an activation function.
-        Args:
-            in_channels (int):
-                Number of input channels.
-            out_channels (int):
-                Number of output channels (typically 1).
-            kernel_size (int):
-                Size of the convolutional kernel.
-            stride (int):
-                Convolution stride.
-            padding (int):
-                Zero-padding to apply.
-        Returns:
-            nn.Conv2d: Final convolutional layer.
-        """
+        """The last layer: a convolution, no activation."""
 
         final = Conv2d(
             in_channels,
@@ -226,21 +159,7 @@ class DenoisingBlock(Module):
         return final
 
     def forward(self, x):
-        """
-        Defines the forward pass of the DBP network.
-        The input is passed sequentially through:
-            - Initial convolutional block
-            - Fifteen intermediate convolutional blocks
-            - Final convolutional layer
-        Args:
-            x (torch.Tensor): Input tensor of shape (B, C, H, W), where:
-                B = batch size,
-                C = number of backprojection channels (`n_single_BP`),
-                H, W = spatial dimensions.
-        Returns:
-            torch.Tensor:
-                Output tensor of shape (B, 1, H, W), representing the reconstructed image.
-        """
+        """The denoised images ``x`` (B, 1, H, W)."""
 
         # initial part
         conv1 = self.conv1(x)
@@ -257,27 +176,18 @@ class DenoisingBlock(Module):
 
 
 class FusionFBPNetwork(LIONmodel):
-    """
-    FusionFBP Network for CT reconstruction.
-    This architecture fuses physics-based filtering and backprojection with
-    deep learning modules for interpolation and denoising.
-    Pipeline:
-        - Learnable frequency-domain filtering (Ram-Lak-based)
-        - Interpolation network, as in DeepFBP (Tan et al. 2024): 1D convolutions along the detector, applied to each projection separately (no mixing across angles)
-        - Differentiable backprojection using Tomosipo
-        - Deep CNN-based image denoising
-    Args:
-        num_detectors (int):
-            Number of detector bins.
-        num_angles (int):
-            Number of projection angles.
-        A (ts.Operator):
-            Tomosipo projection operator.
-        filter_type (str):
-            Either 'Filter I' (shared) or Filter II.
-        device (torch.device):
-            Computation device.
-    """
+    """FusionFBP: DeepFBP's learnable filter, interpolation network and
+    backprojection, followed by DBP's deep CNN as the denoiser. CT only. Takes
+    the measurements (B, 1, angles, detectors).
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``filter_type``: "Filter I" (one filter for every angle) or anything else
+      (one filter per angle);
+    - ``fft_padding_twice_detectors``: the projections zero-padded to at least
+      twice the detectors before filtering (True);
+    - ``normalizer``: divide the backprojection by the backprojection of ones
+      (True)."""
 
     def __init__(
         self, operator_params: ct.Geometry, model_parameters: LIONParameter = None
@@ -317,13 +227,10 @@ class FusionFBPNetwork(LIONmodel):
         self.denoiser = DenoisingBlock()
 
     def compute_projection_size_padded(self):
-        """
-        FFT length for the filter: the next power of two of at least twice the
-        number of detectors, so that filtering is not circular (wrap-around).
-        ``fft_padding_twice_detectors = False`` gives the old length, the next
-        power of two of the number of detectors (no padding at all when that is
-        already a power of two).
-        """
+        """The FFT length of the filter: the next power of two of at least
+        twice the number of detectors, so filtering isn't circular
+        (``fft_padding_twice_detectors``; False: of the number of detectors, as
+        older versions did)."""
         n = self.num_detectors
         if self.model_parameters.fft_padding_twice_detectors:
             n = 2 * n
@@ -332,9 +239,8 @@ class FusionFBPNetwork(LIONmodel):
         )
 
     def ram_lak_filter(self, size):
-        """
-        Generates Ram-Lak filter directly in frequency domain.
-        """
+        """The Ram-Lak (ramp) filter of FFT length ``size``, in the frequency
+        domain: the learnable filter's initial value."""
 
         steps = int(size / 2 + 1)
         ramp = torch.linspace(0, 1, steps, dtype=torch.float32)
@@ -342,23 +248,24 @@ class FusionFBPNetwork(LIONmodel):
         f = torch.cat([ramp, down[:-2]])
         return f
 
-    # new
     @staticmethod
     def default_parameters():
+        """One shared filter, padded FFT, normalised backprojection (see the
+        class)."""
         FuFBP_params = LIONModelParameter()
         FuFBP_params.filter_type = "Filter I"
-        FuFBP_params.mode = "ct"
         FuFBP_params.model_input_type = ModelInputType.SINOGRAM
         # zero-pad the projections to >= 2x the detectors before the FFT filter
         FuFBP_params.fft_padding_twice_detectors = True
         FuFBP_params.normalizer = True
         return FuFBP_params
 
-    # new
-
     def forward(self, x):
 
         # Initial shape: [B, 1, A, D]
+        """The reconstructions (B, 1, H, W) of the sinograms ``x`` (B, 1,
+        angles, detectors): filter, interpolation, backprojection, denoising.
+        """
         x = x.squeeze(1)  # [B, A, D]
         x = pad(x, (0, self.padding), mode="constant", value=0)
         x = self.learnable_filter(x)

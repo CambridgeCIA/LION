@@ -17,6 +17,9 @@ from LION.utils.citation import citation
 
 
 class LGblock(nn.Module):
+    """A learned-gradient block: 3x3 convolutions through the ``channels``
+    listed, with ReLUs between them."""
+
     def __init__(self, channels):
         super(LGblock, self).__init__()
 
@@ -31,10 +34,23 @@ class LGblock(nn.Module):
         self.block = nn.Sequential(*layer_list)
 
     def forward(self, x):
+        """The block's output for ``x``."""
         return self.block(x)
 
 
 class LG(LIONmodel):
+    """Learned Gradient (Adler and Öktem, 2017): ``n_iters`` updates of the
+    image, each a CNN of the image, a memory, the data-fit gradient ``Aᵀ(y - A
+    x)`` and a TV gradient, with learned step sizes. Starts from the initial
+    reconstruction. Takes the measurements.
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``channels``: each block's channels, a list: its input (the image, the
+      memory, the two gradients) to its output (the memory, then the update);
+      [8, 32, 32, 6];
+    - ``n_iters``: the iterations (5)."""
+
     def __init__(
         self,
         operator_params: OperatorParameters,
@@ -61,6 +77,8 @@ class LG(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """5 iterations of blocks of 32 channels, a memory of 5 channels (see
+        the class)."""
         LG_params = LIONModelParameter()
         LG_params.channels = [8, 32, 32, 6]
         LG_params.n_iters = 5
@@ -93,6 +111,8 @@ class LG(LIONmodel):
         )
 
     def gradientTVnorm2D(self, f):
+        """The gradient of the (smoothed) isotropic total variation of the
+        images ``f`` (B, C, H, W)."""
         Gx = torch.diff(f, dim=2)
         Gy = torch.diff(f, dim=3)
         tvg = torch.zeros_like(f)
@@ -116,6 +136,7 @@ class LG(LIONmodel):
 
     def forward(self, x):
 
+        """The reconstructions of the measurements ``x`` (B, 1, ...)."""
         B, C, W, H = x.shape
 
         f = x.new_zeros(B, 1, *self.op.domain_shape[1:])

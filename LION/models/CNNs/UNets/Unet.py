@@ -15,6 +15,21 @@ from LION.utils.citation import citation
 
 ##Code for UNet
 class UNet(LIONmodel):
+    """U-Net (Ronneberger et al., 2015): an encoder-decoder over five scales
+    with skip connections, each block two 3x3 convolutions with group
+    normalisation, ReLU and dropout. Takes images.
+
+    ``model_parameters`` (``default_parameters()``):
+
+    - ``inChan``, ``outChan``: 1, 1;
+    - ``baseDim``: the first scale's channels, doubled at each scale (32);
+    - ``dropFac``: dropout (0);
+    - ``kerSiz``: the pooling size (2);
+    - ``noGrp``: groups of the group normalisation (32);
+    - ``norm_after_second_conv``: a group normalisation after both convolutions
+      of each block (True; False reproduces older LION versions, which had
+      one)."""
+
     def __init__(self, model_parameters=None):
         # set properties of UNet
         if model_parameters is None:
@@ -120,6 +135,8 @@ class UNet(LIONmodel):
         )
 
     def forward(self, x):
+        """The network's output images for the images ``x`` (B, inChan, H, W);
+        H and W must be multiples of 16."""
         enc1 = self.encoder1(x)
         enc2 = self.encoder2(self.pool1(enc1))
         enc3 = self.encoder3(self.pool2(enc2))
@@ -145,6 +162,9 @@ class UNet(LIONmodel):
         return self.conv(dec1)
 
     def block(self, inChan, outChan, noGrp, dropFac, name):
+        """One block: two 3x3 convolutions from ``inChan`` to ``outChan``
+        channels, with group normalisation (``noGrp`` groups), ReLU and dropout
+        (``dropFac``); ``name`` prefixes its layers' names."""
         layers = [
             (
                 name + "conv1",
@@ -171,6 +191,7 @@ class UNet(LIONmodel):
 
     @staticmethod
     def default_parameters():
+        """A U-Net of 32 to 512 channels (see the class)."""
         param = LIONModelParameter()
         param.model_input_type = ModelInputType.IMAGE
         param.inChan = 1
