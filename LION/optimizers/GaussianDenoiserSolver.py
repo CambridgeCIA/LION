@@ -14,7 +14,6 @@ from torch.optim.optimizer import Optimizer
 import numpy as np
 
 # Import base class
-from LION.exceptions.exceptions import LIONSolverException
 from LION.models.LIONmodel import LIONmodel
 from LION.optimizers.LIONsolver import LIONsolver
 from LION.utils.parameter import LIONParameter, OperatorParameters
@@ -96,9 +95,22 @@ class GaussianDenoiserSolver(LIONsolver):
             tqdm.write(f"Gaussian Denoiser solver training on device: {self.device}")
         self._noise_range()  # checks it
 
-    def mini_batch_step(self, y, target):
-        """The loss of the model on ``target`` (clean images) with noise
-        added (``y`` isn't used: the inputs are made from the targets)."""
+        # Make range of noise levels if noise_level is a single value
+        noise_level = np.atleast_1d(np.asarray(noise_level, dtype=float))
+        if noise_level.ndim == 1 and noise_level.shape[0] == 1:
+            noise_level = np.array([noise_level[0], noise_level[0]])
+        elif noise_level.ndim != 1 or noise_level.shape[0] != 2:
+            raise ValueError(
+                "noise_level must be a numpy array of length 2, or a single value."
+            )
+        self.noise_level = noise_level
+
+    def mini_batch_step(self, sino, target):
+        """
+        This function isresponsible for performing a single mini-batch step of the optimization.
+        returns the loss of the mini-batch
+        """
+        # Forward pass
         if self.do_normalise:
             target = self.model.normalise(target)
         target = self._training_images(target)
@@ -172,7 +184,7 @@ class GaussianDenoiserSolver(LIONsolver):
         patches, if training is; not flipped, rotated or erased). The noise is
         the same in every validation."""
         if self.check_validation_ready() != 0:
-            raise LIONSolverException(
+            raise RuntimeError(
                 "Solver not ready for validation. Please call set_validation."
             )
 

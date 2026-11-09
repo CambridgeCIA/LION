@@ -11,7 +11,6 @@ import torch
 from skimage.metrics import peak_signal_noise_ratio as skim_psnr
 from skimage.metrics import structural_similarity as skim_ssim
 
-from LION.exceptions.exceptions import ShapeMismatchException
 from LION.metrics.haarpsi import HAARPsi
 from LION.metrics.psnr import PSNR
 from LION.metrics.ssim import SSIM
@@ -129,5 +128,5 @@ def test_haarpsi_any_image_values(smooth_pair):
         metric(1.5 * x, 1.5 * target, data_range=1.5),
         metric(x, target, data_range=1.0),
     )
-    with pytest.raises(ShapeMismatchException):
+    with pytest.raises(ValueError):
         metric(x, target[:2])

@@ -14,7 +14,6 @@ import torch
 from tqdm import tqdm
 
 from LION.operators.ct.ct_geometry import Geometry
-from LION.exceptions.exceptions import NoDataException
 from LION.operators.Operator import Operator
 
 
@@ -44,7 +43,7 @@ def batched_reconstruction(
             f"(C, angles, detectors), got shape {tuple(sino.shape)}"
         )
     if sino.shape[0] == 0:
-        raise NoDataException("Given 0 batches, no data to operate on!")
+        raise ValueError("Given 0 batches, no data to operate on!")
     if isinstance(op, Geometry):
         op = op.make_operator()
 

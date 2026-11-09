@@ -9,7 +9,6 @@ from skimage.metrics import structural_similarity as skim_ssim
 import torch
 import torch.nn as nn
 
-from LION.exceptions.exceptions import ShapeMismatchException
 from LION.metrics.psnr import _range
 
 
@@ -46,7 +45,7 @@ class SSIM(nn.Module):
         data_range: float | None = None,
     ) -> torch.Tensor:
         if x.shape != target.shape:
-            raise ShapeMismatchException(
+            raise ValueError(
                 f"x (shape {x.shape}) and target (shape {target.shape}) tensors must match to compare with SSIM"
             )
         # Squeeze per sample, not the whole array: squeezing a batch of size 1
