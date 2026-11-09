@@ -19,22 +19,6 @@ from LION.utils.citation import citation
 from LION.utils.parameter import OperatorParameters
 
 
-class ARParams(LIONParameter):
-    """Parameters of ARSolver.
-
-    ``lambd_gp``: the weight of the gradient penalty in the WGAN training
-    loss. ``recon_fn``: how measurements are reconstructed into the "bad"
-    reconstructions the regulariser learns to tell from clean images,
-    ``recon_fn(y, op)``; "default": the operator's default reconstruction
-    (FDK for CT), replaced by that function when the solver is made.
-    """
-
-    def __init__(self, lambd_gp: float = 1e-1, recon_fn="default"):
-        super().__init__()
-        self.lambd_gp = lambd_gp
-        self.recon_fn = recon_fn
-
-
 class ARSolver(LIONsolver):
     """Trains an adversarial regulariser (Lunz et al., 2018).
 
@@ -54,7 +38,7 @@ class ARSolver(LIONsolver):
         model: LIONmodel,
         optimizer: Optimizer,
         operator_params: OperatorParameters = None,
-        solver_params: ARParams | None = None,
+        solver_params: LIONParameter | None = None,
         model_regularization=None,
         scheduler=None,
         scheduler_step: str = "epoch",
@@ -83,9 +67,17 @@ class ARSolver(LIONsolver):
     reconstructed_with = "LearnedRegularizerReconstructor"
 
     @staticmethod
-    def default_parameters() -> ARParams:
-        """``ARParams()``: ``lambd_gp`` 0.1, ``recon_fn`` "default"."""
-        return ARParams()
+    def default_parameters() -> LIONParameter:
+        """``lambd_gp``: the weight of the gradient penalty in the WGAN
+        training loss (0.1). ``recon_fn``: how measurements are reconstructed
+        into the "bad" reconstructions the regulariser learns to tell from
+        clean images, ``recon_fn(y, op)``; "default": the operator's default
+        reconstruction (FDK for CT), replaced by that function when the
+        solver is made."""
+        params = LIONParameter()
+        params.lambd_gp = 1e-1
+        params.recon_fn = "default"
+        return params
 
     def set_validation(
         self,

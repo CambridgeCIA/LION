@@ -69,9 +69,18 @@ class Noise2InverseSolver(LIONsolver):
 
     @classmethod
     def X_one_strategy(cls, sino_split_count) -> list[list[int]]:
-        """The X:1 strategy of the paper: each split in turn is the target,
-        the mean of the others the input: ``[[1], [2], ...]`` (1-based)."""
+        """The X:1 strategy of the paper (the default, which the paper found
+        better): each split in turn is the target, the mean of the others
+        the input. The target sets ``cali_J`` (1-based): ``[[1], [2], ...]``."""
         return [[i + 1] for i in range(sino_split_count)]
+
+    @classmethod
+    def one_X_strategy(cls, sino_split_count) -> list[list[int]]:
+        """The 1:X strategy of the paper: each split in turn is the input,
+        the mean of the others the target. The target sets ``cali_J``
+        (1-based): ``[[2, 3, ...], [1, 3, ...], ...]``."""
+        splits = range(1, sino_split_count + 1)
+        return [[j for j in splits if j != i] for i in splits]
 
     def _make_sub_operators(self) -> list:
         """One operator per split: split j has every k-th measurement unit
@@ -112,7 +121,8 @@ class Noise2InverseSolver(LIONsolver):
     @staticmethod
     def default_parameters() -> LIONParameter:
         """``sino_split_count``: the number of splits (4); ``cali_J``: the
-        sets of splits used as targets (None: ``X_one_strategy``);
+        sets of splits used as targets, 1-based (None: ``X_one_strategy``;
+        ``one_X_strategy(k)`` for the paper's 1:X; any sets for others);
         ``recon_fn``: how each split is reconstructed ("default": the
         operator's default reconstruction)."""
         params = LIONParameter()
