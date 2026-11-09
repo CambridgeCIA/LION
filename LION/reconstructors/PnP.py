@@ -83,20 +83,20 @@ class PnP(LIONReconstructor):
             self.parameters, name, ALGORITHMS[self.parameters.algorithm][name]
         )
 
-    def reconstruct_sample(self, sino, x0=None, verbose: int = 1):
+    def reconstruct_sample(self, y, x0=None, verbose: int = 1):
         """Reconstruct one measurement (e.g. a (C, angles, detectors)
         sinogram) with the algorithm and settings in ``self.parameters``."""
-        if not isinstance(sino, torch.Tensor):
+        if not isinstance(y, torch.Tensor):
             raise TypeError("Sinogram must be a torch.Tensor")
         algorithm = self.parameters.algorithm
         settings = {k: self.setting(k) for k in ALGORITHMS[algorithm]}
         if algorithm == "HQS":
-            return self.hqs_algorithm(sino, x0=x0, verbose=verbose, **settings)
+            return self.hqs_algorithm(y, x0=x0, verbose=verbose, **settings)
         if algorithm == "FBS":
             return self.forward_backward_splitting(
-                sino, x0=x0, verbose=verbose, **settings
+                y, x0=x0, verbose=verbose, **settings
             )
-        return self.admm_algorithm(sino, x0=x0, verbose=verbose, **settings)
+        return self.admm_algorithm(y, x0=x0, verbose=verbose, **settings)
 
     # ------------------------------------------------------------------ helpers
     def _apply_prior(self, x: torch.Tensor, noise_level=None) -> torch.Tensor:
@@ -115,13 +115,13 @@ class PnP(LIONReconstructor):
             out = self.model(x_in)
         return self.model.unnormalise(out, x.unsqueeze(0)).squeeze(0)
 
-    def _solve_data_step(self, sino, z, weight, x0, cg_max_iter, cg_tol):
+    def _solve_data_step(self, y, z, weight, x0, cg_max_iter, cg_tol):
         """argmin_x ||A x - y||^2 / 2 + weight ||x - z||^2 / 2, by conjugate gradient."""
 
         def normal_operator(v: torch.Tensor) -> torch.Tensor:
             return self.op.adjoint(self.op(v)) + weight * v
 
-        rhs = self.op.adjoint(sino) + weight * z
+        rhs = self.op.adjoint(y) + weight * z
         return conjugate_gradient(
             normal_operator, rhs, x0, max_iter=cg_max_iter, tol=cg_tol
         )
@@ -129,7 +129,7 @@ class PnP(LIONReconstructor):
     # --------------------------------------------------------------- algorithms
     def hqs_algorithm(
         self,
-        sino,
+        y,
         *,
         lambda_=0.23,
         mu=0.1,
@@ -147,13 +147,13 @@ class PnP(LIONReconstructor):
             x = argmin ||A x - y||^2 / 2 + mu ||x - z||^2 / 2   (conjugate gradient)
             z = prior(x)
 
-        :param sino: Measurement tensor.
+        :param y: Measurement tensor.
         :param lambda_: Regularisation parameter.
         :param mu: Weight of the quadratic coupling term.
         :param max_iter: Number of HQS iterations.
         :param noise_level: If given, mu = lambda_ / noise_level**2; otherwise the
             noise level passed to the prior is sqrt(lambda_ / mu).
-        :param x0: Starting image; ``initial_guess(sino)`` (the operator's
+        :param x0: Starting image; ``initial_guess(y)`` (the operator's
             default reconstruction, FDK for CT) if None.
         :return: Reconstructed image tensor.
         """
@@ -162,19 +162,19 @@ class PnP(LIONReconstructor):
         else:
             noise_level = float(np.sqrt(lambda_ / mu))
 
-        x = self.initial_guess(sino) if x0 is None else x0
+        x = self.initial_guess(y) if x0 is None else x0
         z = x.clone()
         iterator = range(max_iter)
         if verbose >= 1:
             iterator = tqdm(iterator, desc="HQS iterations")
         for _ in iterator:
-            x = self._solve_data_step(sino, z, mu, x, cg_max_iter, cg_tol)
+            x = self._solve_data_step(y, z, mu, x, cg_max_iter, cg_tol)
             z = self._apply_prior(x, noise_level)
         return z
 
     def forward_backward_splitting(
         self,
-        sino,
+        y,
         step_size=None,
         max_iter=10,
         noise_level=None,
@@ -186,21 +186,21 @@ class PnP(LIONReconstructor):
 
         :param step_size: Gradient step; 1 / ||A||^2 if None (||A|| is computed
             once per reconstructor, on the first call).
-        :param x0: Starting image; ``initial_guess(sino)`` (the operator's
+        :param x0: Starting image; ``initial_guess(y)`` (the operator's
             default reconstruction, FDK for CT) if None.
         """
         if step_size is None:
             if self._op_norm is None:
-                self._op_norm = power_method(self.op, device=sino.device)
+                self._op_norm = power_method(self.op, device=y.device)
             step_size = 1.0 / (self._op_norm**2)
 
-        x = self.initial_guess(sino) if x0 is None else x0
+        x = self.initial_guess(y) if x0 is None else x0
         iterator = range(max_iter)
         if verbose >= 1:
             iterator = tqdm(iterator, desc="FBS iterations")
         for _ in iterator:
             # TODO: would it not make sense to have an adaptive noise_level?
-            step = x - step_size * self.op.adjoint(self.op(x) - sino)
+            step = x - step_size * self.op.adjoint(self.op(x) - y)
             x = self._apply_prior(step, noise_level)
         return x
 
