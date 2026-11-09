@@ -20,6 +20,7 @@ DOCUMENTED = [
     "LION/data_loaders",
     "LION/operators",
     "LION/classical_algorithms",
+    "LION/utils",
 ]
 
 

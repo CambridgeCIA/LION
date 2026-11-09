@@ -13,14 +13,14 @@ import numpy as np
 import torch
 
 
-## JSON numpy encoder
 class JSONParamEncoder(json.JSONEncoder):
-    def default(self, obj):
-        """Default converter for JSON serialization.
+    """A JSON encoder for LION's parameters: paths become strings, tensors and
+    numpy arrays lists (numbers when scalar). Use as ``json.dump(...,
+    cls=JSONParamEncoder)``."""
 
-        Handles common non-JSON types used in LION and converts them to
-        JSON-serialisable Python types.
-        """
+    def default(self, obj):
+        """``obj`` as something JSON can write; the standard encoder's
+        TypeError for other types."""
         # Handle pathlib.Path
         if isinstance(obj, Path):
             return str(obj)
@@ -46,7 +46,10 @@ class JSONParamEncoder(json.JSONEncoder):
 
 
 # Run cmd line
-def run_cmd(cmd, verbose=True, *args, **kwargs):
+def run_cmd(cmd, verbose=True):
+    """Runs the shell command ``cmd`` and returns its output; a RuntimeError
+    with its error output if it fails. ``verbose``: print the command and its
+    output."""
     if verbose:
         print(cmd)
     process = subprocess.Popen(
@@ -55,15 +58,15 @@ def run_cmd(cmd, verbose=True, *args, **kwargs):
     std_out, std_err = process.communicate()
 
     if process.returncode:
-        print("Error encountered in commad line call:")
-        raise RuntimeError(std_err.strip())
+        raise RuntimeError(f"{cmd} failed: {std_err.strip()}")
     if verbose:
         print(std_out.strip(), std_err)
     return std_out.strip()
 
 
 def unzip_file(zipped_file_path: Path, unzipped_file_path: Path) -> None:
-    """Unzip file. First tries unzip command then 7zip if unzip fails"""
+    """Unzips ``zipped_file_path`` into ``unzipped_file_path`` with ``unzip``
+    (``7z`` if that fails), then deletes the zip file."""
     try:
         print(f"Unzipping {zipped_file_path} files with unzip...")
         bash_command = f"unzip {shlex.quote(str(zipped_file_path))} -d {shlex.quote(str(unzipped_file_path))}"
@@ -83,10 +86,8 @@ def unzip_file(zipped_file_path: Path, unzipped_file_path: Path) -> None:
 
 
 def download_file(placeholder_url: str, file_path: Path) -> None:
-    """
-    Downloads file from placeholder_url. Tries first with wget, then with curl.
-
-    """
+    """Downloads ``placeholder_url`` to ``file_path`` with ``wget`` (``curl``
+    if that fails), unless the file is there already."""
     if not file_path.is_file():
         try:
             print(f"Downloading {placeholder_url} with wget...")
@@ -104,6 +105,6 @@ def download_file(placeholder_url: str, file_path: Path) -> None:
             except RuntimeError:
                 raise RuntimeError("curl and wget failed, cannot download")
 
-        print("Dowload DONE!")
+        print("Download done!")
     else:
         print(f"{file_path.stem} already exists in {file_path.parent}, passing")

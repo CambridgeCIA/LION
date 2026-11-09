@@ -18,16 +18,10 @@ from types import ModuleType
 def import_tomosipo(
     module: str = "tomosipo", feature: str = "This CT function"
 ) -> ModuleType:
-    """Import ``module`` (``tomosipo``, ``tomosipo.torch_support`` or
-    ``ts_algorithms``), raising an ImportError that says what is missing.
-
-    Args:
-        module: Name of the module to import.
-        feature: What needs it, for the error message (e.g. "fdk").
-
-    Returns:
-        The imported module.
-    """
+    """The module ``module`` (``tomosipo``, ``tomosipo.torch_support`` or
+    ``ts_algorithms``), imported, or an ImportError that says what is missing
+    and how to install it (astra can also fail to load its libraries).
+    ``feature``: what needs it, for the message (e.g. "fdk")."""
     try:
         return importlib.import_module(module)
     except (ImportError, OSError) as error:  # astra can fail to load its libraries

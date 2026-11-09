@@ -20,16 +20,10 @@ from types import ModuleType
 def import_mrpro(
     module: str = "mrpro", feature: str = "This MRI function"
 ) -> ModuleType:
-    """Import ``module`` (``mrpro`` or one of its submodules), raising an
-    ImportError that says what is missing.
-
-    Args:
-        module: Name of the module to import, e.g. ``mrpro.operators``.
-        feature: What needs it, for the error message (e.g. "MrproLinearOp").
-
-    Returns:
-        The imported module.
-    """
+    """The module ``module`` (``mrpro`` or one of its submodules, e.g.
+    ``mrpro.operators``), imported, or an ImportError that says what is missing
+    and how to install it. ``feature``: what needs it, for the message (e.g.
+    "MrproLinearOp")."""
     try:
         return importlib.import_module(module)
     except (ImportError, OSError) as error:
