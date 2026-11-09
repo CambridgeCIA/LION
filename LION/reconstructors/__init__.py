@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """LION image reconstructors."""
 
 from LION.reconstructors.ForwardReconstructor import ForwardReconstructor

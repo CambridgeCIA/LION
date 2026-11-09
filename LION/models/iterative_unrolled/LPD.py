@@ -133,10 +133,6 @@ class LPD(LIONmodel):
             )
 
         super().__init__(model_parameters, operator_params)
-        # Pass all relevant parameters to internal storage.
-        # AItomotmodel does this:
-        # self.geometry = geometry
-        # self.model_parameters = model_parameters
 
         # Create layers per iteration
         for i in range(self.model_parameters.n_iters):

@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 # %% [markdown]
 # # Plug-and-play ADMM for Photocurrent Mapping image reconstruction
 #

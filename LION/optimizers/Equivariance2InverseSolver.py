@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 from typing import Optional
 from LION.operators.ct.ct_geometry import Geometry
 from LION.models.LIONmodel import LIONmodel

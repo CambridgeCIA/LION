@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Debiasing least squares operator on the support of w."""
 
 from __future__ import annotations

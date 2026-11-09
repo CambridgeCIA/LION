@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Import tomosipo / ts_algorithms only where CT functionality needs them.
 
 LION's non-CT parts (operators, models, FISTA, PnP, ...) work without tomosipo

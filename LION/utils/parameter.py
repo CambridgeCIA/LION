@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 ## This file contains a general class to store LIONParameter files.
 ## You should inherit from this class for any LIONParameter setting.
 import json

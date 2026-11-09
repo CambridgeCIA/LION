@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Equivariance2Inverse on CPU without tomosipo: the paper's Gaussian
 post-log noise, its estimate from the data, and lambda.
 

@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 #%%
 # Basic science imports
 import matplotlib.pyplot as plt

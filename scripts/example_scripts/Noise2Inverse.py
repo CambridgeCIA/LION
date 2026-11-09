@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 from LION.operators.ct.fdk import fdk
 from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
 from LION.models.CNNs.MSDNet import MSDNet

@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Models: construction with default parameters, save/load round trips, UNet,
 ItNet and the gradient-step denoisers. All on CPU, without a CT operator."""
 

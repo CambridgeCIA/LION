@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Reconstructors (PnP, learned regulariser) with a matrix operator, no CT needed."""
 
 import pytest

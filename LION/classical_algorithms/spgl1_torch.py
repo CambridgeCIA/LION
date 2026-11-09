@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """SPGL1 sparse reconstruction with torch operators."""
 
 import numpy as np

@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """LION operators.
 
 The generic ones are here; each kind of operator has its own folder, with its

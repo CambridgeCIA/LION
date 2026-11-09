@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 ## Normalization in CT is non trivial. This class contains info about the type of normalization applied,
 # and is useful inside models, so they can communicate how they need their inputs normalized
 

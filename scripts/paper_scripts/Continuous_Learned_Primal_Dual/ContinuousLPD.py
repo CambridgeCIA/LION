@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 # %% This example shows how to train Learned Primal dual for full angle, noisy measurements.
 
 # %% Imports

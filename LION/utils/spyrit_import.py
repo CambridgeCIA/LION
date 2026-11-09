@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Import spyrit only where its operators are needed.
 
 spyrit (single-pixel imaging) gives LION the fast Walsh-Hadamard transform of

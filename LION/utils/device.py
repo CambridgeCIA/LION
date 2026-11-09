@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """The device LION uses when none is given.
 
 Pick the GPU once, at the top of a script, and LION follows it:

@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Random numbers that can be reproduced.
 
 - ``seed_from_parts(*parts)``: a seed from strings (a stable hash).

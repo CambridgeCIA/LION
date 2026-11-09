@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-# AItomotools imports
+# LION imports
 from LION.utils.device import default_device
 from LION.utils.image_transforms import gaussian_blur
 

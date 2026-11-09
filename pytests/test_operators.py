@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Non-CT operators (photocurrent map, wavelets, Walsh-Hadamard, composites)
 and operator norms. The CT operator is tested in test_ct.py."""
 

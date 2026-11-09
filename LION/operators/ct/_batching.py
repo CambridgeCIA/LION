@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Apply single-sample tomosipo/ts_algorithms reconstructions to batches."""
 
 from __future__ import annotations

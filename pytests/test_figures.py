@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Figures of comparisons (LION.evaluation.figures, Comparison.figures/images/
 save/instantiate): score plots, the chosen samples, example images with zoom
 crops and differences, the saved folder and making it again from it."""

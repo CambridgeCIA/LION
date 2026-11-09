@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """CT tools, the CT projection operator and FDK/FBP.
 
 Tests marked ``tomosipo`` need tomosipo/astra with CUDA and are skipped otherwise.

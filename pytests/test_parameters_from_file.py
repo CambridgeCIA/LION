@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Parameters from a file: each component's ``parameters_from_file(source)``
 gives what its ``default_parameters()`` gives, as recorded, to change and make
 the component with; ``instantiate(source, **arguments)`` replaces recorded

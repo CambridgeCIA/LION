@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Import mrpro only where MRI functionality needs it.
 
 mrpro is LION's MRI backend, as tomosipo is the CT one (see

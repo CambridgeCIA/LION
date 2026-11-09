@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """LION: learned iterative optimisation networks, for tomographic (and other
 inverse-problem) reconstruction in PyTorch."""
 

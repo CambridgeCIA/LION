@@ -305,5 +305,16 @@ part.
   changes for existing results.
 - Analysis scripts written to make a decision are removed before merging
   (they stay in the branch history).
-- New files start with the licence header (GPL-3, as ASTRA and tomosipo
-  require).
+- Every Python file starts with the licence header (GPL-3, as ASTRA and
+  tomosipo require), with its authors:
+
+  ```
+  # =============================================================================
+  # This file is part of LION library
+  # License : GPL-3
+  #
+  # Author  : ...
+  # =============================================================================
+  ```
+
+  `pytests/test_licence_headers.py` checks it.

@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 """Specs (LION.utils.spec): components written as the call that builds them, and
 models saved and loaded with them."""
 

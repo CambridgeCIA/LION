@@ -1,3 +1,9 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  :
+# =============================================================================
 from LION.operators.ct.fdk import fdk
 from LION.optimizers.SelfSupervisedSolver import SelfSupervisedSolver
 from LION.models.CNNs.UNets.Unet import UNet
