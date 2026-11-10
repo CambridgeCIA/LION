@@ -11,7 +11,7 @@ LION's pieces are plain torch underneath, and each can be your own:
 - **a model:** any ``torch.nn.Module`` becomes a LION model with
   ``TorchModel(YourClass, arguments)``: it is then saved, loaded and recorded
   like LION's. (For a model that uses an operator, or to add it to LION,
-  derive from ``LIONmodel``: see ``LION/models/README.md``.)
+  derive from ``LIONmodel``: see ``demos/d13_extending_lion.py``.)
 - **an operator:** an ``Operator`` (forward, adjoint, shapes) and the
   parameters that make it, an ``OperatorParameters`` (its ``make_operator``).
   Solvers, models and reconstructors take the parameters, as they take a CT
