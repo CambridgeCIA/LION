@@ -37,6 +37,7 @@ from LION.metrics.psnr import PSNR
 from LION.models.torch_model import TorchModel
 from LION.operators.Operator import Operator
 from LION.optimizers.SupervisedSolver import SupervisedSolver
+from LION.reconstructors.ForwardReconstructor import ForwardReconstructor
 from LION.utils.parameter import OperatorParameters
 from LION.utils.paths import results_path
 
@@ -173,9 +174,10 @@ model, _, _ = TorchModel.load(save_folder / "SmallResNet", allow=["__main__."])
 
 # %% Deblur a test image
 blurred, image = Deblurring(experiment.get_dataset("test"), blur.make_operator())[0]
+# The reconstructor gives the model the blur's default reconstruction (the
+# blurred image) as its solver did
 model.eval()
-with torch.no_grad():
-    deblurred = model(blurred[None].to(device))[0].cpu()
+deblurred = ForwardReconstructor(blur, model).reconstruct(blurred.to(device)).cpu()
 psnr = PSNR()
 print(
     f"PSNR: blurred {psnr(blurred.cpu(), image.cpu(), batched=False):.2f} dB, "

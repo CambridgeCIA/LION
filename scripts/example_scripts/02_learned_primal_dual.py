@@ -28,6 +28,7 @@ from LION.experiments import ct_experiments
 from LION.metrics.psnr import PSNR
 from LION.models.iterative_unrolled.LPD import LPD
 from LION.optimizers.SupervisedSolver import SupervisedSolver
+from LION.reconstructors.ForwardReconstructor import ForwardReconstructor
 from LION.utils.paths import results_path
 
 # %% Settings
@@ -76,12 +77,15 @@ solver.save_final_results()
 solver.clean_checkpoints()
 
 # %% Use it
-# A model reconstructs batches of measurements; FDK is the baseline here.
+# eval() sets how layers behave (e.g. dropout, batch normalisation), not
+# whether gradients are computed: that is torch.no_grad(). A reconstructor
+# runs the model as its solver did (normalisation, initial reconstruction),
+# on one sample or a batch, without gradients.
 model.eval()
+lpd = ForwardReconstructor(experiment.operator_params, model)
 sinogram, image = validation[0]
-with torch.no_grad():
-    reconstruction = model(sinogram.unsqueeze(0).to(device))[0].cpu()
-fdk = solver.op.default_reconstruction(sinogram.to(device)).cpu()
+reconstruction = lpd.reconstruct(sinogram.to(device)).cpu()
+fdk = lpd.op.default_reconstruction(sinogram.to(device)).cpu()  # the baseline
 psnr = PSNR()
 print(
     f"PSNR: LPD {psnr(reconstruction, image, batched=False):.2f} dB, "
