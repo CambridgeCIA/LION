@@ -2,11 +2,15 @@ name: tests
 
 on:
   pull_request:
+    # ready_for_review: run CI when a draft PR is marked ready
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
 jobs:
   cpu-tests:
+    # Skip draft PRs; pushes to main always run
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     # CPU only: tests that need CUDA or tomosipo/astra are skipped automatically
     # (see pytests/conftest.py).
     runs-on: ubuntu-latest
