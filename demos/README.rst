@@ -13,3 +13,6 @@ data tutorial on, the processed LIDC-IDRI data in ``LION_DATA_PATH``.
 The models trained in the tutorials are toys, trained for a few epochs on a
 few slices to show how LION is used: their results are poor. Trained as their
 papers train them, they do what the papers report.
+
+The last, :doc:`d14_beyond_ct`, needs neither: other operators than CT, and
+the classical and learned algorithms that work with any of them.

@@ -129,7 +129,7 @@ LION's general code uses general words, as an operator can be anything. For CT, 
 | range (`op.range_shape`), measurements | the sinogram |
 | the operator's default reconstruction | FDK |
 
-So a CT model is made from its geometry, e.g. `LPD(geometry)`, and a solver takes `operator_params=geometry`. [More about operators](LION/operators/_README.rst).
+So a CT model is made from its geometry, e.g. `LPD(geometry)`, and a solver takes `operator_params=geometry`. [More about operators](LION/operators/_README.rst); [a tutorial with another operator](https://cambridgecia.github.io/LION/tutorials/d14_beyond_ct.html).
 
 ## Contributing
 

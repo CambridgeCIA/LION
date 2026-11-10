@@ -324,3 +324,5 @@ photocurrent mapping (``pcm``: Koutsourakis, Thompson and Blakesley, Solar
 RRL, 2021), wavelets, and composite and debiasing operators for sparse
 recovery. Everything above that uses an operator works with any of them that
 defines what it needs (e.g. ``autograd()`` to train through it).
+:doc:`tutorials/d14_beyond_ct` uses photocurrent mapping's, with the
+sparse-recovery tools and PnP.
