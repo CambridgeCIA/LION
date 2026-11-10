@@ -155,7 +155,7 @@ print(FBPConvNet.cite())  # BibTeX
 # Your own torch module
 # ---------------------
 # Any ``torch.nn.Module`` becomes a LION model with ``TorchModel``, and is then
-# saved, loaded and trained like LION's (the tutorial on extending LION, d12,
+# saved, loaded and trained like LION's (:doc:`d13_extending_lion`
 # writes a LIONmodel):
 
 from LION.models.torch_model import TorchModel

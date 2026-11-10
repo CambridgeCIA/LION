@@ -15,8 +15,7 @@ the software it ran on. From them, each piece can be made again: the model
 data, the solver. That is what lets a training be repeated, a comparison be
 checked and a model be published.
 
-Previous: :doc:`d08_learned_regularisers`. Next: evaluation and comparison
-(d10).
+Previous: :doc:`d08_learned_regularisers`. Next: :doc:`d10_reconstructors`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
 """
@@ -161,8 +160,7 @@ difference = max(
 print(f"largest difference in the weights: {difference:.2e}")
 
 # %%
-# ``LION.package.train_again`` does all of this in one call (the tutorial on
-# publishing, d11).
+# ``LION.package.train_again`` does all of this in one call (:doc:`d12_publishing`).
 #
 # Changing what was recorded
 # --------------------------

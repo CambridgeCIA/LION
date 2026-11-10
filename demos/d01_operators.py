@@ -192,7 +192,7 @@ x_quarter = fdk(y_quarter, quarter)
 # photocurrent mapping (``LION.operators.pcm``), composite and debiasing
 # operators; any of them works with the classical algorithms, e.g. FISTA for
 # sparse recovery. An operator is a class with ``forward``, ``adjoint`` and
-# its shapes: the tutorial on extending LION (d12) writes one.
+# its shapes: :doc:`d13_extending_lion` writes one.
 
 from LION.operators.Wavelet2D import Wavelet2D
 

@@ -83,7 +83,7 @@ print("training loss per epoch:", solver.train_loss)
 # optimizer, the loss, then, all optional: the operator's parameters (taken
 # from the model when it has them), the solver's own parameters, a model
 # regularisation (a penalty on the model added to the loss, e.g. for PnP
-# denoisers: the denoisers tutorial, d07), a learning-rate scheduler, how much
+# denoisers: :doc:`d07_denoisers_and_pnp`), a learning-rate scheduler, how much
 # it prints, the device and the seed.
 
 model = FBPConvNet(experiment.operator_params)
@@ -115,7 +115,7 @@ solver.set_validation(
 
 # %%
 # Testing (optional) is a score on test data, run by ``solver.test()``. The
-# evaluation tutorial (d10) evaluates properly, against other methods.
+# :doc:`d11_evaluation` evaluates properly, against other methods.
 
 solver.set_testing(test_loader, PSNR())
 
@@ -192,7 +192,7 @@ print(f"test PSNR: {scores.mean():.2f} dB")
 # (weights) and a ``.json`` (parameters and records). ``load`` makes the model
 # again; the record says how it was trained (the data, the solver and its
 # settings, the optimizer, the scheduler, the seed, the losses), enough to
-# train the same model again (the tutorial on records, d09):
+# train the same model again (:doc:`d09_saving_and_records`):
 
 trained, options, data = FBPConvNet.load(folder / "FBPConvNet")
 best, _, _ = FBPConvNet.load(folder / "FBPConvNet_best")
