@@ -45,6 +45,9 @@ experiment = ct_experiments.LowDoseCTRecon()
 training = Subset(experiment.get_dataset("train"), range(40))  # targets unused
 validation = Subset(experiment.get_dataset("validation"), range(8))
 
+training_loader = DataLoader(training, batch_size=2, shuffle=True)
+validation_loader = DataLoader(validation, batch_size=2)
+
 # %%
 # The solver's parameters say how to split: into ``sino_split_count`` sets of
 # every k-th angle, and which sets are the targets (``cali_J``). The paper's
@@ -69,15 +72,13 @@ solver = Noise2InverseSolver(
     operator_params=experiment.operator_params,
     solver_params=parameters,
 )
-solver.set_training(DataLoader(training, batch_size=2, shuffle=True))
+solver.set_training(training_loader)
 
 # %%
 # Validation can still use clean images, if there are some, to measure how well
 # it reconstructs (never to train): the solver validates its reconstruction.
 
-solver.set_validation(
-    DataLoader(validation, batch_size=2), 1, PSNR(), validation_fname="best"
-)
+solver.set_validation(validation_loader, 1, PSNR(), validation_fname="best")
 solver.set_saving(tempfile.mkdtemp(), "Noise2Inverse")
 solver.train(3)
 print("validation PSNR:", solver.validation_loss)

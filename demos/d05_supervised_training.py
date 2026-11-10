@@ -49,6 +49,11 @@ training = Subset(experiment.get_dataset("train"), range(40))
 validation = Subset(experiment.get_dataset("validation"), range(8))
 test = Subset(experiment.get_dataset("test"), range(8))
 
+# torch DataLoaders: they batch (and shuffle) the samples
+training_loader = DataLoader(training, batch_size=4, shuffle=True)
+validation_loader = DataLoader(validation, batch_size=4)
+test_loader = DataLoader(test, batch_size=4)
+
 # %%
 # The least a solver needs
 # ------------------------
@@ -59,7 +64,7 @@ model = FBPConvNet(experiment.operator_params)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 solver = SupervisedSolver(model, optimizer, torch.nn.MSELoss())
-solver.set_training(DataLoader(training, batch_size=4, shuffle=True))
+solver.set_training(training_loader)
 folder = Path(tempfile.mkdtemp())
 solver.set_saving(folder, "FBPConvNet")
 
@@ -93,7 +98,7 @@ solver = SupervisedSolver(
     verbose=2,  # 0: nothing; 1 (default): one progress bar; 2: also each epoch's, and messages
     seed=0,  # the default: the same seed, the same model
 )
-solver.set_training(DataLoader(training, batch_size=4, shuffle=True))
+solver.set_training(training_loader)
 folder = Path(tempfile.mkdtemp())
 solver.set_saving(folder, "FBPConvNet")
 
@@ -102,7 +107,7 @@ solver.set_saving(folder, "FBPConvNet")
 # best model: by the lowest value, or the highest for a score like the PSNR.
 
 solver.set_validation(
-    DataLoader(validation, batch_size=4),
+    validation_loader,
     validation_freq=1,
     validation_fn=PSNR(),
     validation_fname="FBPConvNet_best",
@@ -112,7 +117,7 @@ solver.set_validation(
 # Testing (optional) is a score on test data, run by ``solver.test()``. The
 # evaluation tutorial (d10) evaluates properly, against other methods.
 
-solver.set_testing(DataLoader(test, batch_size=4), PSNR())
+solver.set_testing(test_loader, PSNR())
 
 # %%
 # Checkpoints
@@ -164,7 +169,7 @@ resumed = SupervisedSolver(
     torch.nn.MSELoss(),
     scheduler=torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.5),
 )
-resumed.set_training(DataLoader(training, batch_size=4, shuffle=True))
+resumed.set_training(training_loader)
 resumed.set_saving(folder, "FBPConvNet")
 resumed.set_checkpointing("FBPConvNet_check_*.pt", checkpoint_freq=2)
 resumed.train(6)
@@ -247,7 +252,7 @@ for ax, (title, x) in zip(
 model = FBPConvNet(experiment.operator_params)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 model.train()
-for sinograms, images in DataLoader(training, batch_size=4, shuffle=True):
+for sinograms, images in training_loader:
     optimizer.zero_grad()
     loss = torch.nn.functional.mse_loss(model(sinograms), images)
     loss.backward()
