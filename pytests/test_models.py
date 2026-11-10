@@ -7,6 +7,7 @@
 """Models: construction with default parameters, save/load round trips, UNet,
 ItNet and the gradient-step denoisers. All on CPU, without a CT operator."""
 
+import os
 import warnings
 
 import numpy as np
@@ -319,6 +320,26 @@ def test_drunet_takes_one_noise_level_per_image():
         model(x, noise_level=torch.tensor([0.1, 0.2, 0.3]))
     with pytest.raises(ValueError, match="non-negative"):
         model(x, noise_level=-0.1)
+
+
+@pytest.mark.skipif("CI" in os.environ, reason="downloads 130 MB of weights")
+def test_pretrained_drunet_denoises():
+    # Downloads the authors' weights (130 MB) once; skipped without a network
+    # and in CI (GitHub sets CI)
+    try:
+        model = DRUNet.pretrained(verbose=0).cpu().eval()
+    except OSError as error:  # URLError is an OSError
+        pytest.skip(f"cannot download the weights: {error}")
+    yy, xx = torch.meshgrid(
+        torch.linspace(-1, 1, 64), torch.linspace(-1, 1, 64), indexing="ij"
+    )
+    clean = ((xx**2 + yy**2 < 0.6).float() * 0.6 + 0.1)[None, None]
+    torch.manual_seed(0)
+    noisy = clean + 25 / 255 * torch.randn_like(clean)
+    with torch.no_grad():
+        denoised = model(noisy, noise_level=25 / 255)
+    # 20 dB noisy; the authors' weights give ~38 dB, random ones far less
+    assert ((denoised - clean) ** 2).mean() < ((noisy - clean) ** 2).mean() / 30
 
 
 # --------------------------------------------------------------------------

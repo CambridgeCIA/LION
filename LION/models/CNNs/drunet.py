@@ -19,6 +19,11 @@ from typing import Optional
 import torch
 from LION.utils.citation import citation
 
+#: The authors' grayscale DRUNet weights (``DRUNet.pretrained``); the file
+#: name carries the start of their SHA-256, which torch checks.
+DRUNET_GRAY_URL = "https://github.com/cszn/KAIR/releases/download/v1.0/drunet_gray.pth"
+DRUNET_GRAY_FILE = "drunet_gray-e27fb294.pth"
+
 
 class ResBlock(torch.nn.Module):
     """A residual block of DRUNet: two convolutions with ``act`` between them,
@@ -268,6 +273,37 @@ class DRUNet(LIONmodel):
         params.act = "leaky_relu"
         params.enforce_positivity = False
         return params
+
+    @classmethod
+    def pretrained(cls, verbose: int = 1):
+        """The authors' trained grayscale DRUNet (``drunet_gray.pth``, from
+        their KAIR repository): trained on natural images in [0, 1] with
+        Gaussian noise levels up to 50/255, given as the noise level input.
+        Their architecture is this one with ``act="relu"`` and
+        ``use_noise_level=True``.
+
+        The weights (130 MB) are downloaded once into torch's hub cache
+        (``torch.hub.get_dir()``) and checked against their hash; ``verbose``
+        (1) shows the download's progress. The model is on LION's device.
+        Give it images in [0, 1] (e.g. ``set_normalisation``) and noise levels
+        in those units."""
+        from LION.utils.device import default_device
+
+        params = cls.default_parameters()
+        params.act = "relu"
+        params.use_noise_level = True
+        model = cls(params)
+        weights = torch.hub.load_state_dict_from_url(
+            DRUNET_GRAY_URL,
+            map_location="cpu",
+            progress=verbose > 0,
+            check_hash=True,
+            file_name=DRUNET_GRAY_FILE,
+            weights_only=True,
+        )
+        # The authors' layers are LION's, in the same order, with other names
+        model.load_state_dict(dict(zip(model.state_dict(), weights.values())))
+        return model.to(default_device())
 
     @staticmethod
     def cite(cite_format="bib"):
