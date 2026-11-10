@@ -35,6 +35,8 @@ from LION.utils.paths import results_path
 
 # %% Settings
 TRAINING_SLICES = 100
+# LION uses the GPU if there is one (torch.cuda.set_device(k) picks another)
+verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 examples = results_path("examples")
 save_folder = examples / "resume_and_fine_tune"
@@ -53,7 +55,10 @@ def training_data(experiment):
 def solver_for(model, experiment):
     """A solver that checkpoints every epoch in save_folder."""
     solver = SupervisedSolver(
-        model, torch.optim.Adam(model.parameters(), lr=1e-3), torch.nn.MSELoss()
+        model,
+        torch.optim.Adam(model.parameters(), lr=1e-3),
+        torch.nn.MSELoss(),
+        verbose=verbose,
     )
     solver.set_training(training_data(experiment))
     solver.set_saving(save_folder, "resumed")
@@ -78,7 +83,10 @@ print("losses per epoch, all 4:", solver.train_loss)
 model, _, _ = FBPConvNet.load(examples / "supervised" / "FBPConvNet")
 extreme = ct_experiments.ExtremeLowDoseCTRecon()
 solver = SupervisedSolver(
-    model, torch.optim.Adam(model.parameters(), lr=1e-4), torch.nn.MSELoss()
+    model,
+    torch.optim.Adam(model.parameters(), lr=1e-4),
+    torch.nn.MSELoss(),
+    verbose=verbose,
 )
 solver.set_training(training_data(extreme))
 solver.set_saving(save_folder, "fine_tuned")

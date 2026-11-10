@@ -34,6 +34,8 @@ from LION.utils.paths import results_path
 
 # %% Settings
 TEST_SLICES = 50  # evenly spaced over the test set; None: all of them
+# LION uses the GPU if there is one (torch.cuda.set_device(k) picks another)
+verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 examples = results_path("examples")
 
@@ -44,7 +46,7 @@ evaluation = Evaluation(
 )
 
 # %% One method
-record = evaluation.run(examples / "supervised" / "FBPConvNet")
+record = evaluation.run(examples / "supervised" / "FBPConvNet", verbose=verbose)
 for metric, values in summary(record).items():
     print(f"FBPConvNet {metric}: {values['mean']:.3f} ± {values['std']:.3f}")
 
@@ -57,7 +59,7 @@ methods = {
     "SIRT": functools.partial(sirt, num_iterations=100),
 }
 comparison = Comparison(evaluation, methods)  # FDK is the baseline
-comparison.run()
+comparison.run(verbose=verbose)
 print(comparison.table())
 
 # Tables, scores, box plots, the best, median and worst slices (by the

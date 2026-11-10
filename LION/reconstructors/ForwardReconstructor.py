@@ -25,7 +25,8 @@ class ForwardReconstructor(LIONReconstructor):
     output mapped back.
 
     ``ForwardReconstructor(operator, model)``; it has no parameters. A batch is
-    reconstructed in one pass. ``x0`` is not used.
+    reconstructed in one pass, without gradients (``torch.no_grad``). ``x0``
+    is not used.
     """
 
     @staticmethod
@@ -33,6 +34,7 @@ class ForwardReconstructor(LIONReconstructor):
         """None to set: an empty ``LIONParameter``."""
         return LIONParameter()
 
+    @torch.no_grad()
     def reconstruct(
         self, y: torch.Tensor, x0: torch.Tensor | None = None, verbose: int = 1
     ) -> torch.Tensor:
@@ -48,6 +50,7 @@ class ForwardReconstructor(LIONReconstructor):
             return model_forward(self.model, y, self.op)
         return self.reconstruct_sample(y, x0, verbose)
 
+    @torch.no_grad()
     def reconstruct_sample(self, y, x0=None, verbose=0):
         """The reconstruction of one sample ``y`` (the operator's range shape):
         the batch of one through ``reconstruct``. ``x0``, ``verbose``: unused.

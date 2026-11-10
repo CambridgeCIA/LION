@@ -27,13 +27,19 @@ from torch.utils.data import DataLoader, Subset
 from LION.experiments import ct_experiments
 from LION.metrics.psnr import PSNR
 from LION.models.iterative_unrolled.LPD import LPD
+from LION.operators.ct import fdk
 from LION.optimizers.SupervisedSolver import SupervisedSolver
+from LION.reconstructors.ForwardReconstructor import ForwardReconstructor
 from LION.utils.paths import results_path
 
 # %% Settings
 EPOCHS = 5
 TRAINING_SLICES = 200
 VALIDATION_SLICES = 20
+# LION uses the GPU if there is one (torch.cuda.set_device(k) picks another);
+# device is where this script moves samples to use them
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 save_folder = results_path("examples/lpd")
 save_folder.mkdir(parents=True, exist_ok=True)
@@ -57,7 +63,7 @@ print(model.cite("MLA"))
 
 # %% Train
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.99))
-solver = SupervisedSolver(model, optimizer, torch.nn.MSELoss())
+solver = SupervisedSolver(model, optimizer, torch.nn.MSELoss(), verbose=verbose)
 solver.set_training(DataLoader(training, batch_size=1, shuffle=True))
 solver.set_validation(
     DataLoader(validation, batch_size=1),
@@ -72,14 +78,23 @@ solver.save_final_results()
 solver.clean_checkpoints()
 
 # %% Use it
-# A model reconstructs batches of measurements; FDK is the baseline here.
+# eval() sets how layers behave (e.g. dropout, batch normalisation), not
+# whether gradients are computed: that is torch.no_grad(). A reconstructor
+# runs the model as its solver did (normalisation, initial reconstruction),
+# on one sample or a batch, without gradients.
 model.eval()
+lpd = ForwardReconstructor(experiment.operator_params, model)
 sinogram, image = validation[0]
-with torch.no_grad():
-    reconstruction = model(sinogram.unsqueeze(0).to(solver.device))[0].cpu()
-fdk = solver.op.default_reconstruction(sinogram.to(solver.device)).cpu()
+reconstruction = lpd.reconstruct(sinogram.to(device)).cpu()
+# The same by hand (LPD takes the measurements and has no normalisation):
+# with torch.no_grad():
+#     reconstruction = model(sinogram.unsqueeze(0).to(device))[0].cpu()
+# FDK, the baseline: of the experiment's geometry
+fdk_reconstruction = fdk(sinogram.to(device), experiment.operator_params).cpu()
+# or any operator's default reconstruction (FDK for CT):
+# fdk_reconstruction = lpd.op.default_reconstruction(sinogram.to(device)).cpu()
 psnr = PSNR()
 print(
     f"PSNR: LPD {psnr(reconstruction, image, batched=False):.2f} dB, "
-    f"FDK {psnr(fdk, image, batched=False):.2f} dB"
+    f"FDK {psnr(fdk_reconstruction, image, batched=False):.2f} dB"
 )
