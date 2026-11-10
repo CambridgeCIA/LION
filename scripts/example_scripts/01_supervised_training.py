@@ -74,6 +74,10 @@ loss_fn = torch.nn.MSELoss()
 solver = SupervisedSolver(
     model, optimizer, loss_fn, scheduler=scheduler, verbose=verbose
 )
+# Every solver also takes a device (LION's default otherwise):
+# solver = SupervisedSolver(model, optimizer, loss_fn, device=torch.device("cuda:1"))
+# and a scheduler stepping every batch:
+# solver = SupervisedSolver(..., scheduler=scheduler, scheduler_step="batch")
 solver.set_training(DataLoader(training, batch_size=4, shuffle=True))
 # Validate with the PSNR every epoch: the model with the best value is saved
 # (PSNR is a score, higher is better; a loss would keep the lowest).

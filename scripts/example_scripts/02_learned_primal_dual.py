@@ -86,8 +86,13 @@ model.eval()
 lpd = ForwardReconstructor(experiment.operator_params, model)
 sinogram, image = validation[0]
 reconstruction = lpd.reconstruct(sinogram.to(device)).cpu()
+# The same by hand (LPD takes the measurements and has no normalisation):
+# with torch.no_grad():
+#     reconstruction = model(sinogram.unsqueeze(0).to(device))[0].cpu()
 # FDK, the baseline: of the experiment's geometry
 fdk_reconstruction = fdk(sinogram.to(device), experiment.operator_params).cpu()
+# or any operator's default reconstruction (FDK for CT):
+# fdk_reconstruction = lpd.op.default_reconstruction(sinogram.to(device)).cpu()
 psnr = PSNR()
 print(
     f"PSNR: LPD {psnr(reconstruction, image, batched=False):.2f} dB, "

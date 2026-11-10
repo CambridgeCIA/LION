@@ -178,6 +178,9 @@ blurred, image = Deblurring(experiment.get_dataset("test"), blur.make_operator()
 # blurred image) as its solver did
 model.eval()
 deblurred = ForwardReconstructor(blur, model).reconstruct(blurred.to(device)).cpu()
+# The same by hand: the model on the blurred image, without gradients
+# with torch.no_grad():
+#     deblurred = model(blurred.unsqueeze(0).to(device))[0].cpu()
 psnr = PSNR()
 print(
     f"PSNR: blurred {psnr(blurred.cpu(), image.cpu(), batched=False):.2f} dB, "

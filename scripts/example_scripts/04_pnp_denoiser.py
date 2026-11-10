@@ -95,8 +95,12 @@ pnp.save(save_folder / "PnP.json")  # its settings and its model's file
 
 sinogram, image = experiment.get_dataset("test")[0]
 reconstruction = pnp.reconstruct(sinogram.to(device), verbose=verbose).cpu()
+# or one algorithm with its settings given:
+# reconstruction = pnp.admm_algorithm(sinogram.to(device), eta=1e-4, max_iter=20)
 # FDK, the baseline: of the experiment's geometry
 fdk_reconstruction = fdk(sinogram.to(device), experiment.operator_params).cpu()
+# or any operator's default reconstruction (FDK for CT):
+# fdk_reconstruction = pnp.op.default_reconstruction(sinogram.to(device)).cpu()
 
 # %% Compare
 psnr = PSNR()
