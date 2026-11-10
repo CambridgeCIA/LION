@@ -295,3 +295,18 @@ Checking your change
   ``utils/publish_docs.sh`` builds and publishes the site from there.
 - **Scripts and tutorials** you changed: run them. A new feature that users
   will look for gets a section in a tutorial, or an example script.
+
+Releasing
+---------
+
+1. Every change since the last release is in ``CHANGELOG.md`` under
+   **Unreleased** (each PR adds its line, or the release collects them).
+2. Set the version in ``LION/VERSION``, and the changelog's heading to it,
+   with the date; copy the template (at the end of the changelog) back under a
+   new **Unreleased**.
+3. Check that the tests pass, on CPU and on a GPU machine, and that the
+   tutorials run (``utils/publish_docs.sh --build``).
+4. Merge to ``main``, tag it (``git tag vX.Y.Z``, ``git push origin vX.Y.Z``)
+   and make a GitHub release from the tag, with the changelog's section as its
+   notes.
+5. Publish the site from the tagged commit (``utils/publish_docs.sh``).

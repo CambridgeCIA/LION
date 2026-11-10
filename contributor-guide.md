@@ -280,7 +280,8 @@ doesn't do.
 
 ## Pull requests
 
-- One topic per PR, against `main`. Say what changes for existing results.
+- One topic per PR, against `main`. Say what changes for existing results,
+  and add a line for it to `CHANGELOG.md` under Unreleased.
 - Analysis scripts written to make a decision are removed before merging.
 - Every Python file starts with the licence header (GPL-3, as ASTRA and
   tomosipo require), with its authors (`pytests/test_licence_headers.py`):
