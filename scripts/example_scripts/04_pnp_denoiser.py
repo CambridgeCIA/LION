@@ -115,7 +115,7 @@ pretrained_reconstruction = pnp_pretrained.reconstruct(
     sinogram.to(device), verbose=verbose
 ).cpu()
 # or one algorithm with its settings given:
-# reconstruction = pnp.admm_algorithm(sinogram.to(device), eta=1e-4, max_iter=20)
+# reconstruction = pnp.admm_algorithm(sinogram.to(device), max_iter=20, noise_level=10 / 255)
 # FDK, the baseline: of the experiment's geometry
 fdk_reconstruction = fdk(sinogram.to(device), experiment.operator_params).cpu()
 # or any operator's default reconstruction (FDK for CT):

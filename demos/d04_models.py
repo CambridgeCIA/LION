@@ -17,6 +17,11 @@ sample, untrained: training is the next tutorials'.
 Previous: :doc:`d03_data`. Next: :doc:`d05_supervised_training`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
+
+.. note::
+
+   The models here are untrained, so their outputs are noise: training is the
+   next tutorials'.
 """
 
 # %%

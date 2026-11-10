@@ -64,6 +64,18 @@ intersphinx_mapping = {
 
 # Tutorials: the demos, as pages with downloadable .py and notebooks
 run_demos = os.environ.get("LION_DOCS_RUN_DEMOS") == "1"
+if run_demos:
+    # No progress bars in the pages: they would bury the demos' printed
+    # output. (The demos still show them when run on their own.)
+    import tqdm.std
+
+    _tqdm_init = tqdm.std.tqdm.__init__
+
+    def _quiet_tqdm(self, *args, **kwargs):
+        kwargs["disable"] = True
+        _tqdm_init(self, *args, **kwargs)
+
+    tqdm.std.tqdm.__init__ = _quiet_tqdm
 sphinx_gallery_conf = {
     "examples_dirs": str(ROOT / "demos"),
     "gallery_dirs": "tutorials",
@@ -73,6 +85,8 @@ sphinx_gallery_conf = {
     "within_subsection_order": "FileNameSortKey",
     "remove_config_comments": True,
     "show_signature": False,
+    # the thumbnail of a demo without figures
+    "default_thumb_file": str(ROOT / "docs" / "_static" / "lion-thumbnail.png"),
 }
 
 templates_path = ["_templates"]
