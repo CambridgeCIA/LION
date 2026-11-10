@@ -115,7 +115,7 @@ On machines with several GPUs where only one may be used, the most robust option
 | `scripts/` | Example scripts, and scripts that reproduce papers |
 | `docs/` | The documentation site |
 
-Which methods LION has, and their papers: [Methods in LION](https://cambridgecia.github.io/LION/methods.html). How models record their making, and how to make them again: [`metadata.md`](metadata.md).
+Which methods LION has, and their papers: [Methods in LION](https://cambridgecia.github.io/LION/methods.html). How models record their making, and how to make them again: [Records](https://cambridgecia.github.io/LION/records.html).
 
 ## Not only CT
 

@@ -14,7 +14,7 @@ function or a parameter doesn't do.
   site: https://cambridgecia.github.io/LION/developers.html): how the pieces
   connect, one training followed through the code, and what a new model,
   solver, reconstructor, operator or dataset needs.
-- [`metadata.md`](metadata.md), when a change touches what LION saves or
+- [`metadata.md`](metadata.md) (on the site as "Records"), when a change touches what LION saves or
   records (specs, records, `instantiate`, publishing).
 
 ## Where things are

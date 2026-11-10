@@ -34,6 +34,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_copybutton",
     "sphinx_gallery.gen_gallery",
+    "myst_parser",  # Markdown pages: records.md includes metadata.md
 ]
 
 # API reference: one page per module, from the docstrings
@@ -91,6 +92,8 @@ sphinx_gallery_conf = {
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build"]
+# metadata.md's links to its own sections (#the-model-file) work on the site
+myst_heading_anchors = 3
 
 html_theme = "furo"
 html_title = f"LION {release}"
