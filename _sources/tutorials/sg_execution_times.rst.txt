@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**21:44.557** total execution time for 13 files **from tutorials**:
+**22:29.032** total execution time for 13 files **from tutorials**:
 
 .. container::
 
@@ -33,41 +33,41 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_tutorials_d12_publishing.py` (``d12_publishing.py``)
-     - 03:03.444
+     - 02:56.729
      - 0.0
    * - :ref:`sphx_glr_tutorials_d11_evaluation.py` (``d11_evaluation.py``)
-     - 02:40.443
+     - 02:51.293
      - 0.0
    * - :ref:`sphx_glr_tutorials_d05_supervised_training.py` (``d05_supervised_training.py``)
-     - 02:34.901
+     - 02:39.364
      - 0.0
    * - :ref:`sphx_glr_tutorials_d08_learned_regularisers.py` (``d08_learned_regularisers.py``)
-     - 02:33.902
+     - 02:25.309
      - 0.0
    * - :ref:`sphx_glr_tutorials_d09_saving_and_records.py` (``d09_saving_and_records.py``)
-     - 02:12.229
-     - 0.0
-   * - :ref:`sphx_glr_tutorials_d10_reconstructors.py` (``d10_reconstructors.py``)
-     - 01:55.403
+     - 02:18.421
      - 0.0
    * - :ref:`sphx_glr_tutorials_d07_denoisers_and_pnp.py` (``d07_denoisers_and_pnp.py``)
-     - 01:54.650
+     - 02:02.732
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d10_reconstructors.py` (``d10_reconstructors.py``)
+     - 02:01.921
      - 0.0
    * - :ref:`sphx_glr_tutorials_d03_data.py` (``d03_data.py``)
-     - 01:37.531
+     - 01:44.294
      - 0.0
    * - :ref:`sphx_glr_tutorials_d06_self_supervised_training.py` (``d06_self_supervised_training.py``)
-     - 01:33.153
+     - 01:38.420
      - 0.0
    * - :ref:`sphx_glr_tutorials_d13_extending_lion.py` (``d13_extending_lion.py``)
-     - 00:53.666
+     - 01:01.555
      - 0.0
    * - :ref:`sphx_glr_tutorials_d04_models.py` (``d04_models.py``)
-     - 00:22.201
+     - 00:22.810
      - 0.0
    * - :ref:`sphx_glr_tutorials_d01_operators.py` (``d01_operators.py``)
-     - 00:15.536
+     - 00:17.519
      - 0.0
    * - :ref:`sphx_glr_tutorials_d02_parameters_and_specs.py` (``d02_parameters_and_specs.py``)
-     - 00:07.498
+     - 00:08.664
      - 0.0

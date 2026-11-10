@@ -223,6 +223,7 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../methods.html">Methods in LION</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
@@ -373,6 +374,7 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../developers.html">Developer guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../citing.html">Citing LION</a></li>
 </ul>
 
@@ -503,7 +505,7 @@ it reconstructs (never to train): the solver validates its reconstruction.</p>
 </span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">validation PSNR:</span><span class="s2">&quot;</span><span class="p">,</span> <a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">solver</span><span class="o">.</span><span class="n">validation_loss</span></a><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.save_final_results" title="LION.optimizers.LIONsolver.LIONsolver.save_final_results"><span class="n">solver</span><span class="o">.</span><span class="n">save_final_results</span></a><span class="p">(</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>validation PSNR: [21.41966629 19.15218019 19.05964851]
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>validation PSNR: [21.66394997 18.75291038 19.0724206 ]
 </pre></div>
 </div>
 <p>A Noise2Inverse reconstruction is the mean of the model’s outputs over the
@@ -556,7 +558,7 @@ Proj2ProjSolver
 grid_size : 4
 recon_fn : default
 EquivariantSolver
-transformation_group : &lt;LION.optimizers.EquivariantSolver.RotationGroup object at 0x7fc32ce7d130&gt;
+transformation_group : &lt;LION.optimizers.EquivariantSolver.RotationGroup object at 0x7f2a4358d400&gt;
 equivariance_strength : 100
 Equivariance2InverseSolver
 equivariance_strength : 1.0
@@ -577,7 +579,7 @@ and from the reconstruction being equivariant to rotations:</p>
 <p>Some of these methods are only defined for the mean squared error: their
 solvers train with it, and use <code class="docutils literal notranslate"><span class="pre">loss_fn</span></code> only to validate and test (they
 warn if it isn’t the MSE).</p>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 33.153 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 38.420 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d06-self-supervised-training-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/aff2807135fd12d4fb7aade35b179bb0/d06_self_supervised_training.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d06_self_supervised_training.ipynb</span></code></a></p>

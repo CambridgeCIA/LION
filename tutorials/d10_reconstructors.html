@@ -223,6 +223,7 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../methods.html">Methods in LION</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
@@ -373,6 +374,7 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../developers.html">Developer guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../citing.html">Citing LION</a></li>
 </ul>
 
@@ -571,7 +573,7 @@ algorithms that take one;</p></li>
 </span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">start</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-function reference internal" href="../generated/LION.operators.ct.sirt.html#LION.operators.ct.sirt" title="LION.operators.ct.sirt"><span class="n">sirt</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">sinogram</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry" title="LION.operators.ct.Geometry"><span class="n">geometry</span></a><span class="p">,</span> <span class="n">num_iterations</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-method reference internal" href="../generated/LION.reconstructors.LIONreconstructor.html#LION.reconstructors.LIONreconstructor.LIONReconstructor.reconstruct" title="LION.reconstructors.LIONReconstructor.reconstruct"><span class="n">pnp</span><span class="o">.</span><span class="n">reconstruct</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">sinogram</span></a><span class="p">,</span> <span class="n">x0</span><span class="o">=</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">start</span></a><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;function fdk at 0x7fc41f5dc360&gt;
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;function fdk at 0x7f2b3c260220&gt;
 torch.Size([2, 1, 512, 512])
 </pre></div>
 </div>
@@ -611,7 +613,7 @@ ForwardReconstructor FBPConvNet
 <p>A reconstructor derives from <code class="docutils literal notranslate"><span class="pre">LIONReconstructor</span></code> and defines
 <code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code> and <code class="docutils literal notranslate"><span class="pre">reconstruct_sample(y,</span> <span class="pre">x0,</span> <span class="pre">verbose)</span></code>; the
 tutorial <a class="reference internal" href="d13_extending_lion.html"><span class="doc">Extending LION</span></a> writes one.</p>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 55.403 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 1.921 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d10-reconstructors-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/7244d845205b9cd2d6a16cc1b2cef389/d10_reconstructors.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d10_reconstructors.ipynb</span></code></a></p>

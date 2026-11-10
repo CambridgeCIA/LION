@@ -126,9 +126,9 @@ evenly spaced test slices (all of them by default); results are saved in
 
  .. code-block:: none
 
-    PSNR: 18.763 ± 4.506
-    SSIM: 0.212 ± 0.062
-    HaarPSI: 0.370 ± 0.096
+    PSNR: 16.081 ± 5.456
+    SSIM: 0.165 ± 0.045
+    HaarPSI: 0.347 ± 0.104
 
 
 
@@ -156,7 +156,7 @@ again reads it instead of computing it:
 
  .. code-block:: none
 
-    ['LIDC-IDRI-0910/slice_0', 'LIDC-IDRI-0915/slice_114', 'LIDC-IDRI-0920/slice_331'] [22.39322280883789, 20.384502410888672, 16.844867706298828]
+    ['LIDC-IDRI-0910/slice_0', 'LIDC-IDRI-0915/slice_114', 'LIDC-IDRI-0920/slice_331'] [17.426639556884766, 17.62146759033203, 16.989444732666016]
 
 
 
@@ -198,8 +198,8 @@ Methods by name, against the problem's baseline (FDK, for CT):
     | Method | PSNR | SSIM | HaarPSI |
     |---|---|---|---|
     | fdk | 21.87 ± 5.60 | 0.1541 ± 0.0933 | 0.3945 ± 0.2007 |
-    | FBPConvNet, 1 epoch | 22.67 ± 6.67 | 0.2596 ± 0.1809 | 0.4309 ± 0.2142 |
-    | FBPConvNet, 3 epochs | 18.76 ± 4.51 | 0.2115 ± 0.0623 | 0.3699 ± 0.0958 |
+    | FBPConvNet, 1 epoch | 22.69 ± 6.63 | 0.2599 ± 0.1811 | 0.4309 ± 0.2143 |
+    | FBPConvNet, 3 epochs | 16.08 ± 5.46 | 0.1652 ± 0.0445 | 0.3473 ± 0.1035 |
     | SIRT | **33.03 ± 2.19** | **0.7872 ± 0.1425** | **0.6543 ± 0.0618** |
 
     \begin{tabular}{lccc}
@@ -207,8 +207,8 @@ Methods by name, against the problem's baseline (FDK, for CT):
     Method & PSNR & SSIM & HaarPSI \\
     \midrule
     fdk & 21.87 $\pm$ 5.60 & 0.1541 $\pm$ 0.0933 & 0.3945 $\pm$ 0.2007 \\
-    FBPConvNet, 1 epoch & 22.67 $\pm$ 6.67 & 0.2596 $\pm$ 0.1809 & 0.4309 $\pm$ 0.2142 \\
-    FBPConvNet, 3 epochs & 18.76 $\pm$ 4.51 & 0.2115 $\pm$ 0.0623 & 0.3699 $\pm$ 0.0958 \\
+    FBPConvNet, 1 epoch & 22.69 $\pm$ 6.63 & 0.2599 $\pm$ 0.1811 & 0.4309 $\pm$ 0.2143 \\
+    FBPConvNet, 3 epochs & 16.08 $\pm$ 5.46 & 0.1652 $\pm$ 0.0445 & 0.3473 $\pm$ 0.1035 \\
     SIRT & \textbf{33.03 $\pm$ 2.19} & \textbf{0.7872 $\pm$ 0.1425} & \textbf{0.6543 $\pm$ 0.0618} \\
     \bottomrule
     \end{tabular}
@@ -301,7 +301,7 @@ data you load yourself:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (2 minutes 40.443 seconds)
+   **Total running time of the script:** (2 minutes 51.293 seconds)
 
 
 .. _sphx_glr_download_tutorials_d11_evaluation.py:

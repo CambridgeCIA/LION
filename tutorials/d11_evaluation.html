@@ -223,6 +223,7 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../methods.html">Methods in LION</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
@@ -373,6 +374,7 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../developers.html">Developer guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../citing.html">Citing LION</a></li>
 </ul>
 
@@ -493,9 +495,9 @@ evenly spaced test slices (all of them by default); results are saved in
 </span><span class="k">for</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">metric</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">values</span></a> <span class="ow">in</span> <span class="n">summary</span><span class="p">(</span><a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">record</span></a><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
 </span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">metric</span></a><span class="si">}</span><span class="s2">: </span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">values</span></a><span class="p">[</span><span class="s1">'</span><span class="s1">mean</span><span class="s1">'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> ± </span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">values</span></a><span class="p">[</span><span class="s1">'</span><span class="s1">std</span><span class="s1">'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>PSNR: 18.763 ± 4.506
-SSIM: 0.212 ± 0.062
-HaarPSI: 0.370 ± 0.096
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>PSNR: 16.081 ± 5.456
+SSIM: 0.165 ± 0.045
+HaarPSI: 0.347 ± 0.104
 </pre></div>
 </div>
 <p>The test record holds the score of each test sample (by patient and slice),
@@ -505,7 +507,7 @@ again reads it instead of computing it:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="nb">print</span><span class="p">(</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="list"><span class="n">record</span><span class="o">.</span><span class="n">scores</span><span class="o">.</span><span class="n">ids</span></a><span class="p">[</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="p">,</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="list"><span class="n">record</span><span class="o">.</span><span class="n">scores</span><span class="o">.</span><span class="n">PSNR</span></a><span class="p">[</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">again</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-method reference internal" href="../generated/LION.evaluation.evaluation.html#LION.evaluation.evaluation.Evaluation.run" title="LION.evaluation.Evaluation.run"><span class="n">evaluation</span><span class="o">.</span><span class="n">run</span></a><span class="p">(</span><a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.PosixPath" title="pathlib.PosixPath"><span class="n">folder</span></a> <span class="o">/</span> <span class="s2">&quot;</span><span class="s2">FBPConvNet_3</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">FBPConvNet, 3 epochs</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>['LIDC-IDRI-0910/slice_0', 'LIDC-IDRI-0915/slice_114', 'LIDC-IDRI-0920/slice_331'] [22.39322280883789, 20.384502410888672, 16.844867706298828]
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>['LIDC-IDRI-0910/slice_0', 'LIDC-IDRI-0915/slice_114', 'LIDC-IDRI-0920/slice_331'] [17.426639556884766, 17.62146759033203, 16.989444732666016]
 </pre></div>
 </div>
 </section>
@@ -530,8 +532,8 @@ again reads it instead of computing it:</p>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>| Method | PSNR | SSIM | HaarPSI |
 |---|---|---|---|
 | fdk | 21.87 ± 5.60 | 0.1541 ± 0.0933 | 0.3945 ± 0.2007 |
-| FBPConvNet, 1 epoch | 22.67 ± 6.67 | 0.2596 ± 0.1809 | 0.4309 ± 0.2142 |
-| FBPConvNet, 3 epochs | 18.76 ± 4.51 | 0.2115 ± 0.0623 | 0.3699 ± 0.0958 |
+| FBPConvNet, 1 epoch | 22.69 ± 6.63 | 0.2599 ± 0.1811 | 0.4309 ± 0.2143 |
+| FBPConvNet, 3 epochs | 16.08 ± 5.46 | 0.1652 ± 0.0445 | 0.3473 ± 0.1035 |
 | SIRT | **33.03 ± 2.19** | **0.7872 ± 0.1425** | **0.6543 ± 0.0618** |
 
 \begin{tabular}{lccc}
@@ -539,8 +541,8 @@ again reads it instead of computing it:</p>
 Method &amp; PSNR &amp; SSIM &amp; HaarPSI \\
 \midrule
 fdk &amp; 21.87 $\pm$ 5.60 &amp; 0.1541 $\pm$ 0.0933 &amp; 0.3945 $\pm$ 0.2007 \\
-FBPConvNet, 1 epoch &amp; 22.67 $\pm$ 6.67 &amp; 0.2596 $\pm$ 0.1809 &amp; 0.4309 $\pm$ 0.2142 \\
-FBPConvNet, 3 epochs &amp; 18.76 $\pm$ 4.51 &amp; 0.2115 $\pm$ 0.0623 &amp; 0.3699 $\pm$ 0.0958 \\
+FBPConvNet, 1 epoch &amp; 22.69 $\pm$ 6.63 &amp; 0.2599 $\pm$ 0.1811 &amp; 0.4309 $\pm$ 0.2143 \\
+FBPConvNet, 3 epochs &amp; 16.08 $\pm$ 5.46 &amp; 0.1652 $\pm$ 0.0445 &amp; 0.3473 $\pm$ 0.1035 \\
 SIRT &amp; \textbf{33.03 $\pm$ 2.19} &amp; \textbf{0.7872 $\pm$ 0.1425} &amp; \textbf{0.6543 $\pm$ 0.0618} \\
 \bottomrule
 \end{tabular}
@@ -586,7 +588,7 @@ zoomed crops and the differences to the target.</p>
 data you load yourself:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.evaluation.evaluation.html#LION.evaluation.evaluation.Evaluation" title="LION.evaluation.Evaluation"><span class="n">evaluation</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-class reference internal" href="../generated/LION.evaluation.evaluation.html#LION.evaluation.evaluation.Evaluation" title="LION.evaluation.Evaluation"><span class="n">Evaluation</span></a><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="n">my_test_data</span><span class="p">,</span> <span class="n">operator</span><span class="o">=</span><span class="n">my_operator</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 40.443 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 51.293 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d11-evaluation-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/9aaa6f75cb4623a1d737388627be4798/d11_evaluation.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d11_evaluation.ipynb</span></code></a></p>

@@ -147,7 +147,7 @@ to use and train it again:
 
     # FBPConvNet trained on LIDC-IDRI: Low dose full angular sampling experiment
 
-    Published on 2026-11-10 with LION 0.2.0 (commit 2162661184). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
+    Published on 2026-11-10 with LION 0.2.0 (commit e1cf2a02f6). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
 
     ## The model
 
@@ -165,9 +165,9 @@ to use and train it again:
 
     - Solver: `LION.optimizers.SupervisedSolver.SupervisedSolver`, loss `MSELoss`; optimizer `Adam` (learning rate 0.001).
     - Data: the train data, 40 samples from 8 groups; batch size 4, shuffled.
-    - 2 epochs of 2; at the end, training loss 0.03577.
+    - 2 epochs of 2; at the end, training loss 0.03686.
     - Seed 0; initial weights made again from the random state saved with the model.
-    - Trained with LION 0.2.0 (commit 2162661184), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
+    - Trained with LION 0.2.0 (commit e1cf2a02f6), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
 
     ## Test
 
@@ -175,7 +175,7 @@ to use and train it again:
 
     | Method | PSNR | SSIM | HaarPSI |
     |---|---|---|---|
-    | FBPConvNet | -0.9934 ± 5.2138 | 0.0463 ± 0.0220 | 0.0618 ± 0.0306 |
+    | FBPConvNet | -5.6211 ± 6.3081 | 0.0432 ± 0.0320 | 0.0302 ± 0.0158 |
 
     ## Using it
 
@@ -333,7 +333,7 @@ making anything, so they can be read or changed first:
     Image size = [  0.9765625 500.        500.       ] mm
     Number of angles = (360,)
     model_parameters : model_input_type : ModelInputType.SINOGRAM
-    initial_reconstruction : <function fdk at 0x7fc41f5dc360>
+    initial_reconstruction : <function fdk at 0x7f2b3c260220>
     down_1_channels : [1, 64, 64, 64]
     down_2_channels : [64, 128, 128]
     down_3_channels : [128, 256, 256]
@@ -450,7 +450,7 @@ weights):
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (3 minutes 3.444 seconds)
+   **Total running time of the script:** (2 minutes 56.729 seconds)
 
 
 .. _sphx_glr_download_tutorials_d12_publishing.py:

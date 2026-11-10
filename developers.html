@@ -1,0 +1,839 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Citing LION" href="citing.html"><link rel="prev" title="LION.utils.utils" href="generated/LION.utils.utils.html">
+        <link rel="prefetch" href="_static/lion-logo.svg" as="image">
+        <link rel="prefetch" href="_static/lion-logo-dark.svg" as="image">
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+        <title>Developer guide - LION 0.2.0</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">LION 0.2.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="_static/lion-logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="_static/lion-logo-dark.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">LION 0.2.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials/index.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d01_operators.html">Operators: CT geometry, projections and reconstructions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d02_parameters_and_specs.html">Parameters and specs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d03_data.html">Data and experiments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d04_models.html">Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d05_supervised_training.html">Supervised training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d06_self_supervised_training.html">Self-supervised training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d07_denoisers_and_pnp.html">Denoisers and Plug-and-Play</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d08_learned_regularisers.html">Learned regularisers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d09_saving_and_records.html">Saving, loading and records</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d10_reconstructors.html">Reconstructors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d11_evaluation.html">Evaluation and comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d12_publishing.html">Publishing and reproducing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d13_extending_lion.html">Extending LION</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Example scripts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="methods.html">Methods in LION</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.operators.DebiasOp.html">LION.operators.DebiasOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.operators.Operator.html">LION.operators.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.operators.Wavelet2D.html">LION.operators.Wavelet2D</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.operators.ct.html">LION.operators.ct</a><input aria-label="Toggle navigation of LION.operators.ct" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.CTProjectionOp.html">LION.operators.ct.CTProjectionOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.ct_geometry.html">LION.operators.ct.ct_geometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.ct_utils.html">LION.operators.ct.ct_utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.fdk.html">LION.operators.ct.fdk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.sirt.html">LION.operators.ct.sirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.tv_min.html">LION.operators.ct.tv_min</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.operators.pcm.html">LION.operators.pcm</a><input aria-label="Toggle navigation of LION.operators.pcm" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.pcm.PhotocurrentMapOp.html">LION.operators.pcm.PhotocurrentMapOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.pcm.WalshHadamard2D.html">LION.operators.pcm.WalshHadamard2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.data_loaders.html">LION.data_loaders</a><input aria-label="Toggle navigation of LION.data_loaders" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.data_loaders.LIDC_IDRI.html">LION.data_loaders.LIDC_IDRI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.data_loaders.LIONDataset.html">LION.data_loaders.LIONDataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.data_loaders.data_record.html">LION.data_loaders.data_record</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.data_loaders.deteCT.html">LION.data_loaders.deteCT</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.experiments.html">LION.experiments</a><input aria-label="Toggle navigation of LION.experiments" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.experiments.ct_experiments.html">LION.experiments.ct_experiments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.experiments.deteCT_benchmark.html">LION.experiments.deteCT_benchmark</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.models.html">LION.models</a><input aria-label="Toggle navigation of LION.models" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.CNNs.html">LION.models.CNNs</a><input aria-label="Toggle navigation of LION.models.CNNs" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.CNNs.MSDNet.html">LION.models.CNNs.MSDNet</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="generated/LION.models.CNNs.UNets.html">LION.models.CNNs.UNets</a><input aria-label="Toggle navigation of LION.models.CNNs.UNets" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="generated/LION.models.CNNs.UNets.ResUNet3D.html">LION.models.CNNs.UNets.ResUNet3D</a></li>
+<li class="toctree-l5"><a class="reference internal" href="generated/LION.models.CNNs.UNets.Unet.html">LION.models.CNNs.UNets.Unet</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.CNNs.dncnn.html">LION.models.CNNs.dncnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.CNNs.drunet.html">LION.models.CNNs.drunet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.models.LIONmodel.html">LION.models.LIONmodel</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.PnP.html">LION.models.PnP</a><input aria-label="Toggle navigation of LION.models.PnP" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.models.fully_learned.html">LION.models.fully_learned</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.iterative_unrolled.LPD.html">LION.models.iterative_unrolled.LPD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.iterative_unrolled.cLPD.html">LION.models.iterative_unrolled.cLPD</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.learned_fbp.html">LION.models.learned_fbp</a><input aria-label="Toggle navigation of LION.models.learned_fbp" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_fbp.DeepFBP.html">LION.models.learned_fbp.DeepFBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_fbp.DeepFusionBP.html">LION.models.learned_fbp.DeepFusionBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_fbp.FusionFBP.html">LION.models.learned_fbp.FusionFBP</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.post_processing.FBPConvNet.html">LION.models.post_processing.FBPConvNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.post_processing.FBPConvNetImage.html">LION.models.post_processing.FBPConvNetImage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.post_processing.cFBPConvNet.html">LION.models.post_processing.cFBPConvNet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.models.torch_model.html">LION.models.torch_model</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.optimizers.html">LION.optimizers</a><input aria-label="Toggle navigation of LION.optimizers" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.AdversarialRegularizerSolver.html">LION.optimizers.AdversarialRegularizerSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.Equivariance2InverseSolver.html">LION.optimizers.Equivariance2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.EquivariantSolver.html">LION.optimizers.EquivariantSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.GaussianDenoiserSolver.html">LION.optimizers.GaussianDenoiserSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.LIONsolver.html">LION.optimizers.LIONsolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.Noise2InverseSolver.html">LION.optimizers.Noise2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.Noisier2InverseSolver.html">LION.optimizers.Noisier2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.Proj2ProjSolver.html">LION.optimizers.Proj2ProjSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.SelfSupervisedSolver.html">LION.optimizers.SelfSupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.Sparse2InverseSolver.html">LION.optimizers.Sparse2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.SupervisedSolver.html">LION.optimizers.SupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.training_record.html">LION.optimizers.training_record</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.losses.html">LION.losses</a><input aria-label="Toggle navigation of LION.losses" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.losses.SURE.html">LION.losses.SURE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.losses.SUREpgImage.html">LION.losses.SUREpgImage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.losses.jacobian_penalty.html">LION.losses.jacobian_penalty</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.reconstructors.html">LION.reconstructors</a><input aria-label="Toggle navigation of LION.reconstructors" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.reconstructors.ForwardReconstructor.html">LION.reconstructors.ForwardReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.reconstructors.LIONreconstructor.html">LION.reconstructors.LIONreconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.reconstructors.LearnedRegularizerReconstructor.html">LION.reconstructors.LearnedRegularizerReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.reconstructors.PnP.html">LION.reconstructors.PnP</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.classical_algorithms.html">LION.classical_algorithms</a><input aria-label="Toggle navigation of LION.classical_algorithms" class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.classical_algorithms.conjugate_gradient.html">LION.classical_algorithms.conjugate_gradient</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.classical_algorithms.fista.html">LION.classical_algorithms.fista</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.classical_algorithms.spgl1_torch.html">LION.classical_algorithms.spgl1_torch</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.evaluation.html">LION.evaluation</a><input aria-label="Toggle navigation of LION.evaluation" class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.evaluation.comparison.html">LION.evaluation.comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.evaluation.evaluation.html">LION.evaluation.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.evaluation.figures.html">LION.evaluation.figures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.evaluation.methods.html">LION.evaluation.methods</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.metrics.html">LION.metrics</a><input aria-label="Toggle navigation of LION.metrics" class="toctree-checkbox" id="toctree-checkbox-21" name="toctree-checkbox-21" role="switch" type="checkbox"/><label for="toctree-checkbox-21"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.metrics.haarpsi.html">LION.metrics.haarpsi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.metrics.psnr.html">LION.metrics.psnr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.metrics.ssim.html">LION.metrics.ssim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="generated/LION.package.html">LION.package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.utils.html">LION.utils</a><input aria-label="Toggle navigation of LION.utils" class="toctree-checkbox" id="toctree-checkbox-22" name="toctree-checkbox-22" role="switch" type="checkbox"/><label for="toctree-checkbox-22"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.citation.html">LION.utils.citation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.common_primitives.html">LION.utils.common_primitives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.device.html">LION.utils.device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.environment.html">LION.utils.environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.image_transforms.html">LION.utils.image_transforms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.math.html">LION.utils.math</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.mrpro_import.html">LION.utils.mrpro_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.normaliser.html">LION.utils.normaliser</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.parameter.html">LION.utils.parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.paths.html">LION.utils.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.rng.html">LION.utils.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.spec.html">LION.utils.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.spyrit_import.html">LION.utils.spyrit_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.tomosipo_import.html">LION.utils.tomosipo_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.utils.html">LION.utils.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Developer guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="citing.html">Citing LION</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/developers.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/developers.rst" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="developer-guide">
+<h1>Developer guide<a class="headerlink" href="#developer-guide" title="Link to this heading">¶</a></h1>
+<p>How LION is built, for changing it or adding to it. The
+<a class="reference internal" href="tutorials/index.html"><span class="doc">tutorials</span></a> show how to <em>use</em> each piece, and
+<a class="reference internal" href="tutorials/d13_extending_lion.html"><span class="doc">Extending LION</span></a> how to write your own in a script. This
+page follows one training through the code, says where everything lives, and
+lists what a new piece of LION needs. The rules the code follows (names,
+parameters, errors, tests) are in the <a class="reference external" href="https://github.com/CambridgeCIA/LION/blob/main/contributor-guide.md">contributor guide</a>; what
+LION records and how, in <a class="reference external" href="https://github.com/CambridgeCIA/LION/blob/main/metadata.md">metadata.md</a>.</p>
+<section id="the-idea">
+<h2>The idea<a class="headerlink" href="#the-idea" title="Link to this heading">¶</a></h2>
+<p>LION is plain torch with a few small base classes. A model is a
+<code class="docutils literal notranslate"><span class="pre">torch.nn.Module</span></code>, an operator a function of tensors, a solver a training
+loop, a dataset a torch <code class="docutils literal notranslate"><span class="pre">Dataset</span></code>. The base classes add only what research
+needs to be repeated:</p>
+<ul class="simple">
+<li><p><strong>every piece is made from parameters.</strong> A <code class="docutils literal notranslate"><span class="pre">LIONParameter</span></code> (a namespace
+that saves to JSON) holds everything that decides what the piece does, and
+<code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code> lists them all, with their defaults;</p></li>
+<li><p><strong>every piece can be made again from its file.</strong> A piece keeps its
+constructor’s arguments under the same names, so LION writes it as the call
+that makes it (a <em>spec</em>: <code class="docutils literal notranslate"><span class="pre">{&quot;_target_&quot;:</span> <span class="pre">&quot;LION.models...&quot;,</span> <span class="pre">...}</span></code>) and
+<code class="docutils literal notranslate"><span class="pre">instantiate</span></code> makes it again;</p></li>
+<li><p><strong>every saved model carries its records</strong>: the data it was trained on, how
+it was trained, and the code and machine it ran on.</p></li>
+</ul>
+<p>Anything else (a loss, a metric, a scheduler, a data augmentation) is plain
+torch or a plain function. Before adding a class, check that a function or a
+parameter doesn’t do.</p>
+</section>
+<section id="how-the-pieces-connect">
+<h2>How the pieces connect<a class="headerlink" href="#how-the-pieces-connect" title="Link to this heading">¶</a></h2>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>OperatorParameters ──make_operator()──▶ Operator
+  (CT: Geometry)                          (CT: CTProjectionOp)
+     │                                       forward, adjoint, autograd(),
+     │                                       default_reconstruction (FDK)
+     ├──▶ Experiment ──get_dataset(split)──▶ LIONDataset ──▶ DataLoader
+     │      geometry, noise, data split        (y, x) pairs       │
+     │                                                            ▼
+     ├──▶ LIONmodel (the network)  ◀──trains──  LIONsolver (the loop)
+     │                                │            mini_batch_step(y, x)
+     │                                ▼
+     │                          model.save: .pt (weights) + .json (records)
+     │                                │
+     └──▶ LIONReconstructor (model inside an algorithm) ──▶ Evaluation
+</pre></div>
+</div>
+<p>The operator’s parameters are what everything shares: experiments,
+models, solvers and reconstructors take them (<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>; for CT, the
+geometry) and make the operator themselves, so they work with any kind of
+operator. Each kind of operator (<code class="docutils literal notranslate"><span class="pre">LION/operators/ct</span></code>, <code class="docutils literal notranslate"><span class="pre">pcm</span></code>) has its
+parameters, its operator, and the reconstructions only it has.</p>
+</section>
+<section id="following-one-training">
+<h2>Following one training<a class="headerlink" href="#following-one-training" title="Link to this heading">¶</a></h2>
+<p>The README’s first training, step by step, with where each step happens.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">experiment</span> <span class="o">=</span> <span class="n">ct_experiments</span><span class="o">.</span><span class="n">LowDoseCTRecon</span><span class="p">()</span>
+<span class="n">training</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">get_dataset</span><span class="p">(</span><span class="s2">"train"</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">FBPConvNet</span><span class="p">(</span><span class="n">experiment</span><span class="o">.</span><span class="n">operator_params</span><span class="p">)</span>
+<span class="n">solver</span> <span class="o">=</span> <span class="n">SupervisedSolver</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()),</span>
+                          <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">())</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">set_training</span><span class="p">(</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">training</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">set_saving</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s2">"FBPConvNet"</span><span class="p">)</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">save_final_results</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>The experiment</strong> (<code class="docutils literal notranslate"><span class="pre">LION/experiments/ct_experiments.py</span></code>). <code class="docutils literal notranslate"><span class="pre">Experiment</span></code>
+holds a <code class="docutils literal notranslate"><span class="pre">LIONParameter</span></code> with the geometry (<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>), the noise
+(<code class="docutils literal notranslate"><span class="pre">noise_params</span></code>) and the data loader’s settings; each experiment
+(<code class="docutils literal notranslate"><span class="pre">LowDoseCTRecon</span></code>, …) is only its <code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code>.
+<code class="docutils literal notranslate"><span class="pre">get_dataset(&quot;train&quot;)</span></code> makes the data loader (<code class="docutils literal notranslate"><span class="pre">LIDC_IDRI</span></code>) for that split
+and gives it the experiment’s noise as a sinogram transform, then stores the
+experiment and the split on it, for its record.</p>
+<p><strong>The data</strong> (<code class="docutils literal notranslate"><span class="pre">LION/data_loaders/LIDC_IDRI.py</span></code>). <code class="docutils literal notranslate"><span class="pre">__getitem__</span></code> reads a
+slice (a density image), projects it with the experiment’s operator, and adds
+noise drawn inside <code class="docutils literal notranslate"><span class="pre">rng.seeded(seed,</span> <span class="pre">sample)</span></code>: each sample is the same every
+time it is read. It returns <code class="docutils literal notranslate"><span class="pre">(sinogram,</span> <span class="pre">image)</span></code>: the measurements and the
+target. <code class="docutils literal notranslate"><span class="pre">sample_ids()</span></code> and <code class="docutils literal notranslate"><span class="pre">sample_groups()</span></code> (patients) let the record say
+what was used, and evaluations check that no patient is in two splits.</p>
+<p><strong>The model</strong> (<code class="docutils literal notranslate"><span class="pre">LION/models/LIONmodel.py</span></code>, then
+<code class="docutils literal notranslate"><span class="pre">LION/models/post_processing/FBPConvNet.py</span></code>). <code class="docutils literal notranslate"><span class="pre">LIONmodel.__init__</span></code>
+checks the arguments, fills <code class="docutils literal notranslate"><span class="pre">model_parameters</span></code> from
+<code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code> (warning on names it doesn’t know), stores torch’s
+random state (so the initial weights can be made again) and the
+normalisation. The model then makes its operator with
+<code class="docutils literal notranslate"><span class="pre">self._make_operator()</span></code> (<code class="docutils literal notranslate"><span class="pre">autograd=True</span></code> gives <code class="docutils literal notranslate"><span class="pre">self.A</span></code>, <code class="docutils literal notranslate"><span class="pre">self.AT</span></code>
+when gradients go through it) and builds its layers.
+<code class="docutils literal notranslate"><span class="pre">model_parameters.model_input_type</span></code> says what <code class="docutils literal notranslate"><span class="pre">forward</span></code> takes:
+measurements (<code class="docutils literal notranslate"><span class="pre">SINOGRAM</span></code>: FBPConvNet, which runs FDK itself; LPD) or an
+image (<code class="docutils literal notranslate"><span class="pre">IMAGE</span></code>: the CNNs, given a reconstruction).</p>
+<p><strong>The solver</strong> (<code class="docutils literal notranslate"><span class="pre">LION/optimizers/LIONsolver.py</span></code>, then
+<code class="docutils literal notranslate"><span class="pre">SupervisedSolver.py</span></code>). <code class="docutils literal notranslate"><span class="pre">LIONsolver.__init__</span></code> takes the operator’s
+parameters from the model (or its argument), makes <code class="docutils literal notranslate"><span class="pre">self.op</span></code>, moves the model
+to <code class="docutils literal notranslate"><span class="pre">default_device()</span></code>, and replaces a <code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code> reconstruction in
+<code class="docutils literal notranslate"><span class="pre">solver_params</span></code> by the real function, so the record names it.
+<code class="docutils literal notranslate"><span class="pre">set_training</span></code>, <code class="docutils literal notranslate"><span class="pre">set_validation</span></code>, <code class="docutils literal notranslate"><span class="pre">set_saving</span></code> and
+<code class="docutils literal notranslate"><span class="pre">set_checkpointing</span></code> only store what they’re given.</p>
+<p><code class="docutils literal notranslate"><span class="pre">train(n_epochs)</span></code>:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">check_training_ready()</span></code>, then the loss arrays, the checkpoint defaults,
+and the latest checkpoint if there is one (<code class="docutils literal notranslate"><span class="pre">load_checkpoint</span></code>: it then
+continues from that epoch; <code class="docutils literal notranslate"><span class="pre">n_epochs</span></code> is the total);</p></li>
+<li><p>a new run seeds torch, numpy and <code class="docutils literal notranslate"><span class="pre">random</span></code> (<code class="docutils literal notranslate"><span class="pre">seed</span></code>), and records how the
+initial weights can be made again (<code class="docutils literal notranslate"><span class="pre">_initial_weights</span></code>);</p></li>
+<li><p>each epoch, <code class="docutils literal notranslate"><span class="pre">epoch_step</span></code>: <code class="docutils literal notranslate"><span class="pre">train_step</span></code> (for each mini-batch:
+<code class="docutils literal notranslate"><span class="pre">mini_batch_step(y,</span> <span class="pre">target)</span></code>, backward, optimizer step), then
+<code class="docutils literal notranslate"><span class="pre">validate()</span></code> when due, saving the best model, then the scheduler;</p></li>
+<li><p>a checkpoint every <code class="docutils literal notranslate"><span class="pre">checkpoint_freq</span></code> epochs (<code class="docutils literal notranslate"><span class="pre">save_checkpoint</span></code>).</p></li>
+</ol>
+<p><code class="docutils literal notranslate"><span class="pre">SupervisedSolver.mini_batch_step</span></code> is three lines: the output
+(<code class="docutils literal notranslate"><span class="pre">self._forward(y)</span></code>), the loss against the target, and
+<code class="docutils literal notranslate"><span class="pre">self._regularized(...)</span></code>, which adds <code class="docutils literal notranslate"><span class="pre">model_regularization</span></code> if there is
+one. <code class="docutils literal notranslate"><span class="pre">_forward</span></code> is <code class="docutils literal notranslate"><span class="pre">model_forward(model,</span> <span class="pre">y,</span> <span class="pre">op)</span></code> (in <code class="docutils literal notranslate"><span class="pre">LIONsolver.py</span></code>):
+an image model gets the initial reconstruction (FDK for CT) first, and the
+model’s normalisation is applied around it. That function is how a model is
+run everywhere: training, validation, testing, <code class="docutils literal notranslate"><span class="pre">ForwardReconstructor</span></code>.</p>
+<p><strong>Saving</strong> (<code class="docutils literal notranslate"><span class="pre">LIONmodel.save</span></code>). <code class="docutils literal notranslate"><span class="pre">save_final_results()</span></code> calls
+<code class="docutils literal notranslate"><span class="pre">model.save(file,</span> <span class="pre">training=...,</span> <span class="pre">dataset=...,</span> <span class="pre">loss=...,</span> <span class="pre">epoch=...)</span></code>, which
+writes two files: <code class="docutils literal notranslate"><span class="pre">file.pt</span></code>, the weights and plain numbers only (loaded with
+<code class="docutils literal notranslate"><span class="pre">weights_only=True</span></code>); and <code class="docutils literal notranslate"><span class="pre">file.json</span></code>, the model’s spec
+(<code class="docutils literal notranslate"><span class="pre">LION/utils/spec.py</span></code>), the environment record
+(<code class="docutils literal notranslate"><span class="pre">LION/utils/environment.py</span></code>), the data record
+(<code class="docutils literal notranslate"><span class="pre">LION/data_loaders/data_record.py</span></code>) and the training record
+(<code class="docutils literal notranslate"><span class="pre">LION/optimizers/training_record.py</span></code>). <code class="docutils literal notranslate"><span class="pre">LIONmodel.load(file)</span></code> reads them
+back; <code class="docutils literal notranslate"><span class="pre">LION.package</span></code> builds on them to publish, rebuild and retrain.</p>
+<p><strong>Using it</strong> (<code class="docutils literal notranslate"><span class="pre">LION/reconstructors</span></code>, <code class="docutils literal notranslate"><span class="pre">LION/evaluation</span></code>).
+<code class="docutils literal notranslate"><span class="pre">ForwardReconstructor(geometry,</span> <span class="pre">model).reconstruct(y)</span></code> runs
+<code class="docutils literal notranslate"><span class="pre">model_forward</span></code> without gradients. <code class="docutils literal notranslate"><span class="pre">LIONReconstructor.reconstruct</span></code> takes
+one sample or a batch, and calls <code class="docutils literal notranslate"><span class="pre">reconstruct_sample</span></code> for each; PnP and the
+learned regulariser are algorithms there, with the model inside.
+<code class="docutils literal notranslate"><span class="pre">Evaluation</span></code> runs a method on every test sample, and <code class="docutils literal notranslate"><span class="pre">Comparison</span></code> compares
+methods against the operator’s default reconstruction.</p>
+</section>
+<section id="where-things-live">
+<h2>Where things live<a class="headerlink" href="#where-things-live" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper colwidths-given docutils container">
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Folder</p></th>
+<th class="head"><p>What it has</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LION/operators</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Operator</span></code>, generic operators; <code class="docutils literal notranslate"><span class="pre">ct/</span></code> (geometry, projector, FDK,
+SIRT, TV, noise, HU), <code class="docutils literal notranslate"><span class="pre">pcm/</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LION/classical_algorithms</span></code></p></td>
+<td><p>algorithms for any operator: CG, FISTA, SPGL1</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LION/data_loaders</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIONDataset</span></code>, the datasets, <code class="docutils literal notranslate"><span class="pre">data_record</span></code>; each dataset’s
+download and preprocessing scripts</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LION/experiments</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Experiment</span></code> and LION’s CT experiments; the 2DeteCT benchmark’s</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LION/models</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIONmodel</span></code>, <code class="docutils literal notranslate"><span class="pre">TorchModel</span></code>; the models by kind (<code class="docutils literal notranslate"><span class="pre">CNNs</span></code>,
+<code class="docutils literal notranslate"><span class="pre">post_processing</span></code>, <code class="docutils literal notranslate"><span class="pre">iterative_unrolled</span></code>, <code class="docutils literal notranslate"><span class="pre">learned_fbp</span></code>,
+<code class="docutils literal notranslate"><span class="pre">learned_regularizer</span></code>, <code class="docutils literal notranslate"><span class="pre">PnP</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LION/optimizers</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIONsolver</span></code>, the solvers, <code class="docutils literal notranslate"><span class="pre">training_record</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LION/losses</span></code>, <code class="docutils literal notranslate"><span class="pre">LION/metrics</span></code></p></td>
+<td><p>losses (SURE, Jacobian penalties); PSNR, SSIM, HaarPSI</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LION/reconstructors</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIONReconstructor</span></code>, <code class="docutils literal notranslate"><span class="pre">ForwardReconstructor</span></code>, <code class="docutils literal notranslate"><span class="pre">PnP</span></code>,
+<code class="docutils literal notranslate"><span class="pre">LearnedRegularizerReconstructor</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LION/evaluation</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Evaluation</span></code>, <code class="docutils literal notranslate"><span class="pre">Comparison</span></code>, tables and figures</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LION/utils</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">parameter</span></code> (<code class="docutils literal notranslate"><span class="pre">LIONParameter</span></code>, <code class="docutils literal notranslate"><span class="pre">OperatorParameters</span></code>), <code class="docutils literal notranslate"><span class="pre">spec</span></code>,
+<code class="docutils literal notranslate"><span class="pre">paths</span></code>, <code class="docutils literal notranslate"><span class="pre">device</span></code>, <code class="docutils literal notranslate"><span class="pre">rng</span></code>, <code class="docutils literal notranslate"><span class="pre">normaliser</span></code>, <code class="docutils literal notranslate"><span class="pre">citation</span></code>,
+<code class="docutils literal notranslate"><span class="pre">environment</span></code>, the backend imports</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LION/package.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">publish</span></code>, <code class="docutils literal notranslate"><span class="pre">load</span></code>, <code class="docutils literal notranslate"><span class="pre">build</span></code>, <code class="docutils literal notranslate"><span class="pre">train_again</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pytests/</span></code></p></td>
+<td><p>the tests, flat; <code class="docutils literal notranslate"><span class="pre">helpers.py</span></code> (small operators and models),
+<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> (markers, fixtures)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">demos/</span></code>, <code class="docutils literal notranslate"><span class="pre">scripts/</span></code></p></td>
+<td><p>the tutorials (the site’s gallery); example and paper scripts</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">docs/</span></code></p></td>
+<td><p>this site</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="adding-to-lion">
+<h2>Adding to LION<a class="headerlink" href="#adding-to-lion" title="Link to this heading">¶</a></h2>
+<p>What each kind of piece defines, and what to do so it is part of LION. In
+every case: a docstring (its arguments, its paper, where it deviates), a
+<code class="docutils literal notranslate"><span class="pre">cite()</span></code> if it comes from a paper, one test of the feature, and a line in
+<a class="reference internal" href="methods.html"><span class="doc">Methods in LION</span></a>. The API reference finds new modules by itself.</p>
+<section id="a-model">
+<h3>A model<a class="headerlink" href="#a-model" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>In <code class="docutils literal notranslate"><span class="pre">LION/models/&lt;kind&gt;/</span></code>, deriving from <code class="docutils literal notranslate"><span class="pre">LIONmodel</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">__init__(self,</span> <span class="pre">operator_params,</span> <span class="pre">model_parameters=None)</span></code> (or only
+<code class="docutils literal notranslate"><span class="pre">model_parameters</span></code> if it uses no operator); call
+<code class="docutils literal notranslate"><span class="pre">super().__init__(model_parameters,</span> <span class="pre">operator_params)</span></code> first, then
+<code class="docutils literal notranslate"><span class="pre">self._make_operator(...)</span></code> if it uses one, then the layers from
+<code class="docutils literal notranslate"><span class="pre">self.model_parameters</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code>: every setting, the paper’s values, and
+<code class="docutils literal notranslate"><span class="pre">model_input_type</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">forward</span></code>: a batch. No normalisation inside (callers apply it).</p></li>
+<li><p>Follow the paper and the authors’ code; say where it differs.</p></li>
+</ul>
+</section>
+<section id="a-solver">
+<h3>A solver<a class="headerlink" href="#a-solver" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>In <code class="docutils literal notranslate"><span class="pre">LION/optimizers/</span></code>, deriving from <code class="docutils literal notranslate"><span class="pre">LIONsolver</span></code>, with the standard
+arguments in their order (<code class="docutils literal notranslate"><span class="pre">model,</span> <span class="pre">optimizer,</span> <span class="pre">loss_fn,</span> <span class="pre">operator_params,</span>
+<span class="pre">solver_params,</span> <span class="pre">model_regularization,</span> <span class="pre">scheduler,</span> <span class="pre">scheduler_step,</span> <span class="pre">verbose,</span>
+<span class="pre">device,</span> <span class="pre">seed,</span> <span class="pre">deterministic</span></code>), passed to <code class="docutils literal notranslate"><span class="pre">super().__init__</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mini_batch_step(y,</span> <span class="pre">target)</span></code>: the loss of one mini-batch, through
+<code class="docutils literal notranslate"><span class="pre">self._forward</span></code> and <code class="docutils literal notranslate"><span class="pre">self._regularized</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code>: its settings. Values computed during training (an
+estimated noise level) start as <code class="docutils literal notranslate"><span class="pre">None</span></code> there, so they are recorded and
+resumed.</p></li>
+<li><p>Override <code class="docutils literal notranslate"><span class="pre">_forward</span></code> only when the method reconstructs differently (e.g.
+Noise2Inverse’s splits); it is then used in validation and testing too.</p></li>
+<li><p>Randomness of training (noise it adds) comes from torch’s generator, which
+the solver seeds; noise added in validation goes inside
+<code class="docutils literal notranslate"><span class="pre">rng.seeded(...)</span></code>.</p></li>
+</ul>
+</section>
+<section id="a-reconstructor">
+<h3>A reconstructor<a class="headerlink" href="#a-reconstructor" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>In <code class="docutils literal notranslate"><span class="pre">LION/reconstructors/</span></code>, deriving from <code class="docutils literal notranslate"><span class="pre">LIONReconstructor</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code>: every setting of the algorithm;
+<code class="docutils literal notranslate"><span class="pre">reconstruct_sample(y,</span> <span class="pre">x0,</span> <span class="pre">verbose)</span></code>: one sample, reading
+<code class="docutils literal notranslate"><span class="pre">self.parameters</span></code>. <code class="docutils literal notranslate"><span class="pre">&#64;torch.no_grad()</span></code> unless it needs gradients.</p></li>
+<li><p>The base class gives <code class="docutils literal notranslate"><span class="pre">reconstruct</span></code> (batches), <code class="docutils literal notranslate"><span class="pre">save</span></code>/<code class="docutils literal notranslate"><span class="pre">load</span></code> and
+<code class="docutils literal notranslate"><span class="pre">instantiate</span></code>.</p></li>
+</ul>
+</section>
+<section id="a-kind-of-operator">
+<h3>A kind of operator<a class="headerlink" href="#a-kind-of-operator" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>A folder <code class="docutils literal notranslate"><span class="pre">LION/operators/&lt;kind&gt;/</span></code>: its parameters (deriving from
+<code class="docutils literal notranslate"><span class="pre">OperatorParameters</span></code>, with <code class="docutils literal notranslate"><span class="pre">make_operator()</span></code>), its operator (deriving
+from <code class="docutils literal notranslate"><span class="pre">Operator</span></code>: <code class="docutils literal notranslate"><span class="pre">forward</span></code>, <code class="docutils literal notranslate"><span class="pre">adjoint</span></code>, <code class="docutils literal notranslate"><span class="pre">domain_shape</span></code>,
+<code class="docutils literal notranslate"><span class="pre">range_shape</span></code>), and its reconstructions.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">autograd()</span></code> if gradients can go through it; <code class="docutils literal notranslate"><span class="pre">default_reconstruction_fn()</span></code>
+if it has a usual reconstruction (the baseline, and what image models get);
+<code class="docutils literal notranslate"><span class="pre">split_count</span></code>/<code class="docutils literal notranslate"><span class="pre">split</span></code>/<code class="docutils literal notranslate"><span class="pre">split_measurements</span></code> on its parameters if
+the self-supervised splitting methods apply.</p></li>
+<li><p>Its backend, if it has one, is imported only in its folder, through a
+<code class="docutils literal notranslate"><span class="pre">LION/utils/&lt;backend&gt;_import.py</span></code>.</p></li>
+<li><p>Test <code class="docutils literal notranslate"><span class="pre">adjoint</span></code> with <code class="docutils literal notranslate"><span class="pre">helpers.dotproduct_adjointness_test</span></code>.</p></li>
+</ul>
+</section>
+<section id="a-dataset-or-an-experiment">
+<h3>A dataset or an experiment<a class="headerlink" href="#a-dataset-or-an-experiment" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>A dataset derives from <code class="docutils literal notranslate"><span class="pre">LIONDataset</span></code>, keeps its arguments as attributes
+of the same names, lists its samples (<code class="docutils literal notranslate"><span class="pre">sample_ids()</span></code>,
+<code class="docutils literal notranslate"><span class="pre">sample_files()</span></code>, <code class="docutils literal notranslate"><span class="pre">sample_groups()</span></code>), and draws its random numbers
+inside <code class="docutils literal notranslate"><span class="pre">rng.seeded(seed,</span> <span class="pre">sample)</span></code>. Download and preprocessing scripts go
+in <code class="docutils literal notranslate"><span class="pre">LION/data_loaders/&lt;dataset&gt;/</span></code>; data under <code class="docutils literal notranslate"><span class="pre">LION_DATA_PATH</span></code>. Check it
+against the real data, not only fake data.</p></li>
+<li><p>An experiment derives from <code class="docutils literal notranslate"><span class="pre">Experiment</span></code> and is its
+<code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code>. Changing an existing experiment changes published
+results: add a parameter for the change, whose absence means the old
+behaviour (contributor guide).</p></li>
+</ul>
+</section>
+<section id="a-metric-or-a-loss">
+<h3>A metric or a loss<a class="headerlink" href="#a-metric-or-a-loss" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>A <code class="docutils literal notranslate"><span class="pre">torch.nn.Module</span></code>; <code class="docutils literal notranslate"><span class="pre">(output,</span> <span class="pre">target)</span></code>. A metric takes
+<code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">target,</span> <span class="pre">reduce=None,</span> <span class="pre">batched=True,</span> <span class="pre">data_range=None)</span></code>, returns one
+score per sample, and sets <code class="docutils literal notranslate"><span class="pre">higher_is_better</span></code>.</p></li>
+</ul>
+</section>
+</section>
+<section id="checking-your-change">
+<h2>Checking your change<a class="headerlink" href="#checking-your-change" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Tests:</strong> <code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">pytests/</span> <span class="pre">-n</span> <span class="pre">auto</span></code> (CPU; CI runs these). Tests that need
+tomosipo or a GPU are marked and skipped elsewhere: run them on a GPU
+machine when you touch CT code. For CT logic without tomosipo, use the
+matrix operators in <code class="docutils literal notranslate"><span class="pre">pytests/helpers.py</span></code>.</p></li>
+<li><p><strong>Format:</strong> <code class="docutils literal notranslate"><span class="pre">pre-commit</span> <span class="pre">run</span> <span class="pre">--files</span> <span class="pre">&lt;files&gt;</span></code> (Black). New Python files
+start with the licence header (<code class="docutils literal notranslate"><span class="pre">pytests/test_licence_headers.py</span></code>).</p></li>
+<li><p><strong>The site:</strong> <code class="docutils literal notranslate"><span class="pre">sphinx-build</span> <span class="pre">-W</span> <span class="pre">-b</span> <span class="pre">html</span> <span class="pre">docs</span> <span class="pre">docs/_build/html</span></code> (CI fails
+on any warning: docstrings are reStructuredText). Tutorials only run with
+<code class="docutils literal notranslate"><span class="pre">LION_DOCS_RUN_DEMOS=1</span></code>, on a GPU machine with the data;
+<code class="docutils literal notranslate"><span class="pre">utils/publish_docs.sh</span></code> builds and publishes the site from there.</p></li>
+<li><p><strong>Scripts and tutorials</strong> you changed: run them. A new feature that users
+will look for gets a section in a tutorial, or an example script.</p></li>
+</ul>
+</section>
+<section id="releasing">
+<h2>Releasing<a class="headerlink" href="#releasing" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Every change since the last release is in <code class="docutils literal notranslate"><span class="pre">CHANGELOG.md</span></code> under
+<strong>Unreleased</strong> (each PR adds its line, or the release collects them).</p></li>
+<li><p>Set the version in <code class="docutils literal notranslate"><span class="pre">LION/VERSION</span></code>, and the changelog’s heading to it,
+with the date; copy the template (at the end of the changelog) back under a
+new <strong>Unreleased</strong>.</p></li>
+<li><p>Check that the tests pass, on CPU and on a GPU machine, and that the
+tutorials run (<code class="docutils literal notranslate"><span class="pre">utils/publish_docs.sh</span> <span class="pre">--build</span></code>).</p></li>
+<li><p>Merge to <code class="docutils literal notranslate"><span class="pre">main</span></code>, tag it (<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">tag</span> <span class="pre">vX.Y.Z</span></code>, <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">push</span> <span class="pre">origin</span> <span class="pre">vX.Y.Z</span></code>)
+and make a GitHub release from the tag, with the changelog’s section as its
+notes.</p></li>
+<li><p>Publish the site from the tagged commit (<code class="docutils literal notranslate"><span class="pre">utils/publish_docs.sh</span></code>).</p></li>
+</ol>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="citing.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Citing LION</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="generated/LION.utils.utils.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">LION.utils.utils</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Cambridge Image Analysis, University of Cambridge
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Developer guide</a><ul>
+<li><a class="reference internal" href="#the-idea">The idea</a></li>
+<li><a class="reference internal" href="#how-the-pieces-connect">How the pieces connect</a></li>
+<li><a class="reference internal" href="#following-one-training">Following one training</a></li>
+<li><a class="reference internal" href="#where-things-live">Where things live</a></li>
+<li><a class="reference internal" href="#adding-to-lion">Adding to LION</a><ul>
+<li><a class="reference internal" href="#a-model">A model</a></li>
+<li><a class="reference internal" href="#a-solver">A solver</a></li>
+<li><a class="reference internal" href="#a-reconstructor">A reconstructor</a></li>
+<li><a class="reference internal" href="#a-kind-of-operator">A kind of operator</a></li>
+<li><a class="reference internal" href="#a-dataset-or-an-experiment">A dataset or an experiment</a></li>
+<li><a class="reference internal" href="#a-metric-or-a-loss">A metric or a loss</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#checking-your-change">Checking your change</a></li>
+<li><a class="reference internal" href="#releasing">Releasing</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/sg-tags.js?v=d80f6fa4"></script>
+    </body>
+</html>

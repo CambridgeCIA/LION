@@ -223,6 +223,7 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../methods.html">Methods in LION</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
@@ -373,6 +374,7 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../developers.html">Developer guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../citing.html">Citing LION</a></li>
 </ul>
 
@@ -495,7 +497,7 @@ to use and train it again:</p>
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span># FBPConvNet trained on LIDC-IDRI: Low dose full angular sampling experiment
 
-Published on 2026-11-10 with LION 0.2.0 (commit 2162661184). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
+Published on 2026-11-10 with LION 0.2.0 (commit e1cf2a02f6). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
 
 ## The model
 
@@ -513,9 +515,9 @@ Published on 2026-11-10 with LION 0.2.0 (commit 2162661184). Generated from the 
 
 - Solver: `LION.optimizers.SupervisedSolver.SupervisedSolver`, loss `MSELoss`; optimizer `Adam` (learning rate 0.001).
 - Data: the train data, 40 samples from 8 groups; batch size 4, shuffled.
-- 2 epochs of 2; at the end, training loss 0.03577.
+- 2 epochs of 2; at the end, training loss 0.03686.
 - Seed 0; initial weights made again from the random state saved with the model.
-- Trained with LION 0.2.0 (commit 2162661184), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
+- Trained with LION 0.2.0 (commit e1cf2a02f6), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
 
 ## Test
 
@@ -523,7 +525,7 @@ On the test data (10 samples from 10 groups), metrics over the range [0.0, 2.890
 
 | Method | PSNR | SSIM | HaarPSI |
 |---|---|---|---|
-| FBPConvNet | -0.9934 ± 5.2138 | 0.0463 ± 0.0220 | 0.0618 ± 0.0306 |
+| FBPConvNet | -5.6211 ± 6.3081 | 0.0432 ± 0.0320 | 0.0302 ± 0.0158 |
 
 ## Using it
 
@@ -660,7 +662,7 @@ Image shape = [  1 512 512]
 Image size = [  0.9765625 500.        500.       ] mm
 Number of angles = (360,)
 model_parameters : model_input_type : ModelInputType.SINOGRAM
-initial_reconstruction : &lt;function fdk at 0x7fc41f5dc360&gt;
+initial_reconstruction : &lt;function fdk at 0x7f2b3c260220&gt;
 down_1_channels : [1, 64, 64, 64]
 down_2_channels : [64, 128, 128]
 down_3_channels : [128, 256, 256]
@@ -722,7 +724,7 @@ weights):</p>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>FBPConvNet
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (3 minutes 3.444 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 56.729 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d12-publishing-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/11dc0ffcf438e0e7453a05348fa9c7e1/d12_publishing.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d12_publishing.ipynb</span></code></a></p>

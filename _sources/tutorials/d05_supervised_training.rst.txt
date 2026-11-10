@@ -125,7 +125,7 @@ model. Then ``train(n_epochs)`` and ``save_final_results()``.
 
  .. code-block:: none
 
-    training loss per epoch: [0.10599411 0.03941898]
+    training loss per epoch: [0.22622674 0.03689291]
 
 
 
@@ -285,18 +285,18 @@ Training
  .. code-block:: none
 
     Loading checkpoint...
-    No checkpoint matching /tmp/tmp19kc7jk7/FBPConvNet_check_*.pt yet; starting from epoch 0.
+    No checkpoint matching /tmp/tmpttn3aguj/FBPConvNet_check_*.pt yet; starting from epoch 0.
     Training seed: 0 (the solver's seed argument; seed=None for an unseeded run)
-    Validation loss: -14.28561520576477 - Validation loss std: 1.3335922571321883
-    Epoch 1 - Training loss: 0.19544123038649558 - Validation loss: -14.28561520576477
-    Validation loss: 11.127888649702072 - Validation loss std: 5.212687571378474
-    Epoch 2 - Training loss: 0.038272179290652276 - Validation loss: 11.127888649702072
-    Validation loss: 16.83620297908783 - Validation loss std: 2.916270551071763
-    Epoch 3 - Training loss: 0.024304365273565054 - Validation loss: 16.83620297908783
-    Validation loss: 26.4589364528656 - Validation loss std: 0.2834824450039611
-    Epoch 4 - Training loss: 0.019895102456212045 - Validation loss: 26.4589364528656
-    training loss per epoch: [0.19544123 0.03827218 0.02430437 0.0198951 ]
-    validation PSNR: [-14.28561521  11.12788865  16.83620298  26.45893645]
+    Validation loss: -19.538342475891113 - Validation loss std: 0.8199764012217944
+    Epoch 1 - Training loss: 0.19567729365080594 - Validation loss: -19.538342475891113
+    Validation loss: -22.70351815223694 - Validation loss std: 2.6133758422053686
+    Epoch 2 - Training loss: 0.03723795078694821 - Validation loss: -22.70351815223694
+    Validation loss: -0.12658442556858063 - Validation loss std: 2.0804106749230904
+    Epoch 3 - Training loss: 0.022894963435828686 - Validation loss: -0.12658442556858063
+    Validation loss: 26.368274927139282 - Validation loss std: 0.7803903163904746
+    Epoch 4 - Training loss: 0.01861754758283496 - Validation loss: 26.368274927139282
+    training loss per epoch: [0.19567729 0.03723795 0.02289496 0.01861755]
+    validation PSNR: [-19.53834248 -22.70351815  -0.12658443  26.36827493]
     learning rate: [0.00025]
     ['FBPConvNet.json', 'FBPConvNet.pt', 'FBPConvNet_best.json', 'FBPConvNet_best.pt', 'FBPConvNet_check_0002.json', 'FBPConvNet_check_0002.pt', 'FBPConvNet_check_0004.json', 'FBPConvNet_check_0004.pt']
 
@@ -338,7 +338,7 @@ first four kept.
 
  .. code-block:: none
 
-    training loss per epoch: [0.19544123 0.03827218 0.02430437 0.0198951  0.02075001 0.01713226]
+    training loss per epoch: [0.19567729 0.03723795 0.02289496 0.01861755 0.02060749 0.01653967]
 
 
 
@@ -382,8 +382,8 @@ Testing and what was saved
 
  .. code-block:: none
 
-    Testing loss: 27.32573366165161 - Testing loss std: 3.2164741472208904
-    test PSNR: 27.33 dB
+    Testing loss: 27.081647396087646 - Testing loss std: 2.676541561270254
+    test PSNR: 27.08 dB
 
 
 
@@ -428,7 +428,7 @@ train the same model again (:doc:`d09_saving_and_records`):
 
     LION.optimizers.SupervisedSolver.SupervisedSolver 0.001
 
-    <matplotlib.legend.Legend object at 0x7fc32c0c7dd0>
+    <matplotlib.legend.Legend object at 0x7f2a4a87b4d0>
 
 
 
@@ -520,7 +520,7 @@ checking that comparisons are fair, publishing.
 
  .. code-block:: none
 
-    one epoch by hand, last loss 0.0239
+    one epoch by hand, last loss 0.0232
 
 
 
@@ -528,7 +528,7 @@ checking that comparisons are fair, publishing.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (2 minutes 34.901 seconds)
+   **Total running time of the script:** (2 minutes 39.364 seconds)
 
 
 .. _sphx_glr_download_tutorials_d05_supervised_training.py:
