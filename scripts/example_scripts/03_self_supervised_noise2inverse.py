@@ -37,6 +37,8 @@ from LION.utils.paths import results_path
 EPOCHS = 5
 TRAINING_SLICES = 200
 VALIDATION_SLICES = 20
+# LION uses the GPU if there is one (torch.cuda.set_device(k) picks another);
+# device is where this script moves samples to use them
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
@@ -70,7 +72,6 @@ solver = Noise2InverseSolver(
     torch.nn.MSELoss(),
     operator_params=experiment.operator_params,
     solver_params=parameters,
-    device=device,
     verbose=verbose,
 )
 solver.set_training(DataLoader(training, batch_size=2, shuffle=True))

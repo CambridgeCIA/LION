@@ -27,8 +27,6 @@ Needs: a GPU, the processed LIDC-IDRI data in ``LION_DATA_PATH``, and
 # %% Imports
 import functools
 
-import torch
-
 from LION.evaluation import Comparison, Evaluation, summary
 from LION.experiments import ct_experiments
 from LION.operators.ct import sirt
@@ -36,7 +34,7 @@ from LION.utils.paths import results_path
 
 # %% Settings
 TEST_SLICES = 50  # evenly spaced over the test set; None: all of them
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# LION uses the GPU if there is one (torch.cuda.set_device(k) picks another)
 verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 examples = results_path("examples")
@@ -44,10 +42,7 @@ examples = results_path("examples")
 # %% The evaluation
 experiment = ct_experiments.LowDoseCTRecon()
 evaluation = Evaluation(
-    experiment,
-    samples=TEST_SLICES,
-    save_folder=examples / "evaluations",
-    device=device,
+    experiment, samples=TEST_SLICES, save_folder=examples / "evaluations"
 )
 
 # %% One method

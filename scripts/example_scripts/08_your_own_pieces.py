@@ -44,6 +44,8 @@ from LION.utils.paths import results_path
 EPOCHS = 5
 TRAINING_SLICES = 200
 NOISE = 0.01  # Gaussian noise added to the blurred images
+# LION uses the GPU if there is one (torch.cuda.set_device(k) picks another);
+# device is where this script moves samples to use them
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
@@ -156,7 +158,6 @@ solver = SupervisedSolver(
     torch.optim.Adam(model.parameters(), lr=1e-3),
     torch.nn.MSELoss(),
     operator_params=blur,
-    device=device,
     verbose=verbose,
 )
 # (Two warnings: the dataset isn't a LIONDataset, so it isn't recorded; and a

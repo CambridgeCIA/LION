@@ -35,7 +35,7 @@ from LION.utils.paths import results_path
 
 # %% Settings
 TRAINING_SLICES = 100
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# LION uses the GPU if there is one (torch.cuda.set_device(k) picks another)
 verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 examples = results_path("examples")
@@ -58,7 +58,6 @@ def solver_for(model, experiment):
         model,
         torch.optim.Adam(model.parameters(), lr=1e-3),
         torch.nn.MSELoss(),
-        device=device,
         verbose=verbose,
     )
     solver.set_training(training_data(experiment))
@@ -87,7 +86,6 @@ solver = SupervisedSolver(
     model,
     torch.optim.Adam(model.parameters(), lr=1e-4),
     torch.nn.MSELoss(),
-    device=device,
     verbose=verbose,
 )
 solver.set_training(training_data(extreme))

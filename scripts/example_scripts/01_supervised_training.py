@@ -42,7 +42,7 @@ from LION.utils.paths import results_path
 EPOCHS = 5
 TRAINING_SLICES = 200
 VALIDATION_SLICES = 20
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# LION uses the GPU if there is one (torch.cuda.set_device(k) picks another)
 verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 save_folder = results_path("examples/supervised")
@@ -72,7 +72,7 @@ loss_fn = torch.nn.MSELoss()
 # %% The solver
 # The scheduler steps every epoch (scheduler_step="batch" for every batch).
 solver = SupervisedSolver(
-    model, optimizer, loss_fn, scheduler=scheduler, device=device, verbose=verbose
+    model, optimizer, loss_fn, scheduler=scheduler, verbose=verbose
 )
 solver.set_training(DataLoader(training, batch_size=4, shuffle=True))
 # Validate with the PSNR every epoch: the model with the best value is saved

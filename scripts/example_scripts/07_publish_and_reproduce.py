@@ -32,8 +32,6 @@ Needs: a GPU, the processed LIDC-IDRI data in ``LION_DATA_PATH``, and
 """
 
 # %% Imports
-import torch
-
 from LION import package
 from LION.evaluation import Evaluation
 from LION.experiments import ct_experiments
@@ -43,12 +41,9 @@ from LION.utils.paths import results_path
 examples = results_path("examples")
 model_file = examples / "supervised" / "FBPConvNet"
 folder = examples / "FBPConvNet_package"  # must not exist, or be empty
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %% Publish, with a test on 20 test slices
-evaluation = Evaluation(
-    ct_experiments.LowDoseCTRecon(), samples=20, save_folder=None, device=device
-)
+evaluation = Evaluation(ct_experiments.LowDoseCTRecon(), samples=20, save_folder=None)
 package.publish(model_file, folder, evaluation=evaluation)
 print((folder / "README.md").read_text())  # the model card
 
@@ -60,7 +55,7 @@ print(published.optimizer)  # the optimizer's hyperparameters
 print(published.training)  # batch size, epochs, ...
 
 # %% Made again, as published
-built = package.load_and_build(folder, device=device)
+built = package.load_and_build(folder)
 print(type(built.model).__name__, "with its trained weights")
 print(len(built.training_data), "training slices")
 
@@ -68,6 +63,4 @@ print(len(built.training_data), "training slices")
 # e.g. another activation: the model is made with new random weights; anything
 # not changed is as recorded (data, optimizer, seed, epochs).
 published.model.model_parameters.activation = "LeakyReLU"
-retrained = package.train_again(
-    published, examples / "FBPConvNet_retrained", device=device
-)
+retrained = package.train_again(published, examples / "FBPConvNet_retrained")
