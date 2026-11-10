@@ -28,6 +28,8 @@ Where to start
 - **See what's there:** :doc:`methods`, the kinds of learned reconstruction
   and every method LION has, with its paper.
 - **Look something up:** the :doc:`API reference <api>`, from the docstrings.
+- **Change LION:** the :doc:`developer guide <developers>`: how it is built,
+  one training followed through the code, and what a new piece needs.
 
 .. toctree::
    :hidden:
@@ -50,4 +52,5 @@ Where to start
    :maxdepth: 1
    :caption: Project
 
+   developers
    citing
