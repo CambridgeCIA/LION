@@ -133,7 +133,7 @@ So a CT model is made from its geometry, e.g. `LPD(geometry)`, and a solver take
 
 ## Contributing
 
-Read the [contributor guide](contributor-guide.md) before changing code: it has LION's conventions. Run the tests with `pytest pytests/`; tests that need CUDA or tomosipo/ASTRA are skipped on machines without them, and the same tests run on every pull request.
+Read the [developer guide](https://cambridgecia.github.io/LION/developers.html) for how LION is built and what a new model, solver or operator needs, and the [contributor guide](contributor-guide.md) for the conventions the code follows. Run the tests with `pytest pytests/`; tests that need CUDA or tomosipo/ASTRA are skipped on machines without them, and the same tests run on every pull request.
 
 ## Citing LION
 

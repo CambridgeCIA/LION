@@ -1,28 +1,10 @@
-# README for developers
+# Developer guide
 
-WIP
+The developer guide is on the documentation site:
+<https://cambridgecia.github.io/LION/developers.html> (source:
+`docs/developers.rst`). It says how LION is built, follows one training
+through the code, says where everything lives, and lists what a new model,
+solver, reconstructor, operator, dataset or metric needs.
 
-## Familiarize yourself with the structure of the tool
-
-<pre>
-./AItomotools     : The toolbox
-├── data_loaders            -> Tools for 1) preprocessing data 2) loading data for training
-├── metrics                 -> Tools to evaluate performance
-├── models                  -> Machine Learning reconstruction models
-├── operators               -> Forward operators; ct/ and pcm/ for each kind
-└── utils                   -> Other type of generic utils
-
-./demos           : Folder with demos to learn about the toolbox. Please add demos about your new functionality
-
-./scripts         : Scripts that fully reproduce papers/data
-├── data_generation_scripts -> Scripts that produce the datasets.
-├── paper_scripts           -> Code that reproduces published papers
-
-./utils           : Other utilities. e.g. pre-commit scripts. 
-</pre>
-
-## Aitomotools base class
-
-Go to `./AItomotools/models/LIONmodel.py` to see the base class. 
-All models should inherit from this. It provides useful tools, like `save()` , `load()`, `save_checkpoint()`, `default_parameters()` etc. 
-You must make your models use these functions because they save more than the models, also parameters and commit hashes, so the code is more reproducible. 
+The rules the code follows are in [contributor-guide.md](contributor-guide.md);
+what LION records, in [metadata.md](metadata.md).
