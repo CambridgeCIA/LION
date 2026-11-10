@@ -1,0 +1,34 @@
+LION.losses.SURE
+================
+
+.. automodule:: LION.losses.SURE
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   SURE
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: SURE
+   :members:
+   :show-inheritance:
+
+
+

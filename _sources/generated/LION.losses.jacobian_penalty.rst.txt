@@ -1,0 +1,49 @@
+LION.losses.jacobian\_penalty
+=============================
+
+.. automodule:: LION.losses.jacobian_penalty
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   FirmlyNonexpansivePenalty
+   ProximalDenoiserPenalty
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   jacobian_spectral_norm
+
+
+
+
+----
+
+
+.. autoclass:: FirmlyNonexpansivePenalty
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ProximalDenoiserPenalty
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: jacobian_spectral_norm
+
+

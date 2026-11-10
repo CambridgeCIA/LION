@@ -1,0 +1,53 @@
+LION.models.CNNs.drunet
+=======================
+
+.. automodule:: LION.models.CNNs.drunet
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   DRUNet
+   ResBlock
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   downsample_strideconv
+   upsample_convtranspose
+
+
+
+
+----
+
+
+.. autoclass:: DRUNet
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ResBlock
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: downsample_strideconv
+
+
+.. autofunction:: upsample_convtranspose
+
+

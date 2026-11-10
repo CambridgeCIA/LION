@@ -1,0 +1,27 @@
+LION.models.learned\_regularizer
+================================
+
+.. automodule:: LION.models.learned_regularizer
+   :no-members:
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   ACR
+   AR
+
+
+
+
+
+
+
+
+
+
+

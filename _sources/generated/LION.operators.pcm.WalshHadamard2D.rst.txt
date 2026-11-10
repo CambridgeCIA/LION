@@ -1,0 +1,90 @@
+LION.operators.pcm.WalshHadamard2D
+==================================
+
+.. currentmodule:: LION.operators.pcm
+
+.. autoclass:: WalshHadamard2D
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~WalshHadamard2D.__init__
+      ~WalshHadamard2D.add_module
+      ~WalshHadamard2D.adjoint
+      ~WalshHadamard2D.apply
+      ~WalshHadamard2D.autograd
+      ~WalshHadamard2D.bfloat16
+      ~WalshHadamard2D.buffers
+      ~WalshHadamard2D.children
+      ~WalshHadamard2D.compile
+      ~WalshHadamard2D.cpu
+      ~WalshHadamard2D.cuda
+      ~WalshHadamard2D.default_reconstruction
+      ~WalshHadamard2D.default_reconstruction_fn
+      ~WalshHadamard2D.double
+      ~WalshHadamard2D.eval
+      ~WalshHadamard2D.extra_repr
+      ~WalshHadamard2D.float
+      ~WalshHadamard2D.forward
+      ~WalshHadamard2D.get_buffer
+      ~WalshHadamard2D.get_extra_state
+      ~WalshHadamard2D.get_parameter
+      ~WalshHadamard2D.get_submodule
+      ~WalshHadamard2D.gram
+      ~WalshHadamard2D.half
+      ~WalshHadamard2D.inverse
+      ~WalshHadamard2D.ipu
+      ~WalshHadamard2D.load_state_dict
+      ~WalshHadamard2D.modules
+      ~WalshHadamard2D.mtia
+      ~WalshHadamard2D.named_buffers
+      ~WalshHadamard2D.named_children
+      ~WalshHadamard2D.named_modules
+      ~WalshHadamard2D.named_parameters
+      ~WalshHadamard2D.parameters
+      ~WalshHadamard2D.register_backward_hook
+      ~WalshHadamard2D.register_buffer
+      ~WalshHadamard2D.register_forward_hook
+      ~WalshHadamard2D.register_forward_pre_hook
+      ~WalshHadamard2D.register_full_backward_hook
+      ~WalshHadamard2D.register_full_backward_pre_hook
+      ~WalshHadamard2D.register_load_state_dict_post_hook
+      ~WalshHadamard2D.register_load_state_dict_pre_hook
+      ~WalshHadamard2D.register_module
+      ~WalshHadamard2D.register_parameter
+      ~WalshHadamard2D.register_state_dict_post_hook
+      ~WalshHadamard2D.register_state_dict_pre_hook
+      ~WalshHadamard2D.requires_grad_
+      ~WalshHadamard2D.set_extra_state
+      ~WalshHadamard2D.set_submodule
+      ~WalshHadamard2D.share_memory
+      ~WalshHadamard2D.state_dict
+      ~WalshHadamard2D.to
+      ~WalshHadamard2D.to_device
+      ~WalshHadamard2D.to_empty
+      ~WalshHadamard2D.train
+      ~WalshHadamard2D.type
+      ~WalshHadamard2D.xpu
+      ~WalshHadamard2D.zero_grad
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~WalshHadamard2D.T_destination
+      ~WalshHadamard2D.call_super_init
+      ~WalshHadamard2D.domain_shape
+      ~WalshHadamard2D.dump_patches
+      ~WalshHadamard2D.range_shape
+      ~WalshHadamard2D.training
+   
+   

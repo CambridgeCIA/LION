@@ -1,0 +1,36 @@
+LION.utils.paths
+================
+
+.. automodule:: LION.utils.paths
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   data_path
+   results_path
+
+
+
+
+----
+
+
+
+.. autofunction:: data_path
+
+
+.. autofunction:: results_path
+
+

@@ -1,0 +1,36 @@
+LION.classical\_algorithms.fista
+================================
+
+.. automodule:: LION.classical_algorithms.fista
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   fista_l1
+   soft_threshold
+
+
+
+
+----
+
+
+
+.. autofunction:: fista_l1
+
+
+.. autofunction:: soft_threshold
+
+

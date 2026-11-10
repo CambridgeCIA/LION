@@ -1,0 +1,70 @@
+LION.models.iterative\_unrolled.cLPD
+====================================
+
+.. automodule:: LION.models.iterative_unrolled.cLPD
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   ContinuousDataProximal
+   ContinuousRegProximal
+   ConvODEFunc
+   ConvSODEFunc
+   InitialVelocity
+   ODEBlock
+   cLPD
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: ContinuousDataProximal
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ContinuousRegProximal
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ConvODEFunc
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ConvSODEFunc
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: InitialVelocity
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ODEBlock
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: cLPD
+   :members:
+   :show-inheritance:
+
+
+

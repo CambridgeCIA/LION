@@ -1,0 +1,949 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="LION.experiments.deteCT_benchmark" href="LION.experiments.deteCT_benchmark.html"><link rel="prev" title="LION.experiments" href="LION.experiments.html">
+        <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
+        <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+        <title>LION.experiments.ct_experiments - LION 0.2.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">LION 0.2.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/lion-logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/lion-logo-dark.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">LION 0.2.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Example scripts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../api.html">API reference</a><input aria-label="Toggle navigation of API reference" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.DebiasOp.html">LION.operators.DebiasOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.Operator.html">LION.operators.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.Wavelet2D.html">LION.operators.Wavelet2D</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.operators.ct.html">LION.operators.ct</a><input aria-label="Toggle navigation of LION.operators.ct" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.CTProjectionOp.html">LION.operators.ct.CTProjectionOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.ct_geometry.html">LION.operators.ct.ct_geometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.ct_utils.html">LION.operators.ct.ct_utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.fdk.html">LION.operators.ct.fdk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.sirt.html">LION.operators.ct.sirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.tv_min.html">LION.operators.ct.tv_min</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.operators.pcm.html">LION.operators.pcm</a><input aria-label="Toggle navigation of LION.operators.pcm" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.pcm.PhotocurrentMapOp.html">LION.operators.pcm.PhotocurrentMapOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.pcm.WalshHadamard2D.html">LION.operators.pcm.WalshHadamard2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.data_loaders.html">LION.data_loaders</a><input aria-label="Toggle navigation of LION.data_loaders" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.LIDC_IDRI.html">LION.data_loaders.LIDC_IDRI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.LIONDataset.html">LION.data_loaders.LIONDataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.data_record.html">LION.data_loaders.data_record</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.deteCT.html">LION.data_loaders.deteCT</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="LION.experiments.html">LION.experiments</a><input aria-label="Toggle navigation of LION.experiments" checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">LION.experiments.ct_experiments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.experiments.deteCT_benchmark.html">LION.experiments.deteCT_benchmark</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.models.html">LION.models</a><input aria-label="Toggle navigation of LION.models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.CNNs.html">LION.models.CNNs</a><input aria-label="Toggle navigation of LION.models.CNNs" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.MSDNet.html">LION.models.CNNs.MSDNet</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="LION.models.CNNs.UNets.html">LION.models.CNNs.UNets</a><input aria-label="Toggle navigation of LION.models.CNNs.UNets" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="LION.models.CNNs.UNets.ResUNet3D.html">LION.models.CNNs.UNets.ResUNet3D</a></li>
+<li class="toctree-l5"><a class="reference internal" href="LION.models.CNNs.UNets.Unet.html">LION.models.CNNs.UNets.Unet</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.dncnn.html">LION.models.CNNs.dncnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.drunet.html">LION.models.CNNs.drunet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.LIONmodel.html">LION.models.LIONmodel</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.PnP.html">LION.models.PnP</a><input aria-label="Toggle navigation of LION.models.PnP" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.fully_learned.html">LION.models.fully_learned</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.LPD.html">LION.models.iterative_unrolled.LPD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.cLPD.html">LION.models.iterative_unrolled.cLPD</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.learned_fbp.html">LION.models.learned_fbp</a><input aria-label="Toggle navigation of LION.models.learned_fbp" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.DeepFBP.html">LION.models.learned_fbp.DeepFBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.DeepFusionBP.html">LION.models.learned_fbp.DeepFusionBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.FusionFBP.html">LION.models.learned_fbp.FusionFBP</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.FBPConvNet.html">LION.models.post_processing.FBPConvNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.FBPConvNetImage.html">LION.models.post_processing.FBPConvNetImage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.cFBPConvNet.html">LION.models.post_processing.cFBPConvNet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.torch_model.html">LION.models.torch_model</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.optimizers.html">LION.optimizers</a><input aria-label="Toggle navigation of LION.optimizers" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.AdversarialRegularizerSolver.html">LION.optimizers.AdversarialRegularizerSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Equivariance2InverseSolver.html">LION.optimizers.Equivariance2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.EquivariantSolver.html">LION.optimizers.EquivariantSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.GaussianDenoiserSolver.html">LION.optimizers.GaussianDenoiserSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.LIONsolver.html">LION.optimizers.LIONsolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Noise2InverseSolver.html">LION.optimizers.Noise2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Noisier2InverseSolver.html">LION.optimizers.Noisier2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Proj2ProjSolver.html">LION.optimizers.Proj2ProjSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.SelfSupervisedSolver.html">LION.optimizers.SelfSupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Sparse2InverseSolver.html">LION.optimizers.Sparse2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.SupervisedSolver.html">LION.optimizers.SupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.training_record.html">LION.optimizers.training_record</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.losses.html">LION.losses</a><input aria-label="Toggle navigation of LION.losses" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.SURE.html">LION.losses.SURE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.SUREpgImage.html">LION.losses.SUREpgImage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.jacobian_penalty.html">LION.losses.jacobian_penalty</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.reconstructors.html">LION.reconstructors</a><input aria-label="Toggle navigation of LION.reconstructors" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.ForwardReconstructor.html">LION.reconstructors.ForwardReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.LIONreconstructor.html">LION.reconstructors.LIONreconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.LearnedRegularizerReconstructor.html">LION.reconstructors.LearnedRegularizerReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.PnP.html">LION.reconstructors.PnP</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.classical_algorithms.html">LION.classical_algorithms</a><input aria-label="Toggle navigation of LION.classical_algorithms" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.conjugate_gradient.html">LION.classical_algorithms.conjugate_gradient</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.fista.html">LION.classical_algorithms.fista</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.spgl1_torch.html">LION.classical_algorithms.spgl1_torch</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.evaluation.html">LION.evaluation</a><input aria-label="Toggle navigation of LION.evaluation" class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.comparison.html">LION.evaluation.comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.evaluation.html">LION.evaluation.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.figures.html">LION.evaluation.figures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.methods.html">LION.evaluation.methods</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.metrics.html">LION.metrics</a><input aria-label="Toggle navigation of LION.metrics" class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.haarpsi.html">LION.metrics.haarpsi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.metrics.html">LION.metrics.metrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.psnr.html">LION.metrics.psnr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.ssim.html">LION.metrics.ssim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="LION.package.html">LION.package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.utils.html">LION.utils</a><input aria-label="Toggle navigation of LION.utils" class="toctree-checkbox" id="toctree-checkbox-21" name="toctree-checkbox-21" role="switch" type="checkbox"/><label for="toctree-checkbox-21"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.citation.html">LION.utils.citation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.common_primitives.html">LION.utils.common_primitives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.device.html">LION.utils.device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.environment.html">LION.utils.environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.image_transforms.html">LION.utils.image_transforms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.math.html">LION.utils.math</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.mrpro_import.html">LION.utils.mrpro_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.normaliser.html">LION.utils.normaliser</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.parameter.html">LION.utils.parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.paths.html">LION.utils.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.rng.html">LION.utils.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.spec.html">LION.utils.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.spyrit_import.html">LION.utils.spyrit_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.tomosipo_import.html">LION.utils.tomosipo_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.utils.html">LION.utils.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../citing.html">Citing LION</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/generated/LION.experiments.ct_experiments.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/generated/LION.experiments.ct_experiments.rst" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="module-LION.experiments.ct_experiments">
+<span id="lion-experiments-ct-experiments"></span><h1>LION.experiments.ct_experiments<a class="headerlink" href="#module-LION.experiments.ct_experiments" title="Link to this heading">¶</a></h1>
+<p>LION’s CT experiments: a geometry, a dataset and, for simulated data, the
+noise added to the sinograms (<code class="docutils literal notranslate"><span class="pre">param.noise_params</span></code>).</p>
+<section id="noise-of-the-simulated-lidc-idri-experiments-since-25-october-2026">
+<h2>Noise of the simulated (LIDC-IDRI) experiments, since 25 October 2026<a class="headerlink" href="#noise-of-the-simulated-lidc-idri-experiments-since-25-october-2026" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Experiment.noise_parameters(I0)</span></code>: the physical noise model of
+<code class="docutils literal notranslate"><span class="pre">ct_utils.sinogram_add_noise</span></code>. The images are densities (g/cm^3, see the
+LIDC-IDRI data loader), the geometries are in mm, so the line integrals give
+the real transmission through water at 80 keV, and <code class="docutils literal notranslate"><span class="pre">I0</span></code> is the number of
+photons per detector pixel in vacuum. Thicker patients get noisier data, as in
+a scanner, and photon-starved rays are floored at 1 photon before the log. The
+detector is energy-integrating (electronic noise, cross-talk) unless
+<code class="docutils literal notranslate"><span class="pre">detector=&quot;photon_counting&quot;</span></code>.</p>
+<p>The doses (<code class="docutils literal notranslate"><span class="pre">CLINICAL_I0</span></code>, <code class="docutils literal notranslate"><span class="pre">LOW_DOSE_I0</span></code>, <code class="docutils literal notranslate"><span class="pre">EXTREMELY_LOW_DOSE_I0</span></code>) were
+chosen by Ander by looking at FDK reconstructions of small, typical and large
+LIDC-IDRI patients (25 Oct 2026: 20000, 5000, 1000). When the slices were
+resampled to their real size (26 Oct 2026, see the geometry below), most
+patients became thicker and noisier at the same I0, so the doses were raised to
+42000, 11000 and 2100: the I0 that give, on average over 30 patients, the same
+noise in the FDK images as before (checked by eye by Ander).</p>
+<p>Before, the experiments used the relative model: each sinogram divided by its
+maximum, so every patient’s thickest ray kept I0/e photons (I0 = 10000, 3500
+and 1000). That is not how a scanner works; the noise did not depend on the
+size of the patient. <code class="docutils literal notranslate"><span class="pre">noise_model</span> <span class="pre">=</span> <span class="pre">&quot;relative&quot;</span></code> gives the relative model,
+with the errors LION’s noise had before October 2026 fixed (cross-talk across
+angles, batch maximum, 1e-6 rule for starved rays), so its results are close
+to, but not bit-identical with, the old ones. New results are not comparable with old
+results of the same experiment name.</p>
+<p>Each slice has one noisy measurement (<code class="docutils literal notranslate"><span class="pre">noise_params.seed</span></code>): its noise is
+drawn from a generator seeded by the seed and the slice (patient and slice
+file), so it is the same in every epoch, run, sample order and DataLoader
+worker, in training, validation and test, as a scan is measured once.
+Training randomness (shuffling, noise a solver adds) is not affected.
+<code class="docutils literal notranslate"><span class="pre">seed</span> <span class="pre">=</span> <span class="pre">None</span></code>, and parameter files without it, draw fresh noise each time a
+slice is read. One seed gives the same noise on the same device type (CPU or
+CUDA) and torch version; see <code class="docutils literal notranslate"><span class="pre">LION.utils.rng</span></code>.</p>
+<p>Measured 2DeteCT data have their own noise; see the deteCT data loader.</p>
+</section>
+<section id="geometry-of-the-lidc-idri-experiments-since-26-october-2026">
+<h2>Geometry of the LIDC-IDRI experiments, since 26 October 2026<a class="headerlink" href="#geometry-of-the-lidc-idri-experiments-since-26-october-2026" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.default_geometry(angles)</span></code>: 512x512 pixels over 500 mm (the
+pre-processing resamples every scan to that spacing, see the LIDC-IDRI data
+loader) and a 1024-pixel detector that covers it. The angles are as before:
+360 over 360 degrees, 60 over 60 degrees for limited angle
+(<code class="docutils literal notranslate"><span class="pre">LIMITED_ANGLES</span></code>), 50 over 360 degrees for sparse view (<code class="docutils literal notranslate"><span class="pre">SPARSE_ANGLES</span></code>).
+Before, the experiments used <code class="docutils literal notranslate"><span class="pre">Geometry.default_parameters()</span></code> and its
+sparse presets (300 mm, 900-pixel detector) on slices of each scan’s own
+pixel spacing.</p>
+</section>
+<p class="rubric">Classes</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment" title="LION.experiments.ct_experiments.Experiment"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Experiment</span></code></a>([experiment_params, dataset, ...])</p></td>
+<td><p>A CT experiment: a geometry, a dataset and, for simulated data, the noise added to the sinograms; the base class of LION's experiments, which differ only in their parameters (see the module docstring for the noise and geometry).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.experiments.ct_experiments.ExtremeLowDoseCTRecon" title="LION.experiments.ct_experiments.ExtremeLowDoseCTRecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ExtremeLowDoseCTRecon</span></code></a>([experiment_params, ...])</p></td>
+<td><p>Extremely low dose, full angular sampling.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.experiments.ct_experiments.LimitedAngleCTRecon" title="LION.experiments.ct_experiments.LimitedAngleCTRecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LimitedAngleCTRecon</span></code></a>([experiment_params, ...])</p></td>
+<td><p>Clinical dose, limited angle.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.experiments.ct_experiments.LimitedAngleExtremeLowDoseCTRecon" title="LION.experiments.ct_experiments.LimitedAngleExtremeLowDoseCTRecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LimitedAngleExtremeLowDoseCTRecon</span></code></a>([...])</p></td>
+<td><p>Extremely low dose, limited angle.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.experiments.ct_experiments.LimitedAngleLowDoseCTRecon" title="LION.experiments.ct_experiments.LimitedAngleLowDoseCTRecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LimitedAngleLowDoseCTRecon</span></code></a>([...])</p></td>
+<td><p>Low dose, limited angle.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.experiments.ct_experiments.LowDoseCTRecon" title="LION.experiments.ct_experiments.LowDoseCTRecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LowDoseCTRecon</span></code></a>([experiment_params, dataset, ...])</p></td>
+<td><p>Low dose, full angular sampling.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.experiments.ct_experiments.SparseAngleCTRecon" title="LION.experiments.ct_experiments.SparseAngleCTRecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SparseAngleCTRecon</span></code></a>([experiment_params, ...])</p></td>
+<td><p>Clinical dose, sparse view.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.experiments.ct_experiments.SparseAngleExtremeLowDoseCTRecon" title="LION.experiments.ct_experiments.SparseAngleExtremeLowDoseCTRecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SparseAngleExtremeLowDoseCTRecon</span></code></a>([...])</p></td>
+<td><p>Extremely low dose, sparse view.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.experiments.ct_experiments.SparseAngleLowDoseCTRecon" title="LION.experiments.ct_experiments.SparseAngleLowDoseCTRecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SparseAngleLowDoseCTRecon</span></code></a>([...])</p></td>
+<td><p>Low dose, sparse view.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.experiments.ct_experiments.clinicalCTRecon" title="LION.experiments.ct_experiments.clinicalCTRecon"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clinicalCTRecon</span></code></a>([experiment_params, ...])</p></td>
+<td><p>Clinical dose, full angular sampling.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.experiments.ct_experiments.</span></span><span class="sig-name descname"><span class="pre">Experiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datafolder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
+<p>A CT experiment: a geometry, a dataset and, for simulated data, the
+noise added to the sinograms; the base class of LION’s experiments, which
+differ only in their parameters (see the module docstring for the noise and
+geometry).</p>
+<p><code class="docutils literal notranslate"><span class="pre">experiment_params</span></code>: its parameters (<code class="docutils literal notranslate"><span class="pre">default_parameters(dataset)</span></code> if
+None); <code class="docutils literal notranslate"><span class="pre">dataset</span></code>: “LIDC-IDRI” (simulated sinograms) or “2DeteCT”
+(measured ones); <code class="docutils literal notranslate"><span class="pre">datafolder</span></code>: where the dataset is (the data loader’s
+default if None).</p>
+<p><code class="docutils literal notranslate"><span class="pre">get_dataset(split)</span></code> gives the data of a split, <code class="docutils literal notranslate"><span class="pre">data_record(split)</span></code>
+its record; <code class="docutils literal notranslate"><span class="pre">instantiate</span></code> and <code class="docutils literal notranslate"><span class="pre">parameters_from_file</span></code> make an experiment
+again from a saved file.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.noise_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">noise_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">I0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detector</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'energy_integrating'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.noise_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.noise_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The noise of LION’s simulated experiments: the physical model of
+<code class="docutils literal notranslate"><span class="pre">ct_utils.sinogram_add_noise</span></code>, with <code class="docutils literal notranslate"><span class="pre">I0</span></code> photons per detector pixel
+in vacuum, water at 80 keV, and starved rays floored at 1 photon. The
+default energy-integrating <code class="docutils literal notranslate"><span class="pre">detector</span></code> has electronic noise (sigma = 5
+photons) and cross-talk; “photon_counting” has neither.</p>
+<p><code class="docutils literal notranslate"><span class="pre">seed</span></code> (0): each slice’s noise is drawn from a generator seeded by
+the seed and the slice, so a slice has one noisy measurement, the same
+in every epoch and run, as a scan is measured once (training,
+validation and test). None: fresh noise each time the slice is read.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.default_parameters">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The experiment’s parameters for <code class="docutils literal notranslate"><span class="pre">dataset</span></code>: its <code class="docutils literal notranslate"><span class="pre">name</span></code>,
+<code class="docutils literal notranslate"><span class="pre">operator_params</span></code> (the geometry), <code class="docutils literal notranslate"><span class="pre">noise_params</span></code> (simulated data
+only) and <code class="docutils literal notranslate"><span class="pre">data_loader_params</span></code>. Each experiment defines it.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.measured_2detect_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">measured_2detect_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">slice(None,</span> <span class="pre">None,</span> <span class="pre">None)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'clinical'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.measured_2detect_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.measured_2detect_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>Parameters of an experiment on the measured 2DeteCT data.</p>
+<p>Its geometry is fixed by the scan (3600 angles over 360 degrees), so an
+experiment can only select some of the measured angles (<code class="docutils literal notranslate"><span class="pre">angles</span></code>, an
+index or slice into them). Dose levels are measured modes: “clinical”
+uses mode2 sinograms, “extremely_low” the low-dose mode1 ones (3 W
+instead of 90 W tube power, ~30x less); the targets are
+mode2 reconstructions. There is no noise to simulate.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.not_possible_with_2detect">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">not_possible_with_2detect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reason</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.not_possible_with_2detect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.not_possible_with_2detect" title="Link to this definition">¶</a></dt>
+<dd><p>Raises the ValueError of an experiment, <code class="docutils literal notranslate"><span class="pre">name</span></code>, that the measured
+2DeteCT data can’t give, saying why (<code class="docutils literal notranslate"><span class="pre">reason</span></code>).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.SPLITS">
+<span class="sig-name descname"><span class="pre">SPLITS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('train',</span> <span class="pre">'validation',</span> <span class="pre">'test')</span></em><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.SPLITS" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.baseline">
+<span class="sig-name descname"><span class="pre">baseline</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.baseline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.baseline" title="Link to this definition">¶</a></dt>
+<dd><p>The reconstruction methods are compared with in this experiment
+(<code class="docutils literal notranslate"><span class="pre">LION.evaluation.Comparison</span></code>), as a function <code class="docutils literal notranslate"><span class="pre">f(y,</span> <span class="pre">operator)</span></code>;
+None: the modality’s (<code class="docutils literal notranslate"><span class="pre">LION.evaluation.baseline</span></code>: FDK for CT).
+Experiments where another method is the standard override this.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.get_dataset">
+<span class="sig-name descname"><span class="pre">get_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">split</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.get_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.get_dataset" title="Link to this definition">¶</a></dt>
+<dd><p>The dataset of a split (“train”, “validation” or “test”). It keeps
+the experiment and the split (<code class="docutils literal notranslate"><span class="pre">dataset.experiment</span></code>,
+<code class="docutils literal notranslate"><span class="pre">dataset.split</span></code>), which its record (<code class="docutils literal notranslate"><span class="pre">data_record</span></code>) includes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.get_training_dataset">
+<span class="sig-name descname"><span class="pre">get_training_dataset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.get_training_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.get_training_dataset" title="Link to this definition">¶</a></dt>
+<dd><p>The training data (<code class="docutils literal notranslate"><span class="pre">get_dataset(&quot;train&quot;)</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.get_validation_dataset">
+<span class="sig-name descname"><span class="pre">get_validation_dataset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.get_validation_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.get_validation_dataset" title="Link to this definition">¶</a></dt>
+<dd><p>The validation data (<code class="docutils literal notranslate"><span class="pre">get_dataset(&quot;validation&quot;)</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.get_testing_dataset">
+<span class="sig-name descname"><span class="pre">get_testing_dataset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.get_testing_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.get_testing_dataset" title="Link to this definition">¶</a></dt>
+<dd><p>The test data (<code class="docutils literal notranslate"><span class="pre">get_dataset(&quot;test&quot;)</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.data_record">
+<span class="sig-name descname"><span class="pre">data_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">split</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hash_files</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.data_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.data_record" title="Link to this definition">¶</a></dt>
+<dd><p>The record of a split’s data: this experiment, the split, the
+dataset, its noise, its samples (<code class="docutils literal notranslate"><span class="pre">LION.data_loaders.data_record</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.instantiate">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">instantiate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">arguments</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.instantiate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.instantiate" title="Link to this definition">¶</a></dt>
+<dd><p>The experiment a saved file describes. <code class="docutils literal notranslate"><span class="pre">source</span></code>: a data record,
+a model’s file (or the dict read from it) saved with one, or the
+experiment’s spec or its file (a package’s <code class="docutils literal notranslate"><span class="pre">experiment.json</span></code>). Called
+on an experiment class it makes that class; called on <code class="docutils literal notranslate"><span class="pre">Experiment</span></code>,
+the class the record names (<code class="docutils literal notranslate"><span class="pre">allow</span></code>: see <code class="docutils literal notranslate"><span class="pre">LION.utils.spec.build</span></code>).
+<code class="docutils literal notranslate"><span class="pre">arguments</span></code> replace recorded ones (e.g. <code class="docutils literal notranslate"><span class="pre">experiment_params</span></code> from
+<code class="docutils literal notranslate"><span class="pre">parameters_from_file</span></code>, changed; <code class="docutils literal notranslate"><span class="pre">datafolder</span></code>).</p>
+<p><code class="docutils literal notranslate"><span class="pre">Experiment.instantiate(f).get_dataset(record.split)</span></code> makes the
+data as they were: dataset, geometry and noise (with its seed).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.parameters_from_file">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parameters_from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.parameters_from_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.parameters_from_file" title="Link to this definition">¶</a></dt>
+<dd><p>What <code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code> gives, as <code class="docutils literal notranslate"><span class="pre">source</span></code> (as in
+<code class="docutils literal notranslate"><span class="pre">instantiate</span></code>) recorded it: the experiment’s parameters (geometry,
+noise, data), to change and make the experiment with, e.g.</p>
+<blockquote>
+<div><p>parameters = Experiment.parameters_from_file(“model”)
+parameters.noise_params.I0 = 5000
+experiment = Experiment.instantiate(“model”, experiment_params=parameters)</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">instantiate</span></code> makes the class the file records. Made by hand, the
+class is the one named; another experiment’s parameters give a
+warning (the experiments differ only in their parameters, so it would
+be that experiment, recorded under the wrong class).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.Experiment.get_dataset_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_dataset_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#Experiment.get_dataset_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.Experiment.get_dataset_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The default parameters of <code class="docutils literal notranslate"><span class="pre">dataset</span></code>’s data loader (“LIDC-IDRI”,
+with <code class="docutils literal notranslate"><span class="pre">operator_params</span></code> as its geometry, or “2DeteCT”).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.ExtremeLowDoseCTRecon">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.experiments.ct_experiments.</span></span><span class="sig-name descname"><span class="pre">ExtremeLowDoseCTRecon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datafolder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#ExtremeLowDoseCTRecon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.ExtremeLowDoseCTRecon" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#LION.experiments.ct_experiments.Experiment" title="LION.experiments.ct_experiments.Experiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Experiment</span></code></a></p>
+<p>Extremely low dose, full angular sampling. LIDC-IDRI: simulated
+sinograms with extremely low dose noise (I0 = <code class="docutils literal notranslate"><span class="pre">EXTREMELY_LOW_DOSE_I0</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Experiment.noise_parameters</span></code>), 360 angles over 360 degrees. 2DeteCT: the
+measured mode 1 sinograms (3 W instead of 90 W tube power), all 3600
+angles; mode 2 reconstructions as targets.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.ExtremeLowDoseCTRecon.default_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#ExtremeLowDoseCTRecon.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.ExtremeLowDoseCTRecon.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The experiment’s parameters for <code class="docutils literal notranslate"><span class="pre">dataset</span></code> (“LIDC-IDRI” or
+“2DeteCT”): its name, geometry (<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>), noise
+(<code class="docutils literal notranslate"><span class="pre">noise_params</span></code>, simulated data only) and data loader’s parameters
+(see the class).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.LimitedAngleCTRecon">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.experiments.ct_experiments.</span></span><span class="sig-name descname"><span class="pre">LimitedAngleCTRecon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datafolder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#LimitedAngleCTRecon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.LimitedAngleCTRecon" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#LION.experiments.ct_experiments.Experiment" title="LION.experiments.ct_experiments.Experiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Experiment</span></code></a></p>
+<p>Clinical dose, limited angle. LIDC-IDRI: simulated sinograms with
+clinical noise (I0 = <code class="docutils literal notranslate"><span class="pre">CLINICAL_I0</span></code>, <code class="docutils literal notranslate"><span class="pre">Experiment.noise_parameters</span></code>), 60
+angles over 60 degrees (limited angle). 2DeteCT: the measured mode 2
+sinograms (clinical dose), every 10th of the first 600 angles (60 over 60
+degrees); mode 2 reconstructions as targets.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.LimitedAngleCTRecon.default_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#LimitedAngleCTRecon.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.LimitedAngleCTRecon.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The experiment’s parameters for <code class="docutils literal notranslate"><span class="pre">dataset</span></code> (“LIDC-IDRI” or
+“2DeteCT”): its name, geometry (<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>), noise
+(<code class="docutils literal notranslate"><span class="pre">noise_params</span></code>, simulated data only) and data loader’s parameters
+(see the class).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.LimitedAngleExtremeLowDoseCTRecon">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.experiments.ct_experiments.</span></span><span class="sig-name descname"><span class="pre">LimitedAngleExtremeLowDoseCTRecon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datafolder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#LimitedAngleExtremeLowDoseCTRecon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.LimitedAngleExtremeLowDoseCTRecon" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#LION.experiments.ct_experiments.Experiment" title="LION.experiments.ct_experiments.Experiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Experiment</span></code></a></p>
+<p>Extremely low dose, limited angle. LIDC-IDRI: simulated sinograms with
+extremely low dose noise (I0 = <code class="docutils literal notranslate"><span class="pre">EXTREMELY_LOW_DOSE_I0</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Experiment.noise_parameters</span></code>), 60 angles over 60 degrees (limited
+angle). 2DeteCT: the measured mode 1 sinograms (low dose), every 10th of
+the first 600 angles (60 over 60 degrees); mode 2 reconstructions as
+targets.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.LimitedAngleExtremeLowDoseCTRecon.default_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#LimitedAngleExtremeLowDoseCTRecon.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.LimitedAngleExtremeLowDoseCTRecon.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The experiment’s parameters for <code class="docutils literal notranslate"><span class="pre">dataset</span></code> (“LIDC-IDRI” or
+“2DeteCT”): its name, geometry (<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>), noise
+(<code class="docutils literal notranslate"><span class="pre">noise_params</span></code>, simulated data only) and data loader’s parameters
+(see the class).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.LimitedAngleLowDoseCTRecon">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.experiments.ct_experiments.</span></span><span class="sig-name descname"><span class="pre">LimitedAngleLowDoseCTRecon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datafolder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#LimitedAngleLowDoseCTRecon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.LimitedAngleLowDoseCTRecon" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#LION.experiments.ct_experiments.Experiment" title="LION.experiments.ct_experiments.Experiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Experiment</span></code></a></p>
+<p>Low dose, limited angle. LIDC-IDRI: simulated sinograms with low dose
+noise (I0 = <code class="docutils literal notranslate"><span class="pre">LOW_DOSE_I0</span></code>, <code class="docutils literal notranslate"><span class="pre">Experiment.noise_parameters</span></code>), 60 angles
+over 60 degrees (limited angle). Not possible with 2DeteCT (its measured
+low dose, mode 1, is the extremely low dose experiments’).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.LimitedAngleLowDoseCTRecon.default_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#LimitedAngleLowDoseCTRecon.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.LimitedAngleLowDoseCTRecon.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The experiment’s parameters for <code class="docutils literal notranslate"><span class="pre">dataset</span></code> (“LIDC-IDRI”; see the
+class): its name, geometry (<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>), noise
+(<code class="docutils literal notranslate"><span class="pre">noise_params</span></code>) and data loader’s parameters. A ValueError for
+“2DeteCT”: its measured low dose is the extremely low dose
+experiments’.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.LowDoseCTRecon">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.experiments.ct_experiments.</span></span><span class="sig-name descname"><span class="pre">LowDoseCTRecon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datafolder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#LowDoseCTRecon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.LowDoseCTRecon" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#LION.experiments.ct_experiments.Experiment" title="LION.experiments.ct_experiments.Experiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Experiment</span></code></a></p>
+<p>Low dose, full angular sampling. LIDC-IDRI: simulated sinograms with low
+dose noise (I0 = <code class="docutils literal notranslate"><span class="pre">LOW_DOSE_I0</span></code>, <code class="docutils literal notranslate"><span class="pre">Experiment.noise_parameters</span></code>), 360
+angles over 360 degrees. Not possible with 2DeteCT (its measured low dose,
+mode 1, is the extremely low dose experiments’).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.LowDoseCTRecon.default_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#LowDoseCTRecon.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.LowDoseCTRecon.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The experiment’s parameters for <code class="docutils literal notranslate"><span class="pre">dataset</span></code> (“LIDC-IDRI”; see the
+class): its name, geometry (<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>), noise
+(<code class="docutils literal notranslate"><span class="pre">noise_params</span></code>) and data loader’s parameters. A ValueError for
+“2DeteCT”: its measured low dose is the extremely low dose
+experiments’.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.SparseAngleCTRecon">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.experiments.ct_experiments.</span></span><span class="sig-name descname"><span class="pre">SparseAngleCTRecon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datafolder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#SparseAngleCTRecon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.SparseAngleCTRecon" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#LION.experiments.ct_experiments.Experiment" title="LION.experiments.ct_experiments.Experiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Experiment</span></code></a></p>
+<p>Clinical dose, sparse view. LIDC-IDRI: simulated sinograms with clinical
+noise (I0 = <code class="docutils literal notranslate"><span class="pre">CLINICAL_I0</span></code>, <code class="docutils literal notranslate"><span class="pre">Experiment.noise_parameters</span></code>), 50 angles
+over 360 degrees (sparse view). 2DeteCT: the measured mode 2 sinograms
+(clinical dose), every 72nd angle (50 over 360 degrees); mode 2
+reconstructions as targets.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.SparseAngleCTRecon.default_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#SparseAngleCTRecon.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.SparseAngleCTRecon.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The experiment’s parameters for <code class="docutils literal notranslate"><span class="pre">dataset</span></code> (“LIDC-IDRI” or
+“2DeteCT”): its name, geometry (<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>), noise
+(<code class="docutils literal notranslate"><span class="pre">noise_params</span></code>, simulated data only) and data loader’s parameters
+(see the class).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.SparseAngleExtremeLowDoseCTRecon">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.experiments.ct_experiments.</span></span><span class="sig-name descname"><span class="pre">SparseAngleExtremeLowDoseCTRecon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datafolder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#SparseAngleExtremeLowDoseCTRecon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.SparseAngleExtremeLowDoseCTRecon" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#LION.experiments.ct_experiments.Experiment" title="LION.experiments.ct_experiments.Experiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Experiment</span></code></a></p>
+<p>Extremely low dose, sparse view. LIDC-IDRI: simulated sinograms with
+extremely low dose noise (I0 = <code class="docutils literal notranslate"><span class="pre">EXTREMELY_LOW_DOSE_I0</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Experiment.noise_parameters</span></code>), 50 angles over 360 degrees (sparse view).
+2DeteCT: the measured mode 1 sinograms (low dose), every 72nd angle (50
+over 360 degrees); mode 2 reconstructions as targets.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.SparseAngleExtremeLowDoseCTRecon.default_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#SparseAngleExtremeLowDoseCTRecon.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.SparseAngleExtremeLowDoseCTRecon.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The experiment’s parameters for <code class="docutils literal notranslate"><span class="pre">dataset</span></code> (“LIDC-IDRI” or
+“2DeteCT”): its name, geometry (<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>), noise
+(<code class="docutils literal notranslate"><span class="pre">noise_params</span></code>, simulated data only) and data loader’s parameters
+(see the class).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.SparseAngleLowDoseCTRecon">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.experiments.ct_experiments.</span></span><span class="sig-name descname"><span class="pre">SparseAngleLowDoseCTRecon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datafolder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#SparseAngleLowDoseCTRecon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.SparseAngleLowDoseCTRecon" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#LION.experiments.ct_experiments.Experiment" title="LION.experiments.ct_experiments.Experiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Experiment</span></code></a></p>
+<p>Low dose, sparse view. LIDC-IDRI: simulated sinograms with low dose
+noise (I0 = <code class="docutils literal notranslate"><span class="pre">LOW_DOSE_I0</span></code>, <code class="docutils literal notranslate"><span class="pre">Experiment.noise_parameters</span></code>), 50 angles
+over 360 degrees (sparse view). Not possible with 2DeteCT (its measured low
+dose, mode 1, is the extremely low dose experiments’).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.SparseAngleLowDoseCTRecon.default_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#SparseAngleLowDoseCTRecon.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.SparseAngleLowDoseCTRecon.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The experiment’s parameters for <code class="docutils literal notranslate"><span class="pre">dataset</span></code> (“LIDC-IDRI”; see the
+class): its name, geometry (<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>), noise
+(<code class="docutils literal notranslate"><span class="pre">noise_params</span></code>) and data loader’s parameters. A ValueError for
+“2DeteCT”: its measured low dose is the extremely low dose
+experiments’.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.clinicalCTRecon">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.experiments.ct_experiments.</span></span><span class="sig-name descname"><span class="pre">clinicalCTRecon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datafolder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#clinicalCTRecon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.clinicalCTRecon" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#LION.experiments.ct_experiments.Experiment" title="LION.experiments.ct_experiments.Experiment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Experiment</span></code></a></p>
+<p>Clinical dose, full angular sampling. LIDC-IDRI: simulated sinograms
+with clinical noise (I0 = <code class="docutils literal notranslate"><span class="pre">CLINICAL_I0</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Experiment.noise_parameters</span></code>), 360 angles over 360 degrees. 2DeteCT: the
+measured mode 2 sinograms (clinical dose), all 3600 angles; mode 2
+reconstructions as targets.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.experiments.ct_experiments.clinicalCTRecon.default_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LIDC-IDRI'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/experiments/ct_experiments.html#clinicalCTRecon.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.experiments.ct_experiments.clinicalCTRecon.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The experiment’s parameters for <code class="docutils literal notranslate"><span class="pre">dataset</span></code> (“LIDC-IDRI” or
+“2DeteCT”): its name, geometry (<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>), noise
+(<code class="docutils literal notranslate"><span class="pre">noise_params</span></code>, simulated data only) and data loader’s parameters
+(see the class).</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="LION.experiments.deteCT_benchmark.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">LION.experiments.deteCT_benchmark</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="LION.experiments.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">LION.experiments</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Cambridge Image Analysis, University of Cambridge
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">LION.experiments.ct_experiments</a><ul>
+<li><a class="reference internal" href="#noise-of-the-simulated-lidc-idri-experiments-since-25-october-2026">Noise of the simulated (LIDC-IDRI) experiments, since 25 October 2026</a></li>
+<li><a class="reference internal" href="#geometry-of-the-lidc-idri-experiments-since-26-october-2026">Geometry of the LIDC-IDRI experiments, since 26 October 2026</a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment"><code class="docutils literal notranslate"><span class="pre">Experiment</span></code></a><ul>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.noise_parameters"><code class="docutils literal notranslate"><span class="pre">Experiment.noise_parameters()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.default_parameters"><code class="docutils literal notranslate"><span class="pre">Experiment.default_parameters()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.measured_2detect_parameters"><code class="docutils literal notranslate"><span class="pre">Experiment.measured_2detect_parameters()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.not_possible_with_2detect"><code class="docutils literal notranslate"><span class="pre">Experiment.not_possible_with_2detect()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.SPLITS"><code class="docutils literal notranslate"><span class="pre">Experiment.SPLITS</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.baseline"><code class="docutils literal notranslate"><span class="pre">Experiment.baseline()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.get_dataset"><code class="docutils literal notranslate"><span class="pre">Experiment.get_dataset()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.get_training_dataset"><code class="docutils literal notranslate"><span class="pre">Experiment.get_training_dataset()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.get_validation_dataset"><code class="docutils literal notranslate"><span class="pre">Experiment.get_validation_dataset()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.get_testing_dataset"><code class="docutils literal notranslate"><span class="pre">Experiment.get_testing_dataset()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.data_record"><code class="docutils literal notranslate"><span class="pre">Experiment.data_record()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.instantiate"><code class="docutils literal notranslate"><span class="pre">Experiment.instantiate()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.parameters_from_file"><code class="docutils literal notranslate"><span class="pre">Experiment.parameters_from_file()</span></code></a></li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.Experiment.get_dataset_parameters"><code class="docutils literal notranslate"><span class="pre">Experiment.get_dataset_parameters()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.ExtremeLowDoseCTRecon"><code class="docutils literal notranslate"><span class="pre">ExtremeLowDoseCTRecon</span></code></a><ul>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.ExtremeLowDoseCTRecon.default_parameters"><code class="docutils literal notranslate"><span class="pre">ExtremeLowDoseCTRecon.default_parameters()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.LimitedAngleCTRecon"><code class="docutils literal notranslate"><span class="pre">LimitedAngleCTRecon</span></code></a><ul>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.LimitedAngleCTRecon.default_parameters"><code class="docutils literal notranslate"><span class="pre">LimitedAngleCTRecon.default_parameters()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.LimitedAngleExtremeLowDoseCTRecon"><code class="docutils literal notranslate"><span class="pre">LimitedAngleExtremeLowDoseCTRecon</span></code></a><ul>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.LimitedAngleExtremeLowDoseCTRecon.default_parameters"><code class="docutils literal notranslate"><span class="pre">LimitedAngleExtremeLowDoseCTRecon.default_parameters()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.LimitedAngleLowDoseCTRecon"><code class="docutils literal notranslate"><span class="pre">LimitedAngleLowDoseCTRecon</span></code></a><ul>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.LimitedAngleLowDoseCTRecon.default_parameters"><code class="docutils literal notranslate"><span class="pre">LimitedAngleLowDoseCTRecon.default_parameters()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.LowDoseCTRecon"><code class="docutils literal notranslate"><span class="pre">LowDoseCTRecon</span></code></a><ul>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.LowDoseCTRecon.default_parameters"><code class="docutils literal notranslate"><span class="pre">LowDoseCTRecon.default_parameters()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.SparseAngleCTRecon"><code class="docutils literal notranslate"><span class="pre">SparseAngleCTRecon</span></code></a><ul>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.SparseAngleCTRecon.default_parameters"><code class="docutils literal notranslate"><span class="pre">SparseAngleCTRecon.default_parameters()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.SparseAngleExtremeLowDoseCTRecon"><code class="docutils literal notranslate"><span class="pre">SparseAngleExtremeLowDoseCTRecon</span></code></a><ul>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.SparseAngleExtremeLowDoseCTRecon.default_parameters"><code class="docutils literal notranslate"><span class="pre">SparseAngleExtremeLowDoseCTRecon.default_parameters()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.SparseAngleLowDoseCTRecon"><code class="docutils literal notranslate"><span class="pre">SparseAngleLowDoseCTRecon</span></code></a><ul>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.SparseAngleLowDoseCTRecon.default_parameters"><code class="docutils literal notranslate"><span class="pre">SparseAngleLowDoseCTRecon.default_parameters()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.clinicalCTRecon"><code class="docutils literal notranslate"><span class="pre">clinicalCTRecon</span></code></a><ul>
+<li><a class="reference internal" href="#LION.experiments.ct_experiments.clinicalCTRecon.default_parameters"><code class="docutils literal notranslate"><span class="pre">clinicalCTRecon.default_parameters()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
+    </body>
+</html>

@@ -1,0 +1,52 @@
+LION.models.CNNs.UNets.ResUNet3D
+================================
+
+.. automodule:: LION.models.CNNs.UNets.ResUNet3D
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   Down
+   ResUNet3D
+   ResidualUnit
+   Up
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: Down
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ResUNet3D
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ResidualUnit
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: Up
+   :members:
+   :show-inheritance:
+
+
+

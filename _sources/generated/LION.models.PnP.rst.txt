@@ -1,0 +1,26 @@
+LION.models.PnP
+===============
+
+.. automodule:: LION.models.PnP
+   :no-members:
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   gradient_step_denoiser
+
+
+
+
+
+
+
+
+
+
+

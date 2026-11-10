@@ -1,0 +1,1079 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+        <link rel="prefetch" href="../../../_static/lion-logo.svg" as="image">
+        <link rel="prefetch" href="../../../_static/lion-logo-dark.svg" as="image">
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+        <title>LION.evaluation.comparison - LION 0.2.0</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">LION 0.2.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../../../_static/lion-logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../../../_static/lion-logo-dark.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">LION 0.2.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Example scripts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.DebiasOp.html">LION.operators.DebiasOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.Operator.html">LION.operators.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.Wavelet2D.html">LION.operators.Wavelet2D</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.operators.ct.html">LION.operators.ct</a><input aria-label="Toggle navigation of LION.operators.ct" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.CTProjectionOp.html">LION.operators.ct.CTProjectionOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.ct_geometry.html">LION.operators.ct.ct_geometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.ct_utils.html">LION.operators.ct.ct_utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.fdk.html">LION.operators.ct.fdk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.sirt.html">LION.operators.ct.sirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.tv_min.html">LION.operators.ct.tv_min</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.operators.pcm.html">LION.operators.pcm</a><input aria-label="Toggle navigation of LION.operators.pcm" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.pcm.PhotocurrentMapOp.html">LION.operators.pcm.PhotocurrentMapOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.pcm.WalshHadamard2D.html">LION.operators.pcm.WalshHadamard2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.data_loaders.html">LION.data_loaders</a><input aria-label="Toggle navigation of LION.data_loaders" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.LIDC_IDRI.html">LION.data_loaders.LIDC_IDRI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.LIONDataset.html">LION.data_loaders.LIONDataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.data_record.html">LION.data_loaders.data_record</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.deteCT.html">LION.data_loaders.deteCT</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.experiments.html">LION.experiments</a><input aria-label="Toggle navigation of LION.experiments" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.experiments.ct_experiments.html">LION.experiments.ct_experiments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.experiments.deteCT_benchmark.html">LION.experiments.deteCT_benchmark</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.models.html">LION.models</a><input aria-label="Toggle navigation of LION.models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.CNNs.html">LION.models.CNNs</a><input aria-label="Toggle navigation of LION.models.CNNs" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.CNNs.MSDNet.html">LION.models.CNNs.MSDNet</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../generated/LION.models.CNNs.UNets.html">LION.models.CNNs.UNets</a><input aria-label="Toggle navigation of LION.models.CNNs.UNets" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../generated/LION.models.CNNs.UNets.ResUNet3D.html">LION.models.CNNs.UNets.ResUNet3D</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../generated/LION.models.CNNs.UNets.Unet.html">LION.models.CNNs.UNets.Unet</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.CNNs.dncnn.html">LION.models.CNNs.dncnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.CNNs.drunet.html">LION.models.CNNs.drunet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.models.LIONmodel.html">LION.models.LIONmodel</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.PnP.html">LION.models.PnP</a><input aria-label="Toggle navigation of LION.models.PnP" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.models.fully_learned.html">LION.models.fully_learned</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.LPD.html">LION.models.iterative_unrolled.LPD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.cLPD.html">LION.models.iterative_unrolled.cLPD</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.html">LION.models.learned_fbp</a><input aria-label="Toggle navigation of LION.models.learned_fbp" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.DeepFBP.html">LION.models.learned_fbp.DeepFBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.DeepFusionBP.html">LION.models.learned_fbp.DeepFusionBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.FusionFBP.html">LION.models.learned_fbp.FusionFBP</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.post_processing.FBPConvNet.html">LION.models.post_processing.FBPConvNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.post_processing.FBPConvNetImage.html">LION.models.post_processing.FBPConvNetImage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.post_processing.cFBPConvNet.html">LION.models.post_processing.cFBPConvNet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.models.torch_model.html">LION.models.torch_model</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.optimizers.html">LION.optimizers</a><input aria-label="Toggle navigation of LION.optimizers" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.AdversarialRegularizerSolver.html">LION.optimizers.AdversarialRegularizerSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Equivariance2InverseSolver.html">LION.optimizers.Equivariance2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.EquivariantSolver.html">LION.optimizers.EquivariantSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.GaussianDenoiserSolver.html">LION.optimizers.GaussianDenoiserSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.LIONsolver.html">LION.optimizers.LIONsolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Noise2InverseSolver.html">LION.optimizers.Noise2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Noisier2InverseSolver.html">LION.optimizers.Noisier2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Proj2ProjSolver.html">LION.optimizers.Proj2ProjSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.SelfSupervisedSolver.html">LION.optimizers.SelfSupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Sparse2InverseSolver.html">LION.optimizers.Sparse2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.SupervisedSolver.html">LION.optimizers.SupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.training_record.html">LION.optimizers.training_record</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.losses.html">LION.losses</a><input aria-label="Toggle navigation of LION.losses" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.losses.SURE.html">LION.losses.SURE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.losses.SUREpgImage.html">LION.losses.SUREpgImage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.losses.jacobian_penalty.html">LION.losses.jacobian_penalty</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.reconstructors.html">LION.reconstructors</a><input aria-label="Toggle navigation of LION.reconstructors" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.ForwardReconstructor.html">LION.reconstructors.ForwardReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.LIONreconstructor.html">LION.reconstructors.LIONreconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.LearnedRegularizerReconstructor.html">LION.reconstructors.LearnedRegularizerReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.PnP.html">LION.reconstructors.PnP</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.classical_algorithms.html">LION.classical_algorithms</a><input aria-label="Toggle navigation of LION.classical_algorithms" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.classical_algorithms.conjugate_gradient.html">LION.classical_algorithms.conjugate_gradient</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.classical_algorithms.fista.html">LION.classical_algorithms.fista</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.classical_algorithms.spgl1_torch.html">LION.classical_algorithms.spgl1_torch</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.evaluation.html">LION.evaluation</a><input aria-label="Toggle navigation of LION.evaluation" class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.comparison.html">LION.evaluation.comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.evaluation.html">LION.evaluation.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.figures.html">LION.evaluation.figures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.methods.html">LION.evaluation.methods</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.metrics.html">LION.metrics</a><input aria-label="Toggle navigation of LION.metrics" class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.haarpsi.html">LION.metrics.haarpsi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.metrics.html">LION.metrics.metrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.psnr.html">LION.metrics.psnr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.ssim.html">LION.metrics.ssim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/LION.package.html">LION.package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.utils.html">LION.utils</a><input aria-label="Toggle navigation of LION.utils" class="toctree-checkbox" id="toctree-checkbox-21" name="toctree-checkbox-21" role="switch" type="checkbox"/><label for="toctree-checkbox-21"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.citation.html">LION.utils.citation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.common_primitives.html">LION.utils.common_primitives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.device.html">LION.utils.device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.environment.html">LION.utils.environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.image_transforms.html">LION.utils.image_transforms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.math.html">LION.utils.math</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.mrpro_import.html">LION.utils.mrpro_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.normaliser.html">LION.utils.normaliser</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.parameter.html">LION.utils.parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.paths.html">LION.utils.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.rng.html">LION.utils.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.spec.html">LION.utils.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.spyrit_import.html">LION.utils.spyrit_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.tomosipo_import.html">LION.utils.tomosipo_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.utils.html">LION.utils.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../citing.html">Citing LION</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for LION.evaluation.comparison</h1><div class="highlight"><pre>
+<span></span># =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
+"""Comparing reconstruction methods on one evaluation.
+
+``Comparison(evaluation, methods)`` runs each method, and a baseline, on the
+same ``Evaluation``, after checking from the models' records that the
+comparison is fair:
+
+- **no leakage**: a model trained or validated on test data is an error. The
+  check is by group where the data have groups (LIDC-IDRI's patients, whose
+  slices are near-copies; 2DeteCT's physical samples), otherwise by sample;
+- **the same problem**: a model trained on other data or noise (another
+  experiment, dose, geometry) gives a warning naming the differences;
+- **the same code**: a model trained with other LION code is listed.
+
+Methods without a record (a model or reconstructor made in the script) can't
+be checked, which is said; classical methods (functions) need no check. The
+baseline is the experiment's (``Experiment.baseline()``) or the modality's
+(``LION.evaluation.baseline``: the operator's default reconstruction, FDK for
+CT).
+"""
+
+from __future__ import annotations
+
+import csv
+import json
+import os
+import pathlib
+import re
+import warnings
+
+import torch
+
+from LION.data_loaders.data_record import read_record
+from LION.evaluation.evaluation import _default_name, table
+from LION.evaluation.methods import baseline as modality_baseline
+from LION.evaluation.methods import method
+from LION.models.LIONmodel import LIONmodel
+from LION.optimizers.LIONsolver import LIONsolver
+from LION.optimizers.training_record import read_training_record, weights_sha256
+from LION.reconstructors.LIONreconstructor import LIONReconstructor
+from LION.utils import environment, spec
+from LION.utils.parameter import LIONParameter
+
+# Where the data were read from doesn't make another problem.
+_NOT_THE_PROBLEM = ("folder", "datafolder", "path_to_dataset")
+
+RECORD_KEY = "lion_comparison"
+RECORD_VERSION = 1
+
+
+<div class="viewcode-block" id="Comparison">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison">[docs]</a>
+class Comparison:
+    """Several methods on one ``Evaluation``, against a baseline (see the
+    module docstring).
+
+    ``methods``: ``{name: method}``, or a list (a file is named by its file
+    name, anything else as ``Evaluation`` names it); a method is anything
+    ``LION.evaluation.method`` takes. ``baseline``: a method; None: the
+    experiment's, else the modality's; False: no baseline. ``allow``: modules
+    outside LION that model files may name.
+    """
+
+    def __init__(self, evaluation, methods, baseline=None, allow=()):
+        self.evaluation = evaluation
+        self.methods = methods
+        self.baseline = baseline
+        self.allow = allow
+        self.records = None
+
+<div class="viewcode-block" id="Comparison.named_methods">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.named_methods">[docs]</a>
+    def named_methods(self) -&gt; dict:
+        """``{name: method}``, the baseline first."""
+        named = {}
+        found = self.get_baseline()
+        if found is not None:
+            named[_name_of(found, self.evaluation.get_operator())] = found
+        methods = self.methods
+        if not isinstance(methods, dict):
+            methods = {
+                _name_of(m, self.evaluation.get_operator(), self.allow): m
+                for m in methods
+            }
+            if len(methods) &lt; len(self.methods):
+                raise ValueError("two methods have the same name: give them names")
+        for name, m in methods.items():
+            if name in named:
+                raise ValueError(f"{name!r} is the baseline's name: name it otherwise")
+            named[name] = m
+        return named</div>
+
+
+<div class="viewcode-block" id="Comparison.get_baseline">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.get_baseline">[docs]</a>
+    def get_baseline(self):
+        """The baseline: the one given, the experiment's, or the modality's."""
+        if self.baseline is False:
+            return None
+        if self.baseline is not None:
+            return self.baseline
+        experiment = self.evaluation.experiment
+        found = experiment.baseline() if experiment is not None else None
+        if found is not None:
+            return found
+        return modality_baseline(self.evaluation.get_operator())</div>
+
+
+<div class="viewcode-block" id="Comparison.check">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.check">[docs]</a>
+    def check(self) -&gt; list:
+        """Checks the methods against the test data (see the module
+        docstring): raises if a model was trained or validated on test data;
+        returns what else differs, as sentences."""
+        test = _as_dict(self.evaluation.data_record())
+        errors, notes = [], []
+        for name, m in self.named_methods().items():
+            found = _records_of(m, self.allow)
+            if found is None:
+                network = m.model if isinstance(m, LIONReconstructor) else m
+                if isinstance(network, torch.nn.Module):
+                    notes.append(
+                        f"{name}: no record of its training, so it can't be "
+                        "checked (give its file instead)"
+                    )
+                continue
+            data, validation, code = found
+            for role, record in (("trained", data), ("validated", validation)):
+                if record is None:
+                    continue
+                shared, unit, note = shared_samples(test, record)
+                if shared:
+                    examples = ", ".join(shared[:3]) + (", ..." if shared[3:] else "")
+                    errors.append(
+                        f"{name} was {role} on {len(shared)} of the test data's "
+                        f"{unit}: {examples}"
+                    )
+                if note:
+                    notes.append(f"{name}: {note}")
+            if data is None:
+                notes.append(f"{name}: its file has no record of its training data")
+            else:
+                differences = problem_differences(test, data)
+                if differences:
+                    notes.append(
+                        f"{name} was trained on another problem: "
+                        + "; ".join(differences)
+                    )
+            if code is not None:
+                notes.append(f"{name} was trained with other LION code: {code}")
+        if errors:
+            raise ValueError(
+                "models tested on data they were trained on (by group: a "
+                "patient for LIDC-IDRI, a physical sample for 2DeteCT):\n- "
+                + "\n- ".join(errors)
+                + "\nTheir scores wouldn't be fair: test on data they didn't see."
+            )
+        return notes</div>
+
+
+<div class="viewcode-block" id="Comparison.run">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.run">[docs]</a>
+    def run(self, *, save: bool = True, verbose: int = 1) -&gt; dict:
+        """Checks the methods (warning what differs), then runs each on the
+        evaluation (reusing saved results). Returns ``{name: test record}``,
+        the baseline first, also kept as ``self.records``. ``verbose``: 1
+        (default) shows a progress bar per method; 0 nothing."""
+        for note in self.check():
+            warnings.warn(note, stacklevel=2)
+        self.records = {
+            name: self.evaluation.run(
+                m, name, save=save, allow=self.allow, verbose=verbose
+            )
+            for name, m in self.named_methods().items()
+        }
+        return self.records</div>
+
+
+<div class="viewcode-block" id="Comparison.table">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.table">[docs]</a>
+    def table(self, format: str = "markdown", digits: dict | None = None) -&gt; str:
+        """The records as a table (``LION.evaluation.table``), the baseline
+        first."""
+        return table(list(self._records().values()), format=format, digits=digits)</div>
+
+
+    # -- figures -----------------------------------------------------------
+
+<div class="viewcode-block" id="Comparison.baseline_name">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.baseline_name">[docs]</a>
+    def baseline_name(self):
+        """The baseline's name (its row), or None without a baseline."""
+        if self.get_baseline() is None:
+            return None
+        return next(iter(self.named_methods()))</div>
+
+
+<div class="viewcode-block" id="Comparison.figures">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.figures">[docs]</a>
+    def figures(self) -&gt; dict:
+        """The score plots, ``{file name: Figure}``: per metric, a box plot of
+        every method and, with a baseline, each method's per-sample difference
+        to it."""
+        from LION.evaluation.figures import box_plot, difference_plot
+
+        records = list(self._records().values())
+        baseline = self.baseline_name()
+        found = {}
+        for metric in records[0].summary.serialize():
+            name = _file_part(metric)
+            found[f"box_{name}"] = box_plot(records, metric)
+            if baseline is not None and len(records) &gt; 1:
+                found[f"difference_{name}"] = difference_plot(records, metric, baseline)
+        return found</div>
+
+
+<div class="viewcode-block" id="Comparison.chosen_samples">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.chosen_samples">[docs]</a>
+    def chosen_samples(self, ids=None, by=None) -&gt; dict:
+        """``{row label: sample id}``: the given ``ids``, or the samples where
+        the baseline (or the first method) scores best, median and worst on
+        ``by`` (default: the first metric)."""
+        from LION.evaluation.figures import chosen_samples
+
+        if ids is not None:
+            return {str(i): i for i in ids}
+        records = self._records()
+        reference = records[self.baseline_name() or next(iter(records))]
+        chosen = chosen_samples(reference, by)
+        return {f"{label}: {sample}": sample for label, sample in chosen.items()}</div>
+
+
+<div class="viewcode-block" id="Comparison.images">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.images">[docs]</a>
+    def images(self, ids=None, by=None, zoom=None, differences=False):
+        """Example images (``LION.evaluation.figures.example_images``): the
+        targets and every method's images of the chosen samples (see
+        ``chosen_samples``), each with its ``by`` score; ``zoom``:
+        ``[(row, col, height, width), ...]``; ``differences``: to the target."""
+        from LION.evaluation.figures import example_images, reconstructions
+
+        records = self._records()
+        chosen = self.chosen_samples(ids, by)
+        samples = list(dict.fromkeys(chosen.values()))
+        targets, outputs = reconstructions(
+            self.evaluation, self.named_methods(), samples, self.allow
+        )
+        metric = by or next(iter(next(iter(records.values())).summary.serialize()))
+        scores = {}
+        for name, record in records.items():
+            values = dict(zip(record.scores.ids, getattr(record.scores, metric)))
+            scores[name] = {
+                s: f"{metric} {values[s]:.{2 if abs(values[s]) &gt;= 10 else 3}f}"
+                for s in samples
+                if values.get(s) is not None
+            }
+        labels = {}
+        for label, sample in chosen.items():
+            labels[sample] = (
+                labels[sample] + "\n" + label if sample in labels else label
+            )
+        data_range = next(iter(records.values())).data_range
+        return example_images(
+            targets,
+            outputs,
+            data_range=None if data_range is None else tuple(data_range),
+            zoom=zoom,
+            differences=differences,
+            labels=labels,
+            scores=scores,
+        )</div>
+
+
+    # -- saving --------------------------------------------------------------
+
+<div class="viewcode-block" id="Comparison.save">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.save">[docs]</a>
+    def save(self, folder, ids=None, by=None, zoom=None, differences=False):
+        """Writes the comparison to ``folder``: ``comparison.json`` (its spec,
+        to make it again with ``Comparison.instantiate(folder)``, and what was
+        drawn), ``records/`` (the test records), ``table.md``/``.tex``/
+        ``.csv``, ``scores.csv`` (per-sample scores: one row per sample, one
+        column per method and metric), and each figure as ``.pdf`` and
+        ``.png`` (``figures()``, and ``images.*`` of ``images(ids, by, zoom,
+        differences)``). Returns the folder."""
+        folder = pathlib.Path(folder)
+        (folder / "records").mkdir(parents=True, exist_ok=True)
+        records = self._records()
+        files = {}
+        for name, record in records.items():
+            path = pathlib.Path("records") / f"{_file_part(name)}.json"
+            (folder / path).write_text(json.dumps(record.serialize(), indent=1))
+            files[name] = str(path)
+        for format, suffix in (("markdown", "md"), ("latex", "tex"), ("csv", "csv")):
+            (folder / f"table.{suffix}").write_text(self.table(format))
+        _write_scores(folder / "scores.csv", records)
+        figures = dict(self.figures())
+        figures["images"] = self.images(ids, by, zoom, differences)
+        for name, figure in figures.items():
+            for suffix in ("pdf", "png"):
+                figure.savefig(
+                    folder / f"{name}.{suffix}", dpi=200, bbox_inches="tight"
+                )
+        written = {
+            RECORD_KEY: RECORD_VERSION,
+            "comparison": self.spec(),
+            "records": files,
+            "images": {
+                "samples": self.chosen_samples(ids, by),
+                "by": by,
+                "zoom": [list(z) for z in zoom or []],
+                "differences": differences,
+            },
+        }
+        (folder / "comparison.json").write_text(json.dumps(written, indent=1))
+        return folder</div>
+
+
+<div class="viewcode-block" id="Comparison.spec">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.spec">[docs]</a>
+    def spec(self) -&gt; dict:
+        """This comparison's spec: its evaluation's, its methods and baseline
+        (files by path; methods made in the script only named)."""
+        methods = self.methods
+        if isinstance(methods, dict):
+            methods = {k: _method_spec(m, k) for k, m in methods.items()}
+        else:
+            methods = [_method_spec(m, "a method") for m in methods]
+        return {
+            spec.TARGET: spec.import_path(type(self)),
+            "evaluation": self.evaluation.spec(),
+            "methods": methods,
+            "baseline": _method_spec(self.baseline, "the baseline"),
+            "allow": list(self.allow),
+        }</div>
+
+
+<div class="viewcode-block" id="Comparison.instantiate">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.instantiate">[docs]</a>
+    @classmethod
+    def instantiate(cls, source, *, allow=(), **arguments):
+        """The comparison a saved one describes: ``source`` is the folder
+        ``save`` wrote, its ``comparison.json``, or a spec. ``arguments``
+        replace recorded ones; ``evaluation_arguments`` (a dict) are given to
+        the evaluation (e.g. ``{"save_folder": ...}``). ``allow``: modules
+        outside LION the file may name (the recorded ``allow`` isn't used: a
+        file can't widen what it may build)."""
+        from LION.evaluation.evaluation import Evaluation
+
+        if isinstance(source, (str, os.PathLike)) and pathlib.Path(source).is_dir():
+            source = pathlib.Path(source) / "comparison.json"
+        saved = spec.read(source)
+        written = saved.get("comparison", saved)
+        # only the caller widens what may be built, never the file
+        allow = tuple(allow)
+        evaluation_arguments = arguments.pop("evaluation_arguments", {})
+        if "methods" not in arguments:
+            methods = written["methods"]
+            if isinstance(methods, dict):
+                arguments["methods"] = {
+                    k: _built(v, k, allow) for k, v in methods.items()
+                }
+            else:
+                arguments["methods"] = [_built(v, "a method", allow) for v in methods]
+        if "baseline" not in arguments:
+            arguments["baseline"] = _built(written["baseline"], "the baseline", allow)
+        if "evaluation" not in arguments:
+            arguments["evaluation"] = Evaluation.instantiate(
+                written["evaluation"], allow=allow, **evaluation_arguments
+            )
+        arguments.setdefault("allow", allow)
+        return cls(**arguments)</div>
+
+
+    def _records(self) -&gt; dict:
+        if self.records is None:
+            self.run()
+        return self.records</div>
+
+
+
+# ---------------------------------------------------------------------------
+# The checks, on data records (usable on their own)
+
+
+<div class="viewcode-block" id="shared_samples">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.shared_samples">[docs]</a>
+def shared_samples(test, training):
+    """The test data's samples (or groups) that are also in ``training``,
+    both data records. Returns ``(shared, what they are, a note or None)``:
+    by group when both records have them, otherwise by sample; data from
+    another dataset share none."""
+    test, training = _as_dict(test), _as_dict(training)
+    if _target(test.get("dataset")) != _target(training.get("dataset")):
+        return [], "samples", None
+    test_samples = test.get("samples") or {}
+    training_samples = training.get("samples") or {}
+    if "ids" not in test_samples or "ids" not in training_samples:
+        return [], "samples", "its records don't list the samples, so not checked"
+    if "groups" in test_samples and "groups" in training_samples:
+        shared = set(test_samples["groups"]) &amp; set(training_samples["groups"])
+        return sorted(shared), "groups", None
+    note = None
+    if "groups" in test_samples:
+        note = "its records don't say the groups (e.g. patients): checked by sample"
+    shared = set(test_samples["ids"]) &amp; set(training_samples["ids"])
+    return sorted(shared), "samples", note</div>
+
+
+
+<div class="viewcode-block" id="problem_differences">
+<a class="viewcode-back" href="../../../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.problem_differences">[docs]</a>
+def problem_differences(test, training) -&gt; list:
+    """How the problem of ``training`` differs from that of ``test`` (data
+    records): the experiment, if both have one; otherwise the dataset (but its
+    split) and its noise. Where the data were read from isn't compared."""
+    test, training = _as_dict(test), _as_dict(training)
+    if "experiment" in test and "experiment" in training:
+        return _differences(test["experiment"], training["experiment"], "experiment")
+    return _differences(_problem(test), _problem(training), "")</div>
+
+
+
+def _problem(record) -&gt; dict:
+    dataset = dict(record.get("dataset") or {})
+    dataset.pop("mode", None)
+    return {
+        "dataset": dataset,
+        "noise": record.get("sinogram_transform"),
+        "noise_seed": record.get("sinogram_transform_seed"),
+    }
+
+
+def _differences(a, b, path, limit=5) -&gt; list:
+    found = []
+    _collect(a, b, path, found)
+    if len(found) &gt; limit:
+        found = found[:limit] + [f"and {len(found) - limit} more"]
+    return found
+
+
+def _collect(a, b, path, found):
+    if isinstance(a, dict) and isinstance(b, dict):
+        for key in sorted(set(a) | set(b), key=str):
+            if key in _NOT_THE_PROBLEM:
+                continue
+            where = f"{path}.{key}" if path else str(key)
+            if key not in a or key not in b:
+                found.append(
+                    f"{where} only in the {'test' if key in a else 'training'} data"
+                )
+            else:
+                _collect(a[key], b[key], where, found)
+    elif a != b:
+        found.append(f"{path}: {_short(b)} (test: {_short(a)})")
+
+
+def _short(value, size=60) -&gt; str:
+    text = json.dumps(value, default=str)
+    return text if len(text) &lt;= size else text[: size - 3] + "..."
+
+
+def _target(value):
+    return value.get(spec.TARGET) if isinstance(value, dict) else None
+
+
+def _as_dict(record):
+    if record is None:
+        return None
+    if isinstance(record, LIONParameter):
+        return record.serialize()
+    return record
+
+
+# ---------------------------------------------------------------------------
+# What a method's records say
+
+
+def _records_of(x, allow):
+    """``(training data, validation data, LION code difference)`` of a model
+    file or a solver, or of the file a model (also a reconstructor's) was
+    loaded from; None for methods without records."""
+    if isinstance(x, (str, os.PathLike)) and _is_reconstructor_file(x):
+        x = LIONReconstructor.load(x, allow=allow)
+    if isinstance(x, LIONReconstructor):
+        x = x.model
+    if getattr(x, "source_file", None) is not None:
+        x = x.source_file
+    if isinstance(x, (str, os.PathLike)):
+        path = pathlib.Path(x)
+        saved = spec.read(path)
+        try:
+            data = _as_dict(read_record(saved))
+        except ValueError:
+            data = None
+        try:
+            training = _as_dict(read_training_record(saved))
+        except ValueError:
+            training = None
+        validation = ((training or {}).get("validation") or {}).get("data")
+        code = None
+        if "environment" in saved:
+            code = environment.code_differences(saved["environment"])
+        return data, validation, code
+    if isinstance(x, LIONsolver):
+        data = _as_dict(x._training_data_record())
+        validation = None
+        if x.validation_loader is not None:
+            validation = _as_dict(x._data_record(x.validation_loader))
+        return data, validation, None
+    return None
+
+
+def _method_spec(x, what):
+    """A method's spec: a file by its path, a function by its import path, a
+    reconstructor by its own file (if it still is what the file says) or by
+    its spec and its model's file (or function). A model or
+    solver object, or a reconstructor whose network wasn't loaded from a file,
+    is only named (with a warning): its spec would make it with new weights,
+    so give its file instead."""
+    if isinstance(x, LIONReconstructor):
+        if _as_its_file_says(x):
+            return spec.encode(pathlib.Path(x.source_file))
+        written = _reconstructor_spec(x, what)
+        if written is not None:
+            return written
+    if isinstance(x, (LIONmodel, LIONsolver, LIONReconstructor)):
+        warnings.warn(
+            f"{what} is a {type(x).__name__} made in the script: the comparison "
+            "can't be made again with it (its weights aren't in a spec); give "
+            "its file instead",
+            stacklevel=3,
+        )
+        return {"unsaved": repr(x), "reason": "an object with weights: give its file"}
+    return spec.encode_or_name(x, what)
+
+
+def _reconstructor_spec(x, what):
+    """``{"lion_reconstructor": spec, "model_file" or "model": ...}``, or None
+    if its model is a network made in the script."""
+    written = {"lion_reconstructor": spec.encode_or_name(x, what)}
+    model = x.model
+    if isinstance(model, torch.nn.Module):
+        if getattr(model, "source_file", None) is None:
+            return None
+        written["model_file"] = spec.encode(pathlib.Path(model.source_file))
+        written["weights_sha256"] = weights_sha256(model)
+    else:
+        written["model"] = spec.encode_or_name(model, f"{what}'s model")
+    return written
+
+
+def _built(value, what, allow):
+    """A method (or baseline) from its spec; an error if only named."""
+    if spec.is_unsaved(value):
+        raise ValueError(
+            f"{what} was made in the script ({value['unsaved']}), so it can't be "
+            "made again: give it with instantiate(..., methods=...)"
+        )
+    if isinstance(value, dict) and "lion_reconstructor" in value:
+        if "model_file" in value:
+            path = spec.build(value["model_file"], allow)
+            model = LIONmodel.load(path, allow=allow, supress_warnings=True)[0]
+            if weights_sha256(model) != value.get("weights_sha256"):
+                warnings.warn(
+                    f"{what}'s model file {path} now has other weights than when "
+                    "the comparison was saved",
+                    stacklevel=3,
+                )
+        else:
+            model = _built(value["model"], f"{what}'s model", allow)
+        return LIONReconstructor.instantiate(
+            value["lion_reconstructor"], model, allow=allow
+        )
+    return spec.build(value, allow)
+
+
+def _as_its_file_says(reconstructor) -&gt; bool:
+    """A reconstructor loaded from its file, with the settings and the model
+    weights its file records (not changed since)."""
+    if getattr(reconstructor, "source_file", None) is None:
+        return False
+    saved = spec.read(reconstructor.source_file)
+    now = json.loads(json.dumps(spec.encode_or_name(reconstructor, "it")))
+    if now != saved["reconstructor"]:
+        return False
+    model = reconstructor.model
+    expected = (saved.get("model") or {}).get("weights_sha256")
+    if isinstance(model, torch.nn.Module):
+        return weights_sha256(model) == expected
+    return True
+
+
+def _is_reconstructor_file(path) -&gt; bool:
+    from LION.reconstructors.LIONreconstructor import RECORD_KEY
+
+    try:
+        return RECORD_KEY in spec.read(path)
+    except (OSError, ValueError):
+        return False
+
+
+def _file_part(name) -&gt; str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", str(name)).strip("_") or "method"
+
+
+def _write_scores(path, records):
+    """Per-sample scores: one row per sample, one column per method and
+    metric (``"&lt;method&gt; &lt;metric&gt;"``)."""
+    columns, ids = [], None
+    for name, record in records.items():
+        if ids is None:
+            ids = list(record.scores.ids)
+        values = dict(zip(record.scores.ids, range(len(record.scores.ids))))
+        for metric in record.summary.serialize():
+            scores = getattr(record.scores, metric)
+            columns.append(
+                (
+                    f"{name} {metric}",
+                    [scores[values[i]] if i in values else None for i in ids],
+                )
+            )
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["sample"] + [c for c, _ in columns])
+        for k, sample in enumerate(ids or []):
+            writer.writerow(
+                [sample]
+                + [
+                    "" if v is None else repr(float(v))
+                    for _, v in ((c, vs[k]) for c, vs in columns)
+                ]
+            )
+
+
+def _name_of(x, operator, allow=()) -&gt; str:
+    if isinstance(x, (str, os.PathLike)):
+        return pathlib.Path(x).with_suffix("").name
+    return _default_name(method(x, operator, allow=allow).record)
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Cambridge Image Analysis, University of Cambridge
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
+    </body>
+</html>

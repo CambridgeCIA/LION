@@ -1,0 +1,90 @@
+LION.operators.Operator
+=======================
+
+.. currentmodule:: LION.operators
+
+.. autoclass:: Operator
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Operator.__init__
+      ~Operator.add_module
+      ~Operator.adjoint
+      ~Operator.apply
+      ~Operator.autograd
+      ~Operator.bfloat16
+      ~Operator.buffers
+      ~Operator.children
+      ~Operator.compile
+      ~Operator.cpu
+      ~Operator.cuda
+      ~Operator.default_reconstruction
+      ~Operator.default_reconstruction_fn
+      ~Operator.double
+      ~Operator.eval
+      ~Operator.extra_repr
+      ~Operator.float
+      ~Operator.forward
+      ~Operator.get_buffer
+      ~Operator.get_extra_state
+      ~Operator.get_parameter
+      ~Operator.get_submodule
+      ~Operator.gram
+      ~Operator.half
+      ~Operator.inverse
+      ~Operator.ipu
+      ~Operator.load_state_dict
+      ~Operator.modules
+      ~Operator.mtia
+      ~Operator.named_buffers
+      ~Operator.named_children
+      ~Operator.named_modules
+      ~Operator.named_parameters
+      ~Operator.parameters
+      ~Operator.register_backward_hook
+      ~Operator.register_buffer
+      ~Operator.register_forward_hook
+      ~Operator.register_forward_pre_hook
+      ~Operator.register_full_backward_hook
+      ~Operator.register_full_backward_pre_hook
+      ~Operator.register_load_state_dict_post_hook
+      ~Operator.register_load_state_dict_pre_hook
+      ~Operator.register_module
+      ~Operator.register_parameter
+      ~Operator.register_state_dict_post_hook
+      ~Operator.register_state_dict_pre_hook
+      ~Operator.requires_grad_
+      ~Operator.set_extra_state
+      ~Operator.set_submodule
+      ~Operator.share_memory
+      ~Operator.state_dict
+      ~Operator.to
+      ~Operator.to_device
+      ~Operator.to_empty
+      ~Operator.train
+      ~Operator.type
+      ~Operator.xpu
+      ~Operator.zero_grad
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Operator.T_destination
+      ~Operator.call_super_init
+      ~Operator.domain_shape
+      ~Operator.dump_patches
+      ~Operator.range_shape
+      ~Operator.training
+   
+   

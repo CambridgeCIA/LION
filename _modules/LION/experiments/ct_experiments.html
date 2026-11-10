@@ -1,0 +1,1251 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+        <link rel="prefetch" href="../../../_static/lion-logo.svg" as="image">
+        <link rel="prefetch" href="../../../_static/lion-logo-dark.svg" as="image">
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+        <title>LION.experiments.ct_experiments - LION 0.2.0</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">LION 0.2.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../../../_static/lion-logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../../../_static/lion-logo-dark.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">LION 0.2.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Example scripts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.DebiasOp.html">LION.operators.DebiasOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.Operator.html">LION.operators.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.Wavelet2D.html">LION.operators.Wavelet2D</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.operators.ct.html">LION.operators.ct</a><input aria-label="Toggle navigation of LION.operators.ct" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.CTProjectionOp.html">LION.operators.ct.CTProjectionOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.ct_geometry.html">LION.operators.ct.ct_geometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.ct_utils.html">LION.operators.ct.ct_utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.fdk.html">LION.operators.ct.fdk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.sirt.html">LION.operators.ct.sirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.tv_min.html">LION.operators.ct.tv_min</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.operators.pcm.html">LION.operators.pcm</a><input aria-label="Toggle navigation of LION.operators.pcm" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.pcm.PhotocurrentMapOp.html">LION.operators.pcm.PhotocurrentMapOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.pcm.WalshHadamard2D.html">LION.operators.pcm.WalshHadamard2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.data_loaders.html">LION.data_loaders</a><input aria-label="Toggle navigation of LION.data_loaders" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.LIDC_IDRI.html">LION.data_loaders.LIDC_IDRI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.LIONDataset.html">LION.data_loaders.LIONDataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.data_record.html">LION.data_loaders.data_record</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.deteCT.html">LION.data_loaders.deteCT</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.experiments.html">LION.experiments</a><input aria-label="Toggle navigation of LION.experiments" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.experiments.ct_experiments.html">LION.experiments.ct_experiments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.experiments.deteCT_benchmark.html">LION.experiments.deteCT_benchmark</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.models.html">LION.models</a><input aria-label="Toggle navigation of LION.models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.CNNs.html">LION.models.CNNs</a><input aria-label="Toggle navigation of LION.models.CNNs" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.CNNs.MSDNet.html">LION.models.CNNs.MSDNet</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../generated/LION.models.CNNs.UNets.html">LION.models.CNNs.UNets</a><input aria-label="Toggle navigation of LION.models.CNNs.UNets" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../generated/LION.models.CNNs.UNets.ResUNet3D.html">LION.models.CNNs.UNets.ResUNet3D</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../generated/LION.models.CNNs.UNets.Unet.html">LION.models.CNNs.UNets.Unet</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.CNNs.dncnn.html">LION.models.CNNs.dncnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.CNNs.drunet.html">LION.models.CNNs.drunet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.models.LIONmodel.html">LION.models.LIONmodel</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.PnP.html">LION.models.PnP</a><input aria-label="Toggle navigation of LION.models.PnP" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.models.fully_learned.html">LION.models.fully_learned</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.LPD.html">LION.models.iterative_unrolled.LPD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.cLPD.html">LION.models.iterative_unrolled.cLPD</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.html">LION.models.learned_fbp</a><input aria-label="Toggle navigation of LION.models.learned_fbp" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.DeepFBP.html">LION.models.learned_fbp.DeepFBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.DeepFusionBP.html">LION.models.learned_fbp.DeepFusionBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.FusionFBP.html">LION.models.learned_fbp.FusionFBP</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.post_processing.FBPConvNet.html">LION.models.post_processing.FBPConvNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.post_processing.FBPConvNetImage.html">LION.models.post_processing.FBPConvNetImage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.post_processing.cFBPConvNet.html">LION.models.post_processing.cFBPConvNet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.models.torch_model.html">LION.models.torch_model</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.optimizers.html">LION.optimizers</a><input aria-label="Toggle navigation of LION.optimizers" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.AdversarialRegularizerSolver.html">LION.optimizers.AdversarialRegularizerSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Equivariance2InverseSolver.html">LION.optimizers.Equivariance2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.EquivariantSolver.html">LION.optimizers.EquivariantSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.GaussianDenoiserSolver.html">LION.optimizers.GaussianDenoiserSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.LIONsolver.html">LION.optimizers.LIONsolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Noise2InverseSolver.html">LION.optimizers.Noise2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Noisier2InverseSolver.html">LION.optimizers.Noisier2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Proj2ProjSolver.html">LION.optimizers.Proj2ProjSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.SelfSupervisedSolver.html">LION.optimizers.SelfSupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Sparse2InverseSolver.html">LION.optimizers.Sparse2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.SupervisedSolver.html">LION.optimizers.SupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.training_record.html">LION.optimizers.training_record</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.losses.html">LION.losses</a><input aria-label="Toggle navigation of LION.losses" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.losses.SURE.html">LION.losses.SURE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.losses.SUREpgImage.html">LION.losses.SUREpgImage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.losses.jacobian_penalty.html">LION.losses.jacobian_penalty</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.reconstructors.html">LION.reconstructors</a><input aria-label="Toggle navigation of LION.reconstructors" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.ForwardReconstructor.html">LION.reconstructors.ForwardReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.LIONreconstructor.html">LION.reconstructors.LIONreconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.LearnedRegularizerReconstructor.html">LION.reconstructors.LearnedRegularizerReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.PnP.html">LION.reconstructors.PnP</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.classical_algorithms.html">LION.classical_algorithms</a><input aria-label="Toggle navigation of LION.classical_algorithms" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.classical_algorithms.conjugate_gradient.html">LION.classical_algorithms.conjugate_gradient</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.classical_algorithms.fista.html">LION.classical_algorithms.fista</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.classical_algorithms.spgl1_torch.html">LION.classical_algorithms.spgl1_torch</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.evaluation.html">LION.evaluation</a><input aria-label="Toggle navigation of LION.evaluation" class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.comparison.html">LION.evaluation.comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.evaluation.html">LION.evaluation.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.figures.html">LION.evaluation.figures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.methods.html">LION.evaluation.methods</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.metrics.html">LION.metrics</a><input aria-label="Toggle navigation of LION.metrics" class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.haarpsi.html">LION.metrics.haarpsi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.metrics.html">LION.metrics.metrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.psnr.html">LION.metrics.psnr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.ssim.html">LION.metrics.ssim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/LION.package.html">LION.package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.utils.html">LION.utils</a><input aria-label="Toggle navigation of LION.utils" class="toctree-checkbox" id="toctree-checkbox-21" name="toctree-checkbox-21" role="switch" type="checkbox"/><label for="toctree-checkbox-21"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.citation.html">LION.utils.citation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.common_primitives.html">LION.utils.common_primitives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.device.html">LION.utils.device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.environment.html">LION.utils.environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.image_transforms.html">LION.utils.image_transforms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.math.html">LION.utils.math</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.mrpro_import.html">LION.utils.mrpro_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.normaliser.html">LION.utils.normaliser</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.parameter.html">LION.utils.parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.paths.html">LION.utils.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.rng.html">LION.utils.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.spec.html">LION.utils.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.spyrit_import.html">LION.utils.spyrit_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.tomosipo_import.html">LION.utils.tomosipo_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.utils.html">LION.utils.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../citing.html">Citing LION</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for LION.experiments.ct_experiments</h1><div class="highlight"><pre>
+<span></span># =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
+"""
+LION's CT experiments: a geometry, a dataset and, for simulated data, the
+noise added to the sinograms (``param.noise_params``).
+
+Noise of the simulated (LIDC-IDRI) experiments, since 25 October 2026
+---------------------------------------------------------------------
+``Experiment.noise_parameters(I0)``: the physical noise model of
+``ct_utils.sinogram_add_noise``. The images are densities (g/cm^3, see the
+LIDC-IDRI data loader), the geometries are in mm, so the line integrals give
+the real transmission through water at 80 keV, and ``I0`` is the number of
+photons per detector pixel in vacuum. Thicker patients get noisier data, as in
+a scanner, and photon-starved rays are floored at 1 photon before the log. The
+detector is energy-integrating (electronic noise, cross-talk) unless
+``detector="photon_counting"``.
+
+The doses (``CLINICAL_I0``, ``LOW_DOSE_I0``, ``EXTREMELY_LOW_DOSE_I0``) were
+chosen by Ander by looking at FDK reconstructions of small, typical and large
+LIDC-IDRI patients (25 Oct 2026: 20000, 5000, 1000). When the slices were
+resampled to their real size (26 Oct 2026, see the geometry below), most
+patients became thicker and noisier at the same I0, so the doses were raised to
+42000, 11000 and 2100: the I0 that give, on average over 30 patients, the same
+noise in the FDK images as before (checked by eye by Ander).
+
+Before, the experiments used the relative model: each sinogram divided by its
+maximum, so every patient's thickest ray kept I0/e photons (I0 = 10000, 3500
+and 1000). That is not how a scanner works; the noise did not depend on the
+size of the patient. ``noise_model = "relative"`` gives the relative model,
+with the errors LION's noise had before October 2026 fixed (cross-talk across
+angles, batch maximum, 1e-6 rule for starved rays), so its results are close
+to, but not bit-identical with, the old ones. New results are not comparable with old
+results of the same experiment name.
+
+Each slice has one noisy measurement (``noise_params.seed``): its noise is
+drawn from a generator seeded by the seed and the slice (patient and slice
+file), so it is the same in every epoch, run, sample order and DataLoader
+worker, in training, validation and test, as a scan is measured once.
+Training randomness (shuffling, noise a solver adds) is not affected.
+``seed = None``, and parameter files without it, draw fresh noise each time a
+slice is read. One seed gives the same noise on the same device type (CPU or
+CUDA) and torch version; see ``LION.utils.rng``.
+
+Measured 2DeteCT data have their own noise; see the deteCT data loader.
+
+Geometry of the LIDC-IDRI experiments, since 26 October 2026
+-------------------------------------------------------------
+``LIDC_IDRI.default_geometry(angles)``: 512x512 pixels over 500 mm (the
+pre-processing resamples every scan to that spacing, see the LIDC-IDRI data
+loader) and a 1024-pixel detector that covers it. The angles are as before:
+360 over 360 degrees, 60 over 60 degrees for limited angle
+(``LIMITED_ANGLES``), 50 over 360 degrees for sparse view (``SPARSE_ANGLES``).
+Before, the experiments used ``Geometry.default_parameters()`` and its
+sparse presets (300 mm, 900-pixel detector) on slices of each scan's own
+pixel spacing.
+"""
+
+import functools
+import numpy as np
+import pathlib
+import warnings
+from abc import ABC, abstractmethod
+
+from LION.utils.parameter import LIONParameter
+import LION.operators.ct.ct_geometry as ctgeo
+import LION.operators.ct.ct_utils as ct
+from LION.data_loaders.LIDC_IDRI import LIDC_IDRI
+from LION.data_loaders.deteCT import deteCT
+from LION.data_loaders.data_record import data_record, read_record, recorded_spec
+from LION.utils import spec
+
+# Photons per detector pixel in vacuum of the simulated experiments (physical
+# noise model, water at 80 keV; see Experiment.noise_parameters). Chosen by
+# Ander on 25-26 Oct 2026 by looking at LIDC-IDRI reconstructions; the same
+# image noise as 20000, 5000 and 1000 gave before the slices were resampled to
+# their real size (see the module docstring). With the relative model, the
+# experiments used 10000, 3500 and 1000.
+CLINICAL_I0 = 42000
+LOW_DOSE_I0 = 11000
+EXTREMELY_LOW_DOSE_I0 = 2100
+
+# Angles of the LIDC-IDRI limited-angle and sparse-view experiments (as
+# Geometry.sparse_angle_parameters and sparse_view_parameters)
+LIMITED_ANGLES = np.linspace(0, 2 * np.pi / 6, 60, endpoint=False)  # 60 over 60 deg
+SPARSE_ANGLES = np.linspace(0, 2 * np.pi, 50, endpoint=False)  # 50 over 360 deg
+
+
+<div class="viewcode-block" id="Experiment">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment">[docs]</a>
+class Experiment(ABC):
+    """A CT experiment: a geometry, a dataset and, for simulated data, the
+    noise added to the sinograms; the base class of LION's experiments, which
+    differ only in their parameters (see the module docstring for the noise and
+    geometry).
+
+    ``experiment_params``: its parameters (``default_parameters(dataset)`` if
+    None); ``dataset``: "LIDC-IDRI" (simulated sinograms) or "2DeteCT"
+    (measured ones); ``datafolder``: where the dataset is (the data loader's
+    default if None).
+
+    ``get_dataset(split)`` gives the data of a split, ``data_record(split)``
+    its record; ``instantiate`` and ``parameters_from_file`` make an experiment
+    again from a saved file."""
+
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+
+        super().__init__()  # Initialize parent classes.
+        self.experiment_params = experiment_params
+        if experiment_params is None:
+            self.experiment_params = self.default_parameters(dataset=dataset)
+        else:
+            self.experiment_params = experiment_params
+            _warn_if_anothers(type(self), experiment_params, dataset)
+        self.param = self.experiment_params
+        if datafolder is not None:
+            if dataset == "2DeteCT":
+                self.param.data_loader_params.path_to_dataset = pathlib.Path(datafolder)
+            else:
+                self.param.data_loader_params.folder = pathlib.Path(datafolder)
+        # parameters loaded from a JSON file have the geometry as a plain
+        # LIONParameter; operators and models need a Geometry
+        if self.experiment_params.operator_params is not None and not isinstance(
+            self.experiment_params.operator_params, ctgeo.Geometry
+        ):
+            self.experiment_params.operator_params = ctgeo.Geometry.init_from_parameter(
+                self.experiment_params.operator_params
+            )
+        self.operator_params = self.experiment_params.operator_params
+        self.dataset = dataset
+        # Noise added to the simulated sinograms (None: clean sinograms)
+        self.sino_fun = None
+        if hasattr(self.param, "noise_params"):
+            noise = self.param.noise_params
+            kwargs = dict(
+                model=noise.noise_model,
+                detector=noise.detector,
+                mass_attenuation=noise.mass_attenuation,
+                min_counts=noise.min_counts,
+            )
+            # a partial (not a lambda), so the dataset's record can hold it
+            self.sino_fun = functools.partial(
+                ct.sinogram_add_noise,
+                I0=noise.I0,
+                sigma=noise.sigma,
+                sigma_blur=noise.sigma_blur,
+                **kwargs,
+            )
+
+<div class="viewcode-block" id="Experiment.noise_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.noise_parameters">[docs]</a>
+    @staticmethod
+    def noise_parameters(I0, detector="energy_integrating"):
+        """The noise of LION's simulated experiments: the physical model of
+        ``ct_utils.sinogram_add_noise``, with ``I0`` photons per detector pixel
+        in vacuum, water at 80 keV, and starved rays floored at 1 photon. The
+        default energy-integrating ``detector`` has electronic noise (sigma = 5
+        photons) and cross-talk; "photon_counting" has neither.
+
+        ``seed`` (0): each slice's noise is drawn from a generator seeded by
+        the seed and the slice, so a slice has one noisy measurement, the same
+        in every epoch and run, as a scan is measured once (training,
+        validation and test). None: fresh noise each time the slice is read."""
+        noise = LIONParameter()
+        noise.noise_model = "physical"
+        noise.I0 = I0
+        noise.sigma = 5
+        noise.sigma_blur = 0.3015
+        noise.detector = detector
+        noise.mass_attenuation = ct.DEFAULT_MASS_ATTENUATION
+        noise.min_counts = 1.0
+        noise.seed = 0
+        return noise</div>
+
+
+<div class="viewcode-block" id="Experiment.default_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.default_parameters">[docs]</a>
+    @staticmethod
+    @abstractmethod  # crash if not defined in derived class
+    def default_parameters():
+        """The experiment's parameters for ``dataset``: its ``name``,
+        ``operator_params`` (the geometry), ``noise_params`` (simulated data
+        only) and ``data_loader_params``. Each experiment defines it."""
+        pass</div>
+
+
+    def __get_dataset(self, mode):
+
+        if self.dataset == "LIDC-IDRI":
+            dataloader = LIDC_IDRI(
+                mode=mode,
+                parameters=self.param.data_loader_params,
+                operator_params=self.operator_params,
+            )
+            dataloader.set_sinogram_transform(
+                self.sino_fun, seed=getattr(self.param.noise_params, "seed", None)
+            )
+
+        elif self.dataset == "2DeteCT":
+            if hasattr(self.param, "noise_params"):
+                raise ValueError(
+                    "2DeteCT is measured data: its experiments use the measured "
+                    "modes (e.g. mode1 for low dose) instead of noise_params. To "
+                    "add noise on top of the measurements, set "
+                    "data_loader_params.add_noise and data_loader_params.noise_params "
+                    "(I0, cross_talk) instead."
+                )
+            dataloader = deteCT(
+                mode=mode,
+                operator_params=self.operator_params,
+                parameters=self.param.data_loader_params,
+            )
+        else:
+            raise NotImplementedError(f"Dataset {self.dataset} not implemented")
+        return dataloader
+
+<div class="viewcode-block" id="Experiment.measured_2detect_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.measured_2detect_parameters">[docs]</a>
+    @staticmethod
+    def measured_2detect_parameters(
+        name: str, angles=slice(None), dose: str = "clinical"
+    ) -&gt; LIONParameter:
+        """Parameters of an experiment on the measured 2DeteCT data.
+
+        Its geometry is fixed by the scan (3600 angles over 360 degrees), so an
+        experiment can only select some of the measured angles (``angles``, an
+        index or slice into them). Dose levels are measured modes: "clinical"
+        uses mode2 sinograms, "extremely_low" the low-dose mode1 ones (3 W
+        instead of 90 W tube power, ~30x less); the targets are
+        mode2 reconstructions. There is no noise to simulate.
+        """
+        input_modes = {"clinical": "mode2", "extremely_low": "mode1"}
+        if dose not in input_modes:
+            raise ValueError(
+                f"2DeteCT has measured data for the doses {list(input_modes)}, not {dose!r}"
+            )
+        param = LIONParameter()
+        param.name = f"{name}, on the measured 2DeteCT data"
+        param.operator_params = deteCT.get_default_geometry()
+        param.operator_params.angles = np.asarray(param.operator_params.angles)[angles]
+        param.data_loader_params = Experiment.get_dataset_parameters("2DeteCT")
+        param.data_loader_params.task = "sino2recon"
+        param.data_loader_params.input_mode = input_modes[dose]
+        param.data_loader_params.target_mode = "mode2"
+        return param</div>
+
+
+<div class="viewcode-block" id="Experiment.not_possible_with_2detect">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.not_possible_with_2detect">[docs]</a>
+    @staticmethod
+    def not_possible_with_2detect(name: str, reason: str):
+        """Raises the ValueError of an experiment, ``name``, that the measured
+        2DeteCT data can't give, saying why (``reason``)."""
+        raise ValueError(
+            f"{name} is not possible with the measured 2DeteCT data: {reason}"
+        )</div>
+
+
+    SPLITS = ("train", "validation", "test")
+
+<div class="viewcode-block" id="Experiment.baseline">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.baseline">[docs]</a>
+    def baseline(self):
+        """The reconstruction methods are compared with in this experiment
+        (``LION.evaluation.Comparison``), as a function ``f(y, operator)``;
+        None: the modality's (``LION.evaluation.baseline``: FDK for CT).
+        Experiments where another method is the standard override this."""
+        return None</div>
+
+
+<div class="viewcode-block" id="Experiment.get_dataset">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.get_dataset">[docs]</a>
+    def get_dataset(self, split):
+        """The dataset of a split ("train", "validation" or "test"). It keeps
+        the experiment and the split (``dataset.experiment``,
+        ``dataset.split``), which its record (``data_record``) includes."""
+        if split not in self.SPLITS:
+            raise ValueError(f"split must be one of {self.SPLITS}, got {split!r}")
+        dataset = self.__get_dataset(split)
+        dataset.experiment = self
+        dataset.split = split
+        return dataset</div>
+
+
+<div class="viewcode-block" id="Experiment.get_training_dataset">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.get_training_dataset">[docs]</a>
+    def get_training_dataset(self):
+        """The training data (``get_dataset("train")``)."""
+        return self.get_dataset("train")</div>
+
+
+<div class="viewcode-block" id="Experiment.get_validation_dataset">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.get_validation_dataset">[docs]</a>
+    def get_validation_dataset(self):
+        """The validation data (``get_dataset("validation")``)."""
+        return self.get_dataset("validation")</div>
+
+
+<div class="viewcode-block" id="Experiment.get_testing_dataset">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.get_testing_dataset">[docs]</a>
+    def get_testing_dataset(self):
+        """The test data (``get_dataset("test")``)."""
+        return self.get_dataset("test")</div>
+
+
+<div class="viewcode-block" id="Experiment.data_record">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.data_record">[docs]</a>
+    def data_record(self, split, hash_files=False):
+        """The record of a split's data: this experiment, the split, the
+        dataset, its noise, its samples (``LION.data_loaders.data_record``)."""
+        return data_record(self.get_dataset(split), hash_files=hash_files)</div>
+
+
+<div class="viewcode-block" id="Experiment.instantiate">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.instantiate">[docs]</a>
+    @classmethod
+    def instantiate(cls, source, *, allow=(), **arguments):
+        """The experiment a saved file describes. ``source``: a data record,
+        a model's file (or the dict read from it) saved with one, or the
+        experiment's spec or its file (a package's ``experiment.json``). Called
+        on an experiment class it makes that class; called on ``Experiment``,
+        the class the record names (``allow``: see ``LION.utils.spec.build``).
+        ``arguments`` replace recorded ones (e.g. ``experiment_params`` from
+        ``parameters_from_file``, changed; ``datafolder``).
+
+        ``Experiment.instantiate(f).get_dataset(record.split)`` makes the
+        data as they were: dataset, geometry and noise (with its seed).
+        """
+        return spec.instantiate(
+            cls._recorded(source), cls, Experiment, allow, **arguments
+        )</div>
+
+
+<div class="viewcode-block" id="Experiment.parameters_from_file">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.parameters_from_file">[docs]</a>
+    @classmethod
+    def parameters_from_file(cls, source, *, allow=()):
+        """What ``default_parameters()`` gives, as ``source`` (as in
+        ``instantiate``) recorded it: the experiment's parameters (geometry,
+        noise, data), to change and make the experiment with, e.g.
+
+            parameters = Experiment.parameters_from_file("model")
+            parameters.noise_params.I0 = 5000
+            experiment = Experiment.instantiate("model", experiment_params=parameters)
+
+        ``instantiate`` makes the class the file records. Made by hand, the
+        class is the one named; another experiment's parameters give a
+        warning (the experiments differ only in their parameters, so it would
+        be that experiment, recorded under the wrong class).
+        """
+        return spec.parameters(
+            cls._recorded(source), "experiment_params", cls, Experiment, allow
+        )</div>
+
+
+    @staticmethod
+    def _recorded(source) -&gt; dict:
+        """The experiment's spec in ``source`` (see ``instantiate``)."""
+        saved = spec.read(source)
+        if spec.TARGET in saved:
+            return saved
+        record = read_record(saved)
+        if not hasattr(record, "experiment"):
+            raise ValueError(
+                "these data were not made by an Experiment: make the dataset with "
+                "LIONDataset.instantiate(source) and set its noise from "
+                "record.sinogram_transform"
+            )
+        return recorded_spec(record, "experiment")
+
+    def __str__(self):
+        return f"Experiment parameters: \n {self.param} \n Dataset: \n {self.dataset} \n Geometry parameters: \n {self.operator_params}"
+
+<div class="viewcode-block" id="Experiment.get_dataset_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.Experiment.get_dataset_parameters">[docs]</a>
+    @staticmethod
+    def get_dataset_parameters(dataset, operator_params=None):
+        """The default parameters of ``dataset``'s data loader ("LIDC-IDRI",
+        with ``operator_params`` as its geometry, or "2DeteCT")."""
+        if dataset == "LIDC-IDRI":
+            return LIDC_IDRI.default_parameters(operator_params=operator_params)
+        if dataset == "2DeteCT":
+            return deteCT.default_parameters()
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")</div>
+</div>
+
+
+
+def _warn_if_anothers(cls, parameters, dataset):
+    """Warn if ``parameters`` are another experiment class's (their name is
+    that class's default name): the experiments differ only in their
+    parameters, so this is that experiment, recorded under the wrong class."""
+    owner = _default_names(dataset).get(getattr(parameters, "name", None))
+    if owner is not None and owner is not cls:
+        warnings.warn(
+            f"these parameters are {owner.__name__}'s ({parameters.name!r}): "
+            f"made as {cls.__name__}, it is that experiment recorded as "
+            f"{cls.__name__}. Make it with {owner.__name__} (or "
+            "Experiment.instantiate(file, experiment_params=...)), or rename "
+            "the parameters if they are another experiment",
+            stacklevel=3,
+        )
+
+
+def _default_names(dataset) -&gt; dict:
+    """``{default name: experiment class}`` of LION's experiments."""
+    names = {}
+    for cls in _subclasses(Experiment):
+        try:
+            name = cls.default_parameters(dataset=dataset).name
+        except Exception:  # e.g. not possible with this dataset
+            continue
+        names.setdefault(name, cls)
+    return names
+
+
+def _subclasses(cls):
+    for sub in cls.__subclasses__():
+        yield sub
+        yield from _subclasses(sub)
+
+
+<div class="viewcode-block" id="ExtremeLowDoseCTRecon">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.ExtremeLowDoseCTRecon">[docs]</a>
+class ExtremeLowDoseCTRecon(Experiment):
+    """Extremely low dose, full angular sampling. LIDC-IDRI: simulated
+    sinograms with extremely low dose noise (I0 = ``EXTREMELY_LOW_DOSE_I0``,
+    ``Experiment.noise_parameters``), 360 angles over 360 degrees. 2DeteCT: the
+    measured mode 1 sinograms (3 W instead of 90 W tube power), all 3600
+    angles; mode 2 reconstructions as targets."""
+
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+<div class="viewcode-block" id="ExtremeLowDoseCTRecon.default_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.ExtremeLowDoseCTRecon.default_parameters">[docs]</a>
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
+        if dataset == "2DeteCT":
+            return Experiment.measured_2detect_parameters(
+                "Extremely low dose full angular sampling experiment",
+                angles=slice(None),
+                dose="extremely_low",
+            )
+        param = LIONParameter()
+        param.name = "Extremely low dose full angular sampling experiment"
+        # Parameters for the geometry
+        param.operator_params = LIDC_IDRI.default_geometry()
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
+        param.data_loader_params = Experiment.get_dataset_parameters(
+            dataset, operator_params=param.operator_params
+        )
+        return param</div>
+</div>
+
+
+
+<div class="viewcode-block" id="LowDoseCTRecon">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.LowDoseCTRecon">[docs]</a>
+class LowDoseCTRecon(Experiment):
+    """Low dose, full angular sampling. LIDC-IDRI: simulated sinograms with low
+    dose noise (I0 = ``LOW_DOSE_I0``, ``Experiment.noise_parameters``), 360
+    angles over 360 degrees. Not possible with 2DeteCT (its measured low dose,
+    mode 1, is the extremely low dose experiments')."""
+
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+
+        super().__init__(experiment_params, dataset, datafolder)
+
+<div class="viewcode-block" id="LowDoseCTRecon.default_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.LowDoseCTRecon.default_parameters">[docs]</a>
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI"; see the
+        class): its name, geometry (``operator_params``), noise
+        (``noise_params``) and data loader's parameters. A ValueError for
+        "2DeteCT": its measured low dose is the extremely low dose
+        experiments'."""
+        if dataset == "2DeteCT":
+            Experiment.not_possible_with_2detect(
+                "Low dose full angular sampling experiment",
+                "its measured low-dose mode (mode1, ~30x less tube power) is used "
+                "for the extremely low dose experiments",
+            )
+        param = LIONParameter()
+        param.name = "Low dose full angular sampling experiment"
+        # Parameters for the geometry
+        param.operator_params = LIDC_IDRI.default_geometry()
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
+        param.data_loader_params = Experiment.get_dataset_parameters(
+            dataset, operator_params=param.operator_params
+        )
+
+        return param</div>
+</div>
+
+
+
+<div class="viewcode-block" id="LimitedAngleCTRecon">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.LimitedAngleCTRecon">[docs]</a>
+class LimitedAngleCTRecon(Experiment):
+    """Clinical dose, limited angle. LIDC-IDRI: simulated sinograms with
+    clinical noise (I0 = ``CLINICAL_I0``, ``Experiment.noise_parameters``), 60
+    angles over 60 degrees (limited angle). 2DeteCT: the measured mode 2
+    sinograms (clinical dose), every 10th of the first 600 angles (60 over 60
+    degrees); mode 2 reconstructions as targets."""
+
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+<div class="viewcode-block" id="LimitedAngleCTRecon.default_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.LimitedAngleCTRecon.default_parameters">[docs]</a>
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
+        if dataset == "2DeteCT":
+            return Experiment.measured_2detect_parameters(
+                "Clinical dose limited angular sampling experiment",
+                angles=slice(0, 600, 10),
+                dose="clinical",
+            )  # 60 views over 60 degrees
+        param = LIONParameter()
+        param.name = "Clinical dose limited angular sampling experiment"
+        # Parameters for the geometry
+        param.operator_params = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
+        param.data_loader_params = Experiment.get_dataset_parameters(
+            dataset, operator_params=param.operator_params
+        )
+
+        return param</div>
+</div>
+
+
+
+<div class="viewcode-block" id="LimitedAngleLowDoseCTRecon">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.LimitedAngleLowDoseCTRecon">[docs]</a>
+class LimitedAngleLowDoseCTRecon(Experiment):
+    """Low dose, limited angle. LIDC-IDRI: simulated sinograms with low dose
+    noise (I0 = ``LOW_DOSE_I0``, ``Experiment.noise_parameters``), 60 angles
+    over 60 degrees (limited angle). Not possible with 2DeteCT (its measured
+    low dose, mode 1, is the extremely low dose experiments')."""
+
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+<div class="viewcode-block" id="LimitedAngleLowDoseCTRecon.default_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.LimitedAngleLowDoseCTRecon.default_parameters">[docs]</a>
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI"; see the
+        class): its name, geometry (``operator_params``), noise
+        (``noise_params``) and data loader's parameters. A ValueError for
+        "2DeteCT": its measured low dose is the extremely low dose
+        experiments'."""
+        if dataset == "2DeteCT":
+            Experiment.not_possible_with_2detect(
+                "Low dose limited angular sampling experiment",
+                "its measured low-dose mode (mode1, ~30x less tube power) is used "
+                "for the extremely low dose experiments",
+            )
+        param = LIONParameter()
+        param.name = "Low dose limited angular sampling experiment"
+        # Parameters for the geometry
+        param.operator_params = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
+
+        if dataset == "LIDC-IDRI":
+            # Parameters for the LIDC-IDRI dataset
+            param.data_loader_params = LIDC_IDRI.default_parameters(
+                operator_params=param.operator_params, task="reconstruction"
+            )
+            param.data_loader_params.max_num_slices_per_patient = 5
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        return param</div>
+</div>
+
+
+
+<div class="viewcode-block" id="LimitedAngleExtremeLowDoseCTRecon">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.LimitedAngleExtremeLowDoseCTRecon">[docs]</a>
+class LimitedAngleExtremeLowDoseCTRecon(Experiment):
+    """Extremely low dose, limited angle. LIDC-IDRI: simulated sinograms with
+    extremely low dose noise (I0 = ``EXTREMELY_LOW_DOSE_I0``,
+    ``Experiment.noise_parameters``), 60 angles over 60 degrees (limited
+    angle). 2DeteCT: the measured mode 1 sinograms (low dose), every 10th of
+    the first 600 angles (60 over 60 degrees); mode 2 reconstructions as
+    targets."""
+
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+<div class="viewcode-block" id="LimitedAngleExtremeLowDoseCTRecon.default_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.LimitedAngleExtremeLowDoseCTRecon.default_parameters">[docs]</a>
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
+        if dataset == "2DeteCT":
+            return Experiment.measured_2detect_parameters(
+                "Extremely low dose limited angular sampling experiment",
+                angles=slice(0, 600, 10),
+                dose="extremely_low",
+            )  # 60 views over 60 degrees
+        param = LIONParameter()
+        param.name = "Extremely low dose limited angular sampling experiment"
+        # Parameters for the geometry
+        param.operator_params = LIDC_IDRI.default_geometry(LIMITED_ANGLES)
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
+
+        if dataset == "LIDC-IDRI":
+            # Parameters for the LIDC-IDRI dataset
+            param.data_loader_params = LIDC_IDRI.default_parameters(
+                operator_params=param.operator_params, task="reconstruction"
+            )
+            param.data_loader_params.max_num_slices_per_patient = 5
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        return param</div>
+</div>
+
+
+
+<div class="viewcode-block" id="SparseAngleCTRecon">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.SparseAngleCTRecon">[docs]</a>
+class SparseAngleCTRecon(Experiment):
+    """Clinical dose, sparse view. LIDC-IDRI: simulated sinograms with clinical
+    noise (I0 = ``CLINICAL_I0``, ``Experiment.noise_parameters``), 50 angles
+    over 360 degrees (sparse view). 2DeteCT: the measured mode 2 sinograms
+    (clinical dose), every 72nd angle (50 over 360 degrees); mode 2
+    reconstructions as targets."""
+
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+<div class="viewcode-block" id="SparseAngleCTRecon.default_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.SparseAngleCTRecon.default_parameters">[docs]</a>
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
+        if dataset == "2DeteCT":
+            return Experiment.measured_2detect_parameters(
+                "Clinical dose sparse angular sampling experiment",
+                angles=slice(None, None, 72),
+                dose="clinical",
+            )  # 50 views, every 7.2 degrees
+        param = LIONParameter()
+        param.name = "Clinical dose sparse angular sampling experiment"
+        # Parameters for the geometry
+        param.operator_params = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
+
+        param.data_loader_params = Experiment.get_dataset_parameters(
+            dataset, operator_params=param.operator_params
+        )
+
+        return param</div>
+</div>
+
+
+
+<div class="viewcode-block" id="SparseAngleLowDoseCTRecon">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.SparseAngleLowDoseCTRecon">[docs]</a>
+class SparseAngleLowDoseCTRecon(Experiment):
+    """Low dose, sparse view. LIDC-IDRI: simulated sinograms with low dose
+    noise (I0 = ``LOW_DOSE_I0``, ``Experiment.noise_parameters``), 50 angles
+    over 360 degrees (sparse view). Not possible with 2DeteCT (its measured low
+    dose, mode 1, is the extremely low dose experiments')."""
+
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+<div class="viewcode-block" id="SparseAngleLowDoseCTRecon.default_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.SparseAngleLowDoseCTRecon.default_parameters">[docs]</a>
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI"; see the
+        class): its name, geometry (``operator_params``), noise
+        (``noise_params``) and data loader's parameters. A ValueError for
+        "2DeteCT": its measured low dose is the extremely low dose
+        experiments'."""
+        if dataset == "2DeteCT":
+            Experiment.not_possible_with_2detect(
+                "Low dose sparse angular sampling experiment",
+                "its measured low-dose mode (mode1, ~30x less tube power) is used "
+                "for the extremely low dose experiments",
+            )
+        param = LIONParameter()
+        param.name = "Low dose sparse angular sampling experiment"
+        # Parameters for the geometry
+        param.operator_params = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(LOW_DOSE_I0)
+
+        if dataset == "LIDC-IDRI":
+            # Parameters for the LIDC-IDRI dataset
+            param.data_loader_params = LIDC_IDRI.default_parameters(
+                operator_params=param.operator_params, task="reconstruction"
+            )
+            param.data_loader_params.max_num_slices_per_patient = 5
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        return param</div>
+</div>
+
+
+
+<div class="viewcode-block" id="SparseAngleExtremeLowDoseCTRecon">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.SparseAngleExtremeLowDoseCTRecon">[docs]</a>
+class SparseAngleExtremeLowDoseCTRecon(Experiment):
+    """Extremely low dose, sparse view. LIDC-IDRI: simulated sinograms with
+    extremely low dose noise (I0 = ``EXTREMELY_LOW_DOSE_I0``,
+    ``Experiment.noise_parameters``), 50 angles over 360 degrees (sparse view).
+    2DeteCT: the measured mode 1 sinograms (low dose), every 72nd angle (50
+    over 360 degrees); mode 2 reconstructions as targets."""
+
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+<div class="viewcode-block" id="SparseAngleExtremeLowDoseCTRecon.default_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.SparseAngleExtremeLowDoseCTRecon.default_parameters">[docs]</a>
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
+        if dataset == "2DeteCT":
+            return Experiment.measured_2detect_parameters(
+                "Extremely low dose sparse angular sampling experiment",
+                angles=slice(None, None, 72),
+                dose="extremely_low",
+            )  # 50 views, every 7.2 degrees
+        param = LIONParameter()
+        param.name = "Extremely low dose sparse angular sampling experiment"
+        # Parameters for the geometry
+        param.operator_params = LIDC_IDRI.default_geometry(SPARSE_ANGLES)
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(EXTREMELY_LOW_DOSE_I0)
+
+        if dataset == "LIDC-IDRI":
+            # Parameters for the LIDC-IDRI dataset
+            param.data_loader_params = LIDC_IDRI.default_parameters(
+                operator_params=param.operator_params, task="reconstruction"
+            )
+            param.data_loader_params.max_num_slices_per_patient = 5
+        else:
+            raise NotImplementedError(f"Dataset {dataset} not implemented")
+        return param</div>
+</div>
+
+
+
+<div class="viewcode-block" id="clinicalCTRecon">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.clinicalCTRecon">[docs]</a>
+class clinicalCTRecon(Experiment):
+    """Clinical dose, full angular sampling. LIDC-IDRI: simulated sinograms
+    with clinical noise (I0 = ``CLINICAL_I0``,
+    ``Experiment.noise_parameters``), 360 angles over 360 degrees. 2DeteCT: the
+    measured mode 2 sinograms (clinical dose), all 3600 angles; mode 2
+    reconstructions as targets."""
+
+    def __init__(self, experiment_params=None, dataset="LIDC-IDRI", datafolder=None):
+        super().__init__(experiment_params, dataset, datafolder)
+
+<div class="viewcode-block" id="clinicalCTRecon.default_parameters">
+<a class="viewcode-back" href="../../../generated/LION.experiments.ct_experiments.html#LION.experiments.ct_experiments.clinicalCTRecon.default_parameters">[docs]</a>
+    @staticmethod
+    def default_parameters(dataset="LIDC-IDRI"):
+        """The experiment's parameters for ``dataset`` ("LIDC-IDRI" or
+        "2DeteCT"): its name, geometry (``operator_params``), noise
+        (``noise_params``, simulated data only) and data loader's parameters
+        (see the class)."""
+        if dataset == "2DeteCT":
+            return Experiment.measured_2detect_parameters(
+                "Clinical dose full angular sampling experiment",
+                angles=slice(None),
+                dose="clinical",
+            )
+        param = LIONParameter()
+        param.name = "Clinical dose full angular sampling experiment"
+        # Parameters for the geometry
+        param.operator_params = LIDC_IDRI.default_geometry()
+        # Noise in the sinogram (see Experiment.noise_parameters)
+        param.noise_params = Experiment.noise_parameters(CLINICAL_I0)
+
+        param.data_loader_params = Experiment.get_dataset_parameters(
+            dataset, operator_params=param.operator_params
+        )
+
+        return param</div>
+</div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Cambridge Image Analysis, University of Cambridge
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
+    </body>
+</html>

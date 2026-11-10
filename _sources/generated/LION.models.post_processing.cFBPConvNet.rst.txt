@@ -1,0 +1,70 @@
+LION.models.post\_processing.cFBPConvNet
+========================================
+
+.. automodule:: LION.models.post_processing.cFBPConvNet
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   ConvODEFunc
+   ConvSODEFunc
+   Down
+   InitialVelocity
+   ODEBlock
+   Up
+   cFBPConvNet
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: ConvODEFunc
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ConvSODEFunc
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: Down
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: InitialVelocity
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ODEBlock
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: Up
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: cFBPConvNet
+   :members:
+   :show-inheritance:
+
+
+

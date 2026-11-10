@@ -1,0 +1,63 @@
+LION.models.LIONmodel
+=====================
+
+.. automodule:: LION.models.LIONmodel
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   LIONModelParameter
+   LIONmodel
+   ModelInputType
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   as_model_parameter
+   made_from_random_state
+   noise_level_map
+
+
+
+
+----
+
+
+.. autoclass:: LIONModelParameter
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LIONmodel
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ModelInputType
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: as_model_parameter
+
+
+.. autofunction:: made_from_random_state
+
+
+.. autofunction:: noise_level_map
+
+

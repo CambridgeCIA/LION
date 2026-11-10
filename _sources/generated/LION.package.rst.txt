@@ -1,0 +1,64 @@
+﻿LION.package
+============
+
+.. automodule:: LION.package
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   build
+   citations
+   environment_list
+   file_sha256
+   load
+   load_and_build
+   model_card
+   publish
+   train_again
+
+
+
+
+----
+
+
+
+.. autofunction:: build
+
+
+.. autofunction:: citations
+
+
+.. autofunction:: environment_list
+
+
+.. autofunction:: file_sha256
+
+
+.. autofunction:: load
+
+
+.. autofunction:: load_and_build
+
+
+.. autofunction:: model_card
+
+
+.. autofunction:: publish
+
+
+.. autofunction:: train_again
+
+

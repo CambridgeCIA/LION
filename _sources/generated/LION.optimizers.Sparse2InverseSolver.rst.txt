@@ -1,0 +1,34 @@
+LION.optimizers.Sparse2InverseSolver
+====================================
+
+.. automodule:: LION.optimizers.Sparse2InverseSolver
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   Sparse2InverseSolver
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: Sparse2InverseSolver
+   :members:
+   :show-inheritance:
+
+
+

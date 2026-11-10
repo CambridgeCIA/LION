@@ -1,0 +1,6 @@
+LION.classical\_algorithms.spgl1\_torch
+=======================================
+
+.. currentmodule:: LION.classical_algorithms
+
+.. autofunction:: spgl1_torch

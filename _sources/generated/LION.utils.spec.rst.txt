@@ -1,0 +1,88 @@
+LION.utils.spec
+===============
+
+.. automodule:: LION.utils.spec
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   build
+   build_arguments
+   encode
+   encode_or_name
+   import_path
+   instantiate
+   is_allowed
+   is_unsaved
+   parameters
+   read
+   resolve
+   target_class
+   to_spec
+   unknown_names
+   warn_unknown_names
+
+
+
+
+----
+
+
+
+.. autofunction:: build
+
+
+.. autofunction:: build_arguments
+
+
+.. autofunction:: encode
+
+
+.. autofunction:: encode_or_name
+
+
+.. autofunction:: import_path
+
+
+.. autofunction:: instantiate
+
+
+.. autofunction:: is_allowed
+
+
+.. autofunction:: is_unsaved
+
+
+.. autofunction:: parameters
+
+
+.. autofunction:: read
+
+
+.. autofunction:: resolve
+
+
+.. autofunction:: target_class
+
+
+.. autofunction:: to_spec
+
+
+.. autofunction:: unknown_names
+
+
+.. autofunction:: warn_unknown_names
+
+

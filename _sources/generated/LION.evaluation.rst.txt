@@ -1,0 +1,29 @@
+﻿LION.evaluation
+===============
+
+.. automodule:: LION.evaluation
+   :no-members:
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   comparison
+   evaluation
+   figures
+   methods
+
+
+
+
+
+
+
+
+
+
+

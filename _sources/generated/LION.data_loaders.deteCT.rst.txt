@@ -1,0 +1,34 @@
+LION.data\_loaders.deteCT
+=========================
+
+.. automodule:: LION.data_loaders.deteCT
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   deteCT
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: deteCT
+   :members:
+   :show-inheritance:
+
+
+

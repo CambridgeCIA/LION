@@ -1,0 +1,40 @@
+LION.models.CNNs.MSDNet
+=======================
+
+.. automodule:: LION.models.CNNs.MSDNet
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   MSDNet
+   MSD_Layer
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: MSDNet
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: MSD_Layer
+   :members:
+   :show-inheritance:
+
+
+

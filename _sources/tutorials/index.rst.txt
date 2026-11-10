@@ -1,0 +1,40 @@
+:orphan:
+
+Tutorials
+=========
+
+The demos of LION, as tutorials: each builds on the last, from the CT
+operator to publishing a trained model, and together they cover most of
+LION's API. Each is a Python file with ``# %%`` cells, to run whole, a cell at
+a time in an editor that knows cells (VS Code, Spyder), or as a notebook
+(download it below each page).
+
+They need a GPU (LION's CT operators use tomosipo and ASTRA) and, from the
+data tutorial on, the processed LIDC-IDRI data in ``LION_DATA_PATH``.
+
+
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+.. thumbnail-parent-div-open
+
+.. thumbnail-parent-div-close
+
+.. raw:: html
+
+    </div>
+
+
+.. only:: html
+
+  .. container:: sphx-glr-footer sphx-glr-footer-gallery
+
+    .. container:: sphx-glr-download sphx-glr-download-python
+
+      :download:`Download all examples in Python source code: tutorials_python.zip </tutorials/tutorials_python.zip>`

@@ -1,0 +1,818 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="LION.data_loaders.LIONDataset" href="LION.data_loaders.LIONDataset.html"><link rel="prev" title="LION.data_loaders" href="LION.data_loaders.html">
+        <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
+        <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+        <title>LION.data_loaders.LIDC_IDRI - LION 0.2.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">LION 0.2.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/lion-logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/lion-logo-dark.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">LION 0.2.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Example scripts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../api.html">API reference</a><input aria-label="Toggle navigation of API reference" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.DebiasOp.html">LION.operators.DebiasOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.Operator.html">LION.operators.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.Wavelet2D.html">LION.operators.Wavelet2D</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.operators.ct.html">LION.operators.ct</a><input aria-label="Toggle navigation of LION.operators.ct" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.CTProjectionOp.html">LION.operators.ct.CTProjectionOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.ct_geometry.html">LION.operators.ct.ct_geometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.ct_utils.html">LION.operators.ct.ct_utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.fdk.html">LION.operators.ct.fdk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.sirt.html">LION.operators.ct.sirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.tv_min.html">LION.operators.ct.tv_min</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.operators.pcm.html">LION.operators.pcm</a><input aria-label="Toggle navigation of LION.operators.pcm" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.pcm.PhotocurrentMapOp.html">LION.operators.pcm.PhotocurrentMapOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.pcm.WalshHadamard2D.html">LION.operators.pcm.WalshHadamard2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="LION.data_loaders.html">LION.data_loaders</a><input aria-label="Toggle navigation of LION.data_loaders" checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">LION.data_loaders.LIDC_IDRI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.LIONDataset.html">LION.data_loaders.LIONDataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.data_record.html">LION.data_loaders.data_record</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.deteCT.html">LION.data_loaders.deteCT</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.experiments.html">LION.experiments</a><input aria-label="Toggle navigation of LION.experiments" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.experiments.ct_experiments.html">LION.experiments.ct_experiments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.experiments.deteCT_benchmark.html">LION.experiments.deteCT_benchmark</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.models.html">LION.models</a><input aria-label="Toggle navigation of LION.models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.CNNs.html">LION.models.CNNs</a><input aria-label="Toggle navigation of LION.models.CNNs" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.MSDNet.html">LION.models.CNNs.MSDNet</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="LION.models.CNNs.UNets.html">LION.models.CNNs.UNets</a><input aria-label="Toggle navigation of LION.models.CNNs.UNets" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="LION.models.CNNs.UNets.ResUNet3D.html">LION.models.CNNs.UNets.ResUNet3D</a></li>
+<li class="toctree-l5"><a class="reference internal" href="LION.models.CNNs.UNets.Unet.html">LION.models.CNNs.UNets.Unet</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.dncnn.html">LION.models.CNNs.dncnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.drunet.html">LION.models.CNNs.drunet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.LIONmodel.html">LION.models.LIONmodel</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.PnP.html">LION.models.PnP</a><input aria-label="Toggle navigation of LION.models.PnP" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.fully_learned.html">LION.models.fully_learned</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.LPD.html">LION.models.iterative_unrolled.LPD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.cLPD.html">LION.models.iterative_unrolled.cLPD</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.learned_fbp.html">LION.models.learned_fbp</a><input aria-label="Toggle navigation of LION.models.learned_fbp" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.DeepFBP.html">LION.models.learned_fbp.DeepFBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.DeepFusionBP.html">LION.models.learned_fbp.DeepFusionBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.FusionFBP.html">LION.models.learned_fbp.FusionFBP</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.FBPConvNet.html">LION.models.post_processing.FBPConvNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.FBPConvNetImage.html">LION.models.post_processing.FBPConvNetImage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.cFBPConvNet.html">LION.models.post_processing.cFBPConvNet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.torch_model.html">LION.models.torch_model</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.optimizers.html">LION.optimizers</a><input aria-label="Toggle navigation of LION.optimizers" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.AdversarialRegularizerSolver.html">LION.optimizers.AdversarialRegularizerSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Equivariance2InverseSolver.html">LION.optimizers.Equivariance2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.EquivariantSolver.html">LION.optimizers.EquivariantSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.GaussianDenoiserSolver.html">LION.optimizers.GaussianDenoiserSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.LIONsolver.html">LION.optimizers.LIONsolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Noise2InverseSolver.html">LION.optimizers.Noise2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Noisier2InverseSolver.html">LION.optimizers.Noisier2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Proj2ProjSolver.html">LION.optimizers.Proj2ProjSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.SelfSupervisedSolver.html">LION.optimizers.SelfSupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Sparse2InverseSolver.html">LION.optimizers.Sparse2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.SupervisedSolver.html">LION.optimizers.SupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.training_record.html">LION.optimizers.training_record</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.losses.html">LION.losses</a><input aria-label="Toggle navigation of LION.losses" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.SURE.html">LION.losses.SURE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.SUREpgImage.html">LION.losses.SUREpgImage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.jacobian_penalty.html">LION.losses.jacobian_penalty</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.reconstructors.html">LION.reconstructors</a><input aria-label="Toggle navigation of LION.reconstructors" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.ForwardReconstructor.html">LION.reconstructors.ForwardReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.LIONreconstructor.html">LION.reconstructors.LIONreconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.LearnedRegularizerReconstructor.html">LION.reconstructors.LearnedRegularizerReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.PnP.html">LION.reconstructors.PnP</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.classical_algorithms.html">LION.classical_algorithms</a><input aria-label="Toggle navigation of LION.classical_algorithms" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.conjugate_gradient.html">LION.classical_algorithms.conjugate_gradient</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.fista.html">LION.classical_algorithms.fista</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.spgl1_torch.html">LION.classical_algorithms.spgl1_torch</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.evaluation.html">LION.evaluation</a><input aria-label="Toggle navigation of LION.evaluation" class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.comparison.html">LION.evaluation.comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.evaluation.html">LION.evaluation.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.figures.html">LION.evaluation.figures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.methods.html">LION.evaluation.methods</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.metrics.html">LION.metrics</a><input aria-label="Toggle navigation of LION.metrics" class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.haarpsi.html">LION.metrics.haarpsi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.metrics.html">LION.metrics.metrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.psnr.html">LION.metrics.psnr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.ssim.html">LION.metrics.ssim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="LION.package.html">LION.package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.utils.html">LION.utils</a><input aria-label="Toggle navigation of LION.utils" class="toctree-checkbox" id="toctree-checkbox-21" name="toctree-checkbox-21" role="switch" type="checkbox"/><label for="toctree-checkbox-21"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.citation.html">LION.utils.citation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.common_primitives.html">LION.utils.common_primitives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.device.html">LION.utils.device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.environment.html">LION.utils.environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.image_transforms.html">LION.utils.image_transforms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.math.html">LION.utils.math</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.mrpro_import.html">LION.utils.mrpro_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.normaliser.html">LION.utils.normaliser</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.parameter.html">LION.utils.parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.paths.html">LION.utils.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.rng.html">LION.utils.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.spec.html">LION.utils.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.spyrit_import.html">LION.utils.spyrit_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.tomosipo_import.html">LION.utils.tomosipo_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.utils.html">LION.utils.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../citing.html">Citing LION</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/generated/LION.data_loaders.LIDC_IDRI.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/generated/LION.data_loaders.LIDC_IDRI.rst" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="module-LION.data_loaders.LIDC_IDRI">
+<span id="lion-data-loaders-lidc-idri"></span><h1>LION.data_loaders.LIDC_IDRI<a class="headerlink" href="#module-LION.data_loaders.LIDC_IDRI" title="Link to this heading">¶</a></h1>
+<p class="rubric">Classes</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI" title="LION.data_loaders.LIDC_IDRI.LIDC_IDRI"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LIDC_IDRI</span></code></a>(mode[, operator_params, parameters])</p></td>
+<td><p>The LIDC-IDRI dataset: lung CT scans of 1010 patients with nodules annotated by up to four radiologists, pre-processed into 512x512 slices (<code class="docutils literal notranslate"><span class="pre">LIDC_IDRI/pre_process_lidc_idri.py</span></code>).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Functions</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.choose_random_annotation" title="LION.data_loaders.LIDC_IDRI.choose_random_annotation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">choose_random_annotation</span></code></a>(nodule_annotations_list)</p></td>
+<td><p>One of the annotations, drawn with torch's random numbers (so <code class="docutils literal notranslate"><span class="pre">rng.seeded</span></code> makes the choice reproducible).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.create_consensus_annotation" title="LION.data_loaders.LIDC_IDRI.create_consensus_annotation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_consensus_annotation</span></code></a>(...)</p></td>
+<td><p>The consensus mask of one nodule on one slice: the pixels that at least a fraction <code class="docutils literal notranslate"><span class="pre">clevel</span></code> of its annotations (<code class="docutils literal notranslate"><span class="pre">nodule_annotations_list</span></code>) mark.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.format_index" title="LION.data_loaders.LIDC_IDRI.format_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">format_index</span></code></a>(index)</p></td>
+<td><p>A patient number as LIDC-IDRI writes it, 4 digits: 7 -&gt; &quot;0007&quot;.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.load_json" title="LION.data_loaders.LIDC_IDRI.load_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_json</span></code></a>(file_path)</p></td>
+<td><p>The contents of the JSON file <code class="docutils literal notranslate"><span class="pre">file_path</span></code> (FileNotFoundError if there is none).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.npy_problem" title="LION.data_loaders.LIDC_IDRI.npy_problem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">npy_problem</span></code></a>(path)</p></td>
+<td><p>None if the .npy file exists and holds all the data its header says, else what is wrong.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.select_slices" title="LION.data_loaders.LIDC_IDRI.select_slices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">select_slices</span></code></a>(non_nodule_slices, ...[, legacy])</p></td>
+<td><p>Slices to load for one patient, sorted.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.data_loaders.LIDC_IDRI.</span></span><span class="sig-name descname"><span class="pre">LIDC_IDRI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="LION.data_loaders.LIONDataset.html#LION.data_loaders.LIONDataset.LIONDataset" title="LION.data_loaders.LIONDataset.LIONDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">LIONDataset</span></code></a></p>
+<p>The LIDC-IDRI dataset: lung CT scans of 1010 patients with nodules
+annotated by up to four radiologists, pre-processed into 512x512 slices
+(<code class="docutils literal notranslate"><span class="pre">LIDC_IDRI/pre_process_lidc_idri.py</span></code>). Patients are split into training,
+validation and test (<code class="docutils literal notranslate"><span class="pre">mode</span></code>); each patient’s slices stay in one split.</p>
+<p>What a sample is depends on <code class="docutils literal notranslate"><span class="pre">parameters.task</span></code>:</p>
+<ul class="simple">
+<li><p>“reconstruction”: (sinogram, image): the image in mass density, and its
+sinogram with the operator of <code class="docutils literal notranslate"><span class="pre">operator_params</span></code> (the geometry), with
+<code class="docutils literal notranslate"><span class="pre">sinogram_transform</span></code> (e.g. an experiment’s noise) applied;</p></li>
+<li><p>“segmentation”, “joint”, “end_to_end”: (image, mask): the mask is
+(background, nodule) channels, from the annotations (<code class="docutils literal notranslate"><span class="pre">annotation</span></code>);</p></li>
+<li><p>“diagnostic”: the patient’s diagnosis.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">parameters</span></code> (<code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code>):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">training_proportion</span></code>, <code class="docutils literal notranslate"><span class="pre">validation_proportion</span></code>: of the patients (0.8,
+0.1; <code class="docutils literal notranslate"><span class="pre">testing_proportion</span></code> is the rest, recorded only);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_num_slices_per_patient</span></code>: slices taken per patient (5; -1: all);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pcg_slices_nodule</span></code>: the fraction of them with a nodule (0.5; more of
+the other kind when a patient has too few);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">legacy_slice_selection</span></code>, <code class="docutils literal notranslate"><span class="pre">legacy_patient_list</span></code>: reproduce the
+selection of LION before October 2026 (False);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">task</span></code>, <code class="docutils literal notranslate"><span class="pre">folder</span></code> (the pre-processed dataset);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operator_params</span></code>: the geometry of the sinograms, for “reconstruction”
+(<code class="docutils literal notranslate"><span class="pre">default_geometry()</span></code>, for which the slices are made);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">annotation</span></code>: “consensus” (the pixels at least <code class="docutils literal notranslate"><span class="pre">clevel</span></code> of the
+annotations mark; 0.5) or “random” (one annotation per nodule, chosen
+with <code class="docutils literal notranslate"><span class="pre">annotation_seed</span></code>; 0).</p></li>
+</ul>
+<p>Samples are on LION’s device (<code class="docutils literal notranslate"><span class="pre">default_device()</span></code>). Cite it with
+<code class="docutils literal notranslate"><span class="pre">cite()</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">mode</span></code> split (“train”, “validation” or “test”) with
+<code class="docutils literal notranslate"><span class="pre">parameters</span></code> (<code class="docutils literal notranslate"><span class="pre">default_parameters(operator_params)</span></code> if None);
+<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>: the CT geometry, replacing
+<code class="docutils literal notranslate"><span class="pre">parameters.operator_params</span></code> if given.</p>
+<p>Pixel spacing: the pre-processing resamples every slice to
+<code class="docutils literal notranslate"><span class="pre">PIXEL_SPACING_MM</span></code> (500 mm over 512x512 pixels, the largest field of
+view in the dataset, so no scan is cropped; smaller ones are surrounded
+by air), so all images have the same physical size.
+<code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.default_geometry()</span></code> is the matching CT geometry. Datasets
+processed before October 2026 have each scan’s own spacing (0.46 to
+0.98 mm) and no <code class="docutils literal notranslate"><span class="pre">pre_processing.json</span></code>: the loader warns, and <code class="docutils literal notranslate"><span class="pre">python</span>
+<span class="pre">LION/data_loaders/LIDC_IDRI/pre_process_lidc_idri.py</span> <span class="pre">--resample-only</span></code>
+resamples them in place (no DICOM files needed).</p>
+<p>Damaged data: the download and pre-processing can leave incomplete
+files. The loader leaves out, with a warning, selected slices whose
+files are incomplete or unreadable, and the patients
+<code class="docutils literal notranslate"><span class="pre">pre_processing.json</span></code> lists as not resampled.</p>
+<p>Images: for reconstruction, the CT images (Hounsfield units) are turned
+into mass density in g/cm^3 (<code class="docutils literal notranslate"><span class="pre">ct_utils.from_HU_to_density</span></code>: air
+0.0012, water 1.0137, 500 HU 1.52). With LION’s geometries in mm, the
+sinograms are density line integrals in g/cm^3 * mm, which is what the
+noise model of <code class="docutils literal notranslate"><span class="pre">ct_utils.sinogram_add_noise</span></code> expects: the experiments
+(<code class="docutils literal notranslate"><span class="pre">ct_experiments</span></code>) add the noise.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.patient_list">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">patient_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_to_processed_dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legacy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.patient_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.patient_list" title="Link to this definition">¶</a></dt>
+<dd><p>The patients of the dataset, in order, and the number the
+train/validation/test proportions are taken of.</p>
+<p>The patients are the folders named LIDC-IDRI-NNNN, so patients without a
+scan (0238 and 0585) or that failed pre-processing are not in the list,
+and other folders (e.g. a leftover <code class="docutils literal notranslate"><span class="pre">LIDC-IDRI-0002.tmp</span></code>) are ignored.</p>
+<p><code class="docutils literal notranslate"><span class="pre">legacy=True</span></code> is LION’s list before October 2026 (parameter files
+without <code class="docutils literal notranslate"><span class="pre">legacy_patient_list</span></code> use it): patients 1 to N, N the number
+of entries named <code class="docutils literal notranslate"><span class="pre">LIDC-IDRI-*</span></code>, with proportions of N + 1. As 0238 and 0585
+have no scan, it leaves out the last two patients (1011 and 1012), and any
+other entry (a missing patient, a leftover folder) moves the splits.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.read_not_resampled">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read_not_resampled</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_to_processed_dataset</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.read_not_resampled"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.read_not_resampled" title="Link to this definition">¶</a></dt>
+<dd><p>Patients the pre-processing could not resample (pre_processing.json).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.drop_damaged_slices">
+<span class="sig-name descname"><span class="pre">drop_damaged_slices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slices_to_load</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.drop_damaged_slices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.drop_damaged_slices" title="Link to this definition">¶</a></dt>
+<dd><p>Leave out, with a warning, the slices that cannot be loaded: those of
+patients the pre-processing could not resample, and incomplete or
+unreadable files (and, for tasks with masks, their mask files).</p>
+<p>A damaged file can come from an interrupted download, pre-processing or
+copy. Only the selected slices are checked (their headers and sizes),
+so this is quick unless every slice is selected.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.read_pixel_spacing">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read_pixel_spacing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_to_processed_dataset</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.read_pixel_spacing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.read_pixel_spacing" title="Link to this definition">¶</a></dt>
+<dd><p>The pixel spacing (mm) of the processed slices, or None for a
+dataset processed before October 2026 (each scan’s own spacing).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.check_geometry">
+<span class="sig-name descname"><span class="pre">check_geometry</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.check_geometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.check_geometry" title="Link to this definition">¶</a></dt>
+<dd><p>Warn if the geometry’s pixel size is not the data’s pixel spacing:
+then sizes, and the physical noise model’s path lengths, are wrong.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.default_geometry">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_geometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.default_geometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.default_geometry" title="Link to this definition">¶</a></dt>
+<dd><p>The fan-beam geometry of the pre-processed slices: 512x512 pixels of
+<code class="docutils literal notranslate"><span class="pre">PIXEL_SPACING_MM</span></code> (500 mm), source to centre 575 mm, source to
+detector 1050 mm, as LION’s default geometry, with a 1024 x 1 mm
+detector: it covers a 504 mm circle, like the ~50 degree fan of a
+clinical scanner. <code class="docutils literal notranslate"><span class="pre">angles</span></code>: in radians (None: 360 over 360 degrees).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.default_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operator_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'reconstruction'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The parameters (see the class), for <code class="docutils literal notranslate"><span class="pre">task</span></code>, with the geometry
+<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>: for “reconstruction”, <code class="docutils literal notranslate"><span class="pre">default_geometry()</span></code> if
+None.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_slices_to_load">
+<span class="sig-name descname"><span class="pre">get_slices_to_load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patient_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">non_nodule_slices_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodule_slices_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_slices_per_patient</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pcg_slices_nodule</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.get_slices_to_load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_slices_to_load" title="Link to this definition">¶</a></dt>
+<dd><p>The slices to load of each patient of <code class="docutils literal notranslate"><span class="pre">patient_list</span></code>: <code class="docutils literal notranslate"><span class="pre">{patient:</span>
+<span class="pre">[slice,</span> <span class="pre">...]}</span></code>, <code class="docutils literal notranslate"><span class="pre">num_slices_per_patient</span></code> of them (-1: all), a
+fraction <code class="docutils literal notranslate"><span class="pre">pcg_slices_nodule</span></code> with a nodule (<code class="docutils literal notranslate"><span class="pre">select_slices</span></code>), from
+each patient’s slices without (<code class="docutils literal notranslate"><span class="pre">non_nodule_slices_dict</span></code>) and with
+(<code class="docutils literal notranslate"><span class="pre">nodule_slices_dict</span></code>) a nodule.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_patient_id_to_first_index_dict">
+<span class="sig-name descname"><span class="pre">get_patient_id_to_first_index_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patient_with_slices_to_load</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.get_patient_id_to_first_index_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_patient_id_to_first_index_dict" title="Link to this definition">¶</a></dt>
+<dd><p>The index of each patient’s first sample: <code class="docutils literal notranslate"><span class="pre">{patient:</span> <span class="pre">index}</span></code>, from
+the slices to load (<code class="docutils literal notranslate"><span class="pre">patient_with_slices_to_load</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_slice_index_to_patient_id_list">
+<span class="sig-name descname"><span class="pre">get_slice_index_to_patient_id_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patient_with_slices_to_load</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.get_slice_index_to_patient_id_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_slice_index_to_patient_id_list" title="Link to this definition">¶</a></dt>
+<dd><p>The patient of each sample, in order: each patient once per slice it
+has to load.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_reconstruction_tensor">
+<span class="sig-name descname"><span class="pre">get_reconstruction_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.get_reconstruction_tensor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_reconstruction_tensor" title="Link to this definition">¶</a></dt>
+<dd><p>The slice saved at <code class="docutils literal notranslate"><span class="pre">file_path</span></code>, (1, 512, 512), on the dataset’s
+device.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.set_sinogram_transform">
+<span class="sig-name descname"><span class="pre">set_sinogram_transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sinogram_transform</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.set_sinogram_transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.set_sinogram_transform" title="Link to this definition">¶</a></dt>
+<dd><p>A function applied to each clean sinogram, e.g. the noise of an
+experiment.</p>
+<p><code class="docutils literal notranslate"><span class="pre">seed</span></code>: an integer makes its random numbers depend only on the seed
+and the slice (patient and slice file): each slice gets the same
+noisy sinogram in every epoch, run, order and DataLoader worker, as a
+scan measures it once. None: fresh random numbers each time.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.set_image_transform">
+<span class="sig-name descname"><span class="pre">set_image_transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_transform</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.set_image_transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.set_image_transform" title="Link to this definition">¶</a></dt>
+<dd><p>A function applied to each image, after loading it.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.compute_clean_sinogram">
+<span class="sig-name descname"><span class="pre">compute_clean_sinogram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.compute_clean_sinogram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.compute_clean_sinogram" title="Link to this definition">¶</a></dt>
+<dd><p>The sinogram of <code class="docutils literal notranslate"><span class="pre">image</span></code> with the dataset’s operator (from
+<code class="docutils literal notranslate"><span class="pre">operator_params</span></code>), without noise.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_mask_tensor">
+<span class="sig-name descname"><span class="pre">get_mask_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patient_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slice_index</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.get_mask_tensor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_mask_tensor" title="Link to this definition">¶</a></dt>
+<dd><p>The nodule mask of one slice (<code class="docutils literal notranslate"><span class="pre">slice_index</span></code> of <code class="docutils literal notranslate"><span class="pre">patient_id</span></code>):
+(2, 512, 512), background and nodule channels, from the annotations as
+<code class="docutils literal notranslate"><span class="pre">annotation</span></code> says; empty if the slice has no nodule.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.sample_ids">
+<span class="sig-name descname"><span class="pre">sample_ids</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.sample_ids"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.sample_ids" title="Link to this definition">¶</a></dt>
+<dd><p>What each sample is, in order: <code class="docutils literal notranslate"><span class="pre">&quot;LIDC-IDRI-NNNN/slice_K&quot;</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.sample_groups">
+<span class="sig-name descname"><span class="pre">sample_groups</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.sample_groups"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.sample_groups" title="Link to this definition">¶</a></dt>
+<dd><p>The group of each sample, in order: its patient. Slices of one
+patient are near-copies, so a patient’s slices are kept in one split,
+and evaluations check that no test patient was trained on.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.sample_files">
+<span class="sig-name descname"><span class="pre">sample_files</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.sample_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.sample_files" title="Link to this definition">¶</a></dt>
+<dd><p>The files the samples are read from, in order: each slice, and for
+tasks with masks the slice’s mask files.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_specific_slice">
+<span class="sig-name descname"><span class="pre">get_specific_slice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patient_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slice_index</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.get_specific_slice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_specific_slice" title="Link to this definition">¶</a></dt>
+<dd><p>The image and mask of one slice (<code class="docutils literal notranslate"><span class="pre">slice_index</span></code> of
+<code class="docutils literal notranslate"><span class="pre">patient_index</span></code>), whether or not it is in the dataset’s selection.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.LIDC_IDRI.cite">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cite</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cite_format</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'bib'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#LIDC_IDRI.cite"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.cite" title="Link to this definition">¶</a></dt>
+<dd><p>The LIDC-IDRI dataset: the paper and the data (TCIA), BibTeX (“bib”) or “MLA”.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.choose_random_annotation">
+<span class="sig-prename descclassname"><span class="pre">LION.data_loaders.LIDC_IDRI.</span></span><span class="sig-name descname"><span class="pre">choose_random_annotation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodule_annotations_list</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#choose_random_annotation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.choose_random_annotation" title="Link to this definition">¶</a></dt>
+<dd><p>One of the annotations, drawn with torch’s random numbers (so
+<code class="docutils literal notranslate"><span class="pre">rng.seeded</span></code> makes the choice reproducible).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.create_consensus_annotation">
+<span class="sig-prename descclassname"><span class="pre">LION.data_loaders.LIDC_IDRI.</span></span><span class="sig-name descname"><span class="pre">create_consensus_annotation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_to_patient_folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slice_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodule_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodule_annotations_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clevel</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#create_consensus_annotation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.create_consensus_annotation" title="Link to this definition">¶</a></dt>
+<dd><p>The consensus mask of one nodule on one slice: the pixels that at least
+a fraction <code class="docutils literal notranslate"><span class="pre">clevel</span></code> of its annotations (<code class="docutils literal notranslate"><span class="pre">nodule_annotations_list</span></code>)
+mark.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.format_index">
+<span class="sig-prename descclassname"><span class="pre">LION.data_loaders.LIDC_IDRI.</span></span><span class="sig-name descname"><span class="pre">format_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#format_index"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.format_index" title="Link to this definition">¶</a></dt>
+<dd><p>A patient number as LIDC-IDRI writes it, 4 digits: 7 -&gt; “0007”.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.load_json">
+<span class="sig-prename descclassname"><span class="pre">LION.data_loaders.LIDC_IDRI.</span></span><span class="sig-name descname"><span class="pre">load_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#load_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.load_json" title="Link to this definition">¶</a></dt>
+<dd><p>The contents of the JSON file <code class="docutils literal notranslate"><span class="pre">file_path</span></code> (FileNotFoundError if there
+is none).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.npy_problem">
+<span class="sig-prename descclassname"><span class="pre">LION.data_loaders.LIDC_IDRI.</span></span><span class="sig-name descname"><span class="pre">npy_problem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#npy_problem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.npy_problem" title="Link to this definition">¶</a></dt>
+<dd><p>None if the .npy file exists and holds all the data its header says,
+else what is wrong. Reads the header only.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.data_loaders.LIDC_IDRI.select_slices">
+<span class="sig-prename descclassname"><span class="pre">LION.data_loaders.LIDC_IDRI.</span></span><span class="sig-name descname"><span class="pre">select_slices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">non_nodule_slices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodule_slices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_slices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pcg_slices_nodule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legacy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/data_loaders/LIDC_IDRI.html#select_slices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.data_loaders.LIDC_IDRI.select_slices" title="Link to this definition">¶</a></dt>
+<dd><p>Slices to load for one patient, sorted.</p>
+<p>Takes up to <code class="docutils literal notranslate"><span class="pre">max_slices</span></code> slices (all of them if -1), a fraction
+<code class="docutils literal notranslate"><span class="pre">pcg_slices_nodule</span></code> of them with a nodule. If the patient has too few
+slices of one kind, more of the other kind are taken; patients without
+nodule slices contribute non-nodule slices.</p>
+<p><code class="docutils literal notranslate"><span class="pre">legacy=True</span></code> reproduces LION before October 2026: at most
+min(max_slices, #non-nodule, #nodule) slices, so patients without nodule
+slices contributed none, and -1 meant at most 1000 of each.</p>
+</dd></dl>
+
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="LION.data_loaders.LIONDataset.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">LION.data_loaders.LIONDataset</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="LION.data_loaders.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">LION.data_loaders</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Cambridge Image Analysis, University of Cambridge
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">LION.data_loaders.LIDC_IDRI</a><ul>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI</span></code></a><ul>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.patient_list"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.patient_list()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.read_not_resampled"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.read_not_resampled()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.drop_damaged_slices"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.drop_damaged_slices()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.read_pixel_spacing"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.read_pixel_spacing()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.check_geometry"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.check_geometry()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.default_geometry"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.default_geometry()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.default_parameters"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.default_parameters()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_slices_to_load"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.get_slices_to_load()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_patient_id_to_first_index_dict"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.get_patient_id_to_first_index_dict()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_slice_index_to_patient_id_list"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.get_slice_index_to_patient_id_list()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_reconstruction_tensor"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.get_reconstruction_tensor()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.set_sinogram_transform"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.set_sinogram_transform()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.set_image_transform"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.set_image_transform()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.compute_clean_sinogram"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.compute_clean_sinogram()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_mask_tensor"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.get_mask_tensor()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.sample_ids"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.sample_ids()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.sample_groups"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.sample_groups()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.sample_files"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.sample_files()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.get_specific_slice"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.get_specific_slice()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.LIDC_IDRI.cite"><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.cite()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.choose_random_annotation"><code class="docutils literal notranslate"><span class="pre">choose_random_annotation()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.create_consensus_annotation"><code class="docutils literal notranslate"><span class="pre">create_consensus_annotation()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.format_index"><code class="docutils literal notranslate"><span class="pre">format_index()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.load_json"><code class="docutils literal notranslate"><span class="pre">load_json()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.npy_problem"><code class="docutils literal notranslate"><span class="pre">npy_problem()</span></code></a></li>
+<li><a class="reference internal" href="#LION.data_loaders.LIDC_IDRI.select_slices"><code class="docutils literal notranslate"><span class="pre">select_slices()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
+    </body>
+</html>

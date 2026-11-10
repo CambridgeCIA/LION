@@ -1,0 +1,6 @@
+LION.operators.ct.sirt
+======================
+
+.. currentmodule:: LION.operators.ct
+
+.. autofunction:: sirt

@@ -1,0 +1,6 @@
+LION.classical\_algorithms.conjugate\_gradient
+==============================================
+
+.. currentmodule:: LION.classical_algorithms
+
+.. autofunction:: conjugate_gradient

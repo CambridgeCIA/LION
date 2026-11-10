@@ -1,0 +1,37 @@
+﻿LION.optimizers
+===============
+
+.. automodule:: LION.optimizers
+   :no-members:
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   AdversarialRegularizerSolver
+   Equivariance2InverseSolver
+   EquivariantSolver
+   GaussianDenoiserSolver
+   LIONsolver
+   Noise2InverseSolver
+   Noisier2InverseSolver
+   Proj2ProjSolver
+   SelfSupervisedSolver
+   Sparse2InverseSolver
+   SupervisedSolver
+   training_record
+
+
+
+
+
+
+
+
+
+
+

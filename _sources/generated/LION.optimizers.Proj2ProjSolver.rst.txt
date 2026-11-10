@@ -1,0 +1,34 @@
+LION.optimizers.Proj2ProjSolver
+===============================
+
+.. automodule:: LION.optimizers.Proj2ProjSolver
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   Proj2ProjSolver
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: Proj2ProjSolver
+   :members:
+   :show-inheritance:
+
+
+

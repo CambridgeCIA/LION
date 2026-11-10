@@ -1,0 +1,88 @@
+LION.experiments.ct\_experiments
+================================
+
+.. automodule:: LION.experiments.ct_experiments
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   Experiment
+   ExtremeLowDoseCTRecon
+   LimitedAngleCTRecon
+   LimitedAngleExtremeLowDoseCTRecon
+   LimitedAngleLowDoseCTRecon
+   LowDoseCTRecon
+   SparseAngleCTRecon
+   SparseAngleExtremeLowDoseCTRecon
+   SparseAngleLowDoseCTRecon
+   clinicalCTRecon
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: Experiment
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ExtremeLowDoseCTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LimitedAngleCTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LimitedAngleExtremeLowDoseCTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LimitedAngleLowDoseCTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LowDoseCTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: SparseAngleCTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: SparseAngleExtremeLowDoseCTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: SparseAngleLowDoseCTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: clinicalCTRecon
+   :members:
+   :show-inheritance:
+
+
+

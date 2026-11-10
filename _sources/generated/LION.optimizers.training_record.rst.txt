@@ -1,0 +1,48 @@
+LION.optimizers.training\_record
+================================
+
+.. automodule:: LION.optimizers.training_record
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   history
+   is_training_record
+   loader_settings
+   read_training_record
+   weights_sha256
+
+
+
+
+----
+
+
+
+.. autofunction:: history
+
+
+.. autofunction:: is_training_record
+
+
+.. autofunction:: loader_settings
+
+
+.. autofunction:: read_training_record
+
+
+.. autofunction:: weights_sha256
+
+

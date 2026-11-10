@@ -1,0 +1,32 @@
+LION.utils.citation
+===================
+
+.. automodule:: LION.utils.citation
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   citation
+
+
+
+
+----
+
+
+
+.. autofunction:: citation
+
+

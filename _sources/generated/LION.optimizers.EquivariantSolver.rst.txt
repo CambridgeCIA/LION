@@ -1,0 +1,40 @@
+LION.optimizers.EquivariantSolver
+=================================
+
+.. automodule:: LION.optimizers.EquivariantSolver
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   EquivariantSolver
+   RotationGroup
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: EquivariantSolver
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: RotationGroup
+   :members:
+   :show-inheritance:
+
+
+

@@ -1,0 +1,40 @@
+LION.models.iterative\_unrolled.LG
+==================================
+
+.. automodule:: LION.models.iterative_unrolled.LG
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   LG
+   LGblock
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: LG
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LGblock
+   :members:
+   :show-inheritance:
+
+
+

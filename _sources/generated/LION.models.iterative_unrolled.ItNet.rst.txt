@@ -1,0 +1,34 @@
+LION.models.iterative\_unrolled.ItNet
+=====================================
+
+.. automodule:: LION.models.iterative_unrolled.ItNet
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   ItNet
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: ItNet
+   :members:
+   :show-inheritance:
+
+
+

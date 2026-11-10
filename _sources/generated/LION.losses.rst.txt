@@ -1,0 +1,28 @@
+﻿LION.losses
+===========
+
+.. automodule:: LION.losses
+   :no-members:
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   SURE
+   SUREpgImage
+   jacobian_penalty
+
+
+
+
+
+
+
+
+
+
+

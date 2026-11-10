@@ -1,0 +1,34 @@
+LION.models.learned\_regularizer.AR
+===================================
+
+.. automodule:: LION.models.learned_regularizer.AR
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   AR
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: AR
+   :members:
+   :show-inheritance:
+
+
+

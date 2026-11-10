@@ -1,0 +1,71 @@
+LION.evaluation.evaluation
+==========================
+
+.. automodule:: LION.evaluation.evaluation
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   Evaluation
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   default_metrics
+   is_test_record
+   read_test_record
+   sample_ids
+   scores
+   summary
+   summary_of
+   table
+
+
+
+
+----
+
+
+.. autoclass:: Evaluation
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: default_metrics
+
+
+.. autofunction:: is_test_record
+
+
+.. autofunction:: read_test_record
+
+
+.. autofunction:: sample_ids
+
+
+.. autofunction:: scores
+
+
+.. autofunction:: summary
+
+
+.. autofunction:: summary_of
+
+
+.. autofunction:: table
+
+

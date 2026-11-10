@@ -1,0 +1,48 @@
+LION.operators.ct.ct\_utils
+===========================
+
+.. automodule:: LION.operators.ct.ct_utils
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   from_HU_to_density
+   from_HU_to_material_id
+   from_HU_to_mu
+   from_HU_to_normal
+   sinogram_add_noise
+
+
+
+
+----
+
+
+
+.. autofunction:: from_HU_to_density
+
+
+.. autofunction:: from_HU_to_material_id
+
+
+.. autofunction:: from_HU_to_mu
+
+
+.. autofunction:: from_HU_to_normal
+
+
+.. autofunction:: sinogram_add_noise
+
+

@@ -1,0 +1,35 @@
+LION.reconstructors.LearnedRegularizerReconstructor
+===================================================
+
+.. currentmodule:: LION.reconstructors
+
+.. autoclass:: LearnedRegularizerReconstructor
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LearnedRegularizerReconstructor.__init__
+      ~LearnedRegularizerReconstructor.cite
+      ~LearnedRegularizerReconstructor.default_parameters
+      ~LearnedRegularizerReconstructor.energy
+      ~LearnedRegularizerReconstructor.gradient
+      ~LearnedRegularizerReconstructor.initial_guess
+      ~LearnedRegularizerReconstructor.instantiate
+      ~LearnedRegularizerReconstructor.load
+      ~LearnedRegularizerReconstructor.parameters_from_file
+      ~LearnedRegularizerReconstructor.reconstruct
+      ~LearnedRegularizerReconstructor.reconstruct_sample
+      ~LearnedRegularizerReconstructor.regularizer_value
+      ~LearnedRegularizerReconstructor.save
+      ~LearnedRegularizerReconstructor.spec_kwargs
+   
+   
+
+   
+   
+   

@@ -1,0 +1,91 @@
+LION.operators.pcm.PhotocurrentMapOp
+====================================
+
+.. currentmodule:: LION.operators.pcm
+
+.. autoclass:: PhotocurrentMapOp
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~PhotocurrentMapOp.__init__
+      ~PhotocurrentMapOp.add_module
+      ~PhotocurrentMapOp.adjoint
+      ~PhotocurrentMapOp.apply
+      ~PhotocurrentMapOp.autograd
+      ~PhotocurrentMapOp.bfloat16
+      ~PhotocurrentMapOp.buffers
+      ~PhotocurrentMapOp.children
+      ~PhotocurrentMapOp.compile
+      ~PhotocurrentMapOp.cpu
+      ~PhotocurrentMapOp.cuda
+      ~PhotocurrentMapOp.default_reconstruction
+      ~PhotocurrentMapOp.default_reconstruction_fn
+      ~PhotocurrentMapOp.double
+      ~PhotocurrentMapOp.eval
+      ~PhotocurrentMapOp.extra_repr
+      ~PhotocurrentMapOp.float
+      ~PhotocurrentMapOp.forward
+      ~PhotocurrentMapOp.get_buffer
+      ~PhotocurrentMapOp.get_extra_state
+      ~PhotocurrentMapOp.get_parameter
+      ~PhotocurrentMapOp.get_submodule
+      ~PhotocurrentMapOp.gram
+      ~PhotocurrentMapOp.half
+      ~PhotocurrentMapOp.inverse
+      ~PhotocurrentMapOp.ipu
+      ~PhotocurrentMapOp.load_state_dict
+      ~PhotocurrentMapOp.modules
+      ~PhotocurrentMapOp.mtia
+      ~PhotocurrentMapOp.named_buffers
+      ~PhotocurrentMapOp.named_children
+      ~PhotocurrentMapOp.named_modules
+      ~PhotocurrentMapOp.named_parameters
+      ~PhotocurrentMapOp.parameters
+      ~PhotocurrentMapOp.pseudo_inv
+      ~PhotocurrentMapOp.register_backward_hook
+      ~PhotocurrentMapOp.register_buffer
+      ~PhotocurrentMapOp.register_forward_hook
+      ~PhotocurrentMapOp.register_forward_pre_hook
+      ~PhotocurrentMapOp.register_full_backward_hook
+      ~PhotocurrentMapOp.register_full_backward_pre_hook
+      ~PhotocurrentMapOp.register_load_state_dict_post_hook
+      ~PhotocurrentMapOp.register_load_state_dict_pre_hook
+      ~PhotocurrentMapOp.register_module
+      ~PhotocurrentMapOp.register_parameter
+      ~PhotocurrentMapOp.register_state_dict_post_hook
+      ~PhotocurrentMapOp.register_state_dict_pre_hook
+      ~PhotocurrentMapOp.requires_grad_
+      ~PhotocurrentMapOp.set_extra_state
+      ~PhotocurrentMapOp.set_submodule
+      ~PhotocurrentMapOp.share_memory
+      ~PhotocurrentMapOp.state_dict
+      ~PhotocurrentMapOp.to
+      ~PhotocurrentMapOp.to_device
+      ~PhotocurrentMapOp.to_empty
+      ~PhotocurrentMapOp.train
+      ~PhotocurrentMapOp.type
+      ~PhotocurrentMapOp.xpu
+      ~PhotocurrentMapOp.zero_grad
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PhotocurrentMapOp.T_destination
+      ~PhotocurrentMapOp.call_super_init
+      ~PhotocurrentMapOp.domain_shape
+      ~PhotocurrentMapOp.dump_patches
+      ~PhotocurrentMapOp.range_shape
+      ~PhotocurrentMapOp.training
+   
+   

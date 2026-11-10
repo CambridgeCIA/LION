@@ -1,0 +1,34 @@
+LION.metrics.haarpsi
+====================
+
+.. automodule:: LION.metrics.haarpsi
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   HAARPsi
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: HAARPsi
+   :members:
+   :show-inheritance:
+
+
+

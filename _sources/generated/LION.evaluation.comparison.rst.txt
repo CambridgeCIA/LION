@@ -1,0 +1,47 @@
+LION.evaluation.comparison
+==========================
+
+.. automodule:: LION.evaluation.comparison
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   Comparison
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   problem_differences
+   shared_samples
+
+
+
+
+----
+
+
+.. autoclass:: Comparison
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: problem_differences
+
+
+.. autofunction:: shared_samples
+
+

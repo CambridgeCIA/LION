@@ -1,0 +1,1322 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+        <link rel="prefetch" href="../../../_static/lion-logo.svg" as="image">
+        <link rel="prefetch" href="../../../_static/lion-logo-dark.svg" as="image">
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+        <title>LION.models.LIONmodel - LION 0.2.0</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">LION 0.2.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../../../_static/lion-logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../../../_static/lion-logo-dark.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">LION 0.2.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Example scripts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.DebiasOp.html">LION.operators.DebiasOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.Operator.html">LION.operators.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.operators.Wavelet2D.html">LION.operators.Wavelet2D</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.operators.ct.html">LION.operators.ct</a><input aria-label="Toggle navigation of LION.operators.ct" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.CTProjectionOp.html">LION.operators.ct.CTProjectionOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.ct_geometry.html">LION.operators.ct.ct_geometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.ct_utils.html">LION.operators.ct.ct_utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.fdk.html">LION.operators.ct.fdk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.sirt.html">LION.operators.ct.sirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.ct.tv_min.html">LION.operators.ct.tv_min</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.operators.pcm.html">LION.operators.pcm</a><input aria-label="Toggle navigation of LION.operators.pcm" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.pcm.PhotocurrentMapOp.html">LION.operators.pcm.PhotocurrentMapOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.operators.pcm.WalshHadamard2D.html">LION.operators.pcm.WalshHadamard2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.data_loaders.html">LION.data_loaders</a><input aria-label="Toggle navigation of LION.data_loaders" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.LIDC_IDRI.html">LION.data_loaders.LIDC_IDRI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.LIONDataset.html">LION.data_loaders.LIONDataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.data_record.html">LION.data_loaders.data_record</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.data_loaders.deteCT.html">LION.data_loaders.deteCT</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.experiments.html">LION.experiments</a><input aria-label="Toggle navigation of LION.experiments" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.experiments.ct_experiments.html">LION.experiments.ct_experiments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.experiments.deteCT_benchmark.html">LION.experiments.deteCT_benchmark</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.models.html">LION.models</a><input aria-label="Toggle navigation of LION.models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.CNNs.html">LION.models.CNNs</a><input aria-label="Toggle navigation of LION.models.CNNs" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.CNNs.MSDNet.html">LION.models.CNNs.MSDNet</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../generated/LION.models.CNNs.UNets.html">LION.models.CNNs.UNets</a><input aria-label="Toggle navigation of LION.models.CNNs.UNets" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../generated/LION.models.CNNs.UNets.ResUNet3D.html">LION.models.CNNs.UNets.ResUNet3D</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../generated/LION.models.CNNs.UNets.Unet.html">LION.models.CNNs.UNets.Unet</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.CNNs.dncnn.html">LION.models.CNNs.dncnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.CNNs.drunet.html">LION.models.CNNs.drunet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.models.LIONmodel.html">LION.models.LIONmodel</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.PnP.html">LION.models.PnP</a><input aria-label="Toggle navigation of LION.models.PnP" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.models.fully_learned.html">LION.models.fully_learned</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.LPD.html">LION.models.iterative_unrolled.LPD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.iterative_unrolled.cLPD.html">LION.models.iterative_unrolled.cLPD</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.html">LION.models.learned_fbp</a><input aria-label="Toggle navigation of LION.models.learned_fbp" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.DeepFBP.html">LION.models.learned_fbp.DeepFBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.DeepFusionBP.html">LION.models.learned_fbp.DeepFusionBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_fbp.FusionFBP.html">LION.models.learned_fbp.FusionFBP</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.post_processing.FBPConvNet.html">LION.models.post_processing.FBPConvNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.post_processing.FBPConvNetImage.html">LION.models.post_processing.FBPConvNetImage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../generated/LION.models.post_processing.cFBPConvNet.html">LION.models.post_processing.cFBPConvNet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.models.torch_model.html">LION.models.torch_model</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.optimizers.html">LION.optimizers</a><input aria-label="Toggle navigation of LION.optimizers" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.AdversarialRegularizerSolver.html">LION.optimizers.AdversarialRegularizerSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Equivariance2InverseSolver.html">LION.optimizers.Equivariance2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.EquivariantSolver.html">LION.optimizers.EquivariantSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.GaussianDenoiserSolver.html">LION.optimizers.GaussianDenoiserSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.LIONsolver.html">LION.optimizers.LIONsolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Noise2InverseSolver.html">LION.optimizers.Noise2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Noisier2InverseSolver.html">LION.optimizers.Noisier2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Proj2ProjSolver.html">LION.optimizers.Proj2ProjSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.SelfSupervisedSolver.html">LION.optimizers.SelfSupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.Sparse2InverseSolver.html">LION.optimizers.Sparse2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.SupervisedSolver.html">LION.optimizers.SupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.optimizers.training_record.html">LION.optimizers.training_record</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.losses.html">LION.losses</a><input aria-label="Toggle navigation of LION.losses" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.losses.SURE.html">LION.losses.SURE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.losses.SUREpgImage.html">LION.losses.SUREpgImage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.losses.jacobian_penalty.html">LION.losses.jacobian_penalty</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.reconstructors.html">LION.reconstructors</a><input aria-label="Toggle navigation of LION.reconstructors" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.ForwardReconstructor.html">LION.reconstructors.ForwardReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.LIONreconstructor.html">LION.reconstructors.LIONreconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.LearnedRegularizerReconstructor.html">LION.reconstructors.LearnedRegularizerReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.reconstructors.PnP.html">LION.reconstructors.PnP</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.classical_algorithms.html">LION.classical_algorithms</a><input aria-label="Toggle navigation of LION.classical_algorithms" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.classical_algorithms.conjugate_gradient.html">LION.classical_algorithms.conjugate_gradient</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.classical_algorithms.fista.html">LION.classical_algorithms.fista</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.classical_algorithms.spgl1_torch.html">LION.classical_algorithms.spgl1_torch</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.evaluation.html">LION.evaluation</a><input aria-label="Toggle navigation of LION.evaluation" class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.comparison.html">LION.evaluation.comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.evaluation.html">LION.evaluation.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.figures.html">LION.evaluation.figures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.evaluation.methods.html">LION.evaluation.methods</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.metrics.html">LION.metrics</a><input aria-label="Toggle navigation of LION.metrics" class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.haarpsi.html">LION.metrics.haarpsi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.metrics.html">LION.metrics.metrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.psnr.html">LION.metrics.psnr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.metrics.ssim.html">LION.metrics.ssim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../generated/LION.package.html">LION.package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../generated/LION.utils.html">LION.utils</a><input aria-label="Toggle navigation of LION.utils" class="toctree-checkbox" id="toctree-checkbox-21" name="toctree-checkbox-21" role="switch" type="checkbox"/><label for="toctree-checkbox-21"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.citation.html">LION.utils.citation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.common_primitives.html">LION.utils.common_primitives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.device.html">LION.utils.device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.environment.html">LION.utils.environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.image_transforms.html">LION.utils.image_transforms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.math.html">LION.utils.math</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.mrpro_import.html">LION.utils.mrpro_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.normaliser.html">LION.utils.normaliser</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.parameter.html">LION.utils.parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.paths.html">LION.utils.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.rng.html">LION.utils.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.spec.html">LION.utils.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.spyrit_import.html">LION.utils.spyrit_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.tomosipo_import.html">LION.utils.tomosipo_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../generated/LION.utils.utils.html">LION.utils.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../citing.html">Citing LION</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for LION.models.LIONmodel</h1><div class="highlight"><pre>
+<span></span># This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# Modifications: -
+# =============================================================================
+
+
+# %% This is a base class for LION models.
+#
+# All classes must derive from this one.
+# It definest a bunch of auxiliary functions
+#
+
+# %% Imports
+
+# You will want to import LIONParameter, as all models must save and use Parameters.
+from enum import Enum
+from typing import Optional
+from LION.utils.parameter import (
+    DEFAULT_RECONSTRUCTION,
+    LIONParameter,
+    OperatorParameters,
+    resolve_reconstruction,
+)
+import LION.utils.spec as spec
+from LION.data_loaders.data_record import is_data_record
+from LION.optimizers.training_record import is_training_record, weights_sha256
+from LION.utils import environment, rng
+
+from LION.utils.normaliser import Normalisation
+from LION.utils.device import default_device
+
+# (optional) Given this is a tomography library, it is likely that you will want to load geometries of the tomogprahic problem you are solving, e.g. a ct_geometry
+
+# some numerical standard imports, e.g.
+import numpy as np
+import torch
+import torch.nn as nn
+
+# imports related to class
+from abc import ABC, abstractmethod
+
+# Some other imports
+import json
+import pickle
+import warnings
+from pathlib import Path
+
+
+<div class="viewcode-block" id="ModelInputType">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.ModelInputType">[docs]</a>
+class ModelInputType(int, Enum):
+    """What a model takes as input: the measurements (``SINOGRAM``; e.g.
+    LPD) or an image, a reconstruction of them (``IMAGE``; e.g. FBPConvNet,
+    the denoisers). Its ``model_parameters.model_input_type``."""
+
+    SINOGRAM = 0
+    IMAGE = 1</div>
+
+
+
+<div class="viewcode-block" id="LIONModelParameter">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONModelParameter">[docs]</a>
+class LIONModelParameter(LIONParameter):
+    """A model's parameters (``default_parameters()``), with what every model
+    has: ``model_input_type`` (``ModelInputType``) and
+    ``initial_reconstruction`` ("default", or how the model's initial
+    reconstruction is made; ``set_initial_reconstruction``), plus
+    ``normalisation`` once set (``set_normalisation``)."""
+
+    def __init__(self, **kwargs):
+        # Set defaults before applying kwargs, so values passed in (e.g. when
+        # loading from file) are not overwritten.
+        self.model_input_type = None
+        # How the model's initial reconstruction is made from measurements,
+        # f(y, operator) (set_initial_reconstruction). "default": the
+        # operator's default reconstruction (FDK for CT), replaced by that
+        # function once the model has its operator.
+        self.initial_reconstruction = "default"
+        super().__init__(**kwargs)</div>
+
+
+
+<div class="viewcode-block" id="noise_level_map">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.noise_level_map">[docs]</a>
+def noise_level_map(noise_level, x: torch.Tensor) -&gt; torch.Tensor:
+    """The noise level as one channel the size of the images ``x`` (B, C,
+    ...): (B, 1, ...). ``noise_level``: one number, or one per image (B
+    values), as a model that takes the noise level is given it
+    (``model(x, noise_level=...)``; ``GaussianDenoiserSolver`` gives one per
+    image, a PnP reconstruction one number)."""
+    level = torch.as_tensor(noise_level, dtype=x.dtype, device=x.device)
+    if level.numel() not in (1, x.shape[0]):
+        raise ValueError(
+            f"noise_level must be one number or one per image ({x.shape[0]}), "
+            f"not {tuple(level.shape)}"
+        )
+    if (level &lt; 0).any():
+        raise ValueError("noise_level must be non-negative")
+    shape = (-1,) + (1,) * (x.dim() - 1)
+    return level.reshape(shape).expand(x.shape[0], 1, *x.shape[2:])</div>
+
+
+
+<div class="viewcode-block" id="as_model_parameter">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.as_model_parameter">[docs]</a>
+def as_model_parameter(params: LIONParameter) -&gt; LIONModelParameter:
+    """The LIONModelParameter for ``params``, with ``model_input_type`` as a
+    ModelInputType.
+
+    JSON files have no classes: a saved parameter loads back as a plain
+    LIONParameter, nested ones included (e.g. the backbone parameters of GSD),
+    and ``model_input_type`` as an int. Models call this on their parameters,
+    so they accept them however they were made.
+    """
+    if not isinstance(params, LIONModelParameter):
+        params = LIONModelParameter(**vars(params))
+    if params.model_input_type is not None:
+        params.model_input_type = ModelInputType(params.model_input_type)
+    return params</div>
+
+
+
+def _plain_numbers(value):
+    """A loss or epoch as Python numbers (a float, an int or a list of them),
+    which torch's safe loader reads; other values as they are."""
+    if isinstance(value, torch.Tensor):
+        value = value.detach().cpu().numpy()
+    if isinstance(value, (np.ndarray, np.generic, list, tuple)):
+        try:
+            return np.asarray(value).tolist()
+        except (TypeError, ValueError):
+            return value
+    return value
+
+
+def _safe_globals():
+    """What torch's safe loader may rebuild from a model's ``.pt``, besides
+    tensors and Python values: paths and numpy arrays (e.g. the random state
+    a checkpoint holds). Rebuilding these runs no code from the file.
+    """
+    from numpy import dtypes
+
+    try:
+        from numpy._core import multiarray
+    except ImportError:  # numpy 1
+        from numpy.core import multiarray
+    import pathlib
+
+    allowed = [
+        pathlib.Path,
+        pathlib.PosixPath,
+        pathlib.WindowsPath,
+        pathlib.PurePosixPath,
+        pathlib.PureWindowsPath,
+        np.ndarray,
+        np.dtype,
+        multiarray._reconstruct,
+        multiarray.scalar,
+    ]
+    allowed += [getattr(dtypes, n) for n in dir(dtypes) if n.endswith("DType")]
+    # numpy's functions as files written with numpy 1 name them
+    allowed += [
+        (multiarray._reconstruct, "numpy.core.multiarray._reconstruct"),
+        (multiarray.scalar, "numpy.core.multiarray.scalar"),
+    ]
+    return allowed
+
+
+<div class="viewcode-block" id="LIONmodel">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel">[docs]</a>
+class LIONmodel(nn.Module, ABC):
+    """
+    Base class for all models in the toolbox.
+
+    A model that uses an operator takes ``(operator_params,
+    model_parameters=None)``; one that doesn't takes only
+    ``(model_parameters=None)``.
+
+    ``operator_params``: the parameters of the operator the model uses (an
+    ``OperatorParameters``). **For CT, it's the geometry**: ``LPD(geometry)``.
+    The model makes its operator from them (``self.op``): its domain is the
+    image, its range the measurements (the sinogram, in CT).
+
+    ``model_parameters``: the model's own parameters; None gives
+    ``default_parameters()``.
+    """
+
+    def __init__(
+        self,
+        model_parameters: Optional[LIONModelParameter],  # model parameters
+        # (optional) the parameters of the operator the model uses (an
+        # OperatorParameters, e.g. a CT Geometry), which make it
+        operator_params: Optional[OperatorParameters] = None,
+    ):
+        super().__init__()  # Initialize parent classes.
+        # torch's random state before the model's layers draw their initial
+        # weights: made again from it, the model has the same initial weights
+        # (instantiate(..., initial_weights=True)); saved with the model
+        self.initial_random_state = torch.get_rng_state()
+
+        if operator_params is not None and not isinstance(
+            operator_params, OperatorParameters
+        ):
+            raise TypeError(
+                "Expected operator_params to be operator parameters "
+                f"(OperatorParameters, e.g. a CT Geometry) or None, but got {type(operator_params).__name__}. "
+                "If you passed positional arguments to the model, please verify their order matches the model's __init__ signature."
+            )
+
+        # Operator parameters are LIONParameters too: catch them passed in the
+        # wrong place.
+        if isinstance(model_parameters, OperatorParameters) or not (
+            model_parameters is None or isinstance(model_parameters, LIONParameter)
+        ):
+            raise TypeError(
+                f"Expected model_parameters to be of type LIONModelParameter or None, but got {type(model_parameters).__name__}. "
+                "Ensure you are not accidentally passing operator parameters (e.g. a Geometry) as model_parameters."
+            )
+
+        if model_parameters is None:
+            model_parameters = self.default_parameters()
+        else:
+            # A name the model doesn't know is not used: likely a typo
+            spec.warn_unknown_names(
+                type(self).__name__,
+                model_parameters,
+                self.default_parameters(),
+                # set by set_normalisation(), not a default
+                ignore=("normalisation",),
+            )
+        model_parameters = as_model_parameter(model_parameters)
+        # Pass all relevant parameters to internal storage.
+        self.operator_params = operator_params
+        self.model_parameters = model_parameters
+        # The normalisation the model is trained and used with (a parameter,
+        # written by set_normalisation()); None: inputs are used as they are.
+        recorded = getattr(model_parameters, "normalisation", None)
+        self.normalisator = (
+            None if recorded is None else Normalisation.from_record(recorded)
+        )
+
+    # This should return the parameters from the paper the model is from
+<div class="viewcode-block" id="LIONmodel.default_parameters">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.default_parameters">[docs]</a>
+    @staticmethod
+    @abstractmethod  # crash if not defined in derived class
+    def default_parameters() -&gt; LIONModelParameter:
+        """The model's parameters, each with its default: every parameter
+        the model has, so this is also their list. A model from a paper
+        defaults to the paper's."""</div>
+
+
+    # makes operator and make it pytorch compatible.
+    def _make_operator(self, autograd: bool = False):
+        """Make the model's operator, ``self.op``, from its parameters. With
+        ``autograd=True``, for models whose gradients go through the operator
+        (e.g. LPD), also ``self.A`` and ``self.AT``: the operator and its
+        adjoint as torch autograd functions (``Operator.autograd``). An
+        operator without them can't be used by such a model: it raises here."""
+        if getattr(self, "operator_params", None) is None:
+            raise AttributeError("Can't make operator without operator parameters.")
+        self.op = self.operator_params.make_operator()
+        if autograd:
+            try:
+                self.A, self.AT = self.op.autograd()
+            except NotImplementedError as error:
+                raise NotImplementedError(
+                    f"{type(self).__name__}'s gradients go through its operator: {error}"
+                ) from None
+        self._resolve_initial_reconstruction(self.op)
+
+    # All classes should have this method, just change the amount of Parameters it returns of you have more/less
+<div class="viewcode-block" id="LIONmodel.get_parameters">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.get_parameters">[docs]</a>
+    def get_parameters(self):
+        """``(model_parameters, operator_params)``, or ``model_parameters``
+        for a model without an operator."""
+        if self.operator_params is not None:
+            return self.model_parameters, self.operator_params
+        else:
+            return self.model_parameters</div>
+
+
+<div class="viewcode-block" id="LIONmodel.get_input_type">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.get_input_type">[docs]</a>
+    def get_input_type(self) -&gt; ModelInputType:
+        """What the model takes: measurements or an image
+        (``ModelInputType``)."""
+        return self.model_parameters.model_input_type</div>
+
+
+<div class="viewcode-block" id="LIONmodel.takes_noise_level">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.takes_noise_level">[docs]</a>
+    def takes_noise_level(self) -&gt; bool:
+        """Whether the model is called with the noise level of its input,
+        ``model(x, noise_level=...)``: its parameters' ``use_noise_level``
+        (e.g. DRUNet's). A model that decides otherwise (e.g. GSD, from its
+        denoiser) says so by overriding this."""
+        return bool(getattr(self.model_parameters, "use_noise_level", False))</div>
+
+
+<div class="viewcode-block" id="LIONmodel.set_normalisation">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.set_normalisation">[docs]</a>
+    def set_normalisation(
+        self, normalisation_type="sample", dataset=None, data_range=None
+    ):
+        """Normalise the model's inputs (and map its outputs back), in
+        training and whenever it is used: "sample" (each image's own range),
+        "dataset" (the targets' range over ``dataset``, computed now),
+        "custom" (``data_range``) or "none". It is one of the model's
+        parameters (``model_parameters.normalisation``: its type, and range
+        for "dataset" and "custom"), so it is saved and made again with the
+        model.
+
+        A model that takes measurements (sinograms) gets them mapped as the
+        images are, by linearity (``Normalisation.normalise_measurements``),
+        and its output is mapped back; its operator is unchanged. "sample"
+        isn't defined for such models."""
+        if (
+            self.get_input_type() == ModelInputType.SINOGRAM
+            and normalisation_type == "sample"
+        ):
+            raise ValueError(
+                f"{type(self).__name__} takes measurements: a 'sample' "
+                "normalisation isn't defined for it (an image's range isn't "
+                "known before reconstructing); use 'dataset' or 'custom'"
+            )
+        if normalisation_type == "dataset" and dataset is None:
+            raise ValueError('a dataset is needed for the "dataset" normalisation')
+
+        self.normalisator = Normalisation(normalisation_type, dataset, data_range)
+        self.model_parameters.normalisation = LIONParameter(
+            **self.normalisator.record()
+        )</div>
+
+
+<div class="viewcode-block" id="LIONmodel.set_initial_reconstruction">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.set_initial_reconstruction">[docs]</a>
+    def set_initial_reconstruction(self, reconstruction):
+        """How the model's initial reconstruction is made from the
+        measurements, ``reconstruction(y, operator)``: the input of a
+        model that takes images (``LION.optimizers.LIONsolver.model_forward``),
+        or where a model that takes measurements and starts from a
+        reconstruction (e.g. LPD) starts, in training and whenever it is used.
+        It is one of the model's parameters
+        (``model_parameters.initial_reconstruction``), so it is saved and made
+        again with the model: a LION function or a ``functools.partial`` of
+        one, e.g. ``functools.partial(sirt, num_iterations=50)``.
+        ``"default"`` (or None) is the operator's default reconstruction
+        (``Operator.default_reconstruction_fn``, e.g. ``fdk`` for CT), replaced
+        by that function once the model has its operator, so it is saved as
+        the function that was used."""
+        if reconstruction is None or reconstruction == DEFAULT_RECONSTRUCTION:
+            self.model_parameters.initial_reconstruction = DEFAULT_RECONSTRUCTION
+            if getattr(self, "op", None) is not None:
+                self._resolve_initial_reconstruction(self.op)
+            return
+        spec.encode(reconstruction)  # raises if it can't be saved
+        self.model_parameters.initial_reconstruction = reconstruction</div>
+
+
+    def _resolve_initial_reconstruction(self, op):
+        """Replace a ``"default"`` initial reconstruction by ``op``'s default
+        reconstruction function. An operator without one leaves it "default",
+        until the model is used with one that has one."""
+        value = self.model_parameters.initial_reconstruction
+        if value != DEFAULT_RECONSTRUCTION:
+            return
+        try:
+            value = resolve_reconstruction(value, op, "initial_reconstruction")
+        except NotImplementedError:
+            return
+        self.model_parameters.initial_reconstruction = value
+
+<div class="viewcode-block" id="LIONmodel.initial_reconstruction">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.initial_reconstruction">[docs]</a>
+    def initial_reconstruction(self, y, op):
+        """The model's initial reconstruction of the measurements ``y``
+        (``model_parameters.initial_reconstruction``; "default": ``op``'s
+        default reconstruction, e.g. FDK for CT)."""
+        self._resolve_initial_reconstruction(op)
+        return resolve_reconstruction(
+            self.model_parameters.initial_reconstruction, op, "initial_reconstruction"
+        )(y, op)</div>
+
+
+<div class="viewcode-block" id="LIONmodel.normalise">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.normalise">[docs]</a>
+    def normalise(self, x):
+        """Normalise ``x`` as set by ``set_normalisation()`` (identity if unset)."""
+        if getattr(self, "normalisator", None) is None:
+            return x
+        return self.normalisator.normalise(x)</div>
+
+
+<div class="viewcode-block" id="LIONmodel.unnormalise">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.unnormalise">[docs]</a>
+    def unnormalise(self, x, reference=None):
+        """Undo ``normalise()`` (identity if no normalisation is set).
+        ``reference``: the input that was normalised, whose own range a
+        "sample" normalisation maps back to."""
+        if getattr(self, "normalisator", None) is None:
+            return x
+        return self.normalisator.unnormalise(x, reference)</div>
+
+
+<div class="viewcode-block" id="LIONmodel.cite">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.cite">[docs]</a>
+    @staticmethod
+    def cite(cite_format="bib"):
+        """Where the model comes from: its paper's citation, BibTeX ("bib") or
+        "MLA" (``LION.utils.citation``); None if it has none. Models from a
+        paper define it."""
+        return None</div>
+
+
+    # This shoudl save all relevant information to completely reproduce models
+<div class="viewcode-block" id="LIONmodel.save">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.save">[docs]</a>
+    def save(self, fname, **kwargs):
+        """Saves the model to ``fname`` (``fname.json``, its parameters and
+        records, and ``fname.pt``, its weights), with what ``kwargs`` give:
+
+        - ``dataset``: the record of the data (``LION.data_loaders.data_record``,
+          e.g. ``experiment.data_record("train")``), or a ``LIONParameter``
+          describing it;
+        - ``training``: the record of the training
+          (``LION.optimizers.training_record``, written by the solvers), or a
+          ``LIONParameter`` describing it;
+        - ``operator_params`` (optional): the parameters of the data's
+          operator (e.g. the CT geometry), for a model without them;
+        - ``loss``, ``epoch``, and for resuming ``optimizer``, ``scheduler``
+          (their ``state_dict()``) and ``random_state``: saved in the ``.pt``.
+          Other keywords are a ValueError.
+
+        Solvers save their models this way. To save a model to train it
+        further, with the optimizer's state, use ``save_checkpoint()``."""
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+
+        # Create dict of saved data:
+        ##########################
+        dic = {"model_state_dict": self.state_dict()}
+        if getattr(self, "initial_random_state", None) is not None:
+            dic["initial_random_state"] = self.initial_random_state.cpu()
+
+        # Parse kwargs
+        ################
+        dataset_params = None
+        if "dataset" in kwargs:
+            dataset_params = kwargs.pop("dataset")
+
+        else:
+            warnings.warn(
+                "\nExpected 'dataset' parameter! Only ignore if you really don't have it.\n"
+            )
+        training = None
+        if "training" in kwargs:
+            training = kwargs.pop("training")
+
+        else:
+            warnings.warn(
+                "\nExpected 'training' parameter! Only ignore if there has been no training.\n"
+            )
+
+        # Plain numbers, so the file loads with torch.load(weights_only=True)
+        if "loss" in kwargs:
+            dic["loss"] = _plain_numbers(kwargs.pop("loss"))
+        if "epoch" in kwargs:
+            dic["epoch"] = _plain_numbers(kwargs.pop("epoch"))
+        if "optimizer" in kwargs:
+            dic["optimizer_state_dict"] = kwargs.pop("optimizer")
+        if "random_state" in kwargs:  # LION.utils.rng.random_state(), for resuming
+            dic["random_state"] = kwargs.pop("random_state")
+        if kwargs.get("scheduler") is not None:  # its state_dict(), for resuming
+            dic["scheduler_state_dict"] = kwargs.pop("scheduler")
+        kwargs.pop("scheduler", None)
+
+        # (optional) the operator's parameters of the data, for a model
+        # without them (the data record has them too)
+        given_operator_params = kwargs.pop("operator_params", None)
+
+        if kwargs:  # if not empty yet
+            raise ValueError(
+                "The following parameters are not understood: "
+                + str(list(kwargs.keys()))
+            )
+        # The model's metadata: the spec that builds it again (see
+        # LION.utils.spec), and what is known of its data and training.
+        metadata = {"lion_format": spec.FORMAT_VERSION}
+        metadata["model"] = spec.to_spec(self)
+        # LION's code (version, commit, uncommitted changes), the main
+        # packages and the machine (LION.utils.environment)
+        first = next(self.parameters(), None)
+        metadata["environment"] = environment.environment_record(
+            None if first is None else first.device
+        ).serialize()
+        # Operator parameters given here describe the data (e.g. for a model
+        # without them)
+        if given_operator_params is not None:
+            metadata["operator_params"] = spec.encode(given_operator_params)
+        if is_data_record(dataset_params):
+            # already JSON (LION.data_loaders.data_record), kept as it is
+            metadata["dataset_params"] = spec.read(dataset_params)  # as JSON
+        elif dataset_params is not None:
+            metadata["dataset_params"] = spec.encode(dataset_params)
+        if is_training_record(training):
+            metadata["training"] = spec.read(training)  # as JSON
+        elif training is not None:
+            metadata["training"] = spec.encode(training)
+
+        # Do the save:
+        with open(fname.with_suffix(".json"), "w", encoding="utf-8") as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=4)
+        torch.save(dic, fname.with_suffix(".pt"))</div>
+
+
+    # Mandatory function, saves model for training
+<div class="viewcode-block" id="LIONmodel.save_checkpoint">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.save_checkpoint">[docs]</a>
+    def save_checkpoint(self, fname, epoch, loss, optimizer, training_param, **kwargs):
+        """
+        This is like save, but saves a checkpoint of the model.
+        Its essentailly a wrapper of save() with mandatory values
+        """
+
+        if not isinstance(optimizer, torch.optim.Optimizer):
+            raise TypeError(
+                f"optimizer must be a torch optimizer, not {type(optimizer)}"
+            )
+        self.save(
+            fname,
+            epoch=epoch,
+            loss=loss,
+            optimizer=optimizer.state_dict(),
+            training=training_param,
+            **kwargs,
+        )</div>
+
+
+    @staticmethod
+    def _load_data(fname, *, weights_only=True, supress_warnings=False):
+        """The contents of a model's ``.pt``.
+
+        ``weights_only=True`` (default) reads it with torch's safe loader, which
+        runs no code from the file: tensors, numbers, strings and containers,
+        plus paths and numpy arrays (see
+        ``_safe_globals``). ``weights_only=False`` reads any pickle: only for
+        files you trust.
+        """
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+        # Check compatible suffixes:
+        if fname.with_suffix(".pt").is_file():
+            fname = fname.with_suffix(".pt")
+        elif fname.with_suffix(".pth").is_file():
+            fname = fname.with_suffix(".pth")
+        # Load the actual pythorch saved data
+        if weights_only:
+            try:
+                with torch.serialization.safe_globals(_safe_globals()):
+                    data = torch.load(
+                        fname, map_location=default_device(), weights_only=True
+                    )
+            except pickle.UnpicklingError as error:
+                raise pickle.UnpicklingError(
+                    f"{fname} holds objects LION does not load safely. If you trust "
+                    "the file, load it with weights_only=False (it can run code)."
+                ) from error
+        else:
+            data = torch.load(fname, map_location=default_device(), weights_only=False)
+        if isinstance(data.get("loss"), list):
+            data["loss"] = np.asarray(data["loss"], dtype=float)
+        # A model file also holds its losses; a checkpoint, the optimizer's
+        # state too, which load() leaves out
+        if "optimizer_state_dict" in data and not supress_warnings:
+            warnings.warn(
+                f"{fname} is a checkpoint: only the model is loaded. "
+                "LIONmodel.load_checkpoint() gives the optimizer's state and "
+                "epoch too (a solver resumes from it with train())."
+            )
+        return data
+
+    @classmethod
+    def _read_model_file(cls, fname, allow=()):
+        """The class to build, its keyword arguments and the file's metadata
+        (``options``), from a model's ``.json`` (its path, or the dict read
+        from it, or the model's spec alone).
+
+        The model is built as ``cls``, unless ``cls`` is ``LIONmodel``: then as
+        the class the file names, which must be in a module ``LION.utils.spec``
+        allows (LION's own, or one given in ``allow``).
+        """
+        if isinstance(fname, dict):
+            saved, where = fname, "the metadata given"
+            if spec.TARGET in saved:  # a model's spec alone
+                saved = {"lion_format": spec.FORMAT_VERSION, "model": saved}
+            elif "lion_format" not in saved:
+                raise ValueError(
+                    "metadata without 'lion_format' (an older file): "
+                    "give its file instead"
+                )
+        else:
+            fname = Path(fname)
+            where = fname.with_suffix(".json")
+            saved = spec.read(fname)
+            if "lion_format" not in saved:
+                raise ValueError(
+                    f"{where} has no 'lion_format': it was saved before LION's "
+                    "metadata (specs), which LION doesn't read"
+                )
+        if saved["lion_format"] &gt; spec.FORMAT_VERSION:
+            raise ValueError(
+                f"{where} has metadata format {saved['lion_format']}; "
+                f"this version of LION reads up to {spec.FORMAT_VERSION}. Update LION."
+            )
+
+        path, kwargs = spec.build_arguments(saved["model"], allow)
+        target = spec.target_class(path, cls, LIONmodel, allow)
+
+        options = LIONParameter()
+        options.lion_format = saved["lion_format"]
+        if "commit_hash" in saved:  # files saved before 30 Oct 2026
+            options.commit_hash = saved["commit_hash"]
+        if "environment" in saved:
+            options.environment = LIONParameter(**saved["environment"])
+            difference = environment.code_differences(saved["environment"])
+            if difference is not None:
+                warnings.warn(
+                    f"\n{where} was saved with other LION code: {difference}. "
+                    "Loading may fail, or the model may behave differently.\n"
+                )
+        options.model_name = path.rsplit(".", 1)[-1]
+        options.model_parameters = kwargs.get("model_parameters")
+        if "operator_params" in saved:
+            options.operator_params = spec.build(saved["operator_params"], allow)
+        elif kwargs.get("operator_params") is not None:
+            options.operator_params = kwargs["operator_params"]
+        for key in ("dataset_params", "training"):
+            if is_data_record(saved.get(key)) or is_training_record(saved.get(key)):
+                # a record, whose specs stay dicts: making its components
+                # again (e.g. the dataset, which reads the data) is on request
+                setattr(options, key, LIONParameter(**saved[key]))
+            elif key in saved:
+                setattr(options, key, spec.build(saved[key], allow))
+        return target, kwargs, options
+
+<div class="viewcode-block" id="LIONmodel.instantiate">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.instantiate">[docs]</a>
+    @classmethod
+    def instantiate(cls, source, *, allow=(), initial_weights=False, **arguments):
+        """The model a saved file describes, with its saved parameters and new
+        (untrained) weights. ``load()`` is this plus the saved weights.
+
+        ``source``: a model's file (``"model"``, ``"model.json"`` or
+        ``"model.pt"``: the ``.json`` is read), the dict read from it, or the
+        model's spec. Called on a model class it makes that class; called on
+        ``LIONmodel``, the class the file names (``allow`` as in ``load``).
+
+        ``arguments`` replace recorded ones, e.g. ``model_parameters`` from
+        ``parameters_from_file``, changed, or ``operator_params``.
+
+        ``initial_weights=True`` (``source`` a file a solver saved): the
+        weights its training started from, as its training record says: made
+        again from the random state saved with the model, or read from the
+        initial weights the solver saved; checked against the recorded hash.
+        Not with ``arguments``: a changed model is trained from new weights.
+        """
+        target, kwargs, _ = cls._read_model_file(source, allow)
+        if initial_weights and arguments:
+            raise ValueError(
+                "initial_weights=True makes the recorded model's initial weights: "
+                "a model with other arguments starts from new ones"
+            )
+        kwargs.update(arguments)
+        if not initial_weights:
+            return target(**kwargs)
+        return _with_initial_weights(target, kwargs, source)</div>
+
+
+<div class="viewcode-block" id="LIONmodel.parameters_from_file">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.parameters_from_file">[docs]</a>
+    @classmethod
+    def parameters_from_file(cls, source, *, allow=()):
+        """What ``default_parameters()`` gives, as ``source`` (as in
+        ``instantiate``) recorded it: the model's parameters, to change and
+        make a model with, e.g.
+
+            parameters = LPD.parameters_from_file("model")
+            parameters.n_iters = 5
+            model = LPD.instantiate("model", model_parameters=parameters)
+
+        ``instantiate`` makes the class the file records, with its other
+        arguments (e.g. the operator's parameters); ``LPD(operator_params,
+        parameters)`` works too.
+        Called on a model class, a file of another class gives a warning.
+        """
+        target, kwargs, _ = cls._read_model_file(source, allow)
+        if kwargs.get("model_parameters") is None:
+            return target.default_parameters()
+        return kwargs["model_parameters"]</div>
+
+
+<div class="viewcode-block" id="LIONmodel.load">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.load">[docs]</a>
+    @classmethod
+    def load(cls, fname, *, weights_only=True, supress_warnings=False, allow=()):
+        """
+        Function that loads a model from memory: built from its ``.json``, with
+        the weights of its ``.pt``.
+
+        Called on a model class (``FBPConvNet.load(f)``) it builds that class;
+        called on ``LIONmodel`` (``LIONmodel.load(f)``) it builds the class the
+        file names. ``allow``: module prefixes of your own model classes (see
+        ``LION.utils.spec.build``). ``weights_only=False`` reads a ``.pt``
+        that holds other objects, which can run code: only for files you
+        trust. Returns ``(model, options, data)``; the model keeps its file
+        as ``model.source_file`` (without suffix).
+        """
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+
+        target, kwargs, options = cls._read_model_file(fname, allow)
+
+        # load data
+        data = LIONmodel._load_data(
+            fname, weights_only=weights_only, supress_warnings=supress_warnings
+        )
+        model = target(**kwargs)
+
+        # Load the data into the model we created.
+        model.to(default_device())
+        model.load_state_dict(data.pop("model_state_dict"))
+        model.initial_random_state = _saved_random_state(data)
+        # where it came from, so records of methods using it can name the file
+        model.source_file = fname.with_suffix("")
+        # the loaded weights' hash: training that starts from them records
+        # this file as where they come from (fine-tuning)
+        model.source_weights_sha256 = weights_sha256(model)
+
+        return model, options, data</div>
+
+
+<div class="viewcode-block" id="LIONmodel.load_checkpoint">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.load_checkpoint">[docs]</a>
+    @classmethod
+    def load_checkpoint(cls, fname, *, weights_only=True, allow=()):
+        """Loads a checkpoint file (``LIONsolver.set_checkpointing``) as
+        ``load`` loads a model file. Returns ``(model, options, data)``: the
+        model, made again from the file (``allow``: modules outside LION it
+        may name) with its weights; its options; the file's other contents
+        (the optimizer's state, the epoch, the losses, ...)."""
+        # Make it a Path if needed
+        if isinstance(fname, str):
+            fname = Path(fname)
+
+        target, kwargs, options = cls._read_model_file(fname, allow)
+        # load data
+        data = LIONmodel._load_data(
+            fname, weights_only=weights_only, supress_warnings=True
+        )
+        model = target(**kwargs)
+        # Load the data into the model we created.
+        model.to(default_device())
+        model.load_state_dict(data.pop("model_state_dict"))
+        model.initial_random_state = _saved_random_state(data)
+
+        return model, options.unpack(), data</div>
+
+
+<div class="viewcode-block" id="LIONmodel.load_checkpoint_if_exists">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.load_checkpoint_if_exists">[docs]</a>
+    @classmethod
+    def load_checkpoint_if_exists(
+        cls, fname, model, optimiser, total_loss, verbose=False
+    ):
+        """Load the latest checkpoint matching ``fname`` (a glob pattern) into
+        ``model`` and ``optimiser``, in place.
+
+        The weights are loaded into the *given* model (rather than into a new
+        instance) so that ``optimiser`` keeps optimising the parameters of the
+        model that is returned. Returns ``(model, optimiser, start_epoch,
+        total_loss, data)``, ``data["file"]`` being the checkpoint read; if no checkpoint exists the inputs are returned
+        unchanged with ``start_epoch=0`` and ``data=None``.
+        """
+        if isinstance(fname, str):
+            fname = Path(fname)
+        # glob() already returns paths that include fname.parent
+        checkpoints = sorted(fname.parent.glob(fname.name))
+        if not checkpoints:
+            if verbose &gt;= 2:
+                print(f"No checkpoint matching {fname} yet; starting from epoch 0.")
+            return model, optimiser, 0, total_loss, None
+
+        data = cls._load_data(checkpoints[-1], supress_warnings=True)
+        data["file"] = checkpoints[-1]
+        model.load_state_dict(data.pop("model_state_dict"))
+        optimiser.load_state_dict(data["optimizer_state_dict"])
+        model.train()
+        return model, optimiser, data["epoch"], data["loss"], data</div>
+
+
+    @staticmethod
+    def _read_min_validation(filename):
+        """
+        Given a filename for saved models, reads the validaton loss and returns it.
+        This is useful when both checkpointing and validation are done in the same training, and the training partially stops.
+        One can load the checkpoint, but the minimum validation loss is not saved in the checkpoint, so this function reads it from the filename,
+        which should be the minimum validation model.
+        """
+        if isinstance(filename, str):
+            filename = Path(filename)
+        data = LIONmodel._load_data(filename, supress_warnings=True)
+        loss = data["loss"]
+        if type(loss) is np.ndarray:
+            if len(loss) &gt; 1:
+                warnings.warn(
+                    "More than one loss found in file, which suggests that it was not a minimum validation file. Returning last loss."
+                )
+                loss = loss[-1]
+            else:
+                loss = loss[0]
+        return loss</div>
+
+
+
+<div class="viewcode-block" id="made_from_random_state">
+<a class="viewcode-back" href="../../../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.made_from_random_state">[docs]</a>
+def made_from_random_state(target, kwargs, state):
+    """``target(**kwargs)`` made with torch's random state ``state`` (so with
+    the initial weights a model made from that state had), leaving the
+    program's random numbers as they were."""
+    saved = rng.random_state()
+    try:
+        torch.set_rng_state(state.cpu())
+        return target(**kwargs)
+    finally:
+        rng.set_random_state(saved)</div>
+
+
+
+def _saved_random_state(data):
+    """The random state a model file saved (None for files saved before)."""
+    state = data.pop("initial_random_state", None)
+    return None if state is None else state.cpu()
+
+
+def _with_initial_weights(target, kwargs, source):
+    """The model ``source`` describes, with the initial weights of its
+    training (see ``LIONmodel.instantiate``)."""
+    from LION.optimizers.training_record import read_training_record
+
+    training = read_training_record(source)
+    how = getattr(training, "initial_weights", None)
+    how = vars(how) if isinstance(how, LIONParameter) else how
+    made_from = (how or {}).get("from")
+    if made_from == "random_state":
+        state = LIONmodel._load_data(source, supress_warnings=True).get(
+            "initial_random_state"
+        )
+        if state is None:
+            raise ValueError(f"{source} has no saved random state")
+        model = made_from_random_state(target, kwargs, state)
+    elif made_from == "file":
+        model = target(**kwargs)
+        path = Path(source).parent / how["file"]
+        model.load_state_dict(
+            torch.load(path, map_location=default_device(), weights_only=True)
+        )
+    else:
+        raise ValueError(
+            f"{source}'s training record doesn't say how to make its initial "
+            "weights again (saved before LION recorded it, or without a save "
+            "folder)"
+        )
+    if weights_sha256(model) != getattr(training, "initial_weights_sha256", None):
+        warnings.warn(
+            f"the initial weights made again from {source} aren't the recorded "
+            "ones (other code, or another machine)",
+            stacklevel=3,
+        )
+    return model
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Cambridge Image Analysis, University of Cambridge
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
+    </body>
+</html>

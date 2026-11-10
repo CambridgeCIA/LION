@@ -1,0 +1,90 @@
+LION.operators.ct.CTProjectionOp
+================================
+
+.. currentmodule:: LION.operators.ct
+
+.. autoclass:: CTProjectionOp
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CTProjectionOp.__init__
+      ~CTProjectionOp.add_module
+      ~CTProjectionOp.adjoint
+      ~CTProjectionOp.apply
+      ~CTProjectionOp.autograd
+      ~CTProjectionOp.bfloat16
+      ~CTProjectionOp.buffers
+      ~CTProjectionOp.children
+      ~CTProjectionOp.compile
+      ~CTProjectionOp.cpu
+      ~CTProjectionOp.cuda
+      ~CTProjectionOp.default_reconstruction
+      ~CTProjectionOp.default_reconstruction_fn
+      ~CTProjectionOp.double
+      ~CTProjectionOp.eval
+      ~CTProjectionOp.extra_repr
+      ~CTProjectionOp.float
+      ~CTProjectionOp.forward
+      ~CTProjectionOp.get_buffer
+      ~CTProjectionOp.get_extra_state
+      ~CTProjectionOp.get_parameter
+      ~CTProjectionOp.get_submodule
+      ~CTProjectionOp.gram
+      ~CTProjectionOp.half
+      ~CTProjectionOp.inverse
+      ~CTProjectionOp.ipu
+      ~CTProjectionOp.load_state_dict
+      ~CTProjectionOp.modules
+      ~CTProjectionOp.mtia
+      ~CTProjectionOp.named_buffers
+      ~CTProjectionOp.named_children
+      ~CTProjectionOp.named_modules
+      ~CTProjectionOp.named_parameters
+      ~CTProjectionOp.parameters
+      ~CTProjectionOp.register_backward_hook
+      ~CTProjectionOp.register_buffer
+      ~CTProjectionOp.register_forward_hook
+      ~CTProjectionOp.register_forward_pre_hook
+      ~CTProjectionOp.register_full_backward_hook
+      ~CTProjectionOp.register_full_backward_pre_hook
+      ~CTProjectionOp.register_load_state_dict_post_hook
+      ~CTProjectionOp.register_load_state_dict_pre_hook
+      ~CTProjectionOp.register_module
+      ~CTProjectionOp.register_parameter
+      ~CTProjectionOp.register_state_dict_post_hook
+      ~CTProjectionOp.register_state_dict_pre_hook
+      ~CTProjectionOp.requires_grad_
+      ~CTProjectionOp.set_extra_state
+      ~CTProjectionOp.set_submodule
+      ~CTProjectionOp.share_memory
+      ~CTProjectionOp.state_dict
+      ~CTProjectionOp.to
+      ~CTProjectionOp.to_device
+      ~CTProjectionOp.to_empty
+      ~CTProjectionOp.train
+      ~CTProjectionOp.type
+      ~CTProjectionOp.xpu
+      ~CTProjectionOp.zero_grad
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CTProjectionOp.T_destination
+      ~CTProjectionOp.call_super_init
+      ~CTProjectionOp.domain_shape
+      ~CTProjectionOp.dump_patches
+      ~CTProjectionOp.range_shape
+      ~CTProjectionOp.training
+   
+   

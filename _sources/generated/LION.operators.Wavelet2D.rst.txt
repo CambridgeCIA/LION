@@ -1,0 +1,90 @@
+LION.operators.Wavelet2D
+========================
+
+.. currentmodule:: LION.operators
+
+.. autoclass:: Wavelet2D
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Wavelet2D.__init__
+      ~Wavelet2D.add_module
+      ~Wavelet2D.adjoint
+      ~Wavelet2D.apply
+      ~Wavelet2D.autograd
+      ~Wavelet2D.bfloat16
+      ~Wavelet2D.buffers
+      ~Wavelet2D.children
+      ~Wavelet2D.compile
+      ~Wavelet2D.cpu
+      ~Wavelet2D.cuda
+      ~Wavelet2D.default_reconstruction
+      ~Wavelet2D.default_reconstruction_fn
+      ~Wavelet2D.double
+      ~Wavelet2D.eval
+      ~Wavelet2D.extra_repr
+      ~Wavelet2D.float
+      ~Wavelet2D.forward
+      ~Wavelet2D.get_buffer
+      ~Wavelet2D.get_extra_state
+      ~Wavelet2D.get_parameter
+      ~Wavelet2D.get_submodule
+      ~Wavelet2D.gram
+      ~Wavelet2D.half
+      ~Wavelet2D.inverse
+      ~Wavelet2D.ipu
+      ~Wavelet2D.load_state_dict
+      ~Wavelet2D.modules
+      ~Wavelet2D.mtia
+      ~Wavelet2D.named_buffers
+      ~Wavelet2D.named_children
+      ~Wavelet2D.named_modules
+      ~Wavelet2D.named_parameters
+      ~Wavelet2D.parameters
+      ~Wavelet2D.register_backward_hook
+      ~Wavelet2D.register_buffer
+      ~Wavelet2D.register_forward_hook
+      ~Wavelet2D.register_forward_pre_hook
+      ~Wavelet2D.register_full_backward_hook
+      ~Wavelet2D.register_full_backward_pre_hook
+      ~Wavelet2D.register_load_state_dict_post_hook
+      ~Wavelet2D.register_load_state_dict_pre_hook
+      ~Wavelet2D.register_module
+      ~Wavelet2D.register_parameter
+      ~Wavelet2D.register_state_dict_post_hook
+      ~Wavelet2D.register_state_dict_pre_hook
+      ~Wavelet2D.requires_grad_
+      ~Wavelet2D.set_extra_state
+      ~Wavelet2D.set_submodule
+      ~Wavelet2D.share_memory
+      ~Wavelet2D.state_dict
+      ~Wavelet2D.to
+      ~Wavelet2D.to_device
+      ~Wavelet2D.to_empty
+      ~Wavelet2D.train
+      ~Wavelet2D.type
+      ~Wavelet2D.xpu
+      ~Wavelet2D.zero_grad
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Wavelet2D.T_destination
+      ~Wavelet2D.call_super_init
+      ~Wavelet2D.domain_shape
+      ~Wavelet2D.dump_patches
+      ~Wavelet2D.range_shape
+      ~Wavelet2D.training
+   
+   

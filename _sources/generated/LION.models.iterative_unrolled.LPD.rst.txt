@@ -1,0 +1,46 @@
+LION.models.iterative\_unrolled.LPD
+===================================
+
+.. automodule:: LION.models.iterative_unrolled.LPD
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   LPD
+   RegProximal
+   dataProximal
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: LPD
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: RegProximal
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: dataProximal
+   :members:
+   :show-inheritance:
+
+
+

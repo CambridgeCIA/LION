@@ -1,0 +1,58 @@
+LION.models.learned\_fbp.DeepFusionBP
+=====================================
+
+.. automodule:: LION.models.learned_fbp.DeepFusionBP
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   DBP_block
+   DeepFusionBPNetwork
+   IntermediateResidualBlock
+   LearnableFilter
+   single_back_projections
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: DBP_block
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: DeepFusionBPNetwork
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: IntermediateResidualBlock
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LearnableFilter
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: single_back_projections
+   :members:
+   :show-inheritance:
+
+
+

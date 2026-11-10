@@ -1,0 +1,127 @@
+LION.experiments.deteCT\_benchmark
+==================================
+
+.. automodule:: LION.experiments.deteCT_benchmark
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   BeamHardeningCTRecon
+   CTBenchmarkingExperiment
+   FullDataCTRecon
+   GroundTruthCT
+   LimitedAngle120CTRecon
+   LimitedAngle150CTRecon
+   LimitedAngle60CTRecon
+   LimitedAngle90CTRecon
+   LowDoseCTRecon
+   SparseAngle120CTRecon
+   SparseAngle180CTRecon
+   SparseAngle360CTRecon
+   SparseAngle60CTRecon
+   SparseAngle720CTRecon
+   SparseAngle90CTRecon
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   benchmark_parameters
+
+
+
+
+----
+
+
+.. autoclass:: BeamHardeningCTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: CTBenchmarkingExperiment
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: FullDataCTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: GroundTruthCT
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LimitedAngle120CTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LimitedAngle150CTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LimitedAngle60CTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LimitedAngle90CTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LowDoseCTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: SparseAngle120CTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: SparseAngle180CTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: SparseAngle360CTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: SparseAngle60CTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: SparseAngle720CTRecon
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: SparseAngle90CTRecon
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: benchmark_parameters
+
+

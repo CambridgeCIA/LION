@@ -1,0 +1,34 @@
+LION.optimizers.SupervisedSolver
+================================
+
+.. automodule:: LION.optimizers.SupervisedSolver
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   SupervisedSolver
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: SupervisedSolver
+   :members:
+   :show-inheritance:
+
+
+

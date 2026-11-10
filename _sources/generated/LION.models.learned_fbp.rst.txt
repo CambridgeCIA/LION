@@ -1,0 +1,28 @@
+LION.models.learned\_fbp
+========================
+
+.. automodule:: LION.models.learned_fbp
+   :no-members:
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   DeepFBP
+   DeepFusionBP
+   FusionFBP
+
+
+
+
+
+
+
+
+
+
+

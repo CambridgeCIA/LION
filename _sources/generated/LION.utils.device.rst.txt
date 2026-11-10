@@ -1,0 +1,32 @@
+LION.utils.device
+=================
+
+.. automodule:: LION.utils.device
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   default_device
+
+
+
+
+----
+
+
+
+.. autofunction:: default_device
+
+

@@ -1,0 +1,28 @@
+﻿LION.classical\_algorithms
+==========================
+
+.. automodule:: LION.classical_algorithms
+   :no-members:
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   conjugate_gradient
+   fista
+   spgl1_torch
+
+
+
+
+
+
+
+
+
+
+

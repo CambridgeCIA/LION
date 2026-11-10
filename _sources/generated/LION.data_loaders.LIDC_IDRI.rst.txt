@@ -1,0 +1,63 @@
+LION.data\_loaders.LIDC\_IDRI
+=============================
+
+.. automodule:: LION.data_loaders.LIDC_IDRI
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   LIDC_IDRI
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   choose_random_annotation
+   create_consensus_annotation
+   format_index
+   load_json
+   npy_problem
+   select_slices
+
+
+
+
+----
+
+
+.. autoclass:: LIDC_IDRI
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: choose_random_annotation
+
+
+.. autofunction:: create_consensus_annotation
+
+
+.. autofunction:: format_index
+
+
+.. autofunction:: load_json
+
+
+.. autofunction:: npy_problem
+
+
+.. autofunction:: select_slices
+
+

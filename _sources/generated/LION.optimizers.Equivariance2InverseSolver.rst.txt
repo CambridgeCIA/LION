@@ -1,0 +1,43 @@
+LION.optimizers.Equivariance2InverseSolver
+==========================================
+
+.. automodule:: LION.optimizers.Equivariance2InverseSolver
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   Equivariance2InverseSolver
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   estimate_noise_std
+
+
+
+
+----
+
+
+.. autoclass:: Equivariance2InverseSolver
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: estimate_noise_std
+
+

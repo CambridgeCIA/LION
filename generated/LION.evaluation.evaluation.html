@@ -1,0 +1,687 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="LION.evaluation.figures" href="LION.evaluation.figures.html"><link rel="prev" title="LION.evaluation.comparison" href="LION.evaluation.comparison.html">
+        <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
+        <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+        <title>LION.evaluation.evaluation - LION 0.2.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">LION 0.2.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/lion-logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/lion-logo-dark.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">LION 0.2.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Example scripts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../api.html">API reference</a><input aria-label="Toggle navigation of API reference" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.DebiasOp.html">LION.operators.DebiasOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.Operator.html">LION.operators.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.Wavelet2D.html">LION.operators.Wavelet2D</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.operators.ct.html">LION.operators.ct</a><input aria-label="Toggle navigation of LION.operators.ct" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.CTProjectionOp.html">LION.operators.ct.CTProjectionOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.ct_geometry.html">LION.operators.ct.ct_geometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.ct_utils.html">LION.operators.ct.ct_utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.fdk.html">LION.operators.ct.fdk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.sirt.html">LION.operators.ct.sirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.tv_min.html">LION.operators.ct.tv_min</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.operators.pcm.html">LION.operators.pcm</a><input aria-label="Toggle navigation of LION.operators.pcm" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.pcm.PhotocurrentMapOp.html">LION.operators.pcm.PhotocurrentMapOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.pcm.WalshHadamard2D.html">LION.operators.pcm.WalshHadamard2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.data_loaders.html">LION.data_loaders</a><input aria-label="Toggle navigation of LION.data_loaders" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.LIDC_IDRI.html">LION.data_loaders.LIDC_IDRI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.LIONDataset.html">LION.data_loaders.LIONDataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.data_record.html">LION.data_loaders.data_record</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.deteCT.html">LION.data_loaders.deteCT</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.experiments.html">LION.experiments</a><input aria-label="Toggle navigation of LION.experiments" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.experiments.ct_experiments.html">LION.experiments.ct_experiments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.experiments.deteCT_benchmark.html">LION.experiments.deteCT_benchmark</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.models.html">LION.models</a><input aria-label="Toggle navigation of LION.models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.CNNs.html">LION.models.CNNs</a><input aria-label="Toggle navigation of LION.models.CNNs" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.MSDNet.html">LION.models.CNNs.MSDNet</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="LION.models.CNNs.UNets.html">LION.models.CNNs.UNets</a><input aria-label="Toggle navigation of LION.models.CNNs.UNets" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="LION.models.CNNs.UNets.ResUNet3D.html">LION.models.CNNs.UNets.ResUNet3D</a></li>
+<li class="toctree-l5"><a class="reference internal" href="LION.models.CNNs.UNets.Unet.html">LION.models.CNNs.UNets.Unet</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.dncnn.html">LION.models.CNNs.dncnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.drunet.html">LION.models.CNNs.drunet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.LIONmodel.html">LION.models.LIONmodel</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.PnP.html">LION.models.PnP</a><input aria-label="Toggle navigation of LION.models.PnP" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.fully_learned.html">LION.models.fully_learned</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.LPD.html">LION.models.iterative_unrolled.LPD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.cLPD.html">LION.models.iterative_unrolled.cLPD</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.learned_fbp.html">LION.models.learned_fbp</a><input aria-label="Toggle navigation of LION.models.learned_fbp" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.DeepFBP.html">LION.models.learned_fbp.DeepFBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.DeepFusionBP.html">LION.models.learned_fbp.DeepFusionBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.FusionFBP.html">LION.models.learned_fbp.FusionFBP</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.FBPConvNet.html">LION.models.post_processing.FBPConvNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.FBPConvNetImage.html">LION.models.post_processing.FBPConvNetImage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.cFBPConvNet.html">LION.models.post_processing.cFBPConvNet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.torch_model.html">LION.models.torch_model</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.optimizers.html">LION.optimizers</a><input aria-label="Toggle navigation of LION.optimizers" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.AdversarialRegularizerSolver.html">LION.optimizers.AdversarialRegularizerSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Equivariance2InverseSolver.html">LION.optimizers.Equivariance2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.EquivariantSolver.html">LION.optimizers.EquivariantSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.GaussianDenoiserSolver.html">LION.optimizers.GaussianDenoiserSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.LIONsolver.html">LION.optimizers.LIONsolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Noise2InverseSolver.html">LION.optimizers.Noise2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Noisier2InverseSolver.html">LION.optimizers.Noisier2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Proj2ProjSolver.html">LION.optimizers.Proj2ProjSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.SelfSupervisedSolver.html">LION.optimizers.SelfSupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Sparse2InverseSolver.html">LION.optimizers.Sparse2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.SupervisedSolver.html">LION.optimizers.SupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.training_record.html">LION.optimizers.training_record</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.losses.html">LION.losses</a><input aria-label="Toggle navigation of LION.losses" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.SURE.html">LION.losses.SURE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.SUREpgImage.html">LION.losses.SUREpgImage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.jacobian_penalty.html">LION.losses.jacobian_penalty</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.reconstructors.html">LION.reconstructors</a><input aria-label="Toggle navigation of LION.reconstructors" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.ForwardReconstructor.html">LION.reconstructors.ForwardReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.LIONreconstructor.html">LION.reconstructors.LIONreconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.LearnedRegularizerReconstructor.html">LION.reconstructors.LearnedRegularizerReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.PnP.html">LION.reconstructors.PnP</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.classical_algorithms.html">LION.classical_algorithms</a><input aria-label="Toggle navigation of LION.classical_algorithms" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.conjugate_gradient.html">LION.classical_algorithms.conjugate_gradient</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.fista.html">LION.classical_algorithms.fista</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.spgl1_torch.html">LION.classical_algorithms.spgl1_torch</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="LION.evaluation.html">LION.evaluation</a><input aria-label="Toggle navigation of LION.evaluation" checked="" class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.comparison.html">LION.evaluation.comparison</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">LION.evaluation.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.figures.html">LION.evaluation.figures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.methods.html">LION.evaluation.methods</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.metrics.html">LION.metrics</a><input aria-label="Toggle navigation of LION.metrics" class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.haarpsi.html">LION.metrics.haarpsi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.metrics.html">LION.metrics.metrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.psnr.html">LION.metrics.psnr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.ssim.html">LION.metrics.ssim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="LION.package.html">LION.package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.utils.html">LION.utils</a><input aria-label="Toggle navigation of LION.utils" class="toctree-checkbox" id="toctree-checkbox-21" name="toctree-checkbox-21" role="switch" type="checkbox"/><label for="toctree-checkbox-21"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.citation.html">LION.utils.citation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.common_primitives.html">LION.utils.common_primitives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.device.html">LION.utils.device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.environment.html">LION.utils.environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.image_transforms.html">LION.utils.image_transforms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.math.html">LION.utils.math</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.mrpro_import.html">LION.utils.mrpro_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.normaliser.html">LION.utils.normaliser</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.parameter.html">LION.utils.parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.paths.html">LION.utils.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.rng.html">LION.utils.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.spec.html">LION.utils.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.spyrit_import.html">LION.utils.spyrit_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.tomosipo_import.html">LION.utils.tomosipo_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.utils.html">LION.utils.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../citing.html">Citing LION</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/generated/LION.evaluation.evaluation.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/generated/LION.evaluation.evaluation.rst" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="module-LION.evaluation.evaluation">
+<span id="lion-evaluation-evaluation"></span><h1>LION.evaluation.evaluation<a class="headerlink" href="#module-LION.evaluation.evaluation" title="Link to this heading">¶</a></h1>
+<p>Evaluating a reconstruction method on a test set.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Evaluation</span></code> is the standard evaluation of one problem, like an
+<code class="docutils literal notranslate"><span class="pre">Experiment</span></code>: the test data (an experiment’s split, or a dataset), the
+operator, the metrics (PSNR, SSIM, HaarPSI) and how their range is set. Its
+<code class="docutils literal notranslate"><span class="pre">run(method)</span></code> scores every test sample and gives a <strong>test record</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">method</span></code> (what was run, e.g. a model’s spec and weights hash);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">evaluation</span></code> (this evaluation’s spec), <code class="docutils literal notranslate"><span class="pre">data</span></code> (the test data’s record,
+<code class="docutils literal notranslate"><span class="pre">LION.data_loaders.data_record</span></code>), <code class="docutils literal notranslate"><span class="pre">metrics</span></code> (their specs; and whether
+<code class="docutils literal notranslate"><span class="pre">higher_is_better</span></code>), <code class="docutils literal notranslate"><span class="pre">data_range</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scores</span></code>: the sample <code class="docutils literal notranslate"><span class="pre">ids</span></code> and, per metric, the score of each sample;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">summary</span></code>: per metric <code class="docutils literal notranslate"><span class="pre">mean</span></code>, <code class="docutils literal notranslate"><span class="pre">std</span></code>, <code class="docutils literal notranslate"><span class="pre">median</span></code>, <code class="docutils literal notranslate"><span class="pre">q25</span></code>, <code class="docutils literal notranslate"><span class="pre">q75</span></code>,
+<code class="docutils literal notranslate"><span class="pre">min</span></code>, <code class="docutils literal notranslate"><span class="pre">max</span></code>; <code class="docutils literal notranslate"><span class="pre">seconds_per_sample</span></code>; <code class="docutils literal notranslate"><span class="pre">environment</span></code>.</p></li>
+</ul>
+<p>Records are <code class="docutils literal notranslate"><span class="pre">LIONParameter``s,</span> <span class="pre">saved</span> <span class="pre">as</span> <span class="pre">plain</span> <span class="pre">JSON</span> <span class="pre">in</span> <span class="pre">``save_folder</span></code> (by
+default <code class="docutils literal notranslate"><span class="pre">$LION_RESULTS_PATH/evaluations</span></code>). Running the same method on the
+same evaluation again reads the saved record instead of recomputing it.</p>
+<p>The functions work on their own too: <code class="docutils literal notranslate"><span class="pre">scores</span></code> (one method on some data),
+<code class="docutils literal notranslate"><span class="pre">summary</span></code>, <code class="docutils literal notranslate"><span class="pre">table</span></code> (records as markdown, LaTeX or CSV).</p>
+<p class="rubric">Classes</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.evaluation.evaluation.Evaluation" title="LION.evaluation.evaluation.Evaluation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Evaluation</span></code></a>([experiment, dataset, operator, ...])</p></td>
+<td><p>The standard evaluation of one problem (see the module docstring).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Functions</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.evaluation.evaluation.default_metrics" title="LION.evaluation.evaluation.default_metrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">default_metrics</span></code></a>()</p></td>
+<td><p>PSNR, SSIM and HaarPSI.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.evaluation.evaluation.is_test_record" title="LION.evaluation.evaluation.is_test_record"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_test_record</span></code></a>(value)</p></td>
+<td><p>Whether <code class="docutils literal notranslate"><span class="pre">value</span></code> (a dict or a <code class="docutils literal notranslate"><span class="pre">LIONParameter</span></code>) is a test record (<code class="docutils literal notranslate"><span class="pre">Evaluation</span></code>'s): it has the record's key.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.evaluation.evaluation.read_test_record" title="LION.evaluation.evaluation.read_test_record"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_test_record</span></code></a>(source)</p></td>
+<td><p>A test record: a record, or the path of its <code class="docutils literal notranslate"><span class="pre">.json</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.evaluation.evaluation.sample_ids" title="LION.evaluation.evaluation.sample_ids"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_ids</span></code></a>(data)</p></td>
+<td><p>The IDs of a dataset's samples (their indices if it has none).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.evaluation.evaluation.scores" title="LION.evaluation.evaluation.scores"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scores</span></code></a>(run, data, metrics[, data_range, ...])</p></td>
+<td><p>Every sample of <code class="docutils literal notranslate"><span class="pre">data</span></code> (a dataset of <code class="docutils literal notranslate"><span class="pre">(measurement,</span> <span class="pre">target)</span></code>) through <code class="docutils literal notranslate"><span class="pre">run</span></code>, in order, scored by every metric.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.evaluation.evaluation.summary" title="LION.evaluation.evaluation.summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">summary</span></code></a>(record)</p></td>
+<td><p>The summary of a test record, <code class="docutils literal notranslate"><span class="pre">{metric:</span> <span class="pre">{mean,</span> <span class="pre">std,</span> <span class="pre">...}}</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.evaluation.evaluation.summary_of" title="LION.evaluation.evaluation.summary_of"><code class="xref py py-obj docutils literal notranslate"><span class="pre">summary_of</span></code></a>(values)</p></td>
+<td><p>Mean, std, median, quartiles, min and max (NaNs left out).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.evaluation.evaluation.table" title="LION.evaluation.evaluation.table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">table</span></code></a>(records[, format, digits])</p></td>
+<td><p>Records as a table: one row per method (its <code class="docutils literal notranslate"><span class="pre">name</span></code>), one column per metric, <code class="docutils literal notranslate"><span class="pre">mean</span> <span class="pre">±</span> <span class="pre">std</span></code>, the best of each column in bold.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.Evaluation">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.evaluation.evaluation.</span></span><span class="sig-name descname"><span class="pre">Evaluation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">split</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'test'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalisation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dataset'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#Evaluation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.Evaluation" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>The standard evaluation of one problem (see the module docstring).</p>
+<p><code class="docutils literal notranslate"><span class="pre">experiment</span></code>: its <code class="docutils literal notranslate"><span class="pre">split</span></code> is the test data, and its geometry gives the
+operator; or <code class="docutils literal notranslate"><span class="pre">dataset</span></code> (and <code class="docutils literal notranslate"><span class="pre">operator</span></code>) for data set up without an
+experiment. <code class="docutils literal notranslate"><span class="pre">metrics</span></code>: <code class="docutils literal notranslate"><span class="pre">{name:</span> <span class="pre">metric}</span></code>, by default PSNR, SSIM and
+HaarPSI. <code class="docutils literal notranslate"><span class="pre">normalisation</span></code>: the range the metrics use: <code class="docutils literal notranslate"><span class="pre">&quot;dataset&quot;</span></code> (the
+test samples’ minimum and maximum, the same for every method; default),
+<code class="docutils literal notranslate"><span class="pre">&quot;sample&quot;</span></code> (each target’s own range), <code class="docutils literal notranslate"><span class="pre">(min,</span> <span class="pre">max)</span></code>, or a LION
+<code class="docutils literal notranslate"><span class="pre">Normalisation</span></code>. <code class="docutils literal notranslate"><span class="pre">samples</span></code>: all (None), <code class="docutils literal notranslate"><span class="pre">n</span></code> (evenly spaced over the
+test set) or a list of sample IDs. <code class="docutils literal notranslate"><span class="pre">save_folder</span></code>: where records are
+saved and reused (default <code class="docutils literal notranslate"><span class="pre">$LION_RESULTS_PATH/evaluations</span></code>; None
+without it). <code class="docutils literal notranslate"><span class="pre">device</span></code>: where methods run (default LION’s).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.Evaluation.data">
+<span class="sig-name descname"><span class="pre">data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#Evaluation.data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.Evaluation.data" title="Link to this definition">¶</a></dt>
+<dd><p>The test samples (the dataset, or the chosen ones of it).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.Evaluation.get_operator">
+<span class="sig-name descname"><span class="pre">get_operator</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#Evaluation.get_operator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.Evaluation.get_operator" title="Link to this definition">¶</a></dt>
+<dd><p>The operator: the one given, or the experiment’s.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.Evaluation.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#Evaluation.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.Evaluation.run" title="Link to this definition">¶</a></dt>
+<dd><p>Score <code class="docutils literal notranslate"><span class="pre">x</span></code> (a model, a model’s file, a solver, a reconstructor or a
+function <code class="docutils literal notranslate"><span class="pre">f(y,</span> <span class="pre">operator)</span></code>; see <code class="docutils literal notranslate"><span class="pre">LION.evaluation.method</span></code>) on every
+test sample. Returns its test record, saved in <code class="docutils literal notranslate"><span class="pre">save_folder</span></code>; a
+record saved before for the same method and evaluation is read
+instead. <code class="docutils literal notranslate"><span class="pre">allow</span></code>: modules outside LION a model file may name (e.g.
+your own solver). <code class="docutils literal notranslate"><span class="pre">verbose</span></code>: 1 (default) shows a progress bar over
+the test samples; 0 nothing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.Evaluation.data_range">
+<span class="sig-name descname"><span class="pre">data_range</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">evaluation_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#Evaluation.data_range"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.Evaluation.data_range" title="Link to this definition">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">(min,</span> <span class="pre">max)</span></code> the metrics use, or None (each target’s own).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.Evaluation.spec">
+<span class="sig-name descname"><span class="pre">spec</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#Evaluation.spec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.Evaluation.spec" title="Link to this definition">¶</a></dt>
+<dd><p>This evaluation’s spec (its arguments; not where it saves or runs).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.Evaluation.data_record">
+<span class="sig-name descname"><span class="pre">data_record</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#Evaluation.data_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.Evaluation.data_record" title="Link to this definition">¶</a></dt>
+<dd><p>The test data’s record (made once).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.Evaluation.instantiate">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">instantiate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">arguments</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#Evaluation.instantiate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.Evaluation.instantiate" title="Link to this definition">¶</a></dt>
+<dd><p>The evaluation a test record (or its spec) describes;
+<code class="docutils literal notranslate"><span class="pre">arguments</span></code> replace recorded ones (e.g. <code class="docutils literal notranslate"><span class="pre">save_folder</span></code>).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.default_metrics">
+<span class="sig-prename descclassname"><span class="pre">LION.evaluation.evaluation.</span></span><span class="sig-name descname"><span class="pre">default_metrics</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#default_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.default_metrics" title="Link to this definition">¶</a></dt>
+<dd><p>PSNR, SSIM and HaarPSI.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.is_test_record">
+<span class="sig-prename descclassname"><span class="pre">LION.evaluation.evaluation.</span></span><span class="sig-name descname"><span class="pre">is_test_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#is_test_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.is_test_record" title="Link to this definition">¶</a></dt>
+<dd><p>Whether <code class="docutils literal notranslate"><span class="pre">value</span></code> (a dict or a <code class="docutils literal notranslate"><span class="pre">LIONParameter</span></code>) is a test record
+(<code class="docutils literal notranslate"><span class="pre">Evaluation</span></code>’s): it has the record’s key.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.read_test_record">
+<span class="sig-prename descclassname"><span class="pre">LION.evaluation.evaluation.</span></span><span class="sig-name descname"><span class="pre">read_test_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#read_test_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.read_test_record" title="Link to this definition">¶</a></dt>
+<dd><p>A test record: a record, or the path of its <code class="docutils literal notranslate"><span class="pre">.json</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.sample_ids">
+<span class="sig-prename descclassname"><span class="pre">LION.evaluation.evaluation.</span></span><span class="sig-name descname"><span class="pre">sample_ids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#sample_ids"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.sample_ids" title="Link to this definition">¶</a></dt>
+<dd><p>The IDs of a dataset’s samples (their indices if it has none).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.scores">
+<span class="sig-prename descclassname"><span class="pre">LION.evaluation.evaluation.</span></span><span class="sig-name descname"><span class="pre">scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#scores"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.scores" title="Link to this definition">¶</a></dt>
+<dd><p>Every sample of <code class="docutils literal notranslate"><span class="pre">data</span></code> (a dataset of <code class="docutils literal notranslate"><span class="pre">(measurement,</span> <span class="pre">target)</span></code>)
+through <code class="docutils literal notranslate"><span class="pre">run</span></code>, in order, scored by every metric. <code class="docutils literal notranslate"><span class="pre">data_range</span></code>:
+<code class="docutils literal notranslate"><span class="pre">(min,</span> <span class="pre">max)</span></code> (outputs and targets are shifted by <code class="docutils literal notranslate"><span class="pre">min</span></code> and the metrics
+get <code class="docutils literal notranslate"><span class="pre">max</span> <span class="pre">-</span> <span class="pre">min</span></code>), or None for each target’s own range.</p>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">(ids,</span> <span class="pre">{name:</span> <span class="pre">numpy</span> <span class="pre">array</span> <span class="pre">of</span> <span class="pre">per-sample</span> <span class="pre">scores},</span> <span class="pre">seconds</span> <span class="pre">per</span>
+<span class="pre">sample)</span></code>. <code class="docutils literal notranslate"><span class="pre">verbose</span> <span class="pre">&gt;=</span> <span class="pre">1</span></code>: a progress bar over the samples (<code class="docutils literal notranslate"><span class="pre">desc</span></code>).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.summary">
+<span class="sig-prename descclassname"><span class="pre">LION.evaluation.evaluation.</span></span><span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.summary" title="Link to this definition">¶</a></dt>
+<dd><p>The summary of a test record, <code class="docutils literal notranslate"><span class="pre">{metric:</span> <span class="pre">{mean,</span> <span class="pre">std,</span> <span class="pre">...}}</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.summary_of">
+<span class="sig-prename descclassname"><span class="pre">LION.evaluation.evaluation.</span></span><span class="sig-name descname"><span class="pre">summary_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#summary_of"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.summary_of" title="Link to this definition">¶</a></dt>
+<dd><p>Mean, std, median, quartiles, min and max (NaNs left out).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.evaluation.evaluation.table">
+<span class="sig-prename descclassname"><span class="pre">LION.evaluation.evaluation.</span></span><span class="sig-name descname"><span class="pre">table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">records</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">format</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'markdown'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">digits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/evaluation/evaluation.html#table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.evaluation.evaluation.table" title="Link to this definition">¶</a></dt>
+<dd><p>Records as a table: one row per method (its <code class="docutils literal notranslate"><span class="pre">name</span></code>), one column per
+metric, <code class="docutils literal notranslate"><span class="pre">mean</span> <span class="pre">±</span> <span class="pre">std</span></code>, the best of each column in bold. <code class="docutils literal notranslate"><span class="pre">format</span></code>:
+<code class="docutils literal notranslate"><span class="pre">&quot;markdown&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;latex&quot;</span></code> (booktabs) or <code class="docutils literal notranslate"><span class="pre">&quot;csv&quot;</span></code> (mean and std columns).
+<code class="docutils literal notranslate"><span class="pre">digits</span></code>: decimals per metric (default: 2 for values of 10 or more, else
+4).</p>
+</dd></dl>
+
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="LION.evaluation.figures.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">LION.evaluation.figures</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="LION.evaluation.comparison.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">LION.evaluation.comparison</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Cambridge Image Analysis, University of Cambridge
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">LION.evaluation.evaluation</a><ul>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.Evaluation"><code class="docutils literal notranslate"><span class="pre">Evaluation</span></code></a><ul>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.Evaluation.data"><code class="docutils literal notranslate"><span class="pre">Evaluation.data()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.Evaluation.get_operator"><code class="docutils literal notranslate"><span class="pre">Evaluation.get_operator()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.Evaluation.run"><code class="docutils literal notranslate"><span class="pre">Evaluation.run()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.Evaluation.data_range"><code class="docutils literal notranslate"><span class="pre">Evaluation.data_range()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.Evaluation.spec"><code class="docutils literal notranslate"><span class="pre">Evaluation.spec()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.Evaluation.data_record"><code class="docutils literal notranslate"><span class="pre">Evaluation.data_record()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.Evaluation.instantiate"><code class="docutils literal notranslate"><span class="pre">Evaluation.instantiate()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.default_metrics"><code class="docutils literal notranslate"><span class="pre">default_metrics()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.is_test_record"><code class="docutils literal notranslate"><span class="pre">is_test_record()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.read_test_record"><code class="docutils literal notranslate"><span class="pre">read_test_record()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.sample_ids"><code class="docutils literal notranslate"><span class="pre">sample_ids()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.scores"><code class="docutils literal notranslate"><span class="pre">scores()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.summary"><code class="docutils literal notranslate"><span class="pre">summary()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.summary_of"><code class="docutils literal notranslate"><span class="pre">summary_of()</span></code></a></li>
+<li><a class="reference internal" href="#LION.evaluation.evaluation.table"><code class="docutils literal notranslate"><span class="pre">table()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
+    </body>
+</html>

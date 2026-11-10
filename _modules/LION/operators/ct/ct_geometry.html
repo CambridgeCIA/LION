@@ -1,0 +1,933 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html">
+        <link rel="prefetch" href="../../../../_static/lion-logo.svg" as="image">
+        <link rel="prefetch" href="../../../../_static/lion-logo-dark.svg" as="image">
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+        <title>LION.operators.ct.ct_geometry - LION 0.2.0</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../../index.html"><div class="brand">LION 0.2.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../../../../_static/lion-logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../../../../_static/lion-logo-dark.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">LION 0.2.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples.html">Example scripts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.operators.DebiasOp.html">LION.operators.DebiasOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.operators.Operator.html">LION.operators.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.operators.Wavelet2D.html">LION.operators.Wavelet2D</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../generated/LION.operators.ct.html">LION.operators.ct</a><input aria-label="Toggle navigation of LION.operators.ct" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.operators.ct.CTProjectionOp.html">LION.operators.ct.CTProjectionOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.operators.ct.ct_geometry.html">LION.operators.ct.ct_geometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.operators.ct.ct_utils.html">LION.operators.ct.ct_utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.operators.ct.fdk.html">LION.operators.ct.fdk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.operators.ct.sirt.html">LION.operators.ct.sirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.operators.ct.tv_min.html">LION.operators.ct.tv_min</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../generated/LION.operators.pcm.html">LION.operators.pcm</a><input aria-label="Toggle navigation of LION.operators.pcm" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.operators.pcm.PhotocurrentMapOp.html">LION.operators.pcm.PhotocurrentMapOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.operators.pcm.WalshHadamard2D.html">LION.operators.pcm.WalshHadamard2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../generated/LION.data_loaders.html">LION.data_loaders</a><input aria-label="Toggle navigation of LION.data_loaders" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.data_loaders.LIDC_IDRI.html">LION.data_loaders.LIDC_IDRI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.data_loaders.LIONDataset.html">LION.data_loaders.LIONDataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.data_loaders.data_record.html">LION.data_loaders.data_record</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.data_loaders.deteCT.html">LION.data_loaders.deteCT</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../generated/LION.experiments.html">LION.experiments</a><input aria-label="Toggle navigation of LION.experiments" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.experiments.ct_experiments.html">LION.experiments.ct_experiments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.experiments.deteCT_benchmark.html">LION.experiments.deteCT_benchmark</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../generated/LION.models.html">LION.models</a><input aria-label="Toggle navigation of LION.models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../generated/LION.models.CNNs.html">LION.models.CNNs</a><input aria-label="Toggle navigation of LION.models.CNNs" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.CNNs.MSDNet.html">LION.models.CNNs.MSDNet</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../../generated/LION.models.CNNs.UNets.html">LION.models.CNNs.UNets</a><input aria-label="Toggle navigation of LION.models.CNNs.UNets" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../../generated/LION.models.CNNs.UNets.ResUNet3D.html">LION.models.CNNs.UNets.ResUNet3D</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../../generated/LION.models.CNNs.UNets.Unet.html">LION.models.CNNs.UNets.Unet</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.CNNs.dncnn.html">LION.models.CNNs.dncnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.CNNs.drunet.html">LION.models.CNNs.drunet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.models.LIONmodel.html">LION.models.LIONmodel</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../generated/LION.models.PnP.html">LION.models.PnP</a><input aria-label="Toggle navigation of LION.models.PnP" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.models.fully_learned.html">LION.models.fully_learned</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../generated/LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.iterative_unrolled.LPD.html">LION.models.iterative_unrolled.LPD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.iterative_unrolled.cLPD.html">LION.models.iterative_unrolled.cLPD</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../generated/LION.models.learned_fbp.html">LION.models.learned_fbp</a><input aria-label="Toggle navigation of LION.models.learned_fbp" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.learned_fbp.DeepFBP.html">LION.models.learned_fbp.DeepFBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.learned_fbp.DeepFusionBP.html">LION.models.learned_fbp.DeepFusionBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.learned_fbp.FusionFBP.html">LION.models.learned_fbp.FusionFBP</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.post_processing.FBPConvNet.html">LION.models.post_processing.FBPConvNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.post_processing.FBPConvNetImage.html">LION.models.post_processing.FBPConvNetImage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../generated/LION.models.post_processing.cFBPConvNet.html">LION.models.post_processing.cFBPConvNet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.models.torch_model.html">LION.models.torch_model</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../generated/LION.optimizers.html">LION.optimizers</a><input aria-label="Toggle navigation of LION.optimizers" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.AdversarialRegularizerSolver.html">LION.optimizers.AdversarialRegularizerSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.Equivariance2InverseSolver.html">LION.optimizers.Equivariance2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.EquivariantSolver.html">LION.optimizers.EquivariantSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.GaussianDenoiserSolver.html">LION.optimizers.GaussianDenoiserSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.LIONsolver.html">LION.optimizers.LIONsolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.Noise2InverseSolver.html">LION.optimizers.Noise2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.Noisier2InverseSolver.html">LION.optimizers.Noisier2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.Proj2ProjSolver.html">LION.optimizers.Proj2ProjSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.SelfSupervisedSolver.html">LION.optimizers.SelfSupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.Sparse2InverseSolver.html">LION.optimizers.Sparse2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.SupervisedSolver.html">LION.optimizers.SupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.optimizers.training_record.html">LION.optimizers.training_record</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../generated/LION.losses.html">LION.losses</a><input aria-label="Toggle navigation of LION.losses" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.losses.SURE.html">LION.losses.SURE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.losses.SUREpgImage.html">LION.losses.SUREpgImage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.losses.jacobian_penalty.html">LION.losses.jacobian_penalty</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../generated/LION.reconstructors.html">LION.reconstructors</a><input aria-label="Toggle navigation of LION.reconstructors" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.reconstructors.ForwardReconstructor.html">LION.reconstructors.ForwardReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.reconstructors.LIONreconstructor.html">LION.reconstructors.LIONreconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.reconstructors.LearnedRegularizerReconstructor.html">LION.reconstructors.LearnedRegularizerReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.reconstructors.PnP.html">LION.reconstructors.PnP</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../generated/LION.classical_algorithms.html">LION.classical_algorithms</a><input aria-label="Toggle navigation of LION.classical_algorithms" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.classical_algorithms.conjugate_gradient.html">LION.classical_algorithms.conjugate_gradient</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.classical_algorithms.fista.html">LION.classical_algorithms.fista</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.classical_algorithms.spgl1_torch.html">LION.classical_algorithms.spgl1_torch</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../generated/LION.evaluation.html">LION.evaluation</a><input aria-label="Toggle navigation of LION.evaluation" class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.evaluation.comparison.html">LION.evaluation.comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.evaluation.evaluation.html">LION.evaluation.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.evaluation.figures.html">LION.evaluation.figures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.evaluation.methods.html">LION.evaluation.methods</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../generated/LION.metrics.html">LION.metrics</a><input aria-label="Toggle navigation of LION.metrics" class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.metrics.haarpsi.html">LION.metrics.haarpsi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.metrics.metrics.html">LION.metrics.metrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.metrics.psnr.html">LION.metrics.psnr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.metrics.ssim.html">LION.metrics.ssim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../generated/LION.package.html">LION.package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../generated/LION.utils.html">LION.utils</a><input aria-label="Toggle navigation of LION.utils" class="toctree-checkbox" id="toctree-checkbox-21" name="toctree-checkbox-21" role="switch" type="checkbox"/><label for="toctree-checkbox-21"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.citation.html">LION.utils.citation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.common_primitives.html">LION.utils.common_primitives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.device.html">LION.utils.device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.environment.html">LION.utils.environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.image_transforms.html">LION.utils.image_transforms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.math.html">LION.utils.math</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.mrpro_import.html">LION.utils.mrpro_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.normaliser.html">LION.utils.normaliser</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.parameter.html">LION.utils.parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.paths.html">LION.utils.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.rng.html">LION.utils.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.spec.html">LION.utils.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.spyrit_import.html">LION.utils.spyrit_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.tomosipo_import.html">LION.utils.tomosipo_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../generated/LION.utils.utils.html">LION.utils.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../citing.html">Citing LION</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for LION.operators.ct.ct_geometry</h1><div class="highlight"><pre>
+<span></span># =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# Modifications: -
+# =============================================================================
+
+
+import copy
+import json
+import warnings
+
+import numpy as np
+
+from LION.utils.parameter import LIONParameter, OperatorParameters
+
+# Each triple (shape, size, spacing) is fixed by any two of its values:
+# size = shape * spacing.
+IMAGE = ("image_shape", "image_size", "voxel_size")
+DETECTOR = ("detector_shape", "detector_size", "pixel_size")
+_TRIPLES = (IMAGE, DETECTOR)
+_TRIPLE_NAMES = set(IMAGE + DETECTOR)
+# Stored as numpy arrays, however they are given.
+_ARRAY_NAMES = _TRIPLE_NAMES | {"image_pos", "dso", "dsd", "angles"}
+MODES = ("fan", "parallel")
+_RTOL = 1e-6
+
+
+def _triple_values(geometry, triple):
+    """The values of a triple that were set (not computed), as a dict."""
+    d = vars(geometry)
+    return {name: d[name] for name in triple if name in d}
+
+
+def _computed(given: dict, triple, name):
+    """``name`` computed from the two other values of its triple, or None."""
+    shape_name, size_name, spacing_name = triple
+    try:
+        with np.errstate(divide="ignore", invalid="ignore"):
+            if name == spacing_name and shape_name in given and size_name in given:
+                return given[size_name] / given[shape_name]
+            if name == size_name and shape_name in given and spacing_name in given:
+                return given[shape_name] * given[spacing_name]
+            if name == shape_name and size_name in given and spacing_name in given:
+                shape = given[size_name] / given[spacing_name]
+                # Whole pixels, or the float that shows it isn't (see check_geometry)
+                if np.all(np.isfinite(shape)) and np.allclose(
+                    shape, np.rint(shape), rtol=_RTOL, atol=0
+                ):
+                    return np.rint(shape).astype(int)
+                return shape
+    except (
+        TypeError,
+        ValueError,
+    ):  # values that don't fit together (check_geometry says)
+        return None
+    return None
+
+
+def _agree(a, b) -&gt; bool:
+    try:
+        return bool(np.allclose(a, b, rtol=_RTOL, atol=1e-12))
+    except (TypeError, ValueError):  # values that can't be compared
+        return False
+
+
+<div class="viewcode-block" id="Geometry">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry">[docs]</a>
+class Geometry(OperatorParameters):
+    """
+    Class holding a CT geometry.
+
+    The image is given by any two of ``image_shape`` (pixels), ``image_size``
+    (mm) and ``voxel_size`` (mm), the detector by any two of
+    ``detector_shape``, ``detector_size`` and ``pixel_size``: size = shape *
+    spacing. The geometry keeps the values that were set, and computes the
+    third one when it is read, so it is never out of date when the others
+    change, e.g. ``geo = Geometry.default_parameters(); geo.image_shape = ...``.
+
+    ``check_geometry()`` checks that a geometry is complete and consistent. It
+    runs when an operator is built from the geometry and when the geometry is
+    saved. ``__init__`` only checks what is given at once (three values of a
+    triple that disagree), because a geometry can be filled in afterwards.
+    """
+
+    def __init__(self, **kwargs):
+        # __init__ also runs again on an existing geometry (load()):
+        # forget values set before.
+        for name in _TRIPLE_NAMES:
+            self.__dict__.pop(name, None)
+
+        self.mode = kwargs.get("mode", None)
+
+        for name in _TRIPLE_NAMES:
+            if kwargs.get(name, None) is not None:
+                setattr(self, name, kwargs[name])
+        self.image_pos = kwargs.get("image_pos", [0, 0, 0])
+
+        self.dso = kwargs.get("dso", None)
+        self.dsd = kwargs.get("dsd", None)
+
+        self.angles = kwargs.get("angles", None)
+
+        for triple in _TRIPLES:
+            given = _triple_values(self, triple)
+            if len(given) == 3 and not _agree(
+                given[triple[1]], given[triple[0]] * given[triple[2]]
+            ):
+                raise ValueError(_disagree_message(triple, given))
+
+    def __setattr__(self, name, value):
+        if name in _TRIPLE_NAMES and value is None:
+            # Unset: computed from the two others from now on
+            self.__dict__.pop(name, None)
+            return
+        if name in _ARRAY_NAMES:
+            value = np.array(value)
+        super().__setattr__(name, value)
+
+    def __getattr__(self, name):
+        # Only called for attributes that are not set: a triple's third value is
+        # computed from the two others (None if they are not both set).
+        if name in _TRIPLE_NAMES:
+            for triple in _TRIPLES:
+                if name in triple:
+                    return _computed(_triple_values(self, triple), triple, name)
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
+
+    def __setstate__(self, state):
+        # Unpickling (also copy.deepcopy). A pickled geometry can store a
+        # voxel_size or pixel_size that disagrees with its size and shape: it is
+        # then computed again.
+        state = dict(state)
+        for triple in _TRIPLES:
+            if all(name in state for name in triple) and not _agree(
+                np.asarray(state[triple[1]]),
+                np.asarray(state[triple[0]]) * np.asarray(state[triple[2]]),
+            ):
+                state = _saved_triples(state)
+                break
+        self.__dict__.update(state)
+
+<div class="viewcode-block" id="Geometry.spec_kwargs">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.spec_kwargs">[docs]</a>
+    def spec_kwargs(self):
+        """The values a spec of this geometry holds (``LION.utils.spec``), after
+        ``check_geometry()``: only the values that were set."""
+        check_geometry(self)
+        return dict(vars(self))</div>
+
+
+<div class="viewcode-block" id="Geometry.serialize">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.serialize">[docs]</a>
+    def serialize(self):
+        """The geometry as a dict, after ``check_geometry()``: only the values
+        that were set, not the computed ones."""
+        check_geometry(self)
+        return super().serialize()</div>
+
+
+<div class="viewcode-block" id="Geometry.make_operator">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.make_operator">[docs]</a>
+    def make_operator(self):
+        """The CT operator for this geometry (``CTProjectionOp``)."""
+        from LION.operators.ct.CTProjectionOp import CTProjectionOp
+
+        return CTProjectionOp(self)</div>
+
+
+    @property
+    def split_count(self) -&gt; int:
+        """CT splits along the angles: one unit per angle."""
+        return len(self.angles)
+
+<div class="viewcode-block" id="Geometry.split">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.split">[docs]</a>
+    def split(self, indices) -&gt; "Geometry":
+        """A copy of the geometry with only the angles ``indices``."""
+        geometry = copy.deepcopy(self)
+        geometry.angles = np.asarray(self.angles)[list(indices)]
+        return geometry</div>
+
+
+<div class="viewcode-block" id="Geometry.split_measurements">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.split_measurements">[docs]</a>
+    def split_measurements(self, y, indices):
+        """The projections at the angles ``indices`` of the sinogram(s) ``y``
+        (the angles are its second last dimension, batched or not)."""
+        return y[..., list(indices), :]</div>
+
+
+<div class="viewcode-block" id="Geometry.load">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.load">[docs]</a>
+    def load(self, fname):
+        """Load a geometry saved as JSON (see ``init_from_parameter``)."""
+        with open(fname, encoding="utf-8") as f:
+            d = json.load(f)
+        self.__init__(**_saved_triples(d))</div>
+
+
+    # PLEASE SOMEONE FIND A SMARTER WAY TO DO THIS
+<div class="viewcode-block" id="Geometry.init_from_parameter">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.init_from_parameter">[docs]</a>
+    @classmethod
+    def init_from_parameter(cls, parameter: LIONParameter):
+        """The Geometry of a geometry saved as JSON and loaded as a
+        LIONParameter.
+
+        Where a file has all three values of a triple, the spacing is computed
+        again from the size and shape (with a warning if the stored one
+        disagreed).
+        """
+        names = ("mode", "image_pos", "dso", "dsd", "angles") + IMAGE + DETECTOR
+        kwargs = {
+            name: getattr(parameter, name) for name in names if hasattr(parameter, name)
+        }
+        return cls(**_saved_triples(kwargs))</div>
+
+
+<div class="viewcode-block" id="Geometry.default_parameters">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.default_parameters">[docs]</a>
+    @staticmethod
+    def default_parameters():
+        """LION's default CT geometry: fan beam: source to centre 575 mm,
+        source to detector 1050 mm, a 900 x 1 mm detector, 512x512 images of
+        300 mm, 360 angles over 360 degrees."""
+        return Geometry(
+            image_shape=[1, 512, 512],
+            image_size=[300.0 / 512.0, 300, 300],
+            detector_shape=[1, 900],
+            detector_size=[1, 900],
+            dso=575,
+            dsd=1050,
+            mode="fan",
+            angles=np.linspace(0, 2 * np.pi, 360, endpoint=False),
+        )</div>
+
+
+<div class="viewcode-block" id="Geometry.sparse_view_parameters">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.sparse_view_parameters">[docs]</a>
+    @staticmethod
+    def sparse_view_parameters():
+        """The default geometry with 50 angles over 360 degrees (sparse view)."""
+        return Geometry(
+            image_shape=[1, 512, 512],
+            image_size=[300 / 512, 300, 300],
+            detector_shape=[1, 900],
+            detector_size=[1, 900],
+            dso=575,
+            dsd=1050,
+            mode="fan",
+            angles=np.linspace(0, 2 * np.pi, 50, endpoint=False),
+        )</div>
+
+
+<div class="viewcode-block" id="Geometry.sparse_angle_parameters">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.sparse_angle_parameters">[docs]</a>
+    @staticmethod
+    def sparse_angle_parameters():
+        """The default geometry with 60 angles over 60 degrees (limited angle)."""
+        return Geometry(
+            image_shape=[1, 512, 512],
+            image_size=[300 / 512, 300, 300],
+            detector_shape=[1, 900],
+            detector_size=[1, 900],
+            dso=575,
+            dsd=1050,
+            mode="fan",
+            angles=np.linspace(0, 2 * np.pi / 6, 60, endpoint=False),
+        )</div>
+
+
+<div class="viewcode-block" id="Geometry.parallel_default_parameters">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.parallel_default_parameters">[docs]</a>
+    @staticmethod
+    def parallel_default_parameters(image_shape=None):
+        """A parallel beam with ``image_shape`` (1 x 512 x 512 by default)
+        images of 1 mm pixels and a matching detector, 360 angles over 360
+        degrees."""
+        if image_shape is None:
+            image_shape = [1, 512, 512]
+        return Geometry(
+            image_shape=image_shape,
+            image_size=image_shape,
+            detector_shape=image_shape[0:2],
+            detector_size=image_shape[0:2],
+            dso=image_shape[1] * 2,
+            dsd=image_shape[1] * 4,
+            mode="parallel",
+            angles=np.linspace(0, 2 * np.pi, 360, endpoint=False),
+        )</div>
+
+
+<div class="viewcode-block" id="Geometry.parallel_sparse_view_parameters">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.parallel_sparse_view_parameters">[docs]</a>
+    @staticmethod
+    def parallel_sparse_view_parameters(image_shape=None):
+        """A parallel beam with ``image_shape`` (1 x 512 x 512 by default)
+        images of 1 mm pixels and a matching detector, 50 angles over 360
+        degrees (sparse view)."""
+        if image_shape is None:
+            image_shape = [1, 512, 512]
+        return Geometry(
+            image_shape=image_shape,
+            image_size=image_shape,
+            detector_shape=image_shape[0:2],
+            detector_size=image_shape[0:2],
+            dso=image_shape[1] * 2,
+            dsd=image_shape[1] * 4,
+            mode="parallel",
+            angles=np.linspace(0, 2 * np.pi, 50, endpoint=False),
+        )</div>
+
+
+<div class="viewcode-block" id="Geometry.parallel_sparse_angle_parameters">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry.parallel_sparse_angle_parameters">[docs]</a>
+    @staticmethod
+    def parallel_sparse_angle_parameters(image_shape=None):
+        """A parallel beam with ``image_shape`` (1 x 512 x 512 by default)
+        images of 1 mm pixels and a matching detector, 60 angles over 60
+        degrees (limited angle)."""
+        if image_shape is None:
+            image_shape = [1, 512, 512]
+        return Geometry(
+            image_shape=image_shape,
+            image_size=image_shape,
+            detector_shape=image_shape[0:2],
+            detector_size=image_shape[0:2],
+            dso=image_shape[1] * 2,
+            dsd=image_shape[1] * 4,
+            mode="parallel",
+            angles=np.linspace(0, 2 * np.pi / 6, 60, endpoint=False),
+        )</div>
+
+
+    def __str__(self):
+        string = []
+        string.append("CT Geometry")
+        string.append("CT type/mode = " + self.mode)
+        string.append("-----")
+        string.append(
+            "Distance from source to detector (DSD) = " + str(self.dsd) + " mm"
+        )
+        string.append("Distance from source to origin (DSO)= " + str(self.dso) + " mm")
+        string.append("-----")
+        string.append("Detector")
+        string.append("Detector shape = " + str(self.detector_shape))
+        string.append("Detector size = " + str(self.detector_size) + " mm")
+        string.append("-----")
+        string.append("Image")
+        string.append("Image shape = " + str(self.image_shape))
+        string.append("Image size = " + str(self.image_size) + " mm")
+        string.append("Number of angles = " + str(self.angles.shape))
+        return "\n".join(string)</div>
+
+
+
+def _disagree_message(triple, given) -&gt; str:
+    shape_name, size_name, spacing_name = triple
+    return (
+        f"{size_name} {np.asarray(given[size_name]).tolist()} is not "
+        f"{shape_name} {np.asarray(given[shape_name]).tolist()} * {spacing_name} "
+        f"{np.asarray(given[spacing_name]).tolist()}. Give two of them; the third "
+        f"is computed (set one to None to have it computed)."
+    )
+
+
+def _saved_triples(d: dict) -&gt; dict:
+    """Saved geometry values, with the spacing left out of any triple whose three
+    values are all there (it is computed again from size and shape).
+
+    Saving checks the geometry first, so three saved values agree and nothing
+    is lost; a stored spacing that disagrees is replaced, with a warning.
+    """
+    d = dict(d)
+    for triple in _TRIPLES:
+        shape_name, size_name, spacing_name = triple
+        if all(d.get(name, None) is not None for name in triple):
+            shape, size = np.array(d[shape_name]), np.array(d[size_name])
+            spacing = d.pop(spacing_name)
+            if not _agree(size, shape * np.array(spacing)):
+                warnings.warn(
+                    f"The saved {spacing_name} {np.asarray(spacing).tolist()} does "
+                    f"not match {size_name} / {shape_name}; it is computed again as "
+                    f"{(size / shape).tolist()}."
+                )
+    return d
+
+
+def _is_unset(value) -&gt; bool:
+    return value is None or (
+        isinstance(value, np.ndarray)
+        and value.dtype == object
+        and value.size == 1
+        and value.item() is None
+    )
+
+
+def _finite_numbers(value, length=None) -&gt; bool:
+    """True if ``value`` is numbers (``length`` of them, if given), all finite."""
+    try:
+        a = np.asarray(value, dtype=float)
+    except (TypeError, ValueError):
+        return False
+    if length is not None and (a.ndim != 1 or a.size != length):
+        return False
+    return bool(np.all(np.isfinite(a)))
+
+
+<div class="viewcode-block" id="check_geometry">
+<a class="viewcode-back" href="../../../../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.check_geometry">[docs]</a>
+def check_geometry(geometry: Geometry) -&gt; None:
+    """Check that a CT geometry is complete and consistent, and raise a
+    ValueError listing every problem if not.
+
+    Run when an operator is built from the geometry (``CTProjectionOp``) and
+    when the geometry is saved. Checks:
+
+    - ``mode`` is "fan" or "parallel";
+    - image and detector: at least two of shape, size and spacing are set, and
+      if all three are, they agree (size = shape * spacing);
+    - shapes are positive whole numbers (3 for the image, 2 for the detector),
+      sizes and spacings positive;
+    - ``image_pos`` is 3 finite numbers;
+    - ``angles`` is a 1-D array of finite numbers;
+    - fan beam: ``dso`` and ``dsd`` are positive, with ``dsd &gt;= dso``.
+    """
+    if not isinstance(geometry, Geometry):
+        raise ValueError(
+            f"Expected a LION.operators.ct.ct_geometry.Geometry, got {type(geometry).__name__}"
+        )
+    problems = []
+
+    if geometry.mode not in MODES:
+        problems.append(f"mode is {geometry.mode!r}; it must be one of {MODES}")
+
+    for triple, length in ((IMAGE, 3), (DETECTOR, 2)):
+        shape_name, size_name, spacing_name = triple
+        given = _triple_values(geometry, triple)
+        if len(given) &lt; 2:
+            problems.append(
+                f"two of {', '.join(triple)} are needed; "
+                f"set: {', '.join(given) if given else 'none'}"
+            )
+            continue
+        if len(given) == 3 and not _agree(
+            given[size_name], given[shape_name] * given[spacing_name]
+        ):
+            problems.append(_disagree_message(triple, given))
+            continue
+        shape = getattr(geometry, shape_name)
+        if not _finite_numbers(shape, length):
+            problems.append(f"{shape_name} must be {length} numbers, it is {shape}")
+        elif not np.allclose(shape, np.rint(shape), rtol=_RTOL, atol=0):
+            problems.append(
+                f"{shape_name} must be whole numbers of pixels, it is "
+                f"{np.asarray(shape).tolist()} ({size_name} / {spacing_name})"
+            )
+        elif np.any(np.asarray(shape) &lt;= 0):
+            problems.append(f"{shape_name} must be positive, it is {shape}")
+        for name in (size_name, spacing_name):
+            value = getattr(geometry, name)
+            if not _finite_numbers(value, length) or np.any(np.asarray(value) &lt;= 0):
+                problems.append(
+                    f"{name} must be {length} positive numbers, it is {value}"
+                )
+
+    if not _finite_numbers(geometry.image_pos, 3):
+        problems.append(f"image_pos must be 3 numbers, it is {geometry.image_pos}")
+
+    angles = geometry.angles
+    if _is_unset(angles) or not _finite_numbers(angles) or np.ndim(angles) != 1:
+        problems.append(f"angles must be a 1-D array of numbers, it is {angles}")
+    elif np.size(angles) == 0:
+        problems.append("angles is empty")
+
+    if geometry.mode == "fan":
+        ok = True
+        for name in ("dso", "dsd"):
+            value = getattr(geometry, name)
+            if _is_unset(value) or not _finite_numbers(value) or np.ndim(value) != 0:
+                problems.append(f"{name} must be set for a fan beam, it is {value}")
+                ok = False
+            elif float(value) &lt;= 0:
+                problems.append(f"{name} must be positive, it is {value}")
+                ok = False
+        if ok and float(geometry.dsd) &lt; float(geometry.dso):
+            problems.append(
+                f"dsd ({float(geometry.dsd)}) must be at least dso "
+                f"({float(geometry.dso)}): the detector is beyond the centre"
+            )
+
+    if problems:
+        raise ValueError("Invalid CT geometry:\n- " + "\n- ".join(problems))</div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Cambridge Image Analysis, University of Cambridge
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
+    </body>
+</html>

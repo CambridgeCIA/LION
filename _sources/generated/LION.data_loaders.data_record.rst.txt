@@ -1,0 +1,48 @@
+LION.data\_loaders.data\_record
+===============================
+
+.. automodule:: LION.data_loaders.data_record
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   data_record
+   file_contents_hash
+   is_data_record
+   read_record
+   recorded_spec
+
+
+
+
+----
+
+
+
+.. autofunction:: data_record
+
+
+.. autofunction:: file_contents_hash
+
+
+.. autofunction:: is_data_record
+
+
+.. autofunction:: read_record
+
+
+.. autofunction:: recorded_spec
+
+

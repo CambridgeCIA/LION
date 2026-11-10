@@ -1,0 +1,53 @@
+LION.utils.parameter
+====================
+
+.. automodule:: LION.utils.parameter
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   LIONParameter
+   OperatorParameters
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   resolve_reconstruction
+   with_current_names
+
+
+
+
+----
+
+
+.. autoclass:: LIONParameter
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: OperatorParameters
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: resolve_reconstruction
+
+
+.. autofunction:: with_current_names
+
+

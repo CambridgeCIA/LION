@@ -1,0 +1,29 @@
+﻿LION.metrics
+============
+
+.. automodule:: LION.metrics
+   :no-members:
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   haarpsi
+   metrics
+   psnr
+   ssim
+
+
+
+
+
+
+
+
+
+
+

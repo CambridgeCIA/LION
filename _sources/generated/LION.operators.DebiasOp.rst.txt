@@ -1,0 +1,90 @@
+LION.operators.DebiasOp
+=======================
+
+.. currentmodule:: LION.operators
+
+.. autoclass:: DebiasOp
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DebiasOp.__init__
+      ~DebiasOp.add_module
+      ~DebiasOp.adjoint
+      ~DebiasOp.apply
+      ~DebiasOp.autograd
+      ~DebiasOp.bfloat16
+      ~DebiasOp.buffers
+      ~DebiasOp.children
+      ~DebiasOp.compile
+      ~DebiasOp.cpu
+      ~DebiasOp.cuda
+      ~DebiasOp.default_reconstruction
+      ~DebiasOp.default_reconstruction_fn
+      ~DebiasOp.double
+      ~DebiasOp.eval
+      ~DebiasOp.extra_repr
+      ~DebiasOp.float
+      ~DebiasOp.forward
+      ~DebiasOp.get_buffer
+      ~DebiasOp.get_extra_state
+      ~DebiasOp.get_parameter
+      ~DebiasOp.get_submodule
+      ~DebiasOp.gram
+      ~DebiasOp.half
+      ~DebiasOp.inverse
+      ~DebiasOp.ipu
+      ~DebiasOp.load_state_dict
+      ~DebiasOp.modules
+      ~DebiasOp.mtia
+      ~DebiasOp.named_buffers
+      ~DebiasOp.named_children
+      ~DebiasOp.named_modules
+      ~DebiasOp.named_parameters
+      ~DebiasOp.parameters
+      ~DebiasOp.register_backward_hook
+      ~DebiasOp.register_buffer
+      ~DebiasOp.register_forward_hook
+      ~DebiasOp.register_forward_pre_hook
+      ~DebiasOp.register_full_backward_hook
+      ~DebiasOp.register_full_backward_pre_hook
+      ~DebiasOp.register_load_state_dict_post_hook
+      ~DebiasOp.register_load_state_dict_pre_hook
+      ~DebiasOp.register_module
+      ~DebiasOp.register_parameter
+      ~DebiasOp.register_state_dict_post_hook
+      ~DebiasOp.register_state_dict_pre_hook
+      ~DebiasOp.requires_grad_
+      ~DebiasOp.set_extra_state
+      ~DebiasOp.set_submodule
+      ~DebiasOp.share_memory
+      ~DebiasOp.state_dict
+      ~DebiasOp.to
+      ~DebiasOp.to_device
+      ~DebiasOp.to_empty
+      ~DebiasOp.train
+      ~DebiasOp.type
+      ~DebiasOp.xpu
+      ~DebiasOp.zero_grad
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DebiasOp.T_destination
+      ~DebiasOp.call_super_init
+      ~DebiasOp.domain_shape
+      ~DebiasOp.dump_patches
+      ~DebiasOp.range_shape
+      ~DebiasOp.training
+   
+   

@@ -1,0 +1,52 @@
+LION.utils.image\_transforms
+============================
+
+.. automodule:: LION.utils.image_transforms
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   gaussian_blur
+   gaussian_kernel1d
+   random_crop
+   random_erasing
+   random_flip_rotate
+   rotate
+
+
+
+
+----
+
+
+
+.. autofunction:: gaussian_blur
+
+
+.. autofunction:: gaussian_kernel1d
+
+
+.. autofunction:: random_crop
+
+
+.. autofunction:: random_erasing
+
+
+.. autofunction:: random_flip_rotate
+
+
+.. autofunction:: rotate
+
+

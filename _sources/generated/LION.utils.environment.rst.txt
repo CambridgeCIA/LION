@@ -1,0 +1,48 @@
+LION.utils.environment
+======================
+
+.. automodule:: LION.utils.environment
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   code_differences
+   code_state
+   environment_record
+   is_environment_record
+   publish_problems
+
+
+
+
+----
+
+
+
+.. autofunction:: code_differences
+
+
+.. autofunction:: code_state
+
+
+.. autofunction:: environment_record
+
+
+.. autofunction:: is_environment_record
+
+
+.. autofunction:: publish_problems
+
+

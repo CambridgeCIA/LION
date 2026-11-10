@@ -1,0 +1,52 @@
+LION.models.learned\_regularizer.ACR
+====================================
+
+.. automodule:: LION.models.learned_regularizer.ACR
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   ACR
+   ICNN_layer
+   L2net
+   Positive
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: ACR
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: ICNN_layer
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: L2net
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: Positive
+   :members:
+   :show-inheritance:
+
+
+

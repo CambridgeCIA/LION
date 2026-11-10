@@ -1,0 +1,43 @@
+LION.models.torch\_model
+========================
+
+.. automodule:: LION.models.torch_model
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   TorchModel
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   noise_level_input
+
+
+
+
+----
+
+
+.. autoclass:: TorchModel
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: noise_level_input
+
+

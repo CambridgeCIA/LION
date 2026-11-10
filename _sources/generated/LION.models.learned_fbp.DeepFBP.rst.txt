@@ -1,0 +1,52 @@
+LION.models.learned\_fbp.DeepFBP
+================================
+
+.. automodule:: LION.models.learned_fbp.DeepFBP
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   DeepFBPNetwork
+   DenoisingResidualBlock
+   IntermediateResidualBlock
+   LearnableFilter
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: DeepFBPNetwork
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: DenoisingResidualBlock
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: IntermediateResidualBlock
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LearnableFilter
+   :members:
+   :show-inheritance:
+
+
+

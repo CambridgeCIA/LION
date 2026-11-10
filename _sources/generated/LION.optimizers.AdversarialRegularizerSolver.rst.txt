@@ -1,0 +1,34 @@
+LION.optimizers.AdversarialRegularizerSolver
+============================================
+
+.. automodule:: LION.optimizers.AdversarialRegularizerSolver
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   ARSolver
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: ARSolver
+   :members:
+   :show-inheritance:
+
+
+

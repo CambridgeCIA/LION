@@ -1,0 +1,52 @@
+LION.models.post\_processing.FBPConvNet
+=======================================
+
+.. automodule:: LION.models.post_processing.FBPConvNet
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   ConvBlock
+   Down
+   FBPConvNet
+   Up
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: ConvBlock
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: Down
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: FBPConvNet
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: Up
+   :members:
+   :show-inheritance:
+
+
+

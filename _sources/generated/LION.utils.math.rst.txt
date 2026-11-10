@@ -1,0 +1,32 @@
+LION.utils.math
+===============
+
+.. automodule:: LION.utils.math
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   power_method
+
+
+
+
+----
+
+
+
+.. autofunction:: power_method
+
+

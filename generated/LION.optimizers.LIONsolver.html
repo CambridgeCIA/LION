@@ -1,0 +1,910 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="LION.optimizers.Noise2InverseSolver" href="LION.optimizers.Noise2InverseSolver.html"><link rel="prev" title="LION.optimizers.GaussianDenoiserSolver" href="LION.optimizers.GaussianDenoiserSolver.html">
+        <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
+        <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+        <title>LION.optimizers.LIONsolver - LION 0.2.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">LION 0.2.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/lion-logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/lion-logo-dark.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">LION 0.2.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Example scripts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../api.html">API reference</a><input aria-label="Toggle navigation of API reference" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.DebiasOp.html">LION.operators.DebiasOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.Operator.html">LION.operators.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.operators.Wavelet2D.html">LION.operators.Wavelet2D</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.operators.ct.html">LION.operators.ct</a><input aria-label="Toggle navigation of LION.operators.ct" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.CTProjectionOp.html">LION.operators.ct.CTProjectionOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.ct_geometry.html">LION.operators.ct.ct_geometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.ct_utils.html">LION.operators.ct.ct_utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.fdk.html">LION.operators.ct.fdk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.sirt.html">LION.operators.ct.sirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.ct.tv_min.html">LION.operators.ct.tv_min</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.operators.pcm.html">LION.operators.pcm</a><input aria-label="Toggle navigation of LION.operators.pcm" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.pcm.PhotocurrentMapOp.html">LION.operators.pcm.PhotocurrentMapOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.operators.pcm.WalshHadamard2D.html">LION.operators.pcm.WalshHadamard2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.data_loaders.html">LION.data_loaders</a><input aria-label="Toggle navigation of LION.data_loaders" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.LIDC_IDRI.html">LION.data_loaders.LIDC_IDRI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.LIONDataset.html">LION.data_loaders.LIONDataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.data_record.html">LION.data_loaders.data_record</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.data_loaders.deteCT.html">LION.data_loaders.deteCT</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.experiments.html">LION.experiments</a><input aria-label="Toggle navigation of LION.experiments" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.experiments.ct_experiments.html">LION.experiments.ct_experiments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.experiments.deteCT_benchmark.html">LION.experiments.deteCT_benchmark</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.models.html">LION.models</a><input aria-label="Toggle navigation of LION.models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.CNNs.html">LION.models.CNNs</a><input aria-label="Toggle navigation of LION.models.CNNs" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.MSDNet.html">LION.models.CNNs.MSDNet</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="LION.models.CNNs.UNets.html">LION.models.CNNs.UNets</a><input aria-label="Toggle navigation of LION.models.CNNs.UNets" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="LION.models.CNNs.UNets.ResUNet3D.html">LION.models.CNNs.UNets.ResUNet3D</a></li>
+<li class="toctree-l5"><a class="reference internal" href="LION.models.CNNs.UNets.Unet.html">LION.models.CNNs.UNets.Unet</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.dncnn.html">LION.models.CNNs.dncnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.CNNs.drunet.html">LION.models.CNNs.drunet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.LIONmodel.html">LION.models.LIONmodel</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.PnP.html">LION.models.PnP</a><input aria-label="Toggle navigation of LION.models.PnP" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.fully_learned.html">LION.models.fully_learned</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.LPD.html">LION.models.iterative_unrolled.LPD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.iterative_unrolled.cLPD.html">LION.models.iterative_unrolled.cLPD</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.learned_fbp.html">LION.models.learned_fbp</a><input aria-label="Toggle navigation of LION.models.learned_fbp" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.DeepFBP.html">LION.models.learned_fbp.DeepFBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.DeepFusionBP.html">LION.models.learned_fbp.DeepFusionBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_fbp.FusionFBP.html">LION.models.learned_fbp.FusionFBP</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.FBPConvNet.html">LION.models.post_processing.FBPConvNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.FBPConvNetImage.html">LION.models.post_processing.FBPConvNetImage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.post_processing.cFBPConvNet.html">LION.models.post_processing.cFBPConvNet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="LION.models.torch_model.html">LION.models.torch_model</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="LION.optimizers.html">LION.optimizers</a><input aria-label="Toggle navigation of LION.optimizers" checked="" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.AdversarialRegularizerSolver.html">LION.optimizers.AdversarialRegularizerSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Equivariance2InverseSolver.html">LION.optimizers.Equivariance2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.EquivariantSolver.html">LION.optimizers.EquivariantSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.GaussianDenoiserSolver.html">LION.optimizers.GaussianDenoiserSolver</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">LION.optimizers.LIONsolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Noise2InverseSolver.html">LION.optimizers.Noise2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Noisier2InverseSolver.html">LION.optimizers.Noisier2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Proj2ProjSolver.html">LION.optimizers.Proj2ProjSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.SelfSupervisedSolver.html">LION.optimizers.SelfSupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.Sparse2InverseSolver.html">LION.optimizers.Sparse2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.SupervisedSolver.html">LION.optimizers.SupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.optimizers.training_record.html">LION.optimizers.training_record</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.losses.html">LION.losses</a><input aria-label="Toggle navigation of LION.losses" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.SURE.html">LION.losses.SURE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.SUREpgImage.html">LION.losses.SUREpgImage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.losses.jacobian_penalty.html">LION.losses.jacobian_penalty</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.reconstructors.html">LION.reconstructors</a><input aria-label="Toggle navigation of LION.reconstructors" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.ForwardReconstructor.html">LION.reconstructors.ForwardReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.LIONreconstructor.html">LION.reconstructors.LIONreconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.LearnedRegularizerReconstructor.html">LION.reconstructors.LearnedRegularizerReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.reconstructors.PnP.html">LION.reconstructors.PnP</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.classical_algorithms.html">LION.classical_algorithms</a><input aria-label="Toggle navigation of LION.classical_algorithms" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.conjugate_gradient.html">LION.classical_algorithms.conjugate_gradient</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.fista.html">LION.classical_algorithms.fista</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.classical_algorithms.spgl1_torch.html">LION.classical_algorithms.spgl1_torch</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.evaluation.html">LION.evaluation</a><input aria-label="Toggle navigation of LION.evaluation" class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.comparison.html">LION.evaluation.comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.evaluation.html">LION.evaluation.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.figures.html">LION.evaluation.figures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.evaluation.methods.html">LION.evaluation.methods</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.metrics.html">LION.metrics</a><input aria-label="Toggle navigation of LION.metrics" class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.haarpsi.html">LION.metrics.haarpsi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.metrics.html">LION.metrics.metrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.psnr.html">LION.metrics.psnr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.metrics.ssim.html">LION.metrics.ssim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="LION.package.html">LION.package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="LION.utils.html">LION.utils</a><input aria-label="Toggle navigation of LION.utils" class="toctree-checkbox" id="toctree-checkbox-21" name="toctree-checkbox-21" role="switch" type="checkbox"/><label for="toctree-checkbox-21"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.citation.html">LION.utils.citation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.common_primitives.html">LION.utils.common_primitives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.device.html">LION.utils.device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.environment.html">LION.utils.environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.image_transforms.html">LION.utils.image_transforms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.math.html">LION.utils.math</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.mrpro_import.html">LION.utils.mrpro_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.normaliser.html">LION.utils.normaliser</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.parameter.html">LION.utils.parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.paths.html">LION.utils.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.rng.html">LION.utils.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.spec.html">LION.utils.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.spyrit_import.html">LION.utils.spyrit_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.tomosipo_import.html">LION.utils.tomosipo_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LION.utils.utils.html">LION.utils.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../citing.html">Citing LION</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/generated/LION.optimizers.LIONsolver.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/generated/LION.optimizers.LIONsolver.rst" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="module-LION.optimizers.LIONsolver">
+<span id="lion-optimizers-lionsolver"></span><h1>LION.optimizers.LIONsolver<a class="headerlink" href="#module-LION.optimizers.LIONsolver" title="Link to this heading">¶</a></h1>
+<p class="rubric">Classes</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver" title="LION.optimizers.LIONsolver.LIONsolver"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LIONsolver</span></code></a>(model, optimizer, loss_fn[, ...])</p></td>
+<td><p>Base class for the solvers, which train a <code class="docutils literal notranslate"><span class="pre">model</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Functions</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#LION.optimizers.LIONsolver.model_forward" title="LION.optimizers.LIONsolver.model_forward"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_forward</span></code></a>(model, data, op)</p></td>
+<td><p>Run <code class="docutils literal notranslate"><span class="pre">model</span></code> on a batch of measurements, as the solvers do (and <code class="docutils literal notranslate"><span class="pre">LION.reconstructors.ForwardReconstructor</span></code>).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#LION.optimizers.LIONsolver.warn_if_not_mse" title="LION.optimizers.LIONsolver.warn_if_not_mse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">warn_if_not_mse</span></code></a>(loss_fn, solver_name)</p></td>
+<td><p>Warn that <code class="docutils literal notranslate"><span class="pre">loss_fn</span></code> is not used by a solver whose loss must be the MSE.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr class="docutils" />
+<dl class="py class">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.optimizers.LIONsolver.</span></span><span class="sig-name descname"><span class="pre">LIONsolver</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loss_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_regularization</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scheduler</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scheduler_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'epoch'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deterministic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
+<p>Base class for the solvers, which train a <code class="docutils literal notranslate"><span class="pre">model</span></code>.</p>
+<p>A solver is made with the model, the optimizer, the loss and its settings
+(<code class="docutils literal notranslate"><span class="pre">__init__</span></code>), then told about the data and what to do around training,
+then trained:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">set_training(loader)</span></code>: the training data (required);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">set_validation(loader,</span> <span class="pre">freq,</span> <span class="pre">fn)</span></code>: validate every <code class="docutils literal notranslate"><span class="pre">freq</span></code> epochs,
+keeping the best model;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">set_saving(folder,</span> <span class="pre">name)</span></code>: where the final and best models go;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">set_checkpointing(name,</span> <span class="pre">freq)</span></code>: checkpoints, to resume from;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">set_testing(loader,</span> <span class="pre">fn)</span></code>: data for <code class="docutils literal notranslate"><span class="pre">test()</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">train(n_epochs)</span></code>, then <code class="docutils literal notranslate"><span class="pre">save_final_results()</span></code>.</p></li>
+</ul>
+<p>Every saved file has the training record (<code class="docutils literal notranslate"><span class="pre">training_record</span></code>): enough
+to train the same model again (<code class="docutils literal notranslate"><span class="pre">LIONsolver.instantiate</span></code>,
+<code class="docutils literal notranslate"><span class="pre">LION.package</span></code>).</p>
+<p>A new solver derives from this class and defines
+<code class="docutils literal notranslate"><span class="pre">mini_batch_step(y,</span> <span class="pre">target)</span></code> (the loss of one mini-batch) and
+<code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code> (its <code class="docutils literal notranslate"><span class="pre">solver_params</span></code>); see
+<code class="docutils literal notranslate"><span class="pre">SupervisedSolver</span></code> for the simplest.</p>
+<p><code class="docutils literal notranslate"><span class="pre">operator_params</span></code>: the parameters of the operator the measurements come
+from (an <code class="docutils literal notranslate"><span class="pre">OperatorParameters</span></code>; <strong>for CT, the geometry</strong>). Not needed when
+the model has them: the solver takes the model’s.</p>
+<p>Every solver takes <code class="docutils literal notranslate"><span class="pre">(model,</span> <span class="pre">optimizer,</span> <span class="pre">loss_fn,</span> <span class="pre">operator_params,</span>
+<span class="pre">solver_params,</span> <span class="pre">model_regularization,</span> <span class="pre">scheduler,</span> <span class="pre">scheduler_step,</span>
+<span class="pre">verbose,</span> <span class="pre">device,</span> <span class="pre">seed,</span> <span class="pre">deterministic)</span></code>, in that order (<code class="docutils literal notranslate"><span class="pre">ARSolver</span></code>
+has no <code class="docutils literal notranslate"><span class="pre">loss_fn</span></code>).</p>
+<p><code class="docutils literal notranslate"><span class="pre">operator_params</span></code>: the parameters of the operator (for CT, the
+geometry); the model’s, if it has them.</p>
+<p><code class="docutils literal notranslate"><span class="pre">solver_params</span></code>: the solver’s settings, from
+<code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">model_regularization</span></code>: None, or a term added to the training loss
+of every mini-batch, <code class="docutils literal notranslate"><span class="pre">model_regularization(model,</span> <span class="pre">step)</span></code>: a penalty
+on the model’s weights (<code class="docutils literal notranslate"><span class="pre">step</span></code> unused) or on what it does with the
+mini-batch (e.g. <code class="docutils literal notranslate"><span class="pre">LION.losses.jacobian_penalty</span></code>). <code class="docutils literal notranslate"><span class="pre">step</span></code> has
+<code class="docutils literal notranslate"><span class="pre">input</span></code> (what the model was given), <code class="docutils literal notranslate"><span class="pre">output</span></code>, <code class="docutils literal notranslate"><span class="pre">target</span></code> (what
+the output is compared with; None for solvers without one) and
+<code class="docutils literal notranslate"><span class="pre">forward</span></code> (the model as the solver calls it, e.g. with the noise
+level). Recorded as <code class="docutils literal notranslate"><span class="pre">loss_fn</span></code> is.</p>
+<p><code class="docutils literal notranslate"><span class="pre">scheduler</span></code>: a torch learning-rate scheduler made on <code class="docutils literal notranslate"><span class="pre">optimizer</span></code>
+(e.g. <code class="docutils literal notranslate"><span class="pre">torch.optim.lr_scheduler.StepLR(optimizer,</span> <span class="pre">30)</span></code>), or None. It
+steps after every epoch (<code class="docutils literal notranslate"><span class="pre">scheduler_step=&quot;epoch&quot;</span></code>, torch’s
+convention) or every mini-batch (<code class="docutils literal notranslate"><span class="pre">&quot;batch&quot;</span></code>, e.g. for
+<code class="docutils literal notranslate"><span class="pre">OneCycleLR</span></code>). <code class="docutils literal notranslate"><span class="pre">ReduceLROnPlateau</span></code> steps with the validation value
+of the epochs that validate, or with the training loss when there is
+no validation. Its state is saved in checkpoints, and the training
+record has it and the learning rate of every epoch.</p>
+<p><code class="docutils literal notranslate"><span class="pre">seed</span></code>: the training seed. When training starts, torch (CPU and
+CUDA), numpy and Python’s <code class="docutils literal notranslate"><span class="pre">random</span></code> are seeded with it, so the same
+solver, model and data give the same training, and checkpoints keep the
+random state, so a resumed run continues the same way. The randomness
+within a run (shuffling, noise a solver adds) still changes every batch
+and epoch. Two runs with the same seed give the same model: use
+different seeds for an ensemble. <code class="docutils literal notranslate"><span class="pre">None</span></code>: unseeded.</p>
+<p><code class="docutils literal notranslate"><span class="pre">deterministic</span></code>: use only deterministic algorithms (torch’s
+<code class="docutils literal notranslate"><span class="pre">use_deterministic_algorithms</span></code>, deterministic cuDNN), so that on a GPU
+two runs with the same seed give exactly the same model, and a resumed
+run the uninterrupted one. Slower; a few operations then raise (torch
+names them). It applies to the whole program from here on. Off, GPU
+runs with the same seed differ slightly (e.g. ~1e-3 in the weights after
+a few epochs). On a GPU it needs <code class="docutils literal notranslate"><span class="pre">CUBLAS_WORKSPACE_CONFIG=:4096:8</span></code>
+before cuBLAS starts: it is set here if it isn’t (exporting it before the
+script is surer).</p>
+<p><code class="docutils literal notranslate"><span class="pre">verbose</span></code>: how much progress is shown. 0: nothing; 1 (default): one
+progress bar for training (every mini-batch of every epoch, with the
+epoch, the loss, the last validation value and the time left) and one
+for testing; 2: also the
+validation bars and messages (each epoch’s losses, checkpoints, the
+seed). True is 1, False 0.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.do_normalise">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">do_normalise</span></span><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.do_normalise" title="Link to this definition">¶</a></dt>
+<dd><p>True if the model has a normalisation set (<code class="docutils literal notranslate"><span class="pre">model.set_normalisation()</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.reconstruct_measurements">
+<span class="sig-name descname"><span class="pre">reconstruct_measurements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">op</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.reconstruct_measurements"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.reconstruct_measurements" title="Link to this definition">¶</a></dt>
+<dd><p>Reconstruct the measurements <code class="docutils literal notranslate"><span class="pre">y</span></code> of the operator <code class="docutils literal notranslate"><span class="pre">op</span></code> with the
+solver parameters’ <code class="docutils literal notranslate"><span class="pre">recon_fn(y,</span> <span class="pre">op)</span></code>, for solvers whose method starts
+from reconstructions (Noise2Inverse, Proj2Proj, …). Its default,
+<code class="docutils literal notranslate"><span class="pre">&quot;default&quot;</span></code>, is the operator’s default reconstruction (FDK for CT),
+replaced by that function when the solver is made.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.spec_kwargs">
+<span class="sig-name descname"><span class="pre">spec_kwargs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.spec_kwargs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.spec_kwargs" title="Link to this definition">¶</a></dt>
+<dd><p>The solver’s own constructor arguments: not the model (saved as
+the model) nor the optimizer (built on the model’s parameters).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.training_record">
+<span class="sig-name descname"><span class="pre">training_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.training_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.training_record" title="Link to this definition">¶</a></dt>
+<dd><p>The record of this training, for a file holding the <code class="docutils literal notranslate"><span class="pre">kind</span></code>
+(“final”, “best_validation”, “checkpoint”) weights after <code class="docutils literal notranslate"><span class="pre">epoch</span></code>
+epochs (see <code class="docutils literal notranslate"><span class="pre">LION.optimizers.training_record</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.instantiate">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">instantiate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">arguments</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.instantiate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.instantiate" title="Link to this definition">¶</a></dt>
+<dd><p>The solver a saved file describes, training <code class="docutils literal notranslate"><span class="pre">model</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">source</span></code>: a model file a solver saved (or the dict read from it), or
+its training record. Made from the solver’s own record only: its
+class, <code class="docutils literal notranslate"><span class="pre">solver_params</span></code>, loss and seed, the optimizer (class,
+hyperparameters and parameter groups) on <code class="docutils literal notranslate"><span class="pre">model</span></code>’s parameters, and
+the learning-rate scheduler on that optimizer. The data, validation,
+testing and saving are set as usual (<code class="docutils literal notranslate"><span class="pre">set_training</span></code>, …).
+<code class="docutils literal notranslate"><span class="pre">arguments</span></code> replace recorded ones or give those that couldn’t be
+recorded (e.g. <code class="docutils literal notranslate"><span class="pre">loss_fn</span></code> for a lambda loss) and where it runs
+(<code class="docutils literal notranslate"><span class="pre">device</span></code>, <code class="docutils literal notranslate"><span class="pre">verbose</span></code>). Called on <code class="docutils literal notranslate"><span class="pre">LIONsolver</span></code>
+it makes the class the record names; on a solver class, that class.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.parameters_from_file">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parameters_from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.parameters_from_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.parameters_from_file" title="Link to this definition">¶</a></dt>
+<dd><p>What <code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code> gives, as <code class="docutils literal notranslate"><span class="pre">source</span></code> (a model file a
+solver saved, or its training record) recorded it: the solver’s
+<code class="docutils literal notranslate"><span class="pre">solver_params</span></code>, to change and make the solver with
+(<code class="docutils literal notranslate"><span class="pre">instantiate(source,</span> <span class="pre">model,</span> <span class="pre">solver_params=parameters)</span></code>). The
+defaults for a solver that takes none (e.g. <code class="docutils literal notranslate"><span class="pre">SupervisedSolver</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.default_parameters">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.default_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The solver’s settings (<code class="docutils literal notranslate"><span class="pre">solver_params</span></code>), each with its default:
+every setting the solver has, so this is also their list.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.set_training">
+<span class="sig-name descname"><span class="pre">set_training</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_loader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loss_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.set_training"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.set_training" title="Link to this definition">¶</a></dt>
+<dd><p>The training data: a DataLoader of (measurements, target) batches.
+<code class="docutils literal notranslate"><span class="pre">loss_fn</span></code>: replaces the solver’s loss, if given.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.set_validation">
+<span class="sig-name descname"><span class="pre">set_validation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">validation_loader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">validation_freq</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">validation_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">validation_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reconstructor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.set_validation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.set_validation" title="Link to this definition">¶</a></dt>
+<dd><p>Validate every <code class="docutils literal notranslate"><span class="pre">validation_freq</span></code> epochs on <code class="docutils literal notranslate"><span class="pre">validation_loader</span></code>,
+with <code class="docutils literal notranslate"><span class="pre">validation_fn(output,</span> <span class="pre">target)</span></code> (the training loss if None).</p>
+<p>The model with the best validation value is saved as <code class="docutils literal notranslate"><span class="pre">validation_fname</span></code>
+in the solver’s save folder (see <code class="docutils literal notranslate"><span class="pre">set_saving()</span></code>). Best is the lowest
+value, unless <code class="docutils literal notranslate"><span class="pre">validation_fn</span></code> has <code class="docutils literal notranslate"><span class="pre">higher_is_better</span> <span class="pre">=</span> <span class="pre">True</span></code> (as
+LION’s PSNR and SSIM metrics do; any function can set it, e.g.
+<code class="docutils literal notranslate"><span class="pre">my_metric.higher_is_better</span> <span class="pre">=</span> <span class="pre">True</span></code>).</p>
+<p><code class="docutils literal notranslate"><span class="pre">reconstructor</span></code>: a reconstructor (<code class="docutils literal notranslate"><span class="pre">LION.reconstructors</span></code>) to
+reconstruct the validation data with, using the model being trained
+(set as its <code class="docutils literal notranslate"><span class="pre">model</span></code>); otherwise the solver’s own <code class="docutils literal notranslate"><span class="pre">_forward</span></code>. It is
+made outside the solver, with its own parameters, and recorded.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.set_testing">
+<span class="sig-name descname"><span class="pre">set_testing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">test_loader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">testing_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reconstructor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.set_testing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.set_testing" title="Link to this definition">¶</a></dt>
+<dd><p>The data <code class="docutils literal notranslate"><span class="pre">test()</span></code> uses: <code class="docutils literal notranslate"><span class="pre">test_loader</span></code>, scored with
+<code class="docutils literal notranslate"><span class="pre">testing_fn(output,</span> <span class="pre">target)</span></code> (the training loss if None).
+<code class="docutils literal notranslate"><span class="pre">reconstructor</span></code>: as in <code class="docutils literal notranslate"><span class="pre">set_validation</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.set_saving">
+<span class="sig-name descname"><span class="pre">set_saving</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_folder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_result_fname</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.set_saving"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.set_saving" title="Link to this definition">¶</a></dt>
+<dd><p>Where results are saved: the final model as
+<code class="docutils literal notranslate"><span class="pre">save_folder/final_result_fname</span></code> (<code class="docutils literal notranslate"><span class="pre">save_final_results()</span></code>), and the
+best validation model next to it. <code class="docutils literal notranslate"><span class="pre">save_folder</span></code> must be a folder
+that exists (ValueError otherwise).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.set_checkpointing">
+<span class="sig-name descname"><span class="pre">set_checkpointing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">checkpoint_fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">checkpoint_freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_checkpoint_if_exists</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.set_checkpointing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.set_checkpointing" title="Link to this definition">¶</a></dt>
+<dd><p>Save a checkpoint every <code class="docutils literal notranslate"><span class="pre">checkpoint_freq</span></code> epochs, as
+<code class="docutils literal notranslate"><span class="pre">checkpoint_fname</span></code> (its <code class="docutils literal notranslate"><span class="pre">*</span></code> replaced by the epoch) in
+<code class="docutils literal notranslate"><span class="pre">save_folder</span></code> (the solver’s, from <code class="docutils literal notranslate"><span class="pre">set_saving()</span></code>, if None). A
+checkpoint has the model, the optimizer’s and scheduler’s state, the
+losses and the random state: with <code class="docutils literal notranslate"><span class="pre">load_checkpoint_if_exists</span></code>,
+<code class="docutils literal notranslate"><span class="pre">train()</span></code> resumes from the latest one, as if never stopped.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.check_training_ready">
+<span class="sig-name descname"><span class="pre">check_training_ready</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autofill</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.check_training_ready"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.check_training_ready" title="Link to this definition">¶</a></dt>
+<dd><p>Checks what training needs (all set when the solver is made).</p>
+<p><code class="docutils literal notranslate"><span class="pre">error</span></code>: raise when something required is missing (otherwise warn);
+<code class="docutils literal notranslate"><span class="pre">autofill</span></code>: fill in what has a default (the device). Returns 0 when
+ready, 1 when something is missing, 2 when something has the wrong
+type.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.check_validation_ready">
+<span class="sig-name descname"><span class="pre">check_validation_ready</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">autofill</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.check_validation_ready"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.check_validation_ready" title="Link to this definition">¶</a></dt>
+<dd><p>Checks what validation needs (<code class="docutils literal notranslate"><span class="pre">set_validation()</span></code>), filling in the
+validation function (the loss) and frequency (10) with <code class="docutils literal notranslate"><span class="pre">autofill</span></code>,
+and the best model’s file name. Returns 0 when ready, 1 when
+something is missing, 2 when something has the wrong type.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.check_testing_ready">
+<span class="sig-name descname"><span class="pre">check_testing_ready</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.check_testing_ready"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.check_testing_ready" title="Link to this definition">¶</a></dt>
+<dd><p>Checks what <code class="docutils literal notranslate"><span class="pre">test()</span></code> needs (<code class="docutils literal notranslate"><span class="pre">set_testing()</span></code>); <code class="docutils literal notranslate"><span class="pre">error</span></code>: raise
+when something is missing (otherwise warn). Returns as
+<code class="docutils literal notranslate"><span class="pre">check_validation_ready</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.check_checkpointing_ready">
+<span class="sig-name descname"><span class="pre">check_checkpointing_ready</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">autofill</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.check_checkpointing_ready"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.check_checkpointing_ready" title="Link to this definition">¶</a></dt>
+<dd><p>Fills in what checkpointing needs; checkpointing is optional, so
+nothing missing here is warned about.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.check_saving_ready">
+<span class="sig-name descname"><span class="pre">check_saving_ready</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.check_saving_ready"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.check_saving_ready" title="Link to this definition">¶</a></dt>
+<dd><p>Checks that there is a folder to save in (<code class="docutils literal notranslate"><span class="pre">set_saving()</span></code>):
+0 if so, 1 if not set, 2 if not a folder.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.check_complete">
+<span class="sig-name descname"><span class="pre">check_complete</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autofill</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.check_complete"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.check_complete" title="Link to this definition">¶</a></dt>
+<dd><p>Every check (training, testing, saving, validation,
+checkpointing): the worst of their return codes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.save_checkpoint">
+<span class="sig-name descname"><span class="pre">save_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.save_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.save_checkpoint" title="Link to this definition">¶</a></dt>
+<dd><p>Saves a checkpoint after <code class="docutils literal notranslate"><span class="pre">epoch</span></code> (0-based), as
+<code class="docutils literal notranslate"><span class="pre">set_checkpointing()</span></code> says: the model, the optimizer’s and
+scheduler’s state, the losses, the random state and the training
+record.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.save_validation">
+<span class="sig-name descname"><span class="pre">save_validation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.save_validation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.save_validation" title="Link to this definition">¶</a></dt>
+<dd><p>Saves the model as it is after <code class="docutils literal notranslate"><span class="pre">epoch</span></code>, its best validation so
+far, as <code class="docutils literal notranslate"><span class="pre">validation_fname</span></code> in the save folder, with the training
+record and the validation value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.save_final_results">
+<span class="sig-name descname"><span class="pre">save_final_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">final_result_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.save_final_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.save_final_results" title="Link to this definition">¶</a></dt>
+<dd><p>Saves the trained model as <code class="docutils literal notranslate"><span class="pre">final_result_fname</span></code> in
+<code class="docutils literal notranslate"><span class="pre">save_folder</span></code> (those of <code class="docutils literal notranslate"><span class="pre">set_saving()</span></code> if None), with the training
+record and the losses. <code class="docutils literal notranslate"><span class="pre">epoch</span></code>: the epochs trained (the current
+one if None).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.clean_checkpoints">
+<span class="sig-name descname"><span class="pre">clean_checkpoints</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.clean_checkpoints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.clean_checkpoints" title="Link to this definition">¶</a></dt>
+<dd><p>Deletes the checkpoint files (<code class="docutils literal notranslate"><span class="pre">set_checkpointing()</span></code>), e.g. after
+a run that finished.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.test">
+<span class="sig-name descname"><span class="pre">test</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.test"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.test" title="Link to this definition">¶</a></dt>
+<dd><p>Scores the model on the test data (<code class="docutils literal notranslate"><span class="pre">set_testing()</span></code>): an array of
+<code class="docutils literal notranslate"><span class="pre">testing_fn</span></code> values, one per batch (or per sample, if
+<code class="docutils literal notranslate"><span class="pre">testing_fn</span></code> gives one per sample). Empty, with a warning, without
+test data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.load_checkpoint">
+<span class="sig-name descname"><span class="pre">load_checkpoint</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.load_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.load_checkpoint" title="Link to this definition">¶</a></dt>
+<dd><p>Loads the latest checkpoint, if there is one, and resumes from it:
+the model, the optimizer’s and scheduler’s state, the epoch, the
+losses, the random state. <code class="docutils literal notranslate"><span class="pre">train()</span></code> calls it.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.train_step">
+<span class="sig-name descname"><span class="pre">train_step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.train_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.train_step" title="Link to this definition">¶</a></dt>
+<dd><p>One pass over the training data: for each mini-batch, the loss
+(<code class="docutils literal notranslate"><span class="pre">mini_batch_step</span></code>), a gradient step (and a scheduler step, with
+<code class="docutils literal notranslate"><span class="pre">scheduler_step=&quot;batch&quot;</span></code>). Returns the mean loss of the epoch.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.epoch_step">
+<span class="sig-name descname"><span class="pre">epoch_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.epoch_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.epoch_step" title="Link to this definition">¶</a></dt>
+<dd><p>Epoch <code class="docutils literal notranslate"><span class="pre">epoch</span></code> (0-based): training (<code class="docutils literal notranslate"><span class="pre">train_step</span></code>), validation
+when due (saving the best model), and a scheduler step.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_epochs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.train" title="Link to this definition">¶</a></dt>
+<dd><p>Trains until <code class="docutils literal notranslate"><span class="pre">n_epochs</span></code> epochs are done in all: resuming from a
+checkpoint (<code class="docutils literal notranslate"><span class="pre">set_checkpointing()</span></code>) or an earlier <code class="docutils literal notranslate"><span class="pre">train()</span></code>, with
+one progress bar (<code class="docutils literal notranslate"><span class="pre">verbose</span></code>). The model is left in training mode;
+<code class="docutils literal notranslate"><span class="pre">save_final_results()</span></code> saves it.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.validate">
+<span class="sig-name descname"><span class="pre">validate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.validate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.validate" title="Link to this definition">¶</a></dt>
+<dd><p>The validation value of the model now: the mean of
+<code class="docutils literal notranslate"><span class="pre">validation_fn</span></code> over the validation data, with the model in
+evaluation mode, the random state left as it was.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.get_model">
+<span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.get_model" title="Link to this definition">¶</a></dt>
+<dd><p>The model being trained.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.mini_batch_step">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mini_batch_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_batch</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.mini_batch_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.mini_batch_step" title="Link to this definition">¶</a></dt>
+<dd><p>The loss of one mini-batch: measurements <code class="docutils literal notranslate"><span class="pre">y</span></code> and their targets
+(the solver adds <code class="docutils literal notranslate"><span class="pre">model_regularization</span></code> with <code class="docutils literal notranslate"><span class="pre">_regularized</span></code>).
+What a new solver defines.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.LIONsolver.cite">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cite</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cite_format</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'bib'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#LIONsolver.cite"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.LIONsolver.cite" title="Link to this definition">¶</a></dt>
+<dd><p>Where the solver comes from: its paper’s citation, BibTeX (“bib”) or
+“MLA” (<code class="docutils literal notranslate"><span class="pre">LION.utils.citation</span></code>); None if it has none. Solvers
+from a paper define it.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.model_forward">
+<span class="sig-prename descclassname"><span class="pre">LION.optimizers.LIONsolver.</span></span><span class="sig-name descname"><span class="pre">model_forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">op</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#model_forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.model_forward" title="Link to this definition">¶</a></dt>
+<dd><p>Run <code class="docutils literal notranslate"><span class="pre">model</span></code> on a batch of measurements, as the solvers do (and
+<code class="docutils literal notranslate"><span class="pre">LION.reconstructors.ForwardReconstructor</span></code>).</p>
+<p>Image-domain models get a reconstruction (with operator <code class="docutils literal notranslate"><span class="pre">op</span></code>) as input:
+the operator’s default (FDK for CT), or the model’s own
+(<code class="docutils literal notranslate"><span class="pre">model.initial_reconstruction</span></code>). Sinogram-domain models
+get the measurements. With a normalisation
+set (<code class="docutils literal notranslate"><span class="pre">model.set_normalisation()</span></code>), the input is normalised (for
+measurements: as the images are, by linearity) and the output mapped
+back, so the output is in the units of the target.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="LION.optimizers.LIONsolver.warn_if_not_mse">
+<span class="sig-prename descclassname"><span class="pre">LION.optimizers.LIONsolver.</span></span><span class="sig-name descname"><span class="pre">warn_if_not_mse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loss_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/optimizers/LIONsolver.html#warn_if_not_mse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.optimizers.LIONsolver.warn_if_not_mse" title="Link to this definition">¶</a></dt>
+<dd><p>Warn that <code class="docutils literal notranslate"><span class="pre">loss_fn</span></code> is not used by a solver whose loss must be the MSE.</p>
+<p>Some self-supervised losses are only valid for the mean squared error
+(e.g. their target is a conditional mean), so these solvers use the MSE
+whatever loss is passed; <code class="docutils literal notranslate"><span class="pre">loss_fn</span></code> is still the default validation and
+testing function.</p>
+</dd></dl>
+
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="LION.optimizers.Noise2InverseSolver.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">LION.optimizers.Noise2InverseSolver</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="LION.optimizers.GaussianDenoiserSolver.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">LION.optimizers.GaussianDenoiserSolver</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Cambridge Image Analysis, University of Cambridge
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">LION.optimizers.LIONsolver</a><ul>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver"><code class="docutils literal notranslate"><span class="pre">LIONsolver</span></code></a><ul>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.do_normalise"><code class="docutils literal notranslate"><span class="pre">LIONsolver.do_normalise</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.reconstruct_measurements"><code class="docutils literal notranslate"><span class="pre">LIONsolver.reconstruct_measurements()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.spec_kwargs"><code class="docutils literal notranslate"><span class="pre">LIONsolver.spec_kwargs()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.training_record"><code class="docutils literal notranslate"><span class="pre">LIONsolver.training_record()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.instantiate"><code class="docutils literal notranslate"><span class="pre">LIONsolver.instantiate()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.parameters_from_file"><code class="docutils literal notranslate"><span class="pre">LIONsolver.parameters_from_file()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.default_parameters"><code class="docutils literal notranslate"><span class="pre">LIONsolver.default_parameters()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.set_training"><code class="docutils literal notranslate"><span class="pre">LIONsolver.set_training()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.set_validation"><code class="docutils literal notranslate"><span class="pre">LIONsolver.set_validation()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.set_testing"><code class="docutils literal notranslate"><span class="pre">LIONsolver.set_testing()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.set_saving"><code class="docutils literal notranslate"><span class="pre">LIONsolver.set_saving()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.set_checkpointing"><code class="docutils literal notranslate"><span class="pre">LIONsolver.set_checkpointing()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.check_training_ready"><code class="docutils literal notranslate"><span class="pre">LIONsolver.check_training_ready()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.check_validation_ready"><code class="docutils literal notranslate"><span class="pre">LIONsolver.check_validation_ready()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.check_testing_ready"><code class="docutils literal notranslate"><span class="pre">LIONsolver.check_testing_ready()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.check_checkpointing_ready"><code class="docutils literal notranslate"><span class="pre">LIONsolver.check_checkpointing_ready()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.check_saving_ready"><code class="docutils literal notranslate"><span class="pre">LIONsolver.check_saving_ready()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.check_complete"><code class="docutils literal notranslate"><span class="pre">LIONsolver.check_complete()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.save_checkpoint"><code class="docutils literal notranslate"><span class="pre">LIONsolver.save_checkpoint()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.save_validation"><code class="docutils literal notranslate"><span class="pre">LIONsolver.save_validation()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.save_final_results"><code class="docutils literal notranslate"><span class="pre">LIONsolver.save_final_results()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.clean_checkpoints"><code class="docutils literal notranslate"><span class="pre">LIONsolver.clean_checkpoints()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.test"><code class="docutils literal notranslate"><span class="pre">LIONsolver.test()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.load_checkpoint"><code class="docutils literal notranslate"><span class="pre">LIONsolver.load_checkpoint()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.train_step"><code class="docutils literal notranslate"><span class="pre">LIONsolver.train_step()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.epoch_step"><code class="docutils literal notranslate"><span class="pre">LIONsolver.epoch_step()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.train"><code class="docutils literal notranslate"><span class="pre">LIONsolver.train()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.validate"><code class="docutils literal notranslate"><span class="pre">LIONsolver.validate()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.get_model"><code class="docutils literal notranslate"><span class="pre">LIONsolver.get_model()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.mini_batch_step"><code class="docutils literal notranslate"><span class="pre">LIONsolver.mini_batch_step()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.LIONsolver.cite"><code class="docutils literal notranslate"><span class="pre">LIONsolver.cite()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.model_forward"><code class="docutils literal notranslate"><span class="pre">model_forward()</span></code></a></li>
+<li><a class="reference internal" href="#LION.optimizers.LIONsolver.warn_if_not_mse"><code class="docutils literal notranslate"><span class="pre">warn_if_not_mse()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
+    </body>
+</html>

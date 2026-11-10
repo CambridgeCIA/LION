@@ -1,0 +1,34 @@
+LION.losses.SUREpgImage
+=======================
+
+.. automodule:: LION.losses.SUREpgImage
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   SUREpgLoss
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: SUREpgLoss
+   :members:
+   :show-inheritance:
+
+
+

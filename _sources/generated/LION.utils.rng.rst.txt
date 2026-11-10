@@ -1,0 +1,48 @@
+LION.utils.rng
+==============
+
+.. automodule:: LION.utils.rng
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   random_state
+   seed_all
+   seed_from_parts
+   seeded
+   set_random_state
+
+
+
+
+----
+
+
+
+.. autofunction:: random_state
+
+
+.. autofunction:: seed_all
+
+
+.. autofunction:: seed_from_parts
+
+
+.. autofunction:: seeded
+
+
+.. autofunction:: set_random_state
+
+

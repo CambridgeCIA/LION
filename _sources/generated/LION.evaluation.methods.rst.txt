@@ -1,0 +1,36 @@
+LION.evaluation.methods
+=======================
+
+.. automodule:: LION.evaluation.methods
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   baseline
+   method
+
+
+
+
+----
+
+
+
+.. autofunction:: baseline
+
+
+.. autofunction:: method
+
+

@@ -1,0 +1,56 @@
+LION.evaluation.figures
+=======================
+
+.. automodule:: LION.evaluation.figures
+   :no-members:
+
+
+
+
+
+
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   box_plot
+   chosen_samples
+   difference_plot
+   example_images
+   per_sample
+   per_sample_differences
+   reconstructions
+
+
+
+
+----
+
+
+
+.. autofunction:: box_plot
+
+
+.. autofunction:: chosen_samples
+
+
+.. autofunction:: difference_plot
+
+
+.. autofunction:: example_images
+
+
+.. autofunction:: per_sample
+
+
+.. autofunction:: per_sample_differences
+
+
+.. autofunction:: reconstructions
+
+

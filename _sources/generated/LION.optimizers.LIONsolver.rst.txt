@@ -1,0 +1,47 @@
+LION.optimizers.LIONsolver
+==========================
+
+.. automodule:: LION.optimizers.LIONsolver
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   LIONsolver
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   model_forward
+   warn_if_not_mse
+
+
+
+
+----
+
+
+.. autoclass:: LIONsolver
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: model_forward
+
+
+.. autofunction:: warn_if_not_mse
+
+

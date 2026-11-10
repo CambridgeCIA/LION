@@ -1,0 +1,6 @@
+LION.operators.ct.tv\_min
+=========================
+
+.. currentmodule:: LION.operators.ct
+
+.. autofunction:: tv_min

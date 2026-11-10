@@ -1,0 +1,36 @@
+LION.reconstructors.PnP
+=======================
+
+.. currentmodule:: LION.reconstructors
+
+.. autoclass:: PnP
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~PnP.__init__
+      ~PnP.admm_algorithm
+      ~PnP.cite
+      ~PnP.default_parameters
+      ~PnP.forward_backward_splitting
+      ~PnP.hqs_algorithm
+      ~PnP.initial_guess
+      ~PnP.instantiate
+      ~PnP.load
+      ~PnP.parameters_from_file
+      ~PnP.reconstruct
+      ~PnP.reconstruct_sample
+      ~PnP.save
+      ~PnP.setting
+      ~PnP.spec_kwargs
+   
+   
+
+   
+   
+   

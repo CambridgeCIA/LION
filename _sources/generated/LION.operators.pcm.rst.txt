@@ -1,0 +1,27 @@
+LION.operators.pcm
+==================
+
+.. automodule:: LION.operators.pcm
+   :no-members:
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   PhotocurrentMapOp
+   WalshHadamard2D
+
+
+
+
+
+
+
+
+
+
+

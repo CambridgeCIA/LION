@@ -1,0 +1,43 @@
+LION.operators.ct.ct\_geometry
+==============================
+
+.. automodule:: LION.operators.ct.ct_geometry
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   Geometry
+
+
+
+
+
+.. rubric:: Functions
+
+.. autosummary::
+
+   check_geometry
+
+
+
+
+----
+
+
+.. autoclass:: Geometry
+   :members:
+   :show-inheritance:
+
+
+
+.. autofunction:: check_geometry
+
+

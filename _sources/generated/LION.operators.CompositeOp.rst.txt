@@ -1,0 +1,90 @@
+LION.operators.CompositeOp
+==========================
+
+.. currentmodule:: LION.operators
+
+.. autoclass:: CompositeOp
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CompositeOp.__init__
+      ~CompositeOp.add_module
+      ~CompositeOp.adjoint
+      ~CompositeOp.apply
+      ~CompositeOp.autograd
+      ~CompositeOp.bfloat16
+      ~CompositeOp.buffers
+      ~CompositeOp.children
+      ~CompositeOp.compile
+      ~CompositeOp.cpu
+      ~CompositeOp.cuda
+      ~CompositeOp.default_reconstruction
+      ~CompositeOp.default_reconstruction_fn
+      ~CompositeOp.double
+      ~CompositeOp.eval
+      ~CompositeOp.extra_repr
+      ~CompositeOp.float
+      ~CompositeOp.forward
+      ~CompositeOp.get_buffer
+      ~CompositeOp.get_extra_state
+      ~CompositeOp.get_parameter
+      ~CompositeOp.get_submodule
+      ~CompositeOp.gram
+      ~CompositeOp.half
+      ~CompositeOp.inverse
+      ~CompositeOp.ipu
+      ~CompositeOp.load_state_dict
+      ~CompositeOp.modules
+      ~CompositeOp.mtia
+      ~CompositeOp.named_buffers
+      ~CompositeOp.named_children
+      ~CompositeOp.named_modules
+      ~CompositeOp.named_parameters
+      ~CompositeOp.parameters
+      ~CompositeOp.register_backward_hook
+      ~CompositeOp.register_buffer
+      ~CompositeOp.register_forward_hook
+      ~CompositeOp.register_forward_pre_hook
+      ~CompositeOp.register_full_backward_hook
+      ~CompositeOp.register_full_backward_pre_hook
+      ~CompositeOp.register_load_state_dict_post_hook
+      ~CompositeOp.register_load_state_dict_pre_hook
+      ~CompositeOp.register_module
+      ~CompositeOp.register_parameter
+      ~CompositeOp.register_state_dict_post_hook
+      ~CompositeOp.register_state_dict_pre_hook
+      ~CompositeOp.requires_grad_
+      ~CompositeOp.set_extra_state
+      ~CompositeOp.set_submodule
+      ~CompositeOp.share_memory
+      ~CompositeOp.state_dict
+      ~CompositeOp.to
+      ~CompositeOp.to_device
+      ~CompositeOp.to_empty
+      ~CompositeOp.train
+      ~CompositeOp.type
+      ~CompositeOp.xpu
+      ~CompositeOp.zero_grad
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CompositeOp.T_destination
+      ~CompositeOp.call_super_init
+      ~CompositeOp.domain_shape
+      ~CompositeOp.dump_patches
+      ~CompositeOp.range_shape
+      ~CompositeOp.training
+   
+   

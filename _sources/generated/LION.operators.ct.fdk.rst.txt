@@ -1,0 +1,6 @@
+LION.operators.ct.fdk
+=====================
+
+.. currentmodule:: LION.operators.ct
+
+.. autofunction:: fdk

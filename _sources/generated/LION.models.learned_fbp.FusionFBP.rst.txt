@@ -1,0 +1,52 @@
+LION.models.learned\_fbp.FusionFBP
+==================================
+
+.. automodule:: LION.models.learned_fbp.FusionFBP
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   DenoisingBlock
+   FusionFBPNetwork
+   IntermediateResidualBlock
+   LearnableFilter
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: DenoisingBlock
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: FusionFBPNetwork
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: IntermediateResidualBlock
+   :members:
+   :show-inheritance:
+
+
+.. autoclass:: LearnableFilter
+   :members:
+   :show-inheritance:
+
+
+
