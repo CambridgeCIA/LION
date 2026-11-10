@@ -332,6 +332,9 @@ def scores(
     device = default_device() if device is None else torch.device(device)
     values = {name: [] for name in metrics}
     seconds = 0.0
+    ids = sample_ids(data)
+    done = 0
+    out_of_range = []  # (sample id, largest |output|) of outputs far off the targets
     progress = tqdm(total=len(data), desc=desc, unit="sample", disable=verbose < 1)
     for y, target in DataLoader(data, batch_size=batch_size, shuffle=False):
         progress.update(len(y))
@@ -345,16 +348,52 @@ def scores(
         if data_range is not None:
             low, high = data_range
             output, target = output - low, target - low
-        for name, metric in metrics.items():
-            if data_range is None:
-                score = metric(output, target)
-            else:
-                score = metric(output, target, data_range=high - low)
-            values[name].append(torch.as_tensor(score).detach().cpu().reshape(-1))
+        out_of_range += _out_of_range(output, target, data_range, ids[done:])
+        done += len(y)
+        # an out-of-range output makes skimage's SSIM overflow: the warning
+        # below says which method and samples instead
+        with np.errstate(over="ignore", invalid="ignore"):
+            for name, metric in metrics.items():
+                if data_range is None:
+                    score = metric(output, target)
+                else:
+                    score = metric(output, target, data_range=high - low)
+                values[name].append(torch.as_tensor(score).detach().cpu().reshape(-1))
     progress.close()
+    if out_of_range:
+        shown = ", ".join(f"{i} ({m:.3g})" for i, m in out_of_range[:5])
+        more = f" and {len(out_of_range) - 5} more" if len(out_of_range) > 5 else ""
+        warnings.warn(
+            f"{desc or 'method'}: outputs far outside the targets' range (or not "
+            f"finite) on {len(out_of_range)} of {len(ids)} samples: {shown}{more} "
+            "(sample id (largest |output|)). Its scores there are meaningless: "
+            "the method diverged or its output is scaled wrongly.",
+            stacklevel=3,
+        )
     values = {k: torch.cat(v).double().numpy() for k, v in values.items()}
     n = len(next(iter(values.values()))) if values else 0
-    return sample_ids(data), values, seconds / max(n, 1)
+    return ids, values, seconds / max(n, 1)
+
+
+# outputs larger than this times the targets' range are reported as out of range
+OUT_OF_RANGE_FACTOR = 1e3
+
+
+def _out_of_range(output, target, data_range, ids) -> list:
+    """(id, largest |output|) of each sample of the batch whose output is not
+    finite or exceeds ``OUT_OF_RANGE_FACTOR`` times the data range (``data_range``
+    if given, else the target's own range)."""
+    found = []
+    for i, (x, t) in enumerate(zip(output, target)):
+        if data_range is not None:
+            scale = data_range[1] - data_range[0]
+        else:
+            scale = (t.max() - t.min()).item()
+        scale = max(abs(scale), t.abs().max().item(), 1e-12)
+        largest = x.abs().max().item()
+        if not math.isfinite(largest) or largest > OUT_OF_RANGE_FACTOR * scale:
+            found.append((ids[i], largest))
+    return found
 
 
 def sample_ids(data) -> list:
