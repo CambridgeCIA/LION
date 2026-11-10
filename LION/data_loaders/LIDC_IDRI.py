@@ -431,7 +431,7 @@ class LIDC_IDRI(LIONDataset):
 
         ``legacy=True`` is LION's list before October 2026 (parameter files
         without ``legacy_patient_list`` use it): patients 1 to N, N the number
-        of entries named LIDC-IDRI-*, with proportions of N + 1. As 0238 and 0585
+        of entries named ``LIDC-IDRI-*``, with proportions of N + 1. As 0238 and 0585
         have no scan, it leaves out the last two patients (1011 and 1012), and any
         other entry (a missing patient, a leftover folder) moves the splits.
         """

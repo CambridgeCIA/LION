@@ -374,20 +374,23 @@ class LIONmodel(nn.Module, ABC):
 
     # This shoudl save all relevant information to completely reproduce models
     def save(self, fname, **kwargs):
-        """
-        Saves model given a filename.
-        While its not enforced, the following Parameters are expected from kwargs:
-        - 'dataset' : the record of the data (``LION.data_loaders.data_record``,
-          e.g. ``experiment.data_record("train")``), saved and read back as it is;
-          or a LIONParameter describing the dataset creation and handling.
-        - 'training': the record of the training (``LION.optimizers.training_record``,
-          written by the solvers), saved and read back as it is; or a
-          LIONParameter describing the training algorithm and procedures
-        - 'operator_params' (optional): the operator's parameters (e.g. the CT
-          geometry) of the data, for a model without them
+        """Saves the model to ``fname`` (``fname.json``, its parameters and
+        records, and ``fname.pt``, its weights), with what ``kwargs`` give:
 
-        If you want to save the model for training later (i.e. checkpoiting), use save_checkpoint()
-        """
+        - ``dataset``: the record of the data (``LION.data_loaders.data_record``,
+          e.g. ``experiment.data_record("train")``), or a ``LIONParameter``
+          describing it;
+        - ``training``: the record of the training
+          (``LION.optimizers.training_record``, written by the solvers), or a
+          ``LIONParameter`` describing it;
+        - ``operator_params`` (optional): the parameters of the data's
+          operator (e.g. the CT geometry), for a model without them;
+        - ``loss``, ``epoch``, and for resuming ``optimizer``, ``scheduler``
+          (their ``state_dict()``) and ``random_state``: saved in the ``.pt``.
+          Other keywords are a ValueError.
+
+        Solvers save their models this way. To save a model to train it
+        further, with the optimizer's state, use ``save_checkpoint()``."""
         # Make it a Path if needed
         if isinstance(fname, str):
             fname = Path(fname)

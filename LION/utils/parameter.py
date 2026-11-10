@@ -13,25 +13,16 @@ from LION.utils.utils import JSONParamEncoder
 
 
 class LIONParameter:
-    """General class to store parameters (e.g. for experiments).
-
-    Allows nested `LIONParameter`'s.
-
-    Should allow runtime assignments of parameters.
-    """
+    """LION's parameters: a plain namespace of settings (``p.n_iters = 10``),
+    used for every model's, solver's, experiment's and reconstructor's
+    settings. Values can be other parameters (nested); ``save``/``load`` write
+    and read them as JSON, and ``print`` shows them all."""
 
     def __init__(self, **kwargs):
-        """
-        Initialize LIONParameter from dictionary
-
-        Parameters
-        ----------
-        **kwargs : dict
-            Contains parameters to initialize the `LIONParameter`.
-            If a value is a `dict`, it will be turned into a `LIONParameter`,
-            unless it is a spec (a dict with ``"_target_"``, see
-            ``LION.utils.spec``): a spec describes an object and stays a dict.
-        """
+        """The parameters given as keywords, ``LIONParameter(n_iters=10)``. A
+        dict value becomes a ``LIONParameter``, unless it is a spec (a dict
+        with ``"_target_"``, see ``LION.utils.spec``), which describes an
+        object and stays a dict."""
         for item in kwargs:
             # TODO (low importance): Is there an `is_dict_like` that can include more types of key-based objects? If not, should we make one?
             if isinstance(kwargs[item], dict) and "_target_" not in kwargs[item]:

@@ -34,7 +34,8 @@ LION is a modular Python/PyTorch research library for learned tomographic recons
 ### Supporting Directories
 
 - `pytests/`: Automated tests, flat. Keep tests in this directory rather than creating a new `tests/` directory.
-- `demos/`: Demonstrations and usage notebooks.
+- `demos/`: Tutorials: `.py` files with `# %%` cells, the gallery of the documentation site.
+- `docs/`: The documentation site (Sphinx, furo, sphinx-gallery): `sphinx-build -b html docs docs/_build/html`; published from holly with `utils/publish_docs.sh`.
 - `scripts/`: Standalone scripts: example scripts and paper scripts.
 - `utils/`: Repository-level shell scripts for saving and updating conda environments.
 - `misc/`: Miscellaneous files (e.g. environment exports from holly, the lab's GPU machine).

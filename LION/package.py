@@ -5,7 +5,7 @@
 # Author  : Ander Biguri
 # =============================================================================
 """Publishing a trained model: everything needed to make it, train it again
-and test it, in one folder (a package), from the records LION saved.
+and test it, in one folder (a package), from the records LION saved::
 
     from LION.package import publish
     publish("results/lpd/final", "lpd_package", evaluation="results/evaluations/lpd-1234.json")
@@ -14,7 +14,7 @@ and test it, in one folder (a package), from the records LION saved.
 LION solver saved (``"final"``, ``.json`` or ``.pt``), or a reconstructor's
 file (``reconstructor.save``: its model with it); ``evaluation`` is
 optional: its test record (``Evaluation.run``), the record's file, or an
-``Evaluation``, which is then run on the model. The package:
+``Evaluation``, which is then run on the model. The package::
 
     model.json, model.pt   the model file, exactly as LION saved it: LIONmodel.load("model")
     <name>_initial.pt      the weights training started from, when the solver saved them

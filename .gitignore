@@ -22,3 +22,9 @@ wandb
 *.zip
 mlflow.db
 *.xml
+
+# documentation build (docs/)
+docs/_build
+docs/generated
+docs/tutorials
+docs/sg_execution_times.rst

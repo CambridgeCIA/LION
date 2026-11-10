@@ -31,7 +31,7 @@ MODE1_I0_PER_DETECTOR = {1: 290, 2: 100}
 class deteCT(LIONDataset):
     """
     The 2DeteCT dataset: 5,000 slices of 109 scanned samples (fruit, nuts and
-    other objects), each measured in three modes:
+    other objects), each measured in three modes::
 
                      |  mode1   |   mode2  |  mode3
         Tube Voltage |   90kV   |   90kV   |  60kV
@@ -51,6 +51,7 @@ class deteCT(LIONDataset):
     Added noise (``add_noise`` and ``noise_params``): ``add_sinogram_noise``
     adds Poisson noise and detector cross-talk to the measured (already noisy)
     sinograms, as in Kiss et al. 2024. ``noise_params.I0`` is either
+
     - a number: the same I0 for every slice, as LION did before October 2026
       and as Kiss et al. 2024 did (I0 = 200 to look like mode1); or
     - a dict {detector: I0}: one I0 per detector, so that the simulated noise
@@ -126,10 +127,6 @@ class deteCT(LIONDataset):
             )
         ### Defining the path to data
         self.path_to_dataset = parameters.path_to_dataset
-        """
-        The path_to_dataset attribute (pathlib.Path) points towards the folder
-        where the data is stored
-        """
         ### Defining the path to scan data
         self.path_to_scan_data = self.path_to_dataset.joinpath("scan_settings.json")
         ### Defining the path to the data record
@@ -139,41 +136,14 @@ class deteCT(LIONDataset):
 
         ### Defining the data record
         self.data_record = pd.read_csv(self.path_to_data_record)
-        """
-        The data_record (pd.Dataframe) maps a slice index/identifier to
-            - the sample index of the sample it belongs to
-            - the number of slices expected
-            - the number of slices actually sampled
-            - the first slice of the sample to which a given slice belongs
-            - the last slice of the sample to which a given slice belongs
-            - the mix 
-            - the detector it was sampled with
-        """
+        # data_record: per slice, its sample, the sample's first and last slices,
+        # the slices expected and sampled, the mix and the detector
         # Defining the input and target mode
         self.input_mode = parameters.input_mode
         self.target_mode = parameters.target_mode
 
-        """
-        The input_mode (str) argument is a keyword defining what input mode of the dataset to use:
-                         |  mode1   |   mode2  |  mode3
-            Tube Voltage |   90kV   |   90kV   |  60kV
-            Tube power   |    3W    |    90W   |  60W
-            Filter       | Thoraeus | Thoraeus | No Filter
-            Meaning      | Low Dose | High Dose| Beam hardening
-        """
-
         # Defining the task
         self.task = parameters.task
-        """
-        The task (str) argument is a keyword defining what is the dataset used for:
-            - task == 'sino2sino' -> input and target are both sinograms
-            - task == 'sino2recon' -> input is a sinogram and target is a reconstruction
-            - task == 'recon2recon' -> input and target are both reconstructions
-            - task == 'recon2seg' -> input is a reconstruction and target is a segmentation
-            - task == 'sino2seg' -> input is a sinogram and target is a segmentation
-            - task == 'joint' -> input is a sinogram, target is a reconstruction and segmentation
-            - task == 'groundtruth' -> there is no input, target is a reconstruction
-        """
 
         tasks = [
             "sino2sino",
@@ -193,26 +163,15 @@ class deteCT(LIONDataset):
             )
         # Defining the training mode
         self.mode = mode
-        """
-        The train (bool) argument defines if the dataset is used for training or testing
-        """
         self.training_proportion = parameters.training_proportion
         self.validation_proportion = parameters.validation_proportion
 
         # Defining the train proportion
-        """
-        The training_proportion (float) argument defines the proportion of the training dataset used for training
-        """
         self.transforms = None  # parameters.transforms
 
         ### We query the dataset subset
         self.slice_dataframe: pd.DataFrame
-        """
-        The slice_dataframe (pd.Dataframe) is the subset of interest of the dataset.
-        The self.data_record argument becomes the slice_dataframe once we have queried it
-        Example of query: 'detector==1'
-        If the no query argument is passed, data_record_subset == data_record
-        """
+        # slice_dataframe: the slices of the query (all if none), e.g. 'detector==1'
         if parameters.query:
             self.slice_dataframe = self.data_record.query(parameters.query)
         else:
@@ -221,11 +180,8 @@ class deteCT(LIONDataset):
         ### We split the dataset between training and testing
         self.compute_sample_dataframe()
         self.sample_dataframe: pd.DataFrame
-        """
-        The sample_dataframe (pd.Dataframe) is a dataframe linking sample index to slices.
-        It is used to partition the dataset on a sample basis, rather than on a slice basis,
-        avoiding 'data leakage' between training, validation and testing
-        """
+        # sample_dataframe: each sample's slices, to split by sample (no leakage
+        # between training, validation and test)
         # Consecutive blocks of samples, with the same boundaries as before
         # (floor of n * proportion). The epsilon stops floating point error
         # (e.g. 0.8 + 0.1 = 0.9000...01 or 0.7 + 0.2 = 0.8999...) from moving a
@@ -456,29 +412,20 @@ class deteCT(LIONDataset):
         return I0
 
     def add_sinogram_noise(self, sinogram, I0, cross_talk=0.05):
-        r"""
-        Add noise to a measured sinogram.
-        The reason this data loader has a bestpoke function for this is that the noise is that the
-        noise simulator in LION.ct_tools.ct_utils assumes noiseles sinograms in X-ray absobtion.
-        However, adding noise to a real measured sinogram is not the same as adding noise to a noiseless sinogram.
+        """The measured ``sinogram`` (flat-field corrected and log transformed)
+        with more noise, as if measured with ``I0`` photons per detector pixel
+        (Kiss et al. 2024).
 
-        The assumption here is that the input sinogram is measured, and contains enough photon counts as to ignore the poisson noise.
-        However, effects due to the detector, electronics, etc. are still present. In particular, it assumes that there is electronic noise,
-        modelled by a signal-independent Gaussian noise, and that it has detector cross-talk, modelled by a convolution.
+        LION's noise simulation (``ct_utils.sinogram_add_noise``) assumes a
+        noiseless sinogram; a measured one already has noise. Here the measured
+        sinogram is taken to have photon counts high enough that its own
+        Poisson noise can be ignored: the noise added is the Poisson noise at
+        ``I0`` counts, P, convolved with the detector's cross-talk (each pixel
+        leaking ``cross_talk`` into its two neighbours), so in counts the noisy
+        measurement is ``I0 exp(-sinogram) + crosstalk(P)``. An approximation.
 
-        Under those assumptions, we can say thus that the noisy sinogram is:
-        $$
-        sino_{noisy} = sino_{measured} + corss_talk(P_{I0}),
-        $$
-        where $P_{I0}$ is the noise conponent of adding Poisson noise at $I0$ counts to the input sinogram (input is assumed at $I0=\inf$).
-        This is not exactly correct, but approximately so. See Kiss et al. 2024 for more details
-
-        Input:
-        sinogram: torch.Tensor, the sinogram to add noise to. It has to be flat field corrected, and in absobrtion units (i.e. log transformed)
-        I0: float, the number of counts in the measurement (lower=more noise).
-            The data loader passes noise_I0(index): one I0 per detector when
-            noise_params.I0 is a dict (see the class docstring).
-        """
+        The data loader passes ``noise_I0(index)``: one I0 per detector when
+        ``noise_params.I0`` is a dict (see the class docstring)."""
         dev = sinogram.device
 
         Im = I0 * torch.exp(-sinogram)

@@ -18,14 +18,6 @@ from LION.optimizers.LIONsolver import LIONsolver
 from LION.utils.parameter import LIONParameter
 from LION.models.LIONmodel import ModelInputType
 
-# standard imports
-
-""" 
-This file contains the implementation of the SelfSupervisedSolver class, which is a subclass of the LIONsolver class.
-The main difference with other solver is the shape of the loss function. 
-A self-supervised loss should take 
-"""
-
 
 class SelfSupervisedSolver(LIONsolver):
     """Training with a loss of the model and its input alone,

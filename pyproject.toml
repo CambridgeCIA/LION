@@ -91,16 +91,13 @@ tests = [
     "piq",  # reference HaarPSI in pytests/test_metrics.py
 ]
 docs = [
-    "LION[notebooks]",
-    "sphinx>=8.1, <8.2",
-    "sphinx_rtd_theme>=3.0, <3.1",
-    "sphinx-pyproject>=0.3, <0.4",
-    "myst-nb>=1.2, <1.3",
-    "sphinx-mathjax-offline<0.1",
-    "sphinx_github_style>=1.2, <1.3",
-    "sphinx-autodoc-typehints>=3, <3.1",
-    "sphinx-copybutton>=0.5, <0.6",
-    "sphinx-last-updated-by-git>=0.3, <0.4",
+    # the documentation site (docs/): sphinx-build -b html docs docs/_build/html
+    "sphinx>=8.1, <9",
+    "furo",
+    "sphinx-gallery>=0.19",
+    "sphinx-copybutton",
+    "matplotlib",
+    "ghp-import",  # utils/publish_docs.sh
 ]
 notebooks = [
     "ipykernel",
