@@ -1,105 +1,125 @@
-# LION: AI tools for learned tomographic and other image reconstruction tasks
+# LION: Learned Iterative Optimization Networks
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-13-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 [![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
-[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](#black-code-style-)
+[![Docs](https://img.shields.io/badge/docs-online-blue)](https://cambridgecia.github.io/LION/)
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-University of Cambridge Computational Image Analysis (CIA) groups AI tools for image reconstruction (e.g. tomographic reconstruction), LION (Learned Iterative Optimization Networks)
+LION is a PyTorch library for learned reconstruction in tomography and other
+inverse problems, made for research by the Cambridge Image Analysis (CIA) group
+at the University of Cambridge. It stays close to plain torch: models are torch
+modules, operators are functions of torch tensors, solvers are torch training
+loops, and any piece can be your own. Around that, it keeps what research
+needs to be repeated and compared:
 
-The library is a place to gather and provide resources for image reconstruction, such as Computed Tomography reconstruction, using machine learning tools implemented in PyTorch.
-It contains data dowloading and pre-processing, torch `DataSet` classes for the existing data, and `Experiments` class with implementation of default realistic experiments, several data-driven methods and models, and features to enhance reproduciblity.
+- **experiments**: the geometry, noise and data of a problem, the same for
+  every method;
+- **records** saved with every model: the data it saw, how it was trained, the
+  software it ran on, so it can be trained again or checked;
+- **evaluation and comparison** of methods on the same test data, with checks
+  that the comparison is fair, and the tables and figures a paper needs;
+- **publishing** a trained model as a package anyone can load, test or train
+  again.
 
-**WARNING** Building in progress. This is a tool in development in very early stages.
-Many things are bound to fail and many more are bound to change. If you want to help with development, send an email to Ander Biguri and/or open and issue or a discussion.
+**Documentation: https://cambridgecia.github.io/LION/** (tutorials, the
+methods in LION, the API reference).
 
-Install:
+LION is approaching its first release (v1.0); until then its API may change.
+
+## Install
 
 ```bash
 git clone https://github.com/CambridgeCIA/LION.git
 cd LION
-conda env create --file=env_base.yml --name=lion   # You can change 'lion' to a different env name
+conda env create --file=env_base.yml --name=lion   # or another name
 conda activate lion
 pip install .
 ```
 
-With mamba, use `mamba env create --file=env_base.yml --name=lion` and `mamba activate lion` instead; the rest is the same.
+With mamba, use `mamba env create --file=env_base.yml --name=lion` and `mamba activate lion` instead.
 
 Everything compiled, torch included, comes from conda (`env_base.yml`), so all of it uses the same C++ runtime. Don't install torch with pip on top: a pip torch loads the system's C++ runtime, and conda's libraries (scipy, ...) then fail with `CXXABI_... not found` on machines with an older system. Create the environment fresh from `env_base.yml` rather than updating an old one.
 
 - **CUDA version**: set by `cuda-version` in `env_base.yml` (12.9). Any CUDA 12 driver runs it (`nvidia-smi` shows the driver's CUDA version).
 - **No GPU on the machine where you create the environment** (e.g. a login node): conda cannot see a CUDA driver and refuses `pytorch-gpu`. Tell it which CUDA to assume: `CONDA_OVERRIDE_CUDA=12.9 conda env create --file=env_base.yml --name=lion`.
 
-If you would like to contribute to the development of LION, you can replace the last line of the above set of commands by
+To develop LION, install it editable with the development tools, and the pre-commit hooks (Black formatting):
 
-```
+```bash
 pip install -e ".[dev]"
-```
-
-to make the installation editable (i.e. changes you make to the source will be visible when you restart the REPL or start a new Python process) and include additional development dependencies like `pre-commit` and `pytest-xdist`.
-Afterwards, install the pre-commit hooks for auto-formating your commits. We use Black for code formatting (see [.pre-commit-config.yaml](.pre-commit-config.yaml)):
-
-```
 pre-commit install --hook-type pre-commit --hook-type post-merge
 ```
 
+## A first training
+
+```python
+import torch
+from torch.utils.data import DataLoader
+
+from LION.experiments import ct_experiments
+from LION.models.post_processing.FBPConvNet import FBPConvNet
+from LION.optimizers.SupervisedSolver import SupervisedSolver
+
+# the problem: low-dose CT of LIDC-IDRI slices (geometry, noise, data)
+experiment = ct_experiments.LowDoseCTRecon()
+training_loader = DataLoader(experiment.get_dataset("train"), batch_size=4, shuffle=True)
+
+# a model, made from the problem's geometry, and a torch optimizer and loss
+model = FBPConvNet(experiment.operator_params)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+solver = SupervisedSolver(model, optimizer, torch.nn.MSELoss())
+solver.set_training(training_loader)
+solver.set_saving("results/fbpconvnet", "FBPConvNet")
+solver.train(100)
+solver.save_final_results()  # the weights, and the records to train it again
+```
+
+Then evaluate and compare it (`LION.evaluation`), reconstruct with it (`LION.reconstructors`) or publish it (`LION.package`): the [tutorials](https://cambridgecia.github.io/LION/tutorials/index.html) go through each, and [`scripts/example_scripts`](scripts/example_scripts) has complete scripts, one feature each.
+
+## Data and results
+
+LION finds datasets in `LION_DATA_PATH`; set it, e.g. in your `.bashrc`: `export LION_DATA_PATH=/path/to/Datasets`. The supported datasets are LIDC-IDRI and 2DeteCT: [how to download and prepare them](LION/data_loaders/README.md).
+
+`LION_RESULTS_PATH` (optional) is where results go when no folder is given. Paths inside either folder are written relative to it in LION's saved files, so the files mean the same on any machine.
+
+NOTE: In CIA at DAMTP, the datasets are already there: `export LION_DATA_PATH=/store/cia-lion/datasets`, and set `LION_RESULTS_PATH` to your own user folder.
+
 ## Choosing a GPU
 
-Set the device once, at the top of your script, and LION uses it wherever no device is given explicitly (solvers, loading models, datasets, noise simulation):
+LION uses the GPU if there is one. Set another once, at the top of your script, and LION uses it wherever no device is given (solvers, loading models, datasets, noise simulation):
 
 ```python
 import torch
 torch.cuda.set_device(2)            # or: torch.set_default_device("cuda:2")
 ```
 
-CT operators (tomosipo/astra) run on the device of the tensors they are given. On machines with several GPUs where only one may be used, the most robust option is to make only that GPU visible to the process, so nothing (LION, PyTorch or astra) can use another:
+On machines with several GPUs where only one may be used, the most robust option is to make only that GPU visible to the process, so nothing (LION, PyTorch or ASTRA) can use another: `CUDA_VISIBLE_DEVICES=2 python my_script.py`.
 
-```bash
-CUDA_VISIBLE_DEVICES=2 python my_script.py
-```
+## What is where
 
-## Datasets
+| Folder | What it has |
+|---|---|
+| `LION/operators/` | Forward operators: `ct/` (the CT geometry and projector, noise, FDK, SIRT, TV), `pcm/` (photocurrent mapping), wavelets, ... |
+| `LION/data_loaders/` | Datasets (LIDC-IDRI, 2DeteCT) and their records |
+| `LION/experiments/` | Experiments: a problem's geometry, noise and data |
+| `LION/models/` | Models, by kind: post-processing, unrolled, learned FBP, CNNs and denoisers, PnP, learned regularisers |
+| `LION/optimizers/` | Solvers: supervised, self-supervised, denoiser and adversarial training |
+| `LION/reconstructors/` | Reconstructing with trained models: forward, PnP, learned regulariser |
+| `LION/classical_algorithms/` | Conjugate gradient, FISTA, SPGL1, for any operator |
+| `LION/evaluation/`, `LION/metrics/` | Evaluation and comparison; PSNR, SSIM, HaarPSI |
+| `LION/losses/` | Losses and penalties on models |
+| `LION/package.py` | Publishing and loading trained models |
+| `demos/` | The tutorials |
+| `scripts/` | Example scripts, and scripts that reproduce papers |
+| `docs/` | The documentation site |
 
-Several DataSets are currently supported by LION. To point the package to the correct storage location use `export LION_DATA_PATH=/path/to/Datasets`. For convenience, this can be added to your `.bashrc` or similar file.
+Which methods LION has, and their papers: [Methods in LION](https://cambridgecia.github.io/LION/methods.html). How models record their making, and how to make them again: [`metadata.md`](metadata.md).
 
-NOTE: If you are part of CIA at DAMTP, you already have access to these datasets and you don't need to follow any instruction to dowload them. They should be accessible using `export LION_DATA_PATH=/store/cia-lion/datasets`
+## Not only CT
 
-## Results
-
-Trained models and checkpoints are saved where you tell the solver to save them (`save_folder`, or `set_saving`). To have a default, set `export LION_RESULTS_PATH=/path/to/results` (for example in your `.bashrc`): a solver without a `save_folder` saves there. It is optional. Paths inside `LION_RESULTS_PATH` (and `LION_DATA_PATH`) are written relative to it in LION's saved files, so the files mean the same on any machine.
-
-NOTE: If you are part of CIA at DAMTP, set `LION_RESULTS_PATH` to your own user folder.
-
-The supported Datasets are `2DeteCT`, `LIDC-IDRI`,
-
-[Read more about the Datasets and how to download them here](LION/data_loaders/README.md)
-
-## Metadata and reproducibility
-
-Every model LION saves records how to make it again: the model, the data and how they were simulated, the training, and the code and machine. From these records LION makes any component again (or changes it and trains again), compares models fairly, and publishes a model as a self-contained package. [Read how it works](metadata.md).
-
-## Models/Methods
-
-LION supports all types of data-driven methods for CT reconstructions. They can, as a general taxonomy, be described as:
-
-- Post-Processing methods: a "denoising" network. Takes a noisy recon and cleans it.
-- Iterative Unrolled methods: Uses the operator to imitate iterative recon algorithms, but has learned parts.
-- Learned regularizer: Explicitly learned regularization functions.
-- Plug-and-Play (PnP): Implicit learned regularization, a regularization optimization step is learned, rather than an explicit one.
-
-Folders for each of these exist in `LION/models`. An extra folder for standard `CNNs` is also available.
-
-[Read more about which models are available in each class here](LION/models/README.md)
-
-[Read more about which papers are implemented in LION here](papers_in_LION.md)
-
-## Operators
-
-Originally designed for tomographic reconstruction tasks, specifically Computed Tomography (CT),
-LION has been extended to work with more operators.
-[Read more about operators here](LION/operators/_README.rst)
-
-As LION isn't only CT, its general code uses general words. For CT, they mean:
+LION's general code uses general words, as an operator can be anything. For CT, they mean:
 
 | LION says | In CT |
 |---|---|
@@ -109,22 +129,25 @@ As LION isn't only CT, its general code uses general words. For CT, they mean:
 | range (`op.range_shape`), measurements | the sinogram |
 | the operator's default reconstruction | FDK |
 
-So a CT model is made from its geometry, e.g. `LPD(geometry)`, and a solver
-takes `operator_params=geometry`.
+So a CT model is made from its geometry, e.g. `LPD(geometry)`, and a solver takes `operator_params=geometry`. [More about operators](LION/operators/_README.rst).
 
-## Developers
+## Contributing
 
-Read [`developers.md`](developers.md)
+Read the [contributor guide](contributor-guide.md) before changing code: it has LION's conventions. Run the tests with `pytest pytests/`; tests that need CUDA or tomosipo/ASTRA are skipped on machines without them, and the same tests run on every pull request.
 
-## Tests
+## Citing LION
 
-Run the tests with:
+A paper is to come; until then, please cite the repository:
 
-```bash
-pytest pytests/
+```bibtex
+@software{LION,
+  title  = {{LION}: Learned Iterative Optimization Networks},
+  author = {Biguri, Ander and others},
+  url    = {https://github.com/CambridgeCIA/LION},
+}
 ```
 
-Tests that need CUDA (`cuda` marker) or tomosipo/astra (`tomosipo` marker) are skipped automatically on machines without them (e.g. Macs). The folder is called `pytests` rather than `tests` because tomosipo installs a top-level `tests` package. The same tests run on every pull request (`.github/workflows/tests.yml`).
+and the papers of the methods you use (`Model.cite()`).
 
 ## Licence
 

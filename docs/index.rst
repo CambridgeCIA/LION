@@ -25,6 +25,8 @@ Where to start
   at a time, from the CT operator to publishing a model.
 - **See it run:** the :doc:`example scripts <examples>` are complete trainings,
   one feature each.
+- **See what's there:** :doc:`methods`, the kinds of learned reconstruction
+  and every method LION has, with its paper.
 - **Look something up:** the :doc:`API reference <api>`, from the docstrings.
 
 .. toctree::
@@ -40,6 +42,7 @@ Where to start
    :maxdepth: 1
    :caption: Reference
 
+   methods
    api
 
 .. toctree::
