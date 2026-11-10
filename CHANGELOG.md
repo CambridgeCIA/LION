@@ -90,7 +90,8 @@ patients left out (#249), validation keeping the best model for scores
 
 - FBPMSDNet (#325), GSDRUNet (#315), `CTNoiseExperiment` (#337; the noise
   paper's data are a paper script), the LUNA16 code (#301), the hackathon
-  scripts (#310), `setup.py` (#306), `Geometry.default_geo` (#351).
+  scripts (#310), `setup.py` (#306), `Geometry.default_geo` (#351), the
+  empty `LION.models.fully_learned`.
 
 ## 0.2.0 (30 March 2026)
 

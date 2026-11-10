@@ -29,7 +29,7 @@ function or a parameter doesn't do.
   LIDC-IDRI problems), `deteCT_benchmark.py` (a paper's: don't change it).
 - `LION/models/`: `LIONmodel`, `TorchModel`; models by kind: `CNNs/`,
   `post_processing/`, `iterative_unrolled/`, `learned_fbp/`,
-  `learned_regularizer/`, `PnP/`, `fully_learned/`.
+  `learned_regularizer/`, `PnP/`.
 - `LION/optimizers/`: `LIONsolver`, the solvers, `training_record`.
 - `LION/losses/`, `LION/metrics/`: losses (SURE, Jacobian penalties); PSNR,
   SSIM, HaarPSI.
