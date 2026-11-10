@@ -19,7 +19,15 @@ reconstructs with it (``LION.reconstructors.PnP``). Short runs, to show how.
 Previous: :doc:`d06_self_supervised_training`. Next:
 :doc:`d08_learned_regularisers`.
 
-Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
+Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``; downloads
+the authors' trained DRUNet (130 MB).
+
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
 """
 
 # %%
@@ -141,13 +149,28 @@ from LION.reconstructors.PnP import PnP
 pnp_parameters = PnP.default_parameters("ADMM")
 print(pnp_parameters)
 pnp_parameters.max_iter = 20
-pnp_parameters.noise_level = 10 / 255
+pnp_parameters.noise_level = 10 / 255  # the denoiser's, in its [0, 1] units
+# eta, ADMM's weight between the data and the prior, is by default relative to
+# the operator: 1e-2 ||A||² (larger trusts the prior more)
 pnp = PnP(experiment.operator_params, denoiser, pnp_parameters)
 
 sinogram, image = validation[0]
 reconstruction = pnp.reconstruct(sinogram)
 # or one algorithm with its settings given:
-# reconstruction = pnp.admm_algorithm(sinogram, eta=1e-4, max_iter=20)
+# reconstruction = pnp.admm_algorithm(sinogram, max_iter=20, noise_level=10 / 255)
+
+# %%
+# A pretrained denoiser
+# ---------------------
+# The denoiser above is a toy, trained for 3 epochs on 40 slices: a poor
+# prior. The DRUNet its authors trained on natural images (a 130 MB download,
+# on images in [0, 1]) is a good one, and the same reconstructor with it shows
+# what PnP does:
+
+pretrained = DRUNet.pretrained()
+pretrained.set_normalisation("dataset", training)
+pnp_pretrained = PnP(experiment.operator_params, pretrained, pnp_parameters)
+pretrained_reconstruction = pnp_pretrained.reconstruct(sinogram)
 
 # %%
 # HQS and FBS are used the same way:
@@ -158,12 +181,16 @@ print(PnP.default_parameters("FBS"))
 # %%
 psnr = PSNR()
 fbp = fdk(sinogram, experiment.operator_params)
-fig, axes = plt.subplots(1, 4, figsize=(16, 4))
+fig, axes = plt.subplots(1, 5, figsize=(20, 4))
 shown = [
     ("noisy (25/255)", noisy[0]),
-    ("denoised", denoised[0]),
+    ("denoised (toy denoiser)", denoised[0]),
     (f"FDK, {psnr(fbp, image, batched=False):.1f} dB", fbp),
-    (f"PnP-ADMM, {psnr(reconstruction, image, batched=False):.1f} dB", reconstruction),
+    (f"PnP, toy, {psnr(reconstruction, image, batched=False):.1f} dB", reconstruction),
+    (
+        f"PnP, pretrained, {psnr(pretrained_reconstruction, image, batched=False):.1f} dB",
+        pretrained_reconstruction,
+    ),
 ]
 for ax, (title, x) in zip(axes, shown):
     ax.imshow(x[0].cpu(), cmap="gray")
@@ -171,16 +198,5 @@ for ax, (title, x) in zip(axes, shown):
     ax.axis("off")
 
 # %%
-# A pretrained denoiser
-# ---------------------
-# The DRUNet its authors trained on natural images works too (a 130 MB
-# download), on images in [0, 1]:
-#
-# .. code-block:: python
-#
-#    pretrained = DRUNet.pretrained()
-#    pretrained.set_normalisation("dataset", training)
-#    pnp = PnP(experiment.operator_params, pretrained, pnp_parameters)
-#
 # A reconstructor is saved with ``pnp.save(file)``: its settings, and its model
 # by the file it was loaded from (:doc:`d09_saving_and_records`).

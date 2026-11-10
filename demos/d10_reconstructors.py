@@ -27,6 +27,13 @@ Previous: :doc:`d09_saving_and_records`. Next: :doc:`d11_evaluation`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``; the PnP
 part downloads the authors' trained DRUNet (130 MB).
+
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
 """
 
 # %%

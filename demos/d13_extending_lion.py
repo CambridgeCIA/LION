@@ -22,6 +22,13 @@ Previous: :doc:`d12_publishing`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH`` (the images
 to blur).
+
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
 """
 
 # %%
