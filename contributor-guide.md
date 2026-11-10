@@ -1,7 +1,7 @@
 # Contributor guide
 
 The rules LION's code follows, for people and coding assistants alike
-(`CLAUDE.md` points here). How LION is built, and what a new model, solver,
+(`AGENTS.md` and `CLAUDE.md` point here). How LION is built, and what a new model, solver,
 reconstructor, operator or dataset needs, is in the
 [developer guide](https://cambridgecia.github.io/LION/developers.html); what
 LION records, in [metadata.md](metadata.md).
