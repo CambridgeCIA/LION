@@ -27,6 +27,7 @@ from torch.utils.data import DataLoader, Subset
 from LION.experiments import ct_experiments
 from LION.metrics.psnr import PSNR
 from LION.models.iterative_unrolled.LPD import LPD
+from LION.operators.ct import fdk
 from LION.optimizers.SupervisedSolver import SupervisedSolver
 from LION.reconstructors.ForwardReconstructor import ForwardReconstructor
 from LION.utils.paths import results_path
@@ -85,9 +86,10 @@ model.eval()
 lpd = ForwardReconstructor(experiment.operator_params, model)
 sinogram, image = validation[0]
 reconstruction = lpd.reconstruct(sinogram.to(device)).cpu()
-fdk = lpd.op.default_reconstruction(sinogram.to(device)).cpu()  # the baseline
+# FDK, the baseline: of the experiment's geometry
+fdk_reconstruction = fdk(sinogram.to(device), experiment.operator_params).cpu()
 psnr = PSNR()
 print(
     f"PSNR: LPD {psnr(reconstruction, image, batched=False):.2f} dB, "
-    f"FDK {psnr(fdk, image, batched=False):.2f} dB"
+    f"FDK {psnr(fdk_reconstruction, image, batched=False):.2f} dB"
 )

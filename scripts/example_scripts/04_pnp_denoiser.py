@@ -34,6 +34,7 @@ from torch.utils.data import DataLoader, Subset
 from LION.experiments import ct_experiments
 from LION.metrics.psnr import PSNR
 from LION.models.CNNs.drunet import DRUNet
+from LION.operators.ct import fdk
 from LION.optimizers.GaussianDenoiserSolver import GaussianDenoiserSolver
 from LION.reconstructors.PnP import PnP
 from LION.utils.paths import results_path
@@ -94,13 +95,19 @@ pnp.save(save_folder / "PnP.json")  # its settings and its model's file
 
 sinogram, image = experiment.get_dataset("test")[0]
 reconstruction = pnp.reconstruct(sinogram.to(device), verbose=verbose).cpu()
-fdk = pnp.op.default_reconstruction(sinogram.to(device)).cpu()
+# FDK, the baseline: of the experiment's geometry
+fdk_reconstruction = fdk(sinogram.to(device), experiment.operator_params).cpu()
 
 # %% Compare
 psnr = PSNR()
 fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 for ax, (title, x) in zip(
-    axes, [("Ground truth", image), ("FDK", fdk), ("PnP-ADMM", reconstruction)]
+    axes,
+    [
+        ("Ground truth", image),
+        ("FDK", fdk_reconstruction),
+        ("PnP-ADMM", reconstruction),
+    ],
 ):
     ax.imshow(x[0], cmap="gray", vmin=image.min(), vmax=image.max())
     if title != "Ground truth":
