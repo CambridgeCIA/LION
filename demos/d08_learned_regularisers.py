@@ -1,0 +1,153 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Ander Biguri
+# =============================================================================
+"""
+Learned regularisers
+====================
+
+A learned regulariser R is a network that scores images: low for clean ones,
+high for ones with noise and artefacts. Reconstruction then minimises a
+variational energy, data fit plus R,
+
+.. math::
+
+    E(x) = \\tfrac12 \\lVert A x - y \\rVert_2^2 + \\alpha R(x),
+
+as classical regularisation (e.g. TV) does with a hand-made R. This tutorial
+trains an adversarial regulariser (AR; Lunz, Öktem and Schönlieb, 2018) and
+reconstructs with it. Short runs, to show how.
+
+Previous: :doc:`d07_denoisers_and_pnp`. Next:
+:doc:`d09_saving_and_records`.
+
+Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
+"""
+
+# %%
+# The regulariser
+# ---------------
+# AR is a CNN from an image to a number. It takes images of the operator's
+# domain shape, so it takes the operator's parameters.
+
+import tempfile
+
+import matplotlib.pyplot as plt
+import torch
+from torch.utils.data import DataLoader, Subset
+
+from LION.experiments import ct_experiments
+from LION.metrics.psnr import PSNR
+from LION.models.learned_regularizer.AR import AR
+from LION.operators.ct import fdk
+
+experiment = ct_experiments.LowDoseCTRecon()
+training = Subset(experiment.get_dataset("train"), range(40))
+validation = Subset(experiment.get_dataset("validation"), range(4))
+
+training_loader = DataLoader(training, batch_size=4, shuffle=True)
+validation_loader = DataLoader(validation, batch_size=1)
+
+regulariser = AR(experiment.operator_params)
+print(regulariser.cite("MLA"))
+
+# %%
+# Training: clean images against reconstructions
+# ----------------------------------------------
+# ``ARSolver`` trains R as a critic (a Wasserstein GAN loss with a gradient
+# penalty, ``lambd_gp``): it learns to tell the clean images from the
+# reconstructions of the measurements (FDK, the operator's default). It has no
+# loss argument: the loss is the method's.
+
+from LION.optimizers.AdversarialRegularizerSolver import ARSolver
+
+print(ARSolver.default_parameters())
+
+solver = ARSolver(
+    regulariser,
+    torch.optim.Adam(regulariser.parameters(), lr=1e-4, betas=(0.5, 0.99)),
+)
+solver.set_training(training_loader)
+
+# %%
+# The WGAN loss doesn't say how good the reconstructions are, so validation
+# reconstructs with the regulariser being trained: through a reconstructor you
+# make, with its own settings, given to ``set_validation``.
+
+from LION.reconstructors.LearnedRegularizerReconstructor import (
+    LearnedRegularizerReconstructor,
+    estimate_alpha,
+)
+
+# the paper's weight: the mean size of the data fit's gradient at the
+# reconstructions
+alpha = estimate_alpha(experiment.operator_params.make_operator(), training_loader)
+print(f"alpha = {alpha:.3g}")
+
+reconstructor_parameters = LearnedRegularizerReconstructor.default_parameters()
+reconstructor_parameters.alpha = alpha
+reconstructor_parameters.n_steps = 50
+reconstructor = LearnedRegularizerReconstructor(
+    experiment.operator_params, regulariser, reconstructor_parameters
+)
+print(reconstructor_parameters)
+
+solver.set_validation(
+    validation_loader,
+    1,
+    PSNR(),
+    validation_fname="AR_best",
+    reconstructor=reconstructor,
+)
+solver.set_saving(tempfile.mkdtemp(), "AR")
+solver.train(3)
+solver.save_final_results()
+
+# %%
+# Reconstructing
+# --------------
+# Gradient descent on the energy, from FDK, with a backtracking step size:
+
+sinogram, image = validation[0]
+reconstruction = reconstructor.reconstruct(sinogram)
+
+psnr = PSNR()
+fbp = fdk(sinogram, experiment.operator_params)
+fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+shown = [
+    ("target", image),
+    (f"FDK, {psnr(fbp, image, batched=False):.1f} dB", fbp),
+    (f"AR, {psnr(reconstruction, image, batched=False):.1f} dB", reconstruction),
+]
+for ax, (title, x) in zip(axes, shown):
+    ax.imshow(x[0].cpu(), cmap="gray")
+    ax.set_title(title)
+    ax.axis("off")
+
+# %%
+# Other regularisers
+# ------------------
+# The reconstructor works with any regulariser, however it was trained: a
+# LION model, or any function of an image. The adversarial convex regulariser
+# (ACR; Mukherjee et al., 2021) is trained the same way and is convex in the
+# image, so the energy has a single minimum:
+#
+# .. code-block:: python
+#
+#    from LION.models.learned_regularizer.ACR import ACR
+#    regulariser = ACR()
+#
+# Hand-made ones too, e.g. a smoothed total variation:
+
+
+def smoothed_tv(x, eps=1e-3):
+    dx = x[..., 1:, :-1] - x[..., :-1, :-1]
+    dy = x[..., :-1, 1:] - x[..., :-1, :-1]
+    return torch.sqrt(dx**2 + dy**2 + eps**2).sum()
+
+
+tv = LearnedRegularizerReconstructor(
+    experiment.operator_params, smoothed_tv, reconstructor_parameters
+)
