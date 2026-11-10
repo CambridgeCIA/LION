@@ -34,6 +34,8 @@ from LION.utils.paths import results_path
 EPOCHS = 5
 TRAINING_SLICES = 200
 VALIDATION_SLICES = 20
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 save_folder = results_path("examples/lpd")
 save_folder.mkdir(parents=True, exist_ok=True)
@@ -57,7 +59,9 @@ print(model.cite("MLA"))
 
 # %% Train
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.99))
-solver = SupervisedSolver(model, optimizer, torch.nn.MSELoss())
+solver = SupervisedSolver(
+    model, optimizer, torch.nn.MSELoss(), device=device, verbose=verbose
+)
 solver.set_training(DataLoader(training, batch_size=1, shuffle=True))
 solver.set_validation(
     DataLoader(validation, batch_size=1),
@@ -76,8 +80,8 @@ solver.clean_checkpoints()
 model.eval()
 sinogram, image = validation[0]
 with torch.no_grad():
-    reconstruction = model(sinogram.unsqueeze(0).to(solver.device))[0].cpu()
-fdk = solver.op.default_reconstruction(sinogram.to(solver.device)).cpu()
+    reconstruction = model(sinogram.unsqueeze(0).to(device))[0].cpu()
+fdk = solver.op.default_reconstruction(sinogram.to(device)).cpu()
 psnr = PSNR()
 print(
     f"PSNR: LPD {psnr(reconstruction, image, batched=False):.2f} dB, "

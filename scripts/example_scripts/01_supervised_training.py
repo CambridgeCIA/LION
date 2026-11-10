@@ -42,6 +42,8 @@ from LION.utils.paths import results_path
 EPOCHS = 5
 TRAINING_SLICES = 200
 VALIDATION_SLICES = 20
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 save_folder = results_path("examples/supervised")
 save_folder.mkdir(parents=True, exist_ok=True)
@@ -68,9 +70,10 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 loss_fn = torch.nn.MSELoss()
 
 # %% The solver
-# It runs on LION's default device (a GPU if there is one); device= changes it.
 # The scheduler steps every epoch (scheduler_step="batch" for every batch).
-solver = SupervisedSolver(model, optimizer, loss_fn, scheduler=scheduler)
+solver = SupervisedSolver(
+    model, optimizer, loss_fn, scheduler=scheduler, device=device, verbose=verbose
+)
 solver.set_training(DataLoader(training, batch_size=4, shuffle=True))
 # Validate with the PSNR every epoch: the model with the best value is saved
 # (PSNR is a score, higher is better; a loss would keep the lowest).

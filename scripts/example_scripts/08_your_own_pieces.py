@@ -44,6 +44,8 @@ from LION.utils.paths import results_path
 EPOCHS = 5
 TRAINING_SLICES = 200
 NOISE = 0.01  # Gaussian noise added to the blurred images
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 save_folder = results_path("examples/your_own_pieces")
 save_folder.mkdir(parents=True, exist_ok=True)
@@ -154,6 +156,8 @@ solver = SupervisedSolver(
     torch.optim.Adam(model.parameters(), lr=1e-3),
     torch.nn.MSELoss(),
     operator_params=blur,
+    device=device,
+    verbose=verbose,
 )
 # (Two warnings: the dataset isn't a LIONDataset, so it isn't recorded; and a
 # class defined in this script can't be made again from the record, so the
@@ -170,7 +174,7 @@ model, _, _ = TorchModel.load(save_folder / "SmallResNet", allow=["__main__."])
 blurred, image = Deblurring(experiment.get_dataset("test"), blur.make_operator())[0]
 model.eval()
 with torch.no_grad():
-    deblurred = model(blurred[None].to(solver.device))[0].cpu()
+    deblurred = model(blurred[None].to(device))[0].cpu()
 psnr = PSNR()
 print(
     f"PSNR: blurred {psnr(blurred.cpu(), image.cpu(), batched=False):.2f} dB, "

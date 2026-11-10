@@ -41,6 +41,8 @@ from LION.utils.paths import results_path
 # %% Settings
 EPOCHS = 5
 TRAINING_SLICES = 200
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 save_folder = results_path("examples/pnp")
 save_folder.mkdir(parents=True, exist_ok=True)
@@ -69,6 +71,8 @@ solver = GaussianDenoiserSolver(
     torch.nn.L1Loss(),
     operator_params=experiment.operator_params,
     solver_params=solver_parameters,
+    device=device,
+    verbose=verbose,
 )
 solver.set_training(DataLoader(training, batch_size=4, shuffle=True))
 solver.set_saving(save_folder, "DRUNet")
@@ -83,13 +87,13 @@ pnp_parameters.noise_level = 10 / 255  # the denoiser's, in [0, 1] units
 # The reconstructor takes the operator (or its parameters) and the model. The
 # model loaded from its file, so the reconstructor's record names that file.
 model, _, _ = DRUNet.load(save_folder / "DRUNet")
-model.eval()
+model.to(device).eval()
 pnp = PnP(experiment.operator_params, model, pnp_parameters)
 pnp.save(save_folder / "PnP.json")  # its settings and its model's file
 
 sinogram, image = experiment.get_dataset("test")[0]
-reconstruction = pnp.reconstruct(sinogram.to(solver.device)).cpu()
-fdk = pnp.op.default_reconstruction(sinogram.to(solver.device)).cpu()
+reconstruction = pnp.reconstruct(sinogram.to(device), verbose=verbose).cpu()
+fdk = pnp.op.default_reconstruction(sinogram.to(device)).cpu()
 
 # %% Compare
 psnr = PSNR()

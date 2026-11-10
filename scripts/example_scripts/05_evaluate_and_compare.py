@@ -27,6 +27,8 @@ Needs: a GPU, the processed LIDC-IDRI data in ``LION_DATA_PATH``, and
 # %% Imports
 import functools
 
+import torch
+
 from LION.evaluation import Comparison, Evaluation, summary
 from LION.experiments import ct_experiments
 from LION.operators.ct import sirt
@@ -34,17 +36,22 @@ from LION.utils.paths import results_path
 
 # %% Settings
 TEST_SLICES = 50  # evenly spaced over the test set; None: all of them
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 examples = results_path("examples")
 
 # %% The evaluation
 experiment = ct_experiments.LowDoseCTRecon()
 evaluation = Evaluation(
-    experiment, samples=TEST_SLICES, save_folder=examples / "evaluations"
+    experiment,
+    samples=TEST_SLICES,
+    save_folder=examples / "evaluations",
+    device=device,
 )
 
 # %% One method
-record = evaluation.run(examples / "supervised" / "FBPConvNet")
+record = evaluation.run(examples / "supervised" / "FBPConvNet", verbose=verbose)
 for metric, values in summary(record).items():
     print(f"FBPConvNet {metric}: {values['mean']:.3f} ± {values['std']:.3f}")
 
@@ -57,7 +64,7 @@ methods = {
     "SIRT": functools.partial(sirt, num_iterations=100),
 }
 comparison = Comparison(evaluation, methods)  # FDK is the baseline
-comparison.run()
+comparison.run(verbose=verbose)
 print(comparison.table())
 
 # Tables, scores, box plots, the best, median and worst slices (by the
