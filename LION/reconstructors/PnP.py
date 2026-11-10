@@ -54,6 +54,11 @@ class PnP(LIONReconstructor):
     ``noise_level``: in the units of the data the denoiser sees, after its
     normalisation, as in training (``GaussianDenoiserSolver``): for images in
     [0, 1], the literature's k/255.
+
+    The algorithms run without gradients (``torch.no_grad``): the
+    reconstruction can't be differentiated, and the iterations don't keep
+    their autograd graph. (A gradient-step denoiser still computes its own
+    gradient.)
     """
 
     def __init__(self, operator, model=None, parameters=None):
@@ -131,6 +136,7 @@ class PnP(LIONReconstructor):
         )
 
     # --------------------------------------------------------------- algorithms
+    @torch.no_grad()
     def hqs_algorithm(
         self,
         y,
@@ -173,6 +179,7 @@ class PnP(LIONReconstructor):
             z = self._apply_prior(x, noise_level)
         return z
 
+    @torch.no_grad()
     def forward_backward_splitting(
         self,
         y,
@@ -203,6 +210,7 @@ class PnP(LIONReconstructor):
             x = self._apply_prior(step, noise_level)
         return x
 
+    @torch.no_grad()
     def admm_algorithm(
         self,
         measurement: torch.Tensor,

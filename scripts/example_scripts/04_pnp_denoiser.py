@@ -88,8 +88,7 @@ pnp = PnP(experiment.operator_params, model, pnp_parameters)
 pnp.save(save_folder / "PnP.json")  # its settings and its model's file
 
 sinogram, image = experiment.get_dataset("test")[0]
-with torch.no_grad():  # no gradients needed (nor their memory)
-    reconstruction = pnp.reconstruct(sinogram.to(solver.device)).cpu()
+reconstruction = pnp.reconstruct(sinogram.to(solver.device)).cpu()
 fdk = pnp.op.default_reconstruction(sinogram.to(solver.device)).cpu()
 
 # %% Compare
