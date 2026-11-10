@@ -104,18 +104,24 @@ fdk_reconstruction = fdk(sinogram.to(device), experiment.operator_params).cpu()
 
 # %% Compare
 psnr = PSNR()
+fdk_psnr = psnr(fdk_reconstruction, image, batched=False)
+pnp_psnr = psnr(reconstruction, image, batched=False)
+
+# To numpy for plotting (the data may be on the GPU)
+image_np = image[0].cpu().numpy()
+fdk_np = fdk_reconstruction[0].cpu().numpy()
+pnp_np = reconstruction[0].cpu().numpy()
+
 fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 for ax, (title, x) in zip(
     axes,
     [
-        ("Ground truth", image),
-        ("FDK", fdk_reconstruction),
-        ("PnP-ADMM", reconstruction),
+        ("Ground truth", image_np),
+        (f"FDK, {fdk_psnr:.2f} dB", fdk_np),
+        (f"PnP-ADMM, {pnp_psnr:.2f} dB", pnp_np),
     ],
 ):
-    ax.imshow(x[0], cmap="gray", vmin=image.min(), vmax=image.max())
-    if title != "Ground truth":
-        title += f", {psnr(x, image, batched=False):.2f} dB"
+    ax.imshow(x, cmap="gray", vmin=image_np.min(), vmax=image_np.max())
     ax.set_title(title)
     ax.axis("off")
 fig.savefig(save_folder / "pnp.png")
