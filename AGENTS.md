@@ -48,7 +48,8 @@ function or a parameter doesn't do.
 - `utils/`: shell scripts (conda environments, `publish_docs.sh`).
 - `.github/workflows/`: tests (CPU), pre-commit, docs build.
 
-`README.md` is for users; `papers_in_LION.md`, `developers.md` and
+`README.md` is for users; `CHANGELOG.md` lists each release's changes (add
+yours under Unreleased); `papers_in_LION.md`, `developers.md` and
 `LION/models/README.md` point to the site.
 
 ## Commands

@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If LION helps your research, please cite it as below, and the papers of the methods you use (Model.cite())."
+title: "LION: Learned Iterative Optimization Networks"
+type: software
+authors:
+  - family-names: Biguri
+    given-names: Ander
+  - family-names: Shoebridge
+    given-names: Charlie
+  - family-names: Runkel
+    given-names: Christina
+  - family-names: Vu
+    given-names: Thanh Trung
+  - family-names: Valat
+    given-names: Emilien
+  - family-names: Sherry
+    given-names: Ferdia
+  - family-names: Tan
+    given-names: Hong Ye
+  - family-names: Sainz Bear
+    given-names: Andrea
+  - family-names: Kiss
+    given-names: Maximilian B.
+repository-code: "https://github.com/CambridgeCIA/LION"
+url: "https://cambridgecia.github.io/LION/"
+license: GPL-3.0-only
+keywords:
+  - computed tomography
+  - inverse problems
+  - learned reconstruction
+  - deep learning
+  - pytorch

@@ -142,12 +142,13 @@ A paper is to come; until then, please cite the repository:
 ```bibtex
 @software{LION,
   title  = {{LION}: Learned Iterative Optimization Networks},
-  author = {Biguri, Ander and others},
+  author = {Biguri, Ander and Shoebridge, Charlie and Runkel, Christina and Vu, Thanh Trung and Valat, Emilien and Sherry, Ferdia and Tan, Hong Ye and Sainz Bear, Andrea and Kiss, Maximilian B.},
   url    = {https://github.com/CambridgeCIA/LION},
 }
 ```
 
 and the papers of the methods you use (`Model.cite()`).
+GitHub's "Cite this repository" button gives the same, from `CITATION.cff`.
 
 ## Licence
 
