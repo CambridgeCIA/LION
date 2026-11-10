@@ -124,6 +124,10 @@ doesn't do.
   operator (`op.default_reconstruction(y)`) rather than importing a kind's
   folder.
 - An operator takes one sample; batches go through `op.autograd()`.
+- **Images and measurements have a singleton channel**, as CT's: an image is
+  `(1, H, W)`, measurements `(1, ...)` (CT: `(1, angles, detectors)`), and a
+  batch `(B, 1, ...)`. Models, solvers, reconstructors and data loaders rely
+  on it.
 - **`autograd()`** is the operator's author saying it can be differentiated:
   an operator of torch operations returns `(self, self.adjoint)`; one torch
   can't see into wraps itself in autograd functions (CT: tomosipo's

@@ -164,9 +164,10 @@ print(f"SPGL1: {score(results['SPGL1']):.2f} dB")
 # denoise natural images (downloaded once). Its noise level is in the units of
 # the image, [0, 1] here.
 #
-# The prior can be any function of an image. This operator's images are
-# (H, W), without the channel axis a LION model's batches have (B, C, H, W),
-# so the denoiser is given through a function that adds and removes them. The
+# The prior can be any function of an image. LION's operators give images
+# with a channel, (1, H, W), but this one doesn't yet (it gives (H, W); issue
+# #332), so the denoiser is given through a function that adds the batch and
+# channel axes and removes them. The
 # operator has no default reconstruction, so the starting image is given: the
 # zero-filled one.
 
