@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:00.000** total execution time for 0 files **from tutorials**:
+**21:21.623** total execution time for 13 files **from tutorials**:
 
 .. container::
 
@@ -32,6 +32,42 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
-   * - N/A
-     - N/A
-     - N/A
+   * - :ref:`sphx_glr_tutorials_d12_publishing.py` (``d12_publishing.py``)
+     - 03:08.039
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d03_data.py` (``d03_data.py``)
+     - 02:48.564
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d05_supervised_training.py` (``d05_supervised_training.py``)
+     - 02:33.121
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d09_saving_and_records.py` (``d09_saving_and_records.py``)
+     - 02:17.630
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d11_evaluation.py` (``d11_evaluation.py``)
+     - 02:02.996
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d10_reconstructors.py` (``d10_reconstructors.py``)
+     - 01:45.224
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d08_learned_regularisers.py` (``d08_learned_regularisers.py``)
+     - 01:41.690
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d07_denoisers_and_pnp.py` (``d07_denoisers_and_pnp.py``)
+     - 01:35.614
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d06_self_supervised_training.py` (``d06_self_supervised_training.py``)
+     - 01:14.855
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d13_extending_lion.py` (``d13_extending_lion.py``)
+     - 00:58.159
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d04_models.py` (``d04_models.py``)
+     - 00:31.041
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d02_parameters_and_specs.py` (``d02_parameters_and_specs.py``)
+     - 00:30.145
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d01_operators.py` (``d01_operators.py``)
+     - 00:14.546
+     - 0.0

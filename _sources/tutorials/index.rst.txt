@@ -24,11 +24,250 @@ data tutorial on, the processed LIDC-IDRI data in ``LION_DATA_PATH``.
 
 .. thumbnail-parent-div-open
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Everything in LION starts from a forward operator: the map from what we want (the image) to what we measure (for CT, the sinogram). This tutorial builds a CT geometry, makes its operator, simulates noisy measurements and reconstructs them with classical methods.">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d01_operators_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d01_operators`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Operators: CT geometry, projections and reconstructions</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Every piece of LION is set by parameters: the geometry, a model&#x27;s layers, a solver&#x27;s settings, an experiment&#x27;s noise. They are LIONParameter\ s, plain namespaces you read, change and save. And every object LION records (an optimizer, a loss, a model) is saved as a spec: its class and the arguments that build it again. Together they are how LION knows, from a file alone, how anything was made.">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d02_parameters_and_specs_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d02_parameters_and_specs`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Parameters and specs</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="An experiment fixes a problem: the geometry, the noise, the dataset and its splits. Every method trained or tested on the same experiment sees the same data, so methods can be compared. Experiments give datasets, torch datasets of (measurements, target) pairs, and a record of each: what the data are, written so that they can be made again.">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d03_data_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d03_data`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Data and experiments</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="LION&#x27;s models are torch modules (``LIONmodel``, a torch.nn.Module) with a little more: their parameters, the operator they use, how they start, how they normalise, where they come from (``cite()``), and saving and loading with all of that. This tutorial makes models of each kind and runs them on a sample, untrained: training is the next tutorials&#x27;.">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d04_models_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d04_models`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Models</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A solver trains a model: it is a torch training loop with what research needs around it (validation, checkpoints, saving with records, testing). This tutorial trains FBPConvNet on pairs of noisy sinograms and images with SupervisedSolver: first the least it needs, then each option.">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d05_supervised_training_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d05_supervised_training`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Supervised training</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Clean images are rarely available for real scans. Self-supervised methods train from the noisy measurements alone, using what is known about the noise and the operator. LION has several, each a solver used like the supervised one: the model, the optimizer, the loss, the operator&#x27;s parameters and the solver&#x27;s own.">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d06_self_supervised_training_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d06_self_supervised_training`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Self-supervised training</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Plug-and-Play (PnP) methods reconstruct with an iterative algorithm in which a denoiser takes the place of a regulariser. The denoiser is trained once, on clean images with added Gaussian noise, and works for any operator: the operator only appears in the algorithm.">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d07_denoisers_and_pnp_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d07_denoisers_and_pnp`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Denoisers and Plug-and-Play</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A learned regulariser R is a network that scores images: low for clean ones, high for ones with noise and artefacts. Reconstruction then minimises a variational energy, data fit plus R,">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d08_learned_regularisers_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d08_learned_regularisers`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Learned regularisers</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Everything LION saves says how it was made. A model&#x27;s file holds, with its weights, records: of the data it was trained on, of its training, and of the software it ran on. From them, each piece can be made again: the model (trained, or untrained with the same initial weights), the experiment, the data, the solver. That is what lets a training be repeated, a comparison be checked and a model be published.">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d09_saving_and_records_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d09_saving_and_records`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Saving, loading and records</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A reconstructor turns measurements into images with a trained model: the model inside an algorithm (a denoiser as a prior, a learned regulariser), or the model alone. It is made with everything that decides its result (the operator, the model and the algorithm&#x27;s settings), then run on data:">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d10_reconstructors_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d10_reconstructors`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Reconstructors</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A result in a paper is a method scored on test data, against others. LION makes that one standard procedure per problem:">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d11_evaluation_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d11_evaluation`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Evaluation and comparison</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="LION.package.publish writes a trained model as a package: one folder with everything needed to use it, test it and train it again, from the records LION saved with it (d09_saving_and_records). Someone with the folder and the data then loads it, builds its pieces, or trains it again.">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d12_publishing_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d12_publishing`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Publishing and reproducing</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Each piece of LION is a small base class over plain torch, and each can be your own: an operator, a model, a dataset, a reconstructor, a solver. Written as LION&#x27;s are, yours get what LION&#x27;s have: records, saving and loading, evaluation, publishing.">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d13_extending_lion_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d13_extending_lion`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Extending LION</div>
+    </div>
+
+
 .. thumbnail-parent-div-close
 
 .. raw:: html
 
     </div>
+
+
+.. toctree::
+   :hidden:
+
+   /tutorials/d01_operators
+   /tutorials/d02_parameters_and_specs
+   /tutorials/d03_data
+   /tutorials/d04_models
+   /tutorials/d05_supervised_training
+   /tutorials/d06_self_supervised_training
+   /tutorials/d07_denoisers_and_pnp
+   /tutorials/d08_learned_regularisers
+   /tutorials/d09_saving_and_records
+   /tutorials/d10_reconstructors
+   /tutorials/d11_evaluation
+   /tutorials/d12_publishing
+   /tutorials/d13_extending_lion
 
 
 .. only:: html
@@ -38,3 +277,7 @@ data tutorial on, the processed LIDC-IDRI data in ``LION_DATA_PATH``.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download all examples in Python source code: tutorials_python.zip </tutorials/tutorials_python.zip>`
+
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
+
+      :download:`Download all examples in Jupyter notebooks: tutorials_jupyter.zip </tutorials/tutorials_jupyter.zip>`

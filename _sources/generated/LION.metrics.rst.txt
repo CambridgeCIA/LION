@@ -13,7 +13,6 @@
    :recursive:
 
    haarpsi
-   metrics
    psnr
    ssim
 

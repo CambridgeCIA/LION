@@ -1,0 +1,836 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Example scripts" href="../examples.html"><link rel="prev" title="Publishing and reproducing" href="d12_publishing.html">
+        <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
+        <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+        <title>Extending LION - LION 0.2.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">LION 0.2.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/lion-logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/lion-logo-dark.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">LION 0.2.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="d01_operators.html">Operators: CT geometry, projections and reconstructions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d02_parameters_and_specs.html">Parameters and specs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d03_data.html">Data and experiments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d04_models.html">Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d05_supervised_training.html">Supervised training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d06_self_supervised_training.html">Self-supervised training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d07_denoisers_and_pnp.html">Denoisers and Plug-and-Play</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d08_learned_regularisers.html">Learned regularisers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d09_saving_and_records.html">Saving, loading and records</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d10_reconstructors.html">Reconstructors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d11_evaluation.html">Evaluation and comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d12_publishing.html">Publishing and reproducing</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Extending LION</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Example scripts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.operators.DebiasOp.html">LION.operators.DebiasOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.operators.Operator.html">LION.operators.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.operators.Wavelet2D.html">LION.operators.Wavelet2D</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.operators.ct.html">LION.operators.ct</a><input aria-label="Toggle navigation of LION.operators.ct" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.operators.ct.CTProjectionOp.html">LION.operators.ct.CTProjectionOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.operators.ct.ct_geometry.html">LION.operators.ct.ct_geometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.operators.ct.ct_utils.html">LION.operators.ct.ct_utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.operators.ct.fdk.html">LION.operators.ct.fdk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.operators.ct.sirt.html">LION.operators.ct.sirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.operators.ct.tv_min.html">LION.operators.ct.tv_min</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.operators.pcm.html">LION.operators.pcm</a><input aria-label="Toggle navigation of LION.operators.pcm" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.operators.pcm.PhotocurrentMapOp.html">LION.operators.pcm.PhotocurrentMapOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.operators.pcm.WalshHadamard2D.html">LION.operators.pcm.WalshHadamard2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.data_loaders.html">LION.data_loaders</a><input aria-label="Toggle navigation of LION.data_loaders" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.data_loaders.LIDC_IDRI.html">LION.data_loaders.LIDC_IDRI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.data_loaders.LIONDataset.html">LION.data_loaders.LIONDataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.data_loaders.data_record.html">LION.data_loaders.data_record</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.data_loaders.deteCT.html">LION.data_loaders.deteCT</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.experiments.html">LION.experiments</a><input aria-label="Toggle navigation of LION.experiments" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.experiments.ct_experiments.html">LION.experiments.ct_experiments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.experiments.deteCT_benchmark.html">LION.experiments.deteCT_benchmark</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.models.html">LION.models</a><input aria-label="Toggle navigation of LION.models" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.CNNs.html">LION.models.CNNs</a><input aria-label="Toggle navigation of LION.models.CNNs" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.CNNs.MSDNet.html">LION.models.CNNs.MSDNet</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../generated/LION.models.CNNs.UNets.html">LION.models.CNNs.UNets</a><input aria-label="Toggle navigation of LION.models.CNNs.UNets" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../generated/LION.models.CNNs.UNets.ResUNet3D.html">LION.models.CNNs.UNets.ResUNet3D</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../generated/LION.models.CNNs.UNets.Unet.html">LION.models.CNNs.UNets.Unet</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.CNNs.dncnn.html">LION.models.CNNs.dncnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.CNNs.drunet.html">LION.models.CNNs.drunet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.models.LIONmodel.html">LION.models.LIONmodel</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.PnP.html">LION.models.PnP</a><input aria-label="Toggle navigation of LION.models.PnP" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.models.fully_learned.html">LION.models.fully_learned</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.iterative_unrolled.LPD.html">LION.models.iterative_unrolled.LPD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.iterative_unrolled.cLPD.html">LION.models.iterative_unrolled.cLPD</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.learned_fbp.html">LION.models.learned_fbp</a><input aria-label="Toggle navigation of LION.models.learned_fbp" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_fbp.DeepFBP.html">LION.models.learned_fbp.DeepFBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_fbp.DeepFusionBP.html">LION.models.learned_fbp.DeepFusionBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_fbp.FusionFBP.html">LION.models.learned_fbp.FusionFBP</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.post_processing.FBPConvNet.html">LION.models.post_processing.FBPConvNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.post_processing.FBPConvNetImage.html">LION.models.post_processing.FBPConvNetImage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.post_processing.cFBPConvNet.html">LION.models.post_processing.cFBPConvNet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.models.torch_model.html">LION.models.torch_model</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.optimizers.html">LION.optimizers</a><input aria-label="Toggle navigation of LION.optimizers" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.AdversarialRegularizerSolver.html">LION.optimizers.AdversarialRegularizerSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.Equivariance2InverseSolver.html">LION.optimizers.Equivariance2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.EquivariantSolver.html">LION.optimizers.EquivariantSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.GaussianDenoiserSolver.html">LION.optimizers.GaussianDenoiserSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.LIONsolver.html">LION.optimizers.LIONsolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.Noise2InverseSolver.html">LION.optimizers.Noise2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.Noisier2InverseSolver.html">LION.optimizers.Noisier2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.Proj2ProjSolver.html">LION.optimizers.Proj2ProjSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.SelfSupervisedSolver.html">LION.optimizers.SelfSupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.Sparse2InverseSolver.html">LION.optimizers.Sparse2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.SupervisedSolver.html">LION.optimizers.SupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.optimizers.training_record.html">LION.optimizers.training_record</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.losses.html">LION.losses</a><input aria-label="Toggle navigation of LION.losses" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.losses.SURE.html">LION.losses.SURE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.losses.SUREpgImage.html">LION.losses.SUREpgImage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.losses.jacobian_penalty.html">LION.losses.jacobian_penalty</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.reconstructors.html">LION.reconstructors</a><input aria-label="Toggle navigation of LION.reconstructors" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.reconstructors.ForwardReconstructor.html">LION.reconstructors.ForwardReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.reconstructors.LIONreconstructor.html">LION.reconstructors.LIONreconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.reconstructors.LearnedRegularizerReconstructor.html">LION.reconstructors.LearnedRegularizerReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.reconstructors.PnP.html">LION.reconstructors.PnP</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.classical_algorithms.html">LION.classical_algorithms</a><input aria-label="Toggle navigation of LION.classical_algorithms" class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.classical_algorithms.conjugate_gradient.html">LION.classical_algorithms.conjugate_gradient</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.classical_algorithms.fista.html">LION.classical_algorithms.fista</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.classical_algorithms.spgl1_torch.html">LION.classical_algorithms.spgl1_torch</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.evaluation.html">LION.evaluation</a><input aria-label="Toggle navigation of LION.evaluation" class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.evaluation.comparison.html">LION.evaluation.comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.evaluation.evaluation.html">LION.evaluation.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.evaluation.figures.html">LION.evaluation.figures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.evaluation.methods.html">LION.evaluation.methods</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.metrics.html">LION.metrics</a><input aria-label="Toggle navigation of LION.metrics" class="toctree-checkbox" id="toctree-checkbox-21" name="toctree-checkbox-21" role="switch" type="checkbox"/><label for="toctree-checkbox-21"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.metrics.haarpsi.html">LION.metrics.haarpsi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.metrics.psnr.html">LION.metrics.psnr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.metrics.ssim.html">LION.metrics.ssim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../generated/LION.package.html">LION.package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.utils.html">LION.utils</a><input aria-label="Toggle navigation of LION.utils" class="toctree-checkbox" id="toctree-checkbox-22" name="toctree-checkbox-22" role="switch" type="checkbox"/><label for="toctree-checkbox-22"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.citation.html">LION.utils.citation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.common_primitives.html">LION.utils.common_primitives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.device.html">LION.utils.device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.environment.html">LION.utils.environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.image_transforms.html">LION.utils.image_transforms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.math.html">LION.utils.math</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.mrpro_import.html">LION.utils.mrpro_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.normaliser.html">LION.utils.normaliser</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.parameter.html">LION.utils.parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.paths.html">LION.utils.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.rng.html">LION.utils.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.spec.html">LION.utils.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.spyrit_import.html">LION.utils.spyrit_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.tomosipo_import.html">LION.utils.tomosipo_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../generated/LION.utils.utils.html">LION.utils.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../citing.html">Citing LION</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/tutorials/d13_extending_lion.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/tutorials/d13_extending_lion.rst" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-tutorials-d13-extending-lion-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="extending-lion">
+<span id="sphx-glr-tutorials-d13-extending-lion-py"></span><h1>Extending LION<a class="headerlink" href="#extending-lion" title="Link to this heading">¶</a></h1>
+<p>Each piece of LION is a small base class over plain torch, and each can be
+your own: an operator, a model, a dataset, a reconstructor, a solver. Written
+as LION’s are, yours get what LION’s have: records, saving and loading,
+evaluation, publishing.</p>
+<p>This tutorial builds a problem LION doesn’t have, deblurring: a blur operator,
+a dataset of blurred images, an unrolled model for it, and a reconstructor,
+then trains and uses them with LION’s solver. To add them to LION itself, see
+the contributor guide.</p>
+<p>Previous: <a class="reference internal" href="d12_publishing.html"><span class="doc">Publishing and reproducing</span></a>.</p>
+<p>Needs a GPU and the processed LIDC-IDRI data in <code class="docutils literal notranslate"><span class="pre">LION_DATA_PATH</span></code> (the images
+to blur).</p>
+<section id="an-operator">
+<h2>An operator<a class="headerlink" href="#an-operator" title="Link to this heading">¶</a></h2>
+<p>An operator derives from <code class="docutils literal notranslate"><span class="pre">Operator</span></code> and defines <code class="docutils literal notranslate"><span class="pre">forward</span></code> (and
+<code class="docutils literal notranslate"><span class="pre">__call__</span></code>, which calls it), <code class="docutils literal notranslate"><span class="pre">adjoint</span></code>, its <code class="docutils literal notranslate"><span class="pre">domain_shape</span></code> and
+<code class="docutils literal notranslate"><span class="pre">range_shape</span></code>, and, if it can be differentiated, <code class="docutils literal notranslate"><span class="pre">autograd()</span></code>; if it has
+a usual reconstruction, <code class="docutils literal notranslate"><span class="pre">default_reconstruction_fn()</span></code>. It is made by its
+parameters, an <code class="docutils literal notranslate"><span class="pre">OperatorParameters</span></code>, which is what models, solvers and
+records take (as they take a CT geometry).</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-class reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="pathlib.Path"><span class="n">Path</span></a><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span><span class="nn">.</span><span class="nn">nn</span><span class="nn">.</span><span class="nn">functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="nn">.</span><span class="nn">utils</span><span class="nn">.</span><span class="nn">data</span><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">DataLoader</span></a><span class="w">
+</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">operators</span><span class="nn">.</span><a class="sphx-glr-backref-module-LION-operators sphx-glr-backref-type-py-class reference internal" href="../generated/LION.operators.Operator.html#LION.operators.Operator" title="LION.operators.Operator"><span class="nn">Operator</span></a><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-LION-operators sphx-glr-backref-type-py-class reference internal" href="../generated/LION.operators.Operator.html#LION.operators.Operator" title="LION.operators.Operator"><span class="n">Operator</span></a><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">utils</span><span class="nn">.</span><span class="nn">parameter</span><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">LIONParameter</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.OperatorParameters" title="LION.utils.parameter.OperatorParameters"><span class="n">OperatorParameters</span></a><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">blurred_image</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">op</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;The blur's default reconstruction: the blurred image as it is.&quot;&quot;&quot;</span><span class="w">
+</span>    <span class="k">return</span> <span class="n">y</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">class</span><span class="w"> </span><a class="sphx-glr-backref-module-LION-operators sphx-glr-backref-type-py-class reference internal" href="../generated/LION.operators.Operator.html#LION.operators.Operator" title="LION.operators.Operator"><span class="nc">Blur</span></a><span class="p">(</span><a class="sphx-glr-backref-module-LION-operators sphx-glr-backref-type-py-class reference internal" href="../generated/LION.operators.Operator.html#LION.operators.Operator" title="LION.operators.Operator"><span class="n">Operator</span></a><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;A Gaussian blur of images (1, H, W), by convolution with zero padding:
+    the kernel is symmetric, so the blur is its own adjoint.&quot;&quot;&quot;</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="nb">super</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">parameters</span><span class="w">
+</span>        <span class="n">size</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">parameters</span><span class="o">.</span><span class="n">sigma</span><span class="w">
+</span>        <span class="n">t</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-function reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.arange.html#torch.arange" title="torch.arange"><span class="n">torch</span><span class="o">.</span><span class="n">arange</span></a><span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="o">-</span> <span class="n">size</span> <span class="o">/</span><span class="o">/</span> <span class="mi">2</span><span class="w">
+</span>        <span class="n">g</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-function reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.exp.html#torch.exp" title="torch.exp"><span class="n">torch</span><span class="o">.</span><span class="n">exp</span></a><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">t</span><span class="o">*</span><span class="o">*</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">*</span><span class="o">*</span><span class="mi">2</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span> <span class="o">=</span> <span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="p">:</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">g</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:</span><span class="p">]</span> <span class="o">/</span> <span class="n">g</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="p">)</span> <span class="o">*</span><span class="o">*</span> <span class="mi">2</span><span class="p">)</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">batched</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="o">.</span><span class="n">dim</span><span class="p">(</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span>  <span class="c1"># (B, 1, H, W), or one image (1, H, W)</span><span class="w">
+</span>        <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a> <span class="k">if</span> <span class="n">batched</span> <span class="k">else</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">[</span><span class="kc">None</span><span class="p">]</span><span class="w">
+</span>        <span class="n">y</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-nn-functional sphx-glr-backref-type-py-function reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.conv2d.html#torch.nn.functional.conv2d" title="torch.nn.functional.conv2d"><span class="n">F</span><span class="o">.</span><span class="n">conv2d</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">)</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">kernel_size</span> <span class="o">/</span><span class="o">/</span> <span class="mi">2</span><span class="p">)</span><span class="w">
+</span>        <span class="k">return</span> <span class="n">y</span> <span class="k">if</span> <span class="n">batched</span> <span class="k">else</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">adjoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="nd">&#64;property</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">domain_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">image_shape</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="nd">&#64;property</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">range_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">image_shape</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">autograd</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="c1"># only torch operations: torch differentiates it as it is</span><span class="w">
+</span>        <span class="k">return</span> <span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">adjoint</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">default_reconstruction_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <span class="n">blurred_image</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">class</span><span class="w"> </span><a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.OperatorParameters" title="LION.utils.parameter.OperatorParameters"><span class="nc">BlurParameters</span></a><span class="p">(</span><a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.OperatorParameters" title="LION.utils.parameter.OperatorParameters"><span class="n">OperatorParameters</span></a><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;The blur's parameters, which make it.&quot;&quot;&quot;</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">make_operator</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <a class="sphx-glr-backref-module-LION-operators sphx-glr-backref-type-py-class reference internal" href="../generated/LION.operators.Operator.html#LION.operators.Operator" title="LION.operators.Operator"><span class="n">Blur</span></a><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="n">blur</span> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.OperatorParameters" title="LION.utils.parameter.OperatorParameters"><span class="n">BlurParameters</span></a><span class="p">(</span><span class="n">kernel_size</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">image_shape</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+</section>
+<section id="a-dataset">
+<h2>A dataset<a class="headerlink" href="#a-dataset" title="Link to this heading">¶</a></h2>
+<p>A dataset derives from <code class="docutils literal notranslate"><span class="pre">LIONDataset</span></code> (a torch <code class="docutils literal notranslate"><span class="pre">Dataset</span></code>) and keeps its
+constructor’s arguments as attributes of the same names, so its record can
+say how to make it again. Listing its samples (<code class="docutils literal notranslate"><span class="pre">sample_ids()</span></code>) and their
+groups (<code class="docutils literal notranslate"><span class="pre">sample_groups()</span></code>, e.g. patients, which must stay in one split)
+lets records and evaluations check what was trained and tested on. Its
+random numbers come from <code class="docutils literal notranslate"><span class="pre">seeded(seed,</span> <span class="pre">sample)</span></code>: each sample is the same
+every time it is read.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">data_loaders</span><span class="nn">.</span><a class="sphx-glr-backref-module-LION-data_loaders-LIDC_IDRI sphx-glr-backref-type-py-class reference internal" href="../generated/LION.data_loaders.LIDC_IDRI.html#LION.data_loaders.LIDC_IDRI.LIDC_IDRI" title="LION.data_loaders.LIDC_IDRI.LIDC_IDRI"><span class="nn">LIDC_IDRI</span></a><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-LION-data_loaders-LIDC_IDRI sphx-glr-backref-type-py-class reference internal" href="../generated/LION.data_loaders.LIDC_IDRI.html#LION.data_loaders.LIDC_IDRI.LIDC_IDRI" title="LION.data_loaders.LIDC_IDRI.LIDC_IDRI"><span class="n">LIDC_IDRI</span></a><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">data_loaders</span><span class="nn">.</span><a class="sphx-glr-backref-module-LION-data_loaders-LIONDataset sphx-glr-backref-type-py-class reference internal" href="../generated/LION.data_loaders.LIONDataset.html#LION.data_loaders.LIONDataset.LIONDataset" title="LION.data_loaders.LIONDataset.LIONDataset"><span class="nn">LIONDataset</span></a><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-LION-data_loaders-LIONDataset sphx-glr-backref-type-py-class reference internal" href="../generated/LION.data_loaders.LIONDataset.html#LION.data_loaders.LIONDataset.LIONDataset" title="LION.data_loaders.LIONDataset.LIONDataset"><span class="n">LIONDataset</span></a><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">utils</span><span class="nn">.</span><span class="nn">rng</span><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-LION-utils-rng sphx-glr-backref-type-py-function reference internal" href="../generated/LION.utils.rng.html#LION.utils.rng.seeded" title="LION.utils.rng.seeded"><span class="n">seeded</span></a><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">class</span><span class="w"> </span><a class="sphx-glr-backref-module-LION-data_loaders-LIONDataset sphx-glr-backref-type-py-class reference internal" href="../generated/LION.data_loaders.LIONDataset.html#LION.data_loaders.LIONDataset.LIONDataset" title="LION.data_loaders.LIONDataset.LIONDataset"><span class="nc">BlurredLIDC</span></a><span class="p">(</span><a class="sphx-glr-backref-module-LION-data_loaders-LIONDataset sphx-glr-backref-type-py-class reference internal" href="../generated/LION.data_loaders.LIONDataset.html#LION.data_loaders.LIONDataset.LIONDataset" title="LION.data_loaders.LIONDataset.LIONDataset"><span class="n">LIONDataset</span></a><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;LIDC-IDRI slices blurred by the blur of ``operator_params``, with
+    Gaussian noise of standard deviation ``parameters.noise``: (blurred image,
+    image) pairs. ``mode``: &quot;train&quot;, &quot;validation&quot; or &quot;test&quot;.&quot;&quot;&quot;</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">operator_params</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">operator_params</span> <span class="o">=</span> <span class="n">operator_params</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="p">(</span><span class="w">
+</span>            <span class="n">parameters</span> <span class="k">if</span> <span class="n">parameters</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_parameters</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>        <span class="p">)</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">images</span> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-data_loaders-LIDC_IDRI sphx-glr-backref-type-py-class reference internal" href="../generated/LION.data_loaders.LIDC_IDRI.html#LION.data_loaders.LIDC_IDRI.LIDC_IDRI" title="LION.data_loaders.LIDC_IDRI.LIDC_IDRI"><span class="n">LIDC_IDRI</span></a><span class="p">(</span><span class="n">mode</span><span class="p">)</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">op</span> <span class="o">=</span> <span class="n">operator_params</span><span class="o">.</span><span class="n">make_operator</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="nd">&#64;staticmethod</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">default_parameters</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">LIONParameter</span></a><span class="p">(</span><span class="n">noise</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">image</span></a> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w">
+</span>        <span class="k">with</span> <a class="sphx-glr-backref-module-LION-utils-rng sphx-glr-backref-type-py-function reference internal" href="../generated/LION.utils.rng.html#LION.utils.rng.seeded" title="LION.utils.rng.seeded"><span class="n">seeded</span></a><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_ids</span><span class="p">(</span><span class="p">)</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>            <span class="n">noise</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-function reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.randn.html#torch.randn" title="torch.randn"><span class="n">torch</span><span class="o">.</span><span class="n">randn</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/size.html#torch.Size" title="torch.Size"><span class="n">image</span><span class="o">.</span><span class="n">shape</span></a><span class="p">)</span><span class="w">
+</span>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">image</span></a><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">noise</span> <span class="o">*</span> <span class="n">noise</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">image</span></a><span class="p">)</span><span class="p">,</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">image</span></a><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">sample_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">sample_ids</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">sample_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">sample_groups</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Subset" title="torch.utils.data.Subset"><span class="n">training</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Subset" title="torch.utils.data.Subset"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Subset</span></a><span class="p">(</span><a class="sphx-glr-backref-module-LION-data_loaders-LIONDataset sphx-glr-backref-type-py-class reference internal" href="../generated/LION.data_loaders.LIONDataset.html#LION.data_loaders.LIONDataset.LIONDataset" title="LION.data_loaders.LIONDataset.LIONDataset"><span class="n">BlurredLIDC</span></a><span class="p">(</span><span class="s2">&quot;</span><span class="s2">train</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">blur</span><span class="p">)</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">40</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Subset" title="torch.utils.data.Subset"><span class="n">validation</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Subset" title="torch.utils.data.Subset"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Subset</span></a><span class="p">(</span><a class="sphx-glr-backref-module-LION-data_loaders-LIONDataset sphx-glr-backref-type-py-class reference internal" href="../generated/LION.data_loaders.LIONDataset.html#LION.data_loaders.LIONDataset.LIONDataset" title="LION.data_loaders.LIONDataset.LIONDataset"><span class="n">BlurredLIDC</span></a><span class="p">(</span><span class="s2">&quot;</span><span class="s2">validation</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">blur</span><span class="p">)</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">training_loader</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">DataLoader</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Subset" title="torch.utils.data.Subset"><span class="n">training</span></a><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="w">
+</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">validation_loader</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">DataLoader</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Subset" title="torch.utils.data.Subset"><span class="n">validation</span></a><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/mhome/damtp/r/ab2860/AItomotools/LION/data_loaders/LIDC_IDRI.py:487: UserWarning: LIDC-IDRI: left out 2 damaged or unusable files (re-run the pre-processing for these patients): ['LIDC-IDRI-0238 (not resampled)', 'LIDC-IDRI-0585 (not resampled)']
+  warnings.warn(
+</pre></div>
+</div>
+</section>
+<section id="a-model">
+<h2>A model<a class="headerlink" href="#a-model" title="Link to this heading">¶</a></h2>
+<p>A model derives from <code class="docutils literal notranslate"><span class="pre">LIONmodel</span></code>. One that uses an operator takes its
+parameters first and its own second, and makes the operator (with
+<code class="docutils literal notranslate"><span class="pre">autograd=True</span></code> to differentiate through it: <code class="docutils literal notranslate"><span class="pre">self.A</span></code>, <code class="docutils literal notranslate"><span class="pre">self.AT</span></code>).
+<code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code> lists every setting, with <code class="docutils literal notranslate"><span class="pre">model_input_type</span></code>:
+what it takes. A model from a paper defines <code class="docutils literal notranslate"><span class="pre">cite()</span></code>.</p>
+<p>Here, learned gradient descent: K steps x ← x - CNN(x, Aᵀ(Ax - y)), from
+the operator’s default reconstruction.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">models</span><span class="nn">.</span><a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-class reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel" title="LION.models.LIONmodel.LIONmodel"><span class="nn">LIONmodel</span></a><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-class reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel" title="LION.models.LIONmodel.LIONmodel"><span class="n">LIONmodel</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-class reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONModelParameter" title="LION.models.LIONmodel.LIONModelParameter"><span class="n">LIONModelParameter</span></a><span class="p">,</span> <span class="n">ModelInputType</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">class</span><span class="w"> </span><a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-class reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel" title="LION.models.LIONmodel.LIONmodel"><span class="nc">LearnedGradientDescent</span></a><span class="p">(</span><a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-class reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel" title="LION.models.LIONmodel.LIONmodel"><span class="n">LIONmodel</span></a><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;``n_steps`` learned gradient steps, each a small CNN of the image and
+    the data fit's gradient.&quot;&quot;&quot;</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">operator_params</span><span class="p">,</span> <span class="n">model_parameters</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="nb">super</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">,</span> <span class="n">operator_params</span><span class="p">)</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">_make_operator</span><span class="p">(</span><span class="n">autograd</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="w">
+</span>        <span class="n">channels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_parameters</span><span class="o">.</span><span class="n">channels</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">steps</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.ModuleList.html#torch.nn.ModuleList" title="torch.nn.ModuleList"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span></a><span class="p">(</span><span class="w">
+</span>            <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Sequential.html#torch.nn.Sequential" title="torch.nn.Sequential"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span></a><span class="p">(</span><span class="w">
+</span>                <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html#torch.nn.Conv2d" title="torch.nn.Conv2d"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span></a><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">channels</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>                <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.ReLU.html#torch.nn.ReLU" title="torch.nn.ReLU"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span></a><span class="p">(</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>                <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html#torch.nn.Conv2d" title="torch.nn.Conv2d"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span></a><span class="p">(</span><span class="n">channels</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>            <span class="p">)</span><span class="w">
+</span>            <span class="k">for</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">_</span></a> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_parameters</span><span class="o">.</span><span class="n">n_steps</span><span class="p">)</span><span class="w">
+</span>        <span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="nd">&#64;staticmethod</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">default_parameters</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">parameters</span> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-class reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONModelParameter" title="LION.models.LIONmodel.LIONModelParameter"><span class="n">LIONModelParameter</span></a><span class="p">(</span><span class="p">)</span><span class="w">
+</span>        <span class="n">parameters</span><span class="o">.</span><span class="n">model_input_type</span> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.ModelInputType" title="LION.models.LIONmodel.ModelInputType"><span class="n">ModelInputType</span><span class="o">.</span><span class="n">SINOGRAM</span></a>  <span class="c1"># the measurements</span><span class="w">
+</span>        <span class="n">parameters</span><span class="o">.</span><span class="n">n_steps</span> <span class="o">=</span> <span class="mi">5</span><span class="w">
+</span>        <span class="n">parameters</span><span class="o">.</span><span class="n">channels</span> <span class="o">=</span> <span class="mi">32</span><span class="w">
+</span>        <span class="k">return</span> <span class="n">parameters</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_reconstruction</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">)</span><span class="w">
+</span>        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">steps</span><span class="p">:</span><span class="w">
+</span>            <span class="n">gradient</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">AT</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">A</span><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">)</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span><span class="w">
+</span>            <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a> <span class="o">-</span> <span class="n">step</span><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-function reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.cat.html#torch.cat" title="torch.cat"><span class="n">torch</span><span class="o">.</span><span class="n">cat</span></a><span class="p">(</span><span class="p">[</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">,</span> <span class="n">gradient</span><span class="p">]</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span>        <span class="k">return</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="n">model</span> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-class reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel" title="LION.models.LIONmodel.LIONmodel"><span class="n">LearnedGradientDescent</span></a><span class="p">(</span><span class="n">blur</span><span class="p">)</span><span class="w">
+</span><span class="nb">print</span><span class="p">(</span><a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONModelParameter" title="LION.models.LIONmodel.LIONModelParameter"><span class="n">model</span><span class="o">.</span><span class="n">model_parameters</span></a><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>model_input_type : ModelInputType.SINOGRAM
+initial_reconstruction : &lt;function blurred_image at 0x7f30b35ac2c0&gt;
+n_steps : 5
+channels : 32
+</pre></div>
+</div>
+</section>
+<section id="training-it">
+<h2>Training it<a class="headerlink" href="#training-it" title="Link to this heading">¶</a></h2>
+<p>LION’s solver trains it as it trains LION’s models: the operator’s
+parameters come from the model.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">metrics</span><span class="nn">.</span><span class="nn">psnr</span><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-LION-metrics-psnr sphx-glr-backref-type-py-class reference internal" href="../generated/LION.metrics.psnr.html#LION.metrics.psnr.PSNR" title="LION.metrics.psnr.PSNR"><span class="n">PSNR</span></a><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">optimizers</span><span class="nn">.</span><a class="sphx-glr-backref-module-LION-optimizers-SupervisedSolver sphx-glr-backref-type-py-class reference internal" href="../generated/LION.optimizers.SupervisedSolver.html#LION.optimizers.SupervisedSolver.SupervisedSolver" title="LION.optimizers.SupervisedSolver.SupervisedSolver"><span class="nn">SupervisedSolver</span></a><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-LION-optimizers-SupervisedSolver sphx-glr-backref-type-py-class reference internal" href="../generated/LION.optimizers.SupervisedSolver.html#LION.optimizers.SupervisedSolver.SupervisedSolver" title="LION.optimizers.SupervisedSolver.SupervisedSolver"><span class="n">SupervisedSolver</span></a><span class="w">
+</span><span class="w">
+</span><a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.PosixPath" title="pathlib.PosixPath"><span class="n">folder</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-class reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="pathlib.Path"><span class="n">Path</span></a><span class="p">(</span><a class="sphx-glr-backref-module-tempfile sphx-glr-backref-type-py-function reference external" href="https://docs.python.org/3/library/tempfile.html#tempfile.mkdtemp" title="tempfile.mkdtemp"><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span></a><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span><a class="sphx-glr-backref-module-LION-optimizers-SupervisedSolver sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.optimizers.SupervisedSolver.html#LION.optimizers.SupervisedSolver.SupervisedSolver" title="LION.optimizers.SupervisedSolver.SupervisedSolver"><span class="n">solver</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-optimizers-SupervisedSolver sphx-glr-backref-type-py-class reference internal" href="../generated/LION.optimizers.SupervisedSolver.html#LION.optimizers.SupervisedSolver.SupervisedSolver" title="LION.optimizers.SupervisedSolver.SupervisedSolver"><span class="n">SupervisedSolver</span></a><span class="p">(</span><span class="w">
+</span>    <span class="n">model</span><span class="p">,</span> <a class="sphx-glr-backref-module-torch-optim sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam" title="torch.optim.Adam"><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-method reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.parameters" title="torch.nn.Module.parameters"><span class="n">model</span><span class="o">.</span><span class="n">parameters</span></a><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">,</span> <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.MSELoss.html#torch.nn.MSELoss" title="torch.nn.MSELoss"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span></a><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="p">)</span><span class="w">
+</span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.set_training" title="LION.optimizers.LIONsolver.LIONsolver.set_training"><span class="n">solver</span><span class="o">.</span><span class="n">set_training</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">training_loader</span></a><span class="p">)</span><span class="w">
+</span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.set_validation" title="LION.optimizers.LIONsolver.LIONsolver.set_validation"><span class="n">solver</span><span class="o">.</span><span class="n">set_validation</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">validation_loader</span></a><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <a class="sphx-glr-backref-module-LION-metrics-psnr sphx-glr-backref-type-py-class reference internal" href="../generated/LION.metrics.psnr.html#LION.metrics.psnr.PSNR" title="LION.metrics.psnr.PSNR"><span class="n">PSNR</span></a><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">validation_fname</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">best</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.set_saving" title="LION.optimizers.LIONsolver.LIONsolver.set_saving"><span class="n">solver</span><span class="o">.</span><span class="n">set_saving</span></a><span class="p">(</span><a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.PosixPath" title="pathlib.PosixPath"><span class="n">folder</span></a><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">LGD</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.train" title="LION.optimizers.LIONsolver.LIONsolver.train"><span class="n">solver</span><span class="o">.</span><span class="n">train</span></a><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="w">
+</span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.save_final_results" title="LION.optimizers.LIONsolver.LIONsolver.save_final_results"><span class="n">solver</span><span class="o">.</span><span class="n">save_final_results</span></a><span class="p">(</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Training:   0%|          | 0/30 [00:00&lt;?, ?batch/s]
+Training:   3%|▎         | 1/30 [00:00&lt;00:16,  1.76batch/s, epoch=1/3, loss=0.09583]
+Training:   7%|▋         | 2/30 [00:00&lt;00:08,  3.25batch/s, epoch=1/3, loss=0.06094]
+Training:  10%|█         | 3/30 [00:00&lt;00:05,  4.65batch/s, epoch=1/3, loss=0.04307]
+Training:  13%|█▎        | 4/30 [00:00&lt;00:04,  5.85batch/s, epoch=1/3, loss=0.03868]
+Training:  20%|██        | 6/30 [00:01&lt;00:03,  7.51batch/s, epoch=1/3, loss=0.0339]
+Training:  27%|██▋       | 8/30 [00:01&lt;00:02,  8.48batch/s, epoch=1/3, loss=0.02735]
+Training:  33%|███▎      | 10/30 [00:01&lt;00:02,  9.10batch/s, epoch=1/3, loss=0.02356]
+Training:  37%|███▋      | 11/30 [00:04&lt;00:12,  1.49batch/s, epoch=2/3, loss=0.01126, validation=27.54]
+Training:  40%|████      | 12/30 [00:04&lt;00:09,  1.85batch/s, epoch=2/3, loss=0.01076, validation=27.54]
+Training:  47%|████▋     | 14/30 [00:04&lt;00:05,  2.76batch/s, epoch=2/3, loss=0.01154, validation=27.54]
+Training:  53%|█████▎    | 16/30 [00:04&lt;00:03,  3.77batch/s, epoch=2/3, loss=0.01066, validation=27.54]
+Training:  60%|██████    | 18/30 [00:04&lt;00:02,  4.82batch/s, epoch=2/3, loss=0.009276, validation=27.54]
+Training:  67%|██████▋   | 20/30 [00:05&lt;00:01,  5.85batch/s, epoch=2/3, loss=0.008156, validation=27.54]
+Training:  70%|███████   | 21/30 [00:08&lt;00:06,  1.43batch/s, epoch=3/3, loss=0.004053, validation=31.07]
+Training:  73%|███████▎  | 22/30 [00:08&lt;00:04,  1.74batch/s, epoch=3/3, loss=0.004356, validation=31.07]
+Training:  80%|████████  | 24/30 [00:08&lt;00:02,  2.55batch/s, epoch=3/3, loss=0.005046, validation=31.07]
+Training:  87%|████████▋ | 26/30 [00:08&lt;00:01,  3.48batch/s, epoch=3/3, loss=0.004926, validation=31.07]
+Training:  93%|█████████▎| 28/30 [00:08&lt;00:00,  4.48batch/s, epoch=3/3, loss=0.00441, validation=31.07]
+Training: 100%|██████████| 30/30 [00:08&lt;00:00,  5.49batch/s, epoch=3/3, loss=0.004262, validation=31.07]
+Training: 100%|██████████| 30/30 [00:09&lt;00:00,  3.24batch/s, epoch=3/3, loss=0.004262, validation=31.07]
+</pre></div>
+</div>
+<p>Its file records the model, the blur and the data, as for LION’s. Files only
+make LION’s classes again unless told otherwise: classes of your own are
+allowed by their module’s name (here, this script’s: <code class="docutils literal notranslate"><span class="pre">__main__</span></code>).</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="n">model</span><span class="p">,</span> <a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">options</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">_</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-method reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel.load" title="LION.models.LIONmodel.LIONmodel.load"><span class="n">LIONmodel</span><span class="o">.</span><span class="n">load</span></a><span class="p">(</span><a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.PosixPath" title="pathlib.PosixPath"><span class="n">folder</span></a> <span class="o">/</span> <span class="s2">&quot;</span><span class="s2">LGD</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">allow</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">__main__.</span><span class="s2">&quot;</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span><span class="nb">print</span><span class="p">(</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">options</span><span class="o">.</span><span class="n">model_name</span></a><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">options</span></a><span class="o">.</span><span class="n">operator_params</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>LearnedGradientDescent BlurParameters
+</pre></div>
+</div>
+</section>
+<section id="a-reconstructor">
+<h2>A reconstructor<a class="headerlink" href="#a-reconstructor" title="Link to this heading">¶</a></h2>
+<p>A reconstructor derives from <code class="docutils literal notranslate"><span class="pre">LIONReconstructor</span></code> and defines
+<code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code> and <code class="docutils literal notranslate"><span class="pre">reconstruct_sample(y,</span> <span class="pre">x0,</span> <span class="pre">verbose)</span></code>, reading
+its settings from <code class="docutils literal notranslate"><span class="pre">self.parameters</span></code>. Here: the model’s image, made
+consistent with the data by a few conjugate gradient steps on
+||Ax - y||² + λ||x - model(y)||².</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">classical_algorithms</span><span class="nn">.</span><a class="sphx-glr-backref-module-LION-classical_algorithms sphx-glr-backref-type-py-function reference internal" href="../generated/LION.classical_algorithms.conjugate_gradient.html#LION.classical_algorithms.conjugate_gradient" title="LION.classical_algorithms.conjugate_gradient"><span class="nn">conjugate_gradient</span></a><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-LION-classical_algorithms sphx-glr-backref-type-py-function reference internal" href="../generated/LION.classical_algorithms.conjugate_gradient.html#LION.classical_algorithms.conjugate_gradient" title="LION.classical_algorithms.conjugate_gradient"><span class="n">conjugate_gradient</span></a><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">reconstructors</span><span class="nn">.</span><span class="nn">LIONreconstructor</span><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-class reference internal" href="../generated/LION.reconstructors.LIONreconstructor.html#LION.reconstructors.LIONreconstructor.LIONReconstructor" title="LION.reconstructors.LIONReconstructor"><span class="n">LIONReconstructor</span></a><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">class</span><span class="w"> </span><a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-class reference internal" href="../generated/LION.reconstructors.LIONreconstructor.html#LION.reconstructors.LIONreconstructor.LIONReconstructor" title="LION.reconstructors.LIONReconstructor"><span class="nc">DataConsistent</span></a><span class="p">(</span><a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-class reference internal" href="../generated/LION.reconstructors.LIONreconstructor.html#LION.reconstructors.LIONreconstructor.LIONReconstructor" title="LION.reconstructors.LIONReconstructor"><span class="n">LIONReconstructor</span></a><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;The model's reconstruction, made consistent with the measurements.&quot;&quot;&quot;</span><span class="w">
+</span><span class="w">
+</span>    <span class="nd">&#64;staticmethod</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">default_parameters</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">LIONParameter</span></a><span class="p">(</span><span class="n">lam</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">cg_iterations</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">reconstruct_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">lam</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">lam</span><span class="w">
+</span>        <span class="k">with</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.no_grad.html#torch.no_grad" title="torch.no_grad"><span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span></a><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>            <span class="n">x_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span><span class="p">)</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w">
+</span>            <span class="k">return</span> <a class="sphx-glr-backref-module-LION-classical_algorithms sphx-glr-backref-type-py-function reference internal" href="../generated/LION.classical_algorithms.conjugate_gradient.html#LION.classical_algorithms.conjugate_gradient" title="LION.classical_algorithms.conjugate_gradient"><span class="n">conjugate_gradient</span></a><span class="p">(</span><span class="w">
+</span>                <span class="k">lambda</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">adjoint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">)</span><span class="p">)</span> <span class="o">+</span> <span class="n">lam</span> <span class="o">*</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">,</span><span class="w">
+</span>                <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">adjoint</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="n">lam</span> <span class="o">*</span> <span class="n">x_model</span><span class="p">,</span><span class="w">
+</span>                <span class="n">x_model</span><span class="p">,</span><span class="w">
+</span>                <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">cg_iterations</span><span class="p">,</span><span class="w">
+</span>                <span class="mf">1e-6</span><span class="p">,</span><span class="w">
+</span>            <span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="n">reconstructor</span> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-class reference internal" href="../generated/LION.reconstructors.LIONreconstructor.html#LION.reconstructors.LIONreconstructor.LIONReconstructor" title="LION.reconstructors.LIONReconstructor"><span class="n">DataConsistent</span></a><span class="p">(</span><span class="n">blur</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span><span class="w">
+</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">blurred</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">image</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Subset" title="torch.utils.data.Subset"><span class="n">validation</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w">
+</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">deblurred</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-method reference internal" href="../generated/LION.reconstructors.LIONreconstructor.html#LION.reconstructors.LIONreconstructor.LIONReconstructor.reconstruct" title="LION.reconstructors.LIONReconstructor.reconstruct"><span class="n">reconstructor</span><span class="o">.</span><span class="n">reconstruct</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">blurred</span></a><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="n">fig</span><span class="p">,</span> <a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">axes</span></a> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span><span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="p">(</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">title</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="w">
+</span>    <a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">axes</span></a><span class="p">,</span> <span class="p">[</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">target</span><span class="s2">&quot;</span><span class="p">,</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">image</span></a><span class="p">)</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;</span><span class="s2">blurred</span><span class="s2">&quot;</span><span class="p">,</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">blurred</span></a><span class="p">)</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;</span><span class="s2">reconstructed</span><span class="s2">&quot;</span><span class="p">,</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">deblurred</span></a><span class="p">)</span><span class="p">]</span><span class="w">
+</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">gray</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">title</span></a><span class="p">)</span><span class="w">
+</span>    <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">off</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<img src="../_images/sphx_glr_d13_extending_lion_001.png" srcset="../_images/sphx_glr_d13_extending_lion_001.png" alt="target, blurred, reconstructed" class = "sphx-glr-single-img"/></section>
+<section id="a-solver">
+<h2>A solver<a class="headerlink" href="#a-solver" title="Link to this heading">¶</a></h2>
+<p>A solver derives from <code class="docutils literal notranslate"><span class="pre">LIONsolver</span></code> and defines <code class="docutils literal notranslate"><span class="pre">mini_batch_step(y,</span>
+<span class="pre">target)</span></code>, the loss of one mini-batch (adding <code class="docutils literal notranslate"><span class="pre">self._regularized(...)</span></code>
+for a model regularisation), and <code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code>, its own settings.
+E.g. a supervised solver with an L1 and a gradient-matching loss:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span class="k">class</span><span class="w"> </span><span class="nc">EdgeSolver</span><span class="p">(</span><span class="n">LIONsolver</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="nd">&#64;staticmethod</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">default_parameters</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">LIONParameter</span></a><span class="p">(</span><span class="n">edge_weight</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">mini_batch_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_forward</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="w">
+</span>        <span class="n">edges</span> <span class="o">=</span> <span class="k">lambda</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">:</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">[</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="p">,</span> <span class="p">:</span><span class="p">]</span> <span class="o">-</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">[</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:</span><span class="p">]</span><span class="w">
+</span>        <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss_fn</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver_params</span><span class="o">.</span><span class="n">edge_weight</span> <span class="o">*</span> <span class="p">(</span><span class="w">
+</span>            <span class="n">edges</span><span class="p">(</span><span class="n">output</span><span class="p">)</span> <span class="o">-</span> <span class="n">edges</span><span class="p">(</span><span class="n">target</span><span class="p">)</span><span class="w">
+</span>        <span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_regularized</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_forward</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<p>The contributor guide has the rules, and a checklist for each piece, to add
+it to LION itself.</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 58.159 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d13-extending-lion-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/f8bd43a746bf7ce735dcd7f6d16d0079/d13_extending_lion.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d13_extending_lion.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/d810531f0603f1c668b64b8435dfae10/d13_extending_lion.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">d13_extending_lion.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/15623d9366e7d734c944ac6c295e3a22/d13_extending_lion.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">d13_extending_lion.zip</span></code></a></p>
+</div>
+</div>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="../examples.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Example scripts</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="d12_publishing.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Publishing and reproducing</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Cambridge Image Analysis, University of Cambridge
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Extending LION</a><ul>
+<li><a class="reference internal" href="#an-operator">An operator</a></li>
+<li><a class="reference internal" href="#a-dataset">A dataset</a></li>
+<li><a class="reference internal" href="#a-model">A model</a></li>
+<li><a class="reference internal" href="#training-it">Training it</a></li>
+<li><a class="reference internal" href="#a-reconstructor">A reconstructor</a></li>
+<li><a class="reference internal" href="#a-solver">A solver</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
+    </body>
+</html>
