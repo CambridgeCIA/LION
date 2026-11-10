@@ -60,6 +60,8 @@ if TRAINING_SLICES is not None:
     # a torch Subset of a LION dataset is recorded as such: which slices
     training = Subset(training, range(min(TRAINING_SLICES, len(training))))
     validation = Subset(validation, range(min(VALIDATION_SLICES, len(validation))))
+training_loader = DataLoader(training, batch_size=4, shuffle=True)
+validation_loader = DataLoader(validation, batch_size=4)
 
 # %% The model
 # Models that use an operator take its parameters first: for CT, the geometry.
@@ -81,11 +83,11 @@ solver = SupervisedSolver(
 # solver = SupervisedSolver(model, optimizer, loss_fn, device=torch.device("cuda:1"))
 # and a scheduler stepping every batch:
 # solver = SupervisedSolver(..., scheduler=scheduler, scheduler_step="batch")
-solver.set_training(DataLoader(training, batch_size=4, shuffle=True))
+solver.set_training(training_loader)
 # Validate with the PSNR every epoch: the model with the best value is saved
 # (PSNR is a score, higher is better; a loss would keep the lowest).
 solver.set_validation(
-    DataLoader(validation, batch_size=4),
+    validation_loader,
     validation_freq=1,
     validation_fn=PSNR(),
     validation_fname="FBPConvNet_best",

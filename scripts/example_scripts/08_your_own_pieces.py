@@ -136,6 +136,7 @@ blur = BlurParameters(kernel_size=9, sigma=2.0, image_shape=list(image_shape))
 slices = experiment.get_dataset("train")
 n = len(slices) if TRAINING_SLICES is None else min(TRAINING_SLICES, len(slices))
 training = Deblurring(torch.utils.data.Subset(slices, range(n)), blur.make_operator())
+training_loader = DataLoader(training, batch_size=4, shuffle=True)
 
 
 # %% A model: a plain torch module
@@ -168,7 +169,7 @@ solver = SupervisedSolver(
 # (Two warnings: the dataset isn't a LIONDataset, so it isn't recorded; and a
 # class defined in this script can't be made again from the record, so the
 # initial weights are saved instead of the random state they came from.)
-solver.set_training(DataLoader(training, batch_size=4, shuffle=True))
+solver.set_training(training_loader)
 solver.set_saving(save_folder, "SmallResNet")
 solver.train(EPOCHS)
 solver.save_final_results()
@@ -191,6 +192,6 @@ print(
     f"deblurred {psnr(deblurred, image.cpu(), batched=False):.2f} dB"
 )
 # Plain torch, if you prefer: the model is a torch.nn.Module, and the loop
-#   for y, x in DataLoader(training, batch_size=4):
+#   for y, x in training_loader:
 #       loss = torch.nn.functional.mse_loss(model(y), x) ...
 # is yours to write. LION's solver adds the records, checkpoints and validation.
