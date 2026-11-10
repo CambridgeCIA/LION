@@ -80,7 +80,7 @@ Then evaluate and compare it (`LION.evaluation`), reconstruct with it (`LION.rec
 
 ## Data and results
 
-LION finds datasets in `LION_DATA_PATH`; set it, e.g. in your `.bashrc`: `export LION_DATA_PATH=/path/to/Datasets`. The supported datasets are LIDC-IDRI and 2DeteCT: [how to download and prepare them](LION/data_loaders/README.md).
+LION finds datasets in `LION_DATA_PATH`; set it, e.g. in your `.bashrc`: `export LION_DATA_PATH=/path/to/Datasets`. The supported datasets are LIDC-IDRI and 2DeteCT: [how to download and prepare them](https://cambridgecia.github.io/LION/datasets.html).
 
 `LION_RESULTS_PATH` (optional) is where results go when no folder is given. Paths inside either folder are written relative to it in LION's saved files, so the files mean the same on any machine.
 

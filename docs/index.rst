@@ -21,6 +21,7 @@ Where to start
 --------------
 
 - **Install it:** see the `README <https://github.com/CambridgeCIA/LION#readme>`_.
+- **Get the data:** :doc:`datasets`, how to download and prepare them.
 - **Learn it:** the :doc:`tutorials <tutorials/index>` build LION up one piece
   at a time, from the CT operator to publishing a model.
 - **See it run:** the :doc:`example scripts <examples>` are complete trainings,
@@ -36,6 +37,7 @@ Where to start
    :maxdepth: 2
    :caption: Using LION
 
+   datasets
    tutorials/index
    examples
 

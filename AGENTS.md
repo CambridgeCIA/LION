@@ -44,12 +44,14 @@ function or a parameter doesn't do.
 - `demos/`: the tutorials (`dNN_*.py`, `# %%` cells), the site's gallery.
 - `scripts/`: example scripts (`example_scripts/`) and paper scripts.
 - `docs/`: the documentation site (Sphinx, furo, sphinx-gallery):
-  `methods.rst` (every method, with its paper), `developers.rst`, `api.rst`.
+  `datasets.rst` (getting the data), `methods.rst` (every method, with its
+  paper), `developers.rst`, `api.rst`.
 - `utils/`: shell scripts (conda environments, `publish_docs.sh`).
 - `.github/workflows/`: tests (CPU), pre-commit, docs build.
 
 `README.md` is for users; `CHANGELOG.md` lists each release's changes (add
-yours under Unreleased); `papers_in_LION.md`, `developers.md` and
+yours under Unreleased); `papers_in_LION.md`, `developers.md`,
+`LION/data_loaders/README.md` and
 `LION/models/README.md` point to the site.
 
 ## Commands

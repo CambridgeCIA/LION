@@ -12,7 +12,7 @@ They need:
 
 - a GPU: LION's CT operators project with tomosipo and ASTRA's CUDA code;
 - the processed LIDC-IDRI data in `LION_DATA_PATH` (see
-  `LION/data_loaders/LIDC_IDRI/`);
+  [Datasets](https://cambridgecia.github.io/LION/datasets.html));
 - `LION_RESULTS_PATH`: they write to `$LION_RESULTS_PATH/examples/`.
 
 By default they train a few epochs on a few hundred slices, to show they work.

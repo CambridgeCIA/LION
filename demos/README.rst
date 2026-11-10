@@ -8,7 +8,8 @@ a time in an editor that knows cells (VS Code, Spyder), or as a notebook
 (download it below each page).
 
 They need a GPU (LION's CT operators use tomosipo and ASTRA) and, from the
-data tutorial on, the processed LIDC-IDRI data in ``LION_DATA_PATH``.
+data tutorial on, the processed LIDC-IDRI data in ``LION_DATA_PATH``
+(:doc:`/datasets` says how to get it).
 
 The models trained in the tutorials are toys, trained for a few epochs on a
 few slices to show how LION is used: their results are poor. Trained as their
