@@ -12,6 +12,9 @@
 2. The denoiser is the prior of a PnP-ADMM reconstruction
    (``LION.reconstructors.PnP``): ADMM alternates a data step (conjugate
    gradient on the CT operator) and a denoising step.
+3. The same reconstruction with the authors' trained DRUNet
+   (``DRUNet.pretrained()``), for comparison: a few epochs here don't make
+   a good denoiser.
 
 The noise levels are in the units of the images the denoiser sees: they are
 normalised to [0, 1] here (``set_normalisation``), so the literature's
@@ -22,8 +25,8 @@ penalties of Pesquet et al. (2021) and Hurault et al. (2022)
 learned regulariser reconstructor (``LearnedRegularizerReconstructor``) is
 used the same way.
 
-Needs: a GPU, the processed LIDC-IDRI data in ``LION_DATA_PATH``, and
-``LION_RESULTS_PATH``.
+Needs: a GPU, the processed LIDC-IDRI data in ``LION_DATA_PATH``,
+``LION_RESULTS_PATH``, and internet the first time (the pretrained weights).
 """
 
 # %% Imports
@@ -93,8 +96,19 @@ model.eval()
 pnp = PnP(experiment.operator_params, model, pnp_parameters)
 pnp.save(save_folder / "PnP.json")  # its settings and its model's file
 
+# The authors' DRUNet, trained on natural images (downloaded once): the same
+# architecture, and a reference for the short training above. Images mapped
+# to [0, 1] as for the trained one, the units of its noise levels.
+pretrained = DRUNet.pretrained(verbose=verbose)
+pretrained.set_normalisation("dataset", training)
+pretrained.eval()
+pnp_pretrained = PnP(experiment.operator_params, pretrained, pnp_parameters)
+
 sinogram, image = experiment.get_dataset("test")[0]
 reconstruction = pnp.reconstruct(sinogram.to(device), verbose=verbose).cpu()
+pretrained_reconstruction = pnp_pretrained.reconstruct(
+    sinogram.to(device), verbose=verbose
+).cpu()
 # or one algorithm with its settings given:
 # reconstruction = pnp.admm_algorithm(sinogram.to(device), eta=1e-4, max_iter=20)
 # FDK, the baseline: of the experiment's geometry
@@ -106,19 +120,22 @@ fdk_reconstruction = fdk(sinogram.to(device), experiment.operator_params).cpu()
 psnr = PSNR()
 fdk_psnr = psnr(fdk_reconstruction, image, batched=False)
 pnp_psnr = psnr(reconstruction, image, batched=False)
+pretrained_psnr = psnr(pretrained_reconstruction, image, batched=False)
 
 # To numpy for plotting (the data may be on the GPU)
 image_np = image[0].cpu().numpy()
 fdk_np = fdk_reconstruction[0].cpu().numpy()
 pnp_np = reconstruction[0].cpu().numpy()
+pretrained_np = pretrained_reconstruction[0].cpu().numpy()
 
-fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+fig, axes = plt.subplots(1, 4, figsize=(16, 4))
 for ax, (title, x) in zip(
     axes,
     [
         ("Ground truth", image_np),
         (f"FDK, {fdk_psnr:.2f} dB", fdk_np),
-        (f"PnP-ADMM, {pnp_psnr:.2f} dB", pnp_np),
+        (f"PnP-ADMM, trained, {pnp_psnr:.2f} dB", pnp_np),
+        (f"PnP-ADMM, pretrained, {pretrained_psnr:.2f} dB", pretrained_np),
     ],
 ):
     ax.imshow(x, cmap="gray", vmin=image_np.min(), vmax=image_np.max())
