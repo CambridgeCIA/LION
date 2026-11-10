@@ -22,7 +22,7 @@ Change the settings at the top for real training (more epochs, all the data).
 |---|---|
 | `01_supervised_training.py` | Supervised training of FBPConvNet: an experiment, a model, an optimizer and a learning-rate scheduler, validation (keeping the best model), checkpoints, saving. Any supervised model is one line away. |
 | `02_learned_primal_dual.py` | An unrolled method, LPD: a model that takes the measurements and trains through the CT operator; changing a model's parameters. |
-| `03_self_supervised_noise2inverse.py` | Self-supervised training with Noise2Inverse (an MSD-Net), without clean images; the other self-supervised solvers are used the same way. |
+| `03_self_supervised_noise2inverse.py` | Self-supervised training with Noise2Inverse (a U-Net), without clean images; the other self-supervised solvers are used the same way. |
 | `04_pnp_denoiser.py` | Plug-and-Play: a DRUNet trained as a Gaussian denoiser, then the prior of a PnP-ADMM reconstruction, compared with FDK. |
 | `05_evaluate_and_compare.py` | Evaluating methods on an experiment's test data, and a comparison (tables, scores, figures) of the models of 01, 02 and 04 with SIRT, against FDK. |
 | `06_resume_and_fine_tune.py` | A stopped training resumed from its checkpoint; a trained model fine-tuned on another problem, its record naming its original. |

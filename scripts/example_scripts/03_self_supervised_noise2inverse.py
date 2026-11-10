@@ -11,7 +11,9 @@ of angles, each set is reconstructed (FDK, the operator's default), and the
 model learns to map the reconstruction of some sets to that of the others.
 The noise of the sets is independent, so the model learns to remove it.
 
-The model is the paper's, an MSD-Net, but any image-to-image model works. The
+The model is a U-Net, which fits a 24 GB GPU. The paper's MSD-Net
+(``LION.models.CNNs.MSDNet``) is a one-line change, but at 512x512 its densely
+connected layers need far more memory. Any image-to-image model works. The
 other self-supervised solvers are used the same way: ``Sparse2InverseSolver``,
 ``Noisier2InverseSolver``, ``Proj2ProjSolver``, ``EquivariantSolver``,
 ``Equivariance2InverseSolver`` (each in ``LION.optimizers``).
@@ -29,7 +31,7 @@ from torch.utils.data import DataLoader, Subset
 
 from LION.experiments import ct_experiments
 from LION.metrics.psnr import PSNR
-from LION.models.CNNs.MSDNet import MSDNet
+from LION.models.CNNs.UNets.Unet import UNet
 from LION.optimizers.Noise2InverseSolver import Noise2InverseSolver
 from LION.utils.paths import results_path
 
@@ -54,7 +56,7 @@ if TRAINING_SLICES is not None:
     validation = Subset(validation, range(min(VALIDATION_SLICES, len(validation))))
 
 # %% The model: an image-to-image network, without an operator
-model = MSDNet()
+model = UNet()
 
 # %% The solver's parameters
 parameters = Noise2InverseSolver.default_parameters()
