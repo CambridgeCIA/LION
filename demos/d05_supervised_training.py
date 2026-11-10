@@ -249,7 +249,11 @@ for ax, (title, x) in zip(
 # and so what the later tutorials do with it: training again from the record,
 # checking that comparisons are fair, publishing.
 
-model = FBPConvNet(experiment.operator_params)
+from LION.utils.device import default_device
+
+# the solver moved the model to LION's device (the GPU); by hand, you do it.
+# The samples are already there.
+model = FBPConvNet(experiment.operator_params).to(default_device())
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 model.train()
 for sinograms, images in training_loader:
