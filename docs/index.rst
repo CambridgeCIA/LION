@@ -27,6 +27,8 @@ Where to start
   one feature each.
 - **See what's there:** :doc:`methods`, the kinds of learned reconstruction
   and every method LION has, with its paper.
+- **Know what is recorded:** :doc:`records`, what LION saves with every
+  model and how to use it.
 - **Look something up:** the :doc:`API reference <api>`, from the docstrings.
 - **Change LION:** the :doc:`developer guide <developers>`: how it is built,
   one training followed through the code, and what a new piece needs.
@@ -45,6 +47,7 @@ Where to start
    :caption: Reference
 
    methods
+   records
    api
 
 .. toctree::

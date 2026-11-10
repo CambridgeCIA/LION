@@ -96,6 +96,7 @@ docs = [
     "furo",
     "sphinx-gallery>=0.19",
     "sphinx-copybutton",
+    "myst-parser>=4",  # Markdown pages (metadata.md)
     "matplotlib",
     "ghp-import",  # utils/publish_docs.sh
 ]
