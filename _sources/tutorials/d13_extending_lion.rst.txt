@@ -36,7 +36,14 @@ Previous: :doc:`d12_publishing`.
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH`` (the images
 to blur).
 
-.. GENERATED FROM PYTHON SOURCE LINES 28-36
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
+
+.. GENERATED FROM PYTHON SOURCE LINES 35-43
 
 An operator
 -----------
@@ -47,7 +54,7 @@ a usual reconstruction, ``default_reconstruction_fn()``. It is made by its
 parameters, an ``OperatorParameters``, which is what models, solvers and
 records take (as they take a CT geometry).
 
-.. GENERATED FROM PYTHON SOURCE LINES 36-103
+.. GENERATED FROM PYTHON SOURCE LINES 43-110
 
 .. code-block:: Python
 
@@ -125,7 +132,7 @@ records take (as they take a CT geometry).
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 104-113
+.. GENERATED FROM PYTHON SOURCE LINES 111-120
 
 A dataset
 ---------
@@ -137,7 +144,7 @@ lets records and evaluations check what was trained and tested on. Its
 random numbers come from ``seeded(seed, sample)``: each sample is the same
 every time it is read.
 
-.. GENERATED FROM PYTHON SOURCE LINES 113-158
+.. GENERATED FROM PYTHON SOURCE LINES 120-165
 
 .. code-block:: Python
 
@@ -200,7 +207,7 @@ every time it is read.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 159-169
+.. GENERATED FROM PYTHON SOURCE LINES 166-176
 
 A model
 -------
@@ -213,7 +220,7 @@ what it takes. A model from a paper defines ``cite()``.
 Here, learned gradient descent: K steps x ← x - CNN(x, Aᵀ(Ax - y)), from
 the operator's default reconstruction.
 
-.. GENERATED FROM PYTHON SOURCE LINES 169-209
+.. GENERATED FROM PYTHON SOURCE LINES 176-216
 
 .. code-block:: Python
 
@@ -266,21 +273,21 @@ the operator's default reconstruction.
  .. code-block:: none
 
     model_input_type : ModelInputType.SINOGRAM
-    initial_reconstruction : <function blurred_image at 0x7f30b35ac2c0>
+    initial_reconstruction : <function blurred_image at 0x7fc40ddd3060>
     n_steps : 5
     channels : 32
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 210-214
+.. GENERATED FROM PYTHON SOURCE LINES 217-221
 
 Training it
 -----------
 LION's solver trains it as it trains LION's models: the operator's
 parameters come from the model.
 
-.. GENERATED FROM PYTHON SOURCE LINES 214-228
+.. GENERATED FROM PYTHON SOURCE LINES 221-235
 
 .. code-block:: Python
 
@@ -302,22 +309,16 @@ parameters come from the model.
 
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    Training:   0%|          | 0/30 [00:00<?, ?batch/s]    Training:   3%|▎         | 1/30 [00:00<00:16,  1.76batch/s, epoch=1/3, loss=0.09583]    Training:   7%|▋         | 2/30 [00:00<00:08,  3.25batch/s, epoch=1/3, loss=0.06094]    Training:  10%|█         | 3/30 [00:00<00:05,  4.65batch/s, epoch=1/3, loss=0.04307]    Training:  13%|█▎        | 4/30 [00:00<00:04,  5.85batch/s, epoch=1/3, loss=0.03868]    Training:  20%|██        | 6/30 [00:01<00:03,  7.51batch/s, epoch=1/3, loss=0.0339]     Training:  27%|██▋       | 8/30 [00:01<00:02,  8.48batch/s, epoch=1/3, loss=0.02735]    Training:  33%|███▎      | 10/30 [00:01<00:02,  9.10batch/s, epoch=1/3, loss=0.02356]    Training:  37%|███▋      | 11/30 [00:04<00:12,  1.49batch/s, epoch=2/3, loss=0.01126, validation=27.54]    Training:  40%|████      | 12/30 [00:04<00:09,  1.85batch/s, epoch=2/3, loss=0.01076, validation=27.54]    Training:  47%|████▋     | 14/30 [00:04<00:05,  2.76batch/s, epoch=2/3, loss=0.01154, validation=27.54]    Training:  53%|█████▎    | 16/30 [00:04<00:03,  3.77batch/s, epoch=2/3, loss=0.01066, validation=27.54]    Training:  60%|██████    | 18/30 [00:04<00:02,  4.82batch/s, epoch=2/3, loss=0.009276, validation=27.54]    Training:  67%|██████▋   | 20/30 [00:05<00:01,  5.85batch/s, epoch=2/3, loss=0.008156, validation=27.54]    Training:  70%|███████   | 21/30 [00:08<00:06,  1.43batch/s, epoch=3/3, loss=0.004053, validation=31.07]    Training:  73%|███████▎  | 22/30 [00:08<00:04,  1.74batch/s, epoch=3/3, loss=0.004356, validation=31.07]    Training:  80%|████████  | 24/30 [00:08<00:02,  2.55batch/s, epoch=3/3, loss=0.005046, validation=31.07]    Training:  87%|████████▋ | 26/30 [00:08<00:01,  3.48batch/s, epoch=3/3, loss=0.004926, validation=31.07]    Training:  93%|█████████▎| 28/30 [00:08<00:00,  4.48batch/s, epoch=3/3, loss=0.00441, validation=31.07]     Training: 100%|██████████| 30/30 [00:08<00:00,  5.49batch/s, epoch=3/3, loss=0.004262, validation=31.07]    Training: 100%|██████████| 30/30 [00:09<00:00,  3.24batch/s, epoch=3/3, loss=0.004262, validation=31.07]
 
 
 
-
-.. GENERATED FROM PYTHON SOURCE LINES 229-232
+.. GENERATED FROM PYTHON SOURCE LINES 236-239
 
 Its file records the model, the blur and the data, as for LION's. Files only
 make LION's classes again unless told otherwise: classes of your own are
 allowed by their module's name (here, this script's: ``__main__``).
 
-.. GENERATED FROM PYTHON SOURCE LINES 232-236
+.. GENERATED FROM PYTHON SOURCE LINES 239-243
 
 .. code-block:: Python
 
@@ -338,7 +339,7 @@ allowed by their module's name (here, this script's: ``__main__``).
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 237-244
+.. GENERATED FROM PYTHON SOURCE LINES 244-251
 
 A reconstructor
 ---------------
@@ -348,7 +349,7 @@ its settings from ``self.parameters``. Here: the model's image, made
 consistent with the data by a few conjugate gradient steps on
 ||Ax - y||² + λ||x - model(y)||².
 
-.. GENERATED FROM PYTHON SOURCE LINES 244-281
+.. GENERATED FROM PYTHON SOURCE LINES 251-288
 
 .. code-block:: Python
 
@@ -401,7 +402,7 @@ consistent with the data by a few conjugate gradient steps on
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 282-306
+.. GENERATED FROM PYTHON SOURCE LINES 289-313
 
 A solver
 --------
@@ -431,7 +432,7 @@ it to LION itself.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 58.159 seconds)
+   **Total running time of the script:** (0 minutes 53.666 seconds)
 
 
 .. _sphx_glr_download_tutorials_d13_extending_lion.py:

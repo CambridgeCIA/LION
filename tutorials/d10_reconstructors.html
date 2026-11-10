@@ -437,6 +437,13 @@ model can always be called directly (<a class="reference internal" href="d05_sup
 <p>Previous: <a class="reference internal" href="d09_saving_and_records.html"><span class="doc">Saving, loading and records</span></a>. Next: <a class="reference internal" href="d11_evaluation.html"><span class="doc">Evaluation and comparison</span></a>.</p>
 <p>Needs a GPU and the processed LIDC-IDRI data in <code class="docutils literal notranslate"><span class="pre">LION_DATA_PATH</span></code>; the PnP
 part downloads the authors’ trained DRUNet (130 MB).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The models trained in these tutorials are toys: a few epochs on a few
+slices, to show how LION is used, so their results are poor (often worse
+than FDK). Trained as their papers train them (many epochs, all the data),
+they do what the papers report.</p>
+</div>
 <section id="classical-reconstructions">
 <h2>Classical reconstructions<a class="headerlink" href="#classical-reconstructions" title="Link to this heading">¶</a></h2>
 <p>The simplest are functions of the measurements and the operator (or its
@@ -463,17 +470,6 @@ Evaluations take such functions as methods too (<a class="reference internal" hr
 </span>    <span class="s2">&quot;</span><span class="s2">SIRT</span><span class="s2">&quot;</span><span class="p">:</span> <a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-function reference internal" href="../generated/LION.operators.ct.sirt.html#LION.operators.ct.sirt" title="LION.operators.ct.sirt"><span class="n">sirt</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">sinogram</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry" title="LION.operators.ct.Geometry"><span class="n">geometry</span></a><span class="p">,</span> <span class="n">num_iterations</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span><span class="p">,</span><span class="w">
 </span><span class="p">}</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>  0%|          | 0/100 [00:00&lt;?, ?it/s]
- 11%|█         | 11/100 [00:00&lt;00:00, 104.10it/s]
- 22%|██▏       | 22/100 [00:00&lt;00:00, 104.35it/s]
- 35%|███▌      | 35/100 [00:00&lt;00:00, 115.47it/s]
- 49%|████▉     | 49/100 [00:00&lt;00:00, 123.34it/s]
- 63%|██████▎   | 63/100 [00:00&lt;00:00, 127.25it/s]
- 77%|███████▋  | 77/100 [00:00&lt;00:00, 130.01it/s]
- 91%|█████████ | 91/100 [00:00&lt;00:00, 131.74it/s]
-100%|██████████| 100/100 [00:00&lt;00:00, 126.18it/s]
-</pre></div>
-</div>
 </section>
 <section id="the-forward-reconstructor">
 <h2>The forward reconstructor<a class="headerlink" href="#the-forward-reconstructor" title="Link to this heading">¶</a></h2>
@@ -504,29 +500,6 @@ a moment:</p>
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/mhome/damtp/r/ab2860/AItomotools/LION/data_loaders/LIDC_IDRI.py:487: UserWarning: LIDC-IDRI: left out 2 damaged or unusable files (re-run the pre-processing for these patients): ['LIDC-IDRI-0238 (not resampled)', 'LIDC-IDRI-0585 (not resampled)']
   warnings.warn(
-
-Training:   0%|          | 0/20 [00:00&lt;?, ?batch/s]
-Training:   5%|▌         | 1/20 [00:00&lt;00:09,  2.02batch/s, epoch=1/2, loss=0.2108]
-Training:  10%|█         | 2/20 [00:00&lt;00:08,  2.10batch/s, epoch=1/2, loss=0.5903]
-Training:  15%|█▌        | 3/20 [00:01&lt;00:08,  2.11batch/s, epoch=1/2, loss=0.4271]
-Training:  20%|██        | 4/20 [00:01&lt;00:07,  2.14batch/s, epoch=1/2, loss=0.344]
-Training:  25%|██▌       | 5/20 [00:02&lt;00:06,  2.15batch/s, epoch=1/2, loss=0.3171]
-Training:  30%|███       | 6/20 [00:02&lt;00:06,  2.16batch/s, epoch=1/2, loss=0.2698]
-Training:  35%|███▌      | 7/20 [00:03&lt;00:06,  2.16batch/s, epoch=1/2, loss=0.2366]
-Training:  40%|████      | 8/20 [00:03&lt;00:05,  2.17batch/s, epoch=1/2, loss=0.2135]
-Training:  45%|████▌     | 9/20 [00:04&lt;00:05,  2.17batch/s, epoch=1/2, loss=0.193]
-Training:  50%|█████     | 10/20 [00:04&lt;00:04,  2.18batch/s, epoch=1/2, loss=0.1758]
-Training:  55%|█████▌    | 11/20 [00:05&lt;00:04,  2.18batch/s, epoch=2/2, loss=0.01529]
-Training:  60%|██████    | 12/20 [00:05&lt;00:03,  2.18batch/s, epoch=2/2, loss=0.01346]
-Training:  65%|██████▌   | 13/20 [00:06&lt;00:03,  2.18batch/s, epoch=2/2, loss=0.01462]
-Training:  70%|███████   | 14/20 [00:06&lt;00:02,  2.18batch/s, epoch=2/2, loss=0.04121]
-Training:  75%|███████▌  | 15/20 [00:06&lt;00:02,  2.18batch/s, epoch=2/2, loss=0.04834]
-Training:  80%|████████  | 16/20 [00:07&lt;00:01,  2.18batch/s, epoch=2/2, loss=0.04328]
-Training:  85%|████████▌ | 17/20 [00:07&lt;00:01,  2.18batch/s, epoch=2/2, loss=0.0402]
-Training:  90%|█████████ | 18/20 [00:08&lt;00:00,  2.18batch/s, epoch=2/2, loss=0.03747]
-Training:  95%|█████████▌| 19/20 [00:08&lt;00:00,  2.18batch/s, epoch=2/2, loss=0.03545]
-Training: 100%|██████████| 20/20 [00:09&lt;00:00,  2.18batch/s, epoch=2/2, loss=0.03378]
-Training: 100%|██████████| 20/20 [00:09&lt;00:00,  2.17batch/s, epoch=2/2, loss=0.03378]
 </pre></div>
 </div>
 </section>
@@ -548,30 +521,6 @@ one):</p>
 </span><a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.reconstructors.PnP.html#LION.reconstructors.PnP" title="LION.reconstructors.PnP"><span class="n">pnp</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-class reference internal" href="../generated/LION.reconstructors.PnP.html#LION.reconstructors.PnP" title="LION.reconstructors.PnP"><span class="n">PnP</span></a><span class="p">(</span><a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry" title="LION.operators.ct.Geometry"><span class="n">geometry</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-LION-models-CNNs sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.models.CNNs.drunet.html#LION.models.CNNs.drunet.DRUNet" title="LION.models.CNNs.DRUNet"><span class="n">denoiser</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">parameters</span></a><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">reconstructions</span></a><span class="p">[</span><span class="s2">&quot;</span><span class="s2">PnP-ADMM</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-method reference internal" href="../generated/LION.reconstructors.LIONreconstructor.html#LION.reconstructors.LIONreconstructor.LIONReconstructor.reconstruct" title="LION.reconstructors.LIONReconstructor.reconstruct"><span class="n">pnp</span><span class="o">.</span><span class="n">reconstruct</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">sinogram</span></a><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>ADMM iterations:   0%|          | 0/20 [00:00&lt;?, ?it/s]
-ADMM iterations:   5%|▌         | 1/20 [00:00&lt;00:14,  1.28it/s]
-ADMM iterations:  10%|█         | 2/20 [00:01&lt;00:14,  1.23it/s]
-ADMM iterations:  15%|█▌        | 3/20 [00:02&lt;00:14,  1.21it/s]
-ADMM iterations:  20%|██        | 4/20 [00:03&lt;00:13,  1.20it/s]
-ADMM iterations:  25%|██▌       | 5/20 [00:04&lt;00:12,  1.20it/s]
-ADMM iterations:  30%|███       | 6/20 [00:04&lt;00:11,  1.19it/s]
-ADMM iterations:  35%|███▌      | 7/20 [00:05&lt;00:10,  1.19it/s]
-ADMM iterations:  40%|████      | 8/20 [00:06&lt;00:10,  1.19it/s]
-ADMM iterations:  45%|████▌     | 9/20 [00:07&lt;00:09,  1.19it/s]
-ADMM iterations:  50%|█████     | 10/20 [00:08&lt;00:08,  1.19it/s]
-ADMM iterations:  55%|█████▌    | 11/20 [00:09&lt;00:07,  1.18it/s]
-ADMM iterations:  60%|██████    | 12/20 [00:10&lt;00:06,  1.18it/s]
-ADMM iterations:  65%|██████▌   | 13/20 [00:10&lt;00:05,  1.18it/s]
-ADMM iterations:  70%|███████   | 14/20 [00:11&lt;00:05,  1.18it/s]
-ADMM iterations:  75%|███████▌  | 15/20 [00:12&lt;00:04,  1.18it/s]
-ADMM iterations:  80%|████████  | 16/20 [00:13&lt;00:03,  1.18it/s]
-ADMM iterations:  85%|████████▌ | 17/20 [00:14&lt;00:02,  1.18it/s]
-ADMM iterations:  90%|█████████ | 18/20 [00:15&lt;00:01,  1.18it/s]
-ADMM iterations:  95%|█████████▌| 19/20 [00:15&lt;00:00,  1.18it/s]
-ADMM iterations: 100%|██████████| 20/20 [00:16&lt;00:00,  1.18it/s]
-ADMM iterations: 100%|██████████| 20/20 [00:16&lt;00:00,  1.19it/s]
-</pre></div>
-</div>
 </section>
 <section id="learned-regularisers">
 <h2>Learned regularisers<a class="headerlink" href="#learned-regularisers" title="Link to this heading">¶</a></h2>
@@ -595,23 +544,6 @@ smoothed total variation:</p>
 </span><a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.reconstructors.LearnedRegularizerReconstructor.html#LION.reconstructors.LearnedRegularizerReconstructor" title="LION.reconstructors.LearnedRegularizerReconstructor"><span class="n">regularised</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-class reference internal" href="../generated/LION.reconstructors.LearnedRegularizerReconstructor.html#LION.reconstructors.LearnedRegularizerReconstructor" title="LION.reconstructors.LearnedRegularizerReconstructor"><span class="n">LearnedRegularizerReconstructor</span></a><span class="p">(</span><a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry" title="LION.operators.ct.Geometry"><span class="n">geometry</span></a><span class="p">,</span> <span class="n">smoothed_tv</span><span class="p">,</span> <a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">parameters</span></a><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">reconstructions</span></a><span class="p">[</span><span class="s2">&quot;</span><span class="s2">smoothed TV</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-method reference internal" href="../generated/LION.reconstructors.LIONreconstructor.html#LION.reconstructors.LIONreconstructor.LIONReconstructor.reconstruct" title="LION.reconstructors.LIONReconstructor.reconstruct"><span class="n">regularised</span><span class="o">.</span><span class="n">reconstruct</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">sinogram</span></a><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Learned regulariser reconstruction:   0%|          | 0/50 [00:00&lt;?, ?it/s]
-Learned regulariser reconstruction:   2%|▏         | 1/50 [00:01&lt;00:49,  1.02s/it]
-Learned regulariser reconstruction:   4%|▍         | 2/50 [00:01&lt;00:26,  1.78it/s]
-Learned regulariser reconstruction:  12%|█▏        | 6/50 [00:01&lt;00:06,  6.71it/s]
-Learned regulariser reconstruction:  16%|█▌        | 8/50 [00:01&lt;00:04,  8.42it/s]
-Learned regulariser reconstruction:  26%|██▌       | 13/50 [00:01&lt;00:02, 15.23it/s]
-Learned regulariser reconstruction:  36%|███▌      | 18/50 [00:01&lt;00:01, 21.72it/s]
-Learned regulariser reconstruction:  44%|████▍     | 22/50 [00:01&lt;00:01, 24.49it/s]
-Learned regulariser reconstruction:  52%|█████▏    | 26/50 [00:01&lt;00:00, 27.73it/s]
-Learned regulariser reconstruction:  62%|██████▏   | 31/50 [00:02&lt;00:00, 32.54it/s]
-Learned regulariser reconstruction:  70%|███████   | 35/50 [00:02&lt;00:00, 34.03it/s]
-Learned regulariser reconstruction:  80%|████████  | 40/50 [00:02&lt;00:00, 36.42it/s]
-Learned regulariser reconstruction:  88%|████████▊ | 44/50 [00:02&lt;00:00, 35.84it/s]
-Learned regulariser reconstruction:  96%|█████████▌| 48/50 [00:02&lt;00:00, 36.49it/s]
-Learned regulariser reconstruction: 100%|██████████| 50/50 [00:02&lt;00:00, 19.65it/s]
-</pre></div>
-</div>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><a class="sphx-glr-backref-module-LION-metrics-psnr sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.metrics.psnr.html#LION.metrics.psnr.PSNR" title="LION.metrics.psnr.PSNR"><span class="n">psnr</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-metrics-psnr sphx-glr-backref-type-py-class reference internal" href="../generated/LION.metrics.psnr.html#LION.metrics.psnr.PSNR" title="LION.metrics.psnr.PSNR"><span class="n">PSNR</span></a><span class="p">(</span><span class="p">)</span><span class="w">
 </span><span class="n">fig</span><span class="p">,</span> <a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">axes</span></a> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">reconstructions</span></a><span class="p">)</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">reconstructions</span></a><span class="p">)</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="p">)</span><span class="w">
 </span><span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="p">(</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">name</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">axes</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">reconstructions</span></a><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span><span class="w">
@@ -619,7 +551,7 @@ Learned regulariser reconstruction: 100%|██████████| 50/50 [
 </span>    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">name</span></a><span class="si">}</span><span class="s2">, </span><span class="si">{</span><a class="sphx-glr-backref-module-LION-metrics-psnr sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.metrics.psnr.html#LION.metrics.psnr.PSNR" title="LION.metrics.psnr.PSNR"><span class="n">psnr</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a><span class="p">,</span><span class="w"> </span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">image</span></a><span class="p">,</span><span class="w"> </span><span class="n">batched</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> dB</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span>    <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">off</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<img src="../_images/sphx_glr_d10_reconstructors_001.png" srcset="../_images/sphx_glr_d10_reconstructors_001.png" alt="FDK, 19.0 dB, SIRT, 31.7 dB, FBPConvNet, 25.1 dB, PnP-ADMM, nan dB, smoothed TV, 19.0 dB" class = "sphx-glr-single-img"/></section>
+<img src="../_images/sphx_glr_d10_reconstructors_001.png" srcset="../_images/sphx_glr_d10_reconstructors_001.png" alt="FDK, 19.0 dB, SIRT, 31.7 dB, FBPConvNet, 25.2 dB, PnP-ADMM, 36.3 dB, smoothed TV, 19.0 dB" class = "sphx-glr-single-img"/></section>
 <section id="what-they-share">
 <h2>What they share<a class="headerlink" href="#what-they-share" title="Link to this heading">¶</a></h2>
 <p>Every reconstructor:</p>
@@ -639,12 +571,8 @@ algorithms that take one;</p></li>
 </span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">start</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-function reference internal" href="../generated/LION.operators.ct.sirt.html#LION.operators.ct.sirt" title="LION.operators.ct.sirt"><span class="n">sirt</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">sinogram</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry" title="LION.operators.ct.Geometry"><span class="n">geometry</span></a><span class="p">,</span> <span class="n">num_iterations</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-reconstructors sphx-glr-backref-type-py-method reference internal" href="../generated/LION.reconstructors.LIONreconstructor.html#LION.reconstructors.LIONreconstructor.LIONReconstructor.reconstruct" title="LION.reconstructors.LIONReconstructor.reconstruct"><span class="n">pnp</span><span class="o">.</span><span class="n">reconstruct</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">sinogram</span></a><span class="p">,</span> <span class="n">x0</span><span class="o">=</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">start</span></a><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;function fdk at 0x7f30d0df9580&gt;
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;function fdk at 0x7fc41f5dc360&gt;
 torch.Size([2, 1, 512, 512])
-
-  0%|          | 0/20 [00:00&lt;?, ?it/s]
- 65%|██████▌   | 13/20 [00:00&lt;00:00, 129.69it/s]
-100%|██████████| 20/20 [00:00&lt;00:00, 131.04it/s]
 </pre></div>
 </div>
 </section>
@@ -683,7 +611,7 @@ ForwardReconstructor FBPConvNet
 <p>A reconstructor derives from <code class="docutils literal notranslate"><span class="pre">LIONReconstructor</span></code> and defines
 <code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code> and <code class="docutils literal notranslate"><span class="pre">reconstruct_sample(y,</span> <span class="pre">x0,</span> <span class="pre">verbose)</span></code>; the
 tutorial <a class="reference internal" href="d13_extending_lion.html"><span class="doc">Extending LION</span></a> writes one.</p>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 45.224 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 55.403 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d10-reconstructors-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/7244d845205b9cd2d6a16cc1b2cef389/d10_reconstructors.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d10_reconstructors.ipynb</span></code></a></p>

@@ -435,6 +435,13 @@ writes the tables and figures a paper needs.</p></li>
 </ul>
 <p>Previous: <a class="reference internal" href="d10_reconstructors.html"><span class="doc">Reconstructors</span></a>. Next: <a class="reference internal" href="d12_publishing.html"><span class="doc">Publishing and reproducing</span></a>.</p>
 <p>Needs a GPU and the processed LIDC-IDRI data in <code class="docutils literal notranslate"><span class="pre">LION_DATA_PATH</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The models trained in these tutorials are toys: a few epochs on a few
+slices, to show how LION is used, so their results are poor (often worse
+than FDK). Trained as their papers train them (many epochs, all the data),
+they do what the papers report.</p>
+</div>
 <section id="methods-to-compare">
 <h2>Methods to compare<a class="headerlink" href="#methods-to-compare" title="Link to this heading">¶</a></h2>
 <p>A method is a model, a model’s file, a solver, a reconstructor (or its file),
@@ -486,21 +493,9 @@ evenly spaced test slices (all of them by default); results are saved in
 </span><span class="k">for</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">metric</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">values</span></a> <span class="ow">in</span> <span class="n">summary</span><span class="p">(</span><a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">record</span></a><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
 </span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">metric</span></a><span class="si">}</span><span class="s2">: </span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">values</span></a><span class="p">[</span><span class="s1">'</span><span class="s1">mean</span><span class="s1">'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> ± </span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">values</span></a><span class="p">[</span><span class="s1">'</span><span class="s1">std</span><span class="s1">'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>FBPConvNet, 3 epochs:   0%|          | 0/20 [00:00&lt;?, ?sample/s]
-FBPConvNet, 3 epochs:  10%|█         | 2/20 [00:00&lt;00:08,  2.07sample/s]
-FBPConvNet, 3 epochs:  15%|█▌        | 3/20 [00:01&lt;00:05,  3.07sample/s]
-FBPConvNet, 3 epochs:  25%|██▌       | 5/20 [00:01&lt;00:02,  5.09sample/s]
-FBPConvNet, 3 epochs:  35%|███▌      | 7/20 [00:01&lt;00:01,  6.81sample/s]
-FBPConvNet, 3 epochs:  45%|████▌     | 9/20 [00:01&lt;00:01,  8.17sample/s]
-FBPConvNet, 3 epochs:  55%|█████▌    | 11/20 [00:01&lt;00:00,  9.22sample/s]
-FBPConvNet, 3 epochs:  65%|██████▌   | 13/20 [00:01&lt;00:00, 10.01sample/s]
-FBPConvNet, 3 epochs:  75%|███████▌  | 15/20 [00:02&lt;00:00, 10.60sample/s]
-FBPConvNet, 3 epochs:  85%|████████▌ | 17/20 [00:02&lt;00:00, 11.02sample/s]
-FBPConvNet, 3 epochs:  95%|█████████▌| 19/20 [00:02&lt;00:00, 11.32sample/s]
-FBPConvNet, 3 epochs: 100%|██████████| 20/20 [00:02&lt;00:00,  7.79sample/s]
-PSNR: 10.234 ± 5.715
-SSIM: 0.110 ± 0.063
-HaarPSI: 0.224 ± 0.063
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>PSNR: 18.763 ± 4.506
+SSIM: 0.212 ± 0.062
+HaarPSI: 0.370 ± 0.096
 </pre></div>
 </div>
 <p>The test record holds the score of each test sample (by patient and slice),
@@ -510,7 +505,7 @@ again reads it instead of computing it:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="nb">print</span><span class="p">(</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="list"><span class="n">record</span><span class="o">.</span><span class="n">scores</span><span class="o">.</span><span class="n">ids</span></a><span class="p">[</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="p">,</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="list"><span class="n">record</span><span class="o">.</span><span class="n">scores</span><span class="o">.</span><span class="n">PSNR</span></a><span class="p">[</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">again</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-method reference internal" href="../generated/LION.evaluation.evaluation.html#LION.evaluation.evaluation.Evaluation.run" title="LION.evaluation.Evaluation.run"><span class="n">evaluation</span><span class="o">.</span><span class="n">run</span></a><span class="p">(</span><a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.PosixPath" title="pathlib.PosixPath"><span class="n">folder</span></a> <span class="o">/</span> <span class="s2">&quot;</span><span class="s2">FBPConvNet_3</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">FBPConvNet, 3 epochs</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>['LIDC-IDRI-0910/slice_0', 'LIDC-IDRI-0915/slice_114', 'LIDC-IDRI-0920/slice_331'] [13.553916931152344, 11.41702938079834, 5.46469783782959]
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>['LIDC-IDRI-0910/slice_0', 'LIDC-IDRI-0915/slice_114', 'LIDC-IDRI-0920/slice_331'] [22.39322280883789, 20.384502410888672, 16.844867706298828]
 </pre></div>
 </div>
 </section>
@@ -532,177 +527,11 @@ again reads it instead of computing it:</p>
 </span><span class="nb">print</span><span class="p">(</span><a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-method reference internal" href="../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.table" title="LION.evaluation.Comparison.table"><span class="n">comparison</span><span class="o">.</span><span class="n">table</span></a><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-method reference internal" href="../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.table" title="LION.evaluation.Comparison.table"><span class="n">comparison</span><span class="o">.</span><span class="n">table</span></a><span class="p">(</span><span class="s2">&quot;</span><span class="s2">latex</span><span class="s2">&quot;</span><span class="p">)</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>fdk:   0%|          | 0/20 [00:00&lt;?, ?sample/s]
-fdk:  15%|█▌        | 3/20 [00:00&lt;00:00, 18.92sample/s]
-fdk:  25%|██▌       | 5/20 [00:00&lt;00:00, 18.52sample/s]
-fdk:  35%|███▌      | 7/20 [00:00&lt;00:00, 18.34sample/s]
-fdk:  45%|████▌     | 9/20 [00:00&lt;00:00, 18.29sample/s]
-fdk:  55%|█████▌    | 11/20 [00:00&lt;00:00, 18.22sample/s]
-fdk:  65%|██████▌   | 13/20 [00:00&lt;00:00, 18.18sample/s]
-fdk:  75%|███████▌  | 15/20 [00:00&lt;00:00, 18.16sample/s]
-fdk:  85%|████████▌ | 17/20 [00:00&lt;00:00, 18.16sample/s]
-fdk:  95%|█████████▌| 19/20 [00:01&lt;00:00, 18.17sample/s]
-fdk: 100%|██████████| 20/20 [00:01&lt;00:00, 17.54sample/s]
-
-FBPConvNet, 1 epoch:   0%|          | 0/20 [00:00&lt;?, ?sample/s]
-FBPConvNet, 1 epoch:  10%|█         | 2/20 [00:00&lt;00:00, 19.79sample/s]
-FBPConvNet, 1 epoch:  20%|██        | 4/20 [00:00&lt;00:01, 13.55sample/s]
-FBPConvNet, 1 epoch:  30%|███       | 6/20 [00:00&lt;00:01, 12.53sample/s]
-FBPConvNet, 1 epoch:  40%|████      | 8/20 [00:00&lt;00:00, 12.28sample/s]
-FBPConvNet, 1 epoch:  50%|█████     | 10/20 [00:00&lt;00:00, 12.20sample/s]
-FBPConvNet, 1 epoch:  60%|██████    | 12/20 [00:00&lt;00:00, 12.17sample/s]
-FBPConvNet, 1 epoch:  70%|███████   | 14/20 [00:01&lt;00:00, 12.14sample/s]
-FBPConvNet, 1 epoch:  80%|████████  | 16/20 [00:01&lt;00:00, 12.13sample/s]
-FBPConvNet, 1 epoch:  90%|█████████ | 18/20 [00:01&lt;00:00, 12.12sample/s]
-FBPConvNet, 1 epoch: 100%|██████████| 20/20 [00:01&lt;00:00, 12.09sample/s]
-FBPConvNet, 1 epoch: 100%|██████████| 20/20 [00:01&lt;00:00, 11.83sample/s]
-
-SIRT:   0%|          | 0/20 [00:00&lt;?, ?sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.25sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.25sample/s]
-
-SIRT:  10%|█         | 2/20 [00:00&lt;00:07,  2.36sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.32sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.32sample/s]
-
-SIRT:  15%|█▌        | 3/20 [00:01&lt;00:09,  1.73sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:  20%|██        | 4/20 [00:02&lt;00:10,  1.53sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:  25%|██▌       | 5/20 [00:03&lt;00:10,  1.43sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:  30%|███       | 6/20 [00:03&lt;00:10,  1.38sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.33sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.33sample/s]
-
-SIRT:  35%|███▌      | 7/20 [00:04&lt;00:09,  1.34sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.33sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.33sample/s]
-
-SIRT:  40%|████      | 8/20 [00:05&lt;00:09,  1.32sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.33sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.33sample/s]
-
-SIRT:  45%|████▌     | 9/20 [00:06&lt;00:08,  1.30sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.33sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.33sample/s]
-
-SIRT:  50%|█████     | 10/20 [00:07&lt;00:07,  1.29sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:  55%|█████▌    | 11/20 [00:07&lt;00:06,  1.29sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:  60%|██████    | 12/20 [00:08&lt;00:06,  1.29sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:  65%|██████▌   | 13/20 [00:09&lt;00:05,  1.28sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.32sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.32sample/s]
-
-SIRT:  70%|███████   | 14/20 [00:10&lt;00:04,  1.28sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:  75%|███████▌  | 15/20 [00:11&lt;00:03,  1.28sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:  80%|████████  | 16/20 [00:11&lt;00:03,  1.28sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:  85%|████████▌ | 17/20 [00:12&lt;00:02,  1.28sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:  90%|█████████ | 18/20 [00:13&lt;00:01,  1.28sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:  95%|█████████▌| 19/20 [00:14&lt;00:00,  1.28sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT: 100%|██████████| 20/20 [00:14&lt;00:00,  1.28sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT: 100%|██████████| 20/20 [00:15&lt;00:00,  1.27sample/s]
-| Method | PSNR | SSIM | HaarPSI |
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>| Method | PSNR | SSIM | HaarPSI |
 |---|---|---|---|
 | fdk | 21.87 ± 5.60 | 0.1541 ± 0.0933 | 0.3945 ± 0.2007 |
-| FBPConvNet, 1 epoch | 22.67 ± 6.69 | 0.2603 ± 0.1814 | 0.4310 ± 0.2144 |
-| FBPConvNet, 3 epochs | 10.23 ± 5.71 | 0.1102 ± 0.0631 | 0.2238 ± 0.0631 |
+| FBPConvNet, 1 epoch | 22.67 ± 6.67 | 0.2596 ± 0.1809 | 0.4309 ± 0.2142 |
+| FBPConvNet, 3 epochs | 18.76 ± 4.51 | 0.2115 ± 0.0623 | 0.3699 ± 0.0958 |
 | SIRT | **33.03 ± 2.19** | **0.7872 ± 0.1425** | **0.6543 ± 0.0618** |
 
 \begin{tabular}{lccc}
@@ -710,8 +539,8 @@ SIRT: 100%|██████████| 20/20 [00:15&lt;00:00,  1.27sample/s]
 Method &amp; PSNR &amp; SSIM &amp; HaarPSI \\
 \midrule
 fdk &amp; 21.87 $\pm$ 5.60 &amp; 0.1541 $\pm$ 0.0933 &amp; 0.3945 $\pm$ 0.2007 \\
-FBPConvNet, 1 epoch &amp; 22.67 $\pm$ 6.69 &amp; 0.2603 $\pm$ 0.1814 &amp; 0.4310 $\pm$ 0.2144 \\
-FBPConvNet, 3 epochs &amp; 10.23 $\pm$ 5.71 &amp; 0.1102 $\pm$ 0.0631 &amp; 0.2238 $\pm$ 0.0631 \\
+FBPConvNet, 1 epoch &amp; 22.67 $\pm$ 6.67 &amp; 0.2596 $\pm$ 0.1809 &amp; 0.4309 $\pm$ 0.2142 \\
+FBPConvNet, 3 epochs &amp; 18.76 $\pm$ 4.51 &amp; 0.2115 $\pm$ 0.0623 &amp; 0.3699 $\pm$ 0.0958 \\
 SIRT &amp; \textbf{33.03 $\pm$ 2.19} &amp; \textbf{0.7872 $\pm$ 0.1425} &amp; \textbf{0.6543 $\pm$ 0.0618} \\
 \bottomrule
 \end{tabular}
@@ -740,37 +569,13 @@ zoomed crops and the differences to the target.</p>
 </span><span class="p">)</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-method reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path.iterdir" title="pathlib.Path.iterdir"><span class="n">saved</span><span class="o">.</span><span class="n">iterdir</span></a><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.33sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.33sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-['box_HaarPSI.pdf', 'box_HaarPSI.png', 'box_PSNR.pdf', 'box_PSNR.png', 'box_SSIM.pdf', 'box_SSIM.png', 'comparison.json', 'difference_HaarPSI.pdf', 'difference_HaarPSI.png', 'difference_PSNR.pdf', 'difference_PSNR.png', 'difference_SSIM.pdf', 'difference_SSIM.png', 'images.pdf', 'images.png', 'records', 'scores.csv', 'table.csv', 'table.md', 'table.tex']
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>['box_HaarPSI.pdf', 'box_HaarPSI.png', 'box_PSNR.pdf', 'box_PSNR.png', 'box_SSIM.pdf', 'box_SSIM.png', 'comparison.json', 'difference_HaarPSI.pdf', 'difference_HaarPSI.png', 'difference_PSNR.pdf', 'difference_PSNR.png', 'difference_SSIM.pdf', 'difference_SSIM.png', 'images.pdf', 'images.png', 'records', 'scores.csv', 'table.csv', 'table.md', 'table.tex']
 </pre></div>
 </div>
 <p>The figures are also there to show or change:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">figures</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-method reference internal" href="../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.figures" title="LION.evaluation.Comparison.figures"><span class="n">comparison</span><span class="o">.</span><span class="n">figures</span></a><span class="p">(</span><span class="p">)</span><span class="w">
 </span><span class="n">images</span> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-method reference internal" href="../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison.images" title="LION.evaluation.Comparison.images"><span class="n">comparison</span><span class="o">.</span><span class="n">images</span></a><span class="p">(</span><span class="n">zoom</span><span class="o">=</span><span class="p">[</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span><span class="p">]</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.29sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.29sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.34sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.33sample/s]
-
-SIRT:   0%|          | 0/1 [00:00&lt;?, ?sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.31sample/s]
-SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.31sample/s]
-</pre></div>
-</div>
 <p>The saved comparison makes itself again, e.g. to add a method later:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison" title="LION.evaluation.Comparison"><span class="n">comparison</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-class reference internal" href="../generated/LION.evaluation.comparison.html#LION.evaluation.comparison.Comparison" title="LION.evaluation.Comparison"><span class="n">Comparison</span></a><span class="o">.</span><span class="n">instantiate</span><span class="p">(</span><a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.PosixPath" title="pathlib.PosixPath"><span class="n">folder</span></a> <span class="o">/</span> <span class="s2">&quot;</span><span class="s2">comparison</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
@@ -781,7 +586,7 @@ SIRT: 100%|██████████| 1/1 [00:00&lt;00:00,  1.31sample/s]
 data you load yourself:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.evaluation.evaluation.html#LION.evaluation.evaluation.Evaluation" title="LION.evaluation.Evaluation"><span class="n">evaluation</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-class reference internal" href="../generated/LION.evaluation.evaluation.html#LION.evaluation.evaluation.Evaluation" title="LION.evaluation.Evaluation"><span class="n">Evaluation</span></a><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="n">my_test_data</span><span class="p">,</span> <span class="n">operator</span><span class="o">=</span><span class="n">my_operator</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 2.996 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 40.443 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d11-evaluation-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/9aaa6f75cb4623a1d737388627be4798/d11_evaluation.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d11_evaluation.ipynb</span></code></a></p>

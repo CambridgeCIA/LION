@@ -428,8 +428,14 @@ from LION.utils.parameter import LIONParameter
 from LION.utils.citation import citation
 
 # The settings of each algorithm, and their defaults.
+# ADMM's coupling weight, relative to ||A||^2: the data step's AᵀA is in the
+# operator's units (for CT, ||A||^2 is ~1e5), so an absolute weight works for one
+# operator only. 1e-2 was best over doses on a CT problem at LIDC-IDRI's scale.
+ADMM_ETA = 1e-2
+
 ALGORITHMS = {
-    "ADMM": dict(eta=1e-4, max_iter=10, cg_max_iter=100, cg_tol=1e-7, noise_level=None),
+    # eta None: ADMM_ETA * ||A||^2, relative to the operator's scale
+    "ADMM": dict(eta=None, max_iter=10, cg_max_iter=100, cg_tol=1e-7, noise_level=None),
     "HQS": dict(
         lambda_=0.23,
         mu=0.1,
@@ -480,7 +486,7 @@ class PnP(LIONReconstructor):
             raise ValueError(
                 f"Unknown algorithm: {algorithm!r} (one of {', '.join(ALGORITHMS)})"
             )
-        self._op_norm = None  # ||A||, computed once when first needed (FBS)</div>
+        self._op_norm = None  # ||A||, computed once when first needed (FBS, ADMM)</div>
 
 
 <div class="viewcode-block" id="PnP.default_parameters">
@@ -545,6 +551,12 @@ class PnP(LIONReconstructor):
         else:
             out = self.model(x_in)
         return self.model.unnormalise(out, x.unsqueeze(0)).squeeze(0)
+
+    def _operator_norm(self, device):
+        """||A||, by the power method, computed once per reconstructor."""
+        if self._op_norm is None:
+            self._op_norm = power_method(self.op, device=device)
+        return self._op_norm
 
     def _solve_data_step(self, y, z, weight, x0, cg_max_iter, cg_tol):
         """argmin_x ||A x - y||^2 / 2 + weight ||x - z||^2 / 2, by conjugate gradient."""
@@ -623,9 +635,7 @@ class PnP(LIONReconstructor):
         default reconstruction, FDK for CT, if None); ``verbose``: 0 nothing, 1
         a progress bar."""
         if step_size is None:
-            if self._op_norm is None:
-                self._op_norm = power_method(self.op, device=y.device)
-            step_size = 1.0 / (self._op_norm**2)
+            step_size = 1.0 / (self._operator_norm(y.device) ** 2)
 
         x = self.initial_guess(y) if x0 is None else x0
         iterator = range(max_iter)
@@ -644,7 +654,7 @@ class PnP(LIONReconstructor):
     def admm_algorithm(
         self,
         measurement: torch.Tensor,
-        eta: float = 1e-4,
+        eta: float | None = None,
         max_iter: int = 10,
         cg_max_iter: int = 100,
         cg_tol: float = 1e-7,
@@ -659,10 +669,14 @@ class PnP(LIONReconstructor):
             u = u + x - v
 
         ``max_iter`` times, returning x. ``measurement``: y; ``eta``: the
-        coupling weight; ``cg_max_iter``, ``cg_tol``: the conjugate gradient's;
+        coupling weight (None: ``ADMM_ETA`` ||A||², 1e-2 of it, ||A||
+        computed once per reconstructor, on the first call; a larger weight
+        trusts the prior more); ``cg_max_iter``, ``cg_tol``: the conjugate gradient's;
         ``noise_level``: the prior's; ``x0``: the start of x and v
         (``initial_guess(measurement)``, the operator's default reconstruction,
         FDK for CT, if None); ``verbose``: 0 nothing, 1 a progress bar."""
+        if eta is None:
+            eta = ADMM_ETA * self._operator_norm(measurement.device) ** 2
         x = self.initial_guess(measurement) if x0 is None else x0
         v = x.clone()
         u = torch.zeros(self.op.domain_shape, device=measurement.device)

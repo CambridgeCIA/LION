@@ -436,6 +436,13 @@ reconstructs with it. Short runs, to show how.</p>
 <p>Previous: <a class="reference internal" href="d07_denoisers_and_pnp.html"><span class="doc">Denoisers and Plug-and-Play</span></a>. Next:
 <a class="reference internal" href="d09_saving_and_records.html"><span class="doc">Saving, loading and records</span></a>.</p>
 <p>Needs a GPU and the processed LIDC-IDRI data in <code class="docutils literal notranslate"><span class="pre">LION_DATA_PATH</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The models trained in these tutorials are toys: a few epochs on a few
+slices, to show how LION is used, so their results are poor (often worse
+than FDK). Trained as their papers train them (many epochs, all the data),
+they do what the papers report.</p>
+</div>
 <section id="the-regulariser">
 <h2>The regulariser<a class="headerlink" href="#the-regulariser" title="Link to this heading">¶</a></h2>
 <p>AR is a CNN from an image to a number. It takes images of the operator’s
@@ -527,40 +534,7 @@ alpha : 270297.3154296875
 n_steps : 50
 step_size : 1e-06
 backtracking : 0.95
-initial_reconstruction : &lt;function fdk at 0x7f30d0df9580&gt;
-
-Training:   0%|          | 0/30 [00:00&lt;?, ?batch/s]
-Training:   3%|▎         | 1/30 [00:00&lt;00:27,  1.04batch/s, epoch=1/3, loss=0.09968]
-Training:   7%|▋         | 2/30 [00:01&lt;00:17,  1.63batch/s, epoch=1/3, loss=0.09487]
-Training:  10%|█         | 3/30 [00:01&lt;00:13,  2.00batch/s, epoch=1/3, loss=0.08894]
-Training:  13%|█▎        | 4/30 [00:02&lt;00:11,  2.22batch/s, epoch=1/3, loss=0.07682]
-Training:  17%|█▋        | 5/30 [00:02&lt;00:10,  2.38batch/s, epoch=1/3, loss=0.02863]
-Training:  20%|██        | 6/30 [00:02&lt;00:09,  2.50batch/s, epoch=1/3, loss=0.00843]
-Training:  23%|██▎       | 7/30 [00:03&lt;00:08,  2.57batch/s, epoch=1/3, loss=-0.0898]
-Training:  27%|██▋       | 8/30 [00:03&lt;00:08,  2.63batch/s, epoch=1/3, loss=-0.263]
-Training:  30%|███       | 9/30 [00:03&lt;00:07,  2.67batch/s, epoch=1/3, loss=-0.3827]
-Training:  33%|███▎      | 10/30 [00:04&lt;00:07,  2.68batch/s, epoch=1/3, loss=-0.734]
-Training:  37%|███▋      | 11/30 [00:20&lt;01:41,  5.35s/batch, epoch=2/3, loss=-6.895, validation=21.13]
-Training:  40%|████      | 12/30 [00:21&lt;01:08,  3.83s/batch, epoch=2/3, loss=-8.035, validation=21.13]
-Training:  43%|████▎     | 13/30 [00:21&lt;00:47,  2.78s/batch, epoch=2/3, loss=-14.5, validation=21.13]
-Training:  47%|████▋     | 14/30 [00:21&lt;00:32,  2.05s/batch, epoch=2/3, loss=-34.8, validation=21.13]
-Training:  50%|█████     | 15/30 [00:22&lt;00:23,  1.54s/batch, epoch=2/3, loss=-64.7, validation=21.13]
-Training:  53%|█████▎    | 16/30 [00:22&lt;00:16,  1.19s/batch, epoch=2/3, loss=-70.61, validation=21.13]
-Training:  57%|█████▋    | 17/30 [00:23&lt;00:12,  1.06batch/s, epoch=2/3, loss=-101.7, validation=21.13]
-Training:  60%|██████    | 18/30 [00:23&lt;00:09,  1.30batch/s, epoch=2/3, loss=-154.3, validation=21.13]
-Training:  63%|██████▎   | 19/30 [00:23&lt;00:07,  1.54batch/s, epoch=2/3, loss=-230.5, validation=21.13]
-Training:  67%|██████▋   | 20/30 [00:24&lt;00:05,  1.77batch/s, epoch=2/3, loss=-310.9, validation=21.13]
-Training:  70%|███████   | 21/30 [00:36&lt;00:36,  4.09s/batch, epoch=3/3, loss=-1417, validation=28.68]
-Training:  73%|███████▎  | 22/30 [00:36&lt;00:23,  2.97s/batch, epoch=3/3, loss=-2144, validation=28.68]
-Training:  77%|███████▋  | 23/30 [00:37&lt;00:15,  2.19s/batch, epoch=3/3, loss=-2142, validation=28.68]
-Training:  80%|████████  | 24/30 [00:37&lt;00:09,  1.64s/batch, epoch=3/3, loss=-3180, validation=28.68]
-Training:  83%|████████▎ | 25/30 [00:37&lt;00:06,  1.26s/batch, epoch=3/3, loss=-3856, validation=28.68]
-Training:  87%|████████▋ | 26/30 [00:38&lt;00:03,  1.01batch/s, epoch=3/3, loss=-4818, validation=28.68]
-Training:  90%|█████████ | 27/30 [00:38&lt;00:02,  1.24batch/s, epoch=3/3, loss=-7975, validation=28.68]
-Training:  93%|█████████▎| 28/30 [00:39&lt;00:01,  1.49batch/s, epoch=3/3, loss=-8309, validation=28.68]
-Training:  97%|█████████▋| 29/30 [00:39&lt;00:00,  1.72batch/s, epoch=3/3, loss=-1.112e+04, validation=28.68]
-Training: 100%|██████████| 30/30 [00:39&lt;00:00,  1.94batch/s, epoch=3/3, loss=-1.309e+04, validation=28.68]
-Training: 100%|██████████| 30/30 [00:48&lt;00:00,  1.63s/batch, epoch=3/3, loss=-1.309e+04, validation=28.68]
+initial_reconstruction : &lt;function fdk at 0x7fc41f5dc360&gt;
 </pre></div>
 </div>
 </section>
@@ -583,28 +557,7 @@ Training: 100%|██████████| 30/30 [00:48&lt;00:00,  1.63s/bat
 </span>    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">title</span></a><span class="p">)</span><span class="w">
 </span>    <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">off</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<img src="../_images/sphx_glr_d08_learned_regularisers_001.png" srcset="../_images/sphx_glr_d08_learned_regularisers_001.png" alt="target, FDK, 19.0 dB, AR, 17.4 dB" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Learned regulariser reconstruction:   0%|          | 0/50 [00:00&lt;?, ?it/s]
-Learned regulariser reconstruction:   6%|▌         | 3/50 [00:00&lt;00:03, 14.34it/s]
-Learned regulariser reconstruction:  12%|█▏        | 6/50 [00:00&lt;00:02, 16.51it/s]
-Learned regulariser reconstruction:  16%|█▌        | 8/50 [00:00&lt;00:02, 15.89it/s]
-Learned regulariser reconstruction:  20%|██        | 10/50 [00:00&lt;00:02, 15.86it/s]
-Learned regulariser reconstruction:  26%|██▌       | 13/50 [00:00&lt;00:02, 17.51it/s]
-Learned regulariser reconstruction:  30%|███       | 15/50 [00:00&lt;00:01, 18.02it/s]
-Learned regulariser reconstruction:  36%|███▌      | 18/50 [00:00&lt;00:01, 20.40it/s]
-Learned regulariser reconstruction:  42%|████▏     | 21/50 [00:01&lt;00:01, 20.83it/s]
-Learned regulariser reconstruction:  48%|████▊     | 24/50 [00:01&lt;00:01, 22.76it/s]
-Learned regulariser reconstruction:  54%|█████▍    | 27/50 [00:01&lt;00:00, 23.27it/s]
-Learned regulariser reconstruction:  60%|██████    | 30/50 [00:01&lt;00:00, 24.57it/s]
-Learned regulariser reconstruction:  66%|██████▌   | 33/50 [00:01&lt;00:00, 24.52it/s]
-Learned regulariser reconstruction:  74%|███████▍  | 37/50 [00:01&lt;00:00, 25.69it/s]
-Learned regulariser reconstruction:  80%|████████  | 40/50 [00:01&lt;00:00, 26.29it/s]
-Learned regulariser reconstruction:  86%|████████▌ | 43/50 [00:01&lt;00:00, 25.70it/s]
-Learned regulariser reconstruction:  92%|█████████▏| 46/50 [00:02&lt;00:00, 26.32it/s]
-Learned regulariser reconstruction:  98%|█████████▊| 49/50 [00:02&lt;00:00, 25.24it/s]
-Learned regulariser reconstruction: 100%|██████████| 50/50 [00:02&lt;00:00, 22.36it/s]
-</pre></div>
-</div>
-</section>
+<img src="../_images/sphx_glr_d08_learned_regularisers_001.png" srcset="../_images/sphx_glr_d08_learned_regularisers_001.png" alt="target, FDK, 19.0 dB, AR, 20.2 dB" class = "sphx-glr-single-img"/></section>
 <section id="other-regularisers">
 <h2>Other regularisers<a class="headerlink" href="#other-regularisers" title="Link to this heading">¶</a></h2>
 <p>The reconstructor works with any regulariser, however it was trained: a
@@ -625,7 +578,7 @@ image, so the energy has a single minimum:</p>
 </span>    <a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry" title="LION.operators.ct.Geometry"><span class="n">experiment</span><span class="o">.</span><span class="n">operator_params</span></a><span class="p">,</span> <span class="n">smoothed_tv</span><span class="p">,</span> <a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">reconstructor_parameters</span></a><span class="w">
 </span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 41.690 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 33.902 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d08-learned-regularisers-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/82a8eb67e53a1b398661fc9b5a16df71/d08_learned_regularisers.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d08_learned_regularisers.ipynb</span></code></a></p>

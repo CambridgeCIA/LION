@@ -35,7 +35,14 @@ Previous: :doc:`d10_reconstructors`. Next: :doc:`d12_publishing`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
 
-.. GENERATED FROM PYTHON SOURCE LINES 27-32
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
+
+.. GENERATED FROM PYTHON SOURCE LINES 34-39
 
 Methods to compare
 ------------------
@@ -43,7 +50,7 @@ A method is a model, a model's file, a solver, a reconstructor (or its file),
 or a function ``f(measurements, operator)``. Here two FBPConvNets trained
 briefly (one more than the other), and SIRT:
 
-.. GENERATED FROM PYTHON SOURCE LINES 32-60
+.. GENERATED FROM PYTHON SOURCE LINES 39-67
 
 .. code-block:: Python
 
@@ -89,7 +96,7 @@ briefly (one more than the other), and SIRT:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 61-67
+.. GENERATED FROM PYTHON SOURCE LINES 68-74
 
 An evaluation
 -------------
@@ -98,7 +105,7 @@ range is the test images' (the same for every method). ``samples`` takes
 evenly spaced test slices (all of them by default); results are saved in
 ``save_folder``.
 
-.. GENERATED FROM PYTHON SOURCE LINES 67-76
+.. GENERATED FROM PYTHON SOURCE LINES 74-83
 
 .. code-block:: Python
 
@@ -119,22 +126,21 @@ evenly spaced test slices (all of them by default); results are saved in
 
  .. code-block:: none
 
-    FBPConvNet, 3 epochs:   0%|          | 0/20 [00:00<?, ?sample/s]    FBPConvNet, 3 epochs:  10%|█         | 2/20 [00:00<00:08,  2.07sample/s]    FBPConvNet, 3 epochs:  15%|█▌        | 3/20 [00:01<00:05,  3.07sample/s]    FBPConvNet, 3 epochs:  25%|██▌       | 5/20 [00:01<00:02,  5.09sample/s]    FBPConvNet, 3 epochs:  35%|███▌      | 7/20 [00:01<00:01,  6.81sample/s]    FBPConvNet, 3 epochs:  45%|████▌     | 9/20 [00:01<00:01,  8.17sample/s]    FBPConvNet, 3 epochs:  55%|█████▌    | 11/20 [00:01<00:00,  9.22sample/s]    FBPConvNet, 3 epochs:  65%|██████▌   | 13/20 [00:01<00:00, 10.01sample/s]    FBPConvNet, 3 epochs:  75%|███████▌  | 15/20 [00:02<00:00, 10.60sample/s]    FBPConvNet, 3 epochs:  85%|████████▌ | 17/20 [00:02<00:00, 11.02sample/s]    FBPConvNet, 3 epochs:  95%|█████████▌| 19/20 [00:02<00:00, 11.32sample/s]    FBPConvNet, 3 epochs: 100%|██████████| 20/20 [00:02<00:00,  7.79sample/s]
-    PSNR: 10.234 ± 5.715
-    SSIM: 0.110 ± 0.063
-    HaarPSI: 0.224 ± 0.063
+    PSNR: 18.763 ± 4.506
+    SSIM: 0.212 ± 0.062
+    HaarPSI: 0.370 ± 0.096
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 77-81
+.. GENERATED FROM PYTHON SOURCE LINES 84-88
 
 The test record holds the score of each test sample (by patient and slice),
 what was evaluated (the model's spec and weights hash), the test data's
 record and the environment. Running the same method on the same evaluation
 again reads it instead of computing it:
 
-.. GENERATED FROM PYTHON SOURCE LINES 81-85
+.. GENERATED FROM PYTHON SOURCE LINES 88-92
 
 .. code-block:: Python
 
@@ -150,18 +156,18 @@ again reads it instead of computing it:
 
  .. code-block:: none
 
-    ['LIDC-IDRI-0910/slice_0', 'LIDC-IDRI-0915/slice_114', 'LIDC-IDRI-0920/slice_331'] [13.553916931152344, 11.41702938079834, 5.46469783782959]
+    ['LIDC-IDRI-0910/slice_0', 'LIDC-IDRI-0915/slice_114', 'LIDC-IDRI-0920/slice_331'] [22.39322280883789, 20.384502410888672, 16.844867706298828]
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 86-89
+.. GENERATED FROM PYTHON SOURCE LINES 93-96
 
 A comparison
 ------------
 Methods by name, against the problem's baseline (FDK, for CT):
 
-.. GENERATED FROM PYTHON SOURCE LINES 89-105
+.. GENERATED FROM PYTHON SOURCE LINES 96-112
 
 .. code-block:: Python
 
@@ -189,74 +195,11 @@ Methods by name, against the problem's baseline (FDK, for CT):
 
  .. code-block:: none
 
-    fdk:   0%|          | 0/20 [00:00<?, ?sample/s]    fdk:  15%|█▌        | 3/20 [00:00<00:00, 18.92sample/s]    fdk:  25%|██▌       | 5/20 [00:00<00:00, 18.52sample/s]    fdk:  35%|███▌      | 7/20 [00:00<00:00, 18.34sample/s]    fdk:  45%|████▌     | 9/20 [00:00<00:00, 18.29sample/s]    fdk:  55%|█████▌    | 11/20 [00:00<00:00, 18.22sample/s]    fdk:  65%|██████▌   | 13/20 [00:00<00:00, 18.18sample/s]    fdk:  75%|███████▌  | 15/20 [00:00<00:00, 18.16sample/s]    fdk:  85%|████████▌ | 17/20 [00:00<00:00, 18.16sample/s]    fdk:  95%|█████████▌| 19/20 [00:01<00:00, 18.17sample/s]    fdk: 100%|██████████| 20/20 [00:01<00:00, 17.54sample/s]
-    FBPConvNet, 1 epoch:   0%|          | 0/20 [00:00<?, ?sample/s]    FBPConvNet, 1 epoch:  10%|█         | 2/20 [00:00<00:00, 19.79sample/s]    FBPConvNet, 1 epoch:  20%|██        | 4/20 [00:00<00:01, 13.55sample/s]    FBPConvNet, 1 epoch:  30%|███       | 6/20 [00:00<00:01, 12.53sample/s]    FBPConvNet, 1 epoch:  40%|████      | 8/20 [00:00<00:00, 12.28sample/s]    FBPConvNet, 1 epoch:  50%|█████     | 10/20 [00:00<00:00, 12.20sample/s]    FBPConvNet, 1 epoch:  60%|██████    | 12/20 [00:00<00:00, 12.17sample/s]    FBPConvNet, 1 epoch:  70%|███████   | 14/20 [00:01<00:00, 12.14sample/s]    FBPConvNet, 1 epoch:  80%|████████  | 16/20 [00:01<00:00, 12.13sample/s]    FBPConvNet, 1 epoch:  90%|█████████ | 18/20 [00:01<00:00, 12.12sample/s]    FBPConvNet, 1 epoch: 100%|██████████| 20/20 [00:01<00:00, 12.09sample/s]    FBPConvNet, 1 epoch: 100%|██████████| 20/20 [00:01<00:00, 11.83sample/s]
-    SIRT:   0%|          | 0/20 [00:00<?, ?sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.25sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.25sample/s]
-    SIRT:  10%|█         | 2/20 [00:00<00:07,  2.36sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.32sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.32sample/s]
-    SIRT:  15%|█▌        | 3/20 [00:01<00:09,  1.73sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:  20%|██        | 4/20 [00:02<00:10,  1.53sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:  25%|██▌       | 5/20 [00:03<00:10,  1.43sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:  30%|███       | 6/20 [00:03<00:10,  1.38sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.33sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.33sample/s]
-    SIRT:  35%|███▌      | 7/20 [00:04<00:09,  1.34sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.33sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.33sample/s]
-    SIRT:  40%|████      | 8/20 [00:05<00:09,  1.32sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.33sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.33sample/s]
-    SIRT:  45%|████▌     | 9/20 [00:06<00:08,  1.30sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.33sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.33sample/s]
-    SIRT:  50%|█████     | 10/20 [00:07<00:07,  1.29sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:  55%|█████▌    | 11/20 [00:07<00:06,  1.29sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:  60%|██████    | 12/20 [00:08<00:06,  1.29sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:  65%|██████▌   | 13/20 [00:09<00:05,  1.28sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.32sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.32sample/s]
-    SIRT:  70%|███████   | 14/20 [00:10<00:04,  1.28sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:  75%|███████▌  | 15/20 [00:11<00:03,  1.28sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:  80%|████████  | 16/20 [00:11<00:03,  1.28sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:  85%|████████▌ | 17/20 [00:12<00:02,  1.28sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:  90%|█████████ | 18/20 [00:13<00:01,  1.28sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:  95%|█████████▌| 19/20 [00:14<00:00,  1.28sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT: 100%|██████████| 20/20 [00:14<00:00,  1.28sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]
-    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT: 100%|██████████| 20/20 [00:15<00:00,  1.27sample/s]
     | Method | PSNR | SSIM | HaarPSI |
     |---|---|---|---|
     | fdk | 21.87 ± 5.60 | 0.1541 ± 0.0933 | 0.3945 ± 0.2007 |
-    | FBPConvNet, 1 epoch | 22.67 ± 6.69 | 0.2603 ± 0.1814 | 0.4310 ± 0.2144 |
-    | FBPConvNet, 3 epochs | 10.23 ± 5.71 | 0.1102 ± 0.0631 | 0.2238 ± 0.0631 |
+    | FBPConvNet, 1 epoch | 22.67 ± 6.67 | 0.2596 ± 0.1809 | 0.4309 ± 0.2142 |
+    | FBPConvNet, 3 epochs | 18.76 ± 4.51 | 0.2115 ± 0.0623 | 0.3699 ± 0.0958 |
     | SIRT | **33.03 ± 2.19** | **0.7872 ± 0.1425** | **0.6543 ± 0.0618** |
 
     \begin{tabular}{lccc}
@@ -264,8 +207,8 @@ Methods by name, against the problem's baseline (FDK, for CT):
     Method & PSNR & SSIM & HaarPSI \\
     \midrule
     fdk & 21.87 $\pm$ 5.60 & 0.1541 $\pm$ 0.0933 & 0.3945 $\pm$ 0.2007 \\
-    FBPConvNet, 1 epoch & 22.67 $\pm$ 6.69 & 0.2603 $\pm$ 0.1814 & 0.4310 $\pm$ 0.2144 \\
-    FBPConvNet, 3 epochs & 10.23 $\pm$ 5.71 & 0.1102 $\pm$ 0.0631 & 0.2238 $\pm$ 0.0631 \\
+    FBPConvNet, 1 epoch & 22.67 $\pm$ 6.67 & 0.2596 $\pm$ 0.1809 & 0.4309 $\pm$ 0.2142 \\
+    FBPConvNet, 3 epochs & 18.76 $\pm$ 4.51 & 0.2115 $\pm$ 0.0623 & 0.3699 $\pm$ 0.0958 \\
     SIRT & \textbf{33.03 $\pm$ 2.19} & \textbf{0.7872 $\pm$ 0.1425} & \textbf{0.6543 $\pm$ 0.0618} \\
     \bottomrule
     \end{tabular}
@@ -274,7 +217,7 @@ Methods by name, against the problem's baseline (FDK, for CT):
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 106-116
+.. GENERATED FROM PYTHON SOURCE LINES 113-123
 
 Before running, the comparison checks each method's records and stops on
 what makes it unfair:
@@ -287,7 +230,7 @@ and warns about what makes it doubtful:
 - models trained for another problem (another geometry or noise);
 - results made with other LION code (another commit, uncommitted changes).
 
-.. GENERATED FROM PYTHON SOURCE LINES 118-124
+.. GENERATED FROM PYTHON SOURCE LINES 125-131
 
 Saving it
 ---------
@@ -296,7 +239,7 @@ every sample, the test records, box plots of the scores, and images of chosen
 samples (by default the best, median and worst by the baseline's PSNR), with
 zoomed crops and the differences to the target.
 
-.. GENERATED FROM PYTHON SOURCE LINES 124-130
+.. GENERATED FROM PYTHON SOURCE LINES 131-137
 
 .. code-block:: Python
 
@@ -314,19 +257,16 @@ zoomed crops and the differences to the target.
 
  .. code-block:: none
 
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.33sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.33sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]
     ['box_HaarPSI.pdf', 'box_HaarPSI.png', 'box_PSNR.pdf', 'box_PSNR.png', 'box_SSIM.pdf', 'box_SSIM.png', 'comparison.json', 'difference_HaarPSI.pdf', 'difference_HaarPSI.png', 'difference_PSNR.pdf', 'difference_PSNR.png', 'difference_SSIM.pdf', 'difference_SSIM.png', 'images.pdf', 'images.png', 'records', 'scores.csv', 'table.csv', 'table.md', 'table.tex']
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 131-132
+.. GENERATED FROM PYTHON SOURCE LINES 138-139
 
 The figures are also there to show or change:
 
-.. GENERATED FROM PYTHON SOURCE LINES 132-136
+.. GENERATED FROM PYTHON SOURCE LINES 139-143
 
 .. code-block:: Python
 
@@ -338,18 +278,10 @@ The figures are also there to show or change:
 
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.29sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.29sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.34sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.33sample/s]
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.31sample/s]    SIRT: 100%|██████████| 1/1 [00:00<00:00,  1.31sample/s]
 
 
 
-
-.. GENERATED FROM PYTHON SOURCE LINES 137-151
+.. GENERATED FROM PYTHON SOURCE LINES 144-158
 
 The saved comparison makes itself again, e.g. to add a method later:
 
@@ -369,7 +301,7 @@ data you load yourself:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (2 minutes 2.996 seconds)
+   **Total running time of the script:** (2 minutes 40.443 seconds)
 
 
 .. _sphx_glr_download_tutorials_d11_evaluation.py:

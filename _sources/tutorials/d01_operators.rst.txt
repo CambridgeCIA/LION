@@ -302,12 +302,6 @@ tomosipo's algorithms, all batched.
    :class: sphx-glr-single-img
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-      0%|          | 0/100 [00:00<?, ?it/s]     11%|█         | 11/100 [00:00<00:00, 106.36it/s]     22%|██▏       | 22/100 [00:00<00:00, 108.45it/s]     36%|███▌      | 36/100 [00:00<00:00, 121.76it/s]     51%|█████     | 51/100 [00:00<00:00, 130.06it/s]     66%|██████▌   | 66/100 [00:00<00:00, 134.40it/s]     81%|████████  | 81/100 [00:00<00:00, 137.15it/s]     96%|█████████▌| 96/100 [00:00<00:00, 138.88it/s]    100%|██████████| 100/100 [00:00<00:00, 132.42it/s]
-
 
 
 
@@ -333,7 +327,7 @@ otherwise, so they work with any operator.
 
  .. code-block:: none
 
-    <function fdk at 0x7f83181e2980>
+    <function fdk at 0x7fc41f5dc360>
 
 
 
@@ -471,7 +465,7 @@ its shapes: :doc:`d13_extending_lion` writes one.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 14.546 seconds)
+   **Total running time of the script:** (0 minutes 15.536 seconds)
 
 
 .. _sphx_glr_download_tutorials_d01_operators.py:

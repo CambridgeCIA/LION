@@ -38,14 +38,21 @@ Previous: :doc:`d07_denoisers_and_pnp`. Next:
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
 
-.. GENERATED FROM PYTHON SOURCE LINES 30-34
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
+
+.. GENERATED FROM PYTHON SOURCE LINES 37-41
 
 The regulariser
 ---------------
 AR is a CNN from an image to a number. It takes images of the operator's
 domain shape, so it takes the operator's parameters.
 
-.. GENERATED FROM PYTHON SOURCE LINES 34-56
+.. GENERATED FROM PYTHON SOURCE LINES 41-63
 
 .. code-block:: Python
 
@@ -89,7 +96,7 @@ domain shape, so it takes the operator's parameters.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 57-63
+.. GENERATED FROM PYTHON SOURCE LINES 64-70
 
 Training: clean images against reconstructions
 ----------------------------------------------
@@ -98,7 +105,7 @@ penalty, ``lambd_gp``): it learns to tell the clean images from the
 reconstructions of the measurements (FDK, the operator's default). It has no
 loss argument: the loss is the method's.
 
-.. GENERATED FROM PYTHON SOURCE LINES 63-74
+.. GENERATED FROM PYTHON SOURCE LINES 70-81
 
 .. code-block:: Python
 
@@ -127,13 +134,13 @@ loss argument: the loss is the method's.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 75-78
+.. GENERATED FROM PYTHON SOURCE LINES 82-85
 
 The WGAN loss doesn't say how good the reconstructions are, so validation
 reconstructs with the regulariser being trained: through a reconstructor you
 make, with its own settings, given to ``set_validation``.
 
-.. GENERATED FROM PYTHON SOURCE LINES 78-108
+.. GENERATED FROM PYTHON SOURCE LINES 85-115
 
 .. code-block:: Python
 
@@ -180,19 +187,18 @@ make, with its own settings, given to ``set_validation``.
     n_steps : 50
     step_size : 1e-06
     backtracking : 0.95
-    initial_reconstruction : <function fdk at 0x7f30d0df9580>
-    Training:   0%|          | 0/30 [00:00<?, ?batch/s]    Training:   3%|▎         | 1/30 [00:00<00:27,  1.04batch/s, epoch=1/3, loss=0.09968]    Training:   7%|▋         | 2/30 [00:01<00:17,  1.63batch/s, epoch=1/3, loss=0.09487]    Training:  10%|█         | 3/30 [00:01<00:13,  2.00batch/s, epoch=1/3, loss=0.08894]    Training:  13%|█▎        | 4/30 [00:02<00:11,  2.22batch/s, epoch=1/3, loss=0.07682]    Training:  17%|█▋        | 5/30 [00:02<00:10,  2.38batch/s, epoch=1/3, loss=0.02863]    Training:  20%|██        | 6/30 [00:02<00:09,  2.50batch/s, epoch=1/3, loss=0.00843]    Training:  23%|██▎       | 7/30 [00:03<00:08,  2.57batch/s, epoch=1/3, loss=-0.0898]    Training:  27%|██▋       | 8/30 [00:03<00:08,  2.63batch/s, epoch=1/3, loss=-0.263]     Training:  30%|███       | 9/30 [00:03<00:07,  2.67batch/s, epoch=1/3, loss=-0.3827]    Training:  33%|███▎      | 10/30 [00:04<00:07,  2.68batch/s, epoch=1/3, loss=-0.734]    Training:  37%|███▋      | 11/30 [00:20<01:41,  5.35s/batch, epoch=2/3, loss=-6.895, validation=21.13]    Training:  40%|████      | 12/30 [00:21<01:08,  3.83s/batch, epoch=2/3, loss=-8.035, validation=21.13]    Training:  43%|████▎     | 13/30 [00:21<00:47,  2.78s/batch, epoch=2/3, loss=-14.5, validation=21.13]     Training:  47%|████▋     | 14/30 [00:21<00:32,  2.05s/batch, epoch=2/3, loss=-34.8, validation=21.13]    Training:  50%|█████     | 15/30 [00:22<00:23,  1.54s/batch, epoch=2/3, loss=-64.7, validation=21.13]    Training:  53%|█████▎    | 16/30 [00:22<00:16,  1.19s/batch, epoch=2/3, loss=-70.61, validation=21.13]    Training:  57%|█████▋    | 17/30 [00:23<00:12,  1.06batch/s, epoch=2/3, loss=-101.7, validation=21.13]    Training:  60%|██████    | 18/30 [00:23<00:09,  1.30batch/s, epoch=2/3, loss=-154.3, validation=21.13]    Training:  63%|██████▎   | 19/30 [00:23<00:07,  1.54batch/s, epoch=2/3, loss=-230.5, validation=21.13]    Training:  67%|██████▋   | 20/30 [00:24<00:05,  1.77batch/s, epoch=2/3, loss=-310.9, validation=21.13]    Training:  70%|███████   | 21/30 [00:36<00:36,  4.09s/batch, epoch=3/3, loss=-1417, validation=28.68]     Training:  73%|███████▎  | 22/30 [00:36<00:23,  2.97s/batch, epoch=3/3, loss=-2144, validation=28.68]    Training:  77%|███████▋  | 23/30 [00:37<00:15,  2.19s/batch, epoch=3/3, loss=-2142, validation=28.68]    Training:  80%|████████  | 24/30 [00:37<00:09,  1.64s/batch, epoch=3/3, loss=-3180, validation=28.68]    Training:  83%|████████▎ | 25/30 [00:37<00:06,  1.26s/batch, epoch=3/3, loss=-3856, validation=28.68]    Training:  87%|████████▋ | 26/30 [00:38<00:03,  1.01batch/s, epoch=3/3, loss=-4818, validation=28.68]    Training:  90%|█████████ | 27/30 [00:38<00:02,  1.24batch/s, epoch=3/3, loss=-7975, validation=28.68]    Training:  93%|█████████▎| 28/30 [00:39<00:01,  1.49batch/s, epoch=3/3, loss=-8309, validation=28.68]    Training:  97%|█████████▋| 29/30 [00:39<00:00,  1.72batch/s, epoch=3/3, loss=-1.112e+04, validation=28.68]    Training: 100%|██████████| 30/30 [00:39<00:00,  1.94batch/s, epoch=3/3, loss=-1.309e+04, validation=28.68]    Training: 100%|██████████| 30/30 [00:48<00:00,  1.63s/batch, epoch=3/3, loss=-1.309e+04, validation=28.68]
+    initial_reconstruction : <function fdk at 0x7fc41f5dc360>
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 109-112
+.. GENERATED FROM PYTHON SOURCE LINES 116-119
 
 Reconstructing
 --------------
 Gradient descent on the energy, from FDK, with a backtracking step size:
 
-.. GENERATED FROM PYTHON SOURCE LINES 112-129
+.. GENERATED FROM PYTHON SOURCE LINES 119-136
 
 .. code-block:: Python
 
@@ -217,21 +223,15 @@ Gradient descent on the energy, from FDK, with a backtracking step size:
 
 
 .. image-sg:: /tutorials/images/sphx_glr_d08_learned_regularisers_001.png
-   :alt: target, FDK, 19.0 dB, AR, 17.4 dB
+   :alt: target, FDK, 19.0 dB, AR, 20.2 dB
    :srcset: /tutorials/images/sphx_glr_d08_learned_regularisers_001.png
    :class: sphx-glr-single-img
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    Learned regulariser reconstruction:   0%|          | 0/50 [00:00<?, ?it/s]    Learned regulariser reconstruction:   6%|▌         | 3/50 [00:00<00:03, 14.34it/s]    Learned regulariser reconstruction:  12%|█▏        | 6/50 [00:00<00:02, 16.51it/s]    Learned regulariser reconstruction:  16%|█▌        | 8/50 [00:00<00:02, 15.89it/s]    Learned regulariser reconstruction:  20%|██        | 10/50 [00:00<00:02, 15.86it/s]    Learned regulariser reconstruction:  26%|██▌       | 13/50 [00:00<00:02, 17.51it/s]    Learned regulariser reconstruction:  30%|███       | 15/50 [00:00<00:01, 18.02it/s]    Learned regulariser reconstruction:  36%|███▌      | 18/50 [00:00<00:01, 20.40it/s]    Learned regulariser reconstruction:  42%|████▏     | 21/50 [00:01<00:01, 20.83it/s]    Learned regulariser reconstruction:  48%|████▊     | 24/50 [00:01<00:01, 22.76it/s]    Learned regulariser reconstruction:  54%|█████▍    | 27/50 [00:01<00:00, 23.27it/s]    Learned regulariser reconstruction:  60%|██████    | 30/50 [00:01<00:00, 24.57it/s]    Learned regulariser reconstruction:  66%|██████▌   | 33/50 [00:01<00:00, 24.52it/s]    Learned regulariser reconstruction:  74%|███████▍  | 37/50 [00:01<00:00, 25.69it/s]    Learned regulariser reconstruction:  80%|████████  | 40/50 [00:01<00:00, 26.29it/s]    Learned regulariser reconstruction:  86%|████████▌ | 43/50 [00:01<00:00, 25.70it/s]    Learned regulariser reconstruction:  92%|█████████▏| 46/50 [00:02<00:00, 26.32it/s]    Learned regulariser reconstruction:  98%|█████████▊| 49/50 [00:02<00:00, 25.24it/s]    Learned regulariser reconstruction: 100%|██████████| 50/50 [00:02<00:00, 22.36it/s]
 
 
 
-
-.. GENERATED FROM PYTHON SOURCE LINES 130-143
+.. GENERATED FROM PYTHON SOURCE LINES 137-150
 
 Other regularisers
 ------------------
@@ -247,7 +247,7 @@ image, so the energy has a single minimum:
 
 Hand-made ones too, e.g. a smoothed total variation:
 
-.. GENERATED FROM PYTHON SOURCE LINES 143-154
+.. GENERATED FROM PYTHON SOURCE LINES 150-161
 
 .. code-block:: Python
 
@@ -272,7 +272,7 @@ Hand-made ones too, e.g. a smoothed total variation:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 41.690 seconds)
+   **Total running time of the script:** (2 minutes 33.902 seconds)
 
 
 .. _sphx_glr_download_tutorials_d08_learned_regularisers.py:

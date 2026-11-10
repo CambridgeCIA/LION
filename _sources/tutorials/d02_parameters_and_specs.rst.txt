@@ -153,7 +153,7 @@ you need and give them back.
     recon_fn : default
     algorithm : ADMM
     initial_reconstruction : default
-    eta : 0.0001
+    eta : None
     max_iter : 10
     cg_max_iter : 100
     cg_tol : 1e-07
@@ -392,7 +392,7 @@ them.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 30.145 seconds)
+   **Total running time of the script:** (0 minutes 7.498 seconds)
 
 
 .. _sphx_glr_download_tutorials_d02_parameters_and_specs.py:

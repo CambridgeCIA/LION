@@ -32,9 +32,17 @@ reconstructs with it (``LION.reconstructors.PnP``). Short runs, to show how.
 Previous: :doc:`d06_self_supervised_training`. Next:
 :doc:`d08_learned_regularisers`.
 
-Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
+Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``; downloads
+the authors' trained DRUNet (130 MB).
 
-.. GENERATED FROM PYTHON SOURCE LINES 26-31
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
+
+.. GENERATED FROM PYTHON SOURCE LINES 34-39
 
 The data and the denoiser
 -------------------------
@@ -42,7 +50,7 @@ The denoiser only uses the clean images (the targets of the experiment's
 samples). DRUNet (Zhang et al., 2021) takes the noise level as an input, so
 one network denoises every level.
 
-.. GENERATED FROM PYTHON SOURCE LINES 31-54
+.. GENERATED FROM PYTHON SOURCE LINES 39-62
 
 .. code-block:: Python
 
@@ -83,14 +91,14 @@ one network denoises every level.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 55-59
+.. GENERATED FROM PYTHON SOURCE LINES 63-67
 
 Noise levels are in the units the denoiser sees. The literature's (k/255)
 are for images in [0, 1], so the images are normalised to [0, 1] by their
 range over the training data. The normalisation is saved with the model and
 applied whenever it is used.
 
-.. GENERATED FROM PYTHON SOURCE LINES 59-62
+.. GENERATED FROM PYTHON SOURCE LINES 67-70
 
 .. code-block:: Python
 
@@ -104,7 +112,7 @@ applied whenever it is used.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 63-69
+.. GENERATED FROM PYTHON SOURCE LINES 71-77
 
 Training the denoiser
 ---------------------
@@ -113,7 +121,7 @@ literature: one noise level per image, drawn from a range; random flips and
 rotations; optionally random crops (patches) and random erasing; fixed noise
 levels to validate at.
 
-.. GENERATED FROM PYTHON SOURCE LINES 69-76
+.. GENERATED FROM PYTHON SOURCE LINES 77-84
 
 .. code-block:: Python
 
@@ -142,12 +150,12 @@ levels to validate at.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 77-79
+.. GENERATED FROM PYTHON SOURCE LINES 85-87
 
 It doesn't use the operator, but takes its parameters, recorded as the
 problem the denoiser was trained for.
 
-.. GENERATED FROM PYTHON SOURCE LINES 79-94
+.. GENERATED FROM PYTHON SOURCE LINES 87-102
 
 .. code-block:: Python
 
@@ -170,21 +178,15 @@ problem the denoiser was trained for.
 
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    Training:   0%|          | 0/30 [00:00<?, ?batch/s]    Training:   3%|▎         | 1/30 [00:00<00:14,  1.98batch/s, epoch=1/3, loss=0.1081]    Training:   7%|▋         | 2/30 [00:00<00:12,  2.24batch/s, epoch=1/3, loss=0.1009]    Training:  10%|█         | 3/30 [00:01<00:11,  2.35batch/s, epoch=1/3, loss=0.08919]    Training:  13%|█▎        | 4/30 [00:01<00:10,  2.41batch/s, epoch=1/3, loss=0.09475]    Training:  17%|█▋        | 5/30 [00:02<00:10,  2.44batch/s, epoch=1/3, loss=0.08685]    Training:  20%|██        | 6/30 [00:02<00:09,  2.46batch/s, epoch=1/3, loss=0.08145]    Training:  23%|██▎       | 7/30 [00:02<00:09,  2.47batch/s, epoch=1/3, loss=0.08028]    Training:  27%|██▋       | 8/30 [00:03<00:08,  2.47batch/s, epoch=1/3, loss=0.07919]    Training:  30%|███       | 9/30 [00:03<00:08,  2.46batch/s, epoch=1/3, loss=0.07667]    Training:  33%|███▎      | 10/30 [00:04<00:08,  2.47batch/s, epoch=1/3, loss=0.07507]    Training:  37%|███▋      | 11/30 [00:07<00:27,  1.43s/batch, epoch=2/3, loss=0.05394, validation=10.96]    Training:  40%|████      | 12/30 [00:08<00:20,  1.12s/batch, epoch=2/3, loss=0.05082, validation=10.96]    Training:  43%|████▎     | 13/30 [00:08<00:15,  1.11batch/s, epoch=2/3, loss=0.05019, validation=10.96]    Training:  47%|████▋     | 14/30 [00:09<00:12,  1.33batch/s, epoch=2/3, loss=0.04635, validation=10.96]    Training:  50%|█████     | 15/30 [00:09<00:09,  1.55batch/s, epoch=2/3, loss=0.04246, validation=10.96]    Training:  53%|█████▎    | 16/30 [00:09<00:08,  1.75batch/s, epoch=2/3, loss=0.03991, validation=10.96]    Training:  57%|█████▋    | 17/30 [00:10<00:06,  1.92batch/s, epoch=2/3, loss=0.03988, validation=10.96]    Training:  60%|██████    | 18/30 [00:10<00:05,  2.06batch/s, epoch=2/3, loss=0.03905, validation=10.96]    Training:  63%|██████▎   | 19/30 [00:11<00:05,  2.17batch/s, epoch=2/3, loss=0.03749, validation=10.96]    Training:  67%|██████▋   | 20/30 [00:11<00:04,  2.26batch/s, epoch=2/3, loss=0.03548, validation=10.96]    Training:  70%|███████   | 21/30 [00:17<00:20,  2.26s/batch, epoch=3/3, loss=0.02351, validation=17.02]    Training:  73%|███████▎  | 22/30 [00:18<00:13,  1.70s/batch, epoch=3/3, loss=0.02255, validation=17.02]    Training:  77%|███████▋  | 23/30 [00:18<00:09,  1.32s/batch, epoch=3/3, loss=0.02299, validation=17.02]    Training:  80%|████████  | 24/30 [00:19<00:06,  1.04s/batch, epoch=3/3, loss=0.02355, validation=17.02]    Training:  83%|████████▎ | 25/30 [00:19<00:04,  1.17batch/s, epoch=3/3, loss=0.02314, validation=17.02]    Training:  87%|████████▋ | 26/30 [00:20<00:02,  1.39batch/s, epoch=3/3, loss=0.02262, validation=17.02]    Training:  90%|█████████ | 27/30 [00:20<00:01,  1.61batch/s, epoch=3/3, loss=0.02173, validation=17.02]    Training:  93%|█████████▎| 28/30 [00:20<00:01,  1.80batch/s, epoch=3/3, loss=0.02117, validation=17.02]    Training:  97%|█████████▋| 29/30 [00:21<00:00,  1.96batch/s, epoch=3/3, loss=0.021, validation=17.02]      Training: 100%|██████████| 30/30 [00:21<00:00,  2.09batch/s, epoch=3/3, loss=0.02083, validation=17.02]    Training: 100%|██████████| 30/30 [00:25<00:00,  1.16batch/s, epoch=3/3, loss=0.02083, validation=17.02]
 
 
 
-
-.. GENERATED FROM PYTHON SOURCE LINES 95-97
+.. GENERATED FROM PYTHON SOURCE LINES 103-105
 
 Denoising a validation image at 25/255. LION's solvers and reconstructors
 normalise for the model; called by hand, the model takes normalised images:
 
-.. GENERATED FROM PYTHON SOURCE LINES 97-105
+.. GENERATED FROM PYTHON SOURCE LINES 105-113
 
 .. code-block:: Python
 
@@ -203,7 +205,7 @@ normalise for the model; called by hand, the model takes normalised images:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 106-131
+.. GENERATED FROM PYTHON SOURCE LINES 114-139
 
 Jacobian penalties
 ------------------
@@ -231,14 +233,14 @@ The gradient-step denoiser (``LION.models.PnP.gradient_step_denoiser.GSD``)
 wraps any denoiser N as ``x - grad g(x)``, ``g(x) = ½||x - N(x)||²``, for
 Hurault et al.'s ``ProximalDenoiserPenalty``.
 
-.. GENERATED FROM PYTHON SOURCE LINES 133-137
+.. GENERATED FROM PYTHON SOURCE LINES 141-145
 
 Plug-and-Play reconstruction
 ----------------------------
 ``PnP`` takes the operator (or its parameters), the denoiser and the
 algorithm's parameters: ADMM, HQS or FBS (forward-backward splitting).
 
-.. GENERATED FROM PYTHON SOURCE LINES 137-152
+.. GENERATED FROM PYTHON SOURCE LINES 145-162
 
 .. code-block:: Python
 
@@ -249,13 +251,15 @@ algorithm's parameters: ADMM, HQS or FBS (forward-backward splitting).
     pnp_parameters = PnP.default_parameters("ADMM")
     print(pnp_parameters)
     pnp_parameters.max_iter = 20
-    pnp_parameters.noise_level = 10 / 255
+    pnp_parameters.noise_level = 10 / 255  # the denoiser's, in its [0, 1] units
+    # eta, ADMM's weight between the data and the prior, is by default relative to
+    # the operator: 1e-2 ||A||² (larger trusts the prior more)
     pnp = PnP(experiment.operator_params, denoiser, pnp_parameters)
 
     sinogram, image = validation[0]
     reconstruction = pnp.reconstruct(sinogram)
     # or one algorithm with its settings given:
-    # reconstruction = pnp.admm_algorithm(sinogram, eta=1e-4, max_iter=20)
+    # reconstruction = pnp.admm_algorithm(sinogram, max_iter=20, noise_level=10 / 255)
 
 
 
@@ -267,21 +271,46 @@ algorithm's parameters: ADMM, HQS or FBS (forward-backward splitting).
 
     algorithm : ADMM
     initial_reconstruction : default
-    eta : 0.0001
+    eta : None
     max_iter : 10
     cg_max_iter : 100
     cg_tol : 1e-07
     noise_level : None
-    ADMM iterations:   0%|          | 0/20 [00:00<?, ?it/s]    ADMM iterations:   5%|▌         | 1/20 [00:01<00:26,  1.41s/it]    ADMM iterations:  10%|█         | 2/20 [00:02<00:19,  1.08s/it]    ADMM iterations:  15%|█▌        | 3/20 [00:03<00:16,  1.02it/s]    ADMM iterations:  20%|██        | 4/20 [00:03<00:14,  1.07it/s]    ADMM iterations:  25%|██▌       | 5/20 [00:04<00:13,  1.11it/s]    ADMM iterations:  30%|███       | 6/20 [00:05<00:12,  1.13it/s]    ADMM iterations:  35%|███▌      | 7/20 [00:06<00:11,  1.14it/s]    ADMM iterations:  40%|████      | 8/20 [00:07<00:10,  1.16it/s]    ADMM iterations:  45%|████▌     | 9/20 [00:08<00:09,  1.16it/s]    ADMM iterations:  50%|█████     | 10/20 [00:09<00:08,  1.17it/s]    ADMM iterations:  55%|█████▌    | 11/20 [00:09<00:07,  1.17it/s]    ADMM iterations:  60%|██████    | 12/20 [00:10<00:06,  1.18it/s]    ADMM iterations:  65%|██████▌   | 13/20 [00:11<00:05,  1.18it/s]    ADMM iterations:  70%|███████   | 14/20 [00:12<00:05,  1.18it/s]    ADMM iterations:  75%|███████▌  | 15/20 [00:13<00:04,  1.18it/s]    ADMM iterations:  80%|████████  | 16/20 [00:14<00:03,  1.18it/s]    ADMM iterations:  85%|████████▌ | 17/20 [00:14<00:02,  1.18it/s]    ADMM iterations:  90%|█████████ | 18/20 [00:15<00:01,  1.18it/s]    ADMM iterations:  95%|█████████▌| 19/20 [00:16<00:00,  1.18it/s]    ADMM iterations: 100%|██████████| 20/20 [00:17<00:00,  1.18it/s]    ADMM iterations: 100%|██████████| 20/20 [00:17<00:00,  1.14it/s]
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 153-154
+.. GENERATED FROM PYTHON SOURCE LINES 163-169
+
+A pretrained denoiser
+---------------------
+The denoiser above is a toy, trained for 3 epochs on 40 slices: a poor
+prior. The DRUNet its authors trained on natural images (a 130 MB download,
+on images in [0, 1]) is a good one, and the same reconstructor with it shows
+what PnP does:
+
+.. GENERATED FROM PYTHON SOURCE LINES 169-175
+
+.. code-block:: Python
+
+
+    pretrained = DRUNet.pretrained()
+    pretrained.set_normalisation("dataset", training)
+    pnp_pretrained = PnP(experiment.operator_params, pretrained, pnp_parameters)
+    pretrained_reconstruction = pnp_pretrained.reconstruct(sinogram)
+
+
+
+
+
+
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 176-177
 
 HQS and FBS are used the same way:
 
-.. GENERATED FROM PYTHON SOURCE LINES 154-158
+.. GENERATED FROM PYTHON SOURCE LINES 177-181
 
 .. code-block:: Python
 
@@ -306,18 +335,22 @@ HQS and FBS are used the same way:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 159-173
+.. GENERATED FROM PYTHON SOURCE LINES 182-200
 
 .. code-block:: Python
 
     psnr = PSNR()
     fbp = fdk(sinogram, experiment.operator_params)
-    fig, axes = plt.subplots(1, 4, figsize=(16, 4))
+    fig, axes = plt.subplots(1, 5, figsize=(20, 4))
     shown = [
         ("noisy (25/255)", noisy[0]),
-        ("denoised", denoised[0]),
+        ("denoised (toy denoiser)", denoised[0]),
         (f"FDK, {psnr(fbp, image, batched=False):.1f} dB", fbp),
-        (f"PnP-ADMM, {psnr(reconstruction, image, batched=False):.1f} dB", reconstruction),
+        (f"PnP, toy, {psnr(reconstruction, image, batched=False):.1f} dB", reconstruction),
+        (
+            f"PnP, pretrained, {psnr(pretrained_reconstruction, image, batched=False):.1f} dB",
+            pretrained_reconstruction,
+        ),
     ]
     for ax, (title, x) in zip(axes, shown):
         ax.imshow(x[0].cpu(), cmap="gray")
@@ -328,7 +361,7 @@ HQS and FBS are used the same way:
 
 
 .. image-sg:: /tutorials/images/sphx_glr_d07_denoisers_and_pnp_001.png
-   :alt: noisy (25/255), denoised, FDK, 19.0 dB, PnP-ADMM, nan dB
+   :alt: noisy (25/255), denoised (toy denoiser), FDK, 19.0 dB, PnP, toy, 30.8 dB, PnP, pretrained, 36.3 dB
    :srcset: /tutorials/images/sphx_glr_d07_denoisers_and_pnp_001.png
    :class: sphx-glr-single-img
 
@@ -336,18 +369,7 @@ HQS and FBS are used the same way:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 174-187
-
-A pretrained denoiser
----------------------
-The DRUNet its authors trained on natural images works too (a 130 MB
-download), on images in [0, 1]:
-
-.. code-block:: python
-
-   pretrained = DRUNet.pretrained()
-   pretrained.set_normalisation("dataset", training)
-   pnp = PnP(experiment.operator_params, pretrained, pnp_parameters)
+.. GENERATED FROM PYTHON SOURCE LINES 201-203
 
 A reconstructor is saved with ``pnp.save(file)``: its settings, and its model
 by the file it was loaded from (:doc:`d09_saving_and_records`).
@@ -355,7 +377,7 @@ by the file it was loaded from (:doc:`d09_saving_and_records`).
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 35.614 seconds)
+   **Total running time of the script:** (1 minutes 54.650 seconds)
 
 
 .. _sphx_glr_download_tutorials_d07_denoisers_and_pnp.py:

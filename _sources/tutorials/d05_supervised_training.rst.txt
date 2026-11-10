@@ -38,14 +38,21 @@ Previous: :doc:`d04_models`. Next: :doc:`d06_self_supervised_training`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
 
-.. GENERATED FROM PYTHON SOURCE LINES 30-34
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
+
+.. GENERATED FROM PYTHON SOURCE LINES 37-41
 
 The pieces
 ----------
 The data, the model, a torch optimizer and a loss. Any torch optimizer and
 loss work.
 
-.. GENERATED FROM PYTHON SOURCE LINES 34-57
+.. GENERATED FROM PYTHON SOURCE LINES 41-64
 
 .. code-block:: Python
 
@@ -86,14 +93,14 @@ loss work.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 58-62
+.. GENERATED FROM PYTHON SOURCE LINES 65-69
 
 The least a solver needs
 ------------------------
 The model, the optimizer and the loss; the training data; where to save the
 model. Then ``train(n_epochs)`` and ``save_final_results()``.
 
-.. GENERATED FROM PYTHON SOURCE LINES 62-75
+.. GENERATED FROM PYTHON SOURCE LINES 69-82
 
 .. code-block:: Python
 
@@ -118,13 +125,12 @@ model. Then ``train(n_epochs)`` and ``save_final_results()``.
 
  .. code-block:: none
 
-    Training:   0%|          | 0/20 [00:00<?, ?batch/s]    Training:   5%|▌         | 1/20 [00:00<00:18,  1.03batch/s, epoch=1/2, loss=0.191]    Training:  10%|█         | 2/20 [00:01<00:12,  1.49batch/s, epoch=1/2, loss=0.21]     Training:  15%|█▌        | 3/20 [00:01<00:09,  1.73batch/s, epoch=1/2, loss=0.2514]    Training:  20%|██        | 4/20 [00:02<00:08,  1.88batch/s, epoch=1/2, loss=0.2029]    Training:  25%|██▌       | 5/20 [00:02<00:07,  1.98batch/s, epoch=1/2, loss=0.1999]    Training:  30%|███       | 6/20 [00:03<00:06,  2.04batch/s, epoch=1/2, loss=0.1736]    Training:  35%|███▌      | 7/20 [00:03<00:06,  2.08batch/s, epoch=1/2, loss=0.1557]    Training:  40%|████      | 8/20 [00:04<00:05,  2.10batch/s, epoch=1/2, loss=0.1427]    Training:  45%|████▌     | 9/20 [00:04<00:05,  2.12batch/s, epoch=1/2, loss=0.13]      Training:  50%|█████     | 10/20 [00:05<00:04,  2.14batch/s, epoch=1/2, loss=0.1195]    Training:  55%|█████▌    | 11/20 [00:05<00:04,  2.15batch/s, epoch=2/2, loss=0.02157]    Training:  60%|██████    | 12/20 [00:06<00:03,  2.16batch/s, epoch=2/2, loss=0.01806]    Training:  65%|██████▌   | 13/20 [00:06<00:03,  2.17batch/s, epoch=2/2, loss=0.0172]     Training:  70%|███████   | 14/20 [00:06<00:02,  2.17batch/s, epoch=2/2, loss=0.04205]    Training:  75%|███████▌  | 15/20 [00:07<00:02,  2.17batch/s, epoch=2/2, loss=0.04981]    Training:  80%|████████  | 16/20 [00:07<00:01,  2.17batch/s, epoch=2/2, loss=0.04438]    Training:  85%|████████▌ | 17/20 [00:08<00:01,  2.17batch/s, epoch=2/2, loss=0.04109]    Training:  90%|█████████ | 18/20 [00:08<00:00,  2.17batch/s, epoch=2/2, loss=0.03813]    Training:  95%|█████████▌| 19/20 [00:09<00:00,  2.17batch/s, epoch=2/2, loss=0.03586]    Training: 100%|██████████| 20/20 [00:09<00:00,  2.18batch/s, epoch=2/2, loss=0.03434]    Training: 100%|██████████| 20/20 [00:09<00:00,  2.06batch/s, epoch=2/2, loss=0.03434]
-    training loss per epoch: [0.11950468 0.03434189]
+    training loss per epoch: [0.10599411 0.03941898]
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 76-88
+.. GENERATED FROM PYTHON SOURCE LINES 83-95
 
 That is a complete training: the saved model holds its weights, its
 parameters and the record of how it was trained. Everything below is
@@ -139,7 +145,7 @@ regularisation (a penalty on the model added to the loss, e.g. for PnP
 denoisers: :doc:`d07_denoisers_and_pnp`), a learning-rate scheduler, how much
 it prints, the device and the seed.
 
-.. GENERATED FROM PYTHON SOURCE LINES 88-105
+.. GENERATED FROM PYTHON SOURCE LINES 95-112
 
 .. code-block:: Python
 
@@ -173,12 +179,12 @@ it prints, the device and the seed.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 106-108
+.. GENERATED FROM PYTHON SOURCE LINES 113-115
 
 Validation (optional) runs every ``validation_freq`` epochs and keeps the
 best model: by the lowest value, or the highest for a score like the PSNR.
 
-.. GENERATED FROM PYTHON SOURCE LINES 108-116
+.. GENERATED FROM PYTHON SOURCE LINES 115-123
 
 .. code-block:: Python
 
@@ -197,12 +203,12 @@ best model: by the lowest value, or the highest for a score like the PSNR.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 117-119
+.. GENERATED FROM PYTHON SOURCE LINES 124-126
 
 Testing (optional) is a score on test data, run by ``solver.test()``. The
 :doc:`d11_evaluation` evaluates properly, against other methods.
 
-.. GENERATED FROM PYTHON SOURCE LINES 119-122
+.. GENERATED FROM PYTHON SOURCE LINES 126-129
 
 .. code-block:: Python
 
@@ -216,7 +222,7 @@ Testing (optional) is a score on test data, run by ``solver.test()``. The
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 123-141
+.. GENERATED FROM PYTHON SOURCE LINES 130-148
 
 Checkpoints
 -----------
@@ -237,7 +243,7 @@ at most ``checkpoint_freq`` epochs.
 - **By default**, with ``set_saving`` alone, the solver checkpoints every 10
   epochs as ``<name>_checkpoint_*.pt``. ``set_checkpointing`` sets them:
 
-.. GENERATED FROM PYTHON SOURCE LINES 141-145
+.. GENERATED FROM PYTHON SOURCE LINES 148-152
 
 .. code-block:: Python
 
@@ -252,12 +258,12 @@ at most ``checkpoint_freq`` epochs.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 146-148
+.. GENERATED FROM PYTHON SOURCE LINES 153-155
 
 Training
 --------
 
-.. GENERATED FROM PYTHON SOURCE LINES 148-157
+.. GENERATED FROM PYTHON SOURCE LINES 155-164
 
 .. code-block:: Python
 
@@ -279,48 +285,31 @@ Training
  .. code-block:: none
 
     Loading checkpoint...
-    No checkpoint matching /tmp/tmp6ag97so3/FBPConvNet_check_*.pt yet; starting from epoch 0.
+    No checkpoint matching /tmp/tmp19kc7jk7/FBPConvNet_check_*.pt yet; starting from epoch 0.
     Training seed: 0 (the solver's seed argument; seed=None for an unseeded run)
-    Training:   0%|          | 0/40 [00:00<?, ?batch/s]    Training:   2%|▎         | 1/40 [00:00<00:19,  2.02batch/s, epoch=1/4, loss=0.3167]    Training:   5%|▌         | 2/40 [00:00<00:18,  2.09batch/s, epoch=1/4, loss=0.6255]    Training:   8%|▊         | 3/40 [00:01<00:17,  2.11batch/s, epoch=1/4, loss=0.4682]    Training:  10%|█         | 4/40 [00:01<00:16,  2.13batch/s, epoch=1/4, loss=0.3743]    Training:  12%|█▎        | 5/40 [00:02<00:16,  2.14batch/s, epoch=1/4, loss=0.3509]    Training:  15%|█▌        | 6/40 [00:02<00:15,  2.15batch/s, epoch=1/4, loss=0.2997]    Training:  18%|█▊        | 7/40 [00:03<00:15,  2.16batch/s, epoch=1/4, loss=0.2641]    Training:  20%|██        | 8/40 [00:03<00:14,  2.16batch/s, epoch=1/4, loss=0.2379]    Training:  22%|██▎       | 9/40 [00:04<00:14,  2.16batch/s, epoch=1/4, loss=0.215]     Training:  25%|██▌       | 10/40 [00:04<00:13,  2.16batch/s, epoch=1/4, loss=0.1958]
-      0%|          | 0/2 [00:00<?, ?it/s]
-     50%|█████     | 1/2 [00:00<00:00,  4.36it/s]
-    100%|██████████| 2/2 [00:00<00:00,  4.37it/s]
-                                                                                                                                         Validation loss: -21.029873609542847 - Validation loss std: 1.2531327483079513
-    Training:  25%|██▌       | 10/40 [00:05<00:13,  2.16batch/s, epoch=1/4, loss=0.1958]                                                                                        Epoch 1 - Training loss: 0.1957984922453761 - Validation loss: -21.029873609542847
-    Training:  25%|██▌       | 10/40 [00:05<00:13,  2.16batch/s, epoch=1/4, loss=0.1958]    Training:  28%|██▊       | 11/40 [00:06<00:28,  1.02batch/s, epoch=2/4, loss=0.01863, validation=-21.03]    Training:  30%|███       | 12/40 [00:07<00:23,  1.21batch/s, epoch=2/4, loss=0.01877, validation=-21.03]    Training:  32%|███▎      | 13/40 [00:07<00:19,  1.40batch/s, epoch=2/4, loss=0.01844, validation=-21.03]    Training:  35%|███▌      | 14/40 [00:08<00:16,  1.56batch/s, epoch=2/4, loss=0.04617, validation=-21.03]    Training:  38%|███▊      | 15/40 [00:08<00:14,  1.71batch/s, epoch=2/4, loss=0.0516, validation=-21.03]     Training:  40%|████      | 16/40 [00:09<00:13,  1.82batch/s, epoch=2/4, loss=0.04683, validation=-21.03]    Training:  42%|████▎     | 17/40 [00:09<00:11,  1.92batch/s, epoch=2/4, loss=0.04402, validation=-21.03]    Training:  45%|████▌     | 18/40 [00:10<00:11,  1.99batch/s, epoch=2/4, loss=0.04163, validation=-21.03]    Training:  48%|████▊     | 19/40 [00:10<00:10,  2.04batch/s, epoch=2/4, loss=0.03977, validation=-21.03]    Training:  50%|█████     | 20/40 [00:10<00:09,  2.08batch/s, epoch=2/4, loss=0.03763, validation=-21.03]
-      0%|          | 0/2 [00:00<?, ?it/s]
-     50%|█████     | 1/2 [00:00<00:00,  4.43it/s]
-    100%|██████████| 2/2 [00:00<00:00,  4.40it/s]
-                                                                                                                                                             Validation loss: -22.721827030181885 - Validation loss std: 0.6859010358068683
-    Training:  50%|█████     | 20/40 [00:11<00:09,  2.08batch/s, epoch=2/4, loss=0.03763, validation=-21.03]                                                                                                            Epoch 2 - Training loss: 0.03762699533253908 - Validation loss: -22.721827030181885
-    Training:  50%|█████     | 20/40 [00:11<00:09,  2.08batch/s, epoch=2/4, loss=0.03763, validation=-21.03]    Training:  52%|█████▎    | 21/40 [00:15<00:33,  1.76s/batch, epoch=3/4, loss=0.01721, validation=-22.72]    Training:  55%|█████▌    | 22/40 [00:16<00:24,  1.37s/batch, epoch=3/4, loss=0.01818, validation=-22.72]    Training:  57%|█████▊    | 23/40 [00:16<00:18,  1.10s/batch, epoch=3/4, loss=0.01847, validation=-22.72]    Training:  60%|██████    | 24/40 [00:17<00:14,  1.10batch/s, epoch=3/4, loss=0.01864, validation=-22.72]    Training:  62%|██████▎   | 25/40 [00:17<00:11,  1.29batch/s, epoch=3/4, loss=0.01779, validation=-22.72]    Training:  65%|██████▌   | 26/40 [00:18<00:09,  1.47batch/s, epoch=3/4, loss=0.01685, validation=-22.72]    Training:  68%|██████▊   | 27/40 [00:18<00:07,  1.63batch/s, epoch=3/4, loss=0.02451, validation=-22.72]    Training:  70%|███████   | 28/40 [00:18<00:06,  1.76batch/s, epoch=3/4, loss=0.02284, validation=-22.72]    Training:  72%|███████▎  | 29/40 [00:19<00:05,  1.87batch/s, epoch=3/4, loss=0.02291, validation=-22.72]    Training:  75%|███████▌  | 30/40 [00:19<00:05,  1.94batch/s, epoch=3/4, loss=0.02216, validation=-22.72]
-      0%|          | 0/2 [00:00<?, ?it/s]
-     50%|█████     | 1/2 [00:00<00:00,  4.35it/s]
-    100%|██████████| 2/2 [00:00<00:00,  4.36it/s]
-                                                                                                                                                             Validation loss: 5.877629220485687 - Validation loss std: 0.9844061329490261
-    Training:  75%|███████▌  | 30/40 [00:20<00:05,  1.94batch/s, epoch=3/4, loss=0.02216, validation=-22.72]                                                                                                            Epoch 3 - Training loss: 0.02215946689248085 - Validation loss: 5.877629220485687
-    Training:  75%|███████▌  | 30/40 [00:20<00:05,  1.94batch/s, epoch=3/4, loss=0.02216, validation=-22.72]    Training:  78%|███████▊  | 31/40 [00:21<00:08,  1.12batch/s, epoch=4/4, loss=0.01281, validation=5.878]     Training:  80%|████████  | 32/40 [00:22<00:06,  1.31batch/s, epoch=4/4, loss=0.03019, validation=5.878]    Training:  82%|████████▎ | 33/40 [00:22<00:04,  1.49batch/s, epoch=4/4, loss=0.02488, validation=5.878]    Training:  85%|████████▌ | 34/40 [00:23<00:03,  1.64batch/s, epoch=4/4, loss=0.02272, validation=5.878]    Training:  88%|████████▊ | 35/40 [00:23<00:02,  1.77batch/s, epoch=4/4, loss=0.02238, validation=5.878]    Training:  90%|█████████ | 36/40 [00:23<00:02,  1.87batch/s, epoch=4/4, loss=0.02104, validation=5.878]    Training:  92%|█████████▎| 37/40 [00:24<00:01,  1.95batch/s, epoch=4/4, loss=0.01987, validation=5.878]    Training:  95%|█████████▌| 38/40 [00:24<00:00,  2.01batch/s, epoch=4/4, loss=0.01926, validation=5.878]    Training:  98%|█████████▊| 39/40 [00:25<00:00,  2.05batch/s, epoch=4/4, loss=0.01893, validation=5.878]    Training: 100%|██████████| 40/40 [00:25<00:00,  2.08batch/s, epoch=4/4, loss=0.01821, validation=5.878]
-      0%|          | 0/2 [00:00<?, ?it/s]
-     50%|█████     | 1/2 [00:00<00:00,  4.41it/s]
-    100%|██████████| 2/2 [00:00<00:00,  4.39it/s]
-                                                                                                                                                            Validation loss: 25.048789024353027 - Validation loss std: 2.8307974050714035
-    Training: 100%|██████████| 40/40 [00:26<00:00,  2.08batch/s, epoch=4/4, loss=0.01821, validation=5.878]                                                                                                           Epoch 4 - Training loss: 0.01820674380287528 - Validation loss: 25.048789024353027
-    Training: 100%|██████████| 40/40 [00:26<00:00,  2.08batch/s, epoch=4/4, loss=0.01821, validation=5.878]    Training: 100%|██████████| 40/40 [00:32<00:00,  1.23batch/s, epoch=4/4, loss=0.01821, validation=5.878]
-    training loss per epoch: [0.19579849 0.037627   0.02215947 0.01820674]
-    validation PSNR: [-21.02987361 -22.72182703   5.87762922  25.04878902]
+    Validation loss: -14.28561520576477 - Validation loss std: 1.3335922571321883
+    Epoch 1 - Training loss: 0.19544123038649558 - Validation loss: -14.28561520576477
+    Validation loss: 11.127888649702072 - Validation loss std: 5.212687571378474
+    Epoch 2 - Training loss: 0.038272179290652276 - Validation loss: 11.127888649702072
+    Validation loss: 16.83620297908783 - Validation loss std: 2.916270551071763
+    Epoch 3 - Training loss: 0.024304365273565054 - Validation loss: 16.83620297908783
+    Validation loss: 26.4589364528656 - Validation loss std: 0.2834824450039611
+    Epoch 4 - Training loss: 0.019895102456212045 - Validation loss: 26.4589364528656
+    training loss per epoch: [0.19544123 0.03827218 0.02430437 0.0198951 ]
+    validation PSNR: [-14.28561521  11.12788865  16.83620298  26.45893645]
     learning rate: [0.00025]
     ['FBPConvNet.json', 'FBPConvNet.pt', 'FBPConvNet_best.json', 'FBPConvNet_best.pt', 'FBPConvNet_check_0002.json', 'FBPConvNet_check_0002.pt', 'FBPConvNet_check_0004.json', 'FBPConvNet_check_0004.pt']
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 158-161
+.. GENERATED FROM PYTHON SOURCE LINES 165-168
 
 Resuming: a new solver with the same set-up (as after a crash) finds the
 checkpoint of epoch 4 and only trains epochs 5 and 6, with the losses of the
 first four kept.
 
-.. GENERATED FROM PYTHON SOURCE LINES 161-178
+.. GENERATED FROM PYTHON SOURCE LINES 168-185
 
 .. code-block:: Python
 
@@ -349,17 +338,16 @@ first four kept.
 
  .. code-block:: none
 
-    Training:   0%|          | 0/20 [00:00<?, ?batch/s]    Training:   5%|▌         | 1/20 [00:00<00:09,  1.99batch/s, epoch=5/6, loss=0.01381]    Training:  10%|█         | 2/20 [00:00<00:08,  2.07batch/s, epoch=5/6, loss=0.01745]    Training:  15%|█▌        | 3/20 [00:01<00:08,  2.10batch/s, epoch=5/6, loss=0.03968]    Training:  20%|██        | 4/20 [00:01<00:07,  2.13batch/s, epoch=5/6, loss=0.03322]    Training:  25%|██▌       | 5/20 [00:02<00:07,  2.14batch/s, epoch=5/6, loss=0.0285]     Training:  30%|███       | 6/20 [00:02<00:06,  2.14batch/s, epoch=5/6, loss=0.02577]    Training:  35%|███▌      | 7/20 [00:03<00:06,  2.15batch/s, epoch=5/6, loss=0.02393]    Training:  40%|████      | 8/20 [00:03<00:05,  2.15batch/s, epoch=5/6, loss=0.0226]     Training:  45%|████▌     | 9/20 [00:04<00:05,  2.15batch/s, epoch=5/6, loss=0.02146]    Training:  50%|█████     | 10/20 [00:04<00:04,  2.15batch/s, epoch=5/6, loss=0.02025]    Training:  55%|█████▌    | 11/20 [00:05<00:04,  2.15batch/s, epoch=6/6, loss=0.008241]    Training:  60%|██████    | 12/20 [00:05<00:03,  2.14batch/s, epoch=6/6, loss=0.009709]    Training:  65%|██████▌   | 13/20 [00:06<00:03,  2.14batch/s, epoch=6/6, loss=0.0135]      Training:  70%|███████   | 14/20 [00:06<00:02,  2.14batch/s, epoch=6/6, loss=0.01216]    Training:  75%|███████▌  | 15/20 [00:07<00:02,  2.15batch/s, epoch=6/6, loss=0.02246]    Training:  80%|████████  | 16/20 [00:07<00:01,  2.15batch/s, epoch=6/6, loss=0.02049]    Training:  85%|████████▌ | 17/20 [00:07<00:01,  2.15batch/s, epoch=6/6, loss=0.01894]    Training:  90%|█████████ | 18/20 [00:08<00:00,  2.15batch/s, epoch=6/6, loss=0.01791]    Training:  95%|█████████▌| 19/20 [00:08<00:00,  2.15batch/s, epoch=6/6, loss=0.01672]    Training: 100%|██████████| 20/20 [00:09<00:00,  2.15batch/s, epoch=6/6, loss=0.01599]    Training: 100%|██████████| 20/20 [00:15<00:00,  1.26batch/s, epoch=6/6, loss=0.01599]
-    training loss per epoch: [0.19579849 0.037627   0.02215947 0.01820674 0.0202514  0.01598687]
+    training loss per epoch: [0.19544123 0.03827218 0.02430437 0.0198951  0.02075001 0.01713226]
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 179-180
+.. GENERATED FROM PYTHON SOURCE LINES 186-187
 
 Once a run is finished, its checkpoints can go:
 
-.. GENERATED FROM PYTHON SOURCE LINES 180-183
+.. GENERATED FROM PYTHON SOURCE LINES 187-190
 
 .. code-block:: Python
 
@@ -373,12 +361,12 @@ Once a run is finished, its checkpoints can go:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 184-186
+.. GENERATED FROM PYTHON SOURCE LINES 191-193
 
 Testing and what was saved
 --------------------------
 
-.. GENERATED FROM PYTHON SOURCE LINES 186-190
+.. GENERATED FROM PYTHON SOURCE LINES 193-197
 
 .. code-block:: Python
 
@@ -394,14 +382,13 @@ Testing and what was saved
 
  .. code-block:: none
 
-    Testing:   0%|          | 0/2 [00:00<?, ?it/s]    Testing:  50%|█████     | 1/2 [00:00<00:00,  3.89it/s]    Testing: 100%|██████████| 2/2 [00:00<00:00,  4.09it/s]    Testing: 100%|██████████| 2/2 [00:00<00:00,  4.06it/s]
-    Testing loss: 24.720112085342407 - Testing loss std: 2.043065459977629
-    test PSNR: 24.72 dB
+    Testing loss: 27.32573366165161 - Testing loss std: 3.2164741472208904
+    test PSNR: 27.33 dB
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 191-196
+.. GENERATED FROM PYTHON SOURCE LINES 198-203
 
 The final model and the best model by validation, each as a ``.pt``
 (weights) and a ``.json`` (parameters and records). ``load`` makes the model
@@ -409,7 +396,7 @@ again; the record says how it was trained (the data, the solver and its
 settings, the optimizer, the scheduler, the seed, the losses), enough to
 train the same model again (:doc:`d09_saving_and_records`):
 
-.. GENERATED FROM PYTHON SOURCE LINES 196-209
+.. GENERATED FROM PYTHON SOURCE LINES 203-216
 
 .. code-block:: Python
 
@@ -441,11 +428,11 @@ train the same model again (:doc:`d09_saving_and_records`):
 
     LION.optimizers.SupervisedSolver.SupervisedSolver 0.001
 
-    <matplotlib.legend.Legend object at 0x7f82298aaf60>
+    <matplotlib.legend.Legend object at 0x7fc32c0c7dd0>
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 210-216
+.. GENERATED FROM PYTHON SOURCE LINES 217-223
 
 Reconstructing
 --------------
@@ -454,7 +441,7 @@ solver did (the initial reconstruction, the normalisation), on one sample or
 a batch, without gradients. It is optional too: the model can be called
 directly, as below.
 
-.. GENERATED FROM PYTHON SOURCE LINES 216-235
+.. GENERATED FROM PYTHON SOURCE LINES 223-242
 
 .. code-block:: Python
 
@@ -489,7 +476,7 @@ directly, as below.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 236-251
+.. GENERATED FROM PYTHON SOURCE LINES 243-258
 
 Other supervised models
 -----------------------
@@ -507,7 +494,7 @@ What you lose is what the solver records (which data, how it was trained),
 and so what the later tutorials do with it: training again from the record,
 checking that comparisons are fair, publishing.
 
-.. GENERATED FROM PYTHON SOURCE LINES 251-265
+.. GENERATED FROM PYTHON SOURCE LINES 258-272
 
 .. code-block:: Python
 
@@ -533,7 +520,7 @@ checking that comparisons are fair, publishing.
 
  .. code-block:: none
 
-    one epoch by hand, last loss 0.0232
+    one epoch by hand, last loss 0.0239
 
 
 
@@ -541,7 +528,7 @@ checking that comparisons are fair, publishing.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (2 minutes 33.121 seconds)
+   **Total running time of the script:** (2 minutes 34.901 seconds)
 
 
 .. _sphx_glr_download_tutorials_d05_supervised_training.py:

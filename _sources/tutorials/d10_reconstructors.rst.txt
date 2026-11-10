@@ -41,7 +41,14 @@ Previous: :doc:`d09_saving_and_records`. Next: :doc:`d11_evaluation`.
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``; the PnP
 part downloads the authors' trained DRUNet (130 MB).
 
-.. GENERATED FROM PYTHON SOURCE LINES 33-39
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
+
+.. GENERATED FROM PYTHON SOURCE LINES 40-46
 
 Classical reconstructions
 -------------------------
@@ -50,7 +57,7 @@ parameters): ``fdk``, ``sirt``, ``tv_min`` for CT, and FISTA, conjugate
 gradient and SPGL1 for any operator (``LION.classical_algorithms``).
 Evaluations take such functions as methods too (:doc:`d11_evaluation`).
 
-.. GENERATED FROM PYTHON SOURCE LINES 39-60
+.. GENERATED FROM PYTHON SOURCE LINES 46-67
 
 .. code-block:: Python
 
@@ -79,16 +86,10 @@ Evaluations take such functions as methods too (:doc:`d11_evaluation`).
 
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-      0%|          | 0/100 [00:00<?, ?it/s]     11%|█         | 11/100 [00:00<00:00, 104.10it/s]     22%|██▏       | 22/100 [00:00<00:00, 104.35it/s]     35%|███▌      | 35/100 [00:00<00:00, 115.47it/s]     49%|████▉     | 49/100 [00:00<00:00, 123.34it/s]     63%|██████▎   | 63/100 [00:00<00:00, 127.25it/s]     77%|███████▋  | 77/100 [00:00<00:00, 130.01it/s]     91%|█████████ | 91/100 [00:00<00:00, 131.74it/s]    100%|██████████| 100/100 [00:00<00:00, 126.18it/s]
 
 
 
-
-.. GENERATED FROM PYTHON SOURCE LINES 61-67
+.. GENERATED FROM PYTHON SOURCE LINES 68-74
 
 The forward reconstructor
 -------------------------
@@ -97,7 +98,7 @@ LPD, ...) as its solver did: the initial reconstruction for image models,
 the model's normalisation, without gradients. Here a FBPConvNet trained for
 a moment:
 
-.. GENERATED FROM PYTHON SOURCE LINES 67-89
+.. GENERATED FROM PYTHON SOURCE LINES 74-96
 
 .. code-block:: Python
 
@@ -133,12 +134,11 @@ a moment:
 
     /mhome/damtp/r/ab2860/AItomotools/LION/data_loaders/LIDC_IDRI.py:487: UserWarning: LIDC-IDRI: left out 2 damaged or unusable files (re-run the pre-processing for these patients): ['LIDC-IDRI-0238 (not resampled)', 'LIDC-IDRI-0585 (not resampled)']
       warnings.warn(
-    Training:   0%|          | 0/20 [00:00<?, ?batch/s]    Training:   5%|▌         | 1/20 [00:00<00:09,  2.02batch/s, epoch=1/2, loss=0.2108]    Training:  10%|█         | 2/20 [00:00<00:08,  2.10batch/s, epoch=1/2, loss=0.5903]    Training:  15%|█▌        | 3/20 [00:01<00:08,  2.11batch/s, epoch=1/2, loss=0.4271]    Training:  20%|██        | 4/20 [00:01<00:07,  2.14batch/s, epoch=1/2, loss=0.344]     Training:  25%|██▌       | 5/20 [00:02<00:06,  2.15batch/s, epoch=1/2, loss=0.3171]    Training:  30%|███       | 6/20 [00:02<00:06,  2.16batch/s, epoch=1/2, loss=0.2698]    Training:  35%|███▌      | 7/20 [00:03<00:06,  2.16batch/s, epoch=1/2, loss=0.2366]    Training:  40%|████      | 8/20 [00:03<00:05,  2.17batch/s, epoch=1/2, loss=0.2135]    Training:  45%|████▌     | 9/20 [00:04<00:05,  2.17batch/s, epoch=1/2, loss=0.193]     Training:  50%|█████     | 10/20 [00:04<00:04,  2.18batch/s, epoch=1/2, loss=0.1758]    Training:  55%|█████▌    | 11/20 [00:05<00:04,  2.18batch/s, epoch=2/2, loss=0.01529]    Training:  60%|██████    | 12/20 [00:05<00:03,  2.18batch/s, epoch=2/2, loss=0.01346]    Training:  65%|██████▌   | 13/20 [00:06<00:03,  2.18batch/s, epoch=2/2, loss=0.01462]    Training:  70%|███████   | 14/20 [00:06<00:02,  2.18batch/s, epoch=2/2, loss=0.04121]    Training:  75%|███████▌  | 15/20 [00:06<00:02,  2.18batch/s, epoch=2/2, loss=0.04834]    Training:  80%|████████  | 16/20 [00:07<00:01,  2.18batch/s, epoch=2/2, loss=0.04328]    Training:  85%|████████▌ | 17/20 [00:07<00:01,  2.18batch/s, epoch=2/2, loss=0.0402]     Training:  90%|█████████ | 18/20 [00:08<00:00,  2.18batch/s, epoch=2/2, loss=0.03747]    Training:  95%|█████████▌| 19/20 [00:08<00:00,  2.18batch/s, epoch=2/2, loss=0.03545]    Training: 100%|██████████| 20/20 [00:09<00:00,  2.18batch/s, epoch=2/2, loss=0.03378]    Training: 100%|██████████| 20/20 [00:09<00:00,  2.17batch/s, epoch=2/2, loss=0.03378]
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 90-96
+.. GENERATED FROM PYTHON SOURCE LINES 97-103
 
 Plug-and-Play
 -------------
@@ -147,7 +147,7 @@ FBS). Here the DRUNet its authors trained on natural images in [0, 1], so the
 images are normalised to [0, 1] for it (:doc:`d07_denoisers_and_pnp` trains
 one):
 
-.. GENERATED FROM PYTHON SOURCE LINES 96-109
+.. GENERATED FROM PYTHON SOURCE LINES 103-116
 
 .. code-block:: Python
 
@@ -168,16 +168,10 @@ one):
 
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    ADMM iterations:   0%|          | 0/20 [00:00<?, ?it/s]    ADMM iterations:   5%|▌         | 1/20 [00:00<00:14,  1.28it/s]    ADMM iterations:  10%|█         | 2/20 [00:01<00:14,  1.23it/s]    ADMM iterations:  15%|█▌        | 3/20 [00:02<00:14,  1.21it/s]    ADMM iterations:  20%|██        | 4/20 [00:03<00:13,  1.20it/s]    ADMM iterations:  25%|██▌       | 5/20 [00:04<00:12,  1.20it/s]    ADMM iterations:  30%|███       | 6/20 [00:04<00:11,  1.19it/s]    ADMM iterations:  35%|███▌      | 7/20 [00:05<00:10,  1.19it/s]    ADMM iterations:  40%|████      | 8/20 [00:06<00:10,  1.19it/s]    ADMM iterations:  45%|████▌     | 9/20 [00:07<00:09,  1.19it/s]    ADMM iterations:  50%|█████     | 10/20 [00:08<00:08,  1.19it/s]    ADMM iterations:  55%|█████▌    | 11/20 [00:09<00:07,  1.18it/s]    ADMM iterations:  60%|██████    | 12/20 [00:10<00:06,  1.18it/s]    ADMM iterations:  65%|██████▌   | 13/20 [00:10<00:05,  1.18it/s]    ADMM iterations:  70%|███████   | 14/20 [00:11<00:05,  1.18it/s]    ADMM iterations:  75%|███████▌  | 15/20 [00:12<00:04,  1.18it/s]    ADMM iterations:  80%|████████  | 16/20 [00:13<00:03,  1.18it/s]    ADMM iterations:  85%|████████▌ | 17/20 [00:14<00:02,  1.18it/s]    ADMM iterations:  90%|█████████ | 18/20 [00:15<00:01,  1.18it/s]    ADMM iterations:  95%|█████████▌| 19/20 [00:15<00:00,  1.18it/s]    ADMM iterations: 100%|██████████| 20/20 [00:16<00:00,  1.18it/s]    ADMM iterations: 100%|██████████| 20/20 [00:16<00:00,  1.19it/s]
 
 
 
-
-.. GENERATED FROM PYTHON SOURCE LINES 110-116
+.. GENERATED FROM PYTHON SOURCE LINES 117-123
 
 Learned regularisers
 --------------------
@@ -186,7 +180,7 @@ gradient descent, for a regulariser R: a trained network
 (:doc:`d08_learned_regularisers`) or any function of an image, e.g. a
 smoothed total variation:
 
-.. GENERATED FROM PYTHON SOURCE LINES 116-134
+.. GENERATED FROM PYTHON SOURCE LINES 123-141
 
 .. code-block:: Python
 
@@ -212,16 +206,10 @@ smoothed total variation:
 
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    Learned regulariser reconstruction:   0%|          | 0/50 [00:00<?, ?it/s]    Learned regulariser reconstruction:   2%|▏         | 1/50 [00:01<00:49,  1.02s/it]    Learned regulariser reconstruction:   4%|▍         | 2/50 [00:01<00:26,  1.78it/s]    Learned regulariser reconstruction:  12%|█▏        | 6/50 [00:01<00:06,  6.71it/s]    Learned regulariser reconstruction:  16%|█▌        | 8/50 [00:01<00:04,  8.42it/s]    Learned regulariser reconstruction:  26%|██▌       | 13/50 [00:01<00:02, 15.23it/s]    Learned regulariser reconstruction:  36%|███▌      | 18/50 [00:01<00:01, 21.72it/s]    Learned regulariser reconstruction:  44%|████▍     | 22/50 [00:01<00:01, 24.49it/s]    Learned regulariser reconstruction:  52%|█████▏    | 26/50 [00:01<00:00, 27.73it/s]    Learned regulariser reconstruction:  62%|██████▏   | 31/50 [00:02<00:00, 32.54it/s]    Learned regulariser reconstruction:  70%|███████   | 35/50 [00:02<00:00, 34.03it/s]    Learned regulariser reconstruction:  80%|████████  | 40/50 [00:02<00:00, 36.42it/s]    Learned regulariser reconstruction:  88%|████████▊ | 44/50 [00:02<00:00, 35.84it/s]    Learned regulariser reconstruction:  96%|█████████▌| 48/50 [00:02<00:00, 36.49it/s]    Learned regulariser reconstruction: 100%|██████████| 50/50 [00:02<00:00, 19.65it/s]
 
 
 
-
-.. GENERATED FROM PYTHON SOURCE LINES 135-142
+.. GENERATED FROM PYTHON SOURCE LINES 142-149
 
 .. code-block:: Python
 
@@ -236,7 +224,7 @@ smoothed total variation:
 
 
 .. image-sg:: /tutorials/images/sphx_glr_d10_reconstructors_001.png
-   :alt: FDK, 19.0 dB, SIRT, 31.7 dB, FBPConvNet, 25.1 dB, PnP-ADMM, nan dB, smoothed TV, 19.0 dB
+   :alt: FDK, 19.0 dB, SIRT, 31.7 dB, FBPConvNet, 25.2 dB, PnP-ADMM, 36.3 dB, smoothed TV, 19.0 dB
    :srcset: /tutorials/images/sphx_glr_d10_reconstructors_001.png
    :class: sphx-glr-single-img
 
@@ -244,7 +232,7 @@ smoothed total variation:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 143-155
+.. GENERATED FROM PYTHON SOURCE LINES 150-162
 
 What they share
 ---------------
@@ -259,7 +247,7 @@ Every reconstructor:
 - starts, when it starts from an image, from its parameters'
   ``initial_reconstruction`` (the operator's default, FDK for CT):
 
-.. GENERATED FROM PYTHON SOURCE LINES 155-162
+.. GENERATED FROM PYTHON SOURCE LINES 162-169
 
 .. code-block:: Python
 
@@ -278,14 +266,13 @@ Every reconstructor:
 
  .. code-block:: none
 
-    <function fdk at 0x7f30d0df9580>
+    <function fdk at 0x7fc41f5dc360>
     torch.Size([2, 1, 512, 512])
-      0%|          | 0/20 [00:00<?, ?it/s]     65%|██████▌   | 13/20 [00:00<00:00, 129.69it/s]    100%|██████████| 20/20 [00:00<00:00, 131.04it/s]
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 163-173
+.. GENERATED FROM PYTHON SOURCE LINES 170-180
 
 In a solver's validation
 ------------------------
@@ -298,7 +285,7 @@ being trained into it:
 
    solver.set_validation(validation_loader, 1, PSNR(), reconstructor=pnp)
 
-.. GENERATED FROM PYTHON SOURCE LINES 175-180
+.. GENERATED FROM PYTHON SOURCE LINES 182-187
 
 Saving and loading
 ------------------
@@ -306,7 +293,7 @@ A reconstructor saves its settings and its model by the file it was loaded
 from (the weights stay there); ``load`` makes both again. ``instantiate``
 makes it without its model, to give it another:
 
-.. GENERATED FROM PYTHON SOURCE LINES 180-191
+.. GENERATED FROM PYTHON SOURCE LINES 187-198
 
 .. code-block:: Python
 
@@ -336,7 +323,7 @@ makes it without its model, to give it another:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 192-197
+.. GENERATED FROM PYTHON SOURCE LINES 199-204
 
 Your own
 --------
@@ -347,7 +334,7 @@ tutorial :doc:`d13_extending_lion` writes one.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 45.224 seconds)
+   **Total running time of the script:** (1 minutes 55.403 seconds)
 
 
 .. _sphx_glr_download_tutorials_d10_reconstructors.py:

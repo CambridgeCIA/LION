@@ -431,6 +431,13 @@ data, the solver. That is what lets a training be repeated, a comparison be
 checked and a model be published.</p>
 <p>Previous: <a class="reference internal" href="d08_learned_regularisers.html"><span class="doc">Learned regularisers</span></a>. Next: <a class="reference internal" href="d10_reconstructors.html"><span class="doc">Reconstructors</span></a>.</p>
 <p>Needs a GPU and the processed LIDC-IDRI data in <code class="docutils literal notranslate"><span class="pre">LION_DATA_PATH</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The models trained in these tutorials are toys: a few epochs on a few
+slices, to show how LION is used, so their results are poor (often worse
+than FDK). Trained as their papers train them (many epochs, all the data),
+they do what the papers report.</p>
+</div>
 <section id="a-model-to-look-at">
 <h2>A model to look at<a class="headerlink" href="#a-model-to-look-at" title="Link to this heading">¶</a></h2>
 <p>A short training, as in <a class="reference internal" href="d05_supervised_training.html"><span class="doc">Supervised training</span></a>:</p>
@@ -463,17 +470,6 @@ checked and a model be published.</p>
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/mhome/damtp/r/ab2860/AItomotools/LION/data_loaders/LIDC_IDRI.py:487: UserWarning: LIDC-IDRI: left out 2 damaged or unusable files (re-run the pre-processing for these patients): ['LIDC-IDRI-0238 (not resampled)', 'LIDC-IDRI-0585 (not resampled)']
   warnings.warn(
-
-Training:   0%|          | 0/8 [00:00&lt;?, ?batch/s]
-Training:  12%|█▎        | 1/8 [00:00&lt;00:03,  1.97batch/s, epoch=1/2, loss=0.5463]
-Training:  25%|██▌       | 2/8 [00:00&lt;00:02,  2.07batch/s, epoch=1/2, loss=0.8568]
-Training:  38%|███▊      | 3/8 [00:01&lt;00:02,  2.11batch/s, epoch=1/2, loss=0.6463]
-Training:  50%|█████     | 4/8 [00:01&lt;00:01,  2.14batch/s, epoch=1/2, loss=0.5324]
-Training:  62%|██████▎   | 5/8 [00:02&lt;00:01,  2.16batch/s, epoch=2/2, loss=0.1511]
-Training:  75%|███████▌  | 6/8 [00:02&lt;00:00,  2.16batch/s, epoch=2/2, loss=0.1766]
-Training:  88%|████████▊ | 7/8 [00:03&lt;00:00,  2.17batch/s, epoch=2/2, loss=0.1384]
-Training: 100%|██████████| 8/8 [00:03&lt;00:00,  2.17batch/s, epoch=2/2, loss=0.1145]
-Training: 100%|██████████| 8/8 [00:03&lt;00:00,  2.15batch/s, epoch=2/2, loss=0.1145]
 ['FBPConvNet.json', 'FBPConvNet.pt']
 </pre></div>
 </div>
@@ -544,7 +540,7 @@ batch_size : 4
 drop_last : False
 shuffle : True
 asked : 2
-done : 2 [0.5324096977710724, 0.11447532754391432]
+done : 2 [0.5324569381773472, 0.11429338902235031]
 from : random_state
 </pre></div>
 </div>
@@ -555,9 +551,9 @@ Nothing personal.</p>
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>lion_environment_record : 1
 lion : version : 0.2.0
-commit : 0562f72cda23d27e3c7c8e4044e58af2b11a4bcf
-uncommitted : ['LION/metrics/metrics.py']
-diff_sha256 : d5fcf5279b0282b8ea33c3123df2d53d15adfb6e8f17ddf468ac9cc8e58a9df3
+commit : 21626611842a7386d8e1c45b0186046dd672c1f1
+uncommitted : []
+diff_sha256 : None
 pushed : True
 python : 3.12.15
 packages : torch : 2.13.0
@@ -619,17 +615,7 @@ CPU; on a GPU, to about 1e-3, unless made with <code class="docutils literal not
 </span><span class="p">)</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">largest difference in the weights: </span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="float"><span class="n">difference</span></a><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Training:   0%|          | 0/8 [00:00&lt;?, ?batch/s]
-Training:  12%|█▎        | 1/8 [00:00&lt;00:03,  2.02batch/s, epoch=1/2, loss=0.5463]
-Training:  25%|██▌       | 2/8 [00:00&lt;00:02,  2.08batch/s, epoch=1/2, loss=0.8568]
-Training:  38%|███▊      | 3/8 [00:01&lt;00:02,  2.12batch/s, epoch=1/2, loss=0.6463]
-Training:  50%|█████     | 4/8 [00:01&lt;00:01,  2.14batch/s, epoch=1/2, loss=0.5324]
-Training:  62%|██████▎   | 5/8 [00:02&lt;00:01,  2.15batch/s, epoch=2/2, loss=0.1506]
-Training:  75%|███████▌  | 6/8 [00:02&lt;00:00,  2.16batch/s, epoch=2/2, loss=0.1761]
-Training:  88%|████████▊ | 7/8 [00:03&lt;00:00,  2.17batch/s, epoch=2/2, loss=0.138]
-Training: 100%|██████████| 8/8 [00:03&lt;00:00,  2.17batch/s, epoch=2/2, loss=0.1142]
-Training: 100%|██████████| 8/8 [00:03&lt;00:00,  2.15batch/s, epoch=2/2, loss=0.1142]
-largest difference in the weights: 5.21e+00
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>largest difference in the weights: 6.62e+00
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">LION.package.train_again</span></code> does all of this in one call (<a class="reference internal" href="d12_publishing.html"><span class="doc">Publishing and reproducing</span></a>).</p>
@@ -668,15 +654,8 @@ original’s records.</p>
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/mhome/damtp/r/ab2860/AItomotools/LION/data_loaders/LIDC_IDRI.py:487: UserWarning: LIDC-IDRI: left out 2 damaged or unusable files (re-run the pre-processing for these patients): ['LIDC-IDRI-0238 (not resampled)', 'LIDC-IDRI-0585 (not resampled)']
   warnings.warn(
-
-Training:   0%|          | 0/4 [00:00&lt;?, ?batch/s]
-Training:  25%|██▌       | 1/4 [00:00&lt;00:01,  2.01batch/s, epoch=1/1, loss=0.2706]
-Training:  50%|█████     | 2/4 [00:00&lt;00:00,  2.10batch/s, epoch=1/1, loss=0.2563]
-Training:  75%|███████▌  | 3/4 [00:01&lt;00:00,  2.13batch/s, epoch=1/1, loss=0.405]
-Training: 100%|██████████| 4/4 [00:01&lt;00:00,  2.13batch/s, epoch=1/1, loss=0.4882]
-Training: 100%|██████████| 4/4 [00:01&lt;00:00,  2.12batch/s, epoch=1/1, loss=0.4882]
-file : {'_target_': 'pathlib.Path', '_args_': ['/tmp/tmp4jfrm5m2/FBPConvNet']}
-weights_sha256 : 60044da4309513aa683da054858cb5d4653a2cb20bd87c1f61733eb41fdce302
+file : {'_target_': 'pathlib.Path', '_args_': ['/tmp/tmpkcks1_x0/FBPConvNet']}
+weights_sha256 : ec8d43ba59a8a3e4d932aca2bf5facd0a46d78e13b33c2d0d903eb6296ab1db8
 True
 </pre></div>
 </div>
@@ -706,7 +685,7 @@ model defined in your package:</p>
 </span></pre></div></div>
 <p>Loading a file saved with other LION code (another commit, or uncommitted
 changes) warns: the record says which.</p>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 17.630 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 12.229 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d09-saving-and-records-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/408bb97a5afde9fb70d912633135ad0f/d09_saving_and_records.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d09_saving_and_records.ipynb</span></code></a></p>

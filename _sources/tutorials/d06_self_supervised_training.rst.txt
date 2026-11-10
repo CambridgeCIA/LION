@@ -34,7 +34,14 @@ Previous: :doc:`d05_supervised_training`. Next: :doc:`d07_denoisers_and_pnp`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
 
-.. GENERATED FROM PYTHON SOURCE LINES 26-32
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
+
+.. GENERATED FROM PYTHON SOURCE LINES 33-39
 
 Noise2Inverse
 -------------
@@ -43,7 +50,7 @@ angles. Each set's noise is independent of the others', so a network trained
 to map the reconstruction of some sets to that of the others learns to
 remove the noise.
 
-.. GENERATED FROM PYTHON SOURCE LINES 32-51
+.. GENERATED FROM PYTHON SOURCE LINES 39-58
 
 .. code-block:: Python
 
@@ -80,14 +87,14 @@ remove the noise.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 52-56
+.. GENERATED FROM PYTHON SOURCE LINES 59-63
 
 The solver's parameters say how to split: into ``sino_split_count`` sets of
 every k-th angle, and which sets are the targets (``cali_J``). The paper's
 strategies are X:1 (each set in turn the target, the others the input) and
 1:X (the reverse).
 
-.. GENERATED FROM PYTHON SOURCE LINES 56-63
+.. GENERATED FROM PYTHON SOURCE LINES 63-70
 
 .. code-block:: Python
 
@@ -114,12 +121,12 @@ strategies are X:1 (each set in turn the target, the others the input) and
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 64-66
+.. GENERATED FROM PYTHON SOURCE LINES 71-73
 
 The model takes images (the reconstructions of the sets), so it has no
 operator: the solver needs the operator's parameters, to split it.
 
-.. GENERATED FROM PYTHON SOURCE LINES 66-77
+.. GENERATED FROM PYTHON SOURCE LINES 73-84
 
 .. code-block:: Python
 
@@ -141,12 +148,12 @@ operator: the solver needs the operator's parameters, to split it.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 78-80
+.. GENERATED FROM PYTHON SOURCE LINES 85-87
 
 Validation can still use clean images, if there are some, to measure how well
 it reconstructs (never to train): the solver validates its reconstruction.
 
-.. GENERATED FROM PYTHON SOURCE LINES 80-87
+.. GENERATED FROM PYTHON SOURCE LINES 87-94
 
 .. code-block:: Python
 
@@ -165,18 +172,17 @@ it reconstructs (never to train): the solver validates its reconstruction.
 
  .. code-block:: none
 
-    Training:   0%|          | 0/60 [00:00<?, ?batch/s]    Training:   2%|▏         | 1/60 [00:01<01:32,  1.57s/batch, epoch=1/3, loss=1.233]    Training:   3%|▎         | 2/60 [00:01<00:48,  1.19batch/s, epoch=1/3, loss=1.014]    Training:   5%|▌         | 3/60 [00:02<00:34,  1.64batch/s, epoch=1/3, loss=0.995]    Training:   7%|▋         | 4/60 [00:02<00:27,  2.01batch/s, epoch=1/3, loss=1.133]    Training:   8%|▊         | 5/60 [00:02<00:24,  2.29batch/s, epoch=1/3, loss=1.045]    Training:  10%|█         | 6/60 [00:03<00:21,  2.50batch/s, epoch=1/3, loss=0.9721]    Training:  12%|█▏        | 7/60 [00:03<00:19,  2.66batch/s, epoch=1/3, loss=0.9437]    Training:  13%|█▎        | 8/60 [00:03<00:18,  2.77batch/s, epoch=1/3, loss=0.8784]    Training:  15%|█▌        | 9/60 [00:04<00:17,  2.85batch/s, epoch=1/3, loss=1.081]     Training:  17%|█▋        | 10/60 [00:04<00:17,  2.88batch/s, epoch=1/3, loss=1.025]    Training:  18%|█▊        | 11/60 [00:04<00:16,  2.93batch/s, epoch=1/3, loss=0.9457]    Training:  20%|██        | 12/60 [00:05<00:16,  2.96batch/s, epoch=1/3, loss=0.886]     Training:  22%|██▏       | 13/60 [00:05<00:15,  2.99batch/s, epoch=1/3, loss=0.896]    Training:  23%|██▎       | 14/60 [00:05<00:15,  3.01batch/s, epoch=1/3, loss=0.8477]    Training:  25%|██▌       | 15/60 [00:06<00:14,  3.02batch/s, epoch=1/3, loss=0.8042]    Training:  27%|██▋       | 16/60 [00:06<00:14,  3.03batch/s, epoch=1/3, loss=0.8327]    Training:  28%|██▊       | 17/60 [00:06<00:14,  3.04batch/s, epoch=1/3, loss=0.7893]    Training:  30%|███       | 18/60 [00:07<00:14,  3.00batch/s, epoch=1/3, loss=0.7575]    Training:  32%|███▏      | 19/60 [00:07<00:13,  3.01batch/s, epoch=1/3, loss=0.7229]    Training:  33%|███▎      | 20/60 [00:07<00:13,  3.02batch/s, epoch=1/3, loss=0.7123]    Training:  35%|███▌      | 21/60 [00:09<00:26,  1.46batch/s, epoch=2/3, loss=0.1424, validation=21.66]    Training:  37%|███▋      | 22/60 [00:09<00:21,  1.73batch/s, epoch=2/3, loss=0.2067, validation=21.66]    Training:  38%|███▊      | 23/60 [00:09<00:18,  1.99batch/s, epoch=2/3, loss=0.1848, validation=21.66]    Training:  40%|████      | 24/60 [00:10<00:16,  2.22batch/s, epoch=2/3, loss=0.1597, validation=21.66]    Training:  42%|████▏     | 25/60 [00:10<00:14,  2.42batch/s, epoch=2/3, loss=0.2282, validation=21.66]    Training:  43%|████▎     | 26/60 [00:10<00:13,  2.58batch/s, epoch=2/3, loss=0.2058, validation=21.66]    Training:  45%|████▌     | 27/60 [00:11<00:12,  2.71batch/s, epoch=2/3, loss=0.2005, validation=21.66]    Training:  47%|████▋     | 28/60 [00:11<00:11,  2.80batch/s, epoch=2/3, loss=0.4542, validation=21.66]    Training:  48%|████▊     | 29/60 [00:11<00:10,  2.88batch/s, epoch=2/3, loss=0.5304, validation=21.66]    Training:  50%|█████     | 30/60 [00:12<00:10,  2.93batch/s, epoch=2/3, loss=0.5458, validation=21.66]    Training:  52%|█████▏    | 31/60 [00:12<00:09,  2.96batch/s, epoch=2/3, loss=0.5122, validation=21.66]    Training:  53%|█████▎    | 32/60 [00:12<00:09,  2.99batch/s, epoch=2/3, loss=0.4787, validation=21.66]    Training:  55%|█████▌    | 33/60 [00:13<00:08,  3.01batch/s, epoch=2/3, loss=0.4775, validation=21.66]    Training:  57%|█████▋    | 34/60 [00:13<00:08,  2.99batch/s, epoch=2/3, loss=0.4682, validation=21.66]    Training:  58%|█████▊    | 35/60 [00:13<00:08,  3.01batch/s, epoch=2/3, loss=0.4502, validation=21.66]    Training:  60%|██████    | 36/60 [00:14<00:07,  3.02batch/s, epoch=2/3, loss=0.4768, validation=21.66]    Training:  62%|██████▏   | 37/60 [00:14<00:07,  3.03batch/s, epoch=2/3, loss=0.4949, validation=21.66]    Training:  63%|██████▎   | 38/60 [00:14<00:07,  3.04batch/s, epoch=2/3, loss=0.4803, validation=21.66]    Training:  65%|██████▌   | 39/60 [00:15<00:06,  3.05batch/s, epoch=2/3, loss=0.4751, validation=21.66]    Training:  67%|██████▋   | 40/60 [00:15<00:06,  3.05batch/s, epoch=2/3, loss=0.4603, validation=21.66]    Training:  68%|██████▊   | 41/60 [00:16<00:09,  1.95batch/s, epoch=3/3, loss=0.3991, validation=18.18]    Training:  70%|███████   | 42/60 [00:16<00:08,  2.19batch/s, epoch=3/3, loss=0.2533, validation=18.18]    Training:  72%|███████▏  | 43/60 [00:17<00:07,  2.39batch/s, epoch=3/3, loss=0.2327, validation=18.18]    Training:  73%|███████▎  | 44/60 [00:17<00:06,  2.56batch/s, epoch=3/3, loss=0.3717, validation=18.18]    Training:  75%|███████▌  | 45/60 [00:17<00:05,  2.69batch/s, epoch=3/3, loss=0.3315, validation=18.18]    Training:  77%|███████▋  | 46/60 [00:18<00:05,  2.79batch/s, epoch=3/3, loss=0.2933, validation=18.18]    Training:  78%|███████▊  | 47/60 [00:18<00:04,  2.86batch/s, epoch=3/3, loss=0.3646, validation=18.18]    Training:  80%|████████  | 48/60 [00:18<00:04,  2.92batch/s, epoch=3/3, loss=0.3468, validation=18.18]    Training:  82%|████████▏ | 49/60 [00:19<00:03,  2.96batch/s, epoch=3/3, loss=0.3491, validation=18.18]    Training:  83%|████████▎ | 50/60 [00:19<00:03,  2.98batch/s, epoch=3/3, loss=0.335, validation=18.18]     Training:  85%|████████▌ | 51/60 [00:19<00:02,  3.00batch/s, epoch=3/3, loss=0.3276, validation=18.18]    Training:  87%|████████▋ | 52/60 [00:20<00:02,  3.02batch/s, epoch=3/3, loss=0.3334, validation=18.18]    Training:  88%|████████▊ | 53/60 [00:20<00:02,  3.03batch/s, epoch=3/3, loss=0.4915, validation=18.18]    Training:  90%|█████████ | 54/60 [00:20<00:01,  3.03batch/s, epoch=3/3, loss=0.465, validation=18.18]     Training:  92%|█████████▏| 55/60 [00:21<00:01,  3.04batch/s, epoch=3/3, loss=0.4466, validation=18.18]    Training:  93%|█████████▎| 56/60 [00:21<00:01,  3.04batch/s, epoch=3/3, loss=0.4274, validation=18.18]    Training:  95%|█████████▌| 57/60 [00:21<00:00,  3.05batch/s, epoch=3/3, loss=0.4266, validation=18.18]    Training:  97%|█████████▋| 58/60 [00:22<00:00,  3.05batch/s, epoch=3/3, loss=0.4509, validation=18.18]    Training:  98%|█████████▊| 59/60 [00:22<00:00,  3.05batch/s, epoch=3/3, loss=0.4618, validation=18.18]    Training: 100%|██████████| 60/60 [00:22<00:00,  3.05batch/s, epoch=3/3, loss=0.4478, validation=18.18]    Training: 100%|██████████| 60/60 [00:23<00:00,  2.57batch/s, epoch=3/3, loss=0.4478, validation=18.18]
-    validation PSNR: [21.65939617 18.17568183 18.3539536 ]
+    validation PSNR: [21.41966629 19.15218019 19.05964851]
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 88-90
+.. GENERATED FROM PYTHON SOURCE LINES 95-97
 
 A Noise2Inverse reconstruction is the mean of the model's outputs over the
 splits: ``solver.reconstruct``, not the model alone.
 
-.. GENERATED FROM PYTHON SOURCE LINES 90-106
+.. GENERATED FROM PYTHON SOURCE LINES 97-113
 
 .. code-block:: Python
 
@@ -208,14 +214,14 @@ splits: ``solver.reconstruct``, not the model alone.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 107-111
+.. GENERATED FROM PYTHON SOURCE LINES 114-118
 
 The other self-supervised solvers
 ---------------------------------
 Each is used the same way; only its parameters differ. Each prints what it
 can be set to (and its paper's values):
 
-.. GENERATED FROM PYTHON SOURCE LINES 111-128
+.. GENERATED FROM PYTHON SOURCE LINES 118-135
 
 .. code-block:: Python
 
@@ -256,7 +262,7 @@ can be set to (and its paper's values):
     grid_size : 4
     recon_fn : default
     EquivariantSolver
-    transformation_group : <LION.optimizers.EquivariantSolver.RotationGroup object at 0x7f2fe00d4590>
+    transformation_group : <LION.optimizers.EquivariantSolver.RotationGroup object at 0x7fc32ce7d130>
     equivariance_strength : 100
     Equivariance2InverseSolver
     equivariance_strength : 1.0
@@ -267,7 +273,7 @@ can be set to (and its paper's values):
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 129-144
+.. GENERATED FROM PYTHON SOURCE LINES 136-151
 
 E.g. equivariant imaging (Chen et al., 2021) learns from data consistency
 and from the reconstruction being equivariant to rotations:
@@ -288,7 +294,7 @@ warn if it isn't the MSE).
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 14.855 seconds)
+   **Total running time of the script:** (1 minutes 33.153 seconds)
 
 
 .. _sphx_glr_download_tutorials_d06_self_supervised_training.py:

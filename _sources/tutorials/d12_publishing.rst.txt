@@ -31,14 +31,21 @@ Previous: :doc:`d11_evaluation`. Next: :doc:`d13_extending_lion`.
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``. Publishing
 also needs LION's code committed and pushed (it records the commit).
 
-.. GENERATED FROM PYTHON SOURCE LINES 23-27
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
+
+.. GENERATED FROM PYTHON SOURCE LINES 30-34
 
 A model to publish
 ------------------
 Trained by a LION solver on a LION experiment, so that everything about it is
 recorded:
 
-.. GENERATED FROM PYTHON SOURCE LINES 27-52
+.. GENERATED FROM PYTHON SOURCE LINES 34-59
 
 .. code-block:: Python
 
@@ -77,12 +84,11 @@ recorded:
 
     /mhome/damtp/r/ab2860/AItomotools/LION/data_loaders/LIDC_IDRI.py:487: UserWarning: LIDC-IDRI: left out 2 damaged or unusable files (re-run the pre-processing for these patients): ['LIDC-IDRI-0238 (not resampled)', 'LIDC-IDRI-0585 (not resampled)']
       warnings.warn(
-    Training:   0%|          | 0/20 [00:00<?, ?batch/s]    Training:   5%|▌         | 1/20 [00:03<01:08,  3.58s/batch, epoch=1/2, loss=0.2221]    Training:  10%|█         | 2/20 [00:04<00:36,  2.01s/batch, epoch=1/2, loss=0.6088]    Training:  15%|█▌        | 3/20 [00:05<00:25,  1.51s/batch, epoch=1/2, loss=0.4407]    Training:  20%|██        | 4/20 [00:06<00:20,  1.27s/batch, epoch=1/2, loss=0.3537]    Training:  25%|██▌       | 5/20 [00:07<00:17,  1.14s/batch, epoch=1/2, loss=0.3195]    Training:  30%|███       | 6/20 [00:08<00:14,  1.07s/batch, epoch=1/2, loss=0.2722]    Training:  35%|███▌      | 7/20 [00:09<00:13,  1.02s/batch, epoch=1/2, loss=0.2393]    Training:  40%|████      | 8/20 [00:09<00:11,  1.02batch/s, epoch=1/2, loss=0.2159]    Training:  45%|████▌     | 9/20 [00:10<00:10,  1.04batch/s, epoch=1/2, loss=0.1951]    Training:  50%|█████     | 10/20 [00:11<00:09,  1.06batch/s, epoch=1/2, loss=0.1777]    Training:  55%|█████▌    | 11/20 [00:12<00:08,  1.07batch/s, epoch=2/2, loss=0.01919]    Training:  60%|██████    | 12/20 [00:13<00:07,  1.07batch/s, epoch=2/2, loss=0.01705]    Training:  65%|██████▌   | 13/20 [00:14<00:06,  1.08batch/s, epoch=2/2, loss=0.01647]    Training:  70%|███████   | 14/20 [00:15<00:05,  1.08batch/s, epoch=2/2, loss=0.04594]    Training:  75%|███████▌  | 15/20 [00:16<00:04,  1.09batch/s, epoch=2/2, loss=0.0532]     Training:  80%|████████  | 16/20 [00:17<00:03,  1.09batch/s, epoch=2/2, loss=0.04781]    Training:  85%|████████▌ | 17/20 [00:18<00:02,  1.09batch/s, epoch=2/2, loss=0.04453]    Training:  90%|█████████ | 18/20 [00:19<00:01,  1.09batch/s, epoch=2/2, loss=0.04147]    Training:  95%|█████████▌| 19/20 [00:20<00:00,  1.09batch/s, epoch=2/2, loss=0.03899]    Training: 100%|██████████| 20/20 [00:20<00:00,  1.09batch/s, epoch=2/2, loss=0.03736]    Training: 100%|██████████| 20/20 [00:20<00:00,  1.05s/batch, epoch=2/2, loss=0.03736]
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 53-58
+.. GENERATED FROM PYTHON SOURCE LINES 60-65
 
 Publishing
 ----------
@@ -90,7 +96,7 @@ Publishing
 run on the model and its test record included. The folder must be new (or
 empty).
 
-.. GENERATED FROM PYTHON SOURCE LINES 58-68
+.. GENERATED FROM PYTHON SOURCE LINES 65-75
 
 .. code-block:: Python
 
@@ -112,20 +118,19 @@ empty).
 
  .. code-block:: none
 
-    FBPConvNet:   0%|          | 0/10 [00:00<?, ?sample/s]    FBPConvNet:  20%|██        | 2/10 [00:00<00:00,  9.17sample/s]    FBPConvNet:  30%|███       | 3/10 [00:00<00:00,  8.11sample/s]    FBPConvNet:  40%|████      | 4/10 [00:00<00:00,  7.49sample/s]    FBPConvNet:  50%|█████     | 5/10 [00:00<00:00,  7.28sample/s]    FBPConvNet:  60%|██████    | 6/10 [00:00<00:00,  7.07sample/s]    FBPConvNet:  70%|███████   | 7/10 [00:00<00:00,  7.02sample/s]    FBPConvNet:  80%|████████  | 8/10 [00:01<00:00,  6.90sample/s]    FBPConvNet:  90%|█████████ | 9/10 [00:01<00:00,  6.90sample/s]    FBPConvNet: 100%|██████████| 10/10 [00:01<00:00,  6.88sample/s]    FBPConvNet: 100%|██████████| 10/10 [00:01<00:00,  6.56sample/s]
     ['README.md', 'data', 'environment.txt', 'experiment.json', 'model.json', 'model.pt', 'package.json', 'solver.json', 'test.json']
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 69-73
+.. GENERATED FROM PYTHON SOURCE LINES 76-80
 
 The package holds the model file, the experiment, which samples it was
 trained and validated on, the training record, the test record, the
 environment, every citation, and a model card (``README.md``) with the code
 to use and train it again:
 
-.. GENERATED FROM PYTHON SOURCE LINES 73-76
+.. GENERATED FROM PYTHON SOURCE LINES 80-83
 
 .. code-block:: Python
 
@@ -142,7 +147,7 @@ to use and train it again:
 
     # FBPConvNet trained on LIDC-IDRI: Low dose full angular sampling experiment
 
-    Published on 2026-11-10 with LION 0.2.0 (commit 5c02b90d17). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
+    Published on 2026-11-10 with LION 0.2.0 (commit 2162661184). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
 
     ## The model
 
@@ -160,9 +165,9 @@ to use and train it again:
 
     - Solver: `LION.optimizers.SupervisedSolver.SupervisedSolver`, loss `MSELoss`; optimizer `Adam` (learning rate 0.001).
     - Data: the train data, 40 samples from 8 groups; batch size 4, shuffled.
-    - 2 epochs of 2; at the end, training loss 0.03736.
+    - 2 epochs of 2; at the end, training loss 0.03577.
     - Seed 0; initial weights made again from the random state saved with the model.
-    - Trained with LION 0.2.0 (commit 5c02b90d17), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
+    - Trained with LION 0.2.0 (commit 2162661184), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
 
     ## Test
 
@@ -170,7 +175,7 @@ to use and train it again:
 
     | Method | PSNR | SSIM | HaarPSI |
     |---|---|---|---|
-    | FBPConvNet | 24.14 ± 5.40 | 0.3143 ± 0.1837 | 0.4605 ± 0.2204 |
+    | FBPConvNet | -0.9934 ± 5.2138 | 0.0463 ± 0.0220 | 0.0618 ± 0.0306 |
 
     ## Using it
 
@@ -280,14 +285,14 @@ to use and train it again:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 77-81
+.. GENERATED FROM PYTHON SOURCE LINES 84-88
 
 It refuses what couldn't be reproduced from it, saying why: LION code with
 uncommitted or unpushed changes, a test on the training data, code outside
 LION it can't name (e.g. a model class defined in a script), data that
 aren't a LION dataset.
 
-.. GENERATED FROM PYTHON SOURCE LINES 83-88
+.. GENERATED FROM PYTHON SOURCE LINES 90-95
 
 Loading a package
 -----------------
@@ -295,7 +300,7 @@ Loading a package
 experiment, the data, the solver, the optimizer, the training), without
 making anything, so they can be read or changed first:
 
-.. GENERATED FROM PYTHON SOURCE LINES 88-94
+.. GENERATED FROM PYTHON SOURCE LINES 95-101
 
 .. code-block:: Python
 
@@ -328,7 +333,7 @@ making anything, so they can be read or changed first:
     Image size = [  0.9765625 500.        500.       ] mm
     Number of angles = (360,)
     model_parameters : model_input_type : ModelInputType.SINOGRAM
-    initial_reconstruction : <function fdk at 0x7f95aee1d4e0>
+    initial_reconstruction : <function fdk at 0x7fc41f5dc360>
     down_1_channels : [1, 64, 64, 64]
     down_2_channels : [64, 128, 128]
     down_3_channels : [128, 256, 256]
@@ -357,13 +362,13 @@ making anything, so they can be read or changed first:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 95-98
+.. GENERATED FROM PYTHON SOURCE LINES 102-105
 
 ``build`` makes the pieces: the trained model, the experiment, the training
 and validation data, the solver, the evaluation (``load_and_build`` does
 both):
 
-.. GENERATED FROM PYTHON SOURCE LINES 98-102
+.. GENERATED FROM PYTHON SOURCE LINES 105-109
 
 .. code-block:: Python
 
@@ -386,11 +391,11 @@ both):
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 103-104
+.. GENERATED FROM PYTHON SOURCE LINES 110-111
 
 The published model reconstructs like any other:
 
-.. GENERATED FROM PYTHON SOURCE LINES 104-112
+.. GENERATED FROM PYTHON SOURCE LINES 111-119
 
 .. code-block:: Python
 
@@ -409,7 +414,7 @@ The published model reconstructs like any other:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 113-122
+.. GENERATED FROM PYTHON SOURCE LINES 120-129
 
 Training again
 --------------
@@ -421,7 +426,7 @@ Changing a recorded argument first trains a variant: anything not changed
 stays as recorded. E.g. another activation (a new model, new random
 weights):
 
-.. GENERATED FROM PYTHON SOURCE LINES 122-126
+.. GENERATED FROM PYTHON SOURCE LINES 129-133
 
 .. code-block:: Python
 
@@ -437,7 +442,6 @@ weights):
 
  .. code-block:: none
 
-    Training:   0%|          | 0/20 [00:00<?, ?batch/s]    Training:   5%|▌         | 1/20 [00:00<00:17,  1.09batch/s, epoch=1/2, loss=0.2411]    Training:  10%|█         | 2/20 [00:01<00:16,  1.09batch/s, epoch=1/2, loss=0.7215]    Training:  15%|█▌        | 3/20 [00:02<00:15,  1.09batch/s, epoch=1/2, loss=0.5359]    Training:  20%|██        | 4/20 [00:03<00:14,  1.09batch/s, epoch=1/2, loss=0.4206]    Training:  25%|██▌       | 5/20 [00:04<00:13,  1.09batch/s, epoch=1/2, loss=0.3741]    Training:  30%|███       | 6/20 [00:05<00:12,  1.09batch/s, epoch=1/2, loss=0.3199]    Training:  35%|███▌      | 7/20 [00:06<00:11,  1.09batch/s, epoch=1/2, loss=0.2811]    Training:  40%|████      | 8/20 [00:07<00:11,  1.09batch/s, epoch=1/2, loss=0.2524]    Training:  45%|████▌     | 9/20 [00:08<00:10,  1.09batch/s, epoch=1/2, loss=0.2282]    Training:  50%|█████     | 10/20 [00:09<00:09,  1.09batch/s, epoch=1/2, loss=0.2081]    Training:  55%|█████▌    | 11/20 [00:10<00:08,  1.09batch/s, epoch=2/2, loss=0.02131]    Training:  60%|██████    | 12/20 [00:11<00:07,  1.09batch/s, epoch=2/2, loss=0.0183]     Training:  65%|██████▌   | 13/20 [00:11<00:06,  1.09batch/s, epoch=2/2, loss=0.01961]    Training:  70%|███████   | 14/20 [00:12<00:05,  1.09batch/s, epoch=2/2, loss=0.04821]    Training:  75%|███████▌  | 15/20 [00:13<00:04,  1.09batch/s, epoch=2/2, loss=0.0551]     Training:  80%|████████  | 16/20 [00:14<00:03,  1.09batch/s, epoch=2/2, loss=0.04937]    Training:  85%|████████▌ | 17/20 [00:15<00:02,  1.09batch/s, epoch=2/2, loss=0.04594]    Training:  90%|█████████ | 18/20 [00:16<00:01,  1.09batch/s, epoch=2/2, loss=0.04305]    Training:  95%|█████████▌| 19/20 [00:17<00:00,  1.09batch/s, epoch=2/2, loss=0.04063]    Training: 100%|██████████| 20/20 [00:18<00:00,  1.09batch/s, epoch=2/2, loss=0.0383]     Training: 100%|██████████| 20/20 [00:18<00:00,  1.09batch/s, epoch=2/2, loss=0.0383]
     FBPConvNet
 
 
@@ -446,7 +450,7 @@ weights):
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (3 minutes 8.039 seconds)
+   **Total running time of the script:** (3 minutes 3.444 seconds)
 
 
 .. _sphx_glr_download_tutorials_d12_publishing.py:

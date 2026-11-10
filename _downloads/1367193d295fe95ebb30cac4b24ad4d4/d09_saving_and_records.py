@@ -18,6 +18,13 @@ checked and a model be published.
 Previous: :doc:`d08_learned_regularisers`. Next: :doc:`d10_reconstructors`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
+
+.. note::
+
+   The models trained in these tutorials are toys: a few epochs on a few
+   slices, to show how LION is used, so their results are poor (often worse
+   than FDK). Trained as their papers train them (many epochs, all the data),
+   they do what the papers report.
 """
 
 # %%

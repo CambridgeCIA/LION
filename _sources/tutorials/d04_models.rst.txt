@@ -31,7 +31,12 @@ Previous: :doc:`d03_data`. Next: :doc:`d05_supervised_training`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
 
-.. GENERATED FROM PYTHON SOURCE LINES 23-38
+.. note::
+
+   The models here are untrained, so their outputs are noise: training is the
+   next tutorials'.
+
+.. GENERATED FROM PYTHON SOURCE LINES 28-43
 
 The kinds of models
 -------------------
@@ -49,7 +54,7 @@ The kinds of models
 
 Here, a sample of LION's low-dose experiment to run them on:
 
-.. GENERATED FROM PYTHON SOURCE LINES 38-50
+.. GENERATED FROM PYTHON SOURCE LINES 43-55
 
 .. code-block:: Python
 
@@ -72,7 +77,7 @@ Here, a sample of LION's low-dose experiment to run them on:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 51-56
+.. GENERATED FROM PYTHON SOURCE LINES 56-61
 
 Models with an operator
 -----------------------
@@ -80,7 +85,7 @@ A model that uses the operator takes its parameters first, then its own
 (``default_parameters()`` if not given). LPD takes the measurements and
 projects and backprojects through the operator at each iteration:
 
-.. GENERATED FROM PYTHON SOURCE LINES 56-65
+.. GENERATED FROM PYTHON SOURCE LINES 61-70
 
 .. code-block:: Python
 
@@ -107,12 +112,12 @@ projects and backprojects through the operator at each iteration:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 66-68
+.. GENERATED FROM PYTHON SOURCE LINES 71-73
 
 Where it starts is its initial reconstruction: the operator's default (FDK
 for CT) unless set otherwise, e.g. to SIRT:
 
-.. GENERATED FROM PYTHON SOURCE LINES 68-76
+.. GENERATED FROM PYTHON SOURCE LINES 73-81
 
 .. code-block:: Python
 
@@ -132,17 +137,17 @@ for CT) unless set otherwise, e.g. to SIRT:
 
  .. code-block:: none
 
-    <function fdk at 0x7f30d0df9580>
+    <function fdk at 0x7fc41f5dc360>
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 77-79
+.. GENERATED FROM PYTHON SOURCE LINES 82-84
 
 FBPConvNet cleans an FDK reconstruction with a U-Net. It takes the
 measurements and reconstructs them itself:
 
-.. GENERATED FROM PYTHON SOURCE LINES 79-86
+.. GENERATED FROM PYTHON SOURCE LINES 84-91
 
 .. code-block:: Python
 
@@ -166,7 +171,7 @@ measurements and reconstructs them itself:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 87-92
+.. GENERATED FROM PYTHON SOURCE LINES 92-97
 
 Models of images
 ----------------
@@ -174,7 +179,7 @@ Image-to-image models have no operator: they take only their own parameters.
 A solver or reconstructor gives them the initial reconstruction of the
 measurements as input (``model_forward``):
 
-.. GENERATED FROM PYTHON SOURCE LINES 92-103
+.. GENERATED FROM PYTHON SOURCE LINES 97-108
 
 .. code-block:: Python
 
@@ -203,14 +208,14 @@ measurements as input (``model_forward``):
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 104-108
+.. GENERATED FROM PYTHON SOURCE LINES 109-113
 
 Their parameters
 ----------------
 Every model's ``default_parameters()`` lists what can be set; a model keeps
 them as ``model_parameters``. Methods from papers default to the paper's.
 
-.. GENERATED FROM PYTHON SOURCE LINES 108-117
+.. GENERATED FROM PYTHON SOURCE LINES 113-122
 
 .. code-block:: Python
 
@@ -246,12 +251,12 @@ them as ``model_parameters``. Methods from papers default to the paper's.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 118-120
+.. GENERATED FROM PYTHON SOURCE LINES 123-125
 
 A denoiser that takes the noise level is given it as ``noise_level``: one
 number, or one per image.
 
-.. GENERATED FROM PYTHON SOURCE LINES 120-125
+.. GENERATED FROM PYTHON SOURCE LINES 125-130
 
 .. code-block:: Python
 
@@ -267,7 +272,7 @@ number, or one per image.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 126-132
+.. GENERATED FROM PYTHON SOURCE LINES 131-137
 
 The authors' trained DRUNet (on natural images) is one call away, a 130 MB
 download:
@@ -276,7 +281,7 @@ download:
 
    drunet = DRUNet.pretrained()
 
-.. GENERATED FROM PYTHON SOURCE LINES 134-142
+.. GENERATED FROM PYTHON SOURCE LINES 139-147
 
 Normalisation
 -------------
@@ -287,7 +292,7 @@ image by its own range), "dataset" (by the range over a dataset's targets),
 reconstructors apply it; called by hand, ``model.normalise(x)`` and
 ``model.unnormalise(x)`` do it.
 
-.. GENERATED FROM PYTHON SOURCE LINES 142-146
+.. GENERATED FROM PYTHON SOURCE LINES 147-151
 
 .. code-block:: Python
 
@@ -309,13 +314,13 @@ reconstructors apply it; called by hand, ``model.normalise(x)`` and
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 147-150
+.. GENERATED FROM PYTHON SOURCE LINES 152-155
 
 Citing
 ------
 A model from a paper says where it comes from:
 
-.. GENERATED FROM PYTHON SOURCE LINES 150-154
+.. GENERATED FROM PYTHON SOURCE LINES 155-159
 
 .. code-block:: Python
 
@@ -349,7 +354,7 @@ A model from a paper says where it comes from:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 155-160
+.. GENERATED FROM PYTHON SOURCE LINES 160-165
 
 Your own torch module
 ---------------------
@@ -357,7 +362,7 @@ Any ``torch.nn.Module`` becomes a LION model with ``TorchModel``, and is then
 saved, loaded and trained like LION's (:doc:`d13_extending_lion`
 writes a LIONmodel):
 
-.. GENERATED FROM PYTHON SOURCE LINES 160-170
+.. GENERATED FROM PYTHON SOURCE LINES 165-175
 
 .. code-block:: Python
 
@@ -384,11 +389,11 @@ writes a LIONmodel):
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 171-172
+.. GENERATED FROM PYTHON SOURCE LINES 176-177
 
 Untrained, these reconstructions are noise:
 
-.. GENERATED FROM PYTHON SOURCE LINES 172-184
+.. GENERATED FROM PYTHON SOURCE LINES 177-189
 
 .. code-block:: Python
 
@@ -413,19 +418,13 @@ Untrained, these reconstructions are noise:
    :class: sphx-glr-single-img
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    SIRT:   0%|          | 0/1 [00:00<?, ?sample/s]    SIRT: 100%|██████████| 1/1 [00:01<00:00,  1.43s/sample]    SIRT: 100%|██████████| 1/1 [00:01<00:00,  1.43s/sample]
-
 
 
 
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 31.041 seconds)
+   **Total running time of the script:** (0 minutes 22.201 seconds)
 
 
 .. _sphx_glr_download_tutorials_d04_models.py:

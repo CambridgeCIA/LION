@@ -435,6 +435,13 @@ repeated, checked and published (the tutorials on records and publishing).</p>
 many more.</p>
 <p>Previous: <a class="reference internal" href="d04_models.html"><span class="doc">Models</span></a>. Next: <a class="reference internal" href="d06_self_supervised_training.html"><span class="doc">Self-supervised training</span></a>.</p>
 <p>Needs a GPU and the processed LIDC-IDRI data in <code class="docutils literal notranslate"><span class="pre">LION_DATA_PATH</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The models trained in these tutorials are toys: a few epochs on a few
+slices, to show how LION is used, so their results are poor (often worse
+than FDK). Trained as their papers train them (many epochs, all the data),
+they do what the papers report.</p>
+</div>
 <section id="the-pieces">
 <h2>The pieces<a class="headerlink" href="#the-pieces" title="Link to this heading">¶</a></h2>
 <p>The data, the model, a torch optimizer and a loss. Any torch optimizer and
@@ -482,29 +489,7 @@ model. Then <code class="docutils literal notranslate"><span class="pre">train(n
 </span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.save_final_results" title="LION.optimizers.LIONsolver.LIONsolver.save_final_results"><span class="n">solver</span><span class="o">.</span><span class="n">save_final_results</span></a><span class="p">(</span><span class="p">)</span>  <span class="c1"># FBPConvNet.pt (weights) and FBPConvNet.json</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">training loss per epoch:</span><span class="s2">&quot;</span><span class="p">,</span> <a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">solver</span><span class="o">.</span><span class="n">train_loss</span></a><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Training:   0%|          | 0/20 [00:00&lt;?, ?batch/s]
-Training:   5%|▌         | 1/20 [00:00&lt;00:18,  1.03batch/s, epoch=1/2, loss=0.191]
-Training:  10%|█         | 2/20 [00:01&lt;00:12,  1.49batch/s, epoch=1/2, loss=0.21]
-Training:  15%|█▌        | 3/20 [00:01&lt;00:09,  1.73batch/s, epoch=1/2, loss=0.2514]
-Training:  20%|██        | 4/20 [00:02&lt;00:08,  1.88batch/s, epoch=1/2, loss=0.2029]
-Training:  25%|██▌       | 5/20 [00:02&lt;00:07,  1.98batch/s, epoch=1/2, loss=0.1999]
-Training:  30%|███       | 6/20 [00:03&lt;00:06,  2.04batch/s, epoch=1/2, loss=0.1736]
-Training:  35%|███▌      | 7/20 [00:03&lt;00:06,  2.08batch/s, epoch=1/2, loss=0.1557]
-Training:  40%|████      | 8/20 [00:04&lt;00:05,  2.10batch/s, epoch=1/2, loss=0.1427]
-Training:  45%|████▌     | 9/20 [00:04&lt;00:05,  2.12batch/s, epoch=1/2, loss=0.13]
-Training:  50%|█████     | 10/20 [00:05&lt;00:04,  2.14batch/s, epoch=1/2, loss=0.1195]
-Training:  55%|█████▌    | 11/20 [00:05&lt;00:04,  2.15batch/s, epoch=2/2, loss=0.02157]
-Training:  60%|██████    | 12/20 [00:06&lt;00:03,  2.16batch/s, epoch=2/2, loss=0.01806]
-Training:  65%|██████▌   | 13/20 [00:06&lt;00:03,  2.17batch/s, epoch=2/2, loss=0.0172]
-Training:  70%|███████   | 14/20 [00:06&lt;00:02,  2.17batch/s, epoch=2/2, loss=0.04205]
-Training:  75%|███████▌  | 15/20 [00:07&lt;00:02,  2.17batch/s, epoch=2/2, loss=0.04981]
-Training:  80%|████████  | 16/20 [00:07&lt;00:01,  2.17batch/s, epoch=2/2, loss=0.04438]
-Training:  85%|████████▌ | 17/20 [00:08&lt;00:01,  2.17batch/s, epoch=2/2, loss=0.04109]
-Training:  90%|█████████ | 18/20 [00:08&lt;00:00,  2.17batch/s, epoch=2/2, loss=0.03813]
-Training:  95%|█████████▌| 19/20 [00:09&lt;00:00,  2.17batch/s, epoch=2/2, loss=0.03586]
-Training: 100%|██████████| 20/20 [00:09&lt;00:00,  2.18batch/s, epoch=2/2, loss=0.03434]
-Training: 100%|██████████| 20/20 [00:09&lt;00:00,  2.06batch/s, epoch=2/2, loss=0.03434]
-training loss per epoch: [0.11950468 0.03434189]
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>training loss per epoch: [0.10599411 0.03941898]
 </pre></div>
 </div>
 <p>That is a complete training: the saved model holds its weights, its
@@ -586,117 +571,18 @@ epochs as <code class="docutils literal notranslate"><span class="pre">&lt;name&
 </span><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-method reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path.iterdir" title="pathlib.Path.iterdir"><span class="n">folder</span><span class="o">.</span><span class="n">iterdir</span></a><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Loading checkpoint...
-No checkpoint matching /tmp/tmp6ag97so3/FBPConvNet_check_*.pt yet; starting from epoch 0.
+No checkpoint matching /tmp/tmp19kc7jk7/FBPConvNet_check_*.pt yet; starting from epoch 0.
 Training seed: 0 (the solver's seed argument; seed=None for an unseeded run)
-
-Training:   0%|          | 0/40 [00:00&lt;?, ?batch/s]
-Training:   2%|▎         | 1/40 [00:00&lt;00:19,  2.02batch/s, epoch=1/4, loss=0.3167]
-Training:   5%|▌         | 2/40 [00:00&lt;00:18,  2.09batch/s, epoch=1/4, loss=0.6255]
-Training:   8%|▊         | 3/40 [00:01&lt;00:17,  2.11batch/s, epoch=1/4, loss=0.4682]
-Training:  10%|█         | 4/40 [00:01&lt;00:16,  2.13batch/s, epoch=1/4, loss=0.3743]
-Training:  12%|█▎        | 5/40 [00:02&lt;00:16,  2.14batch/s, epoch=1/4, loss=0.3509]
-Training:  15%|█▌        | 6/40 [00:02&lt;00:15,  2.15batch/s, epoch=1/4, loss=0.2997]
-Training:  18%|█▊        | 7/40 [00:03&lt;00:15,  2.16batch/s, epoch=1/4, loss=0.2641]
-Training:  20%|██        | 8/40 [00:03&lt;00:14,  2.16batch/s, epoch=1/4, loss=0.2379]
-Training:  22%|██▎       | 9/40 [00:04&lt;00:14,  2.16batch/s, epoch=1/4, loss=0.215]
-Training:  25%|██▌       | 10/40 [00:04&lt;00:13,  2.16batch/s, epoch=1/4, loss=0.1958]
-
-  0%|          | 0/2 [00:00&lt;?, ?it/s]
-
- 50%|█████     | 1/2 [00:00&lt;00:00,  4.36it/s]
-
-100%|██████████| 2/2 [00:00&lt;00:00,  4.37it/s]
-
-
-
-Validation loss: -21.029873609542847 - Validation loss std: 1.2531327483079513
-
-Training:  25%|██▌       | 10/40 [00:05&lt;00:13,  2.16batch/s, epoch=1/4, loss=0.1958]
-
-Epoch 1 - Training loss: 0.1957984922453761 - Validation loss: -21.029873609542847
-
-Training:  25%|██▌       | 10/40 [00:05&lt;00:13,  2.16batch/s, epoch=1/4, loss=0.1958]
-Training:  28%|██▊       | 11/40 [00:06&lt;00:28,  1.02batch/s, epoch=2/4, loss=0.01863, validation=-21.03]
-Training:  30%|███       | 12/40 [00:07&lt;00:23,  1.21batch/s, epoch=2/4, loss=0.01877, validation=-21.03]
-Training:  32%|███▎      | 13/40 [00:07&lt;00:19,  1.40batch/s, epoch=2/4, loss=0.01844, validation=-21.03]
-Training:  35%|███▌      | 14/40 [00:08&lt;00:16,  1.56batch/s, epoch=2/4, loss=0.04617, validation=-21.03]
-Training:  38%|███▊      | 15/40 [00:08&lt;00:14,  1.71batch/s, epoch=2/4, loss=0.0516, validation=-21.03]
-Training:  40%|████      | 16/40 [00:09&lt;00:13,  1.82batch/s, epoch=2/4, loss=0.04683, validation=-21.03]
-Training:  42%|████▎     | 17/40 [00:09&lt;00:11,  1.92batch/s, epoch=2/4, loss=0.04402, validation=-21.03]
-Training:  45%|████▌     | 18/40 [00:10&lt;00:11,  1.99batch/s, epoch=2/4, loss=0.04163, validation=-21.03]
-Training:  48%|████▊     | 19/40 [00:10&lt;00:10,  2.04batch/s, epoch=2/4, loss=0.03977, validation=-21.03]
-Training:  50%|█████     | 20/40 [00:10&lt;00:09,  2.08batch/s, epoch=2/4, loss=0.03763, validation=-21.03]
-
-  0%|          | 0/2 [00:00&lt;?, ?it/s]
-
- 50%|█████     | 1/2 [00:00&lt;00:00,  4.43it/s]
-
-100%|██████████| 2/2 [00:00&lt;00:00,  4.40it/s]
-
-
-
-Validation loss: -22.721827030181885 - Validation loss std: 0.6859010358068683
-
-Training:  50%|█████     | 20/40 [00:11&lt;00:09,  2.08batch/s, epoch=2/4, loss=0.03763, validation=-21.03]
-
-Epoch 2 - Training loss: 0.03762699533253908 - Validation loss: -22.721827030181885
-
-Training:  50%|█████     | 20/40 [00:11&lt;00:09,  2.08batch/s, epoch=2/4, loss=0.03763, validation=-21.03]
-Training:  52%|█████▎    | 21/40 [00:15&lt;00:33,  1.76s/batch, epoch=3/4, loss=0.01721, validation=-22.72]
-Training:  55%|█████▌    | 22/40 [00:16&lt;00:24,  1.37s/batch, epoch=3/4, loss=0.01818, validation=-22.72]
-Training:  57%|█████▊    | 23/40 [00:16&lt;00:18,  1.10s/batch, epoch=3/4, loss=0.01847, validation=-22.72]
-Training:  60%|██████    | 24/40 [00:17&lt;00:14,  1.10batch/s, epoch=3/4, loss=0.01864, validation=-22.72]
-Training:  62%|██████▎   | 25/40 [00:17&lt;00:11,  1.29batch/s, epoch=3/4, loss=0.01779, validation=-22.72]
-Training:  65%|██████▌   | 26/40 [00:18&lt;00:09,  1.47batch/s, epoch=3/4, loss=0.01685, validation=-22.72]
-Training:  68%|██████▊   | 27/40 [00:18&lt;00:07,  1.63batch/s, epoch=3/4, loss=0.02451, validation=-22.72]
-Training:  70%|███████   | 28/40 [00:18&lt;00:06,  1.76batch/s, epoch=3/4, loss=0.02284, validation=-22.72]
-Training:  72%|███████▎  | 29/40 [00:19&lt;00:05,  1.87batch/s, epoch=3/4, loss=0.02291, validation=-22.72]
-Training:  75%|███████▌  | 30/40 [00:19&lt;00:05,  1.94batch/s, epoch=3/4, loss=0.02216, validation=-22.72]
-
-  0%|          | 0/2 [00:00&lt;?, ?it/s]
-
- 50%|█████     | 1/2 [00:00&lt;00:00,  4.35it/s]
-
-100%|██████████| 2/2 [00:00&lt;00:00,  4.36it/s]
-
-
-
-Validation loss: 5.877629220485687 - Validation loss std: 0.9844061329490261
-
-Training:  75%|███████▌  | 30/40 [00:20&lt;00:05,  1.94batch/s, epoch=3/4, loss=0.02216, validation=-22.72]
-
-Epoch 3 - Training loss: 0.02215946689248085 - Validation loss: 5.877629220485687
-
-Training:  75%|███████▌  | 30/40 [00:20&lt;00:05,  1.94batch/s, epoch=3/4, loss=0.02216, validation=-22.72]
-Training:  78%|███████▊  | 31/40 [00:21&lt;00:08,  1.12batch/s, epoch=4/4, loss=0.01281, validation=5.878]
-Training:  80%|████████  | 32/40 [00:22&lt;00:06,  1.31batch/s, epoch=4/4, loss=0.03019, validation=5.878]
-Training:  82%|████████▎ | 33/40 [00:22&lt;00:04,  1.49batch/s, epoch=4/4, loss=0.02488, validation=5.878]
-Training:  85%|████████▌ | 34/40 [00:23&lt;00:03,  1.64batch/s, epoch=4/4, loss=0.02272, validation=5.878]
-Training:  88%|████████▊ | 35/40 [00:23&lt;00:02,  1.77batch/s, epoch=4/4, loss=0.02238, validation=5.878]
-Training:  90%|█████████ | 36/40 [00:23&lt;00:02,  1.87batch/s, epoch=4/4, loss=0.02104, validation=5.878]
-Training:  92%|█████████▎| 37/40 [00:24&lt;00:01,  1.95batch/s, epoch=4/4, loss=0.01987, validation=5.878]
-Training:  95%|█████████▌| 38/40 [00:24&lt;00:00,  2.01batch/s, epoch=4/4, loss=0.01926, validation=5.878]
-Training:  98%|█████████▊| 39/40 [00:25&lt;00:00,  2.05batch/s, epoch=4/4, loss=0.01893, validation=5.878]
-Training: 100%|██████████| 40/40 [00:25&lt;00:00,  2.08batch/s, epoch=4/4, loss=0.01821, validation=5.878]
-
-  0%|          | 0/2 [00:00&lt;?, ?it/s]
-
- 50%|█████     | 1/2 [00:00&lt;00:00,  4.41it/s]
-
-100%|██████████| 2/2 [00:00&lt;00:00,  4.39it/s]
-
-
-
-Validation loss: 25.048789024353027 - Validation loss std: 2.8307974050714035
-
-Training: 100%|██████████| 40/40 [00:26&lt;00:00,  2.08batch/s, epoch=4/4, loss=0.01821, validation=5.878]
-
-Epoch 4 - Training loss: 0.01820674380287528 - Validation loss: 25.048789024353027
-
-Training: 100%|██████████| 40/40 [00:26&lt;00:00,  2.08batch/s, epoch=4/4, loss=0.01821, validation=5.878]
-Training: 100%|██████████| 40/40 [00:32&lt;00:00,  1.23batch/s, epoch=4/4, loss=0.01821, validation=5.878]
-training loss per epoch: [0.19579849 0.037627   0.02215947 0.01820674]
-validation PSNR: [-21.02987361 -22.72182703   5.87762922  25.04878902]
+Validation loss: -14.28561520576477 - Validation loss std: 1.3335922571321883
+Epoch 1 - Training loss: 0.19544123038649558 - Validation loss: -14.28561520576477
+Validation loss: 11.127888649702072 - Validation loss std: 5.212687571378474
+Epoch 2 - Training loss: 0.038272179290652276 - Validation loss: 11.127888649702072
+Validation loss: 16.83620297908783 - Validation loss std: 2.916270551071763
+Epoch 3 - Training loss: 0.024304365273565054 - Validation loss: 16.83620297908783
+Validation loss: 26.4589364528656 - Validation loss std: 0.2834824450039611
+Epoch 4 - Training loss: 0.019895102456212045 - Validation loss: 26.4589364528656
+training loss per epoch: [0.19544123 0.03827218 0.02430437 0.0198951 ]
+validation PSNR: [-14.28561521  11.12788865  16.83620298  26.45893645]
 learning rate: [0.00025]
 ['FBPConvNet.json', 'FBPConvNet.pt', 'FBPConvNet_best.json', 'FBPConvNet_best.pt', 'FBPConvNet_check_0002.json', 'FBPConvNet_check_0002.pt', 'FBPConvNet_check_0004.json', 'FBPConvNet_check_0004.pt']
 </pre></div>
@@ -720,29 +606,7 @@ first four kept.</p>
 </span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.train" title="LION.optimizers.LIONsolver.LIONsolver.train"><span class="n">resumed</span><span class="o">.</span><span class="n">train</span></a><span class="p">(</span><span class="mi">6</span><span class="p">)</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">training loss per epoch:</span><span class="s2">&quot;</span><span class="p">,</span> <a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">resumed</span><span class="o">.</span><span class="n">train_loss</span></a><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Training:   0%|          | 0/20 [00:00&lt;?, ?batch/s]
-Training:   5%|▌         | 1/20 [00:00&lt;00:09,  1.99batch/s, epoch=5/6, loss=0.01381]
-Training:  10%|█         | 2/20 [00:00&lt;00:08,  2.07batch/s, epoch=5/6, loss=0.01745]
-Training:  15%|█▌        | 3/20 [00:01&lt;00:08,  2.10batch/s, epoch=5/6, loss=0.03968]
-Training:  20%|██        | 4/20 [00:01&lt;00:07,  2.13batch/s, epoch=5/6, loss=0.03322]
-Training:  25%|██▌       | 5/20 [00:02&lt;00:07,  2.14batch/s, epoch=5/6, loss=0.0285]
-Training:  30%|███       | 6/20 [00:02&lt;00:06,  2.14batch/s, epoch=5/6, loss=0.02577]
-Training:  35%|███▌      | 7/20 [00:03&lt;00:06,  2.15batch/s, epoch=5/6, loss=0.02393]
-Training:  40%|████      | 8/20 [00:03&lt;00:05,  2.15batch/s, epoch=5/6, loss=0.0226]
-Training:  45%|████▌     | 9/20 [00:04&lt;00:05,  2.15batch/s, epoch=5/6, loss=0.02146]
-Training:  50%|█████     | 10/20 [00:04&lt;00:04,  2.15batch/s, epoch=5/6, loss=0.02025]
-Training:  55%|█████▌    | 11/20 [00:05&lt;00:04,  2.15batch/s, epoch=6/6, loss=0.008241]
-Training:  60%|██████    | 12/20 [00:05&lt;00:03,  2.14batch/s, epoch=6/6, loss=0.009709]
-Training:  65%|██████▌   | 13/20 [00:06&lt;00:03,  2.14batch/s, epoch=6/6, loss=0.0135]
-Training:  70%|███████   | 14/20 [00:06&lt;00:02,  2.14batch/s, epoch=6/6, loss=0.01216]
-Training:  75%|███████▌  | 15/20 [00:07&lt;00:02,  2.15batch/s, epoch=6/6, loss=0.02246]
-Training:  80%|████████  | 16/20 [00:07&lt;00:01,  2.15batch/s, epoch=6/6, loss=0.02049]
-Training:  85%|████████▌ | 17/20 [00:07&lt;00:01,  2.15batch/s, epoch=6/6, loss=0.01894]
-Training:  90%|█████████ | 18/20 [00:08&lt;00:00,  2.15batch/s, epoch=6/6, loss=0.01791]
-Training:  95%|█████████▌| 19/20 [00:08&lt;00:00,  2.15batch/s, epoch=6/6, loss=0.01672]
-Training: 100%|██████████| 20/20 [00:09&lt;00:00,  2.15batch/s, epoch=6/6, loss=0.01599]
-Training: 100%|██████████| 20/20 [00:15&lt;00:00,  1.26batch/s, epoch=6/6, loss=0.01599]
-training loss per epoch: [0.19579849 0.037627   0.02215947 0.01820674 0.0202514  0.01598687]
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>training loss per epoch: [0.19544123 0.03827218 0.02430437 0.0198951  0.02075001 0.01713226]
 </pre></div>
 </div>
 <p>Once a run is finished, its checkpoints can go:</p>
@@ -754,12 +618,8 @@ training loss per epoch: [0.19579849 0.037627   0.02215947 0.01820674 0.0202514 
 <div class="highlight-Python notranslate"><div class="highlight"><pre><a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">scores</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.test" title="LION.optimizers.LIONsolver.LIONsolver.test"><span class="n">solver</span><span class="o">.</span><span class="n">test</span></a><span class="p">(</span><span class="p">)</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">test PSNR: </span><span class="si">{</span><a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">scores</span></a><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> dB</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Testing:   0%|          | 0/2 [00:00&lt;?, ?it/s]
-Testing:  50%|█████     | 1/2 [00:00&lt;00:00,  3.89it/s]
-Testing: 100%|██████████| 2/2 [00:00&lt;00:00,  4.09it/s]
-Testing: 100%|██████████| 2/2 [00:00&lt;00:00,  4.06it/s]
-Testing loss: 24.720112085342407 - Testing loss std: 2.043065459977629
-test PSNR: 24.72 dB
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Testing loss: 27.32573366165161 - Testing loss std: 3.2164741472208904
+test PSNR: 27.33 dB
 </pre></div>
 </div>
 <p>The final model and the best model by validation, each as a <code class="docutils literal notranslate"><span class="pre">.pt</span></code>
@@ -781,7 +641,7 @@ train the same model again (<a class="reference internal" href="d09_saving_and_r
 </span></pre></div></div>
 <img src="../_images/sphx_glr_d05_supervised_training_001.png" srcset="../_images/sphx_glr_d05_supervised_training_001.png" alt="d05 supervised training" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>LION.optimizers.SupervisedSolver.SupervisedSolver 0.001
 
-&lt;matplotlib.legend.Legend object at 0x7f82298aaf60&gt;
+&lt;matplotlib.legend.Legend object at 0x7fc32c0c7dd0&gt;
 </pre></div>
 </div>
 </section>
@@ -837,10 +697,10 @@ checking that comparisons are fair, publishing.</p>
 </span>    <a class="sphx-glr-backref-module-torch-optim sphx-glr-backref-type-py-method reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam.step" title="torch.optim.Adam.step"><span class="n">optimizer</span><span class="o">.</span><span class="n">step</span></a><span class="p">(</span><span class="p">)</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">one epoch by hand, last loss </span><span class="si">{</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">loss</span></a><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>one epoch by hand, last loss 0.0232
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>one epoch by hand, last loss 0.0239
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 33.121 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 34.901 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d05-supervised-training-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/f154a25583c76f4eee46bc566ed8b4f3/d05_supervised_training.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d05_supervised_training.ipynb</span></code></a></p>
