@@ -14,7 +14,7 @@ same data, so methods can be compared. Experiments give **datasets**, torch
 datasets of (measurements, target) pairs, and a **record** of each: what the
 data are, written so that they can be made again.
 
-Previous: :doc:`d02_parameters_and_specs`. Next: models (d04).
+Previous: :doc:`d02_parameters_and_specs`. Next: :doc:`d04_models`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH`` (see
 ``LION/data_loaders/LIDC_IDRI/``).

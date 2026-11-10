@@ -17,7 +17,7 @@ solver's own.
 This tutorial trains with Noise2Inverse, then shows the others. A short run, to
 show how.
 
-Previous: :doc:`d05_supervised_training`. Next: denoisers and PnP (d07).
+Previous: :doc:`d05_supervised_training`. Next: :doc:`d07_denoisers_and_pnp`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH``.
 """

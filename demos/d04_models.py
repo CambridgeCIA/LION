@@ -133,10 +133,12 @@ with torch.no_grad():
 # %%
 # Normalisation
 # -------------
-# Networks prefer inputs in a set range. ``set_normalisation`` makes a model
-# normalise its inputs (and map its outputs back) whenever it is used:
-# "sample" (each image by its own range), "dataset" (by the range over a
-# dataset's targets), "custom" or "none". It is saved with the model.
+# Networks prefer inputs in a set range. ``set_normalisation`` sets how a
+# model's inputs are normalised (and its outputs mapped back): "sample" (each
+# image by its own range), "dataset" (by the range over a dataset's targets),
+# "custom" or "none". It is saved with the model, and LION's solvers and
+# reconstructors apply it; called by hand, ``model.normalise(x)`` and
+# ``model.unnormalise(x)`` do it.
 
 unet.set_normalisation("custom", data_range=(0.0, 2.5))
 print(unet.model_parameters.normalisation)
