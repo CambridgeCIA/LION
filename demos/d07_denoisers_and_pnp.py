@@ -183,4 +183,4 @@ for ax, (title, x) in zip(axes, shown):
 #    pnp = PnP(experiment.operator_params, pretrained, pnp_parameters)
 #
 # A reconstructor is saved with ``pnp.save(file)``: its settings, and its model
-# by the file it was loaded from (the tutorial on records, d09).
+# by the file it was loaded from (:doc:`d09_saving_and_records`).

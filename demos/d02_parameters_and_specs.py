@@ -145,5 +145,5 @@ print(loss.weight)
 
 # %%
 # Specs are what LION's records are made of: the data a model saw, how it was
-# trained, how it was tested. The tutorial on saving and records (d09) reads
+# trained, how it was tested. :doc:`d09_saving_and_records` reads
 # them.
