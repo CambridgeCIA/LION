@@ -10,7 +10,7 @@ matplotlib (your style sheet and rcParams apply).
 - ``per_sample(records, metric)``: each method's per-sample scores, and
   ``per_sample_differences(records, metric, baseline)``: each method's minus
   the baseline's, sample by sample: the data, for any plot;
-- ``box_plot`` and ``difference_plot``: those as ``ax.boxplot``s;
+- ``box_plot`` and ``difference_plot``: those as box plots (``ax.boxplot``);
 - ``chosen_samples(record)``: the samples where a method (the baseline) does
   best, median and worst;
 - ``reconstructions(evaluation, methods, ids)`` and ``example_images(...)``:

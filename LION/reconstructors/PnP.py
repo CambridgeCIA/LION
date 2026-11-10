@@ -152,14 +152,14 @@ class PnP(LIONReconstructor):
     ):
         """Half Quadratic Splitting (Zhang, Li, Zuo, Zhang, Van Gool and
         Timofte, "Plug-and-Play Image Restoration with Deep Denoiser Prior",
-        IEEE TPAMI 44(10), 2022): alternates
+        IEEE TPAMI 44(10), 2022): alternates::
 
             x = argmin ||A x - y||² / 2 + mu ||x - z||² / 2   (conjugate gradient)
             z = prior(x)
 
         and returns z. ``lambda_``: the regularisation weight; ``mu``: the
-        weight of the coupling term; ``noise_level``: if given, mu = lambda_ /
-        noise_level², else the prior's noise level is sqrt(lambda_ / mu);
+        weight of the coupling term; ``noise_level``: if given, ``mu = lambda_ /
+        noise_level²``, else the prior's noise level is ``sqrt(lambda_ / mu)``;
         ``max_iter``: the iterations; ``cg_max_iter``, ``cg_tol``: the
         conjugate gradient's; ``x0``: the start (``initial_guess(y)``, the
         operator's default reconstruction, FDK for CT, if None); ``verbose``: 0
@@ -222,7 +222,7 @@ class PnP(LIONReconstructor):
         x0=None,
         verbose: int = 1,
     ) -> torch.Tensor:
-        """ADMM with the prior as the proximal step:
+        """ADMM with the prior as the proximal step::
 
             x = argmin ||A x - y||² / 2 + eta ||x - (v - u)||² / 2   (conjugate gradient)
             v = prior(x + u)

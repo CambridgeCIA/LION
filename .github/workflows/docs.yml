@@ -1,0 +1,30 @@
+name: docs
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    # Skip draft PRs; pushes to main always run
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    # Builds the site without running the demos (no GPU or data here), failing
+    # on any warning, e.g. a docstring Sphinx can't read. The site is published
+    # from holly, with the demos run: utils/publish_docs.sh.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+    - name: Install
+      run: |
+        # pip 25.3 dropped `setup.py install`, used to install tomosipo and ts_algorithms
+        python -m pip install "pip<=25.2"
+        python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+        python -m pip install -e ".[standalone,docs]"
+    - name: Build
+      run: python -m sphinx -b html -W --keep-going docs docs/_build/html

@@ -52,6 +52,9 @@ apply to people and to coding assistants alike (`CLAUDE.md` points here).
   types are in the signature.
 - A component from a paper says so (and has `cite()`), and where it deviates
   from the paper.
+- Docstrings are reStructuredText: the documentation site (`docs/`) is built
+  from them, and CI fails on anything Sphinx can't read. A list needs a blank
+  line before it; a literal block (a table, code) a `::` before it.
 
 ## Imports and dependencies
 

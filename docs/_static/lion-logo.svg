@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="22 0 296 176" width="592" height="352">
+  <title>LION</title>
+  <path id="body" fill="#E1AA3C" d="M134,70 H215 A27,27 0 0 1 242,97 V124 H134 Z"/>
+  <polygon id="mane" fill="#E1AA3C" stroke="#E1AA3C" stroke-width="4" stroke-linejoin="round" points="146.9,39.5 152.2,58.2 170.2,50.7 166.8,69.8 186.3,70.8 174.9,86.7 192.0,96.0 174.9,105.3 186.3,121.2 166.8,122.2 170.2,141.3 152.2,133.8 146.9,152.5 134.0,138.0 121.1,152.5 115.8,133.8 97.8,141.3 101.2,122.2 81.7,121.2 93.1,105.3 76.0,96.0 93.1,86.7 81.7,70.8 101.2,69.8 97.8,50.7 115.8,58.2 121.1,39.5 134.0,54.0"/>
+  <circle id="face" cx="134" cy="96" r="25" fill="#7A4300"/>
+  <g id="letters" fill="none" stroke="#000" stroke-width="15">
+    <path id="l" d="M44,22 V124"/>
+    <path id="i" d="M74,68 V124"/>
+    <rect id="i-dot" x="66.5" y="40" width="15" height="15" fill="#000" stroke="none"/>
+    <circle id="o" cx="134" cy="96" r="27"/>
+    <path id="n-tail" d="M188,124 V96 A27,27 0 0 1 242,96 V128 A22,22 0 0 0 264,150 H284"/>
+    <circle id="tuft" cx="290" cy="150" r="13" fill="#000" stroke="none"/>
+  </g>
+</svg>

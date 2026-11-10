@@ -16,7 +16,7 @@ from LION.utils.math import power_method
 
 
 def soft_threshold(v: torch.Tensor, tau: float) -> torch.Tensor:
-    """The soft thresholding of ``v`` by ``tau``: sign(v) max(|v| - tau, 0),
+    """The soft thresholding of ``v`` by ``tau``: ``sign(v) max(|v| - tau, 0)``,
     the proximal operator of tau ||.||_1."""
     return torch.sign(v) * torch.clamp(torch.abs(v) - tau, min=0.0)
 
