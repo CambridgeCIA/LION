@@ -98,11 +98,9 @@ for ax, (title, x) in zip(
     ax.axis("off")
 
 # %%
-# Operators take one sample, as here, or a batch, ``(B, 1, H, W)``: every
-# function in LION does.
-
-batch = torch.stack([image, 2 * image])  # (2, 1, 512, 512)
-print(op(batch).shape)
+# The operator itself takes one sample, ``(1, H, W)``. Batches, ``(B, 1, H,
+# W)``, go through its autograd versions (below) and through LION's
+# reconstructions, models and solvers, which all take them.
 
 # %%
 # Noise
@@ -159,11 +157,14 @@ x0 = op.default_reconstruction(y)
 # ``op.autograd()`` gives the projection and backprojection as torch
 # autograd functions:
 
-A, AT = op.autograd()
-x = torch.zeros_like(image, requires_grad=True)
-loss = ((A(x) - y) ** 2).mean()
+A, AT = op.autograd()  # on batches, (B, 1, H, W)
+x = torch.zeros_like(image[None], requires_grad=True)  # a batch of one
+loss = ((A(x) - y[None]) ** 2).mean()
 loss.backward()
 print(x.grad.shape)  # the gradient of the data fit, an image
+
+batch = torch.stack([image, 2 * image])  # (2, 1, 512, 512)
+print(A(batch).shape)
 
 # %%
 # Many methods need the operator's norm (its largest singular value), e.g. for
