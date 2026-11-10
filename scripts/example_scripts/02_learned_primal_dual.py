@@ -55,6 +55,8 @@ validation = experiment.get_dataset("validation")
 if TRAINING_SLICES is not None:
     training = Subset(training, range(min(TRAINING_SLICES, len(training))))
     validation = Subset(validation, range(min(VALIDATION_SLICES, len(validation))))
+training_loader = DataLoader(training, batch_size=1, shuffle=True)
+validation_loader = DataLoader(validation, batch_size=1)
 
 # %% The model
 parameters = LPD.default_parameters()
@@ -68,9 +70,9 @@ print(model.cite("MLA"))
 # %% Train
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.99))
 solver = SupervisedSolver(model, optimizer, torch.nn.MSELoss(), verbose=verbose)
-solver.set_training(DataLoader(training, batch_size=1, shuffle=True))
+solver.set_training(training_loader)
 solver.set_validation(
-    DataLoader(validation, batch_size=1),
+    validation_loader,
     validation_freq=1,
     validation_fn=PSNR(),
     validation_fname="LPD_best",

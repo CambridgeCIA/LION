@@ -62,6 +62,7 @@ experiment = ct_experiments.LowDoseCTRecon()
 training = experiment.get_dataset("train")
 if TRAINING_SLICES is not None:
     training = Subset(training, range(min(TRAINING_SLICES, len(training))))
+training_loader = DataLoader(training, batch_size=4, shuffle=True)
 
 # %% The denoiser
 parameters = DRUNet.default_parameters()
@@ -83,7 +84,7 @@ solver = GaussianDenoiserSolver(
     solver_params=solver_parameters,
     verbose=verbose,
 )
-solver.set_training(DataLoader(training, batch_size=4, shuffle=True))
+solver.set_training(training_loader)
 solver.set_saving(save_folder, "DRUNet")
 solver.train(EPOCHS)
 solver.save_final_results()
