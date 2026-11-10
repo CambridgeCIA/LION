@@ -26,6 +26,7 @@ Needs: a GPU, the processed LIDC-IDRI data in ``LION_DATA_PATH``, and
 
 # %% Imports
 import functools
+import torch
 
 from LION.evaluation import Comparison, Evaluation, summary
 from LION.experiments import ct_experiments
@@ -34,7 +35,10 @@ from LION.utils.paths import results_path
 
 # %% Settings
 TEST_SLICES = 50  # evenly spaced over the test set; None: all of them
-# LION uses the GPU if there is one (torch.cuda.set_device(k) picks another)
+# The GPU to use: LION's models, data and operators all follow it
+GPU = 0
+if torch.cuda.is_available():
+    torch.cuda.set_device(GPU)
 verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 examples = results_path("examples")

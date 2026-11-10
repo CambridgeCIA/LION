@@ -31,14 +31,18 @@ from LION.operators.ct import fdk
 from LION.optimizers.SupervisedSolver import SupervisedSolver
 from LION.reconstructors.ForwardReconstructor import ForwardReconstructor
 from LION.utils.paths import results_path
+from LION.utils.device import default_device
 
 # %% Settings
 EPOCHS = 5
 TRAINING_SLICES = 200
 VALIDATION_SLICES = 20
-# LION uses the GPU if there is one (torch.cuda.set_device(k) picks another);
-# device is where this script moves samples to use them
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# The GPU to use: LION's models, data and operators all follow it
+GPU = 0
+if torch.cuda.is_available():
+    torch.cuda.set_device(GPU)
+# where this script moves samples to use them: LION's device, that GPU
+device = default_device()
 verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 save_folder = results_path("examples/lpd")
