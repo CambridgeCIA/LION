@@ -730,7 +730,7 @@ class LIONmodel(nn.Module, ABC):
         checkpoints = sorted(fname.parent.glob(fname.name))
         if not checkpoints:
             if verbose >= 2:
-                print(f"checkpoint {fname} not found, failed to load.")
+                print(f"No checkpoint matching {fname} yet; starting from epoch 0.")
             return model, optimiser, 0, total_loss, None
 
         data = cls._load_data(checkpoints[-1], supress_warnings=True)
