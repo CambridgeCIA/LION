@@ -58,7 +58,7 @@ with 0.2.0 don't load.
   site (https://cambridgecia.github.io/LION/) with 13 tutorials, the API
   reference, "Methods in LION" and the developer guide; eight example
   scripts; the contributor guide; `AGENTS.md`; this changelog and
-  `CITATION.cff`.
+  `CITATION.cff`; a Datasets page (getting and preparing the data).
 
 ### Changed
 
