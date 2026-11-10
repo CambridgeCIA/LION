@@ -522,11 +522,13 @@ class LIONmodel(nn.Module, ABC):
             data = torch.load(fname, map_location=default_device(), weights_only=False)
         if isinstance(data.get("loss"), list):
             data["loss"] = np.asarray(data["loss"], dtype=float)
-        # the weights and the random state they were made from are the model
-        if len(set(data) - {"initial_random_state"}) > 1 and not supress_warnings:
-            # this should be only 1 thing, but you may be loading a checkpoint or may have saved more data.  Its OK, but we warn.
+        # A model file also holds its losses; a checkpoint, the optimizer's
+        # state too, which load() leaves out
+        if "optimizer_state_dict" in data and not supress_warnings:
             warnings.warn(
-                "\nSaved file contains more than 1 object, but only model_state_dict is being loaded.\n Call load_checkpoint() to load checkpointed model.\n"
+                f"{fname} is a checkpoint: only the model is loaded. "
+                "LIONmodel.load_checkpoint() gives the optimizer's state and "
+                "epoch too (a solver resumes from it with train())."
             )
         return data
 
