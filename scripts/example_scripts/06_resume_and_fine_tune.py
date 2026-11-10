@@ -35,7 +35,10 @@ from LION.utils.paths import results_path
 
 # %% Settings
 TRAINING_SLICES = 100
-# LION uses the GPU if there is one (torch.cuda.set_device(k) picks another)
+# The GPU to use: LION's models, data and operators all follow it
+GPU = 0
+if torch.cuda.is_available():
+    torch.cuda.set_device(GPU)
 verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 examples = results_path("examples")

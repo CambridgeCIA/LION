@@ -32,12 +32,18 @@ Needs: a GPU, the processed LIDC-IDRI data in ``LION_DATA_PATH``, and
 """
 
 # %% Imports
+import torch
+
 from LION import package
 from LION.evaluation import Evaluation
 from LION.experiments import ct_experiments
 from LION.utils.paths import results_path
 
 # %% Settings
+# The GPU to use: LION's models, data and operators all follow it
+GPU = 0
+if torch.cuda.is_available():
+    torch.cuda.set_device(GPU)
 examples = results_path("examples")
 model_file = examples / "supervised" / "FBPConvNet"
 folder = examples / "FBPConvNet_package"  # must not exist, or be empty

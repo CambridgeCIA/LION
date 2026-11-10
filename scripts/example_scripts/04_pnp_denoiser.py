@@ -46,9 +46,12 @@ from LION.utils.device import default_device
 # %% Settings
 EPOCHS = 5
 TRAINING_SLICES = 200
-# LION uses the GPU if there is one; to pick another, torch.cuda.set_device(k)
-# here, not a different device below: the models and data follow LION's
-device = default_device()  # where this script moves samples to use them
+# The GPU to use: LION's models, data and operators all follow it
+GPU = 0
+if torch.cuda.is_available():
+    torch.cuda.set_device(GPU)
+# where this script moves samples to use them: LION's device, that GPU
+device = default_device()
 verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and messages
 
 save_folder = results_path("examples/pnp")
