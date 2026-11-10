@@ -7,6 +7,7 @@
 """Models: construction with default parameters, save/load round trips, UNet,
 ItNet and the gradient-step denoisers. All on CPU, without a CT operator."""
 
+import os
 import warnings
 
 import numpy as np
@@ -321,8 +322,10 @@ def test_drunet_takes_one_noise_level_per_image():
         model(x, noise_level=-0.1)
 
 
+@pytest.mark.skipif("CI" in os.environ, reason="downloads 130 MB of weights")
 def test_pretrained_drunet_denoises():
     # Downloads the authors' weights (130 MB) once; skipped without a network
+    # and in CI (GitHub sets CI)
     try:
         model = DRUNet.pretrained(verbose=0).cpu().eval()
     except OSError as error:  # URLError is an OSError
