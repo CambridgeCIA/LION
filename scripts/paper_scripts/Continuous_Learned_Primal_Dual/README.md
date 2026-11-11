@@ -10,23 +10,46 @@ cLPD replaces the convolutional blocks of Learned Primal-Dual (LPD) by neural
 ODEs. The paper trains cLPD and LPD on six CT problems from LIDC-IDRI and
 compares them with each other and with FBP, by SSIM and PSNR (its Table 1).
 
-| Problem (paper) | `--experiment` | LION experiment |
+These scripts follow **the code that trained the paper's models** (June
+2024), where it and the paper's text differ: the code is what produced the
+results.
+
+| Problem (paper) | `--experiment` | LION experiment, with the settings of June 2024 |
 |---|---|---|
-| 1. Full angle, clinical dose | `full_clinical` | `clinicalCTRecon` |
-| 2.a Full angle, extremely low dose | `full_extreme_low_dose` | `ExtremeLowDoseCTRecon` |
-| 2.b Sparse angle, clinical dose | `sparse_clinical` | `SparseAngleCTRecon` |
-| 2.c Sparse angle, extremely low dose | `sparse_extreme_low_dose` | `SparseAngleExtremeLowDoseCTRecon` |
-| 3.a Limited angle, clinical dose | `limited_clinical` | `LimitedAngleCTRecon` |
-| 3.b Limited angle, extremely low dose | `limited_extreme_low_dose` | `LimitedAngleExtremeLowDoseCTRecon` |
+| 1. Full angle, clinical dose | `full_low` | `LowDoseCTRecon` (I0 = 3500) |
+| 2.a Full angle, extremely low dose | `full_extreme_low` | `ExtremeLowDoseCTRecon` (I0 = 1000) |
+| 2.b Sparse angle, clinical dose | `sparse_low` | `SparseAngleLowDoseCTRecon` (I0 = 3500) |
+| 2.c Sparse angle, extremely low dose | `sparse_extreme_low` | `SparseAngleExtremeLowDoseCTRecon` (I0 = 1000) |
+| 3.a Limited angle, clinical dose | `limited_low` | `LimitedAngleLowDoseCTRecon` (I0 = 3500) |
+| 3.b Limited angle, extremely low dose | `limited_extreme_low` | `LimitedAngleExtremeLowDoseCTRecon` (I0 = 1000) |
 
 ## Files
 
-- `settings.py`: the problems, the two models with the paper's parameters
-  (`cLPD.continous_LPD_paper()`, `LPD.continous_LPD_paper()`), and the
-  paper's training (Adam, learning rate 1e-4, batch size 2, 100 epochs, MSE).
+- `settings.py`: the problems, made as in June 2024
+  (`settings.experiment(name)`: LION's default geometry then, the relative
+  noise model with its doses, 5 slices per patient chosen and split as then),
+  the two models (`cLPD.continous_LPD_paper()`, `LPD.continous_LPD_paper()`)
+  and the training.
 - `train.py`: trains one model on one problem.
 - `evaluate.py`: tests both models and FDK on one problem's test set: the
   table (mean ± std of SSIM and PSNR), box plots and images.
+
+## The settings, from the code of June 2024
+
+- **Models.** cLPD: 10 iterations of first-order ODE blocks (4 layers, 32
+  channels, PReLU, no biases) with instance normalisation, learned positive
+  step sizes. LPD: 5 iterations of 4-layer blocks, no biases, no instance
+  normalisation, learned positive step sizes. (The paper says LPD used the
+  original LPD's parameters; the code didn't.)
+- **Training.** Adam (learning rate 1e-4, betas 0.9 and 0.99), batch size 2,
+  100 epochs, the MSE; validated every epoch with it. The models tested are
+  the final ones.
+- **Problems.** The paper's "clinical dose" was LION's low dose then (I0 =
+  3500 photons), its "extremely low dose" I0 = 1000, with the relative noise
+  model, 5 photons of electronic noise and 5% cross-talk. The geometry was
+  LION's default then: fan beam, 512x512 pixels over 300 mm, a 900-pixel
+  detector; 360 angles, 50 for sparse angle, 60 over 60 degrees for limited
+  angle. Five slices per patient, half with nodules, patients split 80/10/10.
 
 ## Running
 
@@ -35,8 +58,8 @@ data; each training takes days):
 
 ```bash
 cd scripts/paper_scripts/Continuous_Learned_Primal_Dual
-for experiment in full_clinical full_extreme_low_dose sparse_clinical \
-                  sparse_extreme_low_dose limited_clinical limited_extreme_low_dose; do
+for experiment in full_low full_extreme_low sparse_low sparse_extreme_low \
+                  limited_low limited_extreme_low; do
     for model in cLPD LPD; do
         python train.py --experiment $experiment --model $model
     done
@@ -45,22 +68,24 @@ done
 ```
 
 A short run first, to check everything works:
-`python train.py --experiment full_clinical --model cLPD --epochs 1 --slices 20`.
+`python train.py --experiment full_low --model cLPD --epochs 1 --slices 20`.
 
 Results go to `$LION_RESULTS_PATH/paper_scripts/cLPD/<experiment>/`. A
 stopped training resumes from its latest checkpoint when run again.
 
-## What differs from the paper
+## What can't be reproduced exactly
 
-- **The data are simulated differently.** LION's CT experiments changed in
-  October 2026 (see `LION/experiments/ct_experiments.py`): a physical noise
-  model, doses chosen for it, and slices resampled to their real size with a
-  500 mm geometry. The paper used the earlier relative noise model and
-  geometry. Results are not comparable number for number with the paper's
-  Table 1; the comparison between cLPD, LPD and FDK is what reproduces.
-- **The paper doesn't give** the Adam betas (here 0.9, 0.99, as the original
-  script) or how the final model was chosen: here, the model after 100 epochs
-  (`--best` for the one with the best validation PSNR).
+- **The data's pixel spacing.** In 2024 the slices kept each scan's own pixel
+  spacing; LION's pre-processing now resamples them all to 500 mm over 512
+  pixels, and the 300 mm geometry of 2024 then doesn't match them (LION warns).
+  With the relative noise model the noise doesn't depend on the patient's
+  size, but the images are not the same. A copy of the data pre-processed
+  before October 2026, if there is one, gives the 2024 slices: `--data-folder
+  <that folder>`.
+- **The noise's three old errors** (cross-talk across angles, the maximum of
+  the whole batch, see `ct_utils.sinogram_add_noise`) were fixed and are not
+  kept, so the noise is close to, not identical with, 2024's.
+- **Random numbers** (initial weights, noise, shuffling) differ from 2024's.
 - **Metrics** are LION's (`LION.evaluation`), on images normalised by the
   test set's range.
 

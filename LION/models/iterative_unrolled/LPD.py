@@ -223,9 +223,9 @@ class LPD(LIONmodel):
 
     @staticmethod
     def continous_LPD_paper():
-        """The LPD that cLPD's paper (Runkel et al., 2024) compares with: 5
-        iterations of 4-layer blocks, learned positive steps, instance
-        normalisation, no biases."""
+        """The LPD that cLPD's paper (Runkel et al., 2024) compares with, as
+        the code that trained it (June 2024): 5 iterations of 4-layer blocks,
+        learned positive steps, no biases, no instance normalisation."""
         LPD_params = LIONModelParameter()
         LPD_params.n_iters = 5
         LPD_params.data_channels = [7, 32, 32, 32, 5]
@@ -233,7 +233,7 @@ class LPD(LIONmodel):
         LPD_params.learned_step = True
         LPD_params.step_size = None
         LPD_params.step_positive = True
-        LPD_params.instance_norm = True
+        LPD_params.instance_norm = False
         LPD_params.conv_bias = False
         # project the second primal channel in the dual step, as in Adler & Oktem
         LPD_params.dual_step_primal_channel = 1

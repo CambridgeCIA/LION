@@ -8,17 +8,17 @@
 
 Runkel, Biguri and Schönlieb, "Continuous Learned Primal Dual", 2024: cLPD
 and LPD, each trained on six CT problems (full, sparse and limited angle, at
-clinical and extremely low dose), with Adam (learning rate 1e-4), batch size 2,
-for 100 epochs. One run trains one model on one problem:
+two doses), with Adam (learning rate 1e-4), batch size 2, for 100 epochs, with
+the settings of the code that trained the paper's models (``settings.py``). One run trains one model on one problem:
 
-    python train.py --experiment full_clinical --model cLPD
+    python train.py --experiment full_low --model cLPD
 
 ``--experiment`` is one of ``settings.EXPERIMENTS``, ``--model`` cLPD or LPD;
 the README has the loop over all twelve. The model is saved in
 ``$LION_RESULTS_PATH/paper_scripts/cLPD/<experiment>/<model>`` (``.pt`` and
 ``.json``, with its records), with checkpoints every 10 epochs: a stopped run
-resumes from the latest when run again. The model with the best validation
-PSNR is also kept (``<model>_best``). ``--slices`` and ``--epochs`` make a
+resumes from the latest when run again. The model with the lowest validation
+loss is also kept (``<model>_best``). ``--slices`` and ``--epochs`` make a
 short run, to check it works.
 
 Needs a GPU, the processed LIDC-IDRI data in ``LION_DATA_PATH`` and
@@ -31,7 +31,6 @@ import argparse
 import torch
 from torch.utils.data import DataLoader, Subset
 
-from LION.metrics.psnr import PSNR
 from LION.optimizers.SupervisedSolver import SupervisedSolver
 
 import settings
@@ -43,6 +42,9 @@ arguments.add_argument("--model", choices=settings.MODELS, required=True)
 arguments.add_argument("--epochs", type=int, default=settings.EPOCHS)
 arguments.add_argument(
     "--slices", type=int, default=None, help="training slices (default: all)"
+)
+arguments.add_argument(
+    "--data-folder", default=None, help="another processed LIDC-IDRI folder"
 )
 arguments.add_argument("--gpu", type=int, default=0)
 arguments = arguments.parse_args()
@@ -56,7 +58,7 @@ save_folder.mkdir(parents=True, exist_ok=True)
 name = arguments.model
 
 # %% The problem: geometry, noise, data
-experiment = settings.EXPERIMENTS[arguments.experiment]()
+experiment = settings.experiment(arguments.experiment, arguments.data_folder)
 training = experiment.get_dataset("train")
 validation = experiment.get_dataset("validation")
 if arguments.slices is not None:
@@ -79,7 +81,8 @@ optimizer = torch.optim.Adam(
 )
 solver = SupervisedSolver(model, optimizer, settings.LOSS(), verbose=verbose)
 solver.set_training(training_loader)
-solver.set_validation(validation_loader, 10, PSNR(), validation_fname=f"{name}_best")
+# validated every epoch with the training loss; the lowest is kept
+solver.set_validation(validation_loader, 1, validation_fname=f"{name}_best")
 solver.set_saving(save_folder, name)
 solver.set_checkpointing(f"{name}_checkpoint_*.pt", checkpoint_freq=10)
 

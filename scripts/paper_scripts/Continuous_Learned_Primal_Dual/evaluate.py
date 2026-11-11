@@ -10,13 +10,13 @@ cLPD and LPD (trained by ``train.py``) and FDK, the baseline, on the test set
 of the problem, with SSIM and PSNR (mean ± standard deviation, as the paper's
 Table 1), and the images of the best, median and worst slices:
 
-    python evaluate.py --experiment full_clinical
+    python evaluate.py --experiment full_low
 
 Writes ``$LION_RESULTS_PATH/paper_scripts/cLPD/<experiment>/comparison``: the
 table (markdown, LaTeX, CSV), every slice's scores, box plots and images, and
 the test records. ``--samples`` tests on fewer slices, evenly spaced;
-``--best`` uses the models with the best validation PSNR instead of the final
-ones.
+``--best`` uses the models with the lowest validation loss instead of the
+final ones (the paper tested the final ones).
 
 Needs a GPU, the processed LIDC-IDRI data in ``LION_DATA_PATH`` and
 ``LION_RESULTS_PATH``.
@@ -38,6 +38,9 @@ arguments.add_argument(
     "--samples", type=int, default=None, help="test slices (default: all)"
 )
 arguments.add_argument("--best", action="store_true", help="the best-validation models")
+arguments.add_argument(
+    "--data-folder", default=None, help="another processed LIDC-IDRI folder"
+)
 arguments.add_argument("--gpu", type=int, default=0)
 arguments = arguments.parse_args()
 
@@ -49,7 +52,7 @@ folder = settings.folder(arguments.experiment)
 suffix = "_best" if arguments.best else ""
 
 # %% The test set of the problem, and the methods
-experiment = settings.EXPERIMENTS[arguments.experiment]()
+experiment = settings.experiment(arguments.experiment, arguments.data_folder)
 evaluation = Evaluation(
     experiment, samples=arguments.samples, save_folder=folder / "evaluations"
 )
