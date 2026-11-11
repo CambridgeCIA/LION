@@ -15,7 +15,10 @@ This is the same network, with the same initialisation and padding, and its
 same memory use: the layers write their outputs into one buffer, and the
 gradients are computed layer by layer, so memory grows with the depth, not its
 square (each layer's input is all the layers before it, and storing them for
-autograd one by one would grow with the square)."""
+autograd one by one would grow with the square). On a GPU, each layer is a
+Triton kernel (``_msd_triton``, as ``msd_pytorch``'s CUDA kernels; Triton
+comes with PyTorch, nothing to compile); otherwise plain torch, a group of
+input channels at a time."""
 
 from __future__ import annotations
 
@@ -27,6 +30,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd.function import once_differentiable
 
+from LION.models.CNNs import _msd_triton
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.citation import citation
 
@@ -50,12 +54,42 @@ def _conv(x, weight, bias, dilation):
     return F.conv2d(_symmetric_pad(x, dilation), weight, bias, dilation=dilation)
 
 
+#: How many input channels a layer convolves at a time: a layer's convolution
+#: is the sum of those of groups of its input channels, so its temporary
+#: memory (the padded copy of the input, the convolution's workspace) doesn't
+#: grow with the depth.
+CHANNELS_AT_A_TIME = 16
+
+
+def _groups(n):
+    """The channel ranges ``(start, end)`` of ``n`` channels, in groups of
+    ``CHANNELS_AT_A_TIME``."""
+    return [
+        (c, min(c + CHANNELS_AT_A_TIME, n)) for c in range(0, n, CHANNELS_AT_A_TIME)
+    ]
+
+
+def _layer(x, weight, bias, dilation):
+    """One hidden layer's convolution of all of ``x``, group of channels by
+    group (``CHANNELS_AT_A_TIME``), with ``bias``."""
+    output = None
+    for start, end in _groups(x.shape[1]):
+        part = _conv(x[:, start:end], weight[:, start:end], None, dilation)
+        output = part if output is None else output.add_(part)
+    return output + bias.view(1, -1, 1, 1)
+
+
 class _MSDBlock(torch.autograd.Function):
     """The hidden layers: each a dilated 3x3 convolution (with a bias) of all
     the channels before it, then a ReLU, written into one buffer (B, C + depth
     * width, H, W): the input, then each layer's ``width`` channels. Backward
-    goes through the layers in reverse, recomputing each layer's convolution to
-    get its gradients, so only the buffer is kept."""
+    goes through the layers in reverse, so only the buffer is kept.
+
+    On a GPU (with Triton): each layer's convolution, bias and ReLU are one
+    Triton kernel reading the buffer (``_msd_triton``), and so are the
+    gradients of its weights and of its input. Otherwise, in plain
+    torch: each layer's convolution is recomputed for its gradients, a group of
+    input channels at a time (``CHANNELS_AT_A_TIME``)."""
 
     @staticmethod
     def forward(ctx, x, dilations, bias, *weights):
@@ -66,11 +100,15 @@ class _MSDBlock(torch.autograd.Function):
         )
         result[:, : x.shape[1]] = x
         start = x.shape[1]
+        gpu = _msd_triton.available(result)
         for i, (weight, dilation) in enumerate(zip(weights, dilations)):
             sub_bias = bias[i * width : (i + 1) * width]
-            result[:, start : start + width] = F.relu(
-                _conv(result[:, :start], weight, sub_bias, dilation)
-            )
+            if gpu:
+                _msd_triton.forward(result, start, weight, sub_bias, dilation)
+            else:
+                result[:, start : start + width] = F.relu(
+                    _layer(result[:, :start], weight, sub_bias, dilation)
+                )
             start += width
         ctx.dilations = dilations
         ctx.save_for_backward(result, bias, *weights)
@@ -87,19 +125,34 @@ class _MSDBlock(torch.autograd.Function):
         grad_bias = torch.zeros_like(bias)
         grad_weights = [None] * len(weights)
         end = result.shape[1]
+        gpu = _msd_triton.available(result)
         for i in reversed(range(len(weights))):
             start = end - width
             # through the ReLU: its output is positive where its input was
             grad_layer = gradients[:, start:end] * (result[:, start:end] > 0)
             grad_bias[i * width : (i + 1) * width] = grad_layer.sum(dim=(0, 2, 3))
-            with torch.enable_grad():
-                layer_input = result[:, :start].detach().requires_grad_()
-                weight = weights[i].detach().requires_grad_()
-                output = _conv(layer_input, weight, None, ctx.dilations[i])
-                grad_input, grad_weights[i] = torch.autograd.grad(
-                    output, (layer_input, weight), grad_layer
+            if gpu:
+                dilation = ctx.dilations[i]
+                _msd_triton.add_grad_input(
+                    gradients, start, grad_layer, weights[i], dilation
                 )
-            gradients[:, :start] += grad_input
+                grad_weights[i] = _msd_triton.grad_weight(
+                    result, start, grad_layer, dilation, weights[i].shape
+                )
+                end = start
+                continue
+            grad_weights[i] = torch.empty_like(weights[i])
+            # the convolution again, a group of input channels at a time
+            for c0, c1 in _groups(start):
+                with torch.enable_grad():
+                    part = result[:, c0:c1].detach().requires_grad_()
+                    weight = weights[i][:, c0:c1].detach().requires_grad_()
+                    output = _conv(part, weight, None, ctx.dilations[i])
+                    grad_part, grad_weight = torch.autograd.grad(
+                        output, (part, weight), grad_layer
+                    )
+                gradients[:, c0:c1] += grad_part
+                grad_weights[i][:, c0:c1] = grad_weight
             end = start
         n_in = weights[0].shape[1]
         return (gradients[:, :n_in], None, grad_bias, *grad_weights)

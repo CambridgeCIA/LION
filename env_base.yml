@@ -14,6 +14,9 @@ dependencies:
   # >= 2.6: torch.load(weights_only=True), with which LION loads model files, had a
   # code-execution bug before 2.6 (CVE-2025-32434).
   - pytorch-gpu>=2.6
+  # CUDA's headers (cuda.h): Triton, which comes with pytorch-gpu, compiles a small
+  # helper with them the first time it runs a kernel (LION's MSDNet on GPUs)
+  - cuda-cudart-dev
   # LION does not import torchvision, but mrpro and spyrit (pip, pyproject.toml)
   # require it: from conda here, or pip would install it with a pip torch
   - torchvision
