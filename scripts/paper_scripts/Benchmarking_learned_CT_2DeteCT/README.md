@@ -33,16 +33,20 @@ The targets are the mode 2 reconstructions of the dataset.
 
 ## The methods
 
-**These scripts cover 9 of the paper's 15 methods**, those whose code
+**These scripts cover 12 of the paper's 15 methods**, those whose code
 produced the paper's results and is in LION:
 
 - classical: **FBP**, **AGD** (Nesterov's accelerated gradient descent on the
   least squares), **ChP** (TV minimisation by Chambolle-Pock);
 - post-processing, on FBP: **FBP+U-Net**, **FBP+MS-D Net**, **FBP+DnCNN**;
 - unrolled: **LG** (learned gradient), **LGTV** (LG with a TV gradient),
-  **LPD** (learned primal-dual).
+  **LPD** (learned primal-dual);
+- Plug-and-Play, with a Gaussian denoiser trained on the targets:
+  **DnCNN-PnP**, **DRUNet-PnP**, **GS-PnP** (gradient-step DRUNet).
 
-Not yet scripted: AR, ACR, TDV, DnCNN-PnP, DRUNet-PnP and GS-PnP.
+Not scripted: **AR**, **ACR** and **TDV**. Their training code isn't
+available (TDV isn't in LION either); "AR, ACR and TDV" below lists what the
+evaluation code of 2024 shows.
 
 ## Running everything
 
@@ -54,26 +58,33 @@ cd scripts/paper_scripts/Benchmarking_learned_CT_2DeteCT
 
 # 1. a short run, to check it works (minutes)
 python train.py --experiment full --model all --epochs 1 --slices 20
-python evaluate.py --experiment full --samples 10 --final
+python train_denoisers.py --denoiser all --noise_level 0.05 --epochs 1 --slices 20
+python evaluate.py --experiment full --samples 10 --validation_samples 5 --final
 
 # 2. all 54 trainings (6 learned methods on 9 problems; hours to days each)
 python train.py --experiment all --model all
 
-# 3. all nine evaluations (with the classical methods), and the tables
+# 3. the 21 denoisers of the PnP methods (3 denoisers at 7 noise levels),
+#    the same for every problem
+python train_denoisers.py --denoiser all --noise_level all
+
+# 4. all nine evaluations (with the classical methods), and the tables
 python evaluate.py --experiment all
 ```
 
 Delete the short run's models (`$LION_RESULTS_PATH/paper_scripts/2detect_benchmark/`)
-before step 2: trained models are skipped. `train.py --experiment all --model
-all` trains one after the other; a stopped run resumes from the last
-checkpoint, skipping the models already trained. To use several GPUs, run one
-problem (or one method) per GPU:
+before steps 2 and 3: trained models are skipped. Steps 2 and 3 are
+independent and can run at the same time, on different GPUs (`--gpu`). Each
+trains its models one after the other; a stopped run resumes from the last
+checkpoint, skipping the models already trained. To use more GPUs, run one
+problem (or one method, or one denoiser) per GPU:
 
 ```bash
 python train.py --experiment full --model all --gpu 0 &
 python train.py --experiment limited_120 --model all --gpu 1 &
 # ...
 python train.py --experiment all --model LPD --gpu 2 &
+python train_denoisers.py --denoiser GS-PnP --noise_level all --gpu 3 &
 ```
 
 Results go to `$LION_RESULTS_PATH/paper_scripts/2detect_benchmark/<experiment>/`:
@@ -81,7 +92,13 @@ the models (each `<model>` and `<model>_best`, with their records) and
 `comparison/` (tables, per-slice scores, box plots, images). `evaluate.py
 --experiment all` also writes `tables.md`, the nine tables together. The
 evaluation leaves out, with a message, learned methods not trained yet, so
-the classical methods can be evaluated first.
+the classical methods can be evaluated first. For each PnP method, it first
+chooses the noise level (below) on the validation set, and writes every
+score and the choice to `comparison/pnp_noise_levels.json`.
+
+The denoisers go to `$LION_RESULTS_PATH/paper_scripts/2detect_benchmark/denoisers/`,
+named by method and noise level (e.g. `DnCNN-PnP_sigma0_005` and
+`DnCNN-PnP_sigma0_005_best`).
 
 ## Files
 
@@ -89,6 +106,8 @@ the classical methods can be evaluated first.
   training, and the classical methods with their settings.
 - `train.py`: trains one learned method on one problem, or all of them
   (`all`).
+- `train_denoisers.py`: trains the PnP methods' denoisers, one or all, at
+  one noise level or all.
 - `evaluate.py`: tests every method on one problem's test set, or on all nine
   (`all`).
 
@@ -115,6 +134,47 @@ From Max Kiss's training and evaluation scripts (PR #104).
 - **Metrics:** SSIM and PSNR of each slice, with the target's own range
   (max - min), averaged over the test set.
 
+### The PnP methods, from Ferdia Sherry's code of 2024
+
+From his `train_gaussian_denoiser.py` and `eval_*_pnp.py`.
+
+- **Denoisers:** trained on the targets (LION's `GroundTruthCT`), scaled to
+  [0, 1] by the training targets' maximum (0.02366, the code's
+  `normalisation.json`), with Gaussian noise of one standard deviation added
+  after. One denoiser per noise level: 0.001, 0.005, 0.01, 0.02, 0.03, 0.05
+  and 0.07 (the paper's).
+  - **DnCNN:** 20 layers of 64 channels, with biases, batch normalisation and
+    leaky ReLUs, learning the residual.
+  - **DRUNet:** 64 channels, 4 blocks per scale, with biases and leaky ReLUs,
+    without the noise level as an input.
+  - **GS:** a gradient-step denoiser x - ∇g(x), g(x) = ‖x - N(x)‖²/2, N a
+    DRUNet with ELUs, 32 channels and 2 blocks per scale.
+- **Training:** Adam (betas 0.9 and 0.9), learning rate 1e-4, 25 epochs,
+  one image at a time as 5 random patches of 256 × 256, each erased with
+  probability 1/2 (a random rectangle set to 0, as kornia's `RandomErasing`);
+  the mean squared error to the clean patch. The denoiser with the best
+  validation is kept.
+- **Reconstruction:** 100 iterations from zero, step size 1/‖A‖².
+  - **DnCNN-PnP and DRUNet-PnP:** forward-backward splitting, x ← D(x -
+    step Aᵀ(Ax - y)) (LION's `PnP`, "FBS").
+  - **GS-PnP:** gradient descent on ‖Ax - y‖²/2 + g(x), then the denoiser
+    applied once. In the descent, g is evaluated on the images as they are,
+    not scaled to [0, 1], as the code did.
+- **The noise level** of each method, for each problem: the one whose
+  reconstructions have the best mean PSNR on the validation set (the paper:
+  "selecting separately for each experiment the denoiser that performed best
+  on the PnP reconstruction task").
+
+### AR, ACR and TDV (not scripted)
+
+What the 2024 evaluation code (`eval_method.py`, Zakhar Shumaylov) shows,
+for whoever adds them: 25 epochs (TDV: 10), with a checkpoint every epoch;
+for each problem, the checkpoint in the tables (the one with the lowest
+validation loss) named in the code; λ estimated on 50 validation slices
+before testing, and divided by 10 for beam hardening; AR with step size
+0.2/‖A‖² and 300 steps; TDV run without gradients. Their training (losses,
+architectures, steps) isn't in it.
+
 ## Differences
 
 **With the paper's text** (the scripts follow the code):
@@ -125,6 +185,11 @@ From Max Kiss's training and evaluation scripts (PR #104).
   weights.
 - **LPD's blocks** are 3-layer, as the code's; the paper describes "shallow
   four-layer CNN"s.
+- **The denoisers' Adam:** betas 0.9 and 0.9, as the code; the paper says
+  0.9 and 0.999.
+- **GS-PnP:** gradient descent on both terms, then a denoising, as the code;
+  the paper describes "a gradient step on the regularization functional and a
+  proximal step on the data discrepancy functional".
 
 **With the code of 2024:**
 
@@ -137,6 +202,24 @@ From Max Kiss's training and evaluation scripts (PR #104).
 - **Training and testing code:** LION's solver and `LION.evaluation` instead
   of the hand-written loops of 2024: the same optimisation and metrics.
 - **Random numbers** (initial weights, shuffling) differ from 2024's.
+- **The denoisers' validation:** on 5 patches of each validation image, by
+  the mean squared error (LION's `GaussianDenoiserSolver`); the 2024 code
+  validated on whole images, by PSNR. The noise level is then chosen, as in
+  2024, by the PnP reconstructions' PSNR (here each slice's own range; in
+  2024, the target's maximum: the same for targets whose minimum is 0).
+
+**Not known, to be checked** (the 2024 code doesn't say):
+
+- **The denoisers' options:** the training script took the channels, blocks,
+  `bias_free` and `enforce_positivity` from its command line, which isn't
+  recorded. These scripts use its defaults, except for GS: the paper says its
+  DRUNet was scaled down, and 32 channels and 2 blocks is the 2024 GS class's
+  default (the command line's default was 64 and 4).
+- **ChP's TV weights:** `TV_WEIGHTS` are those of #104. Another 2024 script,
+  run on three example slices (Max Kiss's `chp.py`), used 1e-10 (full data),
+  1e-6, 1e-4, 1e-4 (limited 120°, 90°, 60°), 1e-5, 1e-5, 1e-5 (sparse 360,
+  120, 60), 1e-5 (low dose) and 1e-7 (beam hardening). Which gave the tables
+  isn't known.
 
 ## The paper's results, for reference
 
