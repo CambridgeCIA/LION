@@ -118,8 +118,10 @@ From Max Kiss's training and evaluation scripts (PR #103).
 
 - **The simulated noise:** see below. Each slice's noise is drawn once (the
   same every epoch), as LION does; the 2024 code's choice isn't known.
-- **The MS-D network** was `msd_pytorch`'s in 2024; here it is LION's own
-  implementation of the same architecture.
+- **The MS-D network** was `msd_pytorch`'s in 2024; here it is LION's
+  `MSDNet`, a rewrite of `msd_pytorch` in plain torch (#391: the same network,
+  initialisation and padding; until #391 is merged, LION's earlier MSDNet,
+  which differs).
 - **The models** are LION models (the U-Net: this folder's), trained by LION's
   solver and tested with `LION.evaluation` instead of the hand-written loops
   of 2024: the same optimisation and metrics.
