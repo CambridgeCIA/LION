@@ -633,3 +633,38 @@ def test_msdnet_gradients_are_those_of_the_network():
         torch.autograd.grad(output, inputs, g), torch.autograd.grad(expected, inputs, g)
     ):
         assert torch.allclose(a, b)
+
+
+def test_msdnet_triton_kernels_match_torch():
+    """MSDNet's GPU kernels (Triton) give the outputs and gradients of its
+    plain torch path. Run in Triton's interpreter, on the CPU, in a fresh
+    process (the interpreter is chosen when Triton is imported)."""
+    pytest.importorskip("triton")
+    import subprocess
+    import sys
+
+    code = """
+import torch
+from LION.models.CNNs import _msd_triton
+from LION.models.CNNs.MSDNet import MSDNet
+p = MSDNet.default_parameters()
+p.depth, p.width, p.in_channels, p.dilations = 4, 2, 1, [1, 2, 3]
+torch.manual_seed(0)
+model = MSDNet(p)
+with torch.no_grad():
+    for parameter in model.parameters():
+        parameter.normal_()
+x = torch.randn(2, 1, 13, 11, requires_grad=True)
+results = []
+for triton in (False, True):
+    _msd_triton.available = lambda tensor: triton
+    y = model(x)
+    results.append([y, *torch.autograd.grad(y, [x, *model.parameters()], torch.ones_like(y))])
+for a, b in zip(*results):
+    assert torch.allclose(a, b, atol=1e-3, rtol=1e-4), (a - b).abs().max()
+"""
+    env = dict(os.environ, TRITON_INTERPRET="1")
+    done = subprocess.run(
+        [sys.executable, "-c", code], env=env, capture_output=True, text=True
+    )
+    assert done.returncode == 0, done.stderr[-2000:]

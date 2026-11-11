@@ -15,9 +15,10 @@ This is the same network, with the same initialisation and padding, and its
 same memory use: the layers write their outputs into one buffer, and the
 gradients are computed layer by layer, so memory grows with the depth, not its
 square (each layer's input is all the layers before it, and storing them for
-autograd one by one would grow with the square). Each layer convolves its
-input a group of channels at a time, so the temporary memory of a
-convolution (a padded copy, the workspace) stays the same at any depth."""
+autograd one by one would grow with the square). On a GPU, each layer is a
+Triton kernel (``_msd_triton``, as ``msd_pytorch``'s CUDA kernels; Triton
+comes with PyTorch, nothing to compile); otherwise plain torch, a group of
+input channels at a time."""
 
 from __future__ import annotations
 
@@ -29,6 +30,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd.function import once_differentiable
 
+from LION.models.CNNs import _msd_triton
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.citation import citation
 
@@ -81,9 +83,13 @@ class _MSDBlock(torch.autograd.Function):
     """The hidden layers: each a dilated 3x3 convolution (with a bias) of all
     the channels before it, then a ReLU, written into one buffer (B, C + depth
     * width, H, W): the input, then each layer's ``width`` channels. Backward
-    goes through the layers in reverse, recomputing each layer's convolution to
-    get its gradients, so only the buffer is kept. Each convolution is done a
-    group of input channels at a time (``CHANNELS_AT_A_TIME``)."""
+    goes through the layers in reverse, so only the buffer is kept.
+
+    On a GPU (with Triton): each layer's convolution, bias and ReLU are one
+    Triton kernel reading the buffer (``_msd_triton``), the weights' gradient
+    another, and the input's a transposed convolution. Otherwise, in plain
+    torch: each layer's convolution is recomputed for its gradients, a group of
+    input channels at a time (``CHANNELS_AT_A_TIME``)."""
 
     @staticmethod
     def forward(ctx, x, dilations, bias, *weights):
@@ -94,11 +100,15 @@ class _MSDBlock(torch.autograd.Function):
         )
         result[:, : x.shape[1]] = x
         start = x.shape[1]
+        gpu = _msd_triton.available(result)
         for i, (weight, dilation) in enumerate(zip(weights, dilations)):
             sub_bias = bias[i * width : (i + 1) * width]
-            result[:, start : start + width] = F.relu(
-                _layer(result[:, :start], weight, sub_bias, dilation)
-            )
+            if gpu:
+                _msd_triton.forward(result, start, weight, sub_bias, dilation)
+            else:
+                result[:, start : start + width] = F.relu(
+                    _layer(result[:, :start], weight, sub_bias, dilation)
+                )
             start += width
         ctx.dilations = dilations
         ctx.save_for_backward(result, bias, *weights)
@@ -115,11 +125,22 @@ class _MSDBlock(torch.autograd.Function):
         grad_bias = torch.zeros_like(bias)
         grad_weights = [None] * len(weights)
         end = result.shape[1]
+        gpu = _msd_triton.available(result)
         for i in reversed(range(len(weights))):
             start = end - width
             # through the ReLU: its output is positive where its input was
             grad_layer = gradients[:, start:end] * (result[:, start:end] > 0)
             grad_bias[i * width : (i + 1) * width] = grad_layer.sum(dim=(0, 2, 3))
+            if gpu:
+                dilation = ctx.dilations[i]
+                gradients[:, :start] += _msd_triton.grad_input(
+                    grad_layer, weights[i], dilation
+                )
+                grad_weights[i] = _msd_triton.grad_weight(
+                    result, start, grad_layer, dilation, weights[i].shape
+                )
+                end = start
+                continue
             grad_weights[i] = torch.empty_like(weights[i])
             # the convolution again, a group of input channels at a time
             for c0, c1 in _groups(start):
