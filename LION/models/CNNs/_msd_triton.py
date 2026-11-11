@@ -21,6 +21,8 @@ Triton installed). ``MSDNet`` uses them then, and plain torch otherwise."""
 
 from __future__ import annotations
 
+import warnings
+
 import torch
 
 try:  # comes with PyTorch's CUDA builds on Linux
@@ -33,9 +35,30 @@ except ImportError:  # pragma: no cover - depends on the installation
 BLOCK = 1024
 
 
+_working = None  # whether Triton can launch kernels here (checked once)
+
+
 def available(x: torch.Tensor) -> bool:
-    """Whether the Triton kernels can run on ``x``."""
-    return triton is not None and x.is_cuda and x.dtype == torch.float32
+    """Whether the Triton kernels can run on ``x``: a float32 CUDA tensor, and
+    Triton working. The first time, Triton compiles a helper with CUDA's
+    headers; without them (``cuda.h``: conda's ``cuda-cudart-dev``), a warning
+    says so, and MSDNet runs in plain torch (much slower)."""
+    global _working
+    if triton is None or not x.is_cuda or x.dtype != torch.float32:
+        return False
+    if _working is None:
+        try:
+            triton.runtime.driver.active.get_current_device()
+            _working = True
+        except Exception as error:  # e.g. cuda.h missing: a CalledProcessError
+            _working = False
+            warnings.warn(
+                f"Triton can't run here ({type(error).__name__}: {error}), so "
+                "MSDNet runs in plain torch, much slower on a GPU. Triton needs "
+                "CUDA's headers: install conda's cuda-cudart-dev (env_base.yml).",
+                stacklevel=3,
+            )
+    return _working
 
 
 if triton is not None:
