@@ -12,9 +12,8 @@ results (2024), which the paper's text doesn't always detail.
 The 2DeteCT dataset (``LION.data_loaders.deteCT``), with mode 2 (high dose) as
 the clean target and one of two noisy inputs:
 
-- ``"simulated"``: mode 2 sinograms with added noise (Poisson and 5% detector
-  cross-talk), one I0 = 200 for every slice (``deteCT.noise_parameters(I0=200)``;
-  LION's default is one I0 per detector, so it is set here);
+- ``"simulated"``: mode 2 sinograms with added noise at one I0 = 200 for every
+  slice, by one of two noise models (``NOISE_MODEL``, see ``Noisy2DeteCT``);
 - ``"experimental"``: the measured low-dose mode 1 sinograms.
 
 Two tasks: denoising the sinograms (``"sino2sino"``: sinogram to the mode 2
@@ -39,16 +38,69 @@ from unet import UNet
 #: The I0 of the simulated noise: the paper compared 200, 250, 300 and 350 and
 #: chose 200, whose reconstructions' PSNR was closest to mode 1's.
 SIMULATED_I0 = 200
+#: The I0s of the paper's Table 1 (``noise_check.py``).
+TABLE1_I0 = (200, 250, 300, 350)
 #: Fraction of the signal of the neighbouring detector pixels (from XCIST).
 CROSS_TALK = 0.05
+#: The electronic noise of the relative model, in photons (LION's 2024 default).
+ELECTRONIC_NOISE = 5
+#: The noise model of the simulated data: "relative", LION's noise of 2024, or
+#: "paper", the paper's equations (see ``Noisy2DeteCT``). ``noise_check.py``
+#: tells which reproduces the paper's Table 1.
+NOISE_MODEL = "relative"
+
+
+class Noisy2DeteCT(deteCT):
+    """2DeteCT with the noise of the paper's simulated data, by
+    ``noise_params.model``:
+
+    - ``"relative"``: LION's ``sinogram_add_noise`` of 2024 (LION's relative
+      model), applied to the measured log sinogram ``y``: the transmission
+      I0 exp(-y / max(y)) (each slice scaled by its own maximum), Poisson noise
+      on it, 5% cross-talk between neighbouring detector pixels on the whole
+      signal, Gaussian electronic noise of ``sigma`` photons, signals <= 0 set
+      to 1e-6, then -log(I / I0) max(y), negative values set to zero;
+    - ``"paper"``: the paper's equations (8)-(10): the measured transmission
+      ILI = exp(-y), in [0, 1], taken as noiseless, plus the Poisson noise of
+      I0 ILI counts with 5% cross-talk, no electronic noise (it is in the
+      measured data already) and no scaling: LION's
+      ``deteCT.add_sinogram_noise``.
+    """
+
+    def add_sinogram_noise(self, sinogram, I0, cross_talk=0.05):
+        if getattr(self.noise_params, "model", "paper") == "paper":
+            return super().add_sinogram_noise(sinogram, I0, cross_talk)
+        return relative_noise_2024(sinogram, I0, self.noise_params.sigma, cross_talk)
+
+
+def relative_noise_2024(proj, I0, sigma, cross_talk):
+    """LION's ``sinogram_add_noise`` of 2024, as it was (``CTtools/ct_utils.py``,
+    without flat fields), on one sinogram (1, angles, detectors)."""
+    max_val = torch.amax(proj)
+    Im = I0 * torch.exp(-proj / max_val)
+    Im = torch.poisson(Im)
+    # cross-talk along the detector
+    kernel = torch.tensor(
+        [[0.0, 0.0, 0.0], [cross_talk, 1, cross_talk], [0.0, 0.0, 0.0]],
+        device=proj.device,
+    ).view(1, 1, 3, 3) / (1 + 2 * cross_talk)
+    Im = torch.nn.functional.conv2d(Im.unsqueeze(0), kernel, padding="same")[0]
+    Im = Im + sigma * torch.randn(Im.shape, device=proj.device)
+    Im[Im <= 0] = 1e-6
+    proj = -torch.log(Im / I0) * max_val
+    proj[proj < 0] = 0
+    return proj
+
 
 NOISE = ("simulated", "experimental")
 TASKS = ("sino2sino", "sino2recon")
 
 
-def data_parameters(noise, task):
+def data_parameters(noise, task, I0=SIMULATED_I0, noise_model=None):
     """The 2DeteCT parameters for one of the paper's settings: ``noise`` is
-    "simulated" or "experimental", ``task`` "sino2sino" or "sino2recon"."""
+    "simulated" or "experimental", ``task`` "sino2sino" or "sino2recon";
+    ``I0`` and ``noise_model`` (default ``NOISE_MODEL``): the simulated
+    noise's."""
     if noise not in NOISE or task not in TASKS:
         raise ValueError(f"noise must be one of {NOISE} and task one of {TASKS}")
     params = deteCT.default_parameters()
@@ -57,18 +109,20 @@ def data_parameters(noise, task):
     if noise == "simulated":
         params.input_mode = "mode2"
         params.add_noise = True
-        params.noise_params = deteCT.noise_parameters(
-            I0=SIMULATED_I0, cross_talk=CROSS_TALK
-        )
+        params.noise_params = deteCT.noise_parameters(I0=I0, cross_talk=CROSS_TALK)
+        params.noise_params.model = noise_model or NOISE_MODEL
+        params.noise_params.sigma = ELECTRONIC_NOISE
     else:
         params.input_mode = "mode1"
     return params
 
 
-def dataset(noise, task, split="train"):
+def dataset(noise, task, split="train", **noise_settings):
     """The 2DeteCT dataset of one setting, for ``split`` "train", "validation"
-    or "test"."""
-    return deteCT(split, parameters=data_parameters(noise, task))
+    or "test" (``noise_settings``: ``I0``, ``noise_model``)."""
+    return Noisy2DeteCT(
+        split, parameters=data_parameters(noise, task, **noise_settings)
+    )
 
 
 def operator_params():
@@ -105,8 +159,8 @@ MODELS = {
     ),
 }
 
-#: The classes defined in this folder that saved models name
-ALLOW = ("unet.",)
+#: The classes defined in this folder that saved models and records name
+ALLOW = ("unet.", "settings.")
 
 # The training: Adam (learning rate 1e-4, betas 0.9 and 0.99), batch size 1,
 # 100 epochs, the mean squared error to the target; validated every 10 epochs,

@@ -37,6 +37,9 @@ On a GPU machine with the processed 2DeteCT data (`LION_DATA_PATH`) and
 ```bash
 cd scripts/paper_scripts/Learned_denoising_simulated_experimental_low_dose_CT
 
+# 0. which noise model made the paper's simulated data (no training; see below)
+python noise_check.py
+
 # 1. a short run, to check it works (minutes)
 python train.py --model all --noise all --epochs 1 --slices 20
 python evaluate.py --samples 10 --final
@@ -72,6 +75,8 @@ with a message, models not trained yet.
   split)`), the models, the training, and the evaluation's methods (the noisy
   sinograms, FDK, the FDK of a denoised sinogram).
 - `unet.py`: the paper's U-Net (see below).
+- `noise_check.py`: the paper's Table 1 (the simulated noise against the
+  experimental one, for I0 = 200 to 350), with both noise models.
 - `train.py`: trains one model on one kind of noise, or all eight (`all`).
 - `evaluate.py`: tests the trained models in both domains, on both test sets.
 
@@ -80,8 +85,8 @@ with a message, models not trained yet.
 From Max Kiss's training and evaluation scripts (PR #103).
 
 - **Data:** 2DeteCT, flat- and dark-field corrected and log-transformed,
-  split 80/10/10. Simulated noise: `deteCT.noise_parameters(I0=200,
-  cross_talk=0.05)`.
+  split 80/10/10. Simulated noise: I0 = 200, 5% cross-talk, by LION's
+  relative noise model of 2024 (see "The simulated noise").
 - **Training** (every model): Adam (learning rate 1e-4, betas 0.9 and 0.99),
   batch size 1, 100 epochs, the mean squared error to the target; validated
   every 10 epochs with it. The model with the lowest validation loss is the
@@ -111,11 +116,8 @@ From Max Kiss's training and evaluation scripts (PR #103).
 
 **With the code of 2024:**
 
-- **The simulated noise** is LION's 2DeteCT noise (`deteCT.add_sinogram_noise`,
-  Poisson and cross-talk on the log-transformed sinogram). The 2024 data
-  loader in #103 has no noise of its own: it was added by code not in the PR.
-  Each slice's noise is drawn once (the same every epoch), as LION does; the
-  2024 code's choice isn't known.
+- **The simulated noise:** see below. Each slice's noise is drawn once (the
+  same every epoch), as LION does; the 2024 code's choice isn't known.
 - **The MS-D network** was `msd_pytorch`'s in 2024; here it is LION's own
   implementation of the same architecture.
 - **The models** are LION models (the U-Net: this folder's), trained by LION's
@@ -123,8 +125,29 @@ From Max Kiss's training and evaluation scripts (PR #103).
   of 2024: the same optimisation and metrics.
 - **Random numbers** (initial weights, noise, shuffling) differ from 2024's.
 
-**Not scripted:** Table 1 (the noise level's choice, I0 from 200 to 350) and
-the figures.
+**Not scripted:** the figures.
+
+## The simulated noise
+
+The 2024 data loader in #103 adds no noise: it was added by code not in the
+PR, LION's relative noise model of the time "or similar" (Ander). The
+paper's equations (8)-(10) and that model differ:
+
+| | The paper's equations | LION's relative model of 2024 |
+|---|---|---|
+| transmission | the measured ILI = exp(-y), in [0, 1] | exp(-y / max(y)), each slice scaled by its maximum (so ≥ e⁻¹) |
+| Poisson noise | the noise of I0 ILI counts, added to the measured signal (taken as noiseless) | the whole signal drawn at I0 exp(-y / max(y)) counts |
+| cross-talk, 5% | on the added noise | on the whole signal |
+| electronic noise | none added (it is in the measured data) | Gaussian, 5 photons |
+| starved rays | clipped to (0, I0] | ≤ 0 become 1e-6 |
+
+At the same I0 the relative model is much less noisy (no ray keeps less
+than e⁻¹ of I0). `settings.Noisy2DeteCT` does both (`noise_params.model`:
+"relative" or "paper"; the paper's is LION's `deteCT.add_sinogram_noise`), and
+`settings.NOISE_MODEL` chooses, "relative" by default. `noise_check.py`
+computes the paper's Table 1 with both: the one whose numbers match the
+paper's (e.g. I0 = 200: sinogram PSNR 25.72 dB, reconstruction PSNR 21.45 dB)
+made the paper's data. Set `NOISE_MODEL` to it before training.
 
 ## The paper's Table 2, for reference
 
