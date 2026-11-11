@@ -210,10 +210,10 @@ if triton is not None:
         # The input pixel h is read by output pixel h' through the tap of shift
         # s (-d, 0, d) where reflect(h' + s) == h: h' = h - s, and near the
         # edges also a reflected one (h' = d - 1 - h for s = -d, h' = 2H - 1 -
-        # d - h for s = d). The same along W.
-        b_c = tl.program_id(0)
-        b = (b_c // n_in).to(tl.int64)
-        c = b_c % n_in
+        # d - h for s = d). The same along W. The gradient gathered for each
+        # tap is the same for every input channel: gathered once, then each
+        # channel's gradient is 9 multiplications.
+        b = tl.program_id(0).to(tl.int64)
         offs = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
         mask = offs < H * W
         h = offs // W
@@ -240,39 +240,32 @@ if triton is not None:
         n2a = w >= d
         c2b = 2 * W - 1 - d - w
         n2b = (w >= W - d) & (2 * W - 1 - d - w >= 0)
-        acc = tl.zeros((BLOCK,), dtype=tl.float32)
+        image = gradients + b * C_total * H * W + offs
         for k in range(0, width):
             g = grad + (b * width + k) * H * W
-            f = weight + (k * n_in + c) * 9
-            acc += tl.load(f + 0) * _gather(
-                g, r0a, m0a, r0b, m0b, c0a, n0a, c0b, n0b, mask
-            )
-            acc += tl.load(f + 1) * _gather(
-                g, r0a, m0a, r0b, m0b, w, always, w, never, mask
-            )
-            acc += tl.load(f + 2) * _gather(
-                g, r0a, m0a, r0b, m0b, c2a, n2a, c2b, n2b, mask
-            )
-            acc += tl.load(f + 3) * _gather(
-                g, r1, always, r1, never, c0a, n0a, c0b, n0b, mask
-            )
-            acc += tl.load(f + 4) * _gather(
-                g, r1, always, r1, never, w, always, w, never, mask
-            )
-            acc += tl.load(f + 5) * _gather(
-                g, r1, always, r1, never, c2a, n2a, c2b, n2b, mask
-            )
-            acc += tl.load(f + 6) * _gather(
-                g, r2a, m2a, r2b, m2b, c0a, n0a, c0b, n0b, mask
-            )
-            acc += tl.load(f + 7) * _gather(
-                g, r2a, m2a, r2b, m2b, w, always, w, never, mask
-            )
-            acc += tl.load(f + 8) * _gather(
-                g, r2a, m2a, r2b, m2b, c2a, n2a, c2b, n2b, mask
-            )
-        out = gradients + (b * C_total + c) * H * W + offs
-        tl.store(out, tl.load(out, mask=mask, other=0.0) + acc, mask=mask)
+            g0 = _gather(g, r0a, m0a, r0b, m0b, c0a, n0a, c0b, n0b, mask)
+            g1 = _gather(g, r0a, m0a, r0b, m0b, w, always, w, never, mask)
+            g2 = _gather(g, r0a, m0a, r0b, m0b, c2a, n2a, c2b, n2b, mask)
+            g3 = _gather(g, r1, always, r1, never, c0a, n0a, c0b, n0b, mask)
+            g4 = _gather(g, r1, always, r1, never, w, always, w, never, mask)
+            g5 = _gather(g, r1, always, r1, never, c2a, n2a, c2b, n2b, mask)
+            g6 = _gather(g, r2a, m2a, r2b, m2b, c0a, n0a, c0b, n0b, mask)
+            g7 = _gather(g, r2a, m2a, r2b, m2b, w, always, w, never, mask)
+            g8 = _gather(g, r2a, m2a, r2b, m2b, c2a, n2a, c2b, n2b, mask)
+            kernel = weight + k * n_in * 9
+            for c in range(0, n_in):
+                f = kernel + c * 9
+                acc = tl.load(f + 0) * g0
+                acc += tl.load(f + 1) * g1
+                acc += tl.load(f + 2) * g2
+                acc += tl.load(f + 3) * g3
+                acc += tl.load(f + 4) * g4
+                acc += tl.load(f + 5) * g5
+                acc += tl.load(f + 6) * g6
+                acc += tl.load(f + 7) * g7
+                acc += tl.load(f + 8) * g8
+                out = image + c * H * W
+                tl.store(out, tl.load(out, mask=mask, other=0.0) + acc, mask=mask)
 
 
 def forward(buffer, n_in, weight, bias, dilation):
@@ -328,7 +321,7 @@ def add_grad_input(gradients, n_in, grad, weight, dilation):
     reflection, read straight from ``grad``)."""
     B, C_total, H, W = gradients.shape
     width = grad.shape[1]
-    _grad_input_kernel[(B * n_in, triton.cdiv(H * W, BLOCK))](
+    _grad_input_kernel[(B, triton.cdiv(H * W, BLOCK))](
         grad.contiguous(),
         weight.contiguous(),
         gradients,
