@@ -124,10 +124,12 @@ doesn't do.
   operator (`op.default_reconstruction(y)`) rather than importing a kind's
   folder.
 - An operator takes one sample; batches go through `op.autograd()`.
-- **Images and measurements have a singleton channel**, as CT's: an image is
-  `(1, H, W)`, measurements `(1, ...)` (CT: `(1, angles, detectors)`), and a
-  batch `(B, 1, ...)`. Models, solvers, reconstructors and data loaders rely
-  on it.
+- **Images are `(1, H, W)`, and batches of them `(B, 1, H, W)`.** For CT the
+  leading 1 is the depth of a 2D slice; LION's models take it as their
+  channel, so solvers, reconstructors and PnP rely on it. An operator whose
+  images have no depth (e.g. PCM) uses the same shape for now (under
+  discussion, issue #332). Measurements have whatever shape the operator
+  gives (CT: `(1, angles, detectors)`).
 - **`autograd()`** is the operator's author saying it can be differentiated:
   an operator of torch operations returns `(self, self.adjoint)`; one torch
   can't see into wraps itself in autograd functions (CT: tomosipo's
