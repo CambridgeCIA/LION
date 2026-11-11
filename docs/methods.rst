@@ -148,7 +148,8 @@ of self-supervised training.
      - Ronneberger, Fischer and Brox, "U-Net: Convolutional Networks for
        Biomedical Image Segmentation", MICCAI 2015
    * - ``MSDNet``
-     - few parameters, no downsampling
+     - few parameters, no downsampling; as ``msd_pytorch`` (Hendriksen), in
+       plain torch
      - Pelt and Sethian, "A mixed-scale dense convolutional neural network
        for image analysis", PNAS, 2018
    * - ``DnCNN``
