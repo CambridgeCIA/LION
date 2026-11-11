@@ -595,3 +595,76 @@ def test_model_arguments_operator_first(cls):
     assert arguments[names.index("model_parameters")].default is None
     if "operator_params" in names:
         assert names[:2] == ["operator_params", "model_parameters"]
+
+
+def test_msdnet_gradients_are_those_of_the_network():
+    """MSDNet computes its gradients layer by layer (to keep memory linear in
+    depth): they are the gradients of the plain network, and its padding is
+    the symmetric reflection msd_pytorch uses."""
+    import torch.nn.functional as F
+
+    from LION.models.CNNs.MSDNet import MSDNet, _conv, _symmetric_pad
+
+    x = torch.randn(1, 1, 5, 7)
+    padded = np.pad(x.numpy(), ((0, 0), (0, 0), (3, 3), (3, 3)), mode="symmetric")
+    assert np.allclose(_symmetric_pad(x, 3).numpy(), padded)
+
+    p = MSDNet.default_parameters()
+    p.depth, p.width, p.in_channels, p.dilations = 5, 2, 2, [1, 2, 3]
+    torch.manual_seed(0)
+    model = MSDNet(p).double()
+    with torch.no_grad():  # nonzero, so every gradient is checked
+        for parameter in model.parameters():
+            parameter.normal_()
+
+    def plain(x):
+        layers = [x]
+        for i, (weight, dilation) in enumerate(zip(model.weights, model.dilations)):
+            bias = model.bias[i * 2 : (i + 1) * 2]
+            layers.append(F.relu(_conv(torch.cat(layers, 1), weight, bias, dilation)))
+        return model.final_layer(torch.cat(layers, 1))
+
+    x = torch.randn(2, 2, 9, 11, dtype=torch.double, requires_grad=True)
+    output, expected = model(x), plain(x)
+    assert torch.allclose(output, expected)
+    g = torch.randn_like(output)
+    inputs = [x, model.bias, *model.weights]
+    for a, b in zip(
+        torch.autograd.grad(output, inputs, g), torch.autograd.grad(expected, inputs, g)
+    ):
+        assert torch.allclose(a, b)
+
+
+def test_msdnet_triton_kernels_match_torch():
+    """MSDNet's GPU kernels (Triton) give the outputs and gradients of its
+    plain torch path. Run in Triton's interpreter, on the CPU, in a fresh
+    process (the interpreter is chosen when Triton is imported)."""
+    pytest.importorskip("triton")
+    import subprocess
+    import sys
+
+    code = """
+import torch
+from LION.models.CNNs import _msd_triton
+from LION.models.CNNs.MSDNet import MSDNet
+p = MSDNet.default_parameters()
+p.depth, p.width, p.in_channels, p.dilations = 4, 2, 1, [1, 2, 3]
+torch.manual_seed(0)
+model = MSDNet(p)
+with torch.no_grad():
+    for parameter in model.parameters():
+        parameter.normal_()
+x = torch.randn(2, 1, 13, 11, requires_grad=True)
+results = []
+for triton in (False, True):
+    _msd_triton.available = lambda tensor: triton
+    y = model(x)
+    results.append([y, *torch.autograd.grad(y, [x, *model.parameters()], torch.ones_like(y))])
+for a, b in zip(*results):
+    assert torch.allclose(a, b, atol=1e-3, rtol=1e-4), (a - b).abs().max()
+"""
+    env = dict(os.environ, TRITON_INTERPRET="1")
+    done = subprocess.run(
+        [sys.executable, "-c", code], env=env, capture_output=True, text=True
+    )
+    assert done.returncode == 0, done.stderr[-2000:]

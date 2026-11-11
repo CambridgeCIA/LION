@@ -1,94 +1,188 @@
+# =============================================================================
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  : Charlie Shoebridge
-# Modifications: -
+# Author  : Charlie Shoebridge, Ander Biguri
+# Modifications: rewritten after msd_pytorch (Allard A. Hendriksen, GPL-3,
+#                https://github.com/ahendriksen/msd_pytorch), in plain torch
 # =============================================================================
+"""The Mixed-Scale Dense network (Pelt and Sethian, 2018), as ``msd_pytorch``
+(Hendriksen, 2019) implements it, in plain PyTorch.
 
-# Implementation of Mixed-Scale Dense Network described in:
-# Daniël M. Pelt and James A. Sethian
-# A mixed-scale dense convolutional neural network for image analysis
+``msd_pytorch`` is the reference implementation, but it is no longer
+maintained and needs compiling (CUDA kernels, PyTorch 1.8, Python up to 3.9).
+This is the same network, with the same initialisation and padding, and its
+same memory use: the layers write their outputs into one buffer, and the
+gradients are computed layer by layer, so memory grows with the depth, not its
+square (each layer's input is all the layers before it, and storing them for
+autograd one by one would grow with the square). On a GPU, each layer is a
+Triton kernel (``_msd_triton``, as ``msd_pytorch``'s CUDA kernels; Triton
+comes with PyTorch, nothing to compile); otherwise plain torch, a group of
+input channels at a time."""
+
 from __future__ import annotations
 
+from math import sqrt
 from typing import Optional
 
-import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd.function import once_differentiable
 
+from LION.models.CNNs import _msd_triton
 from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 from LION.utils.citation import citation
 
 
-class MSD_Layer(nn.Module):
-    """One layer of MSDNet: ``width`` 3x3 convolutions with their own
-    dilations, each on all of the layer's input channels, each followed by
-    batch normalisation and ``activation``. Its output is its input with the
-    new channels appended."""
+def _symmetric_pad(x: torch.Tensor, pad: int) -> torch.Tensor:
+    """``x`` (B, C, H, W) padded by ``pad`` pixels on each side of H and W by
+    reflection that repeats the edge (index -1 is 0, -2 is 1), as
+    ``msd_pytorch``'s kernels pad."""
+    for dim in (2, 3):
+        n = x.shape[dim]
+        index = torch.arange(-pad, n + pad, device=x.device)
+        index = torch.where(index < 0, -index - 1, index)
+        index = torch.where(index >= n, 2 * n - index - 1, index)
+        x = x.index_select(dim, index.clamp(0, n - 1))
+    return x
 
-    def __init__(
-        self,
-        in_channels: int,
-        width: int,
-        dilations: int | list[int],
-        activation: nn.Module,
-    ) -> None:
-        super().__init__()
-        if isinstance(dilations, int):
-            dilations = [dilations] * width
 
-        self.in_channels = in_channels
-        self.width = width
-        self.convs = nn.ModuleList()
-        for ch in range(width):
-            conv = nn.Conv2d(
-                in_channels=in_channels,
-                out_channels=1,
-                kernel_size=3,
-                dilation=dilations[ch],
-                padding="same",
-                padding_mode="reflect",
-                bias=False,
-            )
+def _conv(x, weight, bias, dilation):
+    """A 3x3 convolution of ``x`` with ``dilation``, padded by symmetric
+    reflection to keep its size."""
+    return F.conv2d(_symmetric_pad(x, dilation), weight, bias, dilation=dilation)
 
-            # conv.apply(self._initialize_conv_weights) # actually decreases performance
-            self.convs.append(conv)
 
-        self.activation = nn.Sequential(nn.BatchNorm2d(1), activation)
+#: How many input channels a layer convolves at a time: a layer's convolution
+#: is the sum of those of groups of its input channels, so its temporary
+#: memory (the padded copy of the input, the convolution's workspace) doesn't
+#: grow with the depth.
+CHANNELS_AT_A_TIME = 16
 
-    def _initialize_conv_weights(self, layer: nn.Module):
-        assert isinstance(layer, nn.Conv2d), "layer not Conv2D"
-        n_c = layer.kernel_size[0] * layer.kernel_size[1] * layer.out_channels
-        torch.nn.init.normal_(layer.weight, 0, np.sqrt(2 / n_c))
 
-    def forward(self, x: torch.Tensor):  # x will be all of the previous channels to use
-        """``x`` with the ``width`` new channels appended."""
-        new_channels = [x]
-        for i in range(self.width):
-            new_channels.append(self.activation(self.convs[i](x)))
+def _groups(n):
+    """The channel ranges ``(start, end)`` of ``n`` channels, in groups of
+    ``CHANNELS_AT_A_TIME``."""
+    return [
+        (c, min(c + CHANNELS_AT_A_TIME, n)) for c in range(0, n, CHANNELS_AT_A_TIME)
+    ]
 
-        x = torch.cat(new_channels, dim=1)
 
-        return x
+def _layer(x, weight, bias, dilation):
+    """One hidden layer's convolution of all of ``x``, group of channels by
+    group (``CHANNELS_AT_A_TIME``), with ``bias``."""
+    output = None
+    for start, end in _groups(x.shape[1]):
+        part = _conv(x[:, start:end], weight[:, start:end], None, dilation)
+        output = part if output is None else output.add_(part)
+    return output + bias.view(1, -1, 1, 1)
+
+
+class _MSDBlock(torch.autograd.Function):
+    """The hidden layers: each a dilated 3x3 convolution (with a bias) of all
+    the channels before it, then a ReLU, written into one buffer (B, C + depth
+    * width, H, W): the input, then each layer's ``width`` channels. Backward
+    goes through the layers in reverse, so only the buffer is kept.
+
+    On a GPU (with Triton): each layer's convolution, bias and ReLU are one
+    Triton kernel reading the buffer (``_msd_triton``), and so are the
+    gradients of its weights and of its input. Otherwise, in plain
+    torch: each layer's convolution is recomputed for its gradients, a group of
+    input channels at a time (``CHANNELS_AT_A_TIME``)."""
+
+    @staticmethod
+    def forward(ctx, x, dilations, bias, *weights):
+        """The buffer: ``x``, then every hidden layer's output."""
+        width = weights[0].shape[0]
+        result = x.new_empty(
+            x.shape[0], x.shape[1] + width * len(weights), *x.shape[2:]
+        )
+        result[:, : x.shape[1]] = x
+        start = x.shape[1]
+        gpu = _msd_triton.available(result)
+        for i, (weight, dilation) in enumerate(zip(weights, dilations)):
+            sub_bias = bias[i * width : (i + 1) * width]
+            if gpu:
+                _msd_triton.forward(result, start, weight, sub_bias, dilation)
+            else:
+                result[:, start : start + width] = F.relu(
+                    _layer(result[:, :start], weight, sub_bias, dilation)
+                )
+            start += width
+        ctx.dilations = dilations
+        ctx.save_for_backward(result, bias, *weights)
+        return result
+
+    @staticmethod
+    @once_differentiable
+    def backward(ctx, grad_output):
+        """The gradients of ``x``, the biases and the weights, layer by
+        layer, from the last."""
+        result, bias, *weights = ctx.saved_tensors
+        width = weights[0].shape[0]
+        gradients = grad_output.clone()
+        grad_bias = torch.zeros_like(bias)
+        grad_weights = [None] * len(weights)
+        end = result.shape[1]
+        gpu = _msd_triton.available(result)
+        for i in reversed(range(len(weights))):
+            start = end - width
+            # through the ReLU: its output is positive where its input was
+            grad_layer = gradients[:, start:end] * (result[:, start:end] > 0)
+            grad_bias[i * width : (i + 1) * width] = grad_layer.sum(dim=(0, 2, 3))
+            if gpu:
+                dilation = ctx.dilations[i]
+                _msd_triton.add_grad_input(
+                    gradients, start, grad_layer, weights[i], dilation
+                )
+                grad_weights[i] = _msd_triton.grad_weight(
+                    result, start, grad_layer, dilation, weights[i].shape
+                )
+                end = start
+                continue
+            grad_weights[i] = torch.empty_like(weights[i])
+            # the convolution again, a group of input channels at a time
+            for c0, c1 in _groups(start):
+                with torch.enable_grad():
+                    part = result[:, c0:c1].detach().requires_grad_()
+                    weight = weights[i][:, c0:c1].detach().requires_grad_()
+                    output = _conv(part, weight, None, ctx.dilations[i])
+                    grad_part, grad_weight = torch.autograd.grad(
+                        output, (part, weight), grad_layer
+                    )
+                gradients[:, c0:c1] += grad_part
+                grad_weights[i][:, c0:c1] = grad_weight
+            end = start
+        n_in = weights[0].shape[1]
+        return (gradients[:, :n_in], None, grad_bias, *grad_weights)
 
 
 class MSDNet(LIONmodel):
-    """Mixed-Scale Dense network (Pelt and Sethian, 2018): a deep, narrow
-    network of dilated convolutions, every layer seeing the channels of all the
-    layers before it, ending in a 1x1 convolution. Takes images (e.g. a
-    reconstruction).
+    """Mixed-Scale Dense network (Pelt and Sethian, 2018), as ``msd_pytorch``
+    (Hendriksen, 2019): a deep, narrow network of dilated 3x3 convolutions,
+    each layer seeing the input and all the layers before it, ending in a 1x1
+    convolution of all of them. Takes images (e.g. a reconstruction), or with
+    ``model_input_type`` SINOGRAM, the measurements.
+
+    Each hidden layer is ``width`` convolutions with a bias and a ReLU, of
+    dilation ``dilations[i % len(dilations)]``, padded by symmetric reflection;
+    the output layer is linear (a 1x1 convolution with a bias, no activation),
+    for regression. The hidden convolutions start as in the paper (normal, std
+    sqrt(2 / n), n the inputs of a layer at full depth), the biases and the
+    output layer at zero (so the untrained network gives 0).
+
+    Memory grows with the depth (the module's description says how). Backward
+    can't be differentiated again (e.g. a Jacobian penalty on the network,
+    ``LION.losses.jacobian_penalty``, needs it).
 
     ``model_parameters`` (``default_parameters()``):
 
-    - ``in_channels``: the input image's channels (1);
+    - ``in_channels``, ``out_channels``: of the input and output images (1,
+      1);
     - ``width``: the channels each layer adds (1);
-    - ``depth``: the number of layers (100);
-    - ``dilations``: one per convolution, ``width * depth`` of them, layer by
-      layer (1 to 10, repeated);
-    - ``look_back_depth``: how many earlier layers each layer sees (-1: all);
-    - ``final_look_back_depth``: how many layers the final 1x1 convolution sees
-      (-1: all, and the input);
-    - ``activation``: a ``torch.nn`` class name ("ReLU") or module."""
+    - ``depth``: the number of hidden layers (100);
+    - ``dilations``: repeated over the layers (1 to 10)."""
 
     def __init__(
         self,
@@ -97,165 +191,58 @@ class MSDNet(LIONmodel):
         """The network for ``model_parameters`` (``default_parameters()`` if
         None)."""
         super().__init__(model_parameters)
-
-        # total there should be width * depth distinct convolutions
-        # so expect the same number of dilations to be given
-        if (
-            len(self.model_parameters.dilations)
-            != self.model_parameters.width * self.model_parameters.depth
-        ):
+        p = self.model_parameters
+        if p.depth < 1 or p.width < 1:
             raise ValueError(
-                f"Expected {self.model_parameters.width*self.model_parameters.depth} dilation sizes to be given, instead given {len(self.model_parameters.dilations)}"
+                f"depth and width must be at least 1, got {p.depth} and {p.width}"
             )
-
-        # look_back_depth should be no greater than number of hidden layers + 1
-        if self.model_parameters.look_back_depth > self.model_parameters.depth + 1:
-            raise ValueError(
-                f"Lookback depth={self.model_parameters.look_back_depth} can not be bigger than total number of layers={self.model_parameters.depth + 1}"
-            )
-
-        self.layers = nn.ModuleList()
-        first_layer = MSD_Layer(
-            self.model_parameters.in_channels,
-            self.model_parameters.width,
-            self.model_parameters.dilations[: self.model_parameters.width],
-            self._make_activation(),
-        )
-        self.layers.append(first_layer)
-        for layer_idx in range(1, self.model_parameters.depth):
-            self.layers.append(
-                MSD_Layer(
-                    self._count_channels_to_use(layer_idx),
-                    self.model_parameters.width,
-                    self.model_parameters.dilations[
-                        layer_idx
-                        * self.model_parameters.width : (layer_idx + 1)
-                        * self.model_parameters.width
-                    ],
-                    self._make_activation(),
-                )
-            )
-
-        for layer in self.layers:
-            assert isinstance(layer, MSD_Layer)
-            for conv in layer.convs:
-                conv.apply(self._initialize_conv_weights)
-
-        # final_look_back_depth should be no greater than number of hidden layers + 1
-        if (
-            self.model_parameters.final_look_back_depth
-            > self.model_parameters.depth + 1
-        ):
-            raise ValueError(
-                f"Final Lookback depth={self.model_parameters.final_look_back_depth} can not be bigger than total number of layers={self.model_parameters.depth + 1}"
-            )
-
-        if self.model_parameters.final_look_back_depth == -1:
-            final_in_ch = (
-                self.model_parameters.depth * self.model_parameters.width
-                + self.model_parameters.in_channels
-            )
-        else:
-            final_in_ch = (
-                self.model_parameters.width
-                * self.model_parameters.final_look_back_depth
-            )
-
-        self.final_layer = nn.Sequential(
-            nn.Conv2d(
-                in_channels=final_in_ch,
-                out_channels=1,
-                kernel_size=1,
-                padding="same",
-                padding_mode="reflect",
-                bias=False,
-            ),
-            nn.BatchNorm2d(1),
-            self._make_activation(),
-        )
-
-    def _make_activation(self) -> nn.Module:
-        """A new activation module from model_parameters.activation, which can be
-        a torch.nn class name (e.g. "ReLU") or an nn.Module."""
-        activation = self.model_parameters.activation
-        if isinstance(activation, str):
-            if not isinstance(getattr(nn, activation, None), type):
-                raise ValueError(f"torch.nn has no activation '{activation}'")
-            return getattr(nn, activation)()
-        return activation
-
-    def _initialize_conv_weights(self, layer: nn.Module):
-        assert isinstance(layer, nn.Conv2d), "layer not Conv2D"
-        n_c = (
-            np.prod(layer.weight.shape[2:])
-            * (
-                self.model_parameters.in_channels
-                + self.model_parameters.width * (self.model_parameters.depth - 1)
-            )
-            + 1
-        )
-        torch.nn.init.normal_(layer.weight, 0, np.sqrt(2 / n_c))
-
-    def _count_channels_to_use(self, layer) -> int:
-        return (
-            self.model_parameters.width * self.model_parameters.look_back_depth
-            if layer >= self.model_parameters.look_back_depth
-            and self.model_parameters.look_back_depth != -1
-            else self.model_parameters.width * layer + self.model_parameters.in_channels
-        )
-
-    def forward(self, x):
-        """The network's output image for the images ``x`` (B, in_channels, H,
-        W)."""
-        if (C := x.shape[1]) != self.model_parameters.in_channels:
-            raise ValueError(
-                f"Expected {self.model_parameters.in_channels} input channels, instead got {C}"
-            )
-        start_collecting = False
-        final_lookbacks = (
-            [] if self.model_parameters.final_look_back_depth != -1 else [x]
-        )  # not a huge fan of this, think of a better way
-        for i, layer in enumerate(range(self.model_parameters.depth)):
-            x = self.layers[layer](x)[
-                :,
-                (
-                    -self.model_parameters.look_back_depth * self.model_parameters.width
-                    if self.model_parameters.look_back_depth != -1
-                    else 0
-                ) :,
+        self.dilations = [
+            int(p.dilations[i % len(p.dilations)]) for i in range(p.depth)
+        ]
+        self.bias = nn.Parameter(torch.zeros(p.depth * p.width))
+        self.weights = nn.ParameterList(
+            [
+                nn.Parameter(torch.empty(p.width, p.in_channels + p.width * i, 3, 3))
+                for i in range(p.depth)
             ]
-            # x now contains all layers to pass forward aswell as newly calculated one
-            if (
-                self.model_parameters.depth - i
-                <= self.model_parameters.final_look_back_depth
-                or self.model_parameters.final_look_back_depth == -1
-            ):  # need all the following layers for final layer
-                start_collecting = True
-            if start_collecting:
-                final_lookbacks.append(
-                    x[:, -self.model_parameters.width :]
-                )  # head layer
+        )
+        self.final_layer = nn.Conv2d(
+            p.in_channels + p.width * p.depth, p.out_channels, 1
+        )
+        self.reset_parameters()
 
-        final_lookbacks = torch.cat(final_lookbacks, dim=1)
-        x = self.final_layer(final_lookbacks)
-        return x
+    def reset_parameters(self):
+        """The initial weights (see the class): as ``msd_pytorch``'s."""
+        p = self.model_parameters
+        n = 9 * (p.in_channels + p.width * (p.depth - 1)) + p.out_channels
+        with torch.no_grad():
+            for weight in self.weights:
+                weight.normal_(0, sqrt(2 / n))
+            self.bias.zero_()
+            self.final_layer.weight.zero_()
+            self.final_layer.bias.zero_()
 
     @staticmethod
     def default_parameters() -> LIONModelParameter:
-
-        """The paper's network: 100 layers of width 1, dilations 1 to 10, every
-        layer seeing all earlier ones (see the class)."""
+        """The paper's network: 100 layers of width 1, dilations 1 to 10 (see
+        the class)."""
         params = LIONModelParameter()
         params.model_input_type = ModelInputType.IMAGE
         params.in_channels = 1
+        params.out_channels = 1
         params.width = 1
         params.depth = 100
-        params.dilations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] * 10
-        params.look_back_depth = -1
-        params.final_look_back_depth = -1
-        params.activation = "ReLU"
-
+        params.dilations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         return params
+
+    def forward(self, x):
+        """The network's output for the images ``x`` (B, in_channels, H, W)."""
+        if (C := x.shape[1]) != self.model_parameters.in_channels:
+            raise ValueError(
+                f"Expected {self.model_parameters.in_channels} input channels, got {C}"
+            )
+        layers = _MSDBlock.apply(x, self.dilations, self.bias, *self.weights)
+        return self.final_layer(layers)
 
     @staticmethod
     def cite(cite_format="bib"):
@@ -277,7 +264,7 @@ class MSDNet(LIONmodel):
             mla="""
             Pelt, Daniël M., and James A. Sethian.
             "A mixed-scale dense convolutional neural network for image analysis."
-            Proceedings of the National Academy of Sciences  
+            Proceedings of the National Academy of Sciences
             115.2 (2018): 254-259.
             """,
         )
