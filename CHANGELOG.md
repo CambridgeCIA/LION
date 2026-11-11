@@ -60,7 +60,6 @@ with 0.2.0 don't load.
   in LION", "Datasets" (getting and preparing the data), "Records"
   (`metadata.md`) and the developer guide; eight example scripts; the
   contributor guide; `AGENTS.md`; this changelog and `CITATION.cff`.
-
 - **Paper scripts**: the noise paper's (Kiss et al., 2025; from #103): its
   eight denoisers' training and evaluation, with its U-Net.
 
