@@ -18,7 +18,7 @@ a dataset of blurred images, an unrolled model for it, and a reconstructor,
 then trains and uses them with LION's solver. To add them to LION itself, see
 the contributor guide.
 
-Previous: :doc:`d12_publishing`.
+Previous: :doc:`d12_publishing`. Next: :doc:`d14_beyond_ct`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH`` (the images
 to blur).
