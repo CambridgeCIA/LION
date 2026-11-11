@@ -223,11 +223,11 @@ class LPD(LIONmodel):
 
     @staticmethod
     def continous_LPD_paper():
-        """The LPD that cLPD's paper (Runkel et al., 2024) compares with, as
-        the code that trained it (June 2024): 5 iterations of 4-layer blocks,
-        learned positive steps, no biases, no instance normalisation."""
+        """The LPD that cLPD's paper (Runkel et al., 2024) compares with: 10
+        iterations (as cLPD) of 4-layer blocks, learned positive steps, no
+        biases, no instance normalisation."""
         LPD_params = LIONModelParameter()
-        LPD_params.n_iters = 5
+        LPD_params.n_iters = 10
         LPD_params.data_channels = [7, 32, 32, 32, 5]
         LPD_params.reg_channels = [6, 32, 32, 32, 5]
         LPD_params.learned_step = True
