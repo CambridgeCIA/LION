@@ -20,3 +20,10 @@ Scripts: `train.py` and `evaluate.py`, for one problem or all of them; the folde
 Kiss, Maximilian B., Ander Biguri, Carola-Bibiane Schönlieb, K. Joost Batenburg, and Felix Lucka. "Learned denoising with simulated and experimental low-dose CT data." Scientific Reports 16 (2025).
 
 Work in progress: the data setup of the paper (simulated and experimental low-dose 2DeteCT data); full reproducibility is being worked on. See its README.
+
+
+## Benchmarking learned algorithms for computed tomography image reconstruction tasks
+
+Kiss, Maximilian B., Ander Biguri, Zakhar Shumaylov, Ferdia Sherry, K. Joost Batenburg, Carola-Bibiane Schönlieb, and Felix Lucka. "Benchmarking learned algorithms for computed tomography image reconstruction tasks." Applied Mathematics for Modern Challenges 3 (2025): 1-43.
+
+Classical and learned methods benchmarked on nine problems of the measured 2DeteCT data (LION's `deteCT_benchmark` experiments). Folder `Benchmarking_learned_CT_2DeteCT/`: `train.py` and `evaluate.py`, for one problem and method or all of them, covering 8 of the paper's 15 methods (FBP, AGD, ChP, FBP+U-Net, FBP+MS-D Net, FBP+DnCNN, LG, LPD); its README says how to run everything and what differs from the paper. **Unverified:** not yet run on real data.
