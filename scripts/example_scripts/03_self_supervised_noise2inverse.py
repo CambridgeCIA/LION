@@ -11,9 +11,8 @@ of angles, each set is reconstructed (FDK, the operator's default), and the
 model learns to map the reconstruction of some sets to that of the others.
 The noise of the sets is independent, so the model learns to remove it.
 
-The model is a U-Net, which fits a 24 GB GPU. The paper's MSD-Net
-(``LION.models.CNNs.MSDNet``) is a one-line change, but at 512x512 its densely
-connected layers need far more memory. Any image-to-image model works. The
+The model is a U-Net. The paper's MSD-Net (``LION.models.CNNs.MSDNet``) is a
+one-line change. Any image-to-image model works. The
 other self-supervised solvers are used the same way: ``Sparse2InverseSolver``,
 ``Noisier2InverseSolver``, ``Proj2ProjSolver``, ``EquivariantSolver``,
 ``Equivariance2InverseSolver`` (each in ``LION.optimizers``).

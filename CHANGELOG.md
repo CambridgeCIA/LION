@@ -76,6 +76,10 @@ with 0.2.0 don't load.
   (#238, #257, #267).
 - Tests in `pytests/`, one test per feature, run by CI on every pull request
   (#218, #239, #354).
+- `MSDNet` rewritten after `msd_pytorch` (Hendriksen), the reference
+  implementation, in plain torch: its architecture (biases, no batch
+  normalisation, a linear output), initialisation and padding, and memory
+  linear in depth instead of quadratic.
 - Models fixed against their papers: LPD, cLPD, LG, ItNet, UNet,
   cFBPConvNet, the learned FBPs, E2I (#226–#228, #251, #253, #254, #263).
 - The cLPD paper's scripts rewritten for LION's current API: a training per
