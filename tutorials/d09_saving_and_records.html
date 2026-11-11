@@ -203,6 +203,7 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../datasets.html">Datasets</a></li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="d01_operators.html">Operators: CT geometry, projections and reconstructions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="d02_parameters_and_specs.html">Parameters and specs</a></li>
@@ -217,6 +218,7 @@
 <li class="toctree-l2"><a class="reference internal" href="d11_evaluation.html">Evaluation and comparison</a></li>
 <li class="toctree-l2"><a class="reference internal" href="d12_publishing.html">Publishing and reproducing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="d13_extending_lion.html">Extending LION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d14_beyond_ct.html">Beyond CT: sparse recovery and other operators</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../examples.html">Example scripts</a></li>
@@ -224,6 +226,7 @@
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../methods.html">Methods in LION</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../records.html">LION’s metadata: results that can be made again</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
@@ -275,7 +278,6 @@
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="../generated/LION.models.fully_learned.html">LION.models.fully_learned</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
@@ -542,7 +544,7 @@ batch_size : 4
 drop_last : False
 shuffle : True
 asked : 2
-done : 2 [0.5324641093611717, 0.11429355479776859]
+done : 2 [0.532455537468195, 0.11428510770201683]
 from : random_state
 </pre></div>
 </div>
@@ -553,7 +555,7 @@ Nothing personal.</p>
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>lion_environment_record : 1
 lion : version : 0.2.0
-commit : e1cf2a02f684c6c30d526f8ae5080f49f5a57553
+commit : 2711d4eb4ffbcb297f03c35a21e8ed511c50331e
 uncommitted : []
 diff_sha256 : None
 pushed : True
@@ -571,7 +573,7 @@ cudnn_benchmark : False
 device : type : cuda
 gpus : ['Quadro RTX 6000', 'Quadro RTX 6000', 'Quadro RTX 6000', 'Quadro RTX 6000']
 driver : 555.42.06
-platform : Linux-5.15.0-202-generic-x86_64-with-glibc2.35
+platform : Linux-5.15.0-203-generic-x86_64-with-glibc2.35
 </pre></div>
 </div>
 </section>
@@ -617,7 +619,7 @@ CPU; on a GPU, to about 1e-3, unless made with <code class="docutils literal not
 </span><span class="p">)</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">largest difference in the weights: </span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="float"><span class="n">difference</span></a><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>largest difference in the weights: 3.52e+00
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>largest difference in the weights: 4.99e+00
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">LION.package.train_again</span></code> does all of this in one call (<a class="reference internal" href="d12_publishing.html"><span class="doc">Publishing and reproducing</span></a>).</p>
@@ -656,8 +658,8 @@ original’s records.</p>
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/mhome/damtp/r/ab2860/AItomotools/LION/data_loaders/LIDC_IDRI.py:487: UserWarning: LIDC-IDRI: left out 2 damaged or unusable files (re-run the pre-processing for these patients): ['LIDC-IDRI-0238 (not resampled)', 'LIDC-IDRI-0585 (not resampled)']
   warnings.warn(
-file : {'_target_': 'pathlib.Path', '_args_': ['/tmp/tmp66sjgk54/FBPConvNet']}
-weights_sha256 : 306d43bd6129246469dcf63d1cc659c8bb843ca49e0fa178e00be8d5a604bda0
+file : {'_target_': 'pathlib.Path', '_args_': ['/tmp/tmpf32ky44l/FBPConvNet']}
+weights_sha256 : 0324284fbc3f4f18405f536eec82f0bcaeb4d8ecfb0e7bfedfd699514d673e0b
 True
 </pre></div>
 </div>
@@ -687,7 +689,7 @@ model defined in your package:</p>
 </span></pre></div></div>
 <p>Loading a file saved with other LION code (another commit, or uncommitted
 changes) warns: the record says which.</p>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 18.421 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 54.444 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d09-saving-and-records-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/408bb97a5afde9fb70d912633135ad0f/d09_saving_and_records.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d09_saving_and_records.ipynb</span></code></a></p>

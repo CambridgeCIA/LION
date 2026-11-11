@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Tutorials" href="tutorials/index.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Datasets" href="datasets.html">
         <link rel="prefetch" href="_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="_static/lion-logo-dark.svg" as="image">
 
@@ -203,6 +203,7 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="tutorials/index.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/d01_operators.html">Operators: CT geometry, projections and reconstructions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/d02_parameters_and_specs.html">Parameters and specs</a></li>
@@ -217,6 +218,7 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorials/d11_evaluation.html">Evaluation and comparison</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/d12_publishing.html">Publishing and reproducing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/d13_extending_lion.html">Extending LION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d14_beyond_ct.html">Beyond CT: sparse recovery and other operators</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Example scripts</a></li>
@@ -224,6 +226,7 @@
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="methods.html">Methods in LION</a></li>
+<li class="toctree-l1"><a class="reference internal" href="records.html">LION’s metadata: results that can be made again</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
@@ -275,7 +278,6 @@
 <li class="toctree-l4"><a class="reference internal" href="generated/LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="generated/LION.models.fully_learned.html">LION.models.fully_learned</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="generated/LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
@@ -439,12 +441,15 @@ again.</p></li>
 <h2>Where to start<a class="headerlink" href="#where-to-start" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><strong>Install it:</strong> see the <a class="reference external" href="https://github.com/CambridgeCIA/LION#readme">README</a>.</p></li>
+<li><p><strong>Get the data:</strong> <a class="reference internal" href="datasets.html"><span class="doc">Datasets</span></a>, how to download and prepare them.</p></li>
 <li><p><strong>Learn it:</strong> the <a class="reference internal" href="tutorials/index.html"><span class="doc">tutorials</span></a> build LION up one piece
 at a time, from the CT operator to publishing a model.</p></li>
 <li><p><strong>See it run:</strong> the <a class="reference internal" href="examples.html"><span class="doc">example scripts</span></a> are complete trainings,
 one feature each.</p></li>
 <li><p><strong>See what’s there:</strong> <a class="reference internal" href="methods.html"><span class="doc">Methods in LION</span></a>, the kinds of learned reconstruction
 and every method LION has, with its paper.</p></li>
+<li><p><strong>Know what is recorded:</strong> <a class="reference internal" href="records.html"><span class="doc">LION’s metadata: results that can be made again</span></a>, what LION saves with every
+model and how to use it.</p></li>
 <li><p><strong>Look something up:</strong> the <a class="reference internal" href="api.html"><span class="doc">API reference</span></a>, from the docstrings.</p></li>
 <li><p><strong>Change LION:</strong> the <a class="reference internal" href="developers.html"><span class="doc">developer guide</span></a>: how it is built,
 one training followed through the code, and what a new piece needs.</p></li>
@@ -463,12 +468,12 @@ one training followed through the code, and what a new piece needs.</p></li>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="tutorials/index.html">
+          <a class="next-page" href="datasets.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Tutorials</div>
+                <div class="title">Datasets</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

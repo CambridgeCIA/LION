@@ -31,7 +31,7 @@ a dataset of blurred images, an unrolled model for it, and a reconstructor,
 then trains and uses them with LION's solver. To add them to LION itself, see
 the contributor guide.
 
-Previous: :doc:`d12_publishing`.
+Previous: :doc:`d12_publishing`. Next: :doc:`d14_beyond_ct`.
 
 Needs a GPU and the processed LIDC-IDRI data in ``LION_DATA_PATH`` (the images
 to blur).
@@ -273,7 +273,7 @@ the operator's default reconstruction.
  .. code-block:: none
 
     model_input_type : ModelInputType.SINOGRAM
-    initial_reconstruction : <function blurred_image at 0x7f2a4aadb380>
+    initial_reconstruction : <function blurred_image at 0x7f2481bf5e40>
     n_steps : 5
     channels : 32
 
@@ -432,7 +432,7 @@ it to LION itself.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 1.555 seconds)
+   **Total running time of the script:** (0 minutes 45.099 seconds)
 
 
 .. _sphx_glr_download_tutorials_d13_extending_lion.py:

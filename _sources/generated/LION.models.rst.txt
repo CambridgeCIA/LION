@@ -15,7 +15,6 @@
    CNNs
    LIONmodel
    PnP
-   fully_learned
    iterative_unrolled
    learned_fbp
    learned_regularizer

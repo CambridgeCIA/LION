@@ -10,11 +10,15 @@ a time in an editor that knows cells (VS Code, Spyder), or as a notebook
 (download it below each page).
 
 They need a GPU (LION's CT operators use tomosipo and ASTRA) and, from the
-data tutorial on, the processed LIDC-IDRI data in ``LION_DATA_PATH``.
+data tutorial on, the processed LIDC-IDRI data in ``LION_DATA_PATH``
+(:doc:`/datasets` says how to get it).
 
 The models trained in the tutorials are toys, trained for a few epochs on a
 few slices to show how LION is used: their results are poor. Trained as their
 papers train them, they do what the papers report.
+
+The last, :doc:`d14_beyond_ct`, needs neither: other operators than CT, and
+the classical and learned algorithms that work with any of them.
 
 
 .. raw:: html
@@ -249,6 +253,23 @@ papers train them, they do what the papers report.
     </div>
 
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Nothing in LION&#x27;s algorithms is specific to CT: they take an Operator (forward, adjoint, shapes), and CT&#x27;s is one of them. This tutorial uses another, from photocurrent mapping (PCM; Koutsourakis, Thompson and Blakesley, 2021), a single-pixel imaging technique: an image is measured through a subset of its Walsh-Hadamard coefficients. Recovering it from a quarter of them is a compressed-sensing problem, and LION has the classical tools for it, for any operator:">
+
+.. only:: html
+
+  .. image:: /tutorials/images/thumb/sphx_glr_d14_beyond_ct_thumb.png
+    :alt:
+
+  :doc:`/tutorials/d14_beyond_ct`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Beyond CT: sparse recovery and other operators</div>
+    </div>
+
+
 .. thumbnail-parent-div-close
 
 .. raw:: html
@@ -272,6 +293,7 @@ papers train them, they do what the papers report.
    /tutorials/d11_evaluation
    /tutorials/d12_publishing
    /tutorials/d13_extending_lion
+   /tutorials/d14_beyond_ct
 
 
 .. only:: html

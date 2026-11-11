@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Example scripts" href="../examples.html"><link rel="prev" title="Publishing and reproducing" href="d12_publishing.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Beyond CT: sparse recovery and other operators" href="d14_beyond_ct.html"><link rel="prev" title="Publishing and reproducing" href="d12_publishing.html">
         <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
 
@@ -203,6 +203,7 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../datasets.html">Datasets</a></li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="d01_operators.html">Operators: CT geometry, projections and reconstructions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="d02_parameters_and_specs.html">Parameters and specs</a></li>
@@ -217,6 +218,7 @@
 <li class="toctree-l2"><a class="reference internal" href="d11_evaluation.html">Evaluation and comparison</a></li>
 <li class="toctree-l2"><a class="reference internal" href="d12_publishing.html">Publishing and reproducing</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Extending LION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="d14_beyond_ct.html">Beyond CT: sparse recovery and other operators</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../examples.html">Example scripts</a></li>
@@ -224,6 +226,7 @@
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../methods.html">Methods in LION</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../records.html">LION’s metadata: results that can be made again</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
@@ -275,7 +278,6 @@
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="../generated/LION.models.fully_learned.html">LION.models.fully_learned</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
@@ -433,7 +435,7 @@ evaluation, publishing.</p>
 a dataset of blurred images, an unrolled model for it, and a reconstructor,
 then trains and uses them with LION’s solver. To add them to LION itself, see
 the contributor guide.</p>
-<p>Previous: <a class="reference internal" href="d12_publishing.html"><span class="doc">Publishing and reproducing</span></a>.</p>
+<p>Previous: <a class="reference internal" href="d12_publishing.html"><span class="doc">Publishing and reproducing</span></a>. Next: <a class="reference internal" href="d14_beyond_ct.html"><span class="doc">Beyond CT: sparse recovery and other operators</span></a>.</p>
 <p>Needs a GPU and the processed LIDC-IDRI data in <code class="docutils literal notranslate"><span class="pre">LION_DATA_PATH</span></code> (the images
 to blur).</p>
 <div class="admonition note">
@@ -625,7 +627,7 @@ the operator’s default reconstruction.</p>
 </span><span class="nb">print</span><span class="p">(</span><a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONModelParameter" title="LION.models.LIONmodel.LIONModelParameter"><span class="n">model</span><span class="o">.</span><span class="n">model_parameters</span></a><span class="p">)</span><span class="w">
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>model_input_type : ModelInputType.SINOGRAM
-initial_reconstruction : &lt;function blurred_image at 0x7f2a4aadb380&gt;
+initial_reconstruction : &lt;function blurred_image at 0x7f2481bf5e40&gt;
 n_steps : 5
 channels : 32
 </pre></div>
@@ -723,7 +725,7 @@ E.g. a supervised solver with an L1 and a gradient-matching loss:</p>
 </span></pre></div></div>
 <p>The contributor guide has the rules, and a checklist for each piece, to add
 it to LION itself.</p>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 1.555 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 45.099 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d13-extending-lion-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/f8bd43a746bf7ce735dcd7f6d16d0079/d13_extending_lion.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d13_extending_lion.ipynb</span></code></a></p>
@@ -743,12 +745,12 @@ it to LION itself.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../examples.html">
+          <a class="next-page" href="d14_beyond_ct.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Example scripts</div>
+                <div class="title">Beyond CT: sparse recovery and other operators</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

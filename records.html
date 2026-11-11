@@ -1,0 +1,960 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="API reference" href="api.html"><link rel="prev" title="Methods in LION" href="methods.html">
+        <link rel="prefetch" href="_static/lion-logo.svg" as="image">
+        <link rel="prefetch" href="_static/lion-logo-dark.svg" as="image">
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+        <title>LION’s metadata: results that can be made again - LION 0.2.0</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">LION 0.2.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="_static/lion-logo.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="_static/lion-logo-dark.svg" alt="Dark Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">LION 0.2.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Using LION</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials/index.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d01_operators.html">Operators: CT geometry, projections and reconstructions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d02_parameters_and_specs.html">Parameters and specs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d03_data.html">Data and experiments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d04_models.html">Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d05_supervised_training.html">Supervised training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d06_self_supervised_training.html">Self-supervised training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d07_denoisers_and_pnp.html">Denoisers and Plug-and-Play</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d08_learned_regularisers.html">Learned regularisers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d09_saving_and_records.html">Saving, loading and records</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d10_reconstructors.html">Reconstructors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d11_evaluation.html">Evaluation and comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d12_publishing.html">Publishing and reproducing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d13_extending_lion.html">Extending LION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/d14_beyond_ct.html">Beyond CT: sparse recovery and other operators</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Example scripts</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="methods.html">Methods in LION</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">LION’s metadata: results that can be made again</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api.html">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.operators.html">LION.operators</a><input aria-label="Toggle navigation of LION.operators" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.operators.CompositeOp.html">LION.operators.CompositeOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.operators.DebiasOp.html">LION.operators.DebiasOp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.operators.Operator.html">LION.operators.Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.operators.Wavelet2D.html">LION.operators.Wavelet2D</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.operators.ct.html">LION.operators.ct</a><input aria-label="Toggle navigation of LION.operators.ct" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.CTProjectionOp.html">LION.operators.ct.CTProjectionOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.ct_geometry.html">LION.operators.ct.ct_geometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.ct_utils.html">LION.operators.ct.ct_utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.fdk.html">LION.operators.ct.fdk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.sirt.html">LION.operators.ct.sirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.ct.tv_min.html">LION.operators.ct.tv_min</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.operators.pcm.html">LION.operators.pcm</a><input aria-label="Toggle navigation of LION.operators.pcm" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.pcm.PhotocurrentMapOp.html">LION.operators.pcm.PhotocurrentMapOp</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.operators.pcm.WalshHadamard2D.html">LION.operators.pcm.WalshHadamard2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.data_loaders.html">LION.data_loaders</a><input aria-label="Toggle navigation of LION.data_loaders" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.data_loaders.LIDC_IDRI.html">LION.data_loaders.LIDC_IDRI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.data_loaders.LIONDataset.html">LION.data_loaders.LIONDataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.data_loaders.data_record.html">LION.data_loaders.data_record</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.data_loaders.deteCT.html">LION.data_loaders.deteCT</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.experiments.html">LION.experiments</a><input aria-label="Toggle navigation of LION.experiments" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.experiments.ct_experiments.html">LION.experiments.ct_experiments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.experiments.deteCT_benchmark.html">LION.experiments.deteCT_benchmark</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.models.html">LION.models</a><input aria-label="Toggle navigation of LION.models" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.CNNs.html">LION.models.CNNs</a><input aria-label="Toggle navigation of LION.models.CNNs" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.CNNs.MSDNet.html">LION.models.CNNs.MSDNet</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="generated/LION.models.CNNs.UNets.html">LION.models.CNNs.UNets</a><input aria-label="Toggle navigation of LION.models.CNNs.UNets" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="generated/LION.models.CNNs.UNets.ResUNet3D.html">LION.models.CNNs.UNets.ResUNet3D</a></li>
+<li class="toctree-l5"><a class="reference internal" href="generated/LION.models.CNNs.UNets.Unet.html">LION.models.CNNs.UNets.Unet</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.CNNs.dncnn.html">LION.models.CNNs.dncnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.CNNs.drunet.html">LION.models.CNNs.drunet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.models.LIONmodel.html">LION.models.LIONmodel</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.PnP.html">LION.models.PnP</a><input aria-label="Toggle navigation of LION.models.PnP" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.PnP.gradient_step_denoiser.html">LION.models.PnP.gradient_step_denoiser</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.iterative_unrolled.html">LION.models.iterative_unrolled</a><input aria-label="Toggle navigation of LION.models.iterative_unrolled" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.iterative_unrolled.ItNet.html">LION.models.iterative_unrolled.ItNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.iterative_unrolled.LG.html">LION.models.iterative_unrolled.LG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.iterative_unrolled.LPD.html">LION.models.iterative_unrolled.LPD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.iterative_unrolled.cLPD.html">LION.models.iterative_unrolled.cLPD</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.learned_fbp.html">LION.models.learned_fbp</a><input aria-label="Toggle navigation of LION.models.learned_fbp" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_fbp.DeepFBP.html">LION.models.learned_fbp.DeepFBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_fbp.DeepFusionBP.html">LION.models.learned_fbp.DeepFusionBP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_fbp.FusionFBP.html">LION.models.learned_fbp.FusionFBP</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.post_processing.FBPConvNet.html">LION.models.post_processing.FBPConvNet</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.post_processing.FBPConvNetImage.html">LION.models.post_processing.FBPConvNetImage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.post_processing.cFBPConvNet.html">LION.models.post_processing.cFBPConvNet</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.models.torch_model.html">LION.models.torch_model</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.optimizers.html">LION.optimizers</a><input aria-label="Toggle navigation of LION.optimizers" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.AdversarialRegularizerSolver.html">LION.optimizers.AdversarialRegularizerSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.Equivariance2InverseSolver.html">LION.optimizers.Equivariance2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.EquivariantSolver.html">LION.optimizers.EquivariantSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.GaussianDenoiserSolver.html">LION.optimizers.GaussianDenoiserSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.LIONsolver.html">LION.optimizers.LIONsolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.Noise2InverseSolver.html">LION.optimizers.Noise2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.Noisier2InverseSolver.html">LION.optimizers.Noisier2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.Proj2ProjSolver.html">LION.optimizers.Proj2ProjSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.SelfSupervisedSolver.html">LION.optimizers.SelfSupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.Sparse2InverseSolver.html">LION.optimizers.Sparse2InverseSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.SupervisedSolver.html">LION.optimizers.SupervisedSolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.optimizers.training_record.html">LION.optimizers.training_record</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.losses.html">LION.losses</a><input aria-label="Toggle navigation of LION.losses" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.losses.SURE.html">LION.losses.SURE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.losses.SUREpgImage.html">LION.losses.SUREpgImage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.losses.jacobian_penalty.html">LION.losses.jacobian_penalty</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.reconstructors.html">LION.reconstructors</a><input aria-label="Toggle navigation of LION.reconstructors" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.reconstructors.ForwardReconstructor.html">LION.reconstructors.ForwardReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.reconstructors.LIONreconstructor.html">LION.reconstructors.LIONreconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.reconstructors.LearnedRegularizerReconstructor.html">LION.reconstructors.LearnedRegularizerReconstructor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.reconstructors.PnP.html">LION.reconstructors.PnP</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.classical_algorithms.html">LION.classical_algorithms</a><input aria-label="Toggle navigation of LION.classical_algorithms" class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.classical_algorithms.conjugate_gradient.html">LION.classical_algorithms.conjugate_gradient</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.classical_algorithms.fista.html">LION.classical_algorithms.fista</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.classical_algorithms.spgl1_torch.html">LION.classical_algorithms.spgl1_torch</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.evaluation.html">LION.evaluation</a><input aria-label="Toggle navigation of LION.evaluation" class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.evaluation.comparison.html">LION.evaluation.comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.evaluation.evaluation.html">LION.evaluation.evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.evaluation.figures.html">LION.evaluation.figures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.evaluation.methods.html">LION.evaluation.methods</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.metrics.html">LION.metrics</a><input aria-label="Toggle navigation of LION.metrics" class="toctree-checkbox" id="toctree-checkbox-21" name="toctree-checkbox-21" role="switch" type="checkbox"/><label for="toctree-checkbox-21"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.metrics.haarpsi.html">LION.metrics.haarpsi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.metrics.psnr.html">LION.metrics.psnr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.metrics.ssim.html">LION.metrics.ssim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="generated/LION.package.html">LION.package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="generated/LION.utils.html">LION.utils</a><input aria-label="Toggle navigation of LION.utils" class="toctree-checkbox" id="toctree-checkbox-22" name="toctree-checkbox-22" role="switch" type="checkbox"/><label for="toctree-checkbox-22"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.citation.html">LION.utils.citation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.common_primitives.html">LION.utils.common_primitives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.device.html">LION.utils.device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.environment.html">LION.utils.environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.image_transforms.html">LION.utils.image_transforms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.math.html">LION.utils.math</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.mrpro_import.html">LION.utils.mrpro_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.normaliser.html">LION.utils.normaliser</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.parameter.html">LION.utils.parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.paths.html">LION.utils.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.rng.html">LION.utils.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.spec.html">LION.utils.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.spyrit_import.html">LION.utils.spyrit_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.tomosipo_import.html">LION.utils.tomosipo_import</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/LION.utils.utils.html">LION.utils.utils</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="developers.html">Developer guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="citing.html">Citing LION</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/records.md?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/records.md" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="lion-s-metadata-results-that-can-be-made-again">
+<h1>LION’s metadata: results that can be made again<a class="headerlink" href="#lion-s-metadata-results-that-can-be-made-again" title="Link to this heading">¶</a></h1>
+<p>Every model LION saves carries the information needed to make it again: the
+model, the data it was trained on and how they were simulated, how it was
+trained, and the code and machine it ran on. From these records LION can
+make any component again, change it and train again, evaluate and compare
+models fairly, and publish a model as a self-contained package. This page
+describes what is recorded, how to use it, and what a new component needs to
+take part.</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#the-model-file">The model file</a></p></li>
+<li><p><a class="reference internal" href="#specs-components-written-as-calls">Specs: components written as calls</a></p></li>
+<li><p><a class="reference internal" href="#the-records">The records</a></p></li>
+<li><p><a class="reference internal" href="#repeating-a-training-exactly">Repeating a training exactly</a></p></li>
+<li><p><a class="reference internal" href="#making-things-again-from-a-file">Making things again from a file</a></p></li>
+<li><p><a class="reference internal" href="#evaluating-and-comparing">Evaluating and comparing</a></p></li>
+<li><p><a class="reference internal" href="#publishing-a-model">Publishing a model</a></p></li>
+<li><p><a class="reference internal" href="#using-a-package">Using a package</a></p></li>
+<li><p><a class="reference internal" href="#folders-lion-data-path-and-lion-results-path">Folders: LION_DATA_PATH and LION_RESULTS_PATH</a></p></li>
+<li><p><a class="reference internal" href="#for-developers-making-a-component-take-part">For developers: making a component take part</a></p></li>
+<li><p><a class="reference internal" href="#what-isn-t-covered">What isn’t covered</a></p></li>
+</ul>
+<section id="the-model-file">
+<h2>The model file<a class="headerlink" href="#the-model-file" title="Link to this heading">¶</a></h2>
+<p>A model is saved as two files with the same name, as a solver saves it
+(<code class="docutils literal notranslate"><span class="pre">solver.save_final_results()</span></code>) or by hand (<code class="docutils literal notranslate"><span class="pre">model.save(file,</span> <span class="pre">dataset=...,</span> <span class="pre">training=...)</span></code>):</p>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">model.json</span></code></strong>: the metadata, plain JSON written by LION (read-only in
+intent):</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">lion_format</span></code>: the metadata format’s version (a file without it, from
+before LION’s metadata, isn’t read);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">model</span></code>: the model’s spec (its class and parameters, see below);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">environment</span></code>: the environment record (LION’s code, packages, machine);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dataset_params</span></code>: the data record of the training data;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">training</span></code>: the training record;</p></li>
+</ul>
+</li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">model.pt</span></code></strong>: tensors and plain values only, read with torch’s safe loader
+(<code class="docutils literal notranslate"><span class="pre">weights_only=True</span></code>), so loading a file runs no code from it:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">model_state_dict</span></code>: the weights;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">initial_random_state</span></code>: torch’s random state when the model was made (see
+<a class="reference internal" href="#repeating-a-training-exactly">Repeating a training exactly</a>);</p></li>
+<li><p>for checkpoints, also the optimizer’s (and scheduler’s) state, the epoch,
+the losses and the random state of the run.</p></li>
+</ul>
+</li>
+</ul>
+<p>A shortened <code class="docutils literal notranslate"><span class="pre">model.json</span></code> of a DnCNN trained on a LIDC-IDRI experiment:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w"> </span><span class="nt">"lion_format"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">"_target_"</span><span class="p">:</span><span class="w"> </span><span class="s2">"LION.models.CNNs.dncnn.DnCNN"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"model_parameters"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"_target_"</span><span class="p">:</span><span class="w"> </span><span class="s2">"LION.models.LIONmodel.LIONModelParameter"</span><span class="p">,</span>
+<span class="w">                       </span><span class="nt">"in_channels"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">"int_channels"</span><span class="p">:</span><span class="w"> </span><span class="mi">64</span><span class="p">,</span><span class="w"> </span><span class="nt">"blocks"</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">}</span>
+<span class="w"> </span><span class="p">},</span>
+<span class="w"> </span><span class="nt">"environment"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"lion"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0.2.0"</span><span class="p">,</span><span class="w"> </span><span class="nt">"commit"</span><span class="p">:</span><span class="w"> </span><span class="s2">"a69eb0d6..."</span><span class="p">,</span><span class="w"> </span><span class="nt">"uncommitted"</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span><span class="w"> </span><span class="nt">"pushed"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">},</span>
+<span class="w">                 </span><span class="nt">"packages"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"torch"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2.14.1"</span><span class="p">,</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">},</span><span class="w"> </span><span class="nt">"device"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cuda"</span><span class="p">,</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">}},</span>
+<span class="w"> </span><span class="nt">"dataset_params"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">"experiment"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"_target_"</span><span class="p">:</span><span class="w"> </span><span class="s2">"LION.experiments.ct_experiments.LowDoseCTRecon"</span><span class="p">,</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"split"</span><span class="p">:</span><span class="w"> </span><span class="s2">"train"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"dataset"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"_target_"</span><span class="p">:</span><span class="w"> </span><span class="s2">"LION.data_loaders.LIDC_IDRI.LIDC_IDRI"</span><span class="p">,</span><span class="w"> </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"train"</span><span class="p">,</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"sinogram_transform"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"_target_"</span><span class="p">:</span><span class="w"> </span><span class="s2">"functools.partial"</span><span class="p">,</span><span class="w"> </span><span class="nt">"I0"</span><span class="p">:</span><span class="w"> </span><span class="mi">11000</span><span class="p">,</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"sinogram_transform_seed"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"samples"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"count"</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="nt">"ids"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"LIDC-IDRI-0001/slice_0"</span><span class="p">,</span><span class="w"> </span><span class="s2">"..."</span><span class="p">],</span><span class="w"> </span><span class="nt">"groups"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"LIDC-IDRI-0001"</span><span class="p">,</span><span class="w"> </span><span class="s2">"..."</span><span class="p">]}</span>
+<span class="w"> </span><span class="p">},</span>
+<span class="w"> </span><span class="nt">"training"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">"solver"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"_target_"</span><span class="p">:</span><span class="w"> </span><span class="s2">"LION.optimizers.SupervisedSolver.SupervisedSolver"</span><span class="p">,</span><span class="w"> </span><span class="nt">"seed"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"optimizer"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"_target_"</span><span class="p">:</span><span class="w"> </span><span class="s2">"torch.optim.adam.Adam"</span><span class="p">,</span><span class="w"> </span><span class="nt">"lr"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.001</span><span class="p">,</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"parameter_groups"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"scheduler"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"_target_"</span><span class="p">:</span><span class="w"> </span><span class="s2">"torch.optim.lr_scheduler.StepLR"</span><span class="p">,</span><span class="w"> </span><span class="nt">"step_size"</span><span class="p">:</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="nt">"gamma"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"seed"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"initial_weights"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"from"</span><span class="p">:</span><span class="w"> </span><span class="s2">"random_state"</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"train"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"batch_size"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">"shuffle"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">"drop_last"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"epochs"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"asked"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">"done"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"weights"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"final"</span><span class="p">,</span><span class="w"> </span><span class="nt">"epoch"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"history"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"train_loss"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.35</span><span class="p">,</span><span class="w"> </span><span class="mf">0.33</span><span class="p">],</span><span class="w"> </span><span class="nt">"validation"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.22</span><span class="p">,</span><span class="w"> </span><span class="mf">0.21</span><span class="p">],</span><span class="w"> </span><span class="nt">"learning_rate"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.001</span><span class="p">,</span><span class="w"> </span><span class="mf">0.001</span><span class="p">]}</span>
+<span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Loading it: <code class="docutils literal notranslate"><span class="pre">model,</span> <span class="pre">options,</span> <span class="pre">data</span> <span class="pre">=</span> <span class="pre">LIONmodel.load(&quot;model&quot;)</span></code> makes the class
+the file names, with its weights; <code class="docutils literal notranslate"><span class="pre">DnCNN.load(&quot;model&quot;)</span></code> makes a <code class="docutils literal notranslate"><span class="pre">DnCNN</span></code>.
+Loading a file saved with other LION code gives a warning saying how the code
+differs.</p>
+</section>
+<section id="specs-components-written-as-calls">
+<h2>Specs: components written as calls<a class="headerlink" href="#specs-components-written-as-calls" title="Link to this heading">¶</a></h2>
+<p>LION writes a component as the call that makes it (<code class="docutils literal notranslate"><span class="pre">LION/utils/spec.py</span></code>), in
+JSON: a dict with <code class="docutils literal notranslate"><span class="pre">&quot;_target_&quot;</span></code> means “call this”, its other keys are the
+keyword arguments (<code class="docutils literal notranslate"><span class="pre">&quot;_args_&quot;</span></code>: positional ones), and <code class="docutils literal notranslate"><span class="pre">&quot;_call_&quot;:</span> <span class="pre">false</span></code> refers
+to a class or function without calling it. The keys follow Hydra’s
+<code class="docutils literal notranslate"><span class="pre">instantiate</span></code> convention.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="nt">"_target_"</span><span class="p">:</span><span class="w"> </span><span class="s2">"LION.experiments.ct_experiments.LowDoseCTRecon"</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">"experiment_params"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"_target_"</span><span class="p">:</span><span class="w"> </span><span class="s2">"LION.utils.parameter.LIONParameter"</span><span class="p">,</span><span class="w"> </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">},</span>
+<span class="w"> </span><span class="nt">"dataset"</span><span class="p">:</span><span class="w"> </span><span class="s2">"LIDC-IDRI"</span><span class="p">}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>Writing.</strong> A component’s spec is made from its attributes with the names
+of its constructor’s arguments (the <em>same-name rule</em>: LION’s components keep
+each argument as an attribute of the same name; a class that can’t defines
+<code class="docutils literal notranslate"><span class="pre">spec_kwargs()</span></code>). Tuples, numpy arrays, enums, paths, partials and classes
+are written so they come back as they were. A lambda, or a class that keeps
+no record of its arguments, can’t be written: records then only <em>name</em> it
+(<code class="docutils literal notranslate"><span class="pre">{&quot;unsaved&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;reason&quot;:</span> <span class="pre">...}</span></code>), with a warning, and it can’t be made
+again.</p></li>
+<li><p><strong>Building.</strong> A spec names code to run, so only classes in allowed modules
+are imported and called: LION’s, torch’s layers, losses and optimizers, and
+a few builtins (<code class="docutils literal notranslate"><span class="pre">spec.ALLOWED_MODULES</span></code>, <code class="docutils literal notranslate"><span class="pre">ALLOWED_TARGETS</span></code>). Your own classes
+are allowed by passing their module: <code class="docutils literal notranslate"><span class="pre">allow=[&quot;my_package.&quot;]</span></code>. A file never
+widens what may be built; only the caller does.</p></li>
+</ul>
+</section>
+<section id="the-records">
+<h2>The records<a class="headerlink" href="#the-records" title="Link to this heading">¶</a></h2>
+<p>Records are what LION writes about a component. They are <code class="docutils literal notranslate"><span class="pre">LIONParameter</span></code>s
+(read with attributes, <code class="docutils literal notranslate"><span class="pre">record.epochs.done</span></code>), saved as plain JSON; the specs
+inside them stay dicts, describing objects that are made only when asked.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Record</p></th>
+<th class="head"><p>Written by</p></th>
+<th class="head"><p>Holds</p></th>
+<th class="head"><p>Read with</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Data record</strong> (<code class="docutils literal notranslate"><span class="pre">LION/data_loaders/data_record.py</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">data_record(dataset)</span></code>, <code class="docutils literal notranslate"><span class="pre">experiment.data_record(split)</span></code>; saved as a model file’s <code class="docutils literal notranslate"><span class="pre">dataset_params</span></code></p></td>
+<td><p>the dataset’s spec; the experiment and split, when made by one; the noise (<code class="docutils literal notranslate"><span class="pre">sinogram_transform</span></code>) and its seed; every sample’s ID, their count and hash, and their groups (e.g. LIDC-IDRI’s patients); a <code class="docutils literal notranslate"><span class="pre">Subset</span></code>’s indices; on request, a hash of the files’ contents</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">read_record(source)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Training record</strong> (<code class="docutils literal notranslate"><span class="pre">LION/optimizers/training_record.py</span></code>)</p></td>
+<td><p>every solver, in every file it saves (final, best validation, checkpoint)</p></td>
+<td><p>the solver’s spec (its own arguments, <code class="docutils literal notranslate"><span class="pre">solver_params</span></code> with values it computed); the optimizer, its parameter groups and the learning-rate scheduler; the seed; how the initial weights are made again, and their hash; how data were fed (batch size, shuffle); validation (its data record, frequency, function, reconstructor); epochs asked and done; which weights the file holds; the history of the loss, validation and learning rate</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">read_training_record(source)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Environment record</strong> (<code class="docutils literal notranslate"><span class="pre">LION/utils/environment.py</span></code>)</p></td>
+<td><p>every model save, and every test</p></td>
+<td><p>LION’s version, commit, uncommitted files and whether the commit is pushed; the packages that change the numbers (torch, numpy, CT backends); CUDA, cuDNN and determinism settings; device, GPUs, driver; platform. Nothing personal (no host, user or paths)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">options.environment</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Reconstructor record</strong> (<code class="docutils literal notranslate"><span class="pre">LION/reconstructors/LIONreconstructor.py</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">reconstructor.save(file)</span></code></p></td>
+<td><p>the reconstructor’s spec (operator and parameters); its model by the file it was loaded from and its weights hash (the weights stay in the model’s file); the environment</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIONReconstructor.load(file)</span></code> (with its model), <code class="docutils literal notranslate"><span class="pre">instantiate(file)</span></code> (without)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Test record</strong> (<code class="docutils literal notranslate"><span class="pre">LION/evaluation/evaluation.py</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Evaluation.run(method)</span></code></p></td>
+<td><p>the method (e.g. a model’s spec and weights hash); the evaluation’s spec; the test data’s record; the metrics; per-sample scores by sample ID; summary statistics; timing; the environment</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">read_test_record(source)</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="repeating-a-training-exactly">
+<h2>Repeating a training exactly<a class="headerlink" href="#repeating-a-training-exactly" title="Link to this heading">¶</a></h2>
+<p>A training is repeated exactly when its data, initial weights and random
+numbers are the same:</p>
+<ul class="simple">
+<li><p><strong>Data.</strong> Simulated noise is drawn per sample from the experiment’s noise
+seed (<code class="docutils literal notranslate"><span class="pre">noise_params.seed</span></code>, default 0), inside
+<code class="docutils literal notranslate"><span class="pre">LION.utils.rng.seeded(seed,</span> <span class="pre">&lt;sample&gt;)</span></code>: each sample is the same in every
+epoch, run and data loader worker.</p></li>
+<li><p><strong>Initial weights.</strong> A model keeps torch’s random state from when it was
+made (<code class="docutils literal notranslate"><span class="pre">initial_random_state</span></code>, saved in the <code class="docutils literal notranslate"><span class="pre">.pt</span></code>). When training starts, the
+solver checks that the model made again from that state has the same
+weights, and records <code class="docutils literal notranslate"><span class="pre">{&quot;from&quot;:</span> <span class="pre">&quot;random_state&quot;}</span></code>. If not (a pretrained or
+custom start, layers made on a GPU), it saves the weights next to the
+results (<code class="docutils literal notranslate"><span class="pre">&lt;name&gt;_initial.pt</span></code>) and records <code class="docutils literal notranslate"><span class="pre">{&quot;from&quot;:</span> <span class="pre">&quot;file&quot;,</span> <span class="pre">...}</span></code>.
+<code class="docutils literal notranslate"><span class="pre">LIONmodel.instantiate(file,</span> <span class="pre">initial_weights=True)</span></code> makes them again.</p></li>
+<li><p><strong>Fine-tuning.</strong> A model loaded with <code class="docutils literal notranslate"><span class="pre">LIONmodel.load</span></code> and trained again
+records where its weights came from: <code class="docutils literal notranslate"><span class="pre">initial_weights.origin</span></code> is the
+original’s file and its weights hash, so a fine-tuned model’s file leads
+to its original’s records. Weights loaded otherwise (e.g.
+<code class="docutils literal notranslate"><span class="pre">load_state_dict</span></code>) are saved, with <code class="docutils literal notranslate"><span class="pre">origin:</span> <span class="pre">None</span></code> and a warning.</p></li>
+<li><p><strong>Training’s random numbers.</strong> Solvers take a <code class="docutils literal notranslate"><span class="pre">seed</span></code> (default 0; <code class="docutils literal notranslate"><span class="pre">None</span></code>:
+unseeded) and seed torch, numpy and Python’s <code class="docutils literal notranslate"><span class="pre">random</span></code> when training starts.
+Checkpoints keep the random state, so a resumed run continues exactly as the
+uninterrupted one would. Validation doesn’t change training’s random numbers.</p></li>
+<li><p><strong>Determinism.</strong> On the CPU, the same code and package versions give the same
+model. On a GPU, runs with the same seed differ slightly (about 1e-3 in the
+weights after a few epochs) unless the solver is made with
+<code class="docutils literal notranslate"><span class="pre">deterministic=True</span></code> (slower). torch’s CPU and GPU random generators differ,
+so a seed gives different (equally valid) noise on each.</p></li>
+</ul>
+</section>
+<section id="making-things-again-from-a-file">
+<h2>Making things again from a file<a class="headerlink" href="#making-things-again-from-a-file" title="Link to this heading">¶</a></h2>
+<p>Each component makes itself again from a saved file (a model file, a data,
+training or test record, a spec, or a package’s files):</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p>made again</p></th>
+<th class="head"><p>its parameters, to change</p></th>
+<th class="head"><p>made with changes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Model</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIONmodel.instantiate(file)</span></code> (new weights); <code class="docutils literal notranslate"><span class="pre">LIONmodel.load(file)</span></code> (trained weights); <code class="docutils literal notranslate"><span class="pre">instantiate(file,</span> <span class="pre">initial_weights=True)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LPD.parameters_from_file(file)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LPD.instantiate(file,</span> <span class="pre">model_parameters=parameters)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Experiment</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Experiment.instantiate(file)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Experiment.parameters_from_file(file)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Experiment.instantiate(file,</span> <span class="pre">experiment_params=parameters)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Dataset</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIONDataset.instantiate(file)</span></code> (without noise; checked against the record’s samples)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.parameters_from_file(file)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIDC_IDRI.instantiate(file,</span> <span class="pre">parameters=parameters)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Solver</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIONsolver.instantiate(file,</span> <span class="pre">model)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIONsolver.parameters_from_file(file)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIONsolver.instantiate(file,</span> <span class="pre">model,</span> <span class="pre">solver_params=parameters)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Reconstructor</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LIONReconstructor.load(file)</span></code> (with its model); <code class="docutils literal notranslate"><span class="pre">LIONReconstructor.instantiate(file_spec_or_test_record,</span> <span class="pre">model=None)</span></code> (another model, or none: running without one is an error)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PnP.parameters_from_file(source)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PnP.instantiate(source,</span> <span class="pre">model,</span> <span class="pre">parameters=parameters)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Evaluation</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Evaluation.instantiate(test_record)</span></code></p></td>
+<td><p></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Evaluation.instantiate(test_record,</span> <span class="pre">samples=10)</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li><p>Called on a base class (<code class="docutils literal notranslate"><span class="pre">LIONmodel</span></code>, <code class="docutils literal notranslate"><span class="pre">Experiment</span></code>, …) these make the class
+the file names; called on a class, that class, with a warning if the file
+names another.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parameters_from_file</span></code> gives what <code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code> gives, but as the
+file recorded it: start from an old experiment and change one or two things.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">parameters</span> <span class="o">=</span> <span class="n">LPD</span><span class="o">.</span><span class="n">parameters_from_file</span><span class="p">(</span><span class="s2">"results/lpd/final"</span><span class="p">)</span>
+<span class="n">parameters</span><span class="o">.</span><span class="n">n_iters</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">LPD</span><span class="o">.</span><span class="n">instantiate</span><span class="p">(</span><span class="s2">"results/lpd/final"</span><span class="p">,</span> <span class="n">model_parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">)</span>  <span class="c1"># new weights</span>
+</pre></div>
+</div>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">instantiate(file,</span> <span class="pre">**arguments)</span></code> replaces any recorded argument.</p></li>
+<li><p>An experiment’s data, noise included, are made with
+<code class="docutils literal notranslate"><span class="pre">Experiment.instantiate(file).get_dataset(record.split)</span></code>. The experiment
+classes differ only in their default parameters, so an experiment made with
+another experiment’s parameters gives a warning: it would be that experiment,
+recorded under the wrong class.</p></li>
+</ul>
+</section>
+<section id="evaluating-and-comparing">
+<h2>Evaluating and comparing<a class="headerlink" href="#evaluating-and-comparing" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">LION.evaluation</span></code> scores reconstruction methods on a test set and keeps the
+results as test records:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">LION.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">Comparison</span><span class="p">,</span> <span class="n">Evaluation</span>
+
+<span class="n">evaluation</span> <span class="o">=</span> <span class="n">Evaluation</span><span class="p">(</span><span class="n">LowDoseCTRecon</span><span class="p">())</span>            <span class="c1"># the experiment's test split, PSNR/SSIM/HaarPSI</span>
+<span class="n">record</span> <span class="o">=</span> <span class="n">evaluation</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">"results/lpd/final"</span><span class="p">)</span>          <span class="c1"># a model or reconstructor file, a solver, a reconstructor or a function</span>
+<span class="n">comparison</span> <span class="o">=</span> <span class="n">Comparison</span><span class="p">(</span><span class="n">evaluation</span><span class="p">,</span> <span class="p">[</span><span class="s2">"results/lpd/final"</span><span class="p">,</span> <span class="s2">"results/fbpconvnet/final"</span><span class="p">])</span>
+<span class="n">comparison</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>                                      <span class="c1"># the baseline (FDK for CT) first</span>
+<span class="n">comparison</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"comparison"</span><span class="p">)</span>                         <span class="c1"># records, tables, per-sample scores, figures</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Records are saved (in <code class="docutils literal notranslate"><span class="pre">$LION_RESULTS_PATH/evaluations</span></code> by default) and
+reused when the same method is run on the same evaluation again.</p></li>
+<li><p>From the models’ records, a comparison checks that it is fair: a model
+trained or validated on test data is an error (checked by patient for
+LIDC-IDRI), a model trained on another problem or with other LION code gives
+a warning.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Comparison.instantiate(folder)</span></code> makes a saved comparison again.</p></li>
+</ul>
+</section>
+<section id="publishing-a-model">
+<h2>Publishing a model<a class="headerlink" href="#publishing-a-model" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">LION.package.publish</span></code> writes everything needed to make a model, train it
+again and test it, in one folder:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">LION.package</span><span class="w"> </span><span class="kn">import</span> <span class="n">publish</span>
+<span class="n">publish</span><span class="p">(</span><span class="s2">"results/lpd/final"</span><span class="p">,</span> <span class="s2">"lpd_package"</span><span class="p">,</span> <span class="n">evaluation</span><span class="o">=</span><span class="n">evaluation</span><span class="p">)</span>  <span class="c1"># evaluation: optional</span>
+<span class="n">publish</span><span class="p">(</span><span class="s2">"results/pnp"</span><span class="p">,</span> <span class="s2">"pnp_package"</span><span class="p">)</span>   <span class="c1"># a reconstructor's file: its model, and the reconstructor</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>lpd_package/
+  model.json, model.pt   the model file, exactly as LION saved it
+  &lt;name&gt;_initial.pt      the initial weights, when the solver saved them
+  experiment.json        the experiment
+  data/training.json     the training data's record
+  data/validation.json   the validation data's record, if validated
+  solver.json            the training record
+  test.json              the test record, if an evaluation was given
+  reconstructor.json     the reconstructor, when one is published (its model: model)
+  environment.txt        the packages installed where it was published (conda's and Python's)
+  package.json           the files' sha256, the citations, LION's version and commit, notes
+  README.md              a model card, generated (edit it freely: it isn't checksummed)
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>It refuses</strong> (an error, before writing anything):</p>
+<ul>
+<li><p>LION code that isn’t committed and pushed, now and when the model was saved
+and tested;</p></li>
+<li><p>a file without a training or data record;</p></li>
+<li><p>records naming code outside LION, or what could only be named (a lambda);</p></li>
+<li><p>what training again would miss: unsaved initial weights, <code class="docutils literal notranslate"><span class="pre">seed=None</span></code>, data
+not made by an <code class="docutils literal notranslate"><span class="pre">Experiment</span></code>, or data outside <code class="docutils literal notranslate"><span class="pre">LION_DATA_PATH</span></code>;</p></li>
+<li><p>a test of other weights, or on data the model was trained or validated on;</p></li>
+<li><p>for a fine-tuned model, an original (and its original, …) that is
+missing, has other weights than training started from, or would be refused
+itself;</p></li>
+<li><p>a folder that isn’t empty.</p></li>
+</ul>
+</li>
+<li><p><strong>A fine-tuned model’s originals</strong> are in the package: their metadata as
+<code class="docutils literal notranslate"><span class="pre">origin/model.json</span></code> (and <code class="docutils literal notranslate"><span class="pre">origin/origin/model.json</span></code>, …), and the model card
+lists them. <code class="docutils literal notranslate"><span class="pre">train_again</span></code> repeats the last training, from the saved initial
+weights.</p></li>
+<li><p><strong>Notes</strong> (in <code class="docutils literal notranslate"><span class="pre">package.json</span></code> and the model card): a package published in
+another environment than it was trained in, tested on another problem, or
+trained from weights whose origin isn’t recorded.</p></li>
+<li><p><strong>Citations</strong> are each component’s <code class="docutils literal notranslate"><span class="pre">cite()</span></code>: where the model, solver and
+dataset come from (their papers), not the work being published.</p></li>
+<li><p><strong>The model card</strong> describes the model, the problem, the training and the
+test, and shows how to use and train the model again, step by step.</p></li>
+</ul>
+</section>
+<section id="using-a-package">
+<h2>Using a package<a class="headerlink" href="#using-a-package" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">LION.package</span><span class="w"> </span><span class="kn">import</span> <span class="n">build</span><span class="p">,</span> <span class="n">load</span><span class="p">,</span> <span class="n">load_and_build</span><span class="p">,</span> <span class="n">train_again</span>
+
+<span class="n">package</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="s2">"lpd_package"</span><span class="p">)</span>        <span class="c1"># the recorded arguments, to change; nothing made yet</span>
+<span class="n">package</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">model_parameters</span><span class="o">.</span><span class="n">n_iters</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">package</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">experiment_params</span><span class="o">.</span><span class="n">noise_params</span><span class="o">.</span><span class="n">I0</span> <span class="o">=</span> <span class="mi">5000</span>
+<span class="n">package</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">lr</span> <span class="o">=</span> <span class="mf">1e-4</span>
+<span class="n">package</span><span class="o">.</span><span class="n">training</span><span class="o">.</span><span class="n">epochs</span> <span class="o">=</span> <span class="mi">20</span>
+
+<span class="n">built</span> <span class="o">=</span> <span class="n">build</span><span class="p">(</span><span class="n">package</span><span class="p">)</span>               <span class="c1"># model, experiment, data, solver (data set), evaluation, reconstructor</span>
+<span class="n">built</span> <span class="o">=</span> <span class="n">load_and_build</span><span class="p">(</span><span class="s2">"lpd_package"</span><span class="p">)</span>        <span class="c1"># as published</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">train_again</span><span class="p">(</span><span class="n">package</span><span class="p">,</span> <span class="s2">"retrained"</span><span class="p">)</span>    <span class="c1"># trained again, changed or not</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">load</span></code> warns about files changed since publishing, and about LION code other
+than the model was saved with.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">build</span></code> gives the model its trained weights, or with <code class="docutils literal notranslate"><span class="pre">initial_weights=True</span></code>
+the ones training started from; a model whose arguments were changed starts
+from new random weights.</p></li>
+<li><p>Everything runs on the device the model was trained on unless <code class="docutils literal notranslate"><span class="pre">device=</span></code> says
+otherwise (on the CPU if it was a GPU and there is none).</p></li>
+<li><p>Unchanged, <code class="docutils literal notranslate"><span class="pre">train_again</span></code> gives the published weights (on the CPU, or on a GPU
+with a deterministic solver).</p></li>
+</ul>
+</section>
+<section id="folders-lion-data-path-and-lion-results-path">
+<h2>Folders: LION_DATA_PATH and LION_RESULTS_PATH<a class="headerlink" href="#folders-lion-data-path-and-lion-results-path" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">LION_DATA_PATH</span></code> is where the datasets are; <code class="docutils literal notranslate"><span class="pre">LION_RESULTS_PATH</span></code> (optional) is
+where solvers save by default. Both are read when a path is used.</p></li>
+<li><p>Paths inside them are written relative to them, as <code class="docutils literal notranslate"><span class="pre">data_path(&quot;...&quot;)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">results_path(&quot;...&quot;)</span></code>, so a file means the same folder on any machine. A path
+outside them is written as it is, and <code class="docutils literal notranslate"><span class="pre">publish</span></code> refuses data outside
+<code class="docutils literal notranslate"><span class="pre">LION_DATA_PATH</span></code>.</p></li>
+<li><p>Where a machine saves (<code class="docutils literal notranslate"><span class="pre">save_folder</span></code>) and where it runs (<code class="docutils literal notranslate"><span class="pre">device</span></code>,
+<code class="docutils literal notranslate"><span class="pre">verbose</span></code>) are not recorded.</p></li>
+</ul>
+</section>
+<section id="for-developers-making-a-component-take-part">
+<h2>For developers: making a component take part<a class="headerlink" href="#for-developers-making-a-component-take-part" title="Link to this heading">¶</a></h2>
+<p>A new model, dataset, experiment, solver or reconstructor takes part when:</p>
+<ul class="simple">
+<li><p>it derives from LION’s base class (<code class="docutils literal notranslate"><span class="pre">LIONmodel</span></code>, <code class="docutils literal notranslate"><span class="pre">LIONDataset</span></code>, <code class="docutils literal notranslate"><span class="pre">Experiment</span></code>,
+<code class="docutils literal notranslate"><span class="pre">LIONsolver</span></code>, <code class="docutils literal notranslate"><span class="pre">LIONReconstructor</span></code>), which gives it <code class="docutils literal notranslate"><span class="pre">instantiate</span></code>,
+<code class="docutils literal notranslate"><span class="pre">parameters_from_file</span></code> and its records;</p></li>
+<li><p>it keeps each constructor argument as an attribute of the same name
+(<code class="docutils literal notranslate"><span class="pre">self.model_parameters</span></code>, <code class="docutils literal notranslate"><span class="pre">self.operator_params</span></code>), or defines <code class="docutils literal notranslate"><span class="pre">spec_kwargs()</span></code>;</p></li>
+<li><p>its settings are a <code class="docutils literal notranslate"><span class="pre">LIONParameter</span></code> with a static <code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code>; a
+setting added later reads <code class="docutils literal notranslate"><span class="pre">getattr(parameters,</span> <span class="pre">&quot;name&quot;,</span> <span class="pre">&lt;old</span> <span class="pre">behaviour&gt;)</span></code>, so
+files saved before keep giving their results;</p></li>
+<li><p>it is made only from LION’s classes and functions (a <code class="docutils literal notranslate"><span class="pre">functools.partial</span></code> of
+a LION function, not a lambda), so its spec can be built again;</p></li>
+<li><p><strong>datasets</strong> list their samples (<code class="docutils literal notranslate"><span class="pre">sample_ids()</span></code>, and <code class="docutils literal notranslate"><span class="pre">sample_files()</span></code>), and
+<code class="docutils literal notranslate"><span class="pre">sample_groups()</span></code> where samples come in groups that must stay in one split;
+random numbers that make up the data are drawn inside <code class="docutils literal notranslate"><span class="pre">rng.seeded(...)</span></code>;</p></li>
+<li><p><strong>solvers</strong> keep values they compute during a run in <code class="docutils literal notranslate"><span class="pre">solver_params</span></code>
+(starting as <code class="docutils literal notranslate"><span class="pre">None</span></code>), so they are recorded and come back on resume;</p></li>
+<li><p>it defines <code class="docutils literal notranslate"><span class="pre">cite()</span></code> if it comes from a paper.</p></li>
+</ul>
+<p>The conventions are in <code class="docutils literal notranslate"><span class="pre">contributor-guide.md</span></code>. Where the code is:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>specs, building, <code class="docutils literal notranslate"><span class="pre">allow</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LION/utils/spec.py</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>the data record</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LION/data_loaders/data_record.py</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>the training record</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LION/optimizers/training_record.py</span></code>, <code class="docutils literal notranslate"><span class="pre">LION/optimizers/LIONsolver.py</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>the environment record</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LION/utils/environment.py</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>random numbers</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LION/utils/rng.py</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>model files</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LION/models/LIONmodel.py</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>evaluation, comparison, figures</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LION/evaluation/</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>publishing and packages</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LION/package.py</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>folders</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LION/utils/paths.py</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="what-isn-t-covered">
+<h2>What isn’t covered<a class="headerlink" href="#what-isn-t-covered" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>The data themselves</strong>: records identify the data (sample IDs, how they
+were simulated) but don’t contain them, and a package doesn’t either (they
+are large and licensed by others). A file-content hash can be asked for
+(<code class="docutils literal notranslate"><span class="pre">data_record(dataset,</span> <span class="pre">hash_files=True)</span></code>).</p></li>
+<li><p><strong>Code outside LION</strong>: specs can name it (with <code class="docutils literal notranslate"><span class="pre">allow=</span></code>), but LION only
+records its own code’s commit, and only LION’s classes can be published.</p></li>
+<li><p><strong>Bitwise GPU results</strong> without <code class="docutils literal notranslate"><span class="pre">deterministic=True</span></code>, or across different
+versions of torch, CUDA or the hardware.</p></li>
+<li><p><strong>Files saved before this system</strong> (October 2026) load as before, with
+whatever they recorded.</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="api.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">API reference</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="methods.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Methods in LION</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Cambridge Image Analysis, University of Cambridge
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">LION’s metadata: results that can be made again</a><ul>
+<li><a class="reference internal" href="#the-model-file">The model file</a></li>
+<li><a class="reference internal" href="#specs-components-written-as-calls">Specs: components written as calls</a></li>
+<li><a class="reference internal" href="#the-records">The records</a></li>
+<li><a class="reference internal" href="#repeating-a-training-exactly">Repeating a training exactly</a></li>
+<li><a class="reference internal" href="#making-things-again-from-a-file">Making things again from a file</a></li>
+<li><a class="reference internal" href="#evaluating-and-comparing">Evaluating and comparing</a></li>
+<li><a class="reference internal" href="#publishing-a-model">Publishing a model</a></li>
+<li><a class="reference internal" href="#using-a-package">Using a package</a></li>
+<li><a class="reference internal" href="#folders-lion-data-path-and-lion-results-path">Folders: LION_DATA_PATH and LION_RESULTS_PATH</a></li>
+<li><a class="reference internal" href="#for-developers-making-a-component-take-part">For developers: making a component take part</a></li>
+<li><a class="reference internal" href="#what-isn-t-covered">What isn’t covered</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/sg-tags.js?v=d80f6fa4"></script>
+    </body>
+</html>
