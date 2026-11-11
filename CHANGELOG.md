@@ -78,6 +78,8 @@ with 0.2.0 don't load.
   (#218, #239, #354).
 - Models fixed against their papers: LPD, cLPD, LG, ItNet, UNet,
   cFBPConvNet, the learned FBPs, E2I (#226–#228, #251, #253, #254, #263).
+- The cLPD paper's scripts rewritten for LION's current API: a training per
+  model and problem, and the evaluation of each problem.
 
 ### Fixed
 

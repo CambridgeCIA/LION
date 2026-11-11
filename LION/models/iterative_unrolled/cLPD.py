@@ -325,17 +325,18 @@ class cLPD(LPD):
 
     @staticmethod
     def continous_LPD_paper():
-        """The paper's cLPD (Runkel et al., 2024): 10 iterations, learned
-        steps, first-order blocks."""
+        """The paper's cLPD (Runkel et al., 2024), as the code that trained it
+        (June 2024): 10 iterations of first-order ODE blocks with instance
+        normalisation, learned positive steps."""
         params = LIONModelParameter()
         params.n_iters = 10
         params.data_channels = [7, 32, 32, 32, 5]
         params.reg_channels = [6, 32, 32, 32, 5]
         params.learned_step = True
         params.step_size = None
-        params.step_positive = False
+        params.step_positive = True
         params.do_secon_order = False
-        params.instance_norm = False
+        params.instance_norm = True
         # project the second primal channel in the dual step, as in Adler & Oktem
         params.dual_step_primal_channel = 1
         params.model_input_type = ModelInputType.SINOGRAM
