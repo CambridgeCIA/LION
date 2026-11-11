@@ -127,17 +127,19 @@ if triton is not None:
         n_in,
         width,
         C_total,
+        B,
         H,
         W,
-        n_pixels,  # B * H * W
         dilation,
         PROGRAMS,  # programs per channel, each summing a share of the pixels
         BLOCK: tl.constexpr,
     ):
-        # each program sums its pixels (every PROGRAMS-th block) before adding
-        # them to the gradient: PROGRAMS atomic additions per weight
+        # each program sums its pixels (every PROGRAMS-th block of every
+        # image) before adding them to the gradient: PROGRAMS atomic additions
+        # per weight. Pixel indices are 32-bit within an image (64-bit
+        # divisions are slow on GPUs); the images' offsets 64-bit.
         c = tl.program_id(0)
-        first = tl.program_id(1).to(tl.int64) * BLOCK
+        first = tl.program_id(1) * BLOCK
         for k in range(0, width):
             a0 = tl.zeros((BLOCK,), dtype=tl.float32)
             a1 = tl.zeros((BLOCK,), dtype=tl.float32)
@@ -148,31 +150,30 @@ if triton is not None:
             a6 = tl.zeros((BLOCK,), dtype=tl.float32)
             a7 = tl.zeros((BLOCK,), dtype=tl.float32)
             a8 = tl.zeros((BLOCK,), dtype=tl.float32)
-            for start in range(first, n_pixels, PROGRAMS * BLOCK):
-                offs = start + tl.arange(0, BLOCK)
-                mask = offs < n_pixels
-                b = offs // (H * W)
-                pixel = offs % (H * W)
-                h = pixel // W
-                w = pixel % W
-                h0 = _reflect(h - dilation, H) * W
-                h1 = h * W
-                h2 = _reflect(h + dilation, H) * W
-                w0 = _reflect(w - dilation, W)
-                w2 = _reflect(w + dilation, W)
-                x = buffer + (b * C_total + c) * H * W
-                g = tl.load(
-                    grad + (b * width + k) * H * W + pixel, mask=mask, other=0.0
-                )
-                a0 += g * tl.load(x + h0 + w0, mask=mask, other=0.0)
-                a1 += g * tl.load(x + h0 + w, mask=mask, other=0.0)
-                a2 += g * tl.load(x + h0 + w2, mask=mask, other=0.0)
-                a3 += g * tl.load(x + h1 + w0, mask=mask, other=0.0)
-                a4 += g * tl.load(x + h1 + w, mask=mask, other=0.0)
-                a5 += g * tl.load(x + h1 + w2, mask=mask, other=0.0)
-                a6 += g * tl.load(x + h2 + w0, mask=mask, other=0.0)
-                a7 += g * tl.load(x + h2 + w, mask=mask, other=0.0)
-                a8 += g * tl.load(x + h2 + w2, mask=mask, other=0.0)
+            for b in range(0, B):
+                b64 = tl.cast(b, tl.int64)
+                x = buffer + (b64 * C_total + c) * H * W
+                g_image = grad + (b64 * width + k) * H * W
+                for start in range(first, H * W, PROGRAMS * BLOCK):
+                    pixel = start + tl.arange(0, BLOCK)
+                    mask = pixel < H * W
+                    h = pixel // W
+                    w = pixel % W
+                    h0 = _reflect(h - dilation, H) * W
+                    h1 = h * W
+                    h2 = _reflect(h + dilation, H) * W
+                    w0 = _reflect(w - dilation, W)
+                    w2 = _reflect(w + dilation, W)
+                    g = tl.load(g_image + pixel, mask=mask, other=0.0)
+                    a0 += g * tl.load(x + h0 + w0, mask=mask, other=0.0)
+                    a1 += g * tl.load(x + h0 + w, mask=mask, other=0.0)
+                    a2 += g * tl.load(x + h0 + w2, mask=mask, other=0.0)
+                    a3 += g * tl.load(x + h1 + w0, mask=mask, other=0.0)
+                    a4 += g * tl.load(x + h1 + w, mask=mask, other=0.0)
+                    a5 += g * tl.load(x + h1 + w2, mask=mask, other=0.0)
+                    a6 += g * tl.load(x + h2 + w0, mask=mask, other=0.0)
+                    a7 += g * tl.load(x + h2 + w, mask=mask, other=0.0)
+                    a8 += g * tl.load(x + h2 + w2, mask=mask, other=0.0)
             out = grad_weight + (k * n_in + c) * 9
             tl.atomic_add(out + 0, tl.sum(a0, axis=0))
             tl.atomic_add(out + 1, tl.sum(a1, axis=0))
@@ -296,7 +297,7 @@ def grad_weight(buffer, n_in, grad, dilation, weight_shape):
     B, C_total, H, W = buffer.shape
     width = grad.shape[1]
     result = torch.zeros(weight_shape, device=buffer.device, dtype=torch.float32)
-    programs = min(triton.cdiv(B * H * W, BLOCK), PROGRAMS_PER_CHANNEL)
+    programs = min(triton.cdiv(H * W, BLOCK), PROGRAMS_PER_CHANNEL)
     _grad_weight_kernel[(n_in, programs)](
         buffer,
         grad.contiguous(),
@@ -304,9 +305,9 @@ def grad_weight(buffer, n_in, grad, dilation, weight_shape):
         n_in,
         width,
         C_total,
+        B,
         H,
         W,
-        B * H * W,
         dilation,
         programs,
         BLOCK=BLOCK,
