@@ -81,7 +81,8 @@ with 0.2.0 don't load.
 - `MSDNet` rewritten after `msd_pytorch` (Hendriksen), the reference
   implementation, in plain torch: its architecture (biases, no batch
   normalisation, a linear output), initialisation and padding, and memory
-  linear in depth instead of quadratic.
+  linear in depth instead of quadratic; on GPUs, Triton kernels as
+  msd_pytorch's CUDA ones (~8x faster than plain torch at depth 100).
 - Models fixed against their papers: LPD, cLPD, LG, ItNet, UNet,
   cFBPConvNet, the learned FBPs, E2I (#226–#228, #251, #253, #254, #263).
 - The cLPD paper's scripts rewritten for LION's current API: a training per
