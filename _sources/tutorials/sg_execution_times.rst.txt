@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**19:41.188** total execution time for 14 files **from tutorials**:
+**19:37.448** total execution time for 14 files **from tutorials**:
 
 .. container::
 
@@ -33,44 +33,44 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_tutorials_d12_publishing.py` (``d12_publishing.py``)
-     - 04:10.056
-     - 0.0
-   * - :ref:`sphx_glr_tutorials_d03_data.py` (``d03_data.py``)
-     - 02:39.815
+     - 04:06.642
      - 0.0
    * - :ref:`sphx_glr_tutorials_d05_supervised_training.py` (``d05_supervised_training.py``)
-     - 01:59.205
+     - 02:33.374
      - 0.0
    * - :ref:`sphx_glr_tutorials_d09_saving_and_records.py` (``d09_saving_and_records.py``)
-     - 01:55.303
+     - 02:02.334
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d03_data.py` (``d03_data.py``)
+     - 01:49.963
      - 0.0
    * - :ref:`sphx_glr_tutorials_d11_evaluation.py` (``d11_evaluation.py``)
-     - 01:53.746
+     - 01:48.886
      - 0.0
    * - :ref:`sphx_glr_tutorials_d08_learned_regularisers.py` (``d08_learned_regularisers.py``)
-     - 01:35.639
-     - 0.0
-   * - :ref:`sphx_glr_tutorials_d07_denoisers_and_pnp.py` (``d07_denoisers_and_pnp.py``)
-     - 01:22.227
-     - 0.0
-   * - :ref:`sphx_glr_tutorials_d10_reconstructors.py` (``d10_reconstructors.py``)
-     - 01:17.488
+     - 01:42.431
      - 0.0
    * - :ref:`sphx_glr_tutorials_d06_self_supervised_training.py` (``d06_self_supervised_training.py``)
-     - 01:13.470
+     - 01:21.734
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d07_denoisers_and_pnp.py` (``d07_denoisers_and_pnp.py``)
+     - 01:20.886
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d10_reconstructors.py` (``d10_reconstructors.py``)
+     - 01:20.022
      - 0.0
    * - :ref:`sphx_glr_tutorials_d13_extending_lion.py` (``d13_extending_lion.py``)
-     - 00:53.018
+     - 00:54.009
      - 0.0
    * - :ref:`sphx_glr_tutorials_d04_models.py` (``d04_models.py``)
-     - 00:18.497
+     - 00:22.901
      - 0.0
    * - :ref:`sphx_glr_tutorials_d01_operators.py` (``d01_operators.py``)
-     - 00:10.607
+     - 00:07.245
      - 0.0
    * - :ref:`sphx_glr_tutorials_d02_parameters_and_specs.py` (``d02_parameters_and_specs.py``)
-     - 00:07.732
+     - 00:03.635
      - 0.0
    * - :ref:`sphx_glr_tutorials_d14_beyond_ct.py` (``d14_beyond_ct.py``)
-     - 00:04.386
+     - 00:03.386
      - 0.0

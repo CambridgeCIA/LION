@@ -164,7 +164,7 @@ to use and train it again:
 
     # ForwardReconstructor with a FBPConvNet trained on LIDC-IDRI: Low dose full angular sampling experiment
 
-    Published on 2026-11-11 with LION 0.2.0 (commit aaa22c4331). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
+    Published on 2026-11-11 with LION 0.2.0 (commit da95e713c9). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
 
     ## The model
 
@@ -187,9 +187,9 @@ to use and train it again:
     - Solver: `LION.optimizers.SupervisedSolver.SupervisedSolver`, loss `MSELoss`; optimizer `Adam` (learning rate 0.001).
     - Data: the train data, 40 samples from 8 groups; batch size 4, shuffled.
     - Validation: 4 samples from 1 group, every 1 epoch, with `MSELoss`.
-    - 2 epochs of 2; at the end, training loss 0.03563 and validation 0.1201.
+    - 2 epochs of 2; at the end, training loss 0.03569 and validation 0.4969.
     - Seed 0; initial weights made again from the random state saved with the model.
-    - Trained with LION 0.2.0 (commit aaa22c4331), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
+    - Trained with LION 0.2.0 (commit da95e713c9), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
 
     ## Test
 
@@ -197,7 +197,7 @@ to use and train it again:
 
     | Method | PSNR | SSIM | HaarPSI |
     |---|---|---|---|
-    | ForwardReconstructor | 19.36 ± 5.19 | 0.1535 ± 0.0801 | 0.3384 ± 0.1681 |
+    | ForwardReconstructor | 12.09 ± 0.75 | 0.0995 ± 0.0407 | 0.2126 ± 0.0706 |
 
     ## Using it
 
@@ -371,7 +371,7 @@ making anything, so they can be read or changed first:
     Image size = [  0.9765625 500.        500.       ] mm
     Number of angles = (360,)
     model_parameters : model_input_type : ModelInputType.SINOGRAM
-    initial_reconstruction : <function fdk at 0x7f940f211300>
+    initial_reconstruction : <function fdk at 0x7eff167d1300>
     down_1_channels : [1, 64, 64, 64]
     down_2_channels : [64, 128, 128]
     down_3_channels : [128, 256, 256]
@@ -696,7 +696,7 @@ weights):
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (4 minutes 10.056 seconds)
+   **Total running time of the script:** (4 minutes 6.642 seconds)
 
 
 .. _sphx_glr_download_tutorials_d12_publishing.py:

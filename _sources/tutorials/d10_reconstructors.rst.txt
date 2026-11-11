@@ -224,7 +224,7 @@ smoothed total variation:
 
 
 .. image-sg:: /tutorials/images/sphx_glr_d10_reconstructors_001.png
-   :alt: FDK, 19.0 dB, SIRT, 31.7 dB, FBPConvNet, 25.2 dB, PnP-ADMM, 36.3 dB, smoothed TV, 19.0 dB
+   :alt: FDK, 19.0 dB, SIRT, 31.7 dB, FBPConvNet, 25.1 dB, PnP-ADMM, 36.3 dB, smoothed TV, 19.0 dB
    :srcset: /tutorials/images/sphx_glr_d10_reconstructors_001.png
    :class: sphx-glr-single-img
 
@@ -266,7 +266,7 @@ Every reconstructor:
 
  .. code-block:: none
 
-    <function fdk at 0x7f940f211300>
+    <function fdk at 0x7eff167d1300>
     torch.Size([2, 1, 512, 512])
 
 
@@ -334,7 +334,7 @@ tutorial :doc:`d13_extending_lion` writes one.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 17.488 seconds)
+   **Total running time of the script:** (1 minutes 20.022 seconds)
 
 
 .. _sphx_glr_download_tutorials_d10_reconstructors.py:

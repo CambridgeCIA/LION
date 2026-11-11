@@ -377,7 +377,7 @@ by the file it was loaded from (:doc:`d09_saving_and_records`).
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 22.227 seconds)
+   **Total running time of the script:** (1 minutes 20.886 seconds)
 
 
 .. _sphx_glr_download_tutorials_d07_denoisers_and_pnp.py:

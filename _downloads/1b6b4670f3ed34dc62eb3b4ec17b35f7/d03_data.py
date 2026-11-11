@@ -129,14 +129,15 @@ for name in ["clinicalCTRecon", "SparseAngleLowDoseCTRecon", "LimitedAngleCTReco
 # %%
 # Measured data: 2DeteCT
 # ----------------------
-# The same experiments run on 2DeteCT (``dataset="2DeteCT"``), real scans of
-# 109 objects, where the measured sinograms take the place of simulated ones;
-# ``LION.experiments.deteCT_benchmark`` has the 2DeteCT paper's own. They need
-# the 2DeteCT data:
+# The clinical and extremely low dose experiments also run on 2DeteCT
+# (``dataset="2DeteCT"``), real scans of 109 objects, where the measured
+# sinograms take the place of simulated ones (the low-dose ones have no
+# measured equivalent); ``LION.experiments.deteCT_benchmark`` has the 2DeteCT
+# paper's own. They need the 2DeteCT data (:doc:`/datasets/2detect`):
 #
 # .. code-block:: python
 #
-#    measured = ct_experiments.LowDoseCTRecon(dataset="2DeteCT")
+#    measured = ct_experiments.clinicalCTRecon(dataset="2DeteCT")
 #
 # The loaders
 # -----------

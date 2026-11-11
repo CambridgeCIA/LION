@@ -244,7 +244,7 @@ and the history of the losses.
     drop_last : False
     shuffle : True
     asked : 2
-    done : 2 [0.5324330814182758, 0.11412488576024771]
+    done : 2 [0.5322824567556381, 0.11390101350843906]
     from : random_state
 
 
@@ -273,7 +273,7 @@ Nothing personal.
 
     lion_environment_record : 1
     lion : version : 0.2.0
-    commit : aaa22c43313792bbd0db8f25813f57e31cc054e8
+    commit : da95e713c9eae52ca0b5a53a7a7643051b0ec820
     uncommitted : []
     diff_sha256 : None
     pushed : True
@@ -388,7 +388,7 @@ CPU; on a GPU, to about 1e-3, unless made with ``deterministic=True``).
 
  .. code-block:: none
 
-    largest difference in the weights: 6.64e+00
+    largest difference in the weights: 5.87e+00
 
 
 
@@ -459,8 +459,8 @@ original's records.
 
     /mhome/damtp/r/ab2860/AItomotools/LION/data_loaders/LIDC_IDRI.py:487: UserWarning: LIDC-IDRI: left out 2 damaged or unusable files (re-run the pre-processing for these patients): ['LIDC-IDRI-0238 (not resampled)', 'LIDC-IDRI-0585 (not resampled)']
       warnings.warn(
-    file : {'_target_': 'pathlib.Path', '_args_': ['/tmp/tmpysyzb5l9/FBPConvNet']}
-    weights_sha256 : a20e763a1aa3f8b3b23e673a586b178e3aa9f407578ac2d9b7ba44f498fd22ea
+    file : {'_target_': 'pathlib.Path', '_args_': ['/tmp/tmpyyl20d4t/FBPConvNet']}
+    weights_sha256 : 55d95348230a013070de4953cf883c98e059a713364e42698cfd0299a58cf2d2
     True
 
 
@@ -517,7 +517,7 @@ changes) warns: the record says which.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 55.303 seconds)
+   **Total running time of the script:** (2 minutes 2.334 seconds)
 
 
 .. _sphx_glr_download_tutorials_d09_saving_and_records.py:

@@ -383,18 +383,19 @@ The other experiments are made the same way:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 130-146
+.. GENERATED FROM PYTHON SOURCE LINES 130-147
 
 Measured data: 2DeteCT
 ----------------------
-The same experiments run on 2DeteCT (``dataset="2DeteCT"``), real scans of
-109 objects, where the measured sinograms take the place of simulated ones;
-``LION.experiments.deteCT_benchmark`` has the 2DeteCT paper's own. They need
-the 2DeteCT data:
+The clinical and extremely low dose experiments also run on 2DeteCT
+(``dataset="2DeteCT"``), real scans of 109 objects, where the measured
+sinograms take the place of simulated ones (the low-dose ones have no
+measured equivalent); ``LION.experiments.deteCT_benchmark`` has the 2DeteCT
+paper's own. They need the 2DeteCT data (:doc:`/datasets/2detect`):
 
 .. code-block:: python
 
-   measured = ct_experiments.LowDoseCTRecon(dataset="2DeteCT")
+   measured = ct_experiments.clinicalCTRecon(dataset="2DeteCT")
 
 The loaders
 -----------
@@ -402,7 +403,7 @@ Under the experiments are the datasets themselves (``LION.data_loaders``):
 ``LIDC_IDRI`` and ``deteCT``, with their own parameters, e.g. other tasks
 than reconstruction (segmentation, diagnosis):
 
-.. GENERATED FROM PYTHON SOURCE LINES 146-151
+.. GENERATED FROM PYTHON SOURCE LINES 147-152
 
 .. code-block:: Python
 
@@ -455,7 +456,7 @@ than reconstruction (segmentation, diagnosis):
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (2 minutes 39.815 seconds)
+   **Total running time of the script:** (1 minutes 49.963 seconds)
 
 
 .. _sphx_glr_download_tutorials_d03_data.py:

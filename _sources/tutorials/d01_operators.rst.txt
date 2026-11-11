@@ -327,7 +327,7 @@ otherwise, so they work with any operator.
 
  .. code-block:: none
 
-    <function fdk at 0x7f940f211300>
+    <function fdk at 0x7eff167d1300>
 
 
 
@@ -465,7 +465,7 @@ its shapes: :doc:`d13_extending_lion` writes one.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 10.607 seconds)
+   **Total running time of the script:** (0 minutes 7.245 seconds)
 
 
 .. _sphx_glr_download_tutorials_d01_operators.py:

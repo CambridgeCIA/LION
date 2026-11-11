@@ -172,7 +172,7 @@ it reconstructs (never to train): the solver validates its reconstruction.
 
  .. code-block:: none
 
-    validation PSNR: [21.45629382 19.83378601 18.99496627]
+    validation PSNR: [21.54656196 18.85042834 18.8110497 ]
 
 
 
@@ -262,7 +262,7 @@ can be set to (and its paper's values):
     grid_size : 4
     recon_fn : default
     EquivariantSolver
-    transformation_group : <LION.optimizers.EquivariantSolver.RotationGroup object at 0x7f931e29e690>
+    transformation_group : <LION.optimizers.EquivariantSolver.RotationGroup object at 0x7efe24406cc0>
     equivariance_strength : 100
     Equivariance2InverseSolver
     equivariance_strength : 1.0
@@ -294,7 +294,7 @@ warn if it isn't the MSE).
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 13.470 seconds)
+   **Total running time of the script:** (1 minutes 21.734 seconds)
 
 
 .. _sphx_glr_download_tutorials_d06_self_supervised_training.py:
