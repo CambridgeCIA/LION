@@ -507,7 +507,7 @@ it reconstructs (never to train): the solver validates its reconstruction.</p>
 </span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">validation PSNR:</span><span class="s2">&quot;</span><span class="p">,</span> <a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">solver</span><span class="o">.</span><span class="n">validation_loss</span></a><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.save_final_results" title="LION.optimizers.LIONsolver.LIONsolver.save_final_results"><span class="n">solver</span><span class="o">.</span><span class="n">save_final_results</span></a><span class="p">(</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>validation PSNR: [21.81983352 19.50143814 19.12920856]
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>validation PSNR: [21.45629382 19.83378601 18.99496627]
 </pre></div>
 </div>
 <p>A Noise2Inverse reconstruction is the mean of the model’s outputs over the
@@ -560,7 +560,7 @@ Proj2ProjSolver
 grid_size : 4
 recon_fn : default
 EquivariantSolver
-transformation_group : &lt;LION.optimizers.EquivariantSolver.RotationGroup object at 0x7f23a0098c20&gt;
+transformation_group : &lt;LION.optimizers.EquivariantSolver.RotationGroup object at 0x7f931e29e690&gt;
 equivariance_strength : 100
 Equivariance2InverseSolver
 equivariance_strength : 1.0
@@ -581,7 +581,7 @@ and from the reconstruction being equivariant to rotations:</p>
 <p>Some of these methods are only defined for the mean squared error: their
 solvers train with it, and use <code class="docutils literal notranslate"><span class="pre">loss_fn</span></code> only to validate and test (they
 warn if it isn’t the MSE).</p>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 8.481 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 13.470 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d06-self-supervised-training-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/aff2807135fd12d4fb7aade35b179bb0/d06_self_supervised_training.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d06_self_supervised_training.ipynb</span></code></a></p>

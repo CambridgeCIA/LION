@@ -38,14 +38,15 @@ also needs LION's code committed and pushed (it records the commit).
    than FDK). Trained as their papers train them (many epochs, all the data),
    they do what the papers report.
 
-.. GENERATED FROM PYTHON SOURCE LINES 30-34
+.. GENERATED FROM PYTHON SOURCE LINES 30-35
 
 A model to publish
 ------------------
 Trained by a LION solver on a LION experiment, so that everything about it is
-recorded:
+recorded: here with validation and a learning-rate scheduler too, so the
+package has every piece.
 
-.. GENERATED FROM PYTHON SOURCE LINES 34-59
+.. GENERATED FROM PYTHON SOURCE LINES 35-68
 
 .. code-block:: Python
 
@@ -62,14 +63,22 @@ recorded:
 
     experiment = ct_experiments.LowDoseCTRecon()
     training = Subset(experiment.get_dataset("train"), range(40))
+    validation = Subset(experiment.get_dataset("validation"), range(4))
+
     training_loader = DataLoader(training, batch_size=4, shuffle=True)
+    validation_loader = DataLoader(validation, batch_size=1)
 
     folder = Path(tempfile.mkdtemp())
     model = FBPConvNet(experiment.operator_params)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     solver = SupervisedSolver(
-        model, torch.optim.Adam(model.parameters()), torch.nn.MSELoss()
+        model,
+        optimizer,
+        torch.nn.MSELoss(),
+        scheduler=torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5),
     )
     solver.set_training(training_loader)
+    solver.set_validation(validation_loader, 1, validation_fname="FBPConvNet_best")
     solver.set_saving(folder, "FBPConvNet")
     solver.train(2)
     solver.save_final_results()
@@ -88,25 +97,33 @@ recorded:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 60-65
+.. GENERATED FROM PYTHON SOURCE LINES 69-75
 
 Publishing
 ----------
-``publish(model_file, folder, evaluation=...)``: the evaluation (optional) is
-run on the model and its test record included. The folder must be new (or
-empty).
+``publish(file, folder, evaluation=...)``: ``file`` is the model's, or a
+reconstructor's that uses it (``reconstructor.save``), published with it.
+The evaluation (optional) is run and its test record included. The folder
+must be new (or empty).
 
-.. GENERATED FROM PYTHON SOURCE LINES 65-75
+.. GENERATED FROM PYTHON SOURCE LINES 75-92
 
 .. code-block:: Python
 
 
     from LION import package
     from LION.evaluation import Evaluation
+    from LION.models.LIONmodel import LIONmodel
+    from LION.reconstructors.ForwardReconstructor import ForwardReconstructor
+
+    trained, _, _ = LIONmodel.load(folder / "FBPConvNet")
+    ForwardReconstructor(experiment.operator_params, trained).save(
+        folder / "reconstructor.json"
+    )
 
     evaluation = Evaluation(experiment, samples=10)
     published = package.publish(
-        folder / "FBPConvNet", folder / "package", evaluation=evaluation
+        folder / "reconstructor", folder / "package", evaluation=evaluation
     )
     print(sorted(p.name for p in published.iterdir()))
 
@@ -118,19 +135,19 @@ empty).
 
  .. code-block:: none
 
-    ['README.md', 'data', 'environment.txt', 'experiment.json', 'model.json', 'model.pt', 'package.json', 'solver.json', 'test.json']
+    ['README.md', 'data', 'environment.txt', 'experiment.json', 'model.json', 'model.pt', 'package.json', 'reconstructor.json', 'solver.json', 'test.json']
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 76-80
+.. GENERATED FROM PYTHON SOURCE LINES 93-97
 
 The package holds the model file, the experiment, which samples it was
 trained and validated on, the training record, the test record, the
 environment, every citation, and a model card (``README.md``) with the code
 to use and train it again:
 
-.. GENERATED FROM PYTHON SOURCE LINES 80-83
+.. GENERATED FROM PYTHON SOURCE LINES 97-100
 
 .. code-block:: Python
 
@@ -145,14 +162,18 @@ to use and train it again:
 
  .. code-block:: none
 
-    # FBPConvNet trained on LIDC-IDRI: Low dose full angular sampling experiment
+    # ForwardReconstructor with a FBPConvNet trained on LIDC-IDRI: Low dose full angular sampling experiment
 
-    Published on 2026-11-11 with LION 0.2.0 (commit 2711d4eb4f). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
+    Published on 2026-11-11 with LION 0.2.0 (commit aaa22c4331). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
 
     ## The model
 
     - `LION.models.post_processing.FBPConvNet.FBPConvNet`, 34,556,033 parameters.
     - The weights: final, after epoch 2.
+
+    ## The reconstruction
+
+    - `LION.reconstructors.ForwardReconstructor.ForwardReconstructor`, with the model (`reconstructor.json`).
 
     ## The problem
 
@@ -165,9 +186,10 @@ to use and train it again:
 
     - Solver: `LION.optimizers.SupervisedSolver.SupervisedSolver`, loss `MSELoss`; optimizer `Adam` (learning rate 0.001).
     - Data: the train data, 40 samples from 8 groups; batch size 4, shuffled.
-    - 2 epochs of 2; at the end, training loss 0.03723.
+    - Validation: 4 samples from 1 group, every 1 epoch, with `MSELoss`.
+    - 2 epochs of 2; at the end, training loss 0.03563 and validation 0.1201.
     - Seed 0; initial weights made again from the random state saved with the model.
-    - Trained with LION 0.2.0 (commit 2711d4eb4f), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
+    - Trained with LION 0.2.0 (commit aaa22c4331), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
 
     ## Test
 
@@ -175,7 +197,7 @@ to use and train it again:
 
     | Method | PSNR | SSIM | HaarPSI |
     |---|---|---|---|
-    | FBPConvNet | -12.64 ± 1.16 | 0.0023 ± 0.0022 | 0.0091 ± 0.0018 |
+    | ForwardReconstructor | 19.36 ± 5.19 | 0.1535 ± 0.0801 | 0.3384 ± 0.1681 |
 
     ## Using it
 
@@ -183,6 +205,15 @@ to use and train it again:
     from LION.models.LIONmodel import LIONmodel
 
     model, _, _ = LIONmodel.load("model")
+    ```
+
+    Reconstructing with it, as published (or with another model: `LIONReconstructor.instantiate("reconstructor", model)`):
+
+    ```python
+    from LION.reconstructors import LIONReconstructor
+
+    reconstructor = LIONReconstructor.load("reconstructor")
+    images = reconstructor.reconstruct(measurements)
     ```
 
     ## Training it again
@@ -218,6 +249,7 @@ to use and train it again:
     from LION.models.LIONmodel import LIONmodel
     from LION.optimizers.LIONsolver import LIONsolver
     from LION.optimizers.training_record import read_training_record
+    from LION.utils import spec
 
     record = read_training_record("solver.json")
 
@@ -242,6 +274,12 @@ to use and train it again:
             shuffle=t.shuffle,
             drop_last=t.drop_last,
         )
+    )
+    v = record.validation
+    solver.set_validation(
+        DataLoader(data("data/validation.json"), batch_size=v.batch_size),
+        v.every,
+        spec.build(v.function),
     )
     pathlib.Path("retrained").mkdir(exist_ok=True)
     solver.set_saving("retrained", "model")
@@ -285,14 +323,14 @@ to use and train it again:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 84-88
+.. GENERATED FROM PYTHON SOURCE LINES 101-105
 
 It refuses what couldn't be reproduced from it, saying why: LION code with
 uncommitted or unpushed changes, a test on the training data, code outside
 LION it can't name (e.g. a model class defined in a script), data that
 aren't a LION dataset.
 
-.. GENERATED FROM PYTHON SOURCE LINES 90-95
+.. GENERATED FROM PYTHON SOURCE LINES 107-112
 
 Loading a package
 -----------------
@@ -300,7 +338,7 @@ Loading a package
 experiment, the data, the solver, the optimizer, the training), without
 making anything, so they can be read or changed first:
 
-.. GENERATED FROM PYTHON SOURCE LINES 95-101
+.. GENERATED FROM PYTHON SOURCE LINES 112-118
 
 .. code-block:: Python
 
@@ -333,7 +371,7 @@ making anything, so they can be read or changed first:
     Image size = [  0.9765625 500.        500.       ] mm
     Number of angles = (360,)
     model_parameters : model_input_type : ModelInputType.SINOGRAM
-    initial_reconstruction : <function fdk at 0x7f2492f21300>
+    initial_reconstruction : <function fdk at 0x7f940f211300>
     down_1_channels : [1, 64, 64, 64]
     down_2_channels : [64, 128, 128]
     down_3_channels : [128, 256, 256]
@@ -362,19 +400,249 @@ making anything, so they can be read or changed first:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 102-105
+.. GENERATED FROM PYTHON SOURCE LINES 119-126
 
-``build`` makes the pieces: the trained model, the experiment, the training
-and validation data, the solver, the evaluation (``load_and_build`` does
-both):
+Every piece, one at a time
+--------------------------
+Each piece has its file in the package, and is made again from it by its
+base class's ``instantiate``, with nothing else: the model (and its
+operator), the experiment, the data, the solver (with its optimizer,
+scheduler and loss), the reconstructor and the evaluation. ``package.json``
+names the files:
 
-.. GENERATED FROM PYTHON SOURCE LINES 105-109
+.. GENERATED FROM PYTHON SOURCE LINES 126-131
+
+.. code-block:: Python
+
+
+    files = p.records.package.files
+    print(files)
+    model_file = published / files.model
+
+
+
+
+
+.. rst-class:: sphx-glr-script-out
+
+ .. code-block:: none
+
+    model : model
+    experiment : experiment.json
+    training_data : data/training.json
+    validation_data : data/validation.json
+    solver : solver.json
+    test : test.json
+    reconstructor : reconstructor.json
+    environment : environment.txt
+
+
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 132-134
+
+**The model**: trained (``load``), or as its training started (the same
+architecture and initial weights), to train it again by hand.
+
+.. GENERATED FROM PYTHON SOURCE LINES 134-139
+
+.. code-block:: Python
+
+
+    model, _, _ = LIONmodel.load(model_file)
+    untrained = LIONmodel.instantiate(model_file, initial_weights=True)
+    print(type(model).__name__, model.model_parameters.model_input_type)
+
+
+
+
+
+.. rst-class:: sphx-glr-script-out
+
+ .. code-block:: none
+
+    FBPConvNet ModelInputType.SINOGRAM
+
+
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 140-142
+
+**The operator**: its parameters are the model's (for CT, the geometry), and
+make it:
+
+.. GENERATED FROM PYTHON SOURCE LINES 142-146
+
+.. code-block:: Python
+
+
+    print(model.operator_params)
+    operator = model.operator_params.make_operator()
+
+
+
+
+
+.. rst-class:: sphx-glr-script-out
+
+ .. code-block:: none
+
+    CT Geometry
+    CT type/mode = fan
+    -----
+    Distance from source to detector (DSD) = 1050 mm
+    Distance from source to origin (DSO)= 575 mm
+    -----
+    Detector
+    Detector shape = [   1 1024]
+    Detector size = [   1 1024] mm
+    -----
+    Image
+    Image shape = [  1 512 512]
+    Image size = [  0.9765625 500.        500.       ] mm
+    Number of angles = (360,)
+
+
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 147-149
+
+**The experiment** (``experiment.json``), which makes the data, with their
+noise:
+
+.. GENERATED FROM PYTHON SOURCE LINES 149-155
+
+.. code-block:: Python
+
+
+    from LION.experiments.ct_experiments import Experiment
+
+    experiment_again = Experiment.instantiate(published / files.experiment)
+    print(experiment_again.param.name)
+
+
+
+
+
+.. rst-class:: sphx-glr-script-out
+
+ .. code-block:: none
+
+    Low dose full angular sampling experiment
+
+
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 156-159
+
+**The data** (``data/training.json``, ``data/validation.json``): the split
+and the samples the model was trained and validated on, made by the
+experiment:
+
+.. GENERATED FROM PYTHON SOURCE LINES 159-170
+
+.. code-block:: Python
+
+
+    training_again = experiment_again.get_dataset(p.training_data.split)
+    if p.training_data.subset is not None:
+        training_again = Subset(training_again, p.training_data.subset)
+    print(len(training_again), "training samples")
+
+    # The dataset alone, from its record, gives the same samples without the
+    # experiment's noise (a warning says so):
+    #   from LION.data_loaders.LIONDataset import LIONDataset
+    #   images = LIONDataset.instantiate(published / files.training_data)
+
+
+
+
+
+.. rst-class:: sphx-glr-script-out
+
+ .. code-block:: none
+
+    /mhome/damtp/r/ab2860/AItomotools/LION/data_loaders/LIDC_IDRI.py:487: UserWarning: LIDC-IDRI: left out 2 damaged or unusable files (re-run the pre-processing for these patients): ['LIDC-IDRI-0238 (not resampled)', 'LIDC-IDRI-0585 (not resampled)']
+      warnings.warn(
+    40 training samples
+
+
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 171-174
+
+**The solver** (``solver.json``, the training record), with its optimizer,
+scheduler, loss and settings, for the model it is given; its data are set as
+usual (``set_training``):
+
+.. GENERATED FROM PYTHON SOURCE LINES 174-182
+
+.. code-block:: Python
+
+
+    from LION.optimizers.LIONsolver import LIONsolver
+
+    solver_again = LIONsolver.instantiate(published / files.solver, untrained)
+    print(type(solver_again).__name__, type(solver_again.loss_fn).__name__)
+    print(type(solver_again.optimizer).__name__, solver_again.optimizer.defaults["lr"])
+    print(type(solver_again.scheduler).__name__, solver_again.scheduler.step_size)
+
+
+
+
+
+.. rst-class:: sphx-glr-script-out
+
+ .. code-block:: none
+
+    SupervisedSolver MSELoss
+    Adam 0.001
+    StepLR 1
+
+
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 183-186
+
+**The reconstructor** (``reconstructor.json``), given the trained model, and
+**the evaluation** that tested it (``test.json``: its test set and
+metrics):
+
+.. GENERATED FROM PYTHON SOURCE LINES 186-195
+
+.. code-block:: Python
+
+
+    from LION.reconstructors.LIONreconstructor import LIONReconstructor
+
+    reconstructor = LIONReconstructor.instantiate(published / files.reconstructor, model)
+    evaluation_again = Evaluation.instantiate(published / files.test)
+
+    sinogram, image = experiment_again.get_dataset("test")[0]
+    reconstruction = reconstructor.reconstruct(sinogram)
+
+
+
+
+
+
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 196-200
+
+All at once
+-----------
+``build`` makes all of them together, as above, with the solver's data set
+(``load_and_build`` loads and builds):
+
+.. GENERATED FROM PYTHON SOURCE LINES 200-205
 
 .. code-block:: Python
 
 
     built = package.build(p)
     print(type(built.model).__name__, len(built.training_data))
+    print(type(built.solver).__name__, type(built.reconstructor).__name__)
 
 
 
@@ -387,34 +655,12 @@ both):
     /mhome/damtp/r/ab2860/AItomotools/LION/data_loaders/LIDC_IDRI.py:487: UserWarning: LIDC-IDRI: left out 2 damaged or unusable files (re-run the pre-processing for these patients): ['LIDC-IDRI-0238 (not resampled)', 'LIDC-IDRI-0585 (not resampled)']
       warnings.warn(
     FBPConvNet 40
+    SupervisedSolver ForwardReconstructor
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 110-111
-
-The published model reconstructs like any other:
-
-.. GENERATED FROM PYTHON SOURCE LINES 111-119
-
-.. code-block:: Python
-
-
-    from LION.reconstructors.ForwardReconstructor import ForwardReconstructor
-
-    sinogram, image = built.experiment.get_dataset("test")[0]
-    reconstruction = ForwardReconstructor(
-        built.experiment.operator_params, built.model
-    ).reconstruct(sinogram)
-
-
-
-
-
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 120-129
+.. GENERATED FROM PYTHON SOURCE LINES 206-215
 
 Training again
 --------------
@@ -426,7 +672,7 @@ Changing a recorded argument first trains a variant: anything not changed
 stays as recorded. E.g. another activation (a new model, new random
 weights):
 
-.. GENERATED FROM PYTHON SOURCE LINES 129-133
+.. GENERATED FROM PYTHON SOURCE LINES 215-219
 
 .. code-block:: Python
 
@@ -450,7 +696,7 @@ weights):
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (3 minutes 2.312 seconds)
+   **Total running time of the script:** (4 minutes 10.056 seconds)
 
 
 .. _sphx_glr_download_tutorials_d12_publishing.py:

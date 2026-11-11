@@ -187,7 +187,7 @@ make, with its own settings, given to ``set_validation``.
     n_steps : 50
     step_size : 1e-06
     backtracking : 0.95
-    initial_reconstruction : <function fdk at 0x7f2492f21300>
+    initial_reconstruction : <function fdk at 0x7f940f211300>
 
 
 
@@ -223,7 +223,7 @@ Gradient descent on the energy, from FDK, with a backtracking step size:
 
 
 .. image-sg:: /tutorials/images/sphx_glr_d08_learned_regularisers_001.png
-   :alt: target, FDK, 19.0 dB, AR, 20.4 dB
+   :alt: target, FDK, 19.0 dB, AR, 20.0 dB
    :srcset: /tutorials/images/sphx_glr_d08_learned_regularisers_001.png
    :class: sphx-glr-single-img
 
@@ -272,7 +272,7 @@ Hand-made ones too, e.g. a smoothed total variation:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 31.636 seconds)
+   **Total running time of the script:** (1 minutes 35.639 seconds)
 
 
 .. _sphx_glr_download_tutorials_d08_learned_regularisers.py:

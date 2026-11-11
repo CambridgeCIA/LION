@@ -497,9 +497,9 @@ evenly spaced test slices (all of them by default); results are saved in
 </span><span class="k">for</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">metric</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">values</span></a> <span class="ow">in</span> <span class="n">summary</span><span class="p">(</span><a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">record</span></a><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
 </span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">metric</span></a><span class="si">}</span><span class="s2">: </span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">values</span></a><span class="p">[</span><span class="s1">'</span><span class="s1">mean</span><span class="s1">'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> ± </span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="dict"><span class="n">values</span></a><span class="p">[</span><span class="s1">'</span><span class="s1">std</span><span class="s1">'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>PSNR: 24.515 ± 11.347
-SSIM: 0.388 ± 0.167
-HaarPSI: 0.487 ± 0.210
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>PSNR: 20.750 ± 16.706
+SSIM: 0.412 ± 0.191
+HaarPSI: 0.446 ± 0.241
 </pre></div>
 </div>
 <p>The test record holds the score of each test sample (by patient and slice),
@@ -509,7 +509,7 @@ again reads it instead of computing it:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="nb">print</span><span class="p">(</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="list"><span class="n">record</span><span class="o">.</span><span class="n">scores</span><span class="o">.</span><span class="n">ids</span></a><span class="p">[</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="p">,</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="list"><span class="n">record</span><span class="o">.</span><span class="n">scores</span><span class="o">.</span><span class="n">PSNR</span></a><span class="p">[</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">again</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-method reference internal" href="../generated/LION.evaluation.evaluation.html#LION.evaluation.evaluation.Evaluation.run" title="LION.evaluation.Evaluation.run"><span class="n">evaluation</span><span class="o">.</span><span class="n">run</span></a><span class="p">(</span><a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.PosixPath" title="pathlib.PosixPath"><span class="n">folder</span></a> <span class="o">/</span> <span class="s2">&quot;</span><span class="s2">FBPConvNet_3</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">FBPConvNet, 3 epochs</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>['LIDC-IDRI-0910/slice_0', 'LIDC-IDRI-0915/slice_114', 'LIDC-IDRI-0920/slice_331'] [24.0045166015625, 27.03731346130371, 33.34812927246094]
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>['LIDC-IDRI-0910/slice_0', 'LIDC-IDRI-0915/slice_114', 'LIDC-IDRI-0920/slice_331'] [16.8317928314209, 25.073379516601562, 33.280574798583984]
 </pre></div>
 </div>
 </section>
@@ -534,8 +534,8 @@ again reads it instead of computing it:</p>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>| Method | PSNR | SSIM | HaarPSI |
 |---|---|---|---|
 | fdk | 21.87 ± 5.60 | 0.1541 ± 0.0933 | 0.3945 ± 0.2007 |
-| FBPConvNet, 1 epoch | 22.69 ± 6.63 | 0.2604 ± 0.1813 | 0.4309 ± 0.2144 |
-| FBPConvNet, 3 epochs | 24.51 ± 11.35 | 0.3880 ± 0.1668 | 0.4871 ± 0.2098 |
+| FBPConvNet, 1 epoch | 22.68 ± 6.64 | 0.2598 ± 0.1810 | 0.4306 ± 0.2142 |
+| FBPConvNet, 3 epochs | 20.75 ± 16.71 | 0.4121 ± 0.1910 | 0.4457 ± 0.2408 |
 | SIRT | **33.03 ± 2.19** | **0.7872 ± 0.1425** | **0.6543 ± 0.0618** |
 
 \begin{tabular}{lccc}
@@ -543,8 +543,8 @@ again reads it instead of computing it:</p>
 Method &amp; PSNR &amp; SSIM &amp; HaarPSI \\
 \midrule
 fdk &amp; 21.87 $\pm$ 5.60 &amp; 0.1541 $\pm$ 0.0933 &amp; 0.3945 $\pm$ 0.2007 \\
-FBPConvNet, 1 epoch &amp; 22.69 $\pm$ 6.63 &amp; 0.2604 $\pm$ 0.1813 &amp; 0.4309 $\pm$ 0.2144 \\
-FBPConvNet, 3 epochs &amp; 24.51 $\pm$ 11.35 &amp; 0.3880 $\pm$ 0.1668 &amp; 0.4871 $\pm$ 0.2098 \\
+FBPConvNet, 1 epoch &amp; 22.68 $\pm$ 6.64 &amp; 0.2598 $\pm$ 0.1810 &amp; 0.4306 $\pm$ 0.2142 \\
+FBPConvNet, 3 epochs &amp; 20.75 $\pm$ 16.71 &amp; 0.4121 $\pm$ 0.1910 &amp; 0.4457 $\pm$ 0.2408 \\
 SIRT &amp; \textbf{33.03 $\pm$ 2.19} &amp; \textbf{0.7872 $\pm$ 0.1425} &amp; \textbf{0.6543 $\pm$ 0.0618} \\
 \bottomrule
 \end{tabular}
@@ -590,7 +590,7 @@ zoomed crops and the differences to the target.</p>
 data you load yourself:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.evaluation.evaluation.html#LION.evaluation.evaluation.Evaluation" title="LION.evaluation.Evaluation"><span class="n">evaluation</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-evaluation sphx-glr-backref-type-py-class reference internal" href="../generated/LION.evaluation.evaluation.html#LION.evaluation.evaluation.Evaluation" title="LION.evaluation.Evaluation"><span class="n">Evaluation</span></a><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="n">my_test_data</span><span class="p">,</span> <span class="n">operator</span><span class="o">=</span><span class="n">my_operator</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 45.188 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 53.746 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d11-evaluation-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/9aaa6f75cb4623a1d737388627be4798/d11_evaluation.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d11_evaluation.ipynb</span></code></a></p>
