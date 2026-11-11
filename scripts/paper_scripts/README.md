@@ -19,4 +19,4 @@ Scripts: `train.py` and `evaluate.py`, for one problem or all of them; the folde
 
 Kiss, Maximilian B., Ander Biguri, Carola-Bibiane Schönlieb, K. Joost Batenburg, and Felix Lucka. "Learned denoising with simulated and experimental low-dose CT data." Scientific Reports 16 (2025).
 
-Work in progress: the data setup of the paper (simulated and experimental low-dose 2DeteCT data); full reproducibility is being worked on. See its README.
+Denoisers (U-Net, MS-D Net; in the sinogram domain and end to end) trained on simulated and on experimental low-dose 2DeteCT data, each tested on both. Scripts: `train.py` and `evaluate.py`, for one model or all eight; the folder's README says how to run everything and what differs from the paper. **Unverified:** not yet run on real data.
