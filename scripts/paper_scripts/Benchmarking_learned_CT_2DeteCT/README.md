@@ -33,15 +33,16 @@ The targets are the mode 2 reconstructions of the dataset.
 
 ## The methods
 
-**These scripts cover 8 of the paper's 15 methods**, those whose code
+**These scripts cover 9 of the paper's 15 methods**, those whose code
 produced the paper's results and is in LION:
 
 - classical: **FBP**, **AGD** (Nesterov's accelerated gradient descent on the
   least squares), **ChP** (TV minimisation by Chambolle-Pock);
 - post-processing, on FBP: **FBP+U-Net**, **FBP+MS-D Net**, **FBP+DnCNN**;
-- unrolled: **LG** (learned gradient), **LPD** (learned primal-dual).
+- unrolled: **LG** (learned gradient), **LGTV** (LG with a TV gradient),
+  **LPD** (learned primal-dual).
 
-Not yet scripted: LGTV, AR, ACR, TDV, DnCNN-PnP, DRUNet-PnP and GS-PnP.
+Not yet scripted: AR, ACR, TDV, DnCNN-PnP, DRUNet-PnP and GS-PnP.
 
 ## Running everything
 
@@ -55,7 +56,7 @@ cd scripts/paper_scripts/Benchmarking_learned_CT_2DeteCT
 python train.py --experiment full --model all --epochs 1 --slices 20
 python evaluate.py --experiment full --samples 10 --final
 
-# 2. all 45 trainings (5 learned methods on 9 problems; hours to days each)
+# 2. all 54 trainings (6 learned methods on 9 problems; hours to days each)
 python train.py --experiment all --model all
 
 # 3. all nine evaluations (with the classical methods), and the tables
@@ -96,15 +97,16 @@ the classical methods can be evaluated first.
 From Max Kiss's training and evaluation scripts (PR #104).
 
 - **Training** (every learned method): Adam (betas 0.9 and 0.99), learning
-  rate 1e-4 (LG: 1e-5), batch size 1, 100 epochs, the mean squared error to
+  rate 1e-4 (LG and LGTV: 1e-5), batch size 1, 100 epochs, the mean squared error to
   the target; validated every 10 epochs with it. The model with the lowest
   validation loss is the one tested.
 - **FBP+U-Net, FBP+MS-D Net, FBP+DnCNN:** the network on the FDK of the
   measurements (negative values set to zero). DnCNN: 20 layers of 64
   channels, bias-free, batch normalisation, leaky ReLUs, learning the
   residual. MS-D Net: 100 layers of width 1, dilations 1 to 10.
-- **LG:** 5 iterations, blocks of [8, 32, 32, 6] channels; it includes a
-  learned TV-gradient term (LION's LG).
+- **LG:** 5 iterations, blocks of [7, 32, 32, 6] channels: the image, a
+  memory of 5 channels and the data-fit gradient. **LGTV:** the same, with a
+  TV gradient too (blocks of [8, 32, 32, 6], `LG.lgtv_parameters()`).
 - **LPD:** 5 iterations of 3-layer blocks of 32 channels, no biases, fixed
   step sizes, the first primal channel projected in the dual step.
 - **FBP:** FDK, negative values kept. **AGD:** 100 iterations. **ChP:** 500
@@ -121,16 +123,14 @@ From Max Kiss's training and evaluation scripts (PR #104).
   methods, the number of iterations of LG and LPD, the architectures of the
   networks, how often it validated, and the classical methods' iterations and
   weights.
-- **LG:** LION's LG has a TV-gradient term, as the code of 2024 did; the
-  paper also lists an "LGTV", LG with TV. Which of the two the code's LG
-  results are is to be checked.
-- **LPD's blocks** are 3-layer; the paper describes "shallow four-layer CNN"s.
+- **LPD's blocks** are 3-layer, as the code's; the paper describes "shallow
+  four-layer CNN"s.
 
 **With the code of 2024:**
 
 - **FBP+U-Net and FBP+MS-D Net:** the 2024 classes (`FBPUNet`, `FBPMS_D`)
-  weren't kept. Here they are LION's `UNet` and `MSDNet` on FDK, whose
-  architectures may differ from 2024's (the U-Net's in particular).
+  weren't kept. Here they are LION's `UNet` (the same U-Net) and `MSDNet` on
+  FDK; the MS-D network's architecture may differ from 2024's.
 - **The models** are LION's current classes, fixed against their papers since
   2024 (e.g. LPD); the parameters above set them as they were trained, where
   a parameter can.

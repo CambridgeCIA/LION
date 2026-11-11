@@ -40,16 +40,18 @@ class LGblock(nn.Module):
 
 class LG(LIONmodel):
     """Learned Gradient (Adler and Öktem, 2017): ``n_iters`` updates of the
-    image, each a CNN of the image, a memory, the data-fit gradient ``Aᵀ(y - A
-    x)`` and a TV gradient, with learned step sizes. Starts from the initial
-    reconstruction. Takes the measurements.
+    image, each a CNN of the image, a memory and the data-fit gradient ``Aᵀ(y
+    - A x)``, with learned step sizes; with ``tv``, also of a TV gradient
+    (LGTV). Starts from the initial reconstruction. Takes the measurements.
 
     ``model_parameters`` (``default_parameters()``):
 
     - ``channels``: each block's channels, a list: its input (the image, the
-      memory, the two gradients) to its output (the memory, then the update);
-      [8, 32, 32, 6];
-    - ``n_iters``: the iterations (5)."""
+      memory, the gradient, and the TV gradient with ``tv``) to its output
+      (the memory, then the update); [7, 32, 32, 6];
+    - ``n_iters``: the iterations (5);
+    - ``tv``: also give each block a TV gradient, with a learned step size
+      (LGTV; False, as the paper). ``LG.lgtv_parameters()`` are LGTV's."""
 
     def __init__(
         self,
@@ -61,6 +63,15 @@ class LG(LIONmodel):
         self.channels = self.model_parameters.channels
         self.M = self.channels[-1] - 1
         self.n_iters = self.model_parameters.n_iters
+        self.tv = self.model_parameters.tv
+        # the block's input: the image, the memory, the gradient(s)
+        inputs = 1 + self.M + 1 + int(self.tv)
+        if self.channels[0] != inputs:
+            raise ValueError(
+                f"channels must start with {inputs} channels (the image, a memory "
+                f"of {self.M}, the gradient{' and the TV gradient' if self.tv else ''}), "
+                f"got channels={self.channels}"
+            )
 
         self._make_operator(autograd=True)
         gd_step = 1 / (power_method(self.op)) ** 2
@@ -71,18 +82,29 @@ class LG(LIONmodel):
         self.step_size = nn.ParameterList(
             [nn.Parameter(torch.ones(1) * gd_step) for i in range(self.n_iters)]
         )
-        self.tv_step_size = nn.ParameterList(
-            [nn.Parameter(torch.ones(1) * 1e-4) for i in range(self.n_iters)]
-        )
+        if self.tv:
+            self.tv_step_size = nn.ParameterList(
+                [nn.Parameter(torch.ones(1) * 1e-4) for i in range(self.n_iters)]
+            )
 
     @staticmethod
     def default_parameters():
-        """5 iterations of blocks of 32 channels, a memory of 5 channels (see
-        the class)."""
+        """5 iterations of blocks of 32 channels, a memory of 5 channels, no
+        TV gradient (see the class)."""
         LG_params = LIONModelParameter()
-        LG_params.channels = [8, 32, 32, 6]
+        LG_params.channels = [7, 32, 32, 6]
         LG_params.n_iters = 5
+        LG_params.tv = False
         LG_params.model_input_type = ModelInputType.SINOGRAM
+        return LG_params
+
+    @staticmethod
+    def lgtv_parameters():
+        """LGTV: LG whose blocks also get a TV gradient (``tv``), as in Kiss et
+        al., 2025 (see the class)."""
+        LG_params = LG.default_parameters()
+        LG_params.channels = [8, 32, 32, 6]
+        LG_params.tv = True
         return LG_params
 
     @staticmethod
@@ -151,9 +173,10 @@ class LG(LIONmodel):
 
         for i in range(self.n_iters):
             conv = getattr(self, f"{i}_conv")
-            del_L = self.step_size[i] * self.AT(x - self.A(f))
-            del_S = self.tv_step_size[i] * self.gradientTVnorm2D(f)
-            output = conv(torch.cat([f, s, del_L, del_S], dim=1))
+            gradients = [self.step_size[i] * self.AT(x - self.A(f))]
+            if self.tv:
+                gradients.append(self.tv_step_size[i] * self.gradientTVnorm2D(f))
+            output = conv(torch.cat([f, s, *gradients], dim=1))
             # output last channel
             f = f + output[:, self.M : self.M + 1]
             s = nn.ReLU()(output[:, 0 : self.M])

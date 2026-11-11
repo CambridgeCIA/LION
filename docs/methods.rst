@@ -97,7 +97,8 @@ Unrolled iterative
    * - ``LG`` (Learned Gradient)
      - measurements
      - Adler and Öktem, "Solving ill-posed inverse problems using iterative
-       deep neural networks", Inverse Problems, 2017
+       deep neural networks", Inverse Problems, 2017; with a TV gradient
+       (``LG.lgtv_parameters()``), LGTV, as in Kiss et al., 2025
    * - ``LPD`` (Learned Primal-Dual)
      - measurements
      - Adler and Öktem, "Learned primal-dual reconstruction", IEEE Trans.

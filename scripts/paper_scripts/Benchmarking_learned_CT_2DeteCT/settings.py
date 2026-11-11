@@ -40,7 +40,7 @@ EXPERIMENTS = {
 
 # The learned methods, with the parameters they were trained with
 def unet_parameters():
-    """FBP+U-Net: LION's U-Net, on FDK (the 2024 class wasn't kept)."""
+    """FBP+U-Net: LION's U-Net (the paper's), on FDK."""
     return UNet.default_parameters()
 
 
@@ -59,8 +59,14 @@ def dncnn_parameters():
 
 
 def lg_parameters():
-    """LG: 5 iterations, blocks [8, 32, 32, 6] (LION's default, as in 2024)."""
+    """LG: 5 iterations of blocks of [7, 32, 32, 6] channels (LION's
+    default)."""
     return LG.default_parameters()
+
+
+def lgtv_parameters():
+    """LGTV: LG whose blocks also get a TV gradient, [8, 32, 32, 6]."""
+    return LG.lgtv_parameters()
 
 
 def lpd_parameters():
@@ -80,6 +86,7 @@ MODELS = {
     "FBP+MSDNet": (MSDNet, msdnet_parameters, False, 1e-4),
     "FBP+DnCNN": (DnCNN, dncnn_parameters, False, 1e-4),
     "LG": (LG, lg_parameters, True, 1e-5),
+    "LGTV": (LG, lgtv_parameters, True, 1e-5),
     "LPD": (LPD, lpd_parameters, True, 1e-4),
 }
 

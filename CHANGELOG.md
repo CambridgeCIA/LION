@@ -80,8 +80,10 @@ with 0.2.0 don't load.
   cFBPConvNet, the learned FBPs, E2I (#226–#228, #251, #253, #254, #263).
 - The cLPD paper's scripts rewritten for LION's current API: a training per
   model and problem, and the evaluation of each problem.
-- The 2DeteCT benchmark paper's scripts (from Max Kiss's, #104), for 8 of its
+- The 2DeteCT benchmark paper's scripts (from Max Kiss's, #104), for 9 of its
   15 methods: training and evaluation on its nine problems.
+- LG has no TV gradient by default, as its paper; `tv` (`LG.lgtv_parameters()`)
+  adds it (LGTV).
 
 ### Fixed
 
