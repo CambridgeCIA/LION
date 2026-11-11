@@ -31,7 +31,8 @@ optional: its test record (``Evaluation.run``), the record's file, or an
     README.md              a model card, generated from the records (edit it: it isn't checksummed)
 
 Each file is made again by its own ``instantiate`` (``LIONmodel``,
-``Experiment``, ``LIONDataset``, ``LIONsolver``, ``Evaluation``). A package
+``Experiment``, ``LIONDataset``, ``LIONsolver``, ``Evaluation``,
+``LIONReconstructor``; tutorial 12 shows each). A package
 is used whole with:
 
     package = load("lpd_package")      # the recorded arguments, to change; nothing made
