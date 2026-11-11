@@ -86,8 +86,8 @@ class _MSDBlock(torch.autograd.Function):
     goes through the layers in reverse, so only the buffer is kept.
 
     On a GPU (with Triton): each layer's convolution, bias and ReLU are one
-    Triton kernel reading the buffer (``_msd_triton``), the weights' gradient
-    another, and the input's a transposed convolution. Otherwise, in plain
+    Triton kernel reading the buffer (``_msd_triton``), and so are the
+    gradients of its weights and of its input. Otherwise, in plain
     torch: each layer's convolution is recomputed for its gradients, a group of
     input channels at a time (``CHANNELS_AT_A_TIME``)."""
 
@@ -133,8 +133,8 @@ class _MSDBlock(torch.autograd.Function):
             grad_bias[i * width : (i + 1) * width] = grad_layer.sum(dim=(0, 2, 3))
             if gpu:
                 dilation = ctx.dilations[i]
-                gradients[:, :start] += _msd_triton.grad_input(
-                    grad_layer, weights[i], dilation
+                _msd_triton.add_grad_input(
+                    gradients, start, grad_layer, weights[i], dilation
                 )
                 grad_weights[i] = _msd_triton.grad_weight(
                     result, start, grad_layer, dilation, weights[i].shape
