@@ -29,9 +29,11 @@ DATA_FOLDERS = {
     "WALNUT_DATASET_PATH": "raw/walnuts",
     "LIDC_IDRI_PATH": "raw/LIDC-IDRI",
     "DETECT_PATH": "raw/2detect",
+    "HTC2022_PATH": "raw/HTC2022",
     # ready for training
     "LIDC_IDRI_PROCESSED_DATASET_PATH": "processed/LIDC-IDRI",
     "DETECT_PROCESSED_DATASET_PATH": "processed/2detect",
+    "HTC2022_PROCESSED_DATASET_PATH": "processed/HTC2022",
 }
 
 

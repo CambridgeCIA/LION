@@ -1,0 +1,86 @@
+HTC2022
+=======
+
+**Measured** fan-beam CT data of 26 acrylic phantoms, 7 cm discs with holes
+of different shapes, made for limited-angle CT: the data of the Helsinki
+Tomography Challenge 2022 (Meaney, Silva de Moura, Juvonen and Siltanen,
+Finnish Inverse Problems Society; Zenodo, version 1.4.0, CC BY 4.0). Each
+phantom was scanned over a full circle in 0.5° steps; the challenge gave arcs
+of it, from 90° (level 1) down to 30° (level 7).
+
+=================  ===========================================================
+Training           5 phantoms (4 with holes, 1 solid disc)
+Test               21 phantoms, 7 levels × 3, with more and more complex holes
+Sinograms          720 angles × 560 pixels (0.2 mm, binned 4×)
+Images             512 × 512 pixels of 0.148 mm
+Geometry           fan beam, 410.66 mm source to origin, 553.74 mm to detector
+Size               124 MB
+=================  ===========================================================
+
+Download and prepare
+--------------------
+
+.. code-block:: bash
+
+   python LION/data_loaders/HTC2022/download.py
+   python LION/data_loaders/HTC2022/pre_process_HTC2022.py
+   python LION/data_loaders/HTC2022/validate_HTC2022.py
+
+The first writes ``LION_DATA_PATH/raw/HTC2022``, the second
+``LION_DATA_PATH/processed/HTC2022`` (it needs a GPU), the third checks the
+second against the challenge's files (below).
+
+What the preparation does
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The test phantoms' arcs start at different angles, but a LION dataset has one
+geometry. As each scan is a full circle in 0.5° steps, shifting a phantom's
+sinogram cyclically turns the phantom exactly: the preparation shifts each so
+that its challenge arc starts at the first angle. The same geometry, with the
+first 181 angles, then gives every level-1 arc, with the first 61 every
+level-7 one.
+
+The targets are made again from the turned full sinograms, as the challenge
+made its own: the FBP (LION's FDK), and its segmentation (negative values set
+to 0, Otsu's threshold, then a closing with a disc of radius 3 pixels;
+``HTC2022.segment``). The challenge's files are kept, as released, next to
+them.
+
+``validate_HTC2022.py`` checks, for each phantom: that the challenge's
+limited-angle sinogram is the turned sinogram's first rows; that LION's FBP
+and segmentation of the full scan, not turned, match the challenge's
+(correlation; the challenge's score, the Matthews correlation coefficient),
+and in which orientation; that the targets match the challenge's turned by
+the same angle (approximate: interpolated); and that the operator projects
+the reconstructions to their sinograms. It writes a table and a figure.
+
+In LION
+-------
+
+The loader is ``LION.data_loaders.HTC2022.HTC2022``: "train" (the 5 training
+phantoms) and "test" (the 21) splits; there is no validation split. A sample
+is (sinogram, target). Its parameters (``HTC2022.default_parameters()``)
+choose the target, "reconstruction" (the FBP) or "segmentation" (the
+challenge's ground truth), and the geometry: ``HTC2022.geometry(angles)``, the
+first ``angles`` angles of the scan (all 720 by default).
+
+.. code-block:: python
+
+   from LION.data_loaders.HTC2022 import HTC2022, geometry
+
+   # level 1: a 90 degree arc (181 angles), to the segmentation
+   parameters = HTC2022.default_parameters()
+   parameters.target = "segmentation"
+   test = HTC2022("test", geometry(181), parameters)
+   sinogram, segmentation = test[0]
+   print(test.sample_dataframe)  # each phantom's level and arc
+
+With 5 training phantoms, it is above all a test set of measured data, e.g.
+for methods trained on simulated data.
+
+.. note::
+
+   The challenge scored segmentations of its 21 test phantoms, each from its
+   own arc. Here each phantom is turned so its arc starts at the first angle,
+   and the targets are LION's FBP and segmentation of the turned full scan:
+   ``validate_HTC2022.py`` measures how close they are to the challenge's.
