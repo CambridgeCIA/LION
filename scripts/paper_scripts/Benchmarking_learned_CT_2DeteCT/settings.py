@@ -133,15 +133,35 @@ TV_WEIGHTS = {
 }
 
 
-def classical_methods(experiment_name):
+# Which TV weights gave the paper's tables isn't known: those above are #104's.
+# Max Kiss's chp.py (2024) tried three other sets on three example slices;
+# ``evaluate.py --chp_weights`` tests them too, to compare with the tables.
+CHP_PY_WEIGHTS = [
+    dict(zip(TV_WEIGHTS, weights))
+    for weights in (
+        [1e-10, 1e-6, 1e-4, 1e-4, 1e-5, 1e-5, 1e-5, 1e-5, 1e-7],
+        [1e-11, 1e-7, 1e-5, 1e-8, 1e-6, 1e-6, 1e-6, 1e-6, 1e-8],
+        [1e-12, 1e-8, 1e-7, 1e-9, 1e-7, 1e-7, 1e-7, 1e-7, 1e-9],
+    )
+]
+
+
+def classical_methods(experiment_name, chp_weights=False):
     """``{name: function(sinogram, operator)}``: FBP, AGD and ChP for one
-    problem."""
-    return {
+    problem; with ``chp_weights``, also ChP with each of chp.py's weights
+    ("ChP (chp.py 1)", ...)."""
+    methods = {
         # ts_algorithms' FDK, without setting negative values to zero
         "FBP": functools.partial(fdk, clip=False),
         "AGD": agd,
         "ChP": functools.partial(tv_min, lam=TV_WEIGHTS[experiment_name], verbose=0),
     }
+    if chp_weights:
+        for i, weights in enumerate(CHP_PY_WEIGHTS, 1):
+            methods[f"ChP (chp.py {i})"] = functools.partial(
+                tv_min, lam=weights[experiment_name], verbose=0
+            )
+    return methods
 
 
 # The Plug-and-Play methods (Ferdia Sherry's code of 2024): a Gaussian
