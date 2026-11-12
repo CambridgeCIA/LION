@@ -1,8 +1,13 @@
 # Benchmarking learned algorithms for CT image reconstruction tasks
 
-> **Unverified.** These scripts have not been run on real data yet: they are
-> checked only on a CPU with fake data and a toy operator. Their results are
-> not yet known to match the paper's.
+> **Untested: use with care.** LION has changed a lot since the paper's
+> results were produced (2024): its models, solvers, operators, data loaders
+> and evaluation have been rewritten, and the paper's code has been rebuilt
+> here on the current LION from scattered scripts. These scripts have not
+> been run on real data yet: they are checked only on a CPU with fake data
+> and a toy operator, and their results are not yet known to match the
+> paper's. "Differences" below lists what is known to differ, and what
+> isn't known.
 
 Scripts that reproduce part of the paper
 
