@@ -12,7 +12,6 @@ import torch.nn as nn
 from LION.utils.parameter import OperatorParameters
 from LION.models.LIONmodel import LIONmodel, ModelInputType, LIONModelParameter
 import torch.nn.utils.parametrize as P
-from LION.utils.math import power_method
 from LION.utils.citation import citation
 
 
@@ -153,10 +152,7 @@ class ACR(LIONmodel):
         self.L2 = L2net(params.l2_penalty)
         self.initialize_weights()
         if self.operator_params is not None:
-            # Step size for gradient descent on the variational problem
             self._make_operator()
-            self.op_norm = power_method(self.op)
-            self.model_parameters.step_size = float(1 / (self.op_norm) ** 2)
 
     @staticmethod
     def _set_positive_weight(conv: nn.Conv2d, value: torch.Tensor):

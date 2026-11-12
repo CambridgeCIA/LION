@@ -97,7 +97,8 @@ Unrolled iterative
    * - ``LG`` (Learned Gradient)
      - measurements
      - Adler and Öktem, "Solving ill-posed inverse problems using iterative
-       deep neural networks", Inverse Problems, 2017
+       deep neural networks", Inverse Problems, 2017; with a TV gradient
+       (``LG.lgtv_parameters()``), LGTV, as in Kiss et al., 2025
    * - ``LPD`` (Learned Primal-Dual)
      - measurements
      - Adler and Öktem, "Learned primal-dual reconstruction", IEEE Trans.
@@ -188,6 +189,11 @@ Learned regularisers
      - convex in the image
      - Mukherjee et al., "Learned convex regularizers for inverse problems",
        arXiv:2008.02839, 2020
+   * - ``TDV`` (total deep variation)
+     - a variational network: gradient steps on the learned regulariser and
+       the data term, trained end to end; takes the measurements
+     - Kobler, Effland, Kunisch and Pock, "Total deep variation for linear
+       inverse problems", CVPR 2020
 
 Your own
 ~~~~~~~~

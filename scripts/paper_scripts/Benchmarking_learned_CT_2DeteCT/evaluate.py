@@ -1,0 +1,204 @@
+# =============================================================================
+# This file is part of LION library
+# License : GPL-3
+#
+# Author  : Maximilian B. Kiss, Ferdia Sherry, Zakhar Shumaylov, Ander Biguri
+# =============================================================================
+"""Tests the 2DeteCT benchmark paper's methods: its Tables 5-7, for one
+problem or all nine.
+
+The classical methods (FBP, AGD, ChP), the learned ones (trained by
+``train.py``; the models with the lowest validation loss, as the paper) and the
+Plug-and-Play ones (denoisers trained by ``train_denoisers.py``) on the test
+set of each problem, with SSIM and PSNR on each slice's own range
+(mean ± standard deviation, as the paper's tables), and the images of the
+best, median and worst slices:
+
+    python evaluate.py --experiment full
+    python evaluate.py --experiment all
+
+Writes ``$LION_RESULTS_PATH/paper_scripts/2detect_benchmark/<experiment>/
+comparison``: the table (markdown, LaTeX, CSV), every slice's scores, box
+plots and images, and the test records; with ``all``, also ``tables.md``, the
+nine tables together. Learned methods not trained yet are left out, with a
+message.
+
+For each PnP method, the noise level is chosen first, as the paper: the one
+whose reconstructions have the best mean PSNR on the validation set
+(``comparison/pnp_noise_levels.json`` lists every score, and the choice).
+
+``--samples`` tests on fewer slices, evenly spaced (``--validation_samples``
+for choosing the noise levels); ``--final`` uses the models after the last
+epoch instead.
+
+Needs a GPU, the processed 2DeteCT data in ``LION_DATA_PATH`` and
+``LION_RESULTS_PATH``.
+"""
+
+# %% Imports
+import argparse
+import json
+
+import torch
+from torch.utils.data import DataLoader, Subset
+
+from LION.evaluation import Comparison, Evaluation
+from LION.metrics.psnr import PSNR
+from LION.metrics.ssim import SSIM
+from LION.models.LIONmodel import LIONmodel
+from LION.reconstructors.LearnedRegularizerReconstructor import estimate_alpha
+from LION.utils.device import default_device
+from LION.utils.paths import results_path
+
+import settings
+
+# %% Settings
+arguments = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+arguments.add_argument(
+    "--experiment", choices=[*settings.EXPERIMENTS, "all"], required=True
+)
+arguments.add_argument(
+    "--samples", type=int, default=None, help="test slices (default: all)"
+)
+arguments.add_argument(
+    "--validation_samples",
+    type=int,
+    default=None,
+    help="validation slices choosing the PnP noise levels (default: all)",
+)
+arguments.add_argument("--final", action="store_true", help="the final models")
+arguments.add_argument("--gpu", type=int, default=0)
+arguments = arguments.parse_args()
+
+if torch.cuda.is_available():
+    torch.cuda.set_device(arguments.gpu)
+verbose = 1  # 0: nothing; 1: a progress bar per method
+suffix = "" if arguments.final else "_best"
+
+
+# %% A PnP method on one problem: the noise level best on the validation set
+def pnp_method(experiment_name, experiment, name):
+    """The PnP reconstruction of ``name`` with its denoiser of the noise level
+    best on the validation set (mean PSNR, each slice on its own range), or
+    None if no denoiser is trained yet. Every score goes in ``scores``."""
+    validation = Evaluation(
+        experiment,
+        split="validation",
+        metrics={"PSNR": PSNR()},
+        normalisation="sample",
+        samples=arguments.validation_samples,
+        save_folder=settings.folder(experiment_name) / "evaluations",
+    )
+    scores = {}
+    for noise_level in settings.NOISE_LEVELS:
+        file = settings.denoiser_folder() / (
+            settings.denoiser_name(name, noise_level) + suffix
+        )
+        if not file.with_suffix(".json").exists():
+            continue
+        denoiser = LIONmodel.load(file)[0].to(validation.device)
+        method = settings.pnp(name, denoiser, validation.get_operator())
+        record = validation.run(
+            method, f"{name} ({noise_level})", allow=settings.ALLOW, verbose=verbose
+        )
+        scores[noise_level] = record.summary.PSNR.mean
+    if not scores:
+        return None, scores
+    best = max(scores, key=scores.get)
+    denoiser = LIONmodel.load(
+        settings.denoiser_folder() / (settings.denoiser_name(name, best) + suffix)
+    )
+    return settings.pnp(name, denoiser[0], validation.get_operator()), {
+        "validation PSNR": scores,
+        "chosen": best,
+    }
+
+
+# %% AR, ACR and TDV on one problem: the three models of each
+def regulariser_methods(experiment_name, experiment):
+    """AR's, ACR's and TDV's models after the last epoch, at the lowest
+    validation loss and at the lowest training loss (``settings.CHECKPOINTS``),
+    as methods; AR and ACR with α estimated on the validation set."""
+    methods = {}
+    folder = settings.folder(experiment_name)
+    op = experiment.operator_params.make_operator()
+    alpha = None
+    for name in settings.REGULARISERS:
+        for kind, file_suffix in settings.CHECKPOINTS.items():
+            file = folder / f"{name}{file_suffix}"
+            if not file.with_suffix(".json").exists():
+                print(f"{experiment_name}/{name} ({kind}): not trained yet, left out")
+                continue
+            if name == "TDV":
+                methods[f"{name} ({kind})"] = file
+                continue
+            if alpha is None:
+                validation = experiment.get_dataset("validation")
+                validation = Subset(
+                    validation,
+                    range(min(settings.REGULARISER_VALIDATION_SLICES, len(validation))),
+                )
+                alpha = estimate_alpha(
+                    op, DataLoader(validation, batch_size=1), device=default_device()
+                )
+                if experiment_name == "beam_hardening":
+                    alpha *= settings.BEAM_HARDENING_ALPHA_FACTOR
+            model = LIONmodel.load(file, allow=settings.ALLOW)[0].eval()
+            methods[f"{name} ({kind})"] = settings.reconstruction(
+                name, op, alpha, model
+            )
+    return methods
+
+
+# %% One problem: its test set, the methods, the comparison
+def evaluate(experiment_name):
+    folder = settings.folder(experiment_name)
+    experiment = settings.EXPERIMENTS[experiment_name]()
+    # SSIM and PSNR, each on its target's own range (as the paper's)
+    evaluation = Evaluation(
+        experiment,
+        metrics={"SSIM": SSIM(), "PSNR": PSNR()},
+        normalisation="sample",
+        samples=arguments.samples,
+        save_folder=folder / "evaluations",
+    )
+    methods = settings.classical_methods(experiment_name)
+    for name in settings.MODELS:
+        file = folder / f"{name}{suffix}"
+        if file.with_suffix(".json").exists():
+            methods[name] = file
+        else:
+            print(f"{experiment_name}/{name}: not trained yet, left out")
+    methods.update(regulariser_methods(experiment_name, experiment))
+    noise_levels = {}
+    for name in settings.DENOISERS:
+        method, noise_levels[name] = pnp_method(experiment_name, experiment, name)
+        if method is None:
+            print(f"{name}: no denoiser trained yet, left out")
+        else:
+            methods[name] = method
+    # every method in the table; none is the reference
+    comparison = Comparison(evaluation, methods, baseline=False, allow=settings.ALLOW)
+    comparison.run(verbose=verbose)
+    comparison.save(folder / "comparison")
+    (folder / "comparison" / "pnp_noise_levels.json").write_text(
+        json.dumps(noise_levels, indent=2)
+    )
+    return comparison.table()
+
+
+# %% Evaluate what was asked for
+experiments = (
+    list(settings.EXPERIMENTS)
+    if arguments.experiment == "all"
+    else [arguments.experiment]
+)
+tables = []
+for experiment_name in experiments:
+    table = evaluate(experiment_name)
+    print(f"\n{experiment_name}\n{table}")
+    tables.append(f"## {experiment_name}\n\n{table}\n")
+if arguments.experiment == "all":
+    summary = results_path("paper_scripts/2detect_benchmark") / "tables.md"
+    summary.write_text("# 2DeteCT benchmark paper, Tables 5-7\n\n" + "\n".join(tables))
+    print(f"All nine: {summary}")

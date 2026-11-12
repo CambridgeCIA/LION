@@ -668,3 +668,31 @@ for a, b in zip(*results):
         [sys.executable, "-c", code], env=env, capture_output=True, text=True
     )
     assert done.returncode == 0, done.stderr[-2000:]
+
+
+def test_tdv_gradient_is_that_of_its_regulariser(monkeypatch):
+    """TDV's regulariser gives the gradient of its energy (through its
+    transposed blocks, as the paper's code), and the network reconstructs
+    and trains through it."""
+    from LION.models.learned_regularizer.TDV import TDV
+    from pytests.helpers import IdentityStandIn
+
+    def make_operator(self, autograd=False):
+        self.op = IdentityStandIn((1, 24, 24))
+        self.A, self.AT = self.op.autograd()
+        self._resolve_initial_reconstruction(self.op)
+
+    monkeypatch.setattr(LIONmodel, "_make_operator", make_operator)
+    p = TDV.default_parameters()
+    p.steps, p.features, p.scales, p.macro_blocks = 2, 4, 3, 2
+    model = TDV(Geometry.default_parameters(), p).double()
+
+    x = torch.rand(2, 1, 24, 24, dtype=torch.float64, requires_grad=True)
+    (expected,) = torch.autograd.grad(model.regulariser.energy(x).sum(), x)
+    assert torch.allclose(model.regulariser.grad(x), expected, atol=1e-10)
+
+    y = torch.rand(2, 1, 24, 24, dtype=torch.float64)
+    output = model(y)
+    assert output.shape == y.shape
+    output.sum().backward()
+    assert model.stop_time.grad is not None and model.data_weight.grad is not None
