@@ -60,6 +60,10 @@ with 0.2.0 don't load.
   in LION", "Datasets" (getting and preparing the data), "Records"
   (`metadata.md`) and the developer guide; eight example scripts; the
   contributor guide; `AGENTS.md`; this changelog and `CITATION.cff`.
+- **TDV** (Kobler et al., 2020), the total deep variation network, back in
+  `LION.models.learned_regularizer`: Kobler's regulariser (MIT licence) with
+  Zakhar Shumaylov's CT data term, as LION had it in 2024, for the
+  benchmark paper.
 - **Paper scripts**: the noise paper's (Kiss et al., 2025; from #103): its
   eight denoisers' training and evaluation, with its U-Net.
 
@@ -87,9 +91,10 @@ with 0.2.0 don't load.
   cFBPConvNet, the learned FBPs, E2I (#226–#228, #251, #253, #254, #263).
 - The cLPD paper's scripts rewritten for LION's current API: a training per
   model and problem, and the evaluation of each problem.
-- The 2DeteCT benchmark paper's scripts (from Max Kiss's, #104, and Ferdia
-  Sherry's), for 12 of its 15 methods: training and evaluation on its nine
-  problems, and the PnP methods' denoisers.
+- The 2DeteCT benchmark paper's scripts (from Max Kiss's, #104, Ferdia
+  Sherry's and Zakhar Shumaylov's), for its 15 methods: training and
+  evaluation on its nine problems, the PnP methods' denoisers, AR, ACR and
+  TDV.
 - LG has no TV gradient by default, as its paper; `tv` (`LG.lgtv_parameters()`)
   adds it (LGTV).
 

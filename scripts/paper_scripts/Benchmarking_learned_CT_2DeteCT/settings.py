@@ -2,12 +2,12 @@
 # This file is part of LION library
 # License : GPL-3
 #
-# Author  : Maximilian B. Kiss, Ander Biguri
+# Author  : Maximilian B. Kiss, Ferdia Sherry, Zakhar Shumaylov, Ander Biguri
 # =============================================================================
-"""What the 2DeteCT benchmark paper (Kiss et al., 2025) trained and tested,
-for the methods whose code is in LION: shared by ``train.py``,
-``train_denoisers.py`` and ``evaluate.py``, as the code that produced the
-paper's results (2024), which the paper's text doesn't always detail."""
+"""What the 2DeteCT benchmark paper (Kiss et al., 2025) trained and tested:
+shared by ``train.py``, ``train_denoisers.py``, ``train_regularisers.py`` and
+``evaluate.py``, as the code that produced the paper's results (2024), which
+the paper's text doesn't always detail."""
 
 import functools
 
@@ -20,6 +20,8 @@ from LION.models.CNNs.MSDNet import MSDNet
 from LION.models.CNNs.UNets.Unet import UNet
 from LION.models.iterative_unrolled.LG import LG
 from LION.models.iterative_unrolled.LPD import LPD
+from LION.models.learned_regularizer.AR import AR
+from LION.models.learned_regularizer.TDV import TDV
 from LION.models.PnP.gradient_step_denoiser import GSD
 from LION.operators.ct import fdk, tv_min
 from LION.operators.ct._batching import batched_reconstruction
@@ -27,6 +29,8 @@ from LION.reconstructors.PnP import PnP
 from LION.utils.math import power_method
 from LION.utils.paths import results_path
 from LION.utils.tomosipo_import import import_tomosipo
+
+from learned_regularisers import ACR2024, GradientDescent2024
 
 # The paper's nine problems (its Tables 5-7), as LION's experiments
 EXPERIMENTS = {
@@ -240,6 +244,68 @@ def gs_pnp(sinogram, op, denoiser, iterations=PNP_ITERATIONS):
             x = denoiser.unnormalise(denoiser(denoiser.normalise(x)), x)
         images.append(x[0])
     return torch.stack(images)
+
+
+# The learned regularisers and TDV (Zakhar Shumaylov's code of 2024): AR and
+# ACR, regularisers trained adversarially (clean images against FDK
+# reconstructions) then used in a variational reconstruction; TDV, a
+# variational network trained end to end.
+
+
+def tdv_parameters():
+    """TDV: 10 steps, a regulariser of 5 macro blocks of 5 scales, 16
+    channels; reflection padding, as LION had it in 2024."""
+    parameters = TDV.default_parameters()
+    parameters.padding = "reflect"
+    return parameters
+
+
+#: The classes defined in this folder that saved models and records name
+ALLOW = ("learned_regularisers.", "settings.")
+
+# name: (model class, its parameters, batch size)
+REGULARISERS = {
+    "AR": (AR, AR.default_parameters, 2),
+    "ACR": (ACR2024, ACR2024.default_parameters, 5),
+    "TDV": (TDV, tdv_parameters, 1),
+}
+
+# Their training: Adam (betas 0.9 and 0.99), learning rate 1e-4, 25 epochs,
+# validated and checkpointed every epoch. AR and ACR: the WGAN loss with
+# gradient penalty (weight 0.1), validated by the mean squared error of their
+# reconstructions of the first 50 validation slices; their images scaled by
+# the minimum and maximum of the first 100 training targets. TDV: the mean
+# squared error to the target, validated on the whole validation set.
+REGULARISER_EPOCHS = 25
+REGULARISER_LEARNING_RATE = 1e-4
+REGULARISER_BETAS = (0.9, 0.99)
+REGULARISER_VALIDATION_SLICES = 50
+NORMALISATION_SLICES = 100
+
+# The three models of each tested (the 2024 code tested them, and each
+# problem's table used one): at the lowest validation loss, at the lowest
+# training loss, and after the last epoch
+CHECKPOINTS = {"min val": "_best", "min train": "_mintrain", "last": ""}
+
+
+def reconstruction(name, op, alpha, model=None):
+    """AR's or ACR's reconstruction with weight ``alpha`` (with the trained
+    regulariser ``model``, or the one being trained): 150 steps from
+    FDK, momentum 0.5, step size 0.2 / ||A||² (AR, which stops when it is
+    below 1e-3 / ||A||²) or 1 / ||A||² (ACR), backtracking 0.95
+    (``GradientDescent2024``)."""
+    norm = power_method(op).item()
+    parameters = GradientDescent2024.default_parameters()
+    parameters.alpha = float(alpha)
+    parameters.n_steps = 150
+    parameters.step_size = (0.2 if name == "AR" else 1.0) / norm**2
+    parameters.min_step = 1e-3 / norm**2 if name == "AR" else None
+    return GradientDescent2024(op, model, parameters)
+
+
+# The weight of AR's and ACR's regulariser, α, is estimated on the first 50
+# validation slices (``estimate_alpha``), and divided by 10 for beam hardening
+BEAM_HARDENING_ALPHA_FACTOR = 0.1
 
 
 def denoiser_name(name, noise_level):

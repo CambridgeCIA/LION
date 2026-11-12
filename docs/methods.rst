@@ -189,6 +189,11 @@ Learned regularisers
      - convex in the image
      - Mukherjee et al., "Learned convex regularizers for inverse problems",
        arXiv:2008.02839, 2020
+   * - ``TDV`` (total deep variation)
+     - a variational network: gradient steps on the learned regulariser and
+       the data term, trained end to end; takes the measurements
+     - Kobler, Effland, Kunisch and Pock, "Total deep variation for linear
+       inverse problems", CVPR 2020
 
 Your own
 ~~~~~~~~
