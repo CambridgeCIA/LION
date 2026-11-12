@@ -271,18 +271,24 @@ scripts were removed in `8703693`).
   settings are theirs; where they disagree with the models of the time, the
   models' code is followed.
 
-**Not known, to be checked** (the 2024 code doesn't say):
+**Not known** (neither the 2024 code nor the paper says):
 
-- **The denoisers' options:** the training script took the channels, blocks,
-  `bias_free` and `enforce_positivity` from its command line, which isn't
-  recorded. These scripts use its defaults, except for GS: the paper says its
-  DRUNet was scaled down, and 32 channels and 2 blocks is the 2024 GS class's
-  default (the command line's default was 64 and 4).
-- **ChP's TV weights:** `TV_WEIGHTS` are those of #104. Another 2024 script,
-  run on three example slices (Max Kiss's `chp.py`), used 1e-10 (full data),
-  1e-6, 1e-4, 1e-4 (limited 120°, 90°, 60°), 1e-5, 1e-5, 1e-5 (sparse 360,
-  120, 60), 1e-5 (low dose) and 1e-7 (beam hardening). Which gave the tables
-  isn't known.
+- **The denoisers' options are lost:** the training script took the
+  channels, blocks, `bias_free` and `enforce_positivity` from its command
+  line, which wasn't recorded, and the paper doesn't give them. These scripts
+  use the script's defaults, except for GS: the paper says its DRUNet was
+  scaled down "in number of blocks and width of the blocks", and 32 channels
+  and 2 blocks is the 2024 GS class's default (the command line's default was
+  64 and 4).
+- **ChP's TV weights:** `TV_WEIGHTS` are those of #104. Max Kiss's `chp.py`
+  (2024) tried three other sets, on three example slices
+  (`CHP_PY_WEIGHTS`; the first: 1e-10 for full data, 1e-6, 1e-4, 1e-4 for
+  limited 120°, 90°, 60°, 1e-5 for sparse angle and low dose, 1e-7 for beam
+  hardening). Six of #104's nine weights are among those tried (not 5e-6, for
+  sparse 120 and 60 and low dose), so #104's may be what was chosen after,
+  but which gave the paper's tables isn't known.
+  `evaluate.py --chp_weights` also tests ChP with each of chp.py's sets
+  ("ChP (chp.py 1)", ...), to compare with the paper's ChP rows.
 - **TDV's epochs:** 25 in the script, but its 2024 checkpoints go up to
   epoch 12.
 

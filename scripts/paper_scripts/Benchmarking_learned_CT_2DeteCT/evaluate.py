@@ -66,6 +66,11 @@ arguments.add_argument(
     default=None,
     help="validation slices choosing the PnP noise levels (default: all)",
 )
+arguments.add_argument(
+    "--chp_weights",
+    action="store_true",
+    help="also ChP with the TV weights of the 2024 chp.py (settings.CHP_PY_WEIGHTS)",
+)
 arguments.add_argument("--final", action="store_true", help="the final models")
 arguments.add_argument("--gpu", type=int, default=0)
 arguments = arguments.parse_args()
@@ -162,7 +167,7 @@ def evaluate(experiment_name):
         samples=arguments.samples,
         save_folder=folder / "evaluations",
     )
-    methods = settings.classical_methods(experiment_name)
+    methods = settings.classical_methods(experiment_name, arguments.chp_weights)
     for name in settings.MODELS:
         file = folder / f"{name}{suffix}"
         if file.with_suffix(".json").exists():
