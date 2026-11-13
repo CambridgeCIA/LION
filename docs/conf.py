@@ -98,6 +98,8 @@ myst_heading_anchors = 3
 html_theme = "furo"
 html_title = f"LION {release}"
 html_static_path = ["_static"]
+# The browser-tab icon: the lion head from the logo
+html_favicon = "_static/lion-favicon.svg"
 html_theme_options = {
     "light_logo": "lion-logo.svg",
     "dark_logo": "lion-logo-dark.svg",
