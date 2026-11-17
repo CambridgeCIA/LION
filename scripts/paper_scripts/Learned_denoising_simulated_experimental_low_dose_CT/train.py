@@ -19,7 +19,7 @@ differs). One model on one kind of noise, or all of them:
 ``--model``: a key of ``settings.MODELS`` (UNet, MSDNet, FBP+UNet,
 FBP+MSDNet), or ``all``; ``--noise``: simulated, experimental or ``all``.
 Each model is saved in ``$LION_RESULTS_PATH/paper_scripts/noise_paper/``
-as ``<model>_<noise>`` (``.pt`` and ``.json``, with its records), and the one
+as ``<model>_<noise>`` (``.pt`` and ``.lion.json``, with its records), and the one
 with the lowest validation loss as ``<model>_<noise>_best``, the one tested.
 Checkpoints every 10 epochs: a stopped run resumes from the latest when run
 again, and models already trained are skipped. ``--slices`` and ``--epochs``
@@ -61,7 +61,7 @@ save_folder.mkdir(parents=True, exist_ok=True)
 # %% One model on one kind of noise
 def train(model_name, noise):
     name = settings.name(model_name, noise)
-    if (save_folder / f"{name}.json").exists():
+    if (save_folder / f"{name}.lion.json").exists():
         print(f"{name}: already trained, skipped")
         return
     print(f"Training {name}")

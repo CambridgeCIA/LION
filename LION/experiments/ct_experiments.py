@@ -286,7 +286,7 @@ class Experiment(ABC):
     def instantiate(cls, source, *, allow=(), **arguments):
         """The experiment a saved file describes. ``source``: a data record,
         a model's file (or the dict read from it) saved with one, or the
-        experiment's spec or its file (a package's ``experiment.json``). Called
+        experiment's spec or its file (a package's ``experiment.lion.json``). Called
         on an experiment class it makes that class; called on ``Experiment``,
         the class the record names (``allow``: see ``LION.utils.spec.build``).
         ``arguments`` replace recorded ones (e.g. ``experiment_params`` from

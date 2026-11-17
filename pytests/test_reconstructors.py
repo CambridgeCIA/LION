@@ -155,7 +155,7 @@ def test_made_again_from_a_test_record(tmp_path, monkeypatch):
         dataset=data(), operator=op, save_folder=tmp_path, device="cpu"
     )
     record = evaluation.run(recon, "pnp")
-    assert len(list(tmp_path.glob("pnp-*.json"))) == 1  # saved: describable
+    assert len(list(tmp_path.glob("pnp-*.lion.json"))) == 1  # saved: describable
     monkeypatch.setattr(
         evaluation_module, "scores", lambda *a, **k: pytest.fail("recomputed")
     )
@@ -268,7 +268,7 @@ def test_saved_and_loaded_with_its_model(tmp_path):
     model = loaded_dncnn(tmp_path)
     recon = pnp(ScaleOp(2.0, (1, 4, 4)), model, "HQS", max_iter=3)
     recon.save(tmp_path / "pnp")
-    written = json.loads((tmp_path / "pnp.json").read_text())
+    written = json.loads((tmp_path / "pnp.lion.json").read_text())
     assert set(written["model"]) == {"file", "weights_sha256"}  # no weights
     again = LIONReconstructor.load(tmp_path / "pnp", allow=["pytests."])
     assert type(again) is PnP and again.source_file == tmp_path / "pnp"

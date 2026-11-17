@@ -26,6 +26,7 @@ import torch  # noqa: E402
 import LION.data_loaders.LIDC_IDRI as lidc  # noqa: E402
 import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
 import LION.utils.paths as paths  # noqa: E402
+from LION.utils import spec  # noqa: E402
 from LION.operators.ct.ct_geometry import Geometry
 from LION.operators.ct.ct_utils import sinogram_add_noise  # noqa: E402
 from LION.data_loaders.LIONDataset import LIONDataset  # noqa: E402
@@ -235,7 +236,7 @@ def test_dataset_from_a_model_file(lidc_folder, tmp_path, no_tomosipo):
     for source in (
         path,
         str(path) + ".pt",
-        json.loads(path.with_suffix(".json").read_text()),
+        json.loads(spec.record_file(path).read_text()),
     ):
         with pytest.warns(UserWarning, match="without the noise"):
             data = LIONDataset.instantiate(source)

@@ -64,7 +64,7 @@ def trained(model_name, noise):
     """The file of a trained model, or None (with a message) if there is none."""
     name = settings.name(model_name, noise)
     file = folder / f"{name}{suffix}"
-    if file.with_suffix(".json").exists():
+    if file.with_suffix(".lion.json").exists():
         return file
     print(f"{name}{suffix}: not trained yet, left out")
     return None

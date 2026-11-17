@@ -22,7 +22,7 @@ With the settings of the code that produced the paper's results
 ``--noise_level``: one of ``settings.NOISE_LEVELS``, or ``all``. Each is saved
 in ``$LION_RESULTS_PATH/paper_scripts/2detect_benchmark/denoisers/`` as
 ``<denoiser>_sigma<noise level>`` (e.g. ``DnCNN-PnP_sigma0_005``; ``.pt``
-and ``.json``, with its records), and the one with the best validation as
+and ``.lion.json``, with its records), and the one with the best validation as
 ``..._best``, the one used. Checkpoints every 5 epochs: a stopped run resumes from the latest when
 run again, and denoisers already trained are skipped. ``--slices`` and
 ``--epochs`` make a short run, to check it works.
@@ -84,7 +84,7 @@ def train(name, noise_level):
     save_folder = settings.denoiser_folder()
     save_folder.mkdir(parents=True, exist_ok=True)
     fname = settings.denoiser_name(name, noise_level)
-    if (save_folder / f"{fname}.json").exists():
+    if (save_folder / f"{fname}.lion.json").exists():
         print(f"{fname}: already trained, skipped")
         return
     print(f"Training {name} at noise level {noise_level}")

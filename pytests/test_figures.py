@@ -127,14 +127,20 @@ def test_comparison_figures(tmp_path):
 def test_save_writes_the_comparison(tmp_path):
     made = comparison(tmp_path)
     folder = made.save(tmp_path / "paper", zoom=[(1, 1, 4, 4)], differences=True)
-    for name in ["comparison.json", "table.md", "table.tex", "table.csv", "scores.csv"]:
+    for name in [
+        "comparison.lion.json",
+        "table.md",
+        "table.tex",
+        "table.csv",
+        "scores.csv",
+    ]:
         assert (folder / name).is_file()
     for name in ["box_PSNR", "difference_SSIM", "images"]:
         assert (folder / f"{name}.pdf").is_file() and (folder / f"{name}.png").is_file()
     assert sorted(p.name for p in (folder / "records").iterdir()) == [
-        "as_is.json",
-        "doubling.json",
-        "halving.json",
+        "as_is.lion.json",
+        "doubling.lion.json",
+        "halving.lion.json",
     ]
     with open(folder / "scores.csv", newline="") as f:
         rows = list(csv.reader(f))
@@ -143,7 +149,7 @@ def test_save_writes_the_comparison(tmp_path):
     assert float(rows[1][rows[0].index("as_is SSIM")]) == pytest.approx(
         made.records["as_is"].scores.SSIM[0]
     )
-    saved = json.loads((folder / "comparison.json").read_text())
+    saved = json.loads((folder / "comparison.lion.json").read_text())
     assert saved["images"]["zoom"] == [[1, 1, 4, 4]]
     assert saved["comparison"]["methods"][0]["_target_"].endswith("as_is")
 

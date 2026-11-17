@@ -13,7 +13,7 @@ when two evaluations ran the same method):
 - a ``LIONmodel``: run as its solvers run it (``model_forward``: its initial
   reconstruction, the operator's default (FDK for CT) unless set, first for image-domain models, and its
   normalisation);
-- a model's file (``"model"``, ``.json``, ``.pt``): the model with its weights;
+- a model's file (``"model"``, ``.lion.json``, ``.pt``): the model with its weights;
   if its training record names a solver with its own way of reconstructing
   (e.g. Noise2Inverse's), that solver's;
 - a reconstructor's file (``reconstructor.save``): the reconstructor, with
@@ -143,7 +143,7 @@ def _from_file(path, operator, allow):
 
     if RECORD_KEY in spec.read(path):
         made = method(LIONReconstructor.load(path, allow=allow), operator)
-        made.record["file"] = spec.encode(path.with_suffix(""))
+        made.record["file"] = spec.encode(spec.file_base(path))
         return made
     model, _, _ = LIONmodel.load(path, allow=allow, supress_warnings=True)
     try:
@@ -164,7 +164,7 @@ def _from_file(path, operator, allow):
         made = method(solver, operator)
     else:
         made = method(model, operator)
-    made.record["file"] = spec.encode(path.with_suffix(""))
+    made.record["file"] = spec.encode(spec.file_base(path))
     return made
 
 

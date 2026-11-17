@@ -63,11 +63,11 @@ print(sorted(p.name for p in folder.iterdir()))
 # The files
 # ---------
 # ``FBPConvNet.pt`` holds the weights (and the random state they were made
-# from); ``FBPConvNet.json`` everything else, as plain JSON:
+# from); ``FBPConvNet.lion.json`` everything else, as JSON (LION's: not to be edited):
 
 import json
 
-print(list(json.loads(file.with_suffix(".json").read_text())))
+print(list(json.loads(file.with_suffix(".lion.json").read_text())))
 
 # %%
 # Loading
@@ -213,8 +213,8 @@ from LION.reconstructors.ForwardReconstructor import ForwardReconstructor
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 
 reconstructor = ForwardReconstructor(experiment.operator_params, trained)
-reconstructor.save(folder / "reconstructor.json")
-reconstructor = LIONReconstructor.load(folder / "reconstructor.json")
+reconstructor.save(folder / "reconstructor.lion.json")
+reconstructor = LIONReconstructor.load(folder / "reconstructor.lion.json")
 print(type(reconstructor).__name__, type(reconstructor.model).__name__)
 
 # %%

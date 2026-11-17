@@ -250,7 +250,7 @@ class Comparison:
     # -- saving --------------------------------------------------------------
 
     def save(self, folder, ids=None, by=None, zoom=None, differences=False):
-        """Writes the comparison to ``folder``: ``comparison.json`` (its spec,
+        """Writes the comparison to ``folder``: ``comparison.lion.json`` (its spec,
         to make it again with ``Comparison.instantiate(folder)``, and what was
         drawn), ``records/`` (the test records), ``table.md``/``.tex``/
         ``.csv``, ``scores.csv`` (per-sample scores: one row per sample, one
@@ -262,8 +262,8 @@ class Comparison:
         records = self._records()
         files = {}
         for name, record in records.items():
-            path = pathlib.Path("records") / f"{_file_part(name)}.json"
-            (folder / path).write_text(json.dumps(record.serialize(), indent=1))
+            path = pathlib.Path("records") / f"{_file_part(name)}{spec.RECORD_SUFFIX}"
+            spec.write(folder / path, record.serialize())
             files[name] = str(path)
         for format, suffix in (("markdown", "md"), ("latex", "tex"), ("csv", "csv")):
             (folder / f"table.{suffix}").write_text(self.table(format))
@@ -286,7 +286,7 @@ class Comparison:
                 "differences": differences,
             },
         }
-        (folder / "comparison.json").write_text(json.dumps(written, indent=1))
+        spec.write(folder / f"comparison{spec.RECORD_SUFFIX}", written)
         return folder
 
     def spec(self) -> dict:
@@ -308,7 +308,7 @@ class Comparison:
     @classmethod
     def instantiate(cls, source, *, allow=(), **arguments):
         """The comparison a saved one describes: ``source`` is the folder
-        ``save`` wrote, its ``comparison.json``, or a spec. ``arguments``
+        ``save`` wrote, its ``comparison.lion.json``, or a spec. ``arguments``
         replace recorded ones; ``evaluation_arguments`` (a dict) are given to
         the evaluation (e.g. ``{"save_folder": ...}``). ``allow``: modules
         outside LION the file may name (the recorded ``allow`` isn't used: a
@@ -316,7 +316,7 @@ class Comparison:
         from LION.evaluation.evaluation import Evaluation
 
         if isinstance(source, (str, os.PathLike)) and pathlib.Path(source).is_dir():
-            source = pathlib.Path(source) / "comparison.json"
+            source = pathlib.Path(source) / f"comparison{spec.RECORD_SUFFIX}"
         saved = spec.read(source)
         written = saved.get("comparison", saved)
         # only the caller widens what may be built, never the file
@@ -595,5 +595,5 @@ def _write_scores(path, records):
 
 def _name_of(x, operator, allow=()) -> str:
     if isinstance(x, (str, os.PathLike)):
-        return pathlib.Path(x).with_suffix("").name
+        return spec.file_base(x).name
     return _default_name(method(x, operator, allow=allow).record)

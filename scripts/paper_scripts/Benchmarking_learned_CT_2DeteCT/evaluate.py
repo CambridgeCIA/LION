@@ -99,7 +99,7 @@ def pnp_method(experiment_name, experiment, name):
         file = settings.denoiser_folder() / (
             settings.denoiser_name(name, noise_level) + suffix
         )
-        if not file.with_suffix(".json").exists():
+        if not file.with_suffix(".lion.json").exists():
             continue
         denoiser = LIONmodel.load(file)[0].to(validation.device)
         method = settings.pnp(name, denoiser, validation.get_operator())
@@ -131,7 +131,7 @@ def regulariser_methods(experiment_name, experiment):
     for name in settings.REGULARISERS:
         for kind, file_suffix in settings.CHECKPOINTS.items():
             file = folder / f"{name}{file_suffix}"
-            if not file.with_suffix(".json").exists():
+            if not file.with_suffix(".lion.json").exists():
                 print(f"{experiment_name}/{name} ({kind}): not trained yet, left out")
                 continue
             if name == "TDV":
@@ -170,7 +170,7 @@ def evaluate(experiment_name):
     methods = settings.classical_methods(experiment_name, arguments.chp_weights)
     for name in settings.MODELS:
         file = folder / f"{name}{suffix}"
-        if file.with_suffix(".json").exists():
+        if file.with_suffix(".lion.json").exists():
             methods[name] = file
         else:
             print(f"{experiment_name}/{name}: not trained yet, left out")

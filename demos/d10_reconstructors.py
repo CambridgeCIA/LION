@@ -187,12 +187,12 @@ x = pnp.reconstruct(sinogram, x0=start, verbose=0)
 
 from LION.reconstructors.LIONreconstructor import LIONReconstructor
 
-forward.save(folder / "FBPConvNet_reconstructor.json")
-again = LIONReconstructor.load(folder / "FBPConvNet_reconstructor.json")
+forward.save(folder / "FBPConvNet_reconstructor.lion.json")
+again = LIONReconstructor.load(folder / "FBPConvNet_reconstructor.lion.json")
 print(type(again).__name__, type(again.model).__name__)
 
 other_model = FBPConvNet(geometry)
-again = LIONReconstructor.instantiate(folder / "FBPConvNet_reconstructor.json")
+again = LIONReconstructor.instantiate(folder / "FBPConvNet_reconstructor.lion.json")
 again.model = other_model
 
 # %%
