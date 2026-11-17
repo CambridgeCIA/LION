@@ -33,6 +33,7 @@ from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.models.PnP.gradient_step_denoiser import GSD
 from LION.utils.parameter import LIONParameter
 from LION.utils import spec
+from pytests.helpers import resave
 from LION.utils.spec import SpecError, build, encode, to_spec
 
 
@@ -353,15 +354,6 @@ def test_instantiate_makes_the_saved_model_untrained(tmp_path, given):
     weights, new = model.state_dict(), made.state_dict()
     assert weights.keys() == new.keys()
     assert not all(torch.equal(weights[k], new[k]) for k in weights)
-
-
-def resave(path, saved):
-    """A model's ``.json`` written again with ``saved``, its ``.pt`` holding
-    its new hash: the files as another version of LION writes them."""
-    pt = path.with_suffix(".pt")
-    data = torch.load(pt, weights_only=True)
-    data["metadata_sha256"] = spec.write(path, saved)
-    torch.save(data, pt)
 
 
 def test_file_from_a_newer_lion(tmp_path):

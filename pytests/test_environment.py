@@ -22,7 +22,7 @@ import LION
 from LION.models.CNNs.dncnn import DnCNN
 from LION.utils import environment
 from LION.utils.parameter import LIONParameter
-from pytests.helpers import small_dncnn
+from pytests.helpers import resave, small_dncnn
 
 
 def save(model, path):
@@ -62,7 +62,7 @@ def test_loading_a_file_saved_with_other_code_warns(tmp_path):
     if saved["environment"]["lion"]["commit"] is None:
         pytest.skip("LION is not a git checkout here")
     saved["environment"]["lion"]["commit"] = "0" * 40
-    path.write_text(json.dumps(saved))
+    resave(path, saved)  # as LION at another commit writes it
     with pytest.warns(UserWarning, match="saved with other LION code.*0000000000"):
         DnCNN.load(tmp_path / "model", supress_warnings=True)
 

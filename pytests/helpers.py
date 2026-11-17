@@ -255,3 +255,17 @@ def dotproduct_adjointness_test(
         rtol=relative_tolerance,
         atol=absolute_tolerance,
     )
+
+
+def resave(path, saved):
+    """A model's ``.json`` written again with ``saved``, its ``.pt`` holding
+    the new hash: the files as another version of LION (or LION's code at
+    another commit) writes them."""
+    import torch
+
+    from LION.utils import spec
+
+    pt = path.with_suffix(".pt")
+    data = torch.load(pt, weights_only=True)
+    data["metadata_sha256"] = spec.write(path, saved)
+    torch.save(data, pt)
