@@ -76,7 +76,7 @@ folder = Path(tempfile.mkdtemp())
 solver.set_saving(folder, "FBPConvNet")
 
 solver.train(2)
-solver.save_final_results()  # FBPConvNet.pt (weights) and FBPConvNet.json
+solver.save_final_results()  # FBPConvNet.pt (weights) and FBPConvNet.lion.json
 print("training loss per epoch:", solver.train_loss)
 
 # %%
@@ -196,7 +196,7 @@ print(f"test PSNR: {scores.mean():.2f} dB")
 
 # %%
 # The final model and the best model by validation, each as a ``.pt``
-# (weights) and a ``.json`` (parameters and records). ``load`` makes the model
+# (weights) and a ``.lion.json`` (parameters and records). ``load`` makes the model
 # again; the record says how it was trained (the data, the solver and its
 # settings, the optimizer, the scheduler, the seed, the losses), enough to
 # train the same model again (:doc:`d09_saving_and_records`):

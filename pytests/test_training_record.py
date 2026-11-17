@@ -111,7 +111,7 @@ def same_weights(a, b):
 
 
 def saved(folder, name):
-    return json.loads((pathlib.Path(folder) / f"{name}.json").read_text())
+    return json.loads((pathlib.Path(folder) / f"{name}.lion.json").read_text())
 
 
 # --------------------------------------------------------------------------

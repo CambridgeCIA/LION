@@ -340,11 +340,11 @@ def test_instantiate_makes_the_saved_model_untrained(tmp_path, given):
     torch.manual_seed(0)
     model = dncnn_with_other_parameters()
     save(model, tmp_path / "model")
-    saved = json.loads((tmp_path / "model.json").read_text())
+    saved = json.loads((tmp_path / "model.lion.json").read_text())
     source = {
         "path": tmp_path / "model",
         "pt": str(tmp_path / "model.pt"),
-        "json": tmp_path / "model.json",
+        "json": tmp_path / "model.lion.json",
         "dict": saved,
         "spec": saved["model"],
     }[given]
@@ -358,7 +358,7 @@ def test_instantiate_makes_the_saved_model_untrained(tmp_path, given):
 
 def test_file_from_a_newer_lion(tmp_path):
     save(DnCNN(), tmp_path / "model")
-    path = tmp_path / "model.json"
+    path = tmp_path / "model.lion.json"
     saved = json.loads(path.read_text())
     saved["lion_format"] = 99
     resave(path, saved)  # as another version of LION writes it
@@ -369,7 +369,7 @@ def test_file_from_a_newer_lion(tmp_path):
 def test_saved_file_with_a_removed_parameter_loads_with_a_warning(tmp_path):
     """E.g. a parameter a model no longer has: the file still loads."""
     save(DnCNN(), tmp_path / "model")
-    path = tmp_path / "model.json"
+    path = tmp_path / "model.lion.json"
     saved = json.loads(path.read_text())
     saved["model"]["model_parameters"]["lambda_primal"] = 0.1
     resave(path, saved)  # as another version of LION writes it
@@ -422,7 +422,7 @@ def test_an_edited_file_warns(tmp_path):
         warnings.simplefilter("ignore")  # saved without data or training
         DnCNN().save(tmp_path / "model")
         DnCNN().save(tmp_path / "other", dataset=LIONParameter(name="other"))
-    path = tmp_path / "model.json"
+    path = tmp_path / "model.lion.json"
     saved = json.loads(path.read_text())
     path.write_text(json.dumps(dict(reversed(list(saved.items())))))
     with warnings.catch_warnings():
@@ -432,6 +432,6 @@ def test_an_edited_file_warns(tmp_path):
     path.write_text(json.dumps(saved))
     with pytest.warns(UserWarning, match="changed after LION wrote it"):
         spec.read(path)
-    path.write_text((tmp_path / "other.json").read_text())
+    path.write_text((tmp_path / "other.lion.json").read_text())
     with pytest.warns(UserWarning, match="isn't the metadata saved with"):
         LIONmodel.load(tmp_path / "model")

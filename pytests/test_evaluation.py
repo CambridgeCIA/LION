@@ -211,7 +211,7 @@ def test_run_gives_a_test_record(tmp_path):
     assert record.environment.lion.version
     assert record.method.kind == "model"
     assert record.data.dataset["_target_"].endswith("Pairs")
-    saved = list(tmp_path.glob("DnCNN-*.json"))
+    saved = list(tmp_path.glob("DnCNN-*.lion.json"))
     assert len(saved) == 1
     assert read_test_record(saved[0]).serialize() == record.serialize()
 
@@ -232,7 +232,7 @@ def test_saved_results_are_reused(tmp_path, monkeypatch):
     Evaluation(dataset=data(seed=1), save_folder=other, device="cpu").run(
         model(0), "DnCNN"
     )
-    assert len(list(other.glob("DnCNN-*.json"))) == 3
+    assert len(list(other.glob("DnCNN-*.lion.json"))) == 3
 
 
 def test_normalisations(tmp_path):
@@ -346,7 +346,7 @@ def test_an_experiment(tmp_path, monkeypatch):
     assert record.evaluation["experiment"]["_target_"].endswith("LowDoseCTRecon")
     assert len(record.scores.ids) == 2
     assert record.scores.ids[0].startswith("LIDC-IDRI-")
-    assert len(list((tmp_path / "results").glob("zeros-*.json"))) == 1
+    assert len(list((tmp_path / "results").glob("zeros-*.lion.json"))) == 1
     # run again (a new evaluation, as in a new script): read, not recomputed
     monkeypatch.setattr(
         evaluation_module, "scores", lambda *a, **k: pytest.fail("recomputed")

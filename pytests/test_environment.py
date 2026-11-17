@@ -46,7 +46,7 @@ def test_record(tmp_path):
     json.dumps(record.serialize())  # plain JSON
 
     save(small_dncnn(), tmp_path / "model")
-    saved = json.loads((tmp_path / "model.json").read_text())
+    saved = json.loads((tmp_path / "model.lion.json").read_text())
     assert saved["environment"]["lion"]["version"] == LION.__version__
     with warnings.catch_warnings():
         warnings.simplefilter("error")  # the same code: no warning
@@ -57,7 +57,7 @@ def test_record(tmp_path):
 
 def test_loading_a_file_saved_with_other_code_warns(tmp_path):
     save(small_dncnn(), tmp_path / "model")
-    path = tmp_path / "model.json"
+    path = tmp_path / "model.lion.json"
     saved = json.loads(path.read_text())
     if saved["environment"]["lion"]["commit"] is None:
         pytest.skip("LION is not a git checkout here")

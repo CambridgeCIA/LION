@@ -66,7 +66,7 @@ verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and me
 def train(experiment_name, name):
     save_folder = settings.folder(experiment_name)
     save_folder.mkdir(parents=True, exist_ok=True)
-    if (save_folder / f"{name}_mintrain.json").exists():
+    if (save_folder / f"{name}_mintrain.lion.json").exists():
         print(f"{experiment_name}/{name}: already trained, skipped")
         return
     print(f"Training {name} on {experiment_name}")

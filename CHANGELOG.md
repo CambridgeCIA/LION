@@ -25,9 +25,10 @@ with 0.2.0 don't load.
   - `instantiate()` and `parameters_from_file()` on every base class;
   - reconstructors save their own record; a fine-tuned model records its
     original;
-  - every file LION writes holds its content's hash, and a model's `.pt` the
-    hash of its `.json`: an edited file, or a `.json` and `.pt` not saved
-    together, give a warning.
+  - records are named `*.lion.json` (LION's, not to be edited); each holds
+    its content's hash, and a model's `.pt` the hash of its `.lion.json`: an
+    edited file, or a `.lion.json` and `.pt` not saved together, give a
+    warning (#396).
 - **Evaluation** (`LION.evaluation`; #282–#284, #370): `Evaluation` on a test
   set, `Comparison` against a baseline (with checks for data leakage by
   patient, another problem or other code), tables and figures.

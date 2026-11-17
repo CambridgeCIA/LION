@@ -374,7 +374,7 @@ class LIONmodel(nn.Module, ABC):
 
     # This shoudl save all relevant information to completely reproduce models
     def save(self, fname, **kwargs):
-        """Saves the model to ``fname`` (``fname.json``, its parameters and
+        """Saves the model to ``fname`` (``fname.lion.json``, its parameters and
         records, and ``fname.pt``, its weights), with what ``kwargs`` give:
 
         - ``dataset``: the record of the data (``LION.data_loaders.data_record``,
@@ -467,9 +467,9 @@ class LIONmodel(nn.Module, ABC):
             metadata["training"] = spec.encode(training)
 
         # Do the save:
-        # the .pt holds the .json's hash: loading checks they were saved together
-        dic["metadata_sha256"] = spec.write(fname.with_suffix(".json"), metadata)
-        torch.save(dic, fname.with_suffix(".pt"))
+        # the .pt holds the record's hash: loading checks they were saved together
+        dic["metadata_sha256"] = spec.write(spec.record_file(fname), metadata)
+        torch.save(dic, spec.weights_file(fname))
 
     # Mandatory function, saves model for training
     def save_checkpoint(self, fname, epoch, loss, optimizer, training_param, **kwargs):
@@ -505,10 +505,11 @@ class LIONmodel(nn.Module, ABC):
         if isinstance(fname, str):
             fname = Path(fname)
         # Check compatible suffixes:
-        if fname.with_suffix(".pt").is_file():
-            fname = fname.with_suffix(".pt")
-        elif fname.with_suffix(".pth").is_file():
-            fname = fname.with_suffix(".pth")
+        base = spec.file_base(fname)
+        if spec.weights_file(base).is_file():
+            fname = spec.weights_file(base)
+        elif base.with_name(base.name + ".pth").is_file():
+            fname = base.with_name(base.name + ".pth")
         # Load the actual pythorch saved data
         if weights_only:
             try:
@@ -538,7 +539,7 @@ class LIONmodel(nn.Module, ABC):
     @classmethod
     def _read_model_file(cls, fname, allow=()):
         """The class to build, its keyword arguments and the file's metadata
-        (``options``), from a model's ``.json`` (its path, or the dict read
+        (``options``), from a model's ``.lion.json`` (its path, or the dict read
         from it, or the model's spec alone).
 
         The model is built as ``cls``, unless ``cls`` is ``LIONmodel``: then as
@@ -556,7 +557,7 @@ class LIONmodel(nn.Module, ABC):
                 )
         else:
             fname = Path(fname)
-            where = fname.with_suffix(".json")
+            where = spec.record_file(fname)
             saved = spec.read(fname)
             if "lion_format" not in saved:
                 raise ValueError(
@@ -604,8 +605,8 @@ class LIONmodel(nn.Module, ABC):
         """The model a saved file describes, with its saved parameters and new
         (untrained) weights. ``load()`` is this plus the saved weights.
 
-        ``source``: a model's file (``"model"``, ``"model.json"`` or
-        ``"model.pt"``: the ``.json`` is read), the dict read from it, or the
+        ``source``: a model's file (``"model"``, ``"model.lion.json"`` or
+        ``"model.pt"``: the ``.lion.json`` is read), the dict read from it, or the
         model's spec. Called on a model class it makes that class; called on
         ``LIONmodel``, the class the file names (``allow`` as in ``load``).
 
@@ -652,7 +653,7 @@ class LIONmodel(nn.Module, ABC):
     @classmethod
     def load(cls, fname, *, weights_only=True, supress_warnings=False, allow=()):
         """
-        Function that loads a model from memory: built from its ``.json``, with
+        Function that loads a model from memory: built from its ``.lion.json``, with
         the weights of its ``.pt``.
 
         Called on a model class (``FBPConvNet.load(f)``) it builds that class;
@@ -681,7 +682,7 @@ class LIONmodel(nn.Module, ABC):
         model.load_state_dict(data.pop("model_state_dict"))
         model.initial_random_state = _saved_random_state(data)
         # where it came from, so records of methods using it can name the file
-        model.source_file = fname.with_suffix("")
+        model.source_file = spec.file_base(fname)
         # the loaded weights' hash: training that starts from them records
         # this file as where they come from (fine-tuning)
         model.source_weights_sha256 = weights_sha256(model)
@@ -777,18 +778,18 @@ def made_from_random_state(target, kwargs, state):
 
 
 def _check_saved_together(fname, data):
-    """Warn if a model's ``.json`` isn't the one saved with its ``.pt``: the
-    ``.pt`` holds the hash of the ``.json`` written with it."""
+    """Warn if a model's record (``.lion.json``) isn't the one saved with its
+    ``.pt``: the ``.pt`` holds the hash of the record written with it."""
     expected = data.pop("metadata_sha256", None)
     if expected is None:
         return
-    with open(Path(fname).with_suffix(".json"), encoding="utf-8") as f:
+    record = spec.record_file(fname)
+    with open(record, encoding="utf-8") as f:
         written = json.load(f).get(spec.CHECKSUM)
     if written != expected:
         warnings.warn(
-            f"{Path(fname).with_suffix('.json')} isn't the metadata saved with "
-            f"{Path(fname).with_suffix('.pt')}: the weights may not be what it "
-            "describes",
+            f"{record} isn't the metadata saved with {spec.weights_file(fname)}: "
+            "the weights may not be what it describes",
             stacklevel=3,
         )
 

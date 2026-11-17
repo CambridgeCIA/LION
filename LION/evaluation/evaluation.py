@@ -71,7 +71,7 @@ def is_test_record(value) -> bool:
 
 
 def read_test_record(source) -> LIONParameter:
-    """A test record: a record, or the path of its ``.json``."""
+    """A test record: a record, or the path of its ``.lion.json``."""
     saved = spec.read(source)
     if not is_test_record(saved):
         raise ValueError("not a test record")
@@ -174,7 +174,7 @@ class Evaluation:
         )
 
         if cacheable and self.save_folder is not None:
-            saved = self._saved(f"*-{method_key[:16]}.json")
+            saved = self._saved(f"*-{method_key[:16]}{spec.RECORD_SUFFIX}")
             if saved:
                 record = read_test_record(saved[0])
                 difference = environment.code_differences(record.environment)
@@ -218,7 +218,10 @@ class Evaluation:
         if save and self.save_folder is not None:
             if cacheable:
                 self.save_folder.mkdir(parents=True, exist_ok=True)
-                path = self.save_folder / f"{_file_name(name)}-{method_key[:16]}.json"
+                path = (
+                    self.save_folder
+                    / f"{_file_name(name)}-{method_key[:16]}{spec.RECORD_SUFFIX}"
+                )
                 spec.write(path, record)
             else:
                 warnings.warn(
@@ -296,7 +299,7 @@ class Evaluation:
 
     def _known_range(self, evaluation_key):
         """The range a saved record of this evaluation already computed."""
-        for path in self._saved("*.json"):
+        for path in self._saved(f"*{spec.RECORD_SUFFIX}"):
             try:
                 saved = spec.read(path)
             except (OSError, ValueError):

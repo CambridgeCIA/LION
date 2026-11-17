@@ -105,7 +105,7 @@ def test_an_experiments_parameters_from_a_data_record(data_record):
         assert type(experiment) is ct_experiments.LowDoseCTRecon
         assert experiment.param.noise_params.I0 == 5000
     assert Experiment.instantiate(data_record).param.noise_params.I0 == 11000
-    # and from the experiment's own spec (a package's experiment.json)
+    # and from the experiment's own spec (a package's experiment.lion.json)
     written = data_record["experiment"]
     assert Experiment.parameters_from_file(written).noise_params.I0 == 11000
 

@@ -26,7 +26,7 @@ A model is saved as two files with the same name, as a solver saves it
 (`solver.save_final_results()`) or by hand (`model.save(file, dataset=...,
 training=...)`):
 
-- **`model.json`**: the metadata, plain JSON written by LION, not to be edited
+- **`model.lion.json`**: the metadata, JSON written by LION, not to be edited
   (change things with `parameters_from_file` or `instantiate(file, **arguments)`):
   - `lion_format`: the metadata format's version (a file without it, from
     before LION's metadata, isn't read);
@@ -40,17 +40,20 @@ training=...)`):
   - `model_state_dict`: the weights;
   - `initial_random_state`: torch's random state when the model was made (see
     [Repeating a training exactly](#repeating-a-training-exactly));
-  - `metadata_sha256`: the hash of the `model.json` saved with it;
+  - `metadata_sha256`: the hash of the `model.lion.json` saved with it;
   - for checkpoints, also the optimizer's (and scheduler's) state, the epoch,
     the losses and the random state of the run.
 
-**Edits are detected.** Every JSON file LION writes (model files,
-reconstructor files, test records, comparisons, packages) holds the hash of
+**Edits are detected.** Every record LION writes (model files,
+reconstructor files, test records, comparisons, packages) is named
+`*.lion.json`, to say it is LION's and not to be edited, and holds the hash of
 its own content, `lion_sha256`. Reading a file whose content no longer matches
 it gives a warning (other indentation or key order doesn't count), and so does
-loading a model whose `.json` isn't the one saved with its `.pt`.
+loading a model whose `.lion.json` isn't the one saved with its `.pt`. A
+file name is given without the suffix (`model.save("results/model")`,
+`load("results/model")`); a name ending in `.json` is used as given.
 
-A shortened `model.json` of a DnCNN trained on a LIDC-IDRI experiment:
+A shortened `model.lion.json` of a DnCNN trained on a LIDC-IDRI experiment:
 
 ```json
 {
@@ -232,17 +235,17 @@ publish("results/pnp", "pnp_package")   # a reconstructor's file: its model, and
 
 ```
 lpd_package/
-  model.json, model.pt   the model file, exactly as LION saved it
-  <name>_initial.pt      the initial weights, when the solver saved them
-  experiment.json        the experiment
-  data/training.json     the training data's record
-  data/validation.json   the validation data's record, if validated
-  solver.json            the training record
-  test.json              the test record, if an evaluation was given
-  reconstructor.json     the reconstructor, when one is published (its model: model)
-  environment.txt        the packages installed where it was published (conda's and Python's)
-  package.json           the files' sha256, the citations, LION's version and commit, notes
-  README.md              a model card, generated (edit it freely: it isn't checksummed)
+  model.lion.json, model.pt  the model file, exactly as LION saved it
+  <name>_initial.pt          the initial weights, when the solver saved them
+  experiment.lion.json       the experiment
+  data/training.lion.json    the training data's record
+  data/validation.lion.json  the validation data's record, if validated
+  solver.lion.json           the training record
+  test.lion.json             the test record, if an evaluation was given
+  reconstructor.lion.json    the reconstructor, when one is published (its model: model)
+  environment.txt            the packages installed where it was published (conda's and Python's)
+  package.lion.json          the files' sha256, the citations, LION's version and commit, notes
+  README.md                  a model card, generated (edit it freely: it isn't checksummed)
 ```
 
 - **It refuses** (an error, before writing anything):
@@ -258,10 +261,10 @@ lpd_package/
     itself;
   - a folder that isn't empty.
 - **A fine-tuned model's originals** are in the package: their metadata as
-  `origin/model.json` (and `origin/origin/model.json`, ...), and the model card
+  `origin/model.lion.json` (and `origin/origin/model.lion.json`, ...), and the model card
   lists them. `train_again` repeats the last training, from the saved initial
   weights.
-- **Notes** (in `package.json` and the model card): a package published in
+- **Notes** (in `package.lion.json` and the model card): a package published in
   another environment than it was trained in, tested on another problem, or
   trained from weights whose origin isn't recorded.
 - **Citations** are each component's `cite()`: where the model, solver and

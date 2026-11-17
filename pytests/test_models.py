@@ -279,7 +279,7 @@ def test_files_with_the_old_name_of_the_operator_params_load(monkeypatch, tmp_pa
     )
     model = AR(small_geometry(), AR.default_parameters())
     _save(model, tmp_path / "model")
-    path = tmp_path / "model.json"
+    path = tmp_path / "model.lion.json"
     saved = json.loads(path.read_text())
     saved["model"]["geometry"] = saved["model"].pop("operator_params")
     saved["geometry"] = saved["model"]["geometry"]

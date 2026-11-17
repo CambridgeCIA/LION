@@ -28,7 +28,7 @@ model: a model's spec would make it with new weights. Records of an evaluation
 keep the model's identity (spec and weights hash) next to it, and
 ``instantiate(source, model)`` checks the model given against it.
 
-``reconstructor.save(file)`` writes its own record, ``file.json``: its spec,
+``reconstructor.save(file)`` writes its own record, ``file.lion.json``: its spec,
 the file its model was loaded from (``LIONmodel.load``) and the model's
 weights hash, and the environment. The weights stay in the model's file.
 ``LIONReconstructor.load(file)`` makes it again with that model;
@@ -172,7 +172,7 @@ class LIONReconstructor(ABC):
         return kwargs
 
     def save(self, fname):
-        """Write this reconstructor's record to ``fname`` (``.json``): its
+        """Write this reconstructor's record to ``fname`` (``.lion.json``): its
         spec (operator and parameters), its model by the file it was loaded
         from and its weights hash (a model made in the script: only the hash;
         a function: its spec), and the environment. Made again by ``load``
@@ -190,7 +190,7 @@ class LIONReconstructor(ABC):
             "model": _model_reference(model),
             "environment": environment.environment_record(device).serialize(),
         }
-        spec.write(pathlib.Path(fname).with_suffix(".json"), written)
+        spec.write(spec.record_file(fname), written)
 
     @classmethod
     def load(cls, fname, *, allow=()):
@@ -207,7 +207,7 @@ class LIONReconstructor(ABC):
             raise ValueError(f"{fname} isn't a reconstructor's file (save())")
         model = _load_model(saved.get("model"), fname, allow)
         reconstructor = cls.instantiate(saved, model, allow=allow)
-        reconstructor.source_file = fname.with_suffix("")
+        reconstructor.source_file = spec.file_base(fname)
         return reconstructor
 
     @classmethod
