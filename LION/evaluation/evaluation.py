@@ -219,7 +219,7 @@ class Evaluation:
             if cacheable:
                 self.save_folder.mkdir(parents=True, exist_ok=True)
                 path = self.save_folder / f"{_file_name(name)}-{method_key[:16]}.json"
-                path.write_text(json.dumps(record, indent=1))
+                spec.write(path, record)
             else:
                 warnings.warn(
                     f"{name}: not saved, as part of the method or the data can't be "
@@ -298,7 +298,7 @@ class Evaluation:
         """The range a saved record of this evaluation already computed."""
         for path in self._saved("*.json"):
             try:
-                saved = json.loads(path.read_text())
+                saved = spec.read(path)
             except (OSError, ValueError):
                 continue
             if saved.get("evaluation_key") == evaluation_key and saved.get(

@@ -32,6 +32,7 @@ from LION.models.CNNs.dncnn import DnCNN
 from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.models.PnP.gradient_step_denoiser import GSD
 from LION.utils.parameter import LIONParameter
+from LION.utils import spec
 from LION.utils.spec import SpecError, build, encode, to_spec
 
 
@@ -354,12 +355,21 @@ def test_instantiate_makes_the_saved_model_untrained(tmp_path, given):
     assert not all(torch.equal(weights[k], new[k]) for k in weights)
 
 
+def resave(path, saved):
+    """A model's ``.json`` written again with ``saved``, its ``.pt`` holding
+    its new hash: the files as another version of LION writes them."""
+    pt = path.with_suffix(".pt")
+    data = torch.load(pt, weights_only=True)
+    data["metadata_sha256"] = spec.write(path, saved)
+    torch.save(data, pt)
+
+
 def test_file_from_a_newer_lion(tmp_path):
     save(DnCNN(), tmp_path / "model")
     path = tmp_path / "model.json"
     saved = json.loads(path.read_text())
     saved["lion_format"] = 99
-    path.write_text(json.dumps(saved))
+    resave(path, saved)  # as another version of LION writes it
     with pytest.raises(ValueError, match="format 99"):
         DnCNN.load(tmp_path / "model", supress_warnings=True)
 
@@ -370,7 +380,7 @@ def test_saved_file_with_a_removed_parameter_loads_with_a_warning(tmp_path):
     path = tmp_path / "model.json"
     saved = json.loads(path.read_text())
     saved["model"]["model_parameters"]["lambda_primal"] = 0.1
-    path.write_text(json.dumps(saved))
+    resave(path, saved)  # as another version of LION writes it
     with pytest.warns(UserWarning, match="lambda_primal"):
         loaded, _, _ = DnCNN.load(tmp_path / "model", supress_warnings=True)
     assert isinstance(loaded, DnCNN)
@@ -406,6 +416,30 @@ def test_pt_holds_only_safe_contents(tmp_path):
         "epoch",
         "loss",
         "initial_random_state",  # torch's random state when the model was made
+        "metadata_sha256",  # the .json's hash: it was saved with this .pt
     }
     assert data["epoch"] == 3 and data["loss"] == [0.5, 0.4, 0.3]
     assert data["initial_random_state"].dtype == torch.uint8
+
+
+def test_an_edited_file_warns(tmp_path):
+    """A file LION wrote holds its content's hash, and a model's .pt the hash
+    of its .json: an edit, or a .json from another save, gives a warning;
+    rewriting it unchanged (other indentation, key order) doesn't."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # saved without data or training
+        DnCNN().save(tmp_path / "model")
+        DnCNN().save(tmp_path / "other", dataset=LIONParameter(name="other"))
+    path = tmp_path / "model.json"
+    saved = json.loads(path.read_text())
+    path.write_text(json.dumps(dict(reversed(list(saved.items())))))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        LIONmodel.load(tmp_path / "model")
+    saved["model"]["model_parameters"]["blocks"] = 3
+    path.write_text(json.dumps(saved))
+    with pytest.warns(UserWarning, match="changed after LION wrote it"):
+        spec.read(path)
+    path.write_text((tmp_path / "other.json").read_text())
+    with pytest.warns(UserWarning, match="isn't the metadata saved with"):
+        LIONmodel.load(tmp_path / "model")

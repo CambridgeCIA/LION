@@ -24,7 +24,10 @@ with 0.2.0 don't load.
     environment record (LION's code, packages, machine);
   - `instantiate()` and `parameters_from_file()` on every base class;
   - reconstructors save their own record; a fine-tuned model records its
-    original.
+    original;
+  - every file LION writes holds its content's hash, and a model's `.pt` the
+    hash of its `.json`: an edited file, or a `.json` and `.pt` not saved
+    together, give a warning.
 - **Evaluation** (`LION.evaluation`; #282–#284, #370): `Evaluation` on a test
   set, `Comparison` against a baseline (with checks for data leakage by
   patient, another problem or other code), tables and figures.

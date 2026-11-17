@@ -31,7 +31,7 @@ from LION.experiments import ct_experiments  # noqa: E402
 from LION.models.LIONmodel import LIONmodel, ModelInputType  # noqa: E402
 from LION.optimizers.SupervisedSolver import SupervisedSolver  # noqa: E402
 from LION.optimizers.training_record import weights_sha256  # noqa: E402
-from LION.utils import environment  # noqa: E402
+from LION.utils import environment, spec  # noqa: E402
 from pytests.helpers import ScaleOp, small_dncnn  # noqa: E402
 from pytests.test_lidc_resampling import fake_lidc  # noqa: E402
 
@@ -190,7 +190,7 @@ def test_a_package_holds_the_model_and_its_records(trained, tmp_path):
         "experiment.json": saved["dataset_params"]["experiment"],
     }
     for name, record in records.items():
-        assert json.loads((folder / name).read_text()) == record
+        assert spec.read(folder / name) == record
     assert written["notes"] == []
 
     card = (folder / "README.md").read_text()

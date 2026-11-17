@@ -270,7 +270,7 @@ def load(folder) -> LIONParameter:
     from LION.optimizers.training_record import read_training_record
 
     folder = pathlib.Path(folder)
-    written = json.loads((folder / "package.json").read_text(encoding="utf-8"))
+    written = spec.read(folder / "package.json")
     _warn_changed_files(folder, written)
     saved = spec.read(folder / written["files"]["model"])
     difference = environment.code_differences(saved.get("environment") or {})
@@ -896,7 +896,7 @@ def _lion(record) -> dict:
 
 
 def _write_json(path, value):
-    path.write_text(json.dumps(value, indent=1), encoding="utf-8")
+    spec.write(path, value)
 
 
 def _sentence(problems) -> str:

@@ -263,7 +263,7 @@ class Comparison:
         files = {}
         for name, record in records.items():
             path = pathlib.Path("records") / f"{_file_part(name)}.json"
-            (folder / path).write_text(json.dumps(record.serialize(), indent=1))
+            spec.write(folder / path, record.serialize())
             files[name] = str(path)
         for format, suffix in (("markdown", "md"), ("latex", "tex"), ("csv", "csv")):
             (folder / f"table.{suffix}").write_text(self.table(format))
@@ -286,7 +286,7 @@ class Comparison:
                 "differences": differences,
             },
         }
-        (folder / "comparison.json").write_text(json.dumps(written, indent=1))
+        spec.write(folder / "comparison.json", written)
         return folder
 
     def spec(self) -> dict:

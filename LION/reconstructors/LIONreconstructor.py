@@ -42,7 +42,6 @@ iterations when ``verbose >= 1``.
 
 from __future__ import annotations
 
-import json
 import pathlib
 import warnings
 from abc import ABC, abstractmethod
@@ -191,8 +190,7 @@ class LIONReconstructor(ABC):
             "model": _model_reference(model),
             "environment": environment.environment_record(device).serialize(),
         }
-        path = pathlib.Path(fname).with_suffix(".json")
-        path.write_text(json.dumps(written, indent=1), encoding="utf-8")
+        spec.write(pathlib.Path(fname).with_suffix(".json"), written)
 
     @classmethod
     def load(cls, fname, *, allow=()):

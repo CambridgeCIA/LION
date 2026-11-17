@@ -467,8 +467,8 @@ class LIONmodel(nn.Module, ABC):
             metadata["training"] = spec.encode(training)
 
         # Do the save:
-        with open(fname.with_suffix(".json"), "w", encoding="utf-8") as f:
-            json.dump(metadata, f, ensure_ascii=False, indent=4)
+        # the .pt holds the .json's hash: loading checks they were saved together
+        dic["metadata_sha256"] = spec.write(fname.with_suffix(".json"), metadata)
         torch.save(dic, fname.with_suffix(".pt"))
 
     # Mandatory function, saves model for training
@@ -673,6 +673,7 @@ class LIONmodel(nn.Module, ABC):
         data = LIONmodel._load_data(
             fname, weights_only=weights_only, supress_warnings=supress_warnings
         )
+        _check_saved_together(fname, data)
         model = target(**kwargs)
 
         # Load the data into the model we created.
@@ -703,12 +704,12 @@ class LIONmodel(nn.Module, ABC):
         data = LIONmodel._load_data(
             fname, weights_only=weights_only, supress_warnings=True
         )
+        _check_saved_together(fname, data)
         model = target(**kwargs)
         # Load the data into the model we created.
         model.to(default_device())
         model.load_state_dict(data.pop("model_state_dict"))
         model.initial_random_state = _saved_random_state(data)
-
         return model, options.unpack(), data
 
     @classmethod
@@ -773,6 +774,23 @@ def made_from_random_state(target, kwargs, state):
         return target(**kwargs)
     finally:
         rng.set_random_state(saved)
+
+
+def _check_saved_together(fname, data):
+    """Warn if a model's ``.json`` isn't the one saved with its ``.pt``: the
+    ``.pt`` holds the hash of the ``.json`` written with it."""
+    expected = data.pop("metadata_sha256", None)
+    if expected is None:
+        return
+    with open(Path(fname).with_suffix(".json"), encoding="utf-8") as f:
+        written = json.load(f).get(spec.CHECKSUM)
+    if written != expected:
+        warnings.warn(
+            f"{Path(fname).with_suffix('.json')} isn't the metadata saved with "
+            f"{Path(fname).with_suffix('.pt')}: the weights may not be what it "
+            "describes",
+            stacklevel=3,
+        )
 
 
 def _saved_random_state(data):

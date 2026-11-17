@@ -26,21 +26,29 @@ A model is saved as two files with the same name, as a solver saves it
 (`solver.save_final_results()`) or by hand (`model.save(file, dataset=...,
 training=...)`):
 
-- **`model.json`**: the metadata, plain JSON written by LION (read-only in
-  intent):
+- **`model.json`**: the metadata, plain JSON written by LION, not to be edited
+  (change things with `parameters_from_file` or `instantiate(file, **arguments)`):
   - `lion_format`: the metadata format's version (a file without it, from
     before LION's metadata, isn't read);
   - `model`: the model's spec (its class and parameters, see below);
   - `environment`: the environment record (LION's code, packages, machine);
   - `dataset_params`: the data record of the training data;
   - `training`: the training record;
+  - `lion_sha256`: the hash of the rest of the file;
 - **`model.pt`**: tensors and plain values only, read with torch's safe loader
   (`weights_only=True`), so loading a file runs no code from it:
   - `model_state_dict`: the weights;
   - `initial_random_state`: torch's random state when the model was made (see
     [Repeating a training exactly](#repeating-a-training-exactly));
+  - `metadata_sha256`: the hash of the `model.json` saved with it;
   - for checkpoints, also the optimizer's (and scheduler's) state, the epoch,
     the losses and the random state of the run.
+
+**Edits are detected.** Every JSON file LION writes (model files,
+reconstructor files, test records, comparisons, packages) holds the hash of
+its own content, `lion_sha256`. Reading a file whose content no longer matches
+it gives a warning (other indentation or key order doesn't count), and so does
+loading a model whose `.json` isn't the one saved with its `.pt`.
 
 A shortened `model.json` of a DnCNN trained on a LIDC-IDRI experiment:
 
