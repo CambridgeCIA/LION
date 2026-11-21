@@ -10,6 +10,8 @@
   ``@pytest.mark.tomosipo``. They are skipped when tomosipo cannot be imported
   or no CUDA device is available: tomosipo projects with astra's CUDA
   algorithms, and pip's astra-toolbox imports fine on machines without a GPU.
+- Tests that need TIGRE are marked with ``@pytest.mark.tigre``. They are
+  skipped when TIGRE cannot be imported or no CUDA device is available.
 - Tests marked ``@pytest.mark.cuda`` are skipped when no CUDA device is
   available, so ``pytest`` works everywhere without ``-m "not cuda"``.
 - ``LION_RESULTS_PATH`` is unset in every test, so tests don't depend on (or
@@ -28,16 +30,28 @@ def _tomosipo_available() -> bool:
     return True
 
 
+def _tigre_available() -> bool:
+    try:
+        import tigre  # noqa: F401
+    except Exception:  # its CUDA libraries can fail with errors other than ImportError
+        return False
+    return True
+
+
 CUDA_AVAILABLE = torch.cuda.is_available()
 TOMOSIPO_AVAILABLE = CUDA_AVAILABLE and _tomosipo_available()
+TIGRE_AVAILABLE = CUDA_AVAILABLE and _tigre_available()
 
 
 def pytest_collection_modifyitems(config, items):
     skip_tomosipo = pytest.mark.skip(reason="tomosipo/astra with CUDA is not available")
+    skip_tigre = pytest.mark.skip(reason="TIGRE with CUDA is not available")
     skip_cuda = pytest.mark.skip(reason="no CUDA device available")
     for item in items:
         if "tomosipo" in item.keywords and not TOMOSIPO_AVAILABLE:
             item.add_marker(skip_tomosipo)
+        if "tigre" in item.keywords and not TIGRE_AVAILABLE:
+            item.add_marker(skip_tigre)
         if "cuda" in item.keywords and not CUDA_AVAILABLE:
             item.add_marker(skip_cuda)
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
+from LION.operators.ct import _tigre
 from LION.operators.ct._batching import batched_reconstruction
 from LION.operators.ct.ct_geometry import Geometry
 from LION.operators.Operator import Operator
@@ -28,8 +29,12 @@ def fdk(
     ``op``: the CT operator, or a Geometry to build it from. ``clip``: set
     negative values to zero. ``differentiable``: the reconstruction supports
     autograd with respect to ``sino`` (the backprojection goes through
-    tomosipo's autograd wrapper), e.g. for FDK inside a network trained end to
-    end; slightly slower and uses more memory."""
+    the backend's autograd wrapper), e.g. for FDK inside a network trained end
+    to end; slightly slower and uses more memory.
+
+    With the tomosipo backend it is ts_algorithms' ``fdk``/``fbp``; with TIGRE,
+    TIGRE's (``tigre.algorithms.fdk``/``fbp``, without Parker weights) in
+    torch."""
 
     def recon_fn(op, sino_i, i):
         sub_recon = _fdk_sample(op, sino_i, differentiable)
@@ -49,7 +54,11 @@ def _is_cone_beam(op) -> bool:
 
 
 def _fdk_sample(op, y: torch.Tensor, differentiable: bool) -> torch.Tensor:
-    """FDK (cone beam) or FBP (parallel beam) of one (C, angles, detectors) sinogram."""
+    """FDK (cone beam) or FBP (parallel beam) of one (C, angles, detectors)
+    sinogram: TIGRE's (``_tigre.fdk_sample``) or ts_algorithms', as the
+    operator's backend."""
+    if op.backend == "tigre":
+        return _tigre.fdk_sample(op, y, differentiable)
     ts_algorithms = import_tomosipo("ts_algorithms", "fdk")
     cone = _is_cone_beam(op)
     if not differentiable:

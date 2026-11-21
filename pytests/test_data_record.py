@@ -24,6 +24,7 @@ import pytest  # noqa: E402
 import torch  # noqa: E402
 
 import LION.data_loaders.LIDC_IDRI as lidc  # noqa: E402
+from LION.operators.ct import ct_backend  # noqa: E402
 import LION.experiments.ct_experiments as ct_experiments  # noqa: E402
 import LION.utils.paths as paths  # noqa: E402
 from LION.operators.ct.ct_geometry import Geometry
@@ -201,6 +202,7 @@ def test_detect_record(tmp_path):
     assert record.samples.ids == list(data.slice_dataframe["slice_identifier"])
     rebuilt = deteCT.instantiate(record)
     assert type(rebuilt) is deteCT and rebuilt.mode == "train"
+    default.backend = ct_backend()  # the record says the backend used
     assert same_geometry(rebuilt.operator_params, default)
     assert rebuilt.sample_ids() == record.samples.ids
 

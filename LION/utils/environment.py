@@ -58,6 +58,7 @@ PACKAGES = {
     "astra-toolbox": "astra",
     "tomosipo": "tomosipo",
     "ts_algorithms": "ts_algorithms",
+    "tigre": "tigre",
 }
 
 

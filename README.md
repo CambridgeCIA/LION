@@ -44,6 +44,21 @@ Everything compiled, torch included, comes from conda (`env_base.yml`), so all o
 - **CUDA version**: set by `cuda-version` in `env_base.yml` (12.9). Any CUDA 12 driver runs it (`nvidia-smi` shows the driver's CUDA version).
 - **No GPU on the machine where you create the environment** (e.g. a login node): conda cannot see a CUDA driver and refuses `pytorch-gpu`. Tell it which CUDA to assume: `CONDA_OVERRIDE_CUDA=12.9 conda env create --file=env_base.yml --name=lion`.
 
+**TIGRE** is LION's other CT backend. It is compiled with CUDA (it needs the CUDA toolkit, `nvcc`), and isn't on PyPI (`pip install tigre` installs another package):
+
+```bash
+pip install ".[tigre]"   # TIGRE 3.3.0, from GitHub
+```
+
+Then choose it once, at the top of a script, or per geometry (`geometry.backend = "tigre"`):
+
+```python
+from LION.operators.ct import set_ct_backend
+set_ct_backend("tigre")   # "tomosipo" by default
+```
+
+Records say which backend made a result, and loading uses it again.
+
 To develop LION, install it editable with the development tools, and the pre-commit hooks (Black formatting):
 
 ```bash
@@ -133,7 +148,7 @@ So a CT model is made from its geometry, e.g. `LPD(geometry)`, and a solver take
 
 ## Contributing
 
-Read the [developer guide](https://cambridgecia.github.io/LION/developers.html) for how LION is built and what a new model, solver or operator needs, and the [contributor guide](contributor-guide.md) for the conventions the code follows. Run the tests with `pytest pytests/`; tests that need CUDA or tomosipo/ASTRA are skipped on machines without them, and the same tests run on every pull request.
+Read the [developer guide](https://cambridgecia.github.io/LION/developers.html) for how LION is built and what a new model, solver or operator needs, and the [contributor guide](contributor-guide.md) for the conventions the code follows. Run the tests with `pytest pytests/`; tests that need CUDA, tomosipo/ASTRA or TIGRE are skipped on machines without them, and the same tests run on every pull request.
 
 ## Citing LION
 

@@ -11,6 +11,7 @@ from typing import Callable, Optional
 import torch
 
 from LION.operators.ct._batching import batched_reconstruction, sample_verbose
+from LION.operators.ct.backend import require_ct_backend
 from LION.operators.ct.ct_geometry import Geometry
 from LION.operators.Operator import Operator
 from LION.utils.tomosipo_import import import_tomosipo
@@ -39,6 +40,7 @@ def tv_min(
     callbacks = [] if callbacks is None else callbacks
 
     def recon_fn(op, sino_i, i):
+        require_ct_backend(op, "tomosipo", "tv_min")
         return ts_tv_min(
             op,
             sino_i,
