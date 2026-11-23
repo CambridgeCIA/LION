@@ -83,10 +83,11 @@ print(solver_parameters)
 
 # %%
 # The loss: the papers use either. DRUNet is trained with the L1 loss; DnCNN,
-# FFDNet and the gradient-step denoiser with the L2 loss (MSE). The L2 loss
-# trains towards the MMSE denoiser E[x | noisy x], the one PnP theory assumes
-# (through Tweedie's formula); the L1 loss towards the median, and often trains
-# better (Zhao et al.).
+# FFDNet and the gradient-step denoiser with the L2 loss (MSE). None of them
+# adds a ``model_regularization`` (see "Jacobian penalties" below for the
+# papers that do). The L2 loss trains towards the MMSE denoiser
+# E[x | noisy x], the one PnP theory assumes (through Tweedie's formula); the L1
+# loss towards the median, and often trains better (Zhao et al.).
 #
 # * L1, DRUNet: Zhang et al., "Plug-and-Play Image Restoration With Deep
 #   Denoiser Prior", IEEE TPAMI, 2022.
@@ -137,11 +138,20 @@ with torch.no_grad():
 # Jacobian penalties
 # ------------------
 # PnP methods are proven to converge when the denoiser has a property a network
-# doesn't have on its own: being firmly nonexpansive (Pesquet et al., 2021) or a
-# proximal operator (Hurault et al., 2022). A penalty on the denoiser's
-# Jacobian, given to the solver as its ``model_regularization``, trains it
-# towards that. Both papers add it after training without it, e.g. fine-tuning
-# the trained denoiser:
+# doesn't have on its own: being firmly nonexpansive or a proximal operator. A
+# penalty on the denoiser's Jacobian, given to the solver as its
+# ``model_regularization``, trains it towards that. Both papers use the L2
+# loss, train without the penalty first, then add it:
+#
+# * ``FirmlyNonexpansivePenalty`` (weight 1e-5, epsilon 0.05), on a DnCNN with
+#   leaky ReLUs: Pesquet, Repetti, Terris and Wiaux, "Learning Maximally
+#   Monotone Operators for Image Recovery", SIAM J. Imaging Sciences, 2021.
+# * ``ProximalDenoiserPenalty`` (weight 1e-3 or 1e-2, epsilon 0.1), fine-tuning
+#   a gradient-step DRUNet: Hurault, Leclaire and Papadakis, "Proximal Denoiser
+#   for Convergent Plug-and-Play Optimization with Nonconvex Regularization",
+#   ICML 2022.
+#
+# For example, fine-tuning the trained denoiser as Pesquet et al.:
 #
 # .. code-block:: python
 #
@@ -150,15 +160,15 @@ with torch.no_grad():
 #    solver = GaussianDenoiserSolver(
 #        denoiser,
 #        torch.optim.Adam(denoiser.parameters(), lr=1e-5),
-#        loss_fn,
+#        l2_loss,
 #        operator_params=experiment.operator_params,
 #        solver_params=solver_parameters,
 #        model_regularization=FirmlyNonexpansivePenalty(),  # off by default
 #    )
 #
 # The gradient-step denoiser (``LION.models.PnP.gradient_step_denoiser.GSD``)
-# wraps any denoiser N as ``x - grad g(x)``, ``g(x) = ½||x - N(x)||²``, for
-# Hurault et al.'s ``ProximalDenoiserPenalty``.
+# wraps any denoiser N as ``x - grad g(x)``, ``g(x) = ½||x - N(x)||²``: the
+# denoiser ``ProximalDenoiserPenalty`` is for.
 
 # %%
 # Plug-and-Play reconstruction

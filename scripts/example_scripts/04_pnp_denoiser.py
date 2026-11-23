@@ -21,7 +21,8 @@ normalised to [0, 1] here (``set_normalisation``), so the literature's
 k/255 apply. PnP methods that converge need more of the denoiser: LION has the
 penalties of Pesquet et al. (2021) and Hurault et al. (2022)
 (``LION.losses.jacobian_penalty``), given to the solver as its
-``model_regularization``. HQS and FBS are the other PnP algorithms; the
+``model_regularization``; both papers use them with the L2 loss, fine-tuning
+a denoiser trained without them. HQS and FBS are the other PnP algorithms; the
 learned regulariser reconstructor (``LearnedRegularizerReconstructor``) is
 used the same way.
 
