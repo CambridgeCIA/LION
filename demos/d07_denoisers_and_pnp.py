@@ -82,14 +82,37 @@ solver_parameters.validation_noise_levels = [15 / 255, 25 / 255]
 print(solver_parameters)
 
 # %%
-# It doesn't use the operator, but takes its parameters, recorded as the
-# problem the denoiser was trained for.
+# The loss: the papers use either. DRUNet is trained with the L1 loss; DnCNN,
+# FFDNet and the gradient-step denoiser with the L2 loss (MSE). The L2 loss
+# trains towards the MMSE denoiser E[x | noisy x], the one PnP theory assumes
+# (through Tweedie's formula); the L1 loss towards the median, and often trains
+# better (Zhao et al.).
+#
+# * L1, DRUNet: Zhang et al., "Plug-and-Play Image Restoration With Deep
+#   Denoiser Prior", IEEE TPAMI, 2022.
+# * L2, DnCNN: Zhang et al., "Beyond a Gaussian Denoiser: Residual Learning of
+#   Deep CNN for Image Denoising", IEEE Trans. Image Processing, 2017.
+# * L2, FFDNet: Zhang, Zuo and Zhang, "FFDNet: Toward a Fast and Flexible
+#   Solution for CNN-Based Image Denoising", IEEE Trans. Image Processing,
+#   2018.
+# * L2, gradient-step denoiser: Hurault, Leclaire and Papadakis, "Gradient
+#   Step Denoiser for Convergent Plug-and-Play", ICLR 2022.
+# * L1 vs L2: Zhao, Gallo, Frosio and Kautz, "Loss Functions for Image
+#   Restoration with Neural Networks", IEEE Trans. Computational Imaging, 2017.
+
+l1_loss = torch.nn.L1Loss()  # DRUNet
+l2_loss = torch.nn.MSELoss()  # DnCNN, FFDNet, GS denoiser
+loss_fn = l1_loss
+
+# %%
+# The solver doesn't use the operator, but takes its parameters, recorded as
+# the problem the denoiser was trained for.
 
 folder = tempfile.mkdtemp()
 solver = GaussianDenoiserSolver(
     denoiser,
     torch.optim.Adam(denoiser.parameters(), lr=1e-4),
-    torch.nn.L1Loss(),
+    loss_fn,
     operator_params=experiment.operator_params,
     solver_params=solver_parameters,
 )
@@ -127,7 +150,7 @@ with torch.no_grad():
 #    solver = GaussianDenoiserSolver(
 #        denoiser,
 #        torch.optim.Adam(denoiser.parameters(), lr=1e-5),
-#        torch.nn.L1Loss(),
+#        loss_fn,
 #        operator_params=experiment.operator_params,
 #        solver_params=solver_parameters,
 #        model_regularization=FirmlyNonexpansivePenalty(),  # off by default
