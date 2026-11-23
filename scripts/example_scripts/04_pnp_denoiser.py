@@ -21,8 +21,7 @@ normalised to [0, 1] here (``set_normalisation``), so the literature's
 k/255 apply. PnP methods that converge need more of the denoiser: LION has the
 penalties of Pesquet et al. (2021) and Hurault et al. (2022)
 (``LION.losses.jacobian_penalty``), given to the solver as its
-``model_regularization``; both papers use them with the L2 loss, fine-tuning
-a denoiser trained without them. HQS and FBS are the other PnP algorithms; the
+``model_regularization``. HQS and FBS are the other PnP algorithms; the
 learned regulariser reconstructor (``LearnedRegularizerReconstructor``) is
 used the same way.
 
@@ -92,6 +91,12 @@ solver = GaussianDenoiserSolver(
     loss_fn,
     operator_params=experiment.operator_params,
     solver_params=solver_parameters,
+    # Jacobian penalties (LION.losses.jacobian_penalty), for convergent PnP:
+    # FirmlyNonexpansivePenalty() as Pesquet et al. (SIIMS 2021), or
+    # ProximalDenoiserPenalty() as Hurault et al. (ICML 2022); both with
+    # l2_loss, fine-tuning a denoiser trained without them. None of the papers
+    # above uses one.
+    model_regularization=None,
     verbose=verbose,
 )
 solver.set_training(training_loader)
