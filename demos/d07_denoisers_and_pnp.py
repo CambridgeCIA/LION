@@ -82,16 +82,41 @@ solver_parameters.validation_noise_levels = [15 / 255, 25 / 255]
 print(solver_parameters)
 
 # %%
-# It doesn't use the operator, but takes its parameters, recorded as the
-# problem the denoiser was trained for.
+# The loss: the papers use either. DRUNet is trained with the L1 loss; DnCNN,
+# FFDNet and the gradient-step denoiser with the L2 loss (MSE). None of them
+# adds a ``model_regularization`` (see "Jacobian penalties" below for the
+# papers that do). The L2 loss trains towards the MMSE denoiser
+# E[x | noisy x], the one PnP theory assumes (through Tweedie's formula); the L1
+# loss towards the median, and often trains better (Zhao et al.).
+#
+# * L1, DRUNet: Zhang et al., "Plug-and-Play Image Restoration With Deep
+#   Denoiser Prior", IEEE TPAMI, 2022.
+# * L2, DnCNN: Zhang et al., "Beyond a Gaussian Denoiser: Residual Learning of
+#   Deep CNN for Image Denoising", IEEE Trans. Image Processing, 2017.
+# * L2, FFDNet: Zhang, Zuo and Zhang, "FFDNet: Toward a Fast and Flexible
+#   Solution for CNN-Based Image Denoising", IEEE Trans. Image Processing,
+#   2018.
+# * L2, gradient-step denoiser: Hurault, Leclaire and Papadakis, "Gradient
+#   Step Denoiser for Convergent Plug-and-Play", ICLR 2022.
+# * L1 vs L2: Zhao, Gallo, Frosio and Kautz, "Loss Functions for Image
+#   Restoration with Neural Networks", IEEE Trans. Computational Imaging, 2017.
+
+l1_loss = torch.nn.L1Loss()  # DRUNet
+l2_loss = torch.nn.MSELoss()  # DnCNN, FFDNet, GS denoiser
+loss_fn = l1_loss
+
+# %%
+# The solver doesn't use the operator, but takes its parameters, recorded as
+# the problem the denoiser was trained for.
 
 folder = tempfile.mkdtemp()
 solver = GaussianDenoiserSolver(
     denoiser,
     torch.optim.Adam(denoiser.parameters(), lr=1e-4),
-    torch.nn.L1Loss(),
+    loss_fn,
     operator_params=experiment.operator_params,
     solver_params=solver_parameters,
+    model_regularization=None,  # none of the papers above; see "Jacobian penalties"
 )
 solver.set_training(training_loader)
 solver.set_validation(validation_loader, 1, PSNR(), validation_fname="DRUNet_best")
@@ -114,28 +139,45 @@ with torch.no_grad():
 # Jacobian penalties
 # ------------------
 # PnP methods are proven to converge when the denoiser has a property a network
-# doesn't have on its own: being firmly nonexpansive (Pesquet et al., 2021) or a
-# proximal operator (Hurault et al., 2022). A penalty on the denoiser's
-# Jacobian, given to the solver as its ``model_regularization``, trains it
-# towards that. Both papers add it after training without it, e.g. fine-tuning
-# the trained denoiser:
+# doesn't have on its own: being firmly nonexpansive or a proximal operator. A
+# penalty on the denoiser's Jacobian, given to the solver as its
+# ``model_regularization``, trains it towards that. Both papers use the L2
+# loss, train without the penalty first, then add it:
+#
+# * ``FirmlyNonexpansivePenalty``: Pesquet, Repetti, Terris and Wiaux,
+#   "Learning Maximally Monotone Operators for Image Recovery", SIAM J. Imaging
+#   Sciences, 2021.
+# * ``ProximalDenoiserPenalty``: Hurault, Leclaire and Papadakis, "Proximal
+#   Denoiser for Convergent Plug-and-Play Optimization with Nonconvex
+#   Regularization", ICML 2022.
+#
+# Fine-tuning the trained denoiser with one of them:
 #
 # .. code-block:: python
 #
-#    from LION.losses.jacobian_penalty import FirmlyNonexpansivePenalty
+#    from LION.losses.jacobian_penalty import (
+#        FirmlyNonexpansivePenalty,
+#        ProximalDenoiserPenalty,
+#    )
+#
+#    # Pesquet et al., on a DnCNN with leaky ReLUs: weight 1e-5, epsilon 0.05
+#    firmly_nonexpansive = FirmlyNonexpansivePenalty()
+#    # Hurault et al., on a gradient-step DRUNet: weight 1e-3 or 1e-2, epsilon 0.1
+#    proximal_denoiser = ProximalDenoiserPenalty(weight=1e-3)
+#    model_regularization = firmly_nonexpansive
 #
 #    solver = GaussianDenoiserSolver(
 #        denoiser,
 #        torch.optim.Adam(denoiser.parameters(), lr=1e-5),
-#        torch.nn.L1Loss(),
+#        l2_loss,  # both papers
 #        operator_params=experiment.operator_params,
 #        solver_params=solver_parameters,
-#        model_regularization=FirmlyNonexpansivePenalty(),  # off by default
+#        model_regularization=model_regularization,
 #    )
 #
 # The gradient-step denoiser (``LION.models.PnP.gradient_step_denoiser.GSD``)
-# wraps any denoiser N as ``x - grad g(x)``, ``g(x) = ½||x - N(x)||²``, for
-# Hurault et al.'s ``ProximalDenoiserPenalty``.
+# wraps any denoiser N as ``x - grad g(x)``, ``g(x) = ½||x - N(x)||²``: the
+# denoiser ``ProximalDenoiserPenalty`` is for.
 
 # %%
 # Plug-and-Play reconstruction

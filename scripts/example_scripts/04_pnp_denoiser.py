@@ -75,13 +75,28 @@ model.set_normalisation("dataset", training)
 solver_parameters = GaussianDenoiserSolver.default_parameters()
 solver_parameters.noise_level = [0.0, 50 / 255]  # one level per image, from this range
 solver_parameters.patches = GaussianDenoiserSolver.patches(8, 128)  # 8 crops a slice
+# The loss: L1 as DRUNet's paper (Zhang et al., IEEE TPAMI 2022), or L2 (MSE)
+# as DnCNN (Zhang et al., IEEE TIP 2017), FFDNet (Zhang et al., IEEE TIP 2018)
+# and the gradient-step denoiser (Hurault et al., ICLR 2022). L2 trains towards
+# the MMSE denoiser, the one PnP theory assumes; L1 often trains better (Zhao
+# et al., "Loss Functions for Image Restoration with Neural Networks", IEEE TCI
+# 2017).
+l1_loss = torch.nn.L1Loss()  # DRUNet
+l2_loss = torch.nn.MSELoss()  # DnCNN, FFDNet, GS denoiser
+loss_fn = l1_loss
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 solver = GaussianDenoiserSolver(
     model,
     optimizer,
-    torch.nn.L1Loss(),
+    loss_fn,
     operator_params=experiment.operator_params,
     solver_params=solver_parameters,
+    # Jacobian penalties (LION.losses.jacobian_penalty), for convergent PnP:
+    # FirmlyNonexpansivePenalty() as Pesquet et al. (SIIMS 2021), or
+    # ProximalDenoiserPenalty() as Hurault et al. (ICML 2022); both with
+    # l2_loss, fine-tuning a denoiser trained without them. None of the papers
+    # above uses one.
+    model_regularization=None,
     verbose=verbose,
 )
 solver.set_training(training_loader)
