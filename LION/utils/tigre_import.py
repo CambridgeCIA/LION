@@ -15,9 +15,10 @@ point of use.
 import importlib
 from types import ModuleType
 
-#: The TIGRE release LION is tested with: the first whose ``Ax``/``Atb`` keep
-#: PyTorch CUDA tensors on their GPU.
-TIGRE_VERSION = "3.3.0"
+#: The TIGRE release LION installs (its ``tigre`` extra) and is tested with.
+#: 3.3.0 is the first whose ``Ax``/``Atb`` keep PyTorch CUDA tensors on their
+#: GPU; 3.3.1 makes them faster, much faster for fan beam.
+TIGRE_VERSION = "3.3.1"
 
 
 def import_tigre(

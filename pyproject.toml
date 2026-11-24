@@ -76,7 +76,7 @@ standalone = [
 # CUDA: it needs the CUDA toolkit (nvcc). Not on PyPI (`pip install tigre` is
 # another package).
 tigre = [
-    "tigre @ git+https://github.com/CERN/TIGRE.git@v3.3.0",
+    "tigre @ git+https://github.com/CERN/TIGRE.git@v3.3.1",
 ]
 # Used by some example scripts only (scripts/example_scripts)
 examples = [

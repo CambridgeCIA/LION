@@ -47,7 +47,7 @@ Everything compiled, torch included, comes from conda (`env_base.yml`), so all o
 **TIGRE** is LION's other CT backend. It is compiled with CUDA (it needs the CUDA toolkit, `nvcc`), and isn't on PyPI (`pip install tigre` installs another package):
 
 ```bash
-pip install ".[tigre]"   # TIGRE 3.3.0, from GitHub
+pip install ".[tigre]"   # TIGRE 3.3.1, from GitHub
 ```
 
 Then choose it once, at the top of a script, or per geometry (`geometry.backend = "tigre"`):
