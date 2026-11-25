@@ -20,7 +20,7 @@ Around that, it keeps what research needs to be repeated:
 Where to start
 --------------
 
-- **Install it:** see the `README <https://github.com/CambridgeCIA/LION#readme>`_.
+- **Install it:** see the `README <https://github.com/cat-imaging/LION#readme>`_.
 - **Get the data:** :doc:`datasets`, how to download and prepare them.
 - **Learn it:** the :doc:`tutorials <tutorials/index>` build LION up one piece
   at a time, from the CT operator to publishing a model.

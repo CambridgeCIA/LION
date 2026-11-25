@@ -7,7 +7,7 @@ How LION is built, for changing it or adding to it. The
 page follows one training through the code, says where everything lives, and
 lists what a new piece of LION needs. The rules the code follows (names,
 parameters, errors, tests) are in the `contributor guide
-<https://github.com/CambridgeCIA/LION/blob/main/contributor-guide.md>`_; what
+<https://github.com/cat-imaging/LION/blob/main/contributor-guide.md>`_; what
 LION records and how, in :doc:`records`.
 
 The idea

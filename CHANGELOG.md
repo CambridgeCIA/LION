@@ -55,7 +55,7 @@ with 0.2.0 don't load.
   experiments run on the measured 2DeteCT data (#255); the 2DeteCT benchmark
   paper's experiments (`deteCT_benchmark`, #335).
 - **Documentation** (#348–#384): a docstring for every public definition; the
-  site (https://cambridgecia.github.io/LION/) with 14 tutorials (the last on
+  site (https://cat-imaging.github.io/LION/) with 14 tutorials (the last on
   operators other than CT and sparse recovery), the API reference, "Methods
   in LION", "Datasets" (getting and preparing the data), "Records"
   (`metadata.md`) and the developer guide; eight example scripts; the

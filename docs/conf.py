@@ -103,7 +103,7 @@ html_favicon = "_static/lion-favicon.svg"
 html_theme_options = {
     "light_logo": "lion-logo.svg",
     "dark_logo": "lion-logo-dark.svg",
-    "source_repository": "https://github.com/CambridgeCIA/LION",
+    "source_repository": "https://github.com/cat-imaging/LION",
     "source_branch": "main",
     "source_directory": "docs/",
 }

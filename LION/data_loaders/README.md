@@ -2,7 +2,7 @@
 
 How to download and prepare the datasets LION uses (LIDC-IDRI, 2DeteCT,
 Walnuts), and where LION looks for them (`LION_DATA_PATH`), is on the
-documentation site: <https://cambridgecia.github.io/LION/datasets.html>, with
+documentation site: <https://cat-imaging.github.io/LION/datasets.html>, with
 a page per dataset (source: `docs/datasets.rst` and `docs/datasets/`).
 
 Each dataset's scripts are in its folder here: `LIDC_IDRI/` (download and

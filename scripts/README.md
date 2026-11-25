@@ -6,7 +6,7 @@ Complete programs that use LION, outside the library itself:
   and self-supervised training, unrolled methods, PnP, evaluation, resuming,
   publishing, your own pieces, photocurrent mapping). Their README says what
   each shows and what it needs. For a step-by-step introduction, see the
-  tutorials (`demos/`, on the [site](https://cambridgecia.github.io/LION/)).
+  tutorials (`demos/`, on the [site](https://cat-imaging.github.io/LION/)).
 - **`paper_scripts/`**: scripts that reproduce published papers with LION,
   one folder per paper, each with a README citing it. A script that trains a
   paper's model in another way than the paper's is an example script instead.

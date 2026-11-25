@@ -21,8 +21,8 @@ authors:
     given-names: Andrea
   - family-names: Kiss
     given-names: Maximilian B.
-repository-code: "https://github.com/CambridgeCIA/LION"
-url: "https://cambridgecia.github.io/LION/"
+repository-code: "https://github.com/cat-imaging/LION"
+url: "https://cat-imaging.github.io/LION/"
 license: GPL-3.0-only
 keywords:
   - computed tomography
