@@ -3,7 +3,7 @@
 The rules LION's code follows, for people and coding assistants alike
 (`AGENTS.md` and `CLAUDE.md` point here). How LION is built, and what a new model, solver,
 reconstructor, operator or dataset needs, is in the
-[developer guide](https://cambridgecia.github.io/LION/developers.html); what
+[developer guide](https://cat-imaging.github.io/LION/developers.html); what
 LION records, in [metadata.md](metadata.md).
 
 LION is a research library: modular, light (few classes, few dependencies)

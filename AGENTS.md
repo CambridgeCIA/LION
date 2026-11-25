@@ -11,7 +11,7 @@ function or a parameter doesn't do.
   (names, parameters and backwards compatibility, operators, models, solvers,
   data, randomness, errors, docstrings, tests, PRs). Follow it.
 - The developer guide, [`docs/developers.rst`](docs/developers.rst) (on the
-  site: https://cambridgecia.github.io/LION/developers.html): how the pieces
+  site: https://cat-imaging.github.io/LION/developers.html): how the pieces
   connect, one training followed through the code, and what a new model,
   solver, reconstructor, operator or dataset needs.
 - [`metadata.md`](metadata.md) (on the site as "Records"), when a change touches what LION saves or

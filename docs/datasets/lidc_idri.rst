@@ -26,7 +26,7 @@ or Docker to run it in a container:
 It writes ``LION_DATA_PATH/raw/LIDC-IDRI`` and the diagnosis file. If it is
 interrupted, run it again: it downloads only what is missing. Its options
 (another folder, the manifest, the container) are in
-`its README <https://github.com/CambridgeCIA/LION/blob/main/LION/data_loaders/LIDC_IDRI/README.md>`_.
+`its README <https://github.com/cat-imaging/LION/blob/main/LION/data_loaders/LIDC_IDRI/README.md>`_.
 
 Prepare
 -------
