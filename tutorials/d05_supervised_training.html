@@ -7,7 +7,7 @@
         <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+    <link rel="shortcut icon" href="../_static/lion-favicon.svg"><!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
         <title>Supervised training - LION 0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
@@ -299,6 +299,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.TDV.html">LION.models.learned_regularizer.TDV</a></li>
 </ul>
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -403,12 +404,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/tutorials/d05_supervised_training.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/blob/main/docs/tutorials/d05_supervised_training.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/tutorials/d05_supervised_training.rst" rel="edit" title="Edit this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/edit/main/docs/tutorials/d05_supervised_training.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -498,7 +499,7 @@ model. Then <code class="docutils literal notranslate"><span class="pre">train(n
 </span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.save_final_results" title="LION.optimizers.LIONsolver.LIONsolver.save_final_results"><span class="n">solver</span><span class="o">.</span><span class="n">save_final_results</span></a><span class="p">(</span><span class="p">)</span>  <span class="c1"># FBPConvNet.pt (weights) and FBPConvNet.json</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">training loss per epoch:</span><span class="s2">&quot;</span><span class="p">,</span> <a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">solver</span><span class="o">.</span><span class="n">train_loss</span></a><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>training loss per epoch: [0.08851471 0.03304588]
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>training loss per epoch: [0.2363811 0.0386043]
 </pre></div>
 </div>
 <p>That is a complete training: the saved model holds its weights, its
@@ -580,18 +581,18 @@ epochs as <code class="docutils literal notranslate"><span class="pre">&lt;name&
 </span><span class="nb">print</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <a class="sphx-glr-backref-module-pathlib sphx-glr-backref-type-py-method reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path.iterdir" title="pathlib.Path.iterdir"><span class="n">folder</span><span class="o">.</span><span class="n">iterdir</span></a><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Loading checkpoint...
-No checkpoint matching /tmp/tmpbd3dg86o/FBPConvNet_check_*.pt yet; starting from epoch 0.
+No checkpoint matching /tmp/tmp6ezle0nw/FBPConvNet_check_*.pt yet; starting from epoch 0.
 Training seed: 0 (the solver's seed argument; seed=None for an unseeded run)
-Validation loss: -21.18714666366577 - Validation loss std: 1.337816707151631
-Epoch 1 - Training loss: 0.19576806146651507 - Validation loss: -21.18714666366577
-Validation loss: -26.15987801551819 - Validation loss std: 2.252807874254405
-Epoch 2 - Training loss: 0.0380161227658391 - Validation loss: -26.15987801551819
-Validation loss: 1.7540645101107657 - Validation loss std: 2.5330033026401333
-Epoch 3 - Training loss: 0.022562370263040067 - Validation loss: 1.7540645101107657
-Validation loss: 23.609858989715576 - Validation loss std: 0.7105083365473727
-Epoch 4 - Training loss: 0.01883830353617668 - Validation loss: 23.609858989715576
-training loss per epoch: [0.19576806 0.03801612 0.02256237 0.0188383 ]
-validation PSNR: [-21.18714666 -26.15987802   1.75406451  23.60985899]
+Validation loss: -13.04979419708252 - Validation loss std: 1.00461417334815
+Epoch 1 - Training loss: 0.1955724202096462 - Validation loss: -13.04979419708252
+Validation loss: 21.53903889656067 - Validation loss std: 1.1214781472801396
+Epoch 2 - Training loss: 0.03887930270284414 - Validation loss: 21.53903889656067
+Validation loss: 26.466535091400146 - Validation loss std: 1.961507378251107
+Epoch 3 - Training loss: 0.02452437989413738 - Validation loss: 26.466535091400146
+Validation loss: 28.30303120613098 - Validation loss std: 0.370842290971147
+Epoch 4 - Training loss: 0.020324105210602284 - Validation loss: 28.30303120613098
+training loss per epoch: [0.19557242 0.0388793  0.02452438 0.02032411]
+validation PSNR: [-13.0497942   21.5390389   26.46653509  28.30303121]
 learning rate: [0.00025]
 ['FBPConvNet.json', 'FBPConvNet.pt', 'FBPConvNet_best.json', 'FBPConvNet_best.pt', 'FBPConvNet_check_0002.json', 'FBPConvNet_check_0002.pt', 'FBPConvNet_check_0004.json', 'FBPConvNet_check_0004.pt']
 </pre></div>
@@ -615,7 +616,7 @@ first four kept.</p>
 </span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.train" title="LION.optimizers.LIONsolver.LIONsolver.train"><span class="n">resumed</span><span class="o">.</span><span class="n">train</span></a><span class="p">(</span><span class="mi">6</span><span class="p">)</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">training loss per epoch:</span><span class="s2">&quot;</span><span class="p">,</span> <a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">resumed</span><span class="o">.</span><span class="n">train_loss</span></a><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>training loss per epoch: [0.19576806 0.03801612 0.02256237 0.0188383  0.02062146 0.01647229]
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>training loss per epoch: [0.19557242 0.0388793  0.02452438 0.02032411 0.02086456 0.01721965]
 </pre></div>
 </div>
 <p>Once a run is finished, its checkpoints can go:</p>
@@ -627,8 +628,8 @@ first four kept.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">scores</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.test" title="LION.optimizers.LIONsolver.LIONsolver.test"><span class="n">solver</span><span class="o">.</span><span class="n">test</span></a><span class="p">(</span><span class="p">)</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">test PSNR: </span><span class="si">{</span><a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">scores</span></a><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> dB</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Testing loss: 24.892141103744507 - Testing loss std: 2.3306367064396185
-test PSNR: 24.89 dB
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Testing loss: 29.21522879600525 - Testing loss std: 3.666655558254397
+test PSNR: 29.22 dB
 </pre></div>
 </div>
 <p>The final model and the best model by validation, each as a <code class="docutils literal notranslate"><span class="pre">.pt</span></code>
@@ -650,7 +651,7 @@ train the same model again (<a class="reference internal" href="d09_saving_and_r
 </span></pre></div></div>
 <img src="../_images/sphx_glr_d05_supervised_training_001.png" srcset="../_images/sphx_glr_d05_supervised_training_001.png" alt="d05 supervised training" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>LION.optimizers.SupervisedSolver.SupervisedSolver 0.001
 
-&lt;matplotlib.legend.Legend object at 0x7efe1ea2d280&gt;
+&lt;matplotlib.legend.Legend object at 0x7fde856e3bc0&gt;
 </pre></div>
 </div>
 </section>
@@ -706,10 +707,10 @@ checking that comparisons are fair, publishing.</p>
 </span>    <a class="sphx-glr-backref-module-torch-optim sphx-glr-backref-type-py-method reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam.step" title="torch.optim.Adam.step"><span class="n">optimizer</span><span class="o">.</span><span class="n">step</span></a><span class="p">(</span><span class="p">)</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">one epoch by hand, last loss </span><span class="si">{</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">loss</span></a><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>one epoch by hand, last loss 0.0230
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>one epoch by hand, last loss 0.0232
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 33.374 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 59.619 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d05-supervised-training-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/f154a25583c76f4eee46bc566ed8b4f3/d05_supervised_training.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d05_supervised_training.ipynb</span></code></a></p>

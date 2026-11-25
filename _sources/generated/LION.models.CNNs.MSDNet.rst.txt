@@ -15,7 +15,6 @@ LION.models.CNNs.MSDNet
 .. autosummary::
 
    MSDNet
-   MSD_Layer
 
 
 
@@ -28,11 +27,6 @@ LION.models.CNNs.MSDNet
 
 
 .. autoclass:: MSDNet
-   :members:
-   :show-inheritance:
-
-
-.. autoclass:: MSD_Layer
    :members:
    :show-inheritance:
 

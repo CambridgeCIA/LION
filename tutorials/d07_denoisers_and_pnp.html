@@ -7,7 +7,7 @@
         <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+    <link rel="shortcut icon" href="../_static/lion-favicon.svg"><!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
         <title>Denoisers and Plug-and-Play - LION 0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
@@ -299,6 +299,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.TDV.html">LION.models.learned_regularizer.TDV</a></li>
 </ul>
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -403,12 +404,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/tutorials/d07_denoisers_and_pnp.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/blob/main/docs/tutorials/d07_denoisers_and_pnp.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/tutorials/d07_denoisers_and_pnp.rst" rel="edit" title="Edit this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/edit/main/docs/tutorials/d07_denoisers_and_pnp.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -507,15 +508,39 @@ random_erasing : False
 validation_noise_levels : [0.058823529411764705, 0.09803921568627451]
 </pre></div>
 </div>
-<p>It doesn’t use the operator, but takes its parameters, recorded as the
-problem the denoiser was trained for.</p>
+<p>The loss: the papers use either. DRUNet is trained with the L1 loss; DnCNN,
+FFDNet and the gradient-step denoiser with the L2 loss (MSE). None of them
+adds a <code class="docutils literal notranslate"><span class="pre">model_regularization</span></code> (see “Jacobian penalties” below for the
+papers that do). The L2 loss trains towards the MMSE denoiser
+E[x | noisy x], the one PnP theory assumes (through Tweedie’s formula); the L1
+loss towards the median, and often trains better (Zhao et al.).</p>
+<ul class="simple">
+<li><p>L1, DRUNet: Zhang et al., “Plug-and-Play Image Restoration With Deep
+Denoiser Prior”, IEEE TPAMI, 2022.</p></li>
+<li><p>L2, DnCNN: Zhang et al., “Beyond a Gaussian Denoiser: Residual Learning of
+Deep CNN for Image Denoising”, IEEE Trans. Image Processing, 2017.</p></li>
+<li><p>L2, FFDNet: Zhang, Zuo and Zhang, “FFDNet: Toward a Fast and Flexible
+Solution for CNN-Based Image Denoising”, IEEE Trans. Image Processing,
+2018.</p></li>
+<li><p>L2, gradient-step denoiser: Hurault, Leclaire and Papadakis, “Gradient
+Step Denoiser for Convergent Plug-and-Play”, ICLR 2022.</p></li>
+<li><p>L1 vs L2: Zhao, Gallo, Frosio and Kautz, “Loss Functions for Image
+Restoration with Neural Networks”, IEEE Trans. Computational Imaging, 2017.</p></li>
+</ul>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.L1Loss.html#torch.nn.L1Loss" title="torch.nn.L1Loss"><span class="n">l1_loss</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.L1Loss.html#torch.nn.L1Loss" title="torch.nn.L1Loss"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">L1Loss</span></a><span class="p">(</span><span class="p">)</span>  <span class="c1"># DRUNet</span><span class="w">
+</span><a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.MSELoss.html#torch.nn.MSELoss" title="torch.nn.MSELoss"><span class="n">l2_loss</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.MSELoss.html#torch.nn.MSELoss" title="torch.nn.MSELoss"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span></a><span class="p">(</span><span class="p">)</span>  <span class="c1"># DnCNN, FFDNet, GS denoiser</span><span class="w">
+</span><a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.L1Loss.html#torch.nn.L1Loss" title="torch.nn.L1Loss"><span class="n">loss_fn</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.L1Loss.html#torch.nn.L1Loss" title="torch.nn.L1Loss"><span class="n">l1_loss</span></a><span class="w">
+</span></pre></div></div>
+<p>The solver doesn’t use the operator, but takes its parameters, recorded as
+the problem the denoiser was trained for.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">folder</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-tempfile sphx-glr-backref-type-py-function reference external" href="https://docs.python.org/3/library/tempfile.html#tempfile.mkdtemp" title="tempfile.mkdtemp"><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span></a><span class="p">(</span><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-LION-optimizers-GaussianDenoiserSolver sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.optimizers.GaussianDenoiserSolver.html#LION.optimizers.GaussianDenoiserSolver.GaussianDenoiserSolver" title="LION.optimizers.GaussianDenoiserSolver.GaussianDenoiserSolver"><span class="n">solver</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-optimizers-GaussianDenoiserSolver sphx-glr-backref-type-py-class reference internal" href="../generated/LION.optimizers.GaussianDenoiserSolver.html#LION.optimizers.GaussianDenoiserSolver.GaussianDenoiserSolver" title="LION.optimizers.GaussianDenoiserSolver.GaussianDenoiserSolver"><span class="n">GaussianDenoiserSolver</span></a><span class="p">(</span><span class="w">
 </span>    <a class="sphx-glr-backref-module-LION-models-CNNs sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.models.CNNs.drunet.html#LION.models.CNNs.drunet.DRUNet" title="LION.models.CNNs.DRUNet"><span class="n">denoiser</span></a><span class="p">,</span><span class="w">
 </span>    <a class="sphx-glr-backref-module-torch-optim sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam" title="torch.optim.Adam"><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-method reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.parameters" title="torch.nn.Module.parameters"><span class="n">denoiser</span><span class="o">.</span><span class="n">parameters</span></a><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span><span class="p">,</span><span class="w">
-</span>    <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.L1Loss.html#torch.nn.L1Loss" title="torch.nn.L1Loss"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">L1Loss</span></a><span class="p">(</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>    <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.L1Loss.html#torch.nn.L1Loss" title="torch.nn.L1Loss"><span class="n">loss_fn</span></a><span class="p">,</span><span class="w">
 </span>    <span class="n">operator_params</span><span class="o">=</span><a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry" title="LION.operators.ct.Geometry"><span class="n">experiment</span><span class="o">.</span><span class="n">operator_params</span></a><span class="p">,</span><span class="w">
 </span>    <span class="n">solver_params</span><span class="o">=</span><a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">solver_parameters</span></a><span class="p">,</span><span class="w">
+</span>    <span class="n">model_regularization</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># none of the papers above; see &quot;Jacobian penalties&quot;</span><span class="w">
 </span><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.set_training" title="LION.optimizers.LIONsolver.LIONsolver.set_training"><span class="n">solver</span><span class="o">.</span><span class="n">set_training</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">training_loader</span></a><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.set_validation" title="LION.optimizers.LIONsolver.LIONsolver.set_validation"><span class="n">solver</span><span class="o">.</span><span class="n">set_validation</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">validation_loader</span></a><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <a class="sphx-glr-backref-module-LION-metrics-psnr sphx-glr-backref-type-py-class reference internal" href="../generated/LION.metrics.psnr.html#LION.metrics.psnr.PSNR" title="LION.metrics.psnr.PSNR"><span class="n">PSNR</span></a><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">validation_fname</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">DRUNet_best</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
@@ -536,25 +561,42 @@ normalise for the model; called by hand, the model takes normalised images:</p>
 <section id="jacobian-penalties">
 <h2>Jacobian penalties<a class="headerlink" href="#jacobian-penalties" title="Link to this heading">¶</a></h2>
 <p>PnP methods are proven to converge when the denoiser has a property a network
-doesn’t have on its own: being firmly nonexpansive (Pesquet et al., 2021) or a
-proximal operator (Hurault et al., 2022). A penalty on the denoiser’s
-Jacobian, given to the solver as its <code class="docutils literal notranslate"><span class="pre">model_regularization</span></code>, trains it
-towards that. Both papers add it after training without it, e.g. fine-tuning
-the trained denoiser:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">losses</span><span class="nn">.</span><span class="nn">jacobian_penalty</span><span class="w"> </span><span class="kn">import</span> <span class="n">FirmlyNonexpansivePenalty</span><span class="w">
+doesn’t have on its own: being firmly nonexpansive or a proximal operator. A
+penalty on the denoiser’s Jacobian, given to the solver as its
+<code class="docutils literal notranslate"><span class="pre">model_regularization</span></code>, trains it towards that. Both papers use the L2
+loss, train without the penalty first, then add it:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">FirmlyNonexpansivePenalty</span></code>: Pesquet, Repetti, Terris and Wiaux,
+“Learning Maximally Monotone Operators for Image Recovery”, SIAM J. Imaging
+Sciences, 2021.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ProximalDenoiserPenalty</span></code>: Hurault, Leclaire and Papadakis, “Proximal
+Denoiser for Convergent Plug-and-Play Optimization with Nonconvex
+Regularization”, ICML 2022.</p></li>
+</ul>
+<p>Fine-tuning the trained denoiser with one of them:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span class="kn">from</span><span class="w"> </span><span class="nn">LION</span><span class="nn">.</span><span class="nn">losses</span><span class="nn">.</span><span class="nn">jacobian_penalty</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="w">
+</span>    <span class="n">FirmlyNonexpansivePenalty</span><span class="p">,</span><span class="w">
+</span>    <span class="n">ProximalDenoiserPenalty</span><span class="p">,</span><span class="w">
+</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Pesquet et al., on a DnCNN with leaky ReLUs: weight 1e-5, epsilon 0.05</span><span class="w">
+</span><span class="n">firmly_nonexpansive</span> <span class="o">=</span> <span class="n">FirmlyNonexpansivePenalty</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="c1"># Hurault et al., on a gradient-step DRUNet: weight 1e-3 or 1e-2, epsilon 0.1</span><span class="w">
+</span><span class="n">proximal_denoiser</span> <span class="o">=</span> <span class="n">ProximalDenoiserPenalty</span><span class="p">(</span><span class="n">weight</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span><span class="w">
+</span><span class="n">model_regularization</span> <span class="o">=</span> <span class="n">firmly_nonexpansive</span><span class="w">
 </span><span class="w">
 </span><a class="sphx-glr-backref-module-LION-optimizers-GaussianDenoiserSolver sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.optimizers.GaussianDenoiserSolver.html#LION.optimizers.GaussianDenoiserSolver.GaussianDenoiserSolver" title="LION.optimizers.GaussianDenoiserSolver.GaussianDenoiserSolver"><span class="n">solver</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-optimizers-GaussianDenoiserSolver sphx-glr-backref-type-py-class reference internal" href="../generated/LION.optimizers.GaussianDenoiserSolver.html#LION.optimizers.GaussianDenoiserSolver.GaussianDenoiserSolver" title="LION.optimizers.GaussianDenoiserSolver.GaussianDenoiserSolver"><span class="n">GaussianDenoiserSolver</span></a><span class="p">(</span><span class="w">
 </span>    <a class="sphx-glr-backref-module-LION-models-CNNs sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.models.CNNs.drunet.html#LION.models.CNNs.drunet.DRUNet" title="LION.models.CNNs.DRUNet"><span class="n">denoiser</span></a><span class="p">,</span><span class="w">
 </span>    <a class="sphx-glr-backref-module-torch-optim sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam" title="torch.optim.Adam"><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-method reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.parameters" title="torch.nn.Module.parameters"><span class="n">denoiser</span><span class="o">.</span><span class="n">parameters</span></a><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span><span class="p">,</span><span class="w">
-</span>    <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.L1Loss.html#torch.nn.L1Loss" title="torch.nn.L1Loss"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">L1Loss</span></a><span class="p">(</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>    <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.MSELoss.html#torch.nn.MSELoss" title="torch.nn.MSELoss"><span class="n">l2_loss</span></a><span class="p">,</span>  <span class="c1"># both papers</span><span class="w">
 </span>    <span class="n">operator_params</span><span class="o">=</span><a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry" title="LION.operators.ct.Geometry"><span class="n">experiment</span><span class="o">.</span><span class="n">operator_params</span></a><span class="p">,</span><span class="w">
 </span>    <span class="n">solver_params</span><span class="o">=</span><a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">solver_parameters</span></a><span class="p">,</span><span class="w">
-</span>    <span class="n">model_regularization</span><span class="o">=</span><span class="n">FirmlyNonexpansivePenalty</span><span class="p">(</span><span class="p">)</span><span class="p">,</span>  <span class="c1"># off by default</span><span class="w">
+</span>    <span class="n">model_regularization</span><span class="o">=</span><span class="n">model_regularization</span><span class="p">,</span><span class="w">
 </span><span class="p">)</span><span class="w">
 </span></pre></div></div>
 <p>The gradient-step denoiser (<code class="docutils literal notranslate"><span class="pre">LION.models.PnP.gradient_step_denoiser.GSD</span></code>)
-wraps any denoiser N as <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">-</span> <span class="pre">grad</span> <span class="pre">g(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">g(x)</span> <span class="pre">=</span> <span class="pre">½||x</span> <span class="pre">-</span> <span class="pre">N(x)||²</span></code>, for
-Hurault et al.’s <code class="docutils literal notranslate"><span class="pre">ProximalDenoiserPenalty</span></code>.</p>
+wraps any denoiser N as <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">-</span> <span class="pre">grad</span> <span class="pre">g(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">g(x)</span> <span class="pre">=</span> <span class="pre">½||x</span> <span class="pre">-</span> <span class="pre">N(x)||²</span></code>: the
+denoiser <code class="docutils literal notranslate"><span class="pre">ProximalDenoiserPenalty</span></code> is for.</p>
 </section>
 <section id="plug-and-play-reconstruction">
 <h2>Plug-and-Play reconstruction<a class="headerlink" href="#plug-and-play-reconstruction" title="Link to this heading">¶</a></h2>
@@ -628,7 +670,7 @@ noise_level : None
 </span></pre></div></div>
 <img src="../_images/sphx_glr_d07_denoisers_and_pnp_001.png" srcset="../_images/sphx_glr_d07_denoisers_and_pnp_001.png" alt="noisy (25/255), denoised (toy denoiser), FDK, 19.0 dB, PnP, toy, 30.8 dB, PnP, pretrained, 36.3 dB" class = "sphx-glr-single-img"/><p>A reconstructor is saved with <code class="docutils literal notranslate"><span class="pre">pnp.save(file)</span></code>: its settings, and its model
 by the file it was loaded from (<a class="reference internal" href="d09_saving_and_records.html"><span class="doc">Saving, loading and records</span></a>).</p>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 20.886 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 16.161 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d07-denoisers-and-pnp-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/65195991690d84cc84092b3a4e716c15/d07_denoisers_and_pnp.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d07_denoisers_and_pnp.ipynb</span></code></a></p>

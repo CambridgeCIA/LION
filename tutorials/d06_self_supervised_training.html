@@ -7,7 +7,7 @@
         <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+    <link rel="shortcut icon" href="../_static/lion-favicon.svg"><!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
         <title>Self-supervised training - LION 0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
@@ -299,6 +299,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.TDV.html">LION.models.learned_regularizer.TDV</a></li>
 </ul>
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -403,12 +404,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/tutorials/d06_self_supervised_training.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/blob/main/docs/tutorials/d06_self_supervised_training.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/tutorials/d06_self_supervised_training.rst" rel="edit" title="Edit this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/edit/main/docs/tutorials/d06_self_supervised_training.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -512,7 +513,7 @@ it reconstructs (never to train): the solver validates its reconstruction.</p>
 </span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">validation PSNR:</span><span class="s2">&quot;</span><span class="p">,</span> <a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="numpy.ndarray"><span class="n">solver</span><span class="o">.</span><span class="n">validation_loss</span></a><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-LION-optimizers-LIONsolver sphx-glr-backref-type-py-method reference internal" href="../generated/LION.optimizers.LIONsolver.html#LION.optimizers.LIONsolver.LIONsolver.save_final_results" title="LION.optimizers.LIONsolver.LIONsolver.save_final_results"><span class="n">solver</span><span class="o">.</span><span class="n">save_final_results</span></a><span class="p">(</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>validation PSNR: [21.54656196 18.85042834 18.8110497 ]
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>validation PSNR: [22.02497721 19.05376863 18.96430111]
 </pre></div>
 </div>
 <p>A Noise2Inverse reconstruction is the mean of the model’s outputs over the
@@ -565,7 +566,7 @@ Proj2ProjSolver
 grid_size : 4
 recon_fn : default
 EquivariantSolver
-transformation_group : &lt;LION.optimizers.EquivariantSolver.RotationGroup object at 0x7efe24406cc0&gt;
+transformation_group : &lt;LION.optimizers.EquivariantSolver.RotationGroup object at 0x7fde7ebdddf0&gt;
 equivariance_strength : 100
 Equivariance2InverseSolver
 equivariance_strength : 1.0
@@ -586,7 +587,7 @@ and from the reconstruction being equivariant to rotations:</p>
 <p>Some of these methods are only defined for the mean squared error: their
 solvers train with it, and use <code class="docutils literal notranslate"><span class="pre">loss_fn</span></code> only to validate and test (they
 warn if it isn’t the MSE).</p>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 21.734 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 9.358 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d06-self-supervised-training-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/aff2807135fd12d4fb7aade35b179bb0/d06_self_supervised_training.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d06_self_supervised_training.ipynb</span></code></a></p>

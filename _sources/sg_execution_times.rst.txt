@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**19:37.448** total execution time for 14 files **from all galleries**:
+**19:37.381** total execution time for 14 files **from all galleries**:
 
 .. container::
 
@@ -33,44 +33,44 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_tutorials_d12_publishing.py` (``../demos/d12_publishing.py``)
-     - 04:06.642
-     - 0.0
-   * - :ref:`sphx_glr_tutorials_d05_supervised_training.py` (``../demos/d05_supervised_training.py``)
-     - 02:33.374
-     - 0.0
-   * - :ref:`sphx_glr_tutorials_d09_saving_and_records.py` (``../demos/d09_saving_and_records.py``)
-     - 02:02.334
+     - 04:02.065
      - 0.0
    * - :ref:`sphx_glr_tutorials_d03_data.py` (``../demos/d03_data.py``)
-     - 01:49.963
+     - 03:23.210
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d05_supervised_training.py` (``../demos/d05_supervised_training.py``)
+     - 01:59.619
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d09_saving_and_records.py` (``../demos/d09_saving_and_records.py``)
+     - 01:53.187
      - 0.0
    * - :ref:`sphx_glr_tutorials_d11_evaluation.py` (``../demos/d11_evaluation.py``)
-     - 01:48.886
+     - 01:46.467
      - 0.0
    * - :ref:`sphx_glr_tutorials_d08_learned_regularisers.py` (``../demos/d08_learned_regularisers.py``)
-     - 01:42.431
-     - 0.0
-   * - :ref:`sphx_glr_tutorials_d06_self_supervised_training.py` (``../demos/d06_self_supervised_training.py``)
-     - 01:21.734
+     - 01:29.984
      - 0.0
    * - :ref:`sphx_glr_tutorials_d07_denoisers_and_pnp.py` (``../demos/d07_denoisers_and_pnp.py``)
-     - 01:20.886
+     - 01:16.161
      - 0.0
    * - :ref:`sphx_glr_tutorials_d10_reconstructors.py` (``../demos/d10_reconstructors.py``)
-     - 01:20.022
+     - 01:13.519
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d06_self_supervised_training.py` (``../demos/d06_self_supervised_training.py``)
+     - 01:09.358
      - 0.0
    * - :ref:`sphx_glr_tutorials_d13_extending_lion.py` (``../demos/d13_extending_lion.py``)
-     - 00:54.009
+     - 00:52.907
      - 0.0
    * - :ref:`sphx_glr_tutorials_d04_models.py` (``../demos/d04_models.py``)
-     - 00:22.901
+     - 00:18.597
      - 0.0
    * - :ref:`sphx_glr_tutorials_d01_operators.py` (``../demos/d01_operators.py``)
-     - 00:07.245
-     - 0.0
-   * - :ref:`sphx_glr_tutorials_d02_parameters_and_specs.py` (``../demos/d02_parameters_and_specs.py``)
-     - 00:03.635
+     - 00:06.109
      - 0.0
    * - :ref:`sphx_glr_tutorials_d14_beyond_ct.py` (``../demos/d14_beyond_ct.py``)
-     - 00:03.386
+     - 00:03.150
+     - 0.0
+   * - :ref:`sphx_glr_tutorials_d02_parameters_and_specs.py` (``../demos/d02_parameters_and_specs.py``)
+     - 00:03.046
      - 0.0

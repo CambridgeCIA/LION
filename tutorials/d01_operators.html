@@ -7,7 +7,7 @@
         <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+    <link rel="shortcut icon" href="../_static/lion-favicon.svg"><!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
         <title>Operators: CT geometry, projections and reconstructions - LION 0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
@@ -299,6 +299,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.TDV.html">LION.models.learned_regularizer.TDV</a></li>
 </ul>
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -403,12 +404,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/tutorials/d01_operators.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/blob/main/docs/tutorials/d01_operators.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/tutorials/d01_operators.rst" rel="edit" title="Edit this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/edit/main/docs/tutorials/d01_operators.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -585,7 +586,7 @@ otherwise, so they work with any operator.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span class="nb">print</span><span class="p">(</span><a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-method reference internal" href="../generated/LION.operators.ct.CTProjectionOp.html#LION.operators.ct.CTProjectionOp.default_reconstruction_fn" title="LION.operators.ct.CTProjectionOp.default_reconstruction_fn"><span class="n">op</span><span class="o">.</span><span class="n">default_reconstruction_fn</span></a><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="w">
 </span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">x0</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-LION-operators sphx-glr-backref-type-py-method reference internal" href="../generated/LION.operators.Operator.html#LION.operators.Operator.default_reconstruction" title="LION.operators.Operator.default_reconstruction"><span class="n">op</span><span class="o">.</span><span class="n">default_reconstruction</span></a><span class="p">(</span><a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">y</span></a><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;function fdk at 0x7eff167d1300&gt;
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;function fdk at 0x7fdf7e4d5260&gt;
 </pre></div>
 </div>
 </section>
@@ -650,7 +651,7 @@ its shapes: <a class="reference internal" href="d13_extending_lion.html"><span c
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>torch.Size([262144]) True
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 7.245 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 6.109 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d01-operators-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/3a40fbfeeddb53a07a37ef663da68f7a/d01_operators.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d01_operators.ipynb</span></code></a></p>

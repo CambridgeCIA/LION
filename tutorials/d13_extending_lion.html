@@ -7,7 +7,7 @@
         <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+    <link rel="shortcut icon" href="../_static/lion-favicon.svg"><!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
         <title>Extending LION - LION 0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
@@ -299,6 +299,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.TDV.html">LION.models.learned_regularizer.TDV</a></li>
 </ul>
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -403,12 +404,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/tutorials/d13_extending_lion.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/blob/main/docs/tutorials/d13_extending_lion.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/tutorials/d13_extending_lion.rst" rel="edit" title="Edit this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/edit/main/docs/tutorials/d13_extending_lion.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -632,7 +633,7 @@ the operator’s default reconstruction.</p>
 </span><span class="nb">print</span><span class="p">(</span><a class="sphx-glr-backref-module-LION-models-LIONmodel sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.models.LIONmodel.html#LION.models.LIONmodel.LIONModelParameter" title="LION.models.LIONmodel.LIONModelParameter"><span class="n">model</span><span class="o">.</span><span class="n">model_parameters</span></a><span class="p">)</span><span class="w">
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>model_input_type : ModelInputType.SINOGRAM
-initial_reconstruction : &lt;function blurred_image at 0x7f00528ab380&gt;
+initial_reconstruction : &lt;function blurred_image at 0x7fdf64f85a80&gt;
 n_steps : 5
 channels : 32
 </pre></div>
@@ -730,7 +731,7 @@ E.g. a supervised solver with an L1 and a gradient-matching loss:</p>
 </span></pre></div></div>
 <p>The contributor guide has the rules, and a checklist for each piece, to add
 it to LION itself.</p>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 54.009 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 52.907 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d13-extending-lion-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/f8bd43a746bf7ce735dcd7f6d16d0079/d13_extending_lion.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d13_extending_lion.ipynb</span></code></a></p>

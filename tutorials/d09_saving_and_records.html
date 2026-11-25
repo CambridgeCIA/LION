@@ -7,7 +7,7 @@
         <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+    <link rel="shortcut icon" href="../_static/lion-favicon.svg"><!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
         <title>Saving, loading and records - LION 0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
@@ -299,6 +299,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.TDV.html">LION.models.learned_regularizer.TDV</a></li>
 </ul>
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -403,12 +404,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/tutorials/d09_saving_and_records.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/blob/main/docs/tutorials/d09_saving_and_records.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/tutorials/d09_saving_and_records.rst" rel="edit" title="Edit this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/edit/main/docs/tutorials/d09_saving_and_records.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -549,7 +550,7 @@ batch_size : 4
 drop_last : False
 shuffle : True
 asked : 2
-done : 2 [0.5322824567556381, 0.11390101350843906]
+done : 2 [0.5324675627052784, 0.11417517717927694]
 from : random_state
 </pre></div>
 </div>
@@ -560,7 +561,7 @@ Nothing personal.</p>
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>lion_environment_record : 1
 lion : version : 0.2.0
-commit : da95e713c9eae52ca0b5a53a7a7643051b0ec820
+commit : 9734de4447ff50540f2e85bf2b1cbec25e9e3ed2
 uncommitted : []
 diff_sha256 : None
 pushed : True
@@ -578,7 +579,7 @@ cudnn_benchmark : False
 device : type : cuda
 gpus : ['Quadro RTX 6000', 'Quadro RTX 6000', 'Quadro RTX 6000', 'Quadro RTX 6000']
 driver : 555.42.06
-platform : Linux-5.15.0-203-generic-x86_64-with-glibc2.35
+platform : Linux-5.15.0-204-generic-x86_64-with-glibc2.35
 </pre></div>
 </div>
 </section>
@@ -624,7 +625,7 @@ CPU; on a GPU, to about 1e-3, unless made with <code class="docutils literal not
 </span><span class="p">)</span><span class="w">
 </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">largest difference in the weights: </span><span class="si">{</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="float"><span class="n">difference</span></a><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>largest difference in the weights: 5.87e+00
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>largest difference in the weights: 4.38e+00
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">LION.package.train_again</span></code> does all of this in one call (<a class="reference internal" href="d12_publishing.html"><span class="doc">Publishing and reproducing</span></a>).</p>
@@ -663,8 +664,8 @@ original’s records.</p>
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/mhome/damtp/r/ab2860/AItomotools/LION/data_loaders/LIDC_IDRI.py:487: UserWarning: LIDC-IDRI: left out 2 damaged or unusable files (re-run the pre-processing for these patients): ['LIDC-IDRI-0238 (not resampled)', 'LIDC-IDRI-0585 (not resampled)']
   warnings.warn(
-file : {'_target_': 'pathlib.Path', '_args_': ['/tmp/tmpyyl20d4t/FBPConvNet']}
-weights_sha256 : 55d95348230a013070de4953cf883c98e059a713364e42698cfd0299a58cf2d2
+file : {'_target_': 'pathlib.Path', '_args_': ['/tmp/tmpusy6b92p/FBPConvNet']}
+weights_sha256 : 3528393235395a6feceb01d3b4eb0f9c2000e3713f252ee5ebc462f4ad2c8832
 True
 </pre></div>
 </div>
@@ -694,7 +695,7 @@ model defined in your package:</p>
 </span></pre></div></div>
 <p>Loading a file saved with other LION code (another commit, or uncommitted
 changes) warns: the record says which.</p>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (2 minutes 2.334 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 53.187 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d09-saving-and-records-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/408bb97a5afde9fb70d912633135ad0f/d09_saving_and_records.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d09_saving_and_records.ipynb</span></code></a></p>

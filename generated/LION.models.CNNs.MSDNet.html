@@ -7,7 +7,7 @@
         <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+    <link rel="shortcut icon" href="../_static/lion-favicon.svg"><!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
         <title>LION.models.CNNs.MSDNet - LION 0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
@@ -299,6 +299,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.TDV.html">LION.models.learned_regularizer.TDV</a></li>
 </ul>
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -403,12 +404,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/generated/LION.models.CNNs.MSDNet.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/blob/main/docs/generated/LION.models.CNNs.MSDNet.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/generated/LION.models.CNNs.MSDNet.rst" rel="edit" title="Edit this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/edit/main/docs/generated/LION.models.CNNs.MSDNet.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -427,15 +428,24 @@
         <article role="main" id="furo-main-content">
           <section id="module-LION.models.CNNs.MSDNet">
 <span id="lion-models-cnns-msdnet"></span><h1>LION.models.CNNs.MSDNet<a class="headerlink" href="#module-LION.models.CNNs.MSDNet" title="Link to this heading">¶</a></h1>
+<p>The Mixed-Scale Dense network (Pelt and Sethian, 2018), as <code class="docutils literal notranslate"><span class="pre">msd_pytorch</span></code>
+(Hendriksen, 2019) implements it, in plain PyTorch.</p>
+<p><code class="docutils literal notranslate"><span class="pre">msd_pytorch</span></code> is the reference implementation, but it is no longer
+maintained and needs compiling (CUDA kernels, PyTorch 1.8, Python up to 3.9).
+This is the same network, with the same initialisation and padding, and its
+same memory use: the layers write their outputs into one buffer, and the
+gradients are computed layer by layer, so memory grows with the depth, not its
+square (each layer’s input is all the layers before it, and storing them for
+autograd one by one would grow with the square). On a GPU, each layer is a
+Triton kernel (<code class="docutils literal notranslate"><span class="pre">_msd_triton</span></code>, as <code class="docutils literal notranslate"><span class="pre">msd_pytorch</span></code>’s CUDA kernels; Triton
+comes with PyTorch, nothing to compile); otherwise plain torch, a group of
+input channels at a time.</p>
 <p class="rubric">Classes</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#LION.models.CNNs.MSDNet.MSDNet" title="LION.models.CNNs.MSDNet.MSDNet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MSDNet</span></code></a>([model_parameters])</p></td>
-<td><p>Mixed-Scale Dense network (Pelt and Sethian, 2018): a deep, narrow network of dilated convolutions, every layer seeing the channels of all the layers before it, ending in a 1x1 convolution.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#LION.models.CNNs.MSDNet.MSD_Layer" title="LION.models.CNNs.MSDNet.MSD_Layer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MSD_Layer</span></code></a>(in_channels, width, dilations, ...)</p></td>
-<td><p>One layer of MSDNet: <code class="docutils literal notranslate"><span class="pre">width</span></code> 3x3 convolutions with their own dilations, each on all of the layer's input channels, each followed by batch normalisation and <code class="docutils literal notranslate"><span class="pre">activation</span></code>.</p></td>
+<td><p>Mixed-Scale Dense network (Pelt and Sethian, 2018), as <code class="docutils literal notranslate"><span class="pre">msd_pytorch</span></code> (Hendriksen, 2019): a deep, narrow network of dilated 3x3 convolutions, each layer seeing the input and all the layers before it, ending in a 1x1 convolution of all of them.</p></td>
 </tr>
 </tbody>
 </table>
@@ -445,59 +455,53 @@
 <dt class="sig sig-object py" id="LION.models.CNNs.MSDNet.MSDNet">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.models.CNNs.MSDNet.</span></span><span class="sig-name descname"><span class="pre">MSDNet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/models/CNNs/MSDNet.html#MSDNet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.models.CNNs.MSDNet.MSDNet" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel" title="LION.models.LIONmodel.LIONmodel"><code class="xref py py-class docutils literal notranslate"><span class="pre">LIONmodel</span></code></a></p>
-<p>Mixed-Scale Dense network (Pelt and Sethian, 2018): a deep, narrow
-network of dilated convolutions, every layer seeing the channels of all the
-layers before it, ending in a 1x1 convolution. Takes images (e.g. a
-reconstruction).</p>
+<p>Mixed-Scale Dense network (Pelt and Sethian, 2018), as <code class="docutils literal notranslate"><span class="pre">msd_pytorch</span></code>
+(Hendriksen, 2019): a deep, narrow network of dilated 3x3 convolutions,
+each layer seeing the input and all the layers before it, ending in a 1x1
+convolution of all of them. Takes images (e.g. a reconstruction), or with
+<code class="docutils literal notranslate"><span class="pre">model_input_type</span></code> SINOGRAM, the measurements.</p>
+<p>Each hidden layer is <code class="docutils literal notranslate"><span class="pre">width</span></code> convolutions with a bias and a ReLU, of
+dilation <code class="docutils literal notranslate"><span class="pre">dilations[i</span> <span class="pre">%</span> <span class="pre">len(dilations)]</span></code>, padded by symmetric reflection;
+the output layer is linear (a 1x1 convolution with a bias, no activation),
+for regression. The hidden convolutions start as in the paper (normal, std
+sqrt(2 / n), n the inputs of a layer at full depth), the biases and the
+output layer at zero (so the untrained network gives 0).</p>
+<p>Memory grows with the depth (the module’s description says how). Backward
+can’t be differentiated again (e.g. a Jacobian penalty on the network,
+<code class="docutils literal notranslate"><span class="pre">LION.losses.jacobian_penalty</span></code>, needs it).</p>
 <p><code class="docutils literal notranslate"><span class="pre">model_parameters</span></code> (<code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code>):</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">in_channels</span></code>: the input image’s channels (1);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">in_channels</span></code>, <code class="docutils literal notranslate"><span class="pre">out_channels</span></code>: of the input and output images (1,
+1);</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">width</span></code>: the channels each layer adds (1);</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">depth</span></code>: the number of layers (100);</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">dilations</span></code>: one per convolution, <code class="docutils literal notranslate"><span class="pre">width</span> <span class="pre">*</span> <span class="pre">depth</span></code> of them, layer by
-layer (1 to 10, repeated);</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">look_back_depth</span></code>: how many earlier layers each layer sees (-1: all);</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">final_look_back_depth</span></code>: how many layers the final 1x1 convolution sees
-(-1: all, and the input);</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">activation</span></code>: a <code class="docutils literal notranslate"><span class="pre">torch.nn</span></code> class name (“ReLU”) or module.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">depth</span></code>: the number of hidden layers (100);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dilations</span></code>: repeated over the layers (1 to 10).</p></li>
 </ul>
 <p>The network for <code class="docutils literal notranslate"><span class="pre">model_parameters</span></code> (<code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code> if
 None).</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="LION.models.CNNs.MSDNet.MSDNet.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/models/CNNs/MSDNet.html#MSDNet.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.models.CNNs.MSDNet.MSDNet.forward" title="Link to this definition">¶</a></dt>
-<dd><p>The network’s output image for the images <code class="docutils literal notranslate"><span class="pre">x</span></code> (B, in_channels, H,
-W).</p>
+<dt class="sig sig-object py" id="LION.models.CNNs.MSDNet.MSDNet.reset_parameters">
+<span class="sig-name descname"><span class="pre">reset_parameters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/models/CNNs/MSDNet.html#MSDNet.reset_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.models.CNNs.MSDNet.MSDNet.reset_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>The initial weights (see the class): as <code class="docutils literal notranslate"><span class="pre">msd_pytorch</span></code>’s.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="LION.models.CNNs.MSDNet.MSDNet.default_parameters">
 <em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/models/CNNs/MSDNet.html#MSDNet.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.models.CNNs.MSDNet.MSDNet.default_parameters" title="Link to this definition">¶</a></dt>
-<dd><p>The paper’s network: 100 layers of width 1, dilations 1 to 10, every
-layer seeing all earlier ones (see the class).</p>
+<dd><p>The paper’s network: 100 layers of width 1, dilations 1 to 10 (see
+the class).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.models.CNNs.MSDNet.MSDNet.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/models/CNNs/MSDNet.html#MSDNet.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.models.CNNs.MSDNet.MSDNet.forward" title="Link to this definition">¶</a></dt>
+<dd><p>The network’s output for the images <code class="docutils literal notranslate"><span class="pre">x</span></code> (B, in_channels, H, W).</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="LION.models.CNNs.MSDNet.MSDNet.cite">
 <em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cite</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cite_format</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'bib'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/models/CNNs/MSDNet.html#MSDNet.cite"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.models.CNNs.MSDNet.MSDNet.cite" title="Link to this definition">¶</a></dt>
 <dd><p>Where MSDNet comes from: its citation, BibTeX (“bib”) or “MLA”.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="LION.models.CNNs.MSDNet.MSD_Layer">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.models.CNNs.MSDNet.</span></span><span class="sig-name descname"><span class="pre">MSD_Layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dilations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">activation</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/models/CNNs/MSDNet.html#MSD_Layer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.models.CNNs.MSDNet.MSD_Layer" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
-<p>One layer of MSDNet: <code class="docutils literal notranslate"><span class="pre">width</span></code> 3x3 convolutions with their own
-dilations, each on all of the layer’s input channels, each followed by
-batch normalisation and <code class="docutils literal notranslate"><span class="pre">activation</span></code>. Its output is its input with the
-new channels appended.</p>
-<p>Initialize internal Module state, shared by both nn.Module and ScriptModule.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="LION.models.CNNs.MSDNet.MSD_Layer.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/models/CNNs/MSDNet.html#MSD_Layer.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.models.CNNs.MSDNet.MSD_Layer.forward" title="Link to this definition">¶</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">x</span></code> with the <code class="docutils literal notranslate"><span class="pre">width</span></code> new channels appended.</p>
 </dd></dl>
 
 </dd></dl>
@@ -561,13 +565,10 @@ new channels appended.</p>
             <ul>
 <li><a class="reference internal" href="#">LION.models.CNNs.MSDNet</a><ul>
 <li><a class="reference internal" href="#LION.models.CNNs.MSDNet.MSDNet"><code class="docutils literal notranslate"><span class="pre">MSDNet</span></code></a><ul>
-<li><a class="reference internal" href="#LION.models.CNNs.MSDNet.MSDNet.forward"><code class="docutils literal notranslate"><span class="pre">MSDNet.forward()</span></code></a></li>
+<li><a class="reference internal" href="#LION.models.CNNs.MSDNet.MSDNet.reset_parameters"><code class="docutils literal notranslate"><span class="pre">MSDNet.reset_parameters()</span></code></a></li>
 <li><a class="reference internal" href="#LION.models.CNNs.MSDNet.MSDNet.default_parameters"><code class="docutils literal notranslate"><span class="pre">MSDNet.default_parameters()</span></code></a></li>
+<li><a class="reference internal" href="#LION.models.CNNs.MSDNet.MSDNet.forward"><code class="docutils literal notranslate"><span class="pre">MSDNet.forward()</span></code></a></li>
 <li><a class="reference internal" href="#LION.models.CNNs.MSDNet.MSDNet.cite"><code class="docutils literal notranslate"><span class="pre">MSDNet.cite()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#LION.models.CNNs.MSDNet.MSD_Layer"><code class="docutils literal notranslate"><span class="pre">MSD_Layer</span></code></a><ul>
-<li><a class="reference internal" href="#LION.models.CNNs.MSDNet.MSD_Layer.forward"><code class="docutils literal notranslate"><span class="pre">MSD_Layer.forward()</span></code></a></li>
 </ul>
 </li>
 </ul>

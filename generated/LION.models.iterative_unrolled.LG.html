@@ -7,7 +7,7 @@
         <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+    <link rel="shortcut icon" href="../_static/lion-favicon.svg"><!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
         <title>LION.models.iterative_unrolled.LG - LION 0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
@@ -299,6 +299,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="LION.models.learned_regularizer.TDV.html">LION.models.learned_regularizer.TDV</a></li>
 </ul>
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -403,12 +404,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/generated/LION.models.iterative_unrolled.LG.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/blob/main/docs/generated/LION.models.iterative_unrolled.LG.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/generated/LION.models.iterative_unrolled.LG.rst" rel="edit" title="Edit this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/edit/main/docs/generated/LION.models.iterative_unrolled.LG.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -432,7 +433,7 @@
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#LION.models.iterative_unrolled.LG.LG" title="LION.models.iterative_unrolled.LG.LG"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LG</span></code></a>(operator_params[, model_parameters])</p></td>
-<td><p>Learned Gradient (Adler and Öktem, 2017): <code class="docutils literal notranslate"><span class="pre">n_iters</span></code> updates of the image, each a CNN of the image, a memory, the data-fit gradient <code class="docutils literal notranslate"><span class="pre">Aᵀ(y</span> <span class="pre">-</span> <span class="pre">A</span> <span class="pre">x)</span></code> and a TV gradient, with learned step sizes.</p></td>
+<td><p>Learned Gradient (Adler and Öktem, 2017): <code class="docutils literal notranslate"><span class="pre">n_iters</span></code> updates of the image, each a CNN of the image, a memory and the data-fit gradient <code class="docutils literal notranslate"><span class="pre">Aᵀ(y</span> <span class="pre">-</span> <span class="pre">A</span> <span class="pre">x)</span></code>, with learned step sizes; with <code class="docutils literal notranslate"><span class="pre">tv</span></code>, also of a TV gradient (LGTV).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#LION.models.iterative_unrolled.LG.LGblock" title="LION.models.iterative_unrolled.LG.LGblock"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LGblock</span></code></a>(channels)</p></td>
 <td><p>A learned-gradient block: 3x3 convolutions through the <code class="docutils literal notranslate"><span class="pre">channels</span></code> listed, with ReLUs between them.</p></td>
@@ -446,22 +447,31 @@
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">LION.models.iterative_unrolled.LG.</span></span><span class="sig-name descname"><span class="pre">LG</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operator_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/models/iterative_unrolled/LG.html#LG"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.models.iterative_unrolled.LG.LG" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="LION.models.LIONmodel.html#LION.models.LIONmodel.LIONmodel" title="LION.models.LIONmodel.LIONmodel"><code class="xref py py-class docutils literal notranslate"><span class="pre">LIONmodel</span></code></a></p>
 <p>Learned Gradient (Adler and Öktem, 2017): <code class="docutils literal notranslate"><span class="pre">n_iters</span></code> updates of the
-image, each a CNN of the image, a memory, the data-fit gradient <code class="docutils literal notranslate"><span class="pre">Aᵀ(y</span> <span class="pre">-</span> <span class="pre">A</span>
-<span class="pre">x)</span></code> and a TV gradient, with learned step sizes. Starts from the initial
-reconstruction. Takes the measurements.</p>
+image, each a CNN of the image, a memory and the data-fit gradient <code class="docutils literal notranslate"><span class="pre">Aᵀ(y</span>
+<span class="pre">-</span> <span class="pre">A</span> <span class="pre">x)</span></code>, with learned step sizes; with <code class="docutils literal notranslate"><span class="pre">tv</span></code>, also of a TV gradient
+(LGTV). Starts from the initial reconstruction. Takes the measurements.</p>
 <p><code class="docutils literal notranslate"><span class="pre">model_parameters</span></code> (<code class="docutils literal notranslate"><span class="pre">default_parameters()</span></code>):</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">channels</span></code>: each block’s channels, a list: its input (the image, the
-memory, the two gradients) to its output (the memory, then the update);
-[8, 32, 32, 6];</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">n_iters</span></code>: the iterations (5).</p></li>
+memory, the gradient, and the TV gradient with <code class="docutils literal notranslate"><span class="pre">tv</span></code>) to its output
+(the memory, then the update); [7, 32, 32, 6];</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">n_iters</span></code>: the iterations (5);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tv</span></code>: also give each block a TV gradient, with a learned step size
+(LGTV; False, as the paper). <code class="docutils literal notranslate"><span class="pre">LG.lgtv_parameters()</span></code> are LGTV’s.</p></li>
 </ul>
 <p>Initialize internal Module state, shared by both nn.Module and ScriptModule.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="LION.models.iterative_unrolled.LG.LG.default_parameters">
 <em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">default_parameters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/models/iterative_unrolled/LG.html#LG.default_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.models.iterative_unrolled.LG.LG.default_parameters" title="Link to this definition">¶</a></dt>
-<dd><p>5 iterations of blocks of 32 channels, a memory of 5 channels (see
-the class).</p>
+<dd><p>5 iterations of blocks of 32 channels, a memory of 5 channels, no
+TV gradient (see the class).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="LION.models.iterative_unrolled.LG.LG.lgtv_parameters">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lgtv_parameters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/LION/models/iterative_unrolled/LG.html#LG.lgtv_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#LION.models.iterative_unrolled.LG.LG.lgtv_parameters" title="Link to this definition">¶</a></dt>
+<dd><p>LGTV: LG whose blocks also get a TV gradient (<code class="docutils literal notranslate"><span class="pre">tv</span></code>), as in Kiss et
+al., 2025 (see the class).</p>
 </dd></dl>
 
 <dl class="py method">
@@ -560,6 +570,7 @@ listed, with ReLUs between them.</p>
 <li><a class="reference internal" href="#">LION.models.iterative_unrolled.LG</a><ul>
 <li><a class="reference internal" href="#LION.models.iterative_unrolled.LG.LG"><code class="docutils literal notranslate"><span class="pre">LG</span></code></a><ul>
 <li><a class="reference internal" href="#LION.models.iterative_unrolled.LG.LG.default_parameters"><code class="docutils literal notranslate"><span class="pre">LG.default_parameters()</span></code></a></li>
+<li><a class="reference internal" href="#LION.models.iterative_unrolled.LG.LG.lgtv_parameters"><code class="docutils literal notranslate"><span class="pre">LG.lgtv_parameters()</span></code></a></li>
 <li><a class="reference internal" href="#LION.models.iterative_unrolled.LG.LG.cite"><code class="docutils literal notranslate"><span class="pre">LG.cite()</span></code></a></li>
 <li><a class="reference internal" href="#LION.models.iterative_unrolled.LG.LG.gradientTVnorm2D"><code class="docutils literal notranslate"><span class="pre">LG.gradientTVnorm2D()</span></code></a></li>
 <li><a class="reference internal" href="#LION.models.iterative_unrolled.LG.LG.forward"><code class="docutils literal notranslate"><span class="pre">LG.forward()</span></code></a></li>

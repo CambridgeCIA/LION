@@ -7,7 +7,7 @@
         <link rel="prefetch" href="_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="_static/lion-logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+    <link rel="shortcut icon" href="_static/lion-favicon.svg"><!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
         <title>Methods in LION - LION 0.2.0</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
@@ -299,6 +299,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/LION.models.learned_regularizer.TDV.html">LION.models.learned_regularizer.TDV</a></li>
 </ul>
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -403,12 +404,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/methods.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/blob/main/docs/methods.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/methods.rst" rel="edit" title="Edit this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/edit/main/docs/methods.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -550,7 +551,8 @@ imaging”, IEEE Trans. Image Processing, 2017</p></td>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LG</span></code> (Learned Gradient)</p></td>
 <td><p>measurements</p></td>
 <td><p>Adler and Öktem, “Solving ill-posed inverse problems using iterative
-deep neural networks”, Inverse Problems, 2017</p></td>
+deep neural networks”, Inverse Problems, 2017; with a TV gradient
+(<code class="docutils literal notranslate"><span class="pre">LG.lgtv_parameters()</span></code>), LGTV, as in Kiss et al., 2025</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LPD</span></code> (Learned Primal-Dual)</p></td>
 <td><p>measurements</p></td>
@@ -625,7 +627,8 @@ of self-supervised training.</p>
 Biomedical Image Segmentation”, MICCAI 2015</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MSDNet</span></code></p></td>
-<td><p>few parameters, no downsampling</p></td>
+<td><p>few parameters, no downsampling; as <code class="docutils literal notranslate"><span class="pre">msd_pytorch</span></code> (Hendriksen), in
+plain torch</p></td>
 <td><p>Pelt and Sethian, “A mixed-scale dense convolutional neural network
 for image analysis”, PNAS, 2018</p></td>
 </tr>
@@ -679,6 +682,12 @@ problems”, NeurIPS 2018</p></td>
 <td><p>convex in the image</p></td>
 <td><p>Mukherjee et al., “Learned convex regularizers for inverse problems”,
 arXiv:2008.02839, 2020</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TDV</span></code> (total deep variation)</p></td>
+<td><p>a variational network: gradient steps on the learned regulariser and
+the data term, trained end to end; takes the measurements</p></td>
+<td><p>Kobler, Effland, Kunisch and Pock, “Total deep variation for linear
+inverse problems”, CVPR 2020</p></td>
 </tr>
 </tbody>
 </table>

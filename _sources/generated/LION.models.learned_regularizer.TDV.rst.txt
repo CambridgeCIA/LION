@@ -1,0 +1,34 @@
+LION.models.learned\_regularizer.TDV
+====================================
+
+.. automodule:: LION.models.learned_regularizer.TDV
+   :no-members:
+
+
+
+
+
+
+
+.. rubric:: Classes
+
+.. autosummary::
+
+   TDV
+
+
+
+
+
+
+
+
+----
+
+
+.. autoclass:: TDV
+   :members:
+   :show-inheritance:
+
+
+

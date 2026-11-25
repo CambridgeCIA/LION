@@ -7,7 +7,7 @@
         <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+    <link rel="shortcut icon" href="../_static/lion-favicon.svg"><!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
         <title>Publishing and reproducing - LION 0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
@@ -299,6 +299,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.TDV.html">LION.models.learned_regularizer.TDV</a></li>
 </ul>
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -403,12 +404,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/tutorials/d12_publishing.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/blob/main/docs/tutorials/d12_publishing.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/tutorials/d12_publishing.rst" rel="edit" title="Edit this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/edit/main/docs/tutorials/d12_publishing.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -521,7 +522,7 @@ to use and train it again:</p>
 </span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span># ForwardReconstructor with a FBPConvNet trained on LIDC-IDRI: Low dose full angular sampling experiment
 
-Published on 2026-11-11 with LION 0.2.0 (commit da95e713c9). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
+Published on 2026-11-25 with LION 0.2.0 (commit 9734de4447). Generated from the package's records (`package.json` lists them); edit it freely, it isn't checksummed.
 
 ## The model
 
@@ -544,9 +545,9 @@ Published on 2026-11-11 with LION 0.2.0 (commit da95e713c9). Generated from the 
 - Solver: `LION.optimizers.SupervisedSolver.SupervisedSolver`, loss `MSELoss`; optimizer `Adam` (learning rate 0.001).
 - Data: the train data, 40 samples from 8 groups; batch size 4, shuffled.
 - Validation: 4 samples from 1 group, every 1 epoch, with `MSELoss`.
-- 2 epochs of 2; at the end, training loss 0.03569 and validation 0.4969.
+- 2 epochs of 2; at the end, training loss 0.03782 and validation 1.943.
 - Seed 0; initial weights made again from the random state saved with the model.
-- Trained with LION 0.2.0 (commit da95e713c9), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
+- Trained with LION 0.2.0 (commit 9734de4447), Python 3.12.15, torch 2.13.0, on Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000, Quadro RTX 6000 (CUDA 12.9); deterministic: no, so runs on a GPU differ slightly.
 
 ## Test
 
@@ -554,7 +555,7 @@ On the test data (10 samples from 10 groups), metrics over the range [0.0, 2.890
 
 | Method | PSNR | SSIM | HaarPSI |
 |---|---|---|---|
-| ForwardReconstructor | 12.09 ± 0.75 | 0.0995 ± 0.0407 | 0.2126 ± 0.0706 |
+| ForwardReconstructor | 8.9912 ± 1.0432 | 0.0688 ± 0.0256 | 0.1361 ± 0.0343 |
 
 ## Using it
 
@@ -707,7 +708,7 @@ Image shape = [  1 512 512]
 Image size = [  0.9765625 500.        500.       ] mm
 Number of angles = (360,)
 model_parameters : model_input_type : ModelInputType.SINOGRAM
-initial_reconstruction : &lt;function fdk at 0x7eff167d1300&gt;
+initial_reconstruction : &lt;function fdk at 0x7fdf7e4d5260&gt;
 down_1_channels : [1, 64, 64, 64]
 down_2_channels : [64, 128, 128]
 down_3_channels : [128, 256, 256]
@@ -871,7 +872,7 @@ weights):</p>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>FBPConvNet
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (4 minutes 6.642 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (4 minutes 2.065 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d12-publishing-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/11dc0ffcf438e0e7453a05348fa9c7e1/d12_publishing.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d12_publishing.ipynb</span></code></a></p>

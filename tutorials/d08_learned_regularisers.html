@@ -7,7 +7,7 @@
         <link rel="prefetch" href="../_static/lion-logo.svg" as="image">
         <link rel="prefetch" href="../_static/lion-logo-dark.svg" as="image">
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
+    <link rel="shortcut icon" href="../_static/lion-favicon.svg"><!-- Generated with Sphinx 8.1.3 and Furo 2025.12.19 -->
         <title>Learned regularisers - LION 0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
@@ -299,6 +299,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.learned_regularizer.html">LION.models.learned_regularizer</a><input aria-label="Toggle navigation of LION.models.learned_regularizer" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.ACR.html">LION.models.learned_regularizer.ACR</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.AR.html">LION.models.learned_regularizer.AR</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../generated/LION.models.learned_regularizer.TDV.html">LION.models.learned_regularizer.TDV</a></li>
 </ul>
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../generated/LION.models.post_processing.html">LION.models.post_processing</a><input aria-label="Toggle navigation of LION.models.post_processing" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -403,12 +404,12 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/blob/main/docs/tutorials/d08_learned_regularisers.rst?plain=true" title="View this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/blob/main/docs/tutorials/d08_learned_regularisers.rst?plain=true" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/CambridgeCIA/LION/edit/main/docs/tutorials/d08_learned_regularisers.rst" rel="edit" title="Edit this page">
+  <a class="muted-link" href="https://github.com/cat-imaging/LION/edit/main/docs/tutorials/d08_learned_regularisers.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
@@ -543,7 +544,7 @@ alpha : 270297.3154296875
 n_steps : 50
 step_size : 1e-06
 backtracking : 0.95
-initial_reconstruction : &lt;function fdk at 0x7eff167d1300&gt;
+initial_reconstruction : &lt;function fdk at 0x7fdf7e4d5260&gt;
 </pre></div>
 </div>
 </section>
@@ -566,7 +567,7 @@ initial_reconstruction : &lt;function fdk at 0x7eff167d1300&gt;
 </span>    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="n">title</span></a><span class="p">)</span><span class="w">
 </span>    <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">off</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<img src="../_images/sphx_glr_d08_learned_regularisers_001.png" srcset="../_images/sphx_glr_d08_learned_regularisers_001.png" alt="target, FDK, 19.0 dB, AR, 20.6 dB" class = "sphx-glr-single-img"/></section>
+<img src="../_images/sphx_glr_d08_learned_regularisers_001.png" srcset="../_images/sphx_glr_d08_learned_regularisers_001.png" alt="target, FDK, 19.0 dB, AR, 20.2 dB" class = "sphx-glr-single-img"/></section>
 <section id="other-regularisers">
 <h2>Other regularisers<a class="headerlink" href="#other-regularisers" title="Link to this heading">¶</a></h2>
 <p>The reconstructor works with any regulariser, however it was trained: a
@@ -587,7 +588,7 @@ image, so the energy has a single minimum:</p>
 </span>    <a class="sphx-glr-backref-module-LION-operators-ct sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.operators.ct.ct_geometry.html#LION.operators.ct.ct_geometry.Geometry" title="LION.operators.ct.Geometry"><span class="n">experiment</span><span class="o">.</span><span class="n">operator_params</span></a><span class="p">,</span> <span class="n">smoothed_tv</span><span class="p">,</span> <a class="sphx-glr-backref-module-LION-utils-parameter sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../generated/LION.utils.parameter.html#LION.utils.parameter.LIONParameter" title="LION.utils.parameter.LIONParameter"><span class="n">reconstructor_parameters</span></a><span class="w">
 </span><span class="p">)</span><span class="w">
 </span></pre></div></div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 42.431 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 29.984 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-tutorials-d08-learned-regularisers-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/82a8eb67e53a1b398661fc9b5a16df71/d08_learned_regularisers.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">d08_learned_regularisers.ipynb</span></code></a></p>
