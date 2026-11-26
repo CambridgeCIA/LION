@@ -80,6 +80,12 @@ standalone = [
     "torch>=2.6",  # LION loads model files with weights_only=True, unsafe before 2.6 (CVE-2025-32434)
     "torchvision",  # not imported by LION, but required by mrpro and spyrit
 ]
+# TIGRE, the other CT backend (LION.operators.ct.set_ct_backend). Compiled with
+# CUDA: it needs the CUDA toolkit (nvcc). Not on PyPI (`pip install tigre` is
+# another package).
+tigre = [
+    "tigre @ git+https://github.com/CERN/TIGRE.git@v3.3.1",
+]
 # Used by some example scripts only (scripts/example_scripts)
 examples = [
     "deepinv",  # PnP_ADMM.py, photocurrent_mapping.py: pretrained DRUNet
@@ -132,6 +138,7 @@ filterwarnings = [
 markers = [
     "cuda : Tests only to be run when cuda device is available",  # Add argument `-m "not cuda"` to the `pytest` command line to skip tests with this marker
     "tomosipo : Tests that need tomosipo/astra; skipped automatically when tomosipo cannot be imported",
+    "tigre : Tests that need TIGRE (with CUDA); skipped automatically when TIGRE cannot be imported",
 ]
 
 # MyPy section

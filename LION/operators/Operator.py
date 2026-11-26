@@ -40,7 +40,13 @@ class Operator(torch.nn.Module, ABC):
     ``adjoint``, ``domain_shape`` and ``range_shape``; ``autograd()`` if it can
     be differentiated through; ``inverse`` if it has one;
     ``default_reconstruction_fn`` if it has a usual reconstruction. ``device``:
-    where it computes (None: unset; ``to_device`` moves it)."""
+    where it computes (None: unset; ``to_device`` moves it).
+
+    ``backend``: the library that computes the operator, for kinds that have
+    several (CT: "tomosipo" or "tigre"); None for the others."""
+
+    #: The library that computes the operator (None: only one way, e.g. torch).
+    backend: str | None = None
 
     def __init__(self, device: DeviceLikeType | None = None):
         super().__init__()

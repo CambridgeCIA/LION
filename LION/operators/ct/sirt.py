@@ -15,6 +15,7 @@ from LION.operators.ct._batching import (
     sample_verbose,
     per_sample,
 )
+from LION.operators.ct.backend import require_ct_backend
 from LION.operators.ct.ct_geometry import Geometry
 from LION.operators.Operator import Operator
 from LION.utils.tomosipo_import import import_tomosipo
@@ -46,6 +47,7 @@ def sirt(
     callbacks = [] if callbacks is None else callbacks
 
     def recon_fn(op, sino_i, i):
+        require_ct_backend(op, "tomosipo", "sirt")
         return ts_sirt(
             op,
             sino_i,

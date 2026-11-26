@@ -13,7 +13,8 @@ import warnings
 
 import numpy as np
 
-from LION.utils.parameter import LIONParameter, OperatorParameters
+from LION.operators.ct.backend import CT_BACKENDS, resolve_ct_backend
+from LION.utils.parameter import DEFAULT_BACKEND, LIONParameter, OperatorParameters
 
 # Each triple (shape, size, spacing) is fixed by any two of its values:
 # size = shape * spacing.
@@ -76,11 +77,19 @@ class Geometry(OperatorParameters):
     third one when it is read, so it is never out of date when the others
     change, e.g. ``geo = Geometry.default_parameters(); geo.image_shape = ...``.
 
+    ``backend``: the library that computes its operator, "tomosipo" or
+    "tigre"; ``"default"`` (unless set): the one chosen with
+    ``LION.operators.ct.set_ct_backend``, replaced by it when the operator is
+    made or the geometry saved, so records say which backend was used.
+
     ``check_geometry()`` checks that a geometry is complete and consistent. It
     runs when an operator is built from the geometry and when the geometry is
     saved. ``__init__`` only checks what is given at once (three values of a
     triple that disagree), because a geometry can be filled in afterwards.
     """
+
+    #: "default" (``set_ct_backend``'s), "tomosipo" or "tigre"; set by __init__.
+    backend = DEFAULT_BACKEND
 
     def __init__(self, **kwargs):
         # __init__ also runs again on an existing geometry (load()):
@@ -99,6 +108,8 @@ class Geometry(OperatorParameters):
         self.dsd = kwargs.get("dsd", None)
 
         self.angles = kwargs.get("angles", None)
+
+        self.backend = kwargs.get("backend", DEFAULT_BACKEND)
 
         for triple in _TRIPLES:
             given = _triple_values(self, triple)
@@ -143,18 +154,25 @@ class Geometry(OperatorParameters):
 
     def spec_kwargs(self):
         """The values a spec of this geometry holds (``LION.utils.spec``), after
-        ``check_geometry()``: only the values that were set."""
+        ``check_geometry()``: only the values that were set, with the backend
+        that is used for ``"default"``."""
         check_geometry(self)
-        return dict(vars(self))
+        kwargs = dict(vars(self))
+        kwargs["backend"] = _resolved_backend(self)
+        return kwargs
 
     def serialize(self):
         """The geometry as a dict, after ``check_geometry()``: only the values
-        that were set, not the computed ones."""
+        that were set, not the computed ones, with the backend that is used for
+        ``"default"``."""
         check_geometry(self)
-        return super().serialize()
+        d = super().serialize()
+        d["backend"] = _resolved_backend(self)
+        return d
 
     def make_operator(self):
-        """The CT operator for this geometry (``CTProjectionOp``)."""
+        """The CT operator for this geometry (``CTProjectionOp``), computed by
+        its ``backend``; ``"default"`` is replaced by the backend used."""
         from LION.operators.ct.CTProjectionOp import CTProjectionOp
 
         return CTProjectionOp(self)
@@ -191,7 +209,8 @@ class Geometry(OperatorParameters):
         again from the size and shape (with a warning if the stored one
         disagreed).
         """
-        names = ("mode", "image_pos", "dso", "dsd", "angles") + IMAGE + DETECTOR
+        names = ("mode", "image_pos", "dso", "dsd", "angles", "backend")
+        names += IMAGE + DETECTOR
         kwargs = {
             name: getattr(parameter, name) for name in names if hasattr(parameter, name)
         }
@@ -299,6 +318,7 @@ class Geometry(OperatorParameters):
         string = []
         string.append("CT Geometry")
         string.append("CT type/mode = " + self.mode)
+        string.append("Backend = " + str(getattr(self, "backend", DEFAULT_BACKEND)))
         string.append("-----")
         string.append(
             "Distance from source to detector (DSD) = " + str(self.dsd) + " mm"
@@ -314,6 +334,12 @@ class Geometry(OperatorParameters):
         string.append("Image size = " + str(self.image_size) + " mm")
         string.append("Number of angles = " + str(self.angles.shape))
         return "\n".join(string)
+
+
+def _resolved_backend(geometry) -> str:
+    """The geometry's backend, with ``"default"`` replaced by the library-wide
+    one (``set_ct_backend``)."""
+    return resolve_ct_backend(getattr(geometry, "backend", DEFAULT_BACKEND))
 
 
 def _disagree_message(triple, given) -> str:
@@ -382,8 +408,10 @@ def check_geometry(geometry: Geometry) -> None:
       sizes and spacings positive;
     - ``image_pos`` is 3 finite numbers;
     - ``angles`` is a 1-D array of finite numbers;
-    - fan beam: ``dso`` and ``dsd`` are positive, with ``dsd >= dso``.
+    - fan beam: ``dso`` and ``dsd`` are positive, with ``dsd >= dso``;
+    - ``backend`` is "default" or one of ``CT_BACKENDS``.
     """
+
     if not isinstance(geometry, Geometry):
         raise ValueError(
             f"Expected a LION.operators.ct.ct_geometry.Geometry, got {type(geometry).__name__}"
@@ -448,6 +476,13 @@ def check_geometry(geometry: Geometry) -> None:
                 f"dsd ({float(geometry.dsd)}) must be at least dso "
                 f"({float(geometry.dso)}): the detector is beyond the centre"
             )
+
+    backend = getattr(geometry, "backend", DEFAULT_BACKEND)
+    if backend != DEFAULT_BACKEND and backend not in CT_BACKENDS:
+        problems.append(
+            f"backend is {backend!r}; it must be {DEFAULT_BACKEND!r} or one of "
+            f"{CT_BACKENDS}"
+        )
 
     if problems:
         raise ValueError("Invalid CT geometry:\n- " + "\n- ".join(problems))

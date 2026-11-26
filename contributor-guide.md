@@ -45,7 +45,7 @@ doesn't do.
 
 - **LION imports without its backends.** Each is imported only where it is
   used, through its own module: `LION/utils/tomosipo_import.py` (tomosipo,
-  ts_algorithms), `mrpro_import.py`, `spyrit_import.py`. No module imports one
+  ts_algorithms), `tigre_import.py`, `mrpro_import.py`, `spyrit_import.py`. No module imports one
   at the top (`pytests/test_imports.py`).
 - A dependency is something LION imports. Packages used only by example
   scripts go in the `examples` extra, only by tests in `tests`.
@@ -135,6 +135,12 @@ doesn't do.
   can't see into wraps itself in autograd functions (CT: tomosipo's
   `to_autograd`). The base class raises. Don't wrap an operator outside its
   own folder.
+- **Backends.** An operator that different libraries can compute (CT:
+  tomosipo or TIGRE) says which in `op.backend`, and its parameters have a
+  `backend`: `"default"`, the library-wide choice (`set_ct_backend`), is
+  replaced by the backend used when the operator is made or the parameters
+  saved, so records say which one made a result and loading uses it again.
+  Code that needs one backend says so (`require_ct_backend`).
 - Splitting the measurements (Noise2Inverse, Sparse2Inverse) goes through the
   parameters: `split_count`, `split(indices)`, `split_measurements(y,
   indices)`. A kind that can't be split doesn't define them.

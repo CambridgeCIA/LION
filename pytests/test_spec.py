@@ -7,6 +7,7 @@
 """Specs (LION.utils.spec): components written as the call that builds them, and
 models saved and loaded with them."""
 
+import copy
 import importlib
 import inspect
 import json
@@ -25,6 +26,7 @@ import torch
 import LION.experiments.deteCT_benchmark as benchmark_experiments
 import LION.experiments.ct_experiments as ct_experiments
 import LION.models
+from LION.operators.ct import ct_backend
 from LION.operators.ct.ct_geometry import Geometry
 from LION.metrics.haarpsi import HAARPsi
 from LION.metrics.psnr import PSNR
@@ -33,6 +35,20 @@ from LION.models.LIONmodel import LIONmodel, ModelInputType
 from LION.models.PnP.gradient_step_denoiser import GSD
 from LION.utils.parameter import LIONParameter
 from LION.utils.spec import SpecError, build, encode, to_spec
+
+
+def backends_resolved(value):
+    """A copy of ``value`` with its geometries' ``"default"`` backend replaced
+    by the one in use, as saving does (records say which backend was used)."""
+    value = copy.deepcopy(value)
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, Geometry) and item.backend == "default":
+            item.backend = ct_backend()
+        if isinstance(item, LIONParameter):
+            stack.extend(vars(item).values())
+    return value
 
 
 def same(a, b, where="") -> list:
@@ -131,8 +147,8 @@ def test_model_parameters_come_back_the_same(cls):
 
 @pytest.mark.parametrize("name, params", experiment_parameters().items())
 def test_experiment_parameters_come_back_the_same(name, params):
-    """Including their Geometry, numpy arrays and Paths."""
-    assert same(params, through_json(params)) == []
+    """Including their Geometry (its backend resolved), numpy arrays and Paths."""
+    assert same(backends_resolved(params), through_json(params)) == []
 
 
 @pytest.mark.parametrize(
@@ -304,7 +320,7 @@ def test_data_metadata_comes_back(tmp_path):
     _, options, _ = DnCNN.load(tmp_path / "model", supress_warnings=True)
     assert same(options.dataset_params, dataset) == []
     assert same(options.training, training) == []
-    assert same(options.operator_params, small_geometry()) == []
+    assert same(options.operator_params, backends_resolved(small_geometry())) == []
 
 
 class LocalModel(DnCNN):

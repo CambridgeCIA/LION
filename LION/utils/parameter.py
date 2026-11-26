@@ -116,7 +116,17 @@ class OperatorParameters(LIONParameter):
     wherever LION asks for ``operator_params``, a CT user gives their geometry.
 
     Components that need an operator take its parameters (``operator_params``)
-    and call ``make_operator()``, so they work with any kind of operator."""
+    and call ``make_operator()``, so they work with any kind of operator.
+
+    A kind whose operator can be computed by different libraries (for CT,
+    tomosipo or TIGRE) has a ``backend`` parameter: ``"default"``
+    (``DEFAULT_BACKEND``), the library-wide choice, is replaced by the backend
+    used when the operator is made, so records say which one made a result and
+    the operator is made with it again when they are loaded."""
+
+    #: The library that computes the operator, for kinds that have several;
+    #: ``"default"``: the kind's library-wide choice.
+    backend = None
 
     def make_operator(self):
         """The operator these parameters describe."""
@@ -158,6 +168,11 @@ class OperatorParameters(LIONParameter):
 #: reconstruction. It is replaced by that function once the operator is known
 #: (``resolve_reconstruction``), so records say which function was used.
 DEFAULT_RECONSTRUCTION = "default"
+
+#: In operator parameters' ``backend``: the kind's library-wide choice (for CT,
+#: ``LION.operators.ct.set_ct_backend``). It is replaced by the backend used
+#: when the operator is made, so records say which one was used.
+DEFAULT_BACKEND = "default"
 
 
 def resolve_reconstruction(value, op, name: str = "reconstruction"):

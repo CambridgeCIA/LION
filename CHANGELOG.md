@@ -16,6 +16,13 @@ with 0.2.0 don't load.
 
 ### Added
 
+- **TIGRE as a CT backend** (`LION.operators.ct.set_ct_backend("tigre")`,
+  or `geometry.backend`): projection, backprojection, autograd and FDK with
+  TIGRE (3.3.0 or later; the `tigre` extra installs 3.3.1) on the tensors'
+  GPU. tomosipo stays the default for now. A geometry's `backend` ("default" unless set) is replaced by the backend used,
+  so records say which one made a result, and loading uses it again.
+  `Operator.backend` says which library computes an operator. SIRT and TV-min
+  need tomosipo (for now).
 - **Records** (`metadata.md`; #271–#298, #311, #312):
   - every saved model is a spec (the call that makes it again), read with
     torch's safe loader;

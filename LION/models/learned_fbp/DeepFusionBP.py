@@ -10,7 +10,6 @@ from LION.models.LIONmodel import LIONmodel, LIONModelParameter, ModelInputType
 
 from LION.utils.parameter import LIONParameter
 import LION.operators.ct.ct_geometry as ct
-from LION.utils.tomosipo_import import import_tomosipo
 
 
 import torch
@@ -94,18 +93,13 @@ class single_back_projections(Module):
     def __init__(self, operator_params):
 
         super().__init__()
-        to_autograd = import_tomosipo(
-            "tomosipo.torch_support", "DeepFusionBP"
-        ).to_autograd
         angles = np.asarray(operator_params.angles)
         self.tomosipo_geometries = []
         for i in range(len(angles)):
             single_angle = copy.deepcopy(operator_params)
             single_angle.angles = angles[i : i + 1]
             # (B, 1, 1, detectors) -> (B, 1, H, W), differentiable
-            self.tomosipo_geometries.append(
-                to_autograd(single_angle.make_operator().T, num_extra_dims=1)
-            )
+            self.tomosipo_geometries.append(single_angle.make_operator().autograd()[1])
 
     def forward(self, sinogram):
         """The single-angle backprojections of ``sinogram`` (B, 1, angles,
