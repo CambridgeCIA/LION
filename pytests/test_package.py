@@ -11,6 +11,7 @@ stand-in CT operator (an identity), and LION's code taken as committed and
 pushed (it is checked in its own test)."""
 
 import json
+import pathlib
 import os
 import re
 import shutil
@@ -31,7 +32,7 @@ from LION.experiments import ct_experiments  # noqa: E402
 from LION.models.LIONmodel import LIONmodel, ModelInputType  # noqa: E402
 from LION.optimizers.SupervisedSolver import SupervisedSolver  # noqa: E402
 from LION.optimizers.training_record import weights_sha256  # noqa: E402
-from LION.utils import environment  # noqa: E402
+from LION.utils import environment, spec  # noqa: E402
 from pytests.helpers import ScaleOp, small_dncnn  # noqa: E402
 from pytests.test_lidc_resampling import fake_lidc  # noqa: E402
 
@@ -117,13 +118,13 @@ def trained(tmp_path_factory):
 def copy(file, folder):
     """The model file copied to ``folder``, to change it."""
     folder.mkdir()
-    for suffix in (".json", ".pt"):
-        shutil.copyfile(file.with_suffix(suffix), folder / f"model{suffix}")
+    for suffix in (".lion.json", ".pt"):
+        shutil.copyfile(f"{file}{suffix}", folder / f"model{suffix}")
     return folder / "model"
 
 
 def edit(file, change):
-    path = file.with_suffix(".json")
+    path = spec.record_file(file)
     saved = json.loads(path.read_text())
     change(saved)
     path.write_text(json.dumps(saved))
@@ -146,36 +147,36 @@ def test_a_package_holds_the_model_and_its_records(trained, tmp_path):
         p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file()
     ) == [
         "README.md",
-        "data/training.json",
-        "data/validation.json",
+        "data/training.lion.json",
+        "data/validation.lion.json",
         "environment.txt",
-        "experiment.json",
-        "model.json",
+        "experiment.lion.json",
+        "model.lion.json",
         "model.pt",
-        "package.json",
-        "solver.json",
+        "package.lion.json",
+        "solver.lion.json",
     ]
     # the model file as LION saved it
-    for suffix in (".json", ".pt"):
-        assert (folder / f"model{suffix}").read_bytes() == file.with_suffix(
-            suffix
+    for suffix in (".lion.json", ".pt"):
+        assert (folder / f"model{suffix}").read_bytes() == pathlib.Path(
+            f"{file}{suffix}"
         ).read_bytes()
     model = LIONmodel.load(folder / "model", supress_warnings=True)[0]
-    written = json.loads((folder / "package.json").read_text())
+    written = json.loads((folder / "package.lion.json").read_text())
     assert written["weights_sha256"] == weights_sha256(model)
     # every file but the card and package.json, by its sha256
     assert sorted(written["sha256"]) == [
-        "data/training.json",
-        "data/validation.json",
+        "data/training.lion.json",
+        "data/validation.lion.json",
         "environment.txt",
-        "experiment.json",
-        "model.json",
+        "experiment.lion.json",
+        "model.lion.json",
         "model.pt",
-        "solver.json",
+        "solver.lion.json",
     ]
     for name, digest in written["sha256"].items():
         assert package.file_sha256(folder / name) == digest
-    saved = json.loads(file.with_suffix(".json").read_text())
+    saved = json.loads(spec.record_file(file).read_text())
     assert written["lion"]["commit"] == saved["environment"]["lion"]["commit"]
     assert [c["class"] for c in written["citations"]] == [
         "LION.models.CNNs.dncnn.DnCNN",
@@ -184,13 +185,13 @@ def test_a_package_holds_the_model_and_its_records(trained, tmp_path):
     assert "@article{zhang2017beyond" in written["citations"][0]["bibtex"]
     # the records, as they are in the model file
     records = {
-        "data/training.json": saved["dataset_params"],
-        "data/validation.json": saved["training"]["validation"]["data"],
-        "solver.json": saved["training"],
-        "experiment.json": saved["dataset_params"]["experiment"],
+        "data/training.lion.json": saved["dataset_params"],
+        "data/validation.lion.json": saved["training"]["validation"]["data"],
+        "solver.lion.json": saved["training"],
+        "experiment.lion.json": saved["dataset_params"]["experiment"],
     }
     for name, record in records.items():
-        assert json.loads((folder / name).read_text()) == record
+        assert spec.read(folder / name) == record
     assert written["notes"] == []
 
     card = (folder / "README.md").read_text()
@@ -217,17 +218,17 @@ def test_each_file_is_made_again_by_its_own_instantiate(trained, tmp_path):
 
     file, _ = trained
     folder = published(file, tmp_path / "package")
-    experiment = ct_experiments.Experiment.instantiate(folder / "experiment.json")
+    experiment = ct_experiments.Experiment.instantiate(folder / "experiment.lion.json")
     assert isinstance(experiment, ct_experiments.LowDoseCTRecon)
     assert experiment.param.name == "Low dose full angular sampling experiment"
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")  # the data's noise isn't the dataset's
-        training = LIONDataset.instantiate(folder / "data" / "training.json")
+        training = LIONDataset.instantiate(folder / "data" / "training.lion.json")
     assert isinstance(training, Subset) and isinstance(training.dataset, LIDC_IDRI)
     assert training.indices == [0, 2, 3, 5]
     model = LIONmodel.instantiate(folder / "model", initial_weights=True)
     solver = LIONsolver.instantiate(
-        folder / "solver.json", model, device=torch.device("cpu")
+        folder / "solver.lion.json", model, device=torch.device("cpu")
     )
     assert isinstance(solver, SupervisedSolver)
 
@@ -243,11 +244,11 @@ def test_the_package_trains_the_model_again(trained, tmp_path, monkeypatch):
         warnings.simplefilter("ignore")
         exec(code.group(1), {"__name__": "__main__"})
     again = LIONmodel.load(folder / "retrained" / "model", supress_warnings=True)[0]
-    written = json.loads((folder / "package.json").read_text())
+    written = json.loads((folder / "package.lion.json").read_text())
     assert weights_sha256(again) == written["weights_sha256"]
 
     model = package.train_again(folder, tmp_path / "again")
-    written = json.loads((folder / "package.json").read_text())
+    written = json.loads((folder / "package.lion.json").read_text())
     assert weights_sha256(model) == written["weights_sha256"]
     saved = LIONmodel.load(tmp_path / "again" / "model", supress_warnings=True)[0]
     assert weights_sha256(saved) == written["weights_sha256"]
@@ -266,18 +267,20 @@ def test_with_a_test_record(trained, tmp_path):
         device="cpu",
     )
     folder = published(file, tmp_path / "package", evaluation=evaluation)
-    record = json.loads((folder / "test.json").read_text())
+    record = json.loads((folder / "test.lion.json").read_text())
     assert record["lion_test_record"] == 1
     assert record["data"]["split"] == "test"
-    written = json.loads((folder / "package.json").read_text())
-    assert written["files"]["test"] == "test.json"
-    assert "test.json" in written["sha256"]
+    written = json.loads((folder / "package.lion.json").read_text())
+    assert written["files"]["test"] == "test.lion.json"
+    assert "test.lion.json" in written["sha256"]
     card = (folder / "README.md").read_text()
     assert "## Test" in card and "| PSNR" in card
     # or its record's file
-    saved = next((tmp_path / "evaluations").glob("*.json"))
+    saved = next((tmp_path / "evaluations").glob("*.lion.json"))
     again = published(file, tmp_path / "again", evaluation=saved)
-    assert (again / "test.json").read_text() == (folder / "test.json").read_text()
+    assert (again / "test.lion.json").read_text() == (
+        folder / "test.lion.json"
+    ).read_text()
 
 
 def test_refusals(trained, tmp_path, monkeypatch):
@@ -345,7 +348,7 @@ def test_initial_weights_saved_by_the_solver_are_included(trained, tmp_path):
     tuned = train(tmp_path / "tuned", data_folder, "tuned", start=start)
     assert (tmp_path / "tuned" / "tuned_initial.pt").is_file()
     folder = published(tuned, tmp_path / "package")
-    written = json.loads((folder / "package.json").read_text())
+    written = json.loads((folder / "package.lion.json").read_text())
     assert written["files"]["initial_weights"] == "tuned_initial.pt"
     assert "tuned_initial.pt" in written["sha256"]
     model = LIONmodel.instantiate(folder / "model", initial_weights=True)
@@ -390,7 +393,7 @@ def test_load_gives_the_recorded_arguments(trained, tmp_path):
 def test_load_and_build_as_published(trained, tmp_path):
     folder = published_package(trained, tmp_path)
     built = package.load_and_build(folder)
-    written = json.loads((folder / "package.json").read_text())
+    written = json.loads((folder / "package.lion.json").read_text())
     assert weights_sha256(built.model) == written["weights_sha256"]
     assert type(built.experiment) is ct_experiments.LowDoseCTRecon
     assert isinstance(built.training_data, Subset)
@@ -405,7 +408,7 @@ def test_load_and_build_as_published(trained, tmp_path):
     # Trained, initial (the recorded ones), or new for a changed model.
     p = package.load(folder)
     record = p.records.training
-    trained_weights = json.loads((folder / "package.json").read_text())
+    trained_weights = json.loads((folder / "package.lion.json").read_text())
     initial = package.build(p, initial_weights=True).model
     assert weights_sha256(initial) == record.initial_weights_sha256
     assert weights_sha256(package.build(p).model) == trained_weights["weights_sha256"]
@@ -441,7 +444,7 @@ def test_train_again_with_changes(trained, tmp_path):
     assert built.model.model_parameters.blocks == 2
     model = package.train_again(p, tmp_path / "changed")
     assert model.model_parameters.blocks == 2
-    saved = json.loads((tmp_path / "changed" / "model.json").read_text())
+    saved = json.loads((tmp_path / "changed" / "model.lion.json").read_text())
     assert saved["model"]["model_parameters"]["blocks"] == 2
     experiment = saved["dataset_params"]["experiment"]["experiment_params"]
     assert experiment["noise_params"]["I0"] == 5000
@@ -481,9 +484,9 @@ def test_a_reconstructor_is_published_with_its_model(trained, tmp_path):
     from LION.reconstructors import LIONReconstructor
 
     folder = published(saved_reconstructor(trained, tmp_path), tmp_path / "package")
-    written = json.loads((folder / "package.json").read_text())
-    assert written["files"]["reconstructor"] == "reconstructor.json"
-    assert "reconstructor.json" in written["sha256"]
+    written = json.loads((folder / "package.lion.json").read_text())
+    assert written["files"]["reconstructor"] == "reconstructor.lion.json"
+    assert "reconstructor.lion.json" in written["sha256"]
     assert "LION.reconstructors.PnP.PnP" in [c["class"] for c in written["citations"]]
     again = LIONReconstructor.load(folder / "reconstructor")
     assert again.parameters.max_iter == 2
@@ -506,7 +509,7 @@ def test_a_reconstructor_is_published_with_its_model(trained, tmp_path):
         device="cpu",
     )
     folder = published(source, tmp_path / "tested", evaluation=evaluation)
-    test = json.loads((folder / "test.json").read_text())
+    test = json.loads((folder / "test.lion.json").read_text())
     assert test["method"]["kind"] == "reconstructor"
     # its test isn't the model's
     record = evaluation.run(source)
@@ -528,12 +531,12 @@ def fine_tuned(trained, tmp_path):
 def test_a_fine_tuned_model_is_published_with_its_original(trained, tmp_path):
     original, tuned = fine_tuned(trained, tmp_path)
     folder = published(tuned, tmp_path / "package")
-    written = json.loads((folder / "package.json").read_text())
-    assert written["files"]["origins"] == ["origin/model.json"]
-    assert "origin/model.json" in written["sha256"]
-    assert json.loads((folder / "origin" / "model.json").read_text()) == json.loads(
-        original.with_suffix(".json").read_text()
-    )
+    written = json.loads((folder / "package.lion.json").read_text())
+    assert written["files"]["origins"] == ["origin/model.lion.json"]
+    assert "origin/model.lion.json" in written["sha256"]
+    assert json.loads(
+        (folder / "origin" / "model.lion.json").read_text()
+    ) == json.loads(spec.record_file(original).read_text())
     card = (folder / "README.md").read_text()
     assert "## Fine-tuned from" in card and str(original) in card
     p = package.load(folder)

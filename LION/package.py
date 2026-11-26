@@ -8,27 +8,27 @@
 and test it, in one folder (a package), from the records LION saved::
 
     from LION.package import publish
-    publish("results/lpd/final", "lpd_package", evaluation="results/evaluations/lpd-1234.json")
+    publish("results/lpd/final", "lpd_package", evaluation="results/evaluations/lpd-1234.lion.json")
 
 ``publish(model_file, folder, evaluation=None)``: ``model_file`` is a model a
-LION solver saved (``"final"``, ``.json`` or ``.pt``), or a reconstructor's
+LION solver saved (``"final"``, ``.lion.json`` or ``.pt``), or a reconstructor's
 file (``reconstructor.save``: its model with it); ``evaluation`` is
 optional: its test record (``Evaluation.run``), the record's file, or an
 ``Evaluation``, which is then run on the model. The package::
 
-    model.json, model.pt   the model file, exactly as LION saved it: LIONmodel.load("model")
-    <name>_initial.pt      the weights training started from, when the solver saved them
-    experiment.json        the experiment: geometry, noise, dataset (Experiment.instantiate)
-    data/training.json     the training data's record: split, samples, noise seed
-    data/validation.json   the validation data's record, if it was validated
-    solver.json            the training record: solver, optimizer, seed, settings, history
-    test.json              the test record, if an evaluation was given
-    reconstructor.json     the reconstructor, if one is published (its model: model)
-    origin/model.json      for a fine-tuned model, its original's metadata (and
-                           origin/origin/model.json, ... for the original's original)
-    environment.txt        the packages installed where it was published (conda's and Python's)
-    package.json           the contents and their sha256, the citations, LION's version and commit, notes
-    README.md              a model card, generated from the records (edit it: it isn't checksummed)
+    model.lion.json, model.pt  the model file, exactly as LION saved it: LIONmodel.load("model")
+    <name>_initial.pt          the weights training started from, when the solver saved them
+    experiment.lion.json       the experiment: geometry, noise, dataset (Experiment.instantiate)
+    data/training.lion.json    the training data's record: split, samples, noise seed
+    data/validation.lion.json  the validation data's record, if it was validated
+    solver.lion.json           the training record: solver, optimizer, seed, settings, history
+    test.lion.json             the test record, if an evaluation was given
+    reconstructor.lion.json    the reconstructor, if one is published (its model: model)
+    origin/model.lion.json     for a fine-tuned model, its original's metadata (and
+                               origin/origin/model.lion.json, ... for the original's original)
+    environment.txt            the packages installed where it was published (conda's and Python's)
+    package.lion.json          the contents and their sha256, the citations, LION's version and commit, notes
+    README.md                  a model card, generated from the records (edit it: it isn't checksummed)
 
 Each file is made again by its own ``instantiate`` (``LIONmodel``,
 ``Experiment``, ``LIONDataset``, ``LIONsolver``, ``Evaluation``,
@@ -68,7 +68,7 @@ otherwise. The model card shows the same, and the code step by step.
 
 What a reader should know of a complete package (it was published in another
 environment than it was trained in, or tested on another problem) is a note,
-in ``package.json`` and the model card, and a warning.
+in ``package.lion.json`` and the model card, and a warning.
 ``citations`` are each component's ``cite()``: where it comes from, not the
 work being published.
 """
@@ -94,12 +94,12 @@ PACKAGE_VERSION = 1
 #: The files of a package, and what each is.
 FILES = {
     "model": "model",
-    "experiment": "experiment.json",
-    "training_data": "data/training.json",
-    "validation_data": "data/validation.json",
-    "solver": "solver.json",
-    "test": "test.json",
-    "reconstructor": "reconstructor.json",
+    "experiment": "experiment.lion.json",
+    "training_data": "data/training.lion.json",
+    "validation_data": "data/validation.lion.json",
+    "solver": "solver.lion.json",
+    "test": "test.lion.json",
+    "reconstructor": "reconstructor.lion.json",
     "environment": "environment.txt",
 }
 
@@ -116,15 +116,15 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
     from LION.models.LIONmodel import LIONmodel
     from LION.optimizers.training_record import weights_sha256
 
-    source = pathlib.Path(model_file).with_suffix("")
+    source = spec.file_base(model_file)
     reconstructor = _reconstructor_record(source)
     model_file = source
     if reconstructor is not None:
         model_file = _reconstructors_model_file(reconstructor, source)
     folder = pathlib.Path(folder)
-    for suffix in (".json", ".pt"):
-        if not model_file.with_suffix(suffix).is_file():
-            raise PublishError(f"{model_file.with_suffix(suffix)} doesn't exist")
+    for path in (spec.record_file(model_file), spec.weights_file(model_file)):
+        if not path.is_file():
+            raise PublishError(f"{path} doesn't exist")
     if folder.exists() and (not folder.is_dir() or any(folder.iterdir())):
         raise PublishError(f"{folder} isn't an empty folder")
 
@@ -175,8 +175,8 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "data").mkdir()
     files = {}
-    for suffix in (".json", ".pt"):
-        shutil.copyfile(model_file.with_suffix(suffix), folder / f"model{suffix}")
+    shutil.copyfile(spec.record_file(model_file), spec.record_file(folder / "model"))
+    shutil.copyfile(spec.weights_file(model_file), spec.weights_file(folder / "model"))
     files["model"] = "model"
     if initial is not None:
         shutil.copyfile(initial, folder / initial.name)
@@ -194,7 +194,7 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
         _write_json(folder / FILES["test"], test)
         files["test"] = FILES["test"]
     for depth, (path, original) in enumerate(origins, start=1):
-        written_origin = pathlib.Path(*["origin"] * depth, "model.json")
+        written_origin = pathlib.Path(*["origin"] * depth, "model" + spec.RECORD_SUFFIX)
         (folder / written_origin.parent).mkdir(parents=True, exist_ok=True)
         _write_json(folder / written_origin, original)
         files.setdefault("origins", []).append(written_origin.as_posix())
@@ -224,7 +224,7 @@ def publish(model_file, folder, evaluation=None) -> pathlib.Path:
         "citations": citations(saved, test, reconstructor),
         "notes": notes,
     }
-    _write_json(folder / "package.json", written)
+    _write_json(folder / "package.lion.json", written)
     (folder / "README.md").write_text(
         model_card(saved, written, model, test, reconstructor, origins),
         encoding="utf-8",
@@ -260,7 +260,7 @@ def load(folder) -> LIONParameter:
       ``parameters``); None without one;
     - ``device``: where it was trained; ``folder``; ``records``: the
       ``training``, ``data``, ``test`` and ``reconstructor`` records, the
-      ``origins`` of a fine-tuned model, and ``package.json``, as read.
+      ``origins`` of a fine-tuned model, and ``package.lion.json``, as read.
 
     The classes are the recorded ones (another class's parameters come from
     its ``parameters_from_file``). Files changed since the package was
@@ -270,7 +270,7 @@ def load(folder) -> LIONParameter:
     from LION.optimizers.training_record import read_training_record
 
     folder = pathlib.Path(folder)
-    written = json.loads((folder / "package.json").read_text(encoding="utf-8"))
+    written = spec.read(folder / "package.lion.json")
     _warn_changed_files(folder, written)
     saved = spec.read(folder / written["files"]["model"])
     difference = environment.code_differences(saved.get("environment") or {})
@@ -558,9 +558,9 @@ def _origins(model_file, training, problems):
                     "origin isn't recorded (not loaded from a LION model file)"
                 )
             break
-        path = spec.build(origin["file"]).with_suffix("")
+        path = spec.file_base(spec.build(origin["file"]))
         what = f"the original model {path} (that {where.name} was fine-tuned from)"
-        if path in seen or not path.with_suffix(".json").is_file():
+        if path in seen or not spec.record_file(path).is_file():
             problems.append(f"{what} is missing: its records are needed")
             break
         seen.add(path)
@@ -590,7 +590,7 @@ def _reconstructor_record(source):
     """The record of a reconstructor's file, or None (a model's file)."""
     from LION.reconstructors.LIONreconstructor import RECORD_KEY
 
-    path = source.with_suffix(".json")
+    path = spec.record_file(source)
     if not path.is_file():
         return None
     saved = spec.read(path)
@@ -608,7 +608,7 @@ def _reconstructors_model_file(reconstructor, source):
     path = spec.build(reference["file"])
     if not path.is_absolute():
         path = source.parent / path
-    return path.with_suffix("")
+    return spec.file_base(path)
 
 
 def _test_record(evaluation, model_file):
@@ -896,7 +896,7 @@ def _lion(record) -> dict:
 
 
 def _write_json(path, value):
-    path.write_text(json.dumps(value, indent=1), encoding="utf-8")
+    spec.write(path, value)
 
 
 def _sentence(problems) -> str:
@@ -926,7 +926,7 @@ def model_card(saved, package, model, test=None, reconstructor=None, origins=())
         f"Published on {package['published']} with LION "
         f"{package['published_with']['version']}"
         + _commit(package["published_with"])
-        + ". Generated from the package's records (`package.json` lists them); "
+        + ". Generated from the package's records (`package.lion.json` lists them); "
         "edit it freely, it isn't checksummed.",
         "",
         "## The model",
@@ -952,7 +952,7 @@ def model_card(saved, package, model, test=None, reconstructor=None, origins=())
             "",
             f"- `{written[spec.TARGET]}`, with the model"
             + (f": {settings}" if settings else "")
-            + " (`reconstructor.json`).",
+            + " (`reconstructor.lion.json`).",
         ]
 
     lines += ["", "## The problem", ""]
@@ -991,7 +991,7 @@ def model_card(saved, package, model, test=None, reconstructor=None, origins=())
             lines.append(
                 f"{depth}. `{_name(original['model'])}` trained on {dataset_o}, "
                 f"{_samples(data_o)}, {_count(epochs, 'epoch')}, seed "
-                f"{training_o.get('seed')} (`{'origin/' * depth}model.json`; "
+                f"{training_o.get('seed')} (`{'origin/' * depth}model.lion.json`; "
                 f"it was `{path}`)."
             )
 
@@ -1009,7 +1009,7 @@ def model_card(saved, package, model, test=None, reconstructor=None, origins=())
                 if test.get("data_range")
                 else "metrics over each sample's own range"
             )
-            + " (`test.json`):",
+            + " (`test.lion.json`):",
             "",
             table([LIONParameter(**test)]).strip(),
         ]
@@ -1104,7 +1104,7 @@ def _retraining(saved, files) -> list:
         lines.append("from LION.utils import spec")
     lines += [
         "",
-        'record = read_training_record("solver.json")',
+        'record = read_training_record("solver.lion.json")',
         "",
         "",
         "def data(file):",
@@ -1117,7 +1117,7 @@ def _retraining(saved, files) -> list:
         "",
         'model = LIONmodel.instantiate("model", initial_weights=True)',
         "solver = LIONsolver.instantiate(",
-        f'    "solver.json", model, device=torch.device("{device}")  # where it was trained',
+        f'    "solver.lion.json", model, device=torch.device("{device}")  # where it was trained',
         ")",
         "t = record.train",
         "solver.set_training(",

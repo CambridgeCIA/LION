@@ -39,6 +39,7 @@ function without calling it. A dict without ``_target_`` (in older files) is a
 import collections
 import enum
 import functools
+import hashlib
 import importlib
 import os
 import inspect
@@ -365,17 +366,86 @@ def build_arguments(spec: dict, allow=()):
     return spec[TARGET], named
 
 
+#: The key under which a file LION writes holds its content's hash.
+CHECKSUM = "lion_sha256"
+
+#: The suffix of the records LION writes: JSON, but LION's, not to be edited.
+RECORD_SUFFIX = ".lion.json"
+_SUFFIXES = (RECORD_SUFFIX, ".json", ".pt", ".pth")
+
+
+def file_base(source) -> pathlib.Path:
+    """A file's path without LION's suffixes: ``"model"`` for
+    ``"model.lion.json"``, ``"model.pt"`` or ``"model"``."""
+    path = pathlib.Path(source)
+    for suffix in _SUFFIXES:
+        if path.name.endswith(suffix):
+            return path.with_name(path.name[: -len(suffix)])
+    return path
+
+
+def record_file(source) -> pathlib.Path:
+    """The record a path names: ``model.lion.json`` for ``"model"`` or
+    ``"model.pt"``; a ``.json`` path as it is given."""
+    path = pathlib.Path(source)
+    if path.name.endswith(".json"):
+        return path
+    base = file_base(path)
+    return base.with_name(base.name + RECORD_SUFFIX)
+
+
+def weights_file(source) -> pathlib.Path:
+    """A model's weights: ``model.pt`` for ``"model"`` or its record."""
+    base = file_base(source)
+    return base.with_name(base.name + ".pt")
+
+
+def content_sha256(value) -> str:
+    """The hash of a record's content, as written in JSON: the same however
+    its keys are ordered or its file is indented."""
+    text = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def write(path, value) -> str:
+    """Write a record to ``path`` (JSON: ``record_file`` names it, a
+    ``.lion.json``), with the hash of its content
+    (``CHECKSUM``), which ``read`` checks: a file LION wrote is not meant to
+    be edited (change things with ``parameters_from_file`` or
+    ``instantiate(file, **arguments)`` instead). Returns the hash."""
+    value = json.loads(json.dumps(value))  # as it reads back (e.g. int keys)
+    value.pop(CHECKSUM, None)
+    digest = content_sha256(value)
+    pathlib.Path(path).write_text(
+        json.dumps({**value, CHECKSUM: digest}, indent=1, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return digest
+
+
 def read(source) -> dict:
-    """Saved metadata, as a dict: the path of a ``.json`` (or of a model's
-    files, e.g. ``"model.pt"`` or ``"model"``: its ``.json`` is read), a dict
-    already read from one, or a ``LIONParameter`` (e.g. a record)."""
+    """Saved metadata, as a dict: the path of a record (``.lion.json``, or any
+    ``.json``), or of a model's files (``"model.pt"`` or ``"model"``: its
+    ``.lion.json`` is read), a dict
+    already read from one, or a ``LIONParameter`` (e.g. a record). A file
+    whose content no longer matches the hash LION wrote with it (``write``)
+    gives a warning: it was edited after it was saved."""
     if isinstance(source, LIONParameter):
         return source.serialize()
     if isinstance(source, dict):
         return source
-    path = pathlib.Path(source).with_suffix(".json")
+    path = record_file(source)
     with open(path, encoding="utf-8") as f:
-        return with_current_names(json.load(f))
+        value = json.load(f)
+    digest = value.pop(CHECKSUM, None) if isinstance(value, dict) else None
+    if digest is not None and digest != content_sha256(value):
+        warnings.warn(
+            f"{path} was changed after LION wrote it: its records may no longer "
+            "describe what was saved. Change things with parameters_from_file "
+            "or instantiate(file, **arguments), not by editing the file",
+            stacklevel=2,
+        )
+    return with_current_names(value)
 
 
 def target_class(path: str, cls, base, allow=()):

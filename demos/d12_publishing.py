@@ -80,7 +80,7 @@ from LION.reconstructors.ForwardReconstructor import ForwardReconstructor
 
 trained, _, _ = LIONmodel.load(folder / "FBPConvNet")
 ForwardReconstructor(experiment.operator_params, trained).save(
-    folder / "reconstructor.json"
+    folder / "reconstructor.lion.json"
 )
 
 evaluation = Evaluation(experiment, samples=10)
@@ -121,7 +121,7 @@ print(p.training_data)  # which split, and which samples of it
 # Each piece has its file in the package, and is made again from it by its
 # base class's ``instantiate``, with nothing else: the model (and its
 # operator), the experiment, the data, the solver (with its optimizer,
-# scheduler and loss), the reconstructor and the evaluation. ``package.json``
+# scheduler and loss), the reconstructor and the evaluation. ``package.lion.json``
 # names the files:
 
 files = p.records.package.files
@@ -144,7 +144,7 @@ print(model.operator_params)
 operator = model.operator_params.make_operator()
 
 # %%
-# **The experiment** (``experiment.json``), which makes the data, with their
+# **The experiment** (``experiment.lion.json``), which makes the data, with their
 # noise:
 
 from LION.experiments.ct_experiments import Experiment
@@ -153,7 +153,7 @@ experiment_again = Experiment.instantiate(published / files.experiment)
 print(experiment_again.param.name)
 
 # %%
-# **The data** (``data/training.json``, ``data/validation.json``): the split
+# **The data** (``data/training.lion.json``, ``data/validation.lion.json``): the split
 # and the samples the model was trained and validated on, made by the
 # experiment:
 
@@ -168,7 +168,7 @@ print(len(training_again), "training samples")
 #   images = LIONDataset.instantiate(published / files.training_data)
 
 # %%
-# **The solver** (``solver.json``, the training record), with its optimizer,
+# **The solver** (``solver.lion.json``, the training record), with its optimizer,
 # scheduler, loss and settings, for the model it is given; its data are set as
 # usual (``set_training``):
 
@@ -180,8 +180,8 @@ print(type(solver_again.optimizer).__name__, solver_again.optimizer.defaults["lr
 print(type(solver_again.scheduler).__name__, solver_again.scheduler.step_size)
 
 # %%
-# **The reconstructor** (``reconstructor.json``), given the trained model, and
-# **the evaluation** that tested it (``test.json``: its test set and
+# **The reconstructor** (``reconstructor.lion.json``), given the trained model, and
+# **the evaluation** that tested it (``test.lion.json``: its test set and
 # metrics):
 
 from LION.reconstructors.LIONreconstructor import LIONReconstructor

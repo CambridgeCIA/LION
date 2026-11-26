@@ -47,7 +47,7 @@ How the pieces connect
          ├──▶ LIONmodel (the network)  ◀──trains──  LIONsolver (the loop)
          │                                │            mini_batch_step(y, x)
          │                                ▼
-         │                          model.save: .pt (weights) + .json (records)
+         │                          model.save: .pt (weights) + .lion.json (records)
          │                                │
          └──▶ LIONReconstructor (model inside an algorithm) ──▶ Evaluation
 
@@ -132,7 +132,7 @@ run everywhere: training, validation, testing, ``ForwardReconstructor``.
 **Saving** (``LIONmodel.save``). ``save_final_results()`` calls
 ``model.save(file, training=..., dataset=..., loss=..., epoch=...)``, which
 writes two files: ``file.pt``, the weights and plain numbers only (loaded with
-``weights_only=True``); and ``file.json``, the model's spec
+``weights_only=True``); and ``file.lion.json``, the model's spec
 (``LION/utils/spec.py``), the environment record
 (``LION/utils/environment.py``), the data record
 (``LION/data_loaders/data_record.py``) and the training record

@@ -19,7 +19,7 @@ or all of them:
 ``--experiment``: a key of ``settings.EXPERIMENTS``, or ``all``; ``--model``:
 a key of ``settings.MODELS``, or ``all``. Each model is saved in
 ``$LION_RESULTS_PATH/paper_scripts/2detect_benchmark/<experiment>/<model>``
-(``.pt`` and ``.json``, with its records), and the one with the lowest
+(``.pt`` and ``.lion.json``, with its records), and the one with the lowest
 validation loss as ``<model>_best``, the one tested. Checkpoints every 10
 epochs: a stopped run resumes from the latest when run again, and models
 already trained are skipped. ``--slices`` and ``--epochs`` make a short run,
@@ -61,7 +61,7 @@ verbose = 2  # 0: nothing; 1: one progress bar; 2: also each epoch's bars and me
 def train(experiment_name, name):
     save_folder = settings.folder(experiment_name)
     save_folder.mkdir(parents=True, exist_ok=True)
-    if (save_folder / f"{name}.json").exists():
+    if (save_folder / f"{name}.lion.json").exists():
         print(f"{experiment_name}/{name}: already trained, skipped")
         return
     print(f"Training {name} on {experiment_name}")

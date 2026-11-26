@@ -22,7 +22,7 @@ import LION
 from LION.models.CNNs.dncnn import DnCNN
 from LION.utils import environment
 from LION.utils.parameter import LIONParameter
-from pytests.helpers import small_dncnn
+from pytests.helpers import resave, small_dncnn
 
 
 def save(model, path):
@@ -46,7 +46,7 @@ def test_record(tmp_path):
     json.dumps(record.serialize())  # plain JSON
 
     save(small_dncnn(), tmp_path / "model")
-    saved = json.loads((tmp_path / "model.json").read_text())
+    saved = json.loads((tmp_path / "model.lion.json").read_text())
     assert saved["environment"]["lion"]["version"] == LION.__version__
     with warnings.catch_warnings():
         warnings.simplefilter("error")  # the same code: no warning
@@ -57,12 +57,12 @@ def test_record(tmp_path):
 
 def test_loading_a_file_saved_with_other_code_warns(tmp_path):
     save(small_dncnn(), tmp_path / "model")
-    path = tmp_path / "model.json"
+    path = tmp_path / "model.lion.json"
     saved = json.loads(path.read_text())
     if saved["environment"]["lion"]["commit"] is None:
         pytest.skip("LION is not a git checkout here")
     saved["environment"]["lion"]["commit"] = "0" * 40
-    path.write_text(json.dumps(saved))
+    resave(path, saved)  # as LION at another commit writes it
     with pytest.warns(UserWarning, match="saved with other LION code.*0000000000"):
         DnCNN.load(tmp_path / "model", supress_warnings=True)
 
