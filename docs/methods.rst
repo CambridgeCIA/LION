@@ -315,6 +315,10 @@ Data and experiments
      - 2DeteCT: measured sinograms of 109 objects in three modes (5,000
        slices)
      - Kiss et al., "2DeteCT", Scientific Data, 2023
+   * - ``HTC2022``
+     - Helsinki Tomography Challenge 2022: measured fan-beam sinograms of 26
+       phantoms, for limited-angle CT
+     - Meaney et al., HTC2022 open tomographic dataset, Zenodo, 2023
 
 Experiments (``LION.experiments``) fix a problem on them: LION's simulated
 ones on LIDC-IDRI (``ct_experiments``: clinical, low and extremely low dose;

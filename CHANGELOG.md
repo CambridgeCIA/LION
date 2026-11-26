@@ -64,6 +64,11 @@ with 0.2.0 don't load.
   `LION.models.learned_regularizer`: Kobler's regulariser (MIT licence) with
   Zakhar Shumaylov's CT data term, as LION had it in 2024, for the
   benchmark paper.
+- **HTC2022** (`LION.data_loaders.HTC2022`), the Helsinki Tomography
+  Challenge 2022 data: measured fan-beam sinograms of 26 phantoms for
+  limited-angle CT, turned so that one geometry fits the challenge's arcs;
+  download, preparation and a check of the preparation against the
+  challenge's files.
 - **Paper scripts**: the noise paper's (Kiss et al., 2025; from #103): its
   eight denoisers' training and evaluation, with its U-Net.
 

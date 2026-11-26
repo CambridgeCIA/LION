@@ -20,6 +20,10 @@ it, and how LION uses it. The tutorials and example scripts use LIDC-IDRI.
      - Measured fan-beam CT of 5,000 slices of 109 objects, in three modes
        (low dose, high dose, beam hardening).
      - ``deteCT``; ``ct_experiments``, ``deteCT_benchmark``
+   * - :doc:`datasets/htc2022`
+     - Measured fan-beam CT of 26 phantoms with holes, for limited-angle CT
+       (the Helsinki Tomography Challenge 2022).
+     - ``HTC2022``
    * - :doc:`datasets/walnuts`
      - Cone-beam micro-CT of 42 walnuts.
      - download only, for now
@@ -29,6 +33,7 @@ it, and how LION uses it. The tutorials and example scripts use LIDC-IDRI.
 
    datasets/lidc_idri
    datasets/2detect
+   datasets/htc2022
    datasets/walnuts
 
 Where LION looks for data
@@ -50,10 +55,12 @@ Downloads go to ``raw/`` inside it, and the prepared data that LION reads to
    ├── raw/
    │   ├── LIDC-IDRI/
    │   ├── 2detect/
+   │   ├── HTC2022/
    │   └── walnuts/
    └── processed/
        ├── LIDC-IDRI/
-       └── 2detect/
+       ├── 2detect/
+       └── HTC2022/
 
 Saved models record their data's paths relative to ``LION_DATA_PATH``, so a
 model trained on one machine finds its data on another.
